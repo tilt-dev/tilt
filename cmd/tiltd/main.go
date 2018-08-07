@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 
-	_ "github.com/windmilleng/tesseract/pkg/tracer"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"

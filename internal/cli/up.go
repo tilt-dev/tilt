@@ -36,7 +36,6 @@ func (c *upCmd) run(args []string) error {
 	}
 	err = dCli.CreateService(ctx, "blahblahblah")
 	if err != nil {
-		fmt.Println("error calling the method")
 		return err
 	}
 
