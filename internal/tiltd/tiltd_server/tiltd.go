@@ -1,4 +1,4 @@
-package tiltd
+package tiltd_server
 
 import (
 	"context"
@@ -6,11 +6,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
+
+	"github.com/windmilleng/tilt/internal/tiltd"
 )
 
-const Port = 10000
-
 type Daemon struct{}
+
+var _ tiltd.TiltD = &Daemon{}
 
 func NewDaemon() (*Daemon, error) {
 	return &Daemon{}, nil

@@ -1,23 +1,22 @@
-package tiltd
+package proto
 
 import (
 	"context"
 
-	"github.com/windmilleng/tilt/internal/proto"
 	"google.golang.org/grpc"
 )
 
 type Client struct {
-	del  proto.DaemonClient
+	del  DaemonClient
 	conn *grpc.ClientConn
 }
 
 func NewGRPCClient(conn *grpc.ClientConn) *Client {
-	return &Client{del: proto.NewDaemonClient(conn), conn: conn}
+	return &Client{del: NewDaemonClient(conn), conn: conn}
 }
 
 func (c *Client) CreateService(ctx context.Context, yaml string) error {
-	_, err := c.del.CreateService(ctx, &proto.Service{K8SYaml: yaml})
+	_, err := c.del.CreateService(ctx, &Service{K8SYaml: yaml})
 	return err
 }
 
