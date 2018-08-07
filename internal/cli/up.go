@@ -18,6 +18,6 @@ func (c *upCmd) register() *cobra.Command {
 }
 
 func (c *upCmd) run(args []string) error {
-	fmt.Printf("You ran 'up', go you!")
+	fmt.Println("You ran 'up', go you!")
 	return nil
 }
