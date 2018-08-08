@@ -1,5 +1,8 @@
 # Tilt
 
+[![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
+[![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
+
 ## Prereqs
 - `make`
 - **[go 1.10](https://golang.org/dl/)**
@@ -7,3 +10,8 @@
 
 ## Developing
 Run `make` from the root of the repo to generate all protobuf files.
+
+## License
+Copyright 2018 Windmill Engineering
+
+Licensed under [the Apache License, Version 2.0](LICENSE)
