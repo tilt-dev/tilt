@@ -3,7 +3,6 @@ package tiltd_server
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 
@@ -28,7 +27,6 @@ func RunDaemon(ctx context.Context) (*os.Process, error) {
 	cmd := exec.CommandContext(ctx, "tiltd")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	log.Printf("hi i'm running ur daemon")
 	err := cmd.Start()
 	if err != nil {
 		return nil, err
