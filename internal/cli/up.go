@@ -1,28 +1,27 @@
 package cli
 
 import (
-	"fmt"
-
 	"context"
 
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 type upCmd struct{}
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up",
+		Use:   "up <servicename>",
 		Short: "stand up a service",
+		Args:  cobra.ExactArgs(1),
 	}
 
 	return cmd
 }
 
 func (c *upCmd) run(args []string) error {
-	fmt.Println("You ran 'up', go you!")
 	ctx := context.Background()
 	proc, err := tiltd_server.RunDaemon(ctx)
 	if err != nil {
@@ -34,7 +33,19 @@ func (c *upCmd) run(args []string) error {
 	if err != nil {
 		return err
 	}
-	err = dCli.CreateService(ctx, "blahblahblah")
+
+	tf, err := tiltfile.Load("Tiltfile")
+	if err != nil {
+		return err
+	}
+
+	serviceName := args[0]
+	serviceYaml, err := tf.GetServiceConfig(serviceName)
+	if err != nil {
+		return err
+	}
+
+	err = dCli.CreateService(ctx, *serviceYaml)
 	if err != nil {
 		return err
 	}
