@@ -1,4 +1,4 @@
-.PHONY: all proto
+.PHONY: all proto install lint test
 
 all: proto
 
@@ -7,3 +7,9 @@ proto:
 
 install:
 	go install ./...
+
+lint:
+	go vet ./...
+
+test:
+	go test ./...
