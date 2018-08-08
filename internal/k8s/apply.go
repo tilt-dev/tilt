@@ -3,7 +3,7 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"os"
+	"fmt"
 	"os/exec"
 )
 
@@ -13,9 +13,12 @@ func Apply(ctx context.Context, rawYAML string) error {
 	r := bytes.NewReader([]byte(rawYAML))
 	c.Stdin = r
 
-	// TODO: handle output more cleanly
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
+	stderr := &bytes.Buffer{}
+	c.Stderr = stderr
 
-	return c.Run()
+	err := c.Run()
+	if err != nil {
+		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr.String())
+	}
+	return nil
 }
