@@ -28,6 +28,10 @@
 [[constraint]]
   name = "github.com/golang/protobuf"
   version = "1.1.0"
+  
+[[constraint]]
+  name = "github.com/docker/distribution"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
