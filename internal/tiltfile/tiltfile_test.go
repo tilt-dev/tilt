@@ -33,8 +33,9 @@ def blorgly_frontend():
   return "blorgly_frontend"
 `)
 	defer os.Remove(file)
-	tiltConfig := Load(file)
+	tiltConfig, err := Load(file)
 	for _, s := range([]string{"blorgly", "blorgly_backend", "blorgly_frontend"}) {
 		assert.Contains(t, tiltConfig.globals, s)
 	}
+	assert.Nil(t, err)
 }

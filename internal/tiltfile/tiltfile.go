@@ -3,8 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"github.com/google/skylark"
-	"log"
-)
+	)
 
 type Tiltfile struct {
 	globals  skylark.StringDict
@@ -12,7 +11,7 @@ type Tiltfile struct {
 	thread   *skylark.Thread
 }
 
-func Load(filename string) Tiltfile {
+func Load(filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
 	}
@@ -21,11 +20,8 @@ func Load(filename string) Tiltfile {
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
 	if err != nil {
-		if evalErr, ok := err.(*skylark.EvalError); ok {
-			log.Fatal(evalErr.Backtrace())
-		}
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return Tiltfile{globals, filename, thread}
+	return &Tiltfile{globals, filename, thread}, nil
 }
