@@ -29,15 +29,5 @@ func (c *upCmd) run(args []string) error {
 	}
 	defer proc.Kill()
 
-	//dCli, err := tiltd_client.NewDaemonClient()
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//err = dCli.CreateService(ctx, "yaml goes here")
-	//if err != nil {
-	//	return err
-	//}
-
 	return nil
 }
