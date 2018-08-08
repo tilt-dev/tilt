@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
 )
 
@@ -30,14 +29,15 @@ func (c *upCmd) run(args []string) error {
 	}
 	defer proc.Kill()
 
-	dCli, err := tiltd_client.NewDaemonClient()
-	if err != nil {
-		return err
-	}
-	err = dCli.CreateService(ctx, "blahblahblah")
-	if err != nil {
-		return err
-	}
+	//dCli, err := tiltd_client.NewDaemonClient()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//err = dCli.CreateService(ctx, "yaml goes here")
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
