@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package daemon;
 
-option go_package = "github.com/windmilleng/tilt/proto/;proto";
+option go_package = "github.com/windmilleng/tilt/internal/proto/;proto";
 
 service Daemon {
     rpc CreateService(Service) returns (CreateServiceReply) {}
@@ -13,18 +13,32 @@ service Daemon {
     // rpc WatchService(WatchServiceRequest) returns (WatchServiceReply) {}
 }
 
-// Q: Is this sufficient?
-// Q: How will we uniquely identify a service?
-// ie, what's a service's "name"?
 message Service {
     string k8s_yaml = 1;
-    //repeated Cmd steps = 2;
+    string dockerfile_text = 2; // base, e.g. no code
+    repeated Mount mounts = 3;
+    repeated Cmd steps = 4;
+    string dockerfile_tag = 5; // e.g. gcr.io/blorgly/blorgly-dev
 }
 
-// message Cmd {
-//   string dir = 1;
-//   repeated string argv = 2;
-// }
+message Cmd {
+  repeated string argv = 1;
+}
+
+message Mount {
+    Repo repo = 1;
+    string container_path = 2;
+}
+
+message Repo {
+    oneof repo_type {
+        GitRepo git_repo = 1;
+     }
+}
+
+message GitRepo {
+    string local_path = 1;
+}
 
 // message ServiceStatus {
 //   string name = 1;
@@ -37,17 +51,6 @@ message Service {
 
 // message ListServicesReply {
 //     repeated ServiceStatus statuses = 1;
-// }
-
-// message WatchServiceRequest {
-//   Service service = 1;
-//   repeated Watch watches = 2;
-// }
-
-// message WatchConfig {
-//   string local_path = 1;
-//   string exclude_regex = 2;
-//   string remote_path = 3;
 // }
 
 message CreateServiceReply {}
