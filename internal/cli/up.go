@@ -45,7 +45,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = dCli.CreateService(ctx, service)
+	err = dCli.CreateService(ctx, *service)
 	if err != nil {
 		return err
 	}
