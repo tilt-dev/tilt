@@ -74,12 +74,16 @@ const (
 	PERCENT
 	AMP
 	PIPE
+	CIRCUMFLEX
+	LTLT
+	GTGT
 
 	IN
 
 	// unary operators
 	UPLUS  // x UPLUS x
 	UMINUS // x UMINUS -x
+	TILDE  // x TILDE ~x
 
 	NONE  // - NONE None
 	TRUE  // - TRUE True
@@ -142,6 +146,7 @@ var opcodeNames = [...]string{
 	CALL_KW:     "call_kw ",
 	CALL_VAR:    "call_var",
 	CALL_VAR_KW: "call_var_kw",
+	CIRCUMFLEX:  "circumflex",
 	CJMP:        "cjmp",
 	CONSTANT:    "constant",
 	DUP2:        "dup2",
@@ -152,6 +157,7 @@ var opcodeNames = [...]string{
 	GE:          "ge",
 	GLOBAL:      "global",
 	GT:          "gt",
+	GTGT:        "gtgt",
 	IN:          "in",
 	INDEX:       "index",
 	INPLACE_ADD: "inplace_add",
@@ -163,6 +169,7 @@ var opcodeNames = [...]string{
 	LOAD:        "load",
 	LOCAL:       "local",
 	LT:          "lt",
+	LTLT:        "ltlt",
 	MAKEDICT:    "makedict",
 	MAKEFUNC:    "makefunc",
 	MAKELIST:    "makelist",
@@ -188,6 +195,7 @@ var opcodeNames = [...]string{
 	SLASHSLASH:  "slashslash",
 	SLICE:       "slice",
 	STAR:        "star",
+	TILDE:       "tilde",
 	TRUE:        "true",
 	UMINUS:      "uminus",
 	UNIVERSAL:   "universal",
@@ -207,6 +215,7 @@ var stackEffect = [...]int8{
 	CALL_KW:     variableStackEffect,
 	CALL_VAR:    variableStackEffect,
 	CALL_VAR_KW: variableStackEffect,
+	CIRCUMFLEX:  -1,
 	CJMP:        -1,
 	CONSTANT:    +1,
 	DUP2:        +2,
@@ -217,6 +226,7 @@ var stackEffect = [...]int8{
 	GE:          -1,
 	GLOBAL:      +1,
 	GT:          -1,
+	GTGT:        -1,
 	IN:          -1,
 	INDEX:       -1,
 	INPLACE_ADD: -1,
@@ -228,6 +238,7 @@ var stackEffect = [...]int8{
 	LOAD:        -1,
 	LOCAL:       +1,
 	LT:          -1,
+	LTLT:        -1,
 	MAKEDICT:    +1,
 	MAKEFUNC:    -1,
 	MAKELIST:    variableStackEffect,
@@ -955,7 +966,12 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 			syntax.STAR_EQ,
 			syntax.SLASH_EQ,
 			syntax.SLASHSLASH_EQ,
-			syntax.PERCENT_EQ:
+			syntax.PERCENT_EQ,
+			syntax.AMP_EQ,
+			syntax.PIPE_EQ,
+			syntax.CIRCUMFLEX_EQ,
+			syntax.LTLT_EQ,
+			syntax.GTGT_EQ:
 			// augmented assignment: x += y
 
 			var set func()
@@ -1211,6 +1227,8 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 			fcomp.emit(UPLUS)
 		case syntax.NOT:
 			fcomp.emit(NOT)
+		case syntax.TILDE:
+			fcomp.emit(TILDE)
 		default:
 			log.Fatalf("%s: unexpected unary op: %s", e.OpPos, e.Op)
 		}
@@ -1435,6 +1453,12 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 		fcomp.emit(AMP)
 	case syntax.PIPE:
 		fcomp.emit(PIPE)
+	case syntax.CIRCUMFLEX:
+		fcomp.emit(CIRCUMFLEX)
+	case syntax.LTLT:
+		fcomp.emit(LTLT)
+	case syntax.GTGT:
+		fcomp.emit(GTGT)
 	case syntax.IN:
 		fcomp.emit(IN)
 	case syntax.NOT_IN:

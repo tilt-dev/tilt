@@ -13,3 +13,6 @@ lint:
 
 test:
 	go test ./...
+
+ensure:
+	dep ensure
