@@ -148,5 +148,44 @@ func TestGetServiceConfigReturnsWrongType(t *testing.T) {
 	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
 		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
+}
 
+func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
+	file := tempFile(
+		`def blorgly2():
+			local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`) // index out of range
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	assert.Nil(t, err)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
+	// not in the command
+	for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%v' did not contain '%v'", err.Error(), s)
+	}
+}
+
+func TestGetServiceConfigWithLocalCmd(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("%v", "docker tag")
+  print(image.file_name)
+  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.add_cmd("echo hi")
+  yaml = local('echo yaaaaaaaaml')
+  return k8s_service(yaml, image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file)
+	assert.Nil(t, err)
+	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	assert.Nil(t, err)
+	assert.Equal(t, "docker text", serviceConfig.DockerfileText)
+	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
+	assert.Equal(t, "yaaaaaaaaml\n", serviceConfig.K8SYaml)
+	assert.Equal(t, 2, len(serviceConfig.Steps))
+	assert.Equal(t, []string{"bash", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
+	assert.Equal(t, []string{"bash", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
 }

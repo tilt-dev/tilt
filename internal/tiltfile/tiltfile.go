@@ -1,10 +1,12 @@
 package tiltfile
 
 import (
+	"errors"
 	"fmt"
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/proto"
 	"io/ioutil"
+	"os/exec"
 )
 
 type Tiltfile struct {
@@ -33,6 +35,25 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 	return k8sService{yaml, *dockerImage}, nil
 }
 
+func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var command string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "command", &command)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := exec.Command("bash", "-c", command).Output()
+	if err != nil {
+		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", command, err, string(out))
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(exitError.Stderr))
+		}
+		return nil, errors.New(errorMessage)
+	}
+	return skylark.String(out), nil
+}
+
 func Load(filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
@@ -41,6 +62,7 @@ func Load(filename string) (*Tiltfile, error) {
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
+		"local":              skylark.NewBuiltin("local", runLocalCmd),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
