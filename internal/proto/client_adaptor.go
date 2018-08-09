@@ -15,8 +15,8 @@ func NewGRPCClient(conn *grpc.ClientConn) *Client {
 	return &Client{del: NewDaemonClient(conn), conn: conn}
 }
 
-func (c *Client) CreateService(ctx context.Context, yaml string) error {
-	_, err := c.del.CreateService(ctx, &Service{K8SYaml: yaml})
+func (c *Client) CreateService(ctx context.Context, service Service) error {
+	_, err := c.del.CreateService(ctx, &service)
 	return err
 }
 

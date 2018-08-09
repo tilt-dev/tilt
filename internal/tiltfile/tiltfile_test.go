@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -22,6 +23,49 @@ func tempFile(content string) string {
 	return f.Name()
 }
 
+func TestGetServiceConfig(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("%v", "docker tag")
+  print(image.file_name)
+  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.add_cmd("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file)
+	assert.Nil(t, err)
+	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	assert.Nil(t, err)
+	assert.Equal(t, "docker text", serviceConfig.DockerfileText)
+	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
+	assert.Equal(t, "yaaaaaaaaml", serviceConfig.K8SYaml)
+	assert.Equal(t, 2, len(serviceConfig.Steps))
+	assert.Equal(t, []string{"bash", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
+	assert.Equal(t, []string{"bash", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
+}
+
+func TestGetServiceConfigMissingDockerFile(t *testing.T) {
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("asfaergiuhaeriguhaergiu", "docker tag")
+  print(image.file_name)
+  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.add_cmd("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`))
+	defer os.Remove(file)
+	tiltconfig, err := Load(file)
+	assert.Nil(t, err)
+	_, err = tiltconfig.GetServiceConfig("blorgly")
+	assert.NotNil(t, err)
+	for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
+		assert.True(t, strings.Contains(err.Error(), s))
+	}
+}
+
 func TestLoadFunctions(t *testing.T) {
 	file := tempFile(
 		`def blorgly():
@@ -39,19 +83,6 @@ def blorgly_frontend():
 		assert.Contains(t, tiltConfig.globals, s)
 	}
 	assert.Nil(t, err)
-}
-
-func TestGetServiceConfig(t *testing.T) {
-	file := tempFile(
-		`def blorgly():
-  return "yaaaaaaaml"
-`)
-	defer os.Remove(file)
-	tiltconfig, err := Load(file)
-	assert.Nil(t, err)
-	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
-	assert.Nil(t, err)
-	assert.Equal(t, "yaaaaaaaml", serviceConfig)
 }
 
 func TestGetServiceConfigUndefined(t *testing.T) {
@@ -100,7 +131,22 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 	defer os.Remove(file)
 	tiltConfig, err := Load(file)
 	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	assert.NotNil(t, err, "GetServiceConfig did not return an error")
 	for _, s := range []string{"blorgly2", "string index", "out of range"} {
-		assert.True(t, strings.Contains(err.Error(), s))
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
+}
+
+func TestGetServiceConfigReturnsWrongType(t *testing.T) {
+	file := tempFile(
+		`def blorgly2():
+			return "foo"`) // index out of range
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	assert.NotNil(t, err, "GetServiceConfig did not return an error")
+	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
+	}
+
 }
