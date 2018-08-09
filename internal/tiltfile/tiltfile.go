@@ -52,7 +52,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*string, error) {
 	yaml, ok := skylark.AsString(val)
 
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("service definition function '%v' returned a %v. A string was expected.", val.Type()))
+		return nil, errors.New(fmt.Sprintf("service definition function '%v' returned a %v. A string was expected.", serviceName, val.Type()))
 	}
 
 	return &yaml, nil
