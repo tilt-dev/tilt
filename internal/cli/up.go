@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"context"
 
 	"github.com/spf13/cobra"
@@ -42,12 +40,12 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	serviceName := args[0]
-	serviceYaml, err := tf.GetServiceConfig(serviceName)
+	service, err := tf.GetServiceConfig(serviceName)
 	if err != nil {
 		return err
 	}
 
-	err = dCli.CreateService(ctx, *serviceYaml)
+	err = dCli.CreateService(ctx, service)
 	if err != nil {
 		return err
 	}

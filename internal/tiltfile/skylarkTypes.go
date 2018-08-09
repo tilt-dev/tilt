@@ -12,7 +12,12 @@ type k8sService struct {
 }
 
 func (service k8sService) String() string {
-	return fmt.Sprintf("[k8sService] (yaml omitted) dockerImage: %v", service.dockerImage)
+	shortYaml := service.k8sYaml.String()
+	const maxYamlCharsToInclude = 40
+	if len(shortYaml) > maxYamlCharsToInclude {
+		shortYaml = shortYaml[:maxYamlCharsToInclude]
+	}
+	return fmt.Sprintf("[k8sService] yaml: '%v' dockerImage: '%v'", shortYaml, service.dockerImage)
 }
 
 func (service k8sService) Type() string {
@@ -29,16 +34,7 @@ func (service k8sService) Truth() skylark.Bool {
 }
 
 func (service k8sService) Hash() (uint32, error) {
-	h1, err := service.k8sYaml.Hash()
-	if err != nil {
-		return 0, err
-	}
-	h2, err := service.dockerImage.Hash()
-	if err != nil {
-		return 0, err
-	}
-
-	return h1 * 17 + h2 * 39, nil
+	return 0, errors.New("unhashable type: k8sService")
 }
 
 type dockerImage struct {
@@ -77,19 +73,7 @@ func (dockerImage *dockerImage) Truth() skylark.Bool {
 }
 
 func (dockerImage *dockerImage) Hash() (uint32, error) {
-	h1, err := dockerImage.fileName.Hash()
-	if err != nil {
-		return 0, err
-	}
-	h2, err := dockerImage.fileTag.Hash()
-	if err != nil {
-		return 0, err
-	}
-	h3, err := dockerImage.cmds.Hash()
-	if err != nil {
-		return 0, err
-	}
-	return h1 * 17 + h2 * 39 + h3 * 19, nil
+	return 0, errors.New("unhashable type: dockerImage")
 }
 
 func (dockerImage *dockerImage) Attr(name string) (skylark.Value, error) {

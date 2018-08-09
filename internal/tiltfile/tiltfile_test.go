@@ -55,7 +55,12 @@ func TestGetServiceConfig(t *testing.T) {
 	assert.Nil(t, err)
 	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
 	assert.Nil(t, err)
-	assert.Equal(t, "yaaaaaaaml", *serviceConfig)
+	assert.Equal(t, "docker text", serviceConfig.DockerfileText)
+	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
+	assert.Equal(t, "yaaaaaaaaml", serviceConfig.K8SYaml)
+	assert.Equal(t, 2, len(serviceConfig.Steps))
+	assert.Equal(t, []string{"bash", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
+	assert.Equal(t, []string{"bash", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
 }
 
 func TestGetServiceConfigUndefined(t *testing.T) {
@@ -108,4 +113,19 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 	for _, s := range []string{"blorgly2", "string index", "out of range"} {
 		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
+}
+
+func TestGetServiceConfigReturnsWrongType(t *testing.T) {
+	file := tempFile(
+		`def blorgly2():
+			return "foo"`) // index out of range
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	assert.NotNil(t, err, "GetServiceConfig did not return an error")
+	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
+	}
+
+
 }
