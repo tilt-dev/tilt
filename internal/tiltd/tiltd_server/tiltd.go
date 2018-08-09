@@ -2,10 +2,10 @@ package tiltd_server
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltd"
 )
 
@@ -18,8 +18,7 @@ func NewDaemon() (*Daemon, error) {
 }
 
 func (d *Daemon) CreateService(ctx context.Context, k8sYaml string) error {
-	fmt.Println("I made you a service, hope you like it!")
-	return nil
+	return k8s.Apply(ctx, k8sYaml)
 }
 
 func RunDaemon(ctx context.Context) (*os.Process, error) {
