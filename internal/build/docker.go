@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -13,6 +14,7 @@ import (
 )
 
 type Mount struct {
+	// TODO(dmiller) make this more generic
 	Repo          LocalGithubRepo
 	ContainerPath string
 }
@@ -69,7 +71,7 @@ func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile strin
 		return "", err
 	}
 
-	return getTagFromOutput(output.String()), nil
+	return getDigestFromOutput(output.String())
 }
 
 func tarFromDockerfile(df string) (*bytes.Reader, error) {
@@ -94,11 +96,11 @@ func tarFromDockerfile(df string) (*bytes.Reader, error) {
 	return dockerFileTarReader, nil
 }
 
-func getTagFromOutput(output string) string {
+func getDigestFromOutput(output string) (string, error) {
 	re := regexp.MustCompile("Successfully built ([[:alnum:]]*)")
 	res := re.FindStringSubmatch(output)
 	if len(res) != 2 {
-		panic("fml")
+		return "", fmt.Errorf("Expected to get two matches for regex, but for %d", len(res))
 	}
-	return res[1]
+	return res[1], nil
 }

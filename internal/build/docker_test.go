@@ -15,7 +15,7 @@ import (
 	"github.com/windmilleng/wat/os/temp"
 )
 
-func TestTagFromSingleStepOutput(t *testing.T) {
+func TestDigiestFromSingleStepOutput(t *testing.T) {
 	input := `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"\n"}
 	{"stream":" ---\u003e 11cd0b38bc3c\n"}
@@ -25,7 +25,10 @@ func TestTagFromSingleStepOutput(t *testing.T) {
 `
 
 	expected := "11cd0b38bc3c"
-	actual := getTagFromOutput(input)
+	actual, err := getDigestFromOutput(input)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if actual != expected {
 		t.Errorf("Expected %s, got %s", expected, actual)
 	}
