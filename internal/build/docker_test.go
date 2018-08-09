@@ -12,7 +12,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 
-	"github.com/windmilleng/wat/os/temp"
+	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
 func TestDigiestFromSingleStepOutput(t *testing.T) {

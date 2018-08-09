@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/windmilleng/wat/errors"
 )
 
 // An implementation of Dir more suitable
@@ -22,7 +20,7 @@ func NewPersistentDir(path string) (*PersistentDir, error) {
 
 	err = os.Mkdir(path, 0777)
 	if err != nil {
-		return nil, errors.Propagatef(err, "NewPersistentDir failed to create %s", path)
+		return nil, fmt.Errorf("NewPersistentDir failed to create %s", path)
 	}
 
 	return &PersistentDir{dir: path}, nil

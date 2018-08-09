@@ -1,12 +1,12 @@
 package temp
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/windmilleng/wat/errors"
-	"github.com/windmilleng/wat/os/env"
+	"github.com/windmilleng/wmclient/pkg/env"
 )
 
 // TempDir holds a temp directory and allows easy access to new temp directories.
@@ -23,12 +23,12 @@ func NewDir(prefix string) (*TempDir, error) {
 func NewDirAtRoot(root, prefix string) (*TempDir, error) {
 	tmpDir, err := ioutil.TempDir(root, prefix)
 	if err != nil {
-		return nil, errors.Propagatef(err, "temp.NewDir: couldn't ioutil.TempDir")
+		return nil, fmt.Errorf("temp.NewDir: couldn't ioutil.TempDir")
 	}
 
 	realTmpDir, err := filepath.EvalSymlinks(tmpDir)
 	if err != nil {
-		return nil, errors.Propagatef(err, "temp.NewDir: couldn't filepath.EvalSymlinks")
+		return nil, fmt.Errorf("temp.NewDir: couldn't filepath.EvalSymlinks")
 	}
 
 	return &TempDir{dir: realTmpDir}, nil

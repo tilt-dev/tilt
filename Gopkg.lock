@@ -183,14 +183,13 @@
   version = "v1.2.2"
 
 [[projects]]
-  name = "github.com/windmilleng/wat"
+  branch = "master"
+  name = "github.com/windmilleng/wmclient"
   packages = [
-    "errors",
-    "os/env",
-    "os/temp"
+    "pkg/env",
+    "pkg/os/temp"
   ]
-  revision = "b8c74603fdb25efb9f98e45ce8af7faceb960227"
-  version = "v0.0.1"
+  revision = "d2afdb31ab3f257da8e81c15e7106670446e9558"
 
 [[projects]]
   branch = "master"
@@ -372,6 +371,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ed13e25fa83183c8953cfb5ecb9a71a62aad08b9d6c9433c3f75b539604007fb"
+  inputs-digest = "efde9cf18690974656543a3955bd37b398d96c00846534cbb0df05f405044e9b"
   solver-name = "gps-cdcl"
   solver-version = 1
