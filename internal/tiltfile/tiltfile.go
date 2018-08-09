@@ -135,7 +135,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 
 	mounts := make([]*proto.Mount, 0, len(service.dockerImage.mounts))
 	for _, mount := range service.dockerImage.mounts {
-		repo := proto.Repo{&proto.Repo_GitRepo{&proto.GitRepo{mount.repo.path}}}
+		repo := proto.Repo{RepoType: &proto.Repo_GitRepo{GitRepo: &proto.GitRepo{LocalPath: mount.repo.path}}}
 		mounts = append(mounts, &proto.Mount{Repo: &repo, ContainerPath: mount.mount_point})
 	}
 
