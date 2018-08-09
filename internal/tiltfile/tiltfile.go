@@ -15,17 +15,17 @@ type Tiltfile struct {
 
 func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var dockerfileName, dockerfileTag skylark.String
-	err := skylark.UnpackPositionalArgs("build_docker_image", args, kwargs, 2, &dockerfileName, &dockerfileTag)
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "docker_file_name", &dockerfileName, "docker_file_tag", &dockerfileTag)
 	if err != nil {
 		return nil, err
 	}
-	return &dockerImage{dockerfileName, dockerfileTag, skylark.List{}}, nil
+	return &dockerImage{dockerfileName, dockerfileTag, []string{}}, nil
 }
 
 func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var yaml skylark.String
 	var dockerImage *dockerImage
-	err := skylark.UnpackPositionalArgs("k8s_service", args, kwargs, 2, &yaml, &dockerImage)
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml, "dockerImage", &dockerImage)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func Load(filename string) (*Tiltfile, error) {
 
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
-		"k8s_service": skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
+		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -100,15 +100,8 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		return nil, fmt.Errorf("internal error: k8sService.dockerFileTag was not a string in '%v'", service)
 	}
 
-	dockerCmds := make([]*proto.Cmd, 0, service.dockerImage.cmds.Len())
-	iter := service.dockerImage.cmds.Iterate()
-	defer iter.Done()
-	var cmdValue skylark.Value
-	for iter.Next(&cmdValue) {
-		cmd, _ := skylark.AsString(cmdValue)
-		if !ok {
-			return nil, fmt.Errorf("internal error: cmd '%v' was not a string in '%v'", cmdValue, service)
-		}
+	dockerCmds := make([]*proto.Cmd, 0, len(service.dockerImage.cmds))
+	for _, cmd := range service.dockerImage.cmds {
 		dockerCmds = append(dockerCmds, &proto.Cmd{Argv: []string{"bash", "-c", cmd}})
 	}
 

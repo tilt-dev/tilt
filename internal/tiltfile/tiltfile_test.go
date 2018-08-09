@@ -1,13 +1,13 @@
 package tiltfile
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 	"testing"
-	"fmt"
 )
 
 func tempFile(content string) string {
@@ -148,6 +148,5 @@ func TestGetServiceConfigReturnsWrongType(t *testing.T) {
 	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
 		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
-
 
 }

@@ -1,95 +1,103 @@
 package tiltfile
 
 import (
-	"github.com/google/skylark"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/google/skylark"
 )
 
 type k8sService struct {
-	k8sYaml skylark.String
+	k8sYaml     skylark.String
 	dockerImage dockerImage
 }
 
-func (service k8sService) String() string {
-	shortYaml := service.k8sYaml.String()
+var _ skylark.Value = k8sService{}
+
+func (s k8sService) String() string {
+	shortYaml := s.k8sYaml.String()
 	const maxYamlCharsToInclude = 40
 	if len(shortYaml) > maxYamlCharsToInclude {
 		shortYaml = shortYaml[:maxYamlCharsToInclude]
 	}
-	return fmt.Sprintf("[k8sService] yaml: '%v' dockerImage: '%v'", shortYaml, service.dockerImage)
+	return fmt.Sprintf("[k8sService] yaml: '%v' dockerImage: '%v'", shortYaml, s.dockerImage)
 }
 
-func (service k8sService) Type() string {
+func (s k8sService) Type() string {
 	return "k8sService"
 }
 
-func (service k8sService) Freeze() {
-	service.k8sYaml.Freeze()
-	service.dockerImage.Freeze()
+func (s k8sService) Freeze() {
+	s.k8sYaml.Freeze()
+	s.dockerImage.Freeze()
 }
 
-func (service k8sService) Truth() skylark.Bool {
+func (k8sService) Truth() skylark.Bool {
 	return true
 }
 
-func (service k8sService) Hash() (uint32, error) {
+func (k8sService) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: k8sService")
 }
 
 type dockerImage struct {
 	fileName skylark.String
-	fileTag skylark.String
-	cmds skylark.List
+	fileTag  skylark.String
+	cmds     []string
 }
 
-func add_docker_image_cmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var cmd skylark.String
-	skylark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &cmd)
+var _ skylark.Value = &dockerImage{}
+
+func addDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var skylarkCmd skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &skylarkCmd)
+	if err != nil {
+		return nil, err
+	}
 	image, ok := fn.Receiver().(*dockerImage)
 	if !ok {
 		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
 	}
-	image.cmds.Append(cmd)
+
+	cmd, ok := skylark.AsString(skylarkCmd)
+	if !ok {
+		return nil, errors.New("internal error: skylarkCmd was not a string")
+	}
+	image.cmds = append(image.cmds, cmd)
 	return skylark.None, nil
 }
 
-func (dockerImage *dockerImage) String() string {
-	return fmt.Sprintf("fileName: %v, fileTag: %v, cmds: %v", dockerImage.fileName, dockerImage.fileTag, dockerImage.cmds)
+func (d *dockerImage) String() string {
+	return fmt.Sprintf("fileName: %v, fileTag: %v, cmds: %v", d.fileName, d.fileTag, d.cmds)
 }
 
-func (dockerImage *dockerImage) Type() string {
+func (d *dockerImage) Type() string {
 	return "dockerImage"
 }
 
-func (dockerImage *dockerImage) Freeze() {
-	dockerImage.fileName.Freeze()
-	dockerImage.fileTag.Freeze()
-	dockerImage.cmds.Freeze()
+func (d *dockerImage) Freeze() {
 }
 
-func (dockerImage *dockerImage) Truth() skylark.Bool {
+func (*dockerImage) Truth() skylark.Bool {
 	return true
 }
 
-func (dockerImage *dockerImage) Hash() (uint32, error) {
+func (*dockerImage) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: dockerImage")
 }
 
-func (dockerImage *dockerImage) Attr(name string) (skylark.Value, error) {
+func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	switch name {
 	case "file_name":
-		return dockerImage.fileName, nil
+		return d.fileName, nil
 	case "file_tag":
-		return dockerImage.fileTag, nil
+		return d.fileTag, nil
 	case "add_cmd":
-		return skylark.NewBuiltin("add_cmd", add_docker_image_cmd).BindReceiver(dockerImage), nil
+		return skylark.NewBuiltin("add_cmd", addDockerImageCmd).BindReceiver(d), nil
 	default:
 		return nil, nil
 	}
 }
 
-func (dockerImage *dockerImage) AttrNames() []string {
+func (*dockerImage) AttrNames() []string {
 	return []string{"file_name", "file_tag", "add_cmd"}
 }
-
