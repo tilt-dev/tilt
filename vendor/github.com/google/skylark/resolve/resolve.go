@@ -90,6 +90,7 @@ var (
 	AllowFloat          = false // allow floating point literals, the 'float' built-in, and x / y
 	AllowSet            = false // allow the 'set' built-in
 	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
+	AllowBitwise        = false // allow bitwise operations (&, |, ^, ~, <<, and >>)
 )
 
 // File resolves the specified file.
@@ -404,6 +405,12 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		r.stmts(stmt.False)
 
 	case *syntax.AssignStmt:
+		if !AllowBitwise {
+			switch stmt.Op {
+			case syntax.AMP_EQ, syntax.PIPE_EQ, syntax.CIRCUMFLEX_EQ, syntax.LTLT_EQ, syntax.GTGT_EQ:
+				r.errorf(stmt.OpPos, doesnt+"support bitwise operations")
+			}
+		}
 		r.expr(stmt.RHS)
 		// x += y may be a re-binding of a global variable,
 		// but we cannot tell without knowing the type of x.
@@ -591,11 +598,20 @@ func (r *resolver) expr(e syntax.Expr) {
 		}
 
 	case *syntax.UnaryExpr:
+		if !AllowBitwise && e.Op == syntax.TILDE {
+			r.errorf(e.OpPos, doesnt+"support bitwise operations")
+		}
 		r.expr(e.X)
 
 	case *syntax.BinaryExpr:
 		if !AllowFloat && e.Op == syntax.SLASH {
 			r.errorf(e.OpPos, doesnt+"support floating point (use //)")
+		}
+		if !AllowBitwise {
+			switch e.Op {
+			case syntax.AMP, syntax.PIPE, syntax.CIRCUMFLEX, syntax.LTLT, syntax.GTGT:
+				r.errorf(e.OpPos, doesnt+"support bitwise operations")
+			}
 		}
 		r.expr(e.X)
 		r.expr(e.Y)

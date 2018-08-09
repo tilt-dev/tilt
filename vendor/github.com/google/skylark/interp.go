@@ -131,8 +131,11 @@ loop:
 			compile.SLASH,
 			compile.SLASHSLASH,
 			compile.PERCENT,
-			compile.PIPE,
 			compile.AMP,
+			compile.PIPE,
+			compile.CIRCUMFLEX,
+			compile.LTLT,
+			compile.GTGT,
 			compile.IN:
 			binop := syntax.Token(op-compile.PLUS) + syntax.PLUS
 			if op == compile.IN {
@@ -149,8 +152,13 @@ loop:
 			stack[sp] = z
 			sp++
 
-		case compile.UPLUS, compile.UMINUS:
-			unop := syntax.Token(op-compile.UPLUS) + syntax.PLUS
+		case compile.UPLUS, compile.UMINUS, compile.TILDE:
+			var unop syntax.Token
+			if op == compile.TILDE {
+				unop = syntax.TILDE
+			} else {
+				unop = syntax.Token(op-compile.UPLUS) + syntax.PLUS
+			}
 			x := stack[sp-1]
 			y, err2 := Unary(unop, x)
 			if err2 != nil {

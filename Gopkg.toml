@@ -45,6 +45,15 @@
   name = "google.golang.org/grpc"
   version = "1.14.0"
 
+# these need to be here. https://github.com/golang/dep/issues/1415
+[[override]]
+  name = "github.com/docker/docker"
+  branch = "master"
+
+[[override]]
+  name = "github.com/docker/distribution"
+  branch = "master"
+
 [prune]
   go-tests = true
   unused-packages = true

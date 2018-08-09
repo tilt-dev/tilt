@@ -134,12 +134,16 @@ func (i Int) Float() Float {
 	return Float(f)
 }
 
-func (x Int) Sign() int     { return x.bigint.Sign() }
-func (x Int) Add(y Int) Int { return Int{new(big.Int).Add(x.bigint, y.bigint)} }
-func (x Int) Sub(y Int) Int { return Int{new(big.Int).Sub(x.bigint, y.bigint)} }
-func (x Int) Mul(y Int) Int { return Int{new(big.Int).Mul(x.bigint, y.bigint)} }
-func (x Int) Or(y Int) Int  { return Int{new(big.Int).Or(x.bigint, y.bigint)} }
-func (x Int) And(y Int) Int { return Int{new(big.Int).And(x.bigint, y.bigint)} }
+func (x Int) Sign() int      { return x.bigint.Sign() }
+func (x Int) Add(y Int) Int  { return Int{new(big.Int).Add(x.bigint, y.bigint)} }
+func (x Int) Sub(y Int) Int  { return Int{new(big.Int).Sub(x.bigint, y.bigint)} }
+func (x Int) Mul(y Int) Int  { return Int{new(big.Int).Mul(x.bigint, y.bigint)} }
+func (x Int) Or(y Int) Int   { return Int{new(big.Int).Or(x.bigint, y.bigint)} }
+func (x Int) And(y Int) Int  { return Int{new(big.Int).And(x.bigint, y.bigint)} }
+func (x Int) Xor(y Int) Int  { return Int{new(big.Int).Xor(x.bigint, y.bigint)} }
+func (x Int) Not() Int       { return Int{new(big.Int).Not(x.bigint)} }
+func (x Int) Lsh(y uint) Int { return Int{new(big.Int).Lsh(x.bigint, y)} }
+func (x Int) Rsh(y uint) Int { return Int{new(big.Int).Rsh(x.bigint, y)} }
 
 // Precondition: y is nonzero.
 func (x Int) Div(y Int) Int {

@@ -44,6 +44,10 @@ const (
 	PERCENT       // %
 	AMP           // &
 	PIPE          // |
+	CIRCUMFLEX    // ^
+	LTLT          // <<
+	GTGT          // >>
+	TILDE         // ~
 	DOT           // .
 	COMMA         // ,
 	EQ            // =
@@ -61,12 +65,17 @@ const (
 	LE            // <=
 	EQL           // ==
 	NEQ           // !=
-	PLUS_EQ       // +=    (keep order consistent with PLUS..PERCENT)
+	PLUS_EQ       // +=    (keep order consistent with PLUS..GTGT)
 	MINUS_EQ      // -=
 	STAR_EQ       // *=
 	SLASH_EQ      // /=
 	SLASHSLASH_EQ // //=
 	PERCENT_EQ    // %=
+	AMP_EQ        // &=
+	PIPE_EQ       // |=
+	CIRCUMFLEX_EQ // ^=
+	LTLT_EQ       // <<=
+	GTGT_EQ       // >>=
 	STARSTAR      // **
 
 	// Keywords
@@ -119,6 +128,10 @@ var tokenNames = [...]string{
 	PERCENT:       "%",
 	AMP:           "&",
 	PIPE:          "|",
+	CIRCUMFLEX:    "^",
+	LTLT:          "<<",
+	GTGT:          ">>",
+	TILDE:         "~",
 	DOT:           ".",
 	COMMA:         ",",
 	EQ:            "=",
@@ -142,6 +155,11 @@ var tokenNames = [...]string{
 	SLASH_EQ:      "/=",
 	SLASHSLASH_EQ: "//=",
 	PERCENT_EQ:    "%=",
+	AMP_EQ:        "&=",
+	PIPE_EQ:       "|=",
+	CIRCUMFLEX_EQ: "^=",
+	LTLT_EQ:       "<<=",
+	GTGT_EQ:       ">>=",
 	STARSTAR:      "**",
 	AND:           "and",
 	BREAK:         "break",
@@ -624,7 +642,7 @@ start:
 	// other punctuation
 	defer sc.endToken(val)
 	switch c {
-	case '=', '<', '>', '!', '+', '-', '%', '/': // possibly followed by '='
+	case '=', '<', '>', '!', '+', '-', '%', '/', '&', '|', '^', '~': // possibly followed by '='
 		start := sc.pos
 		sc.readRune()
 		if sc.peekRune() == '=' {
@@ -646,14 +664,38 @@ start:
 				return SLASH_EQ
 			case '%':
 				return PERCENT_EQ
+			case '&':
+				return AMP_EQ
+			case '|':
+				return PIPE_EQ
+			case '^':
+				return CIRCUMFLEX_EQ
 			}
 		}
 		switch c {
 		case '=':
 			return EQ
 		case '<':
+			if sc.peekRune() == '<' {
+				sc.readRune()
+				if sc.peekRune() == '=' {
+					sc.readRune()
+					return LTLT_EQ
+				} else {
+					return LTLT
+				}
+			}
 			return LT
 		case '>':
+			if sc.peekRune() == '>' {
+				sc.readRune()
+				if sc.peekRune() == '=' {
+					sc.readRune()
+					return GTGT_EQ
+				} else {
+					return GTGT
+				}
+			}
 			return GT
 		case '!':
 			sc.error(start, "unexpected input character '!'")
@@ -674,20 +716,24 @@ start:
 			return SLASH
 		case '%':
 			return PERCENT
+		case '&':
+			return AMP
+		case '|':
+			return PIPE
+		case '^':
+			return CIRCUMFLEX
+		case '~':
+			return TILDE
 		}
 		panic("unreachable")
 
-	case ':', ';', '|', '&': // single-char tokens (except comma)
+	case ':', ';': // single-char tokens (except comma)
 		sc.readRune()
 		switch c {
 		case ':':
 			return COLON
 		case ';':
 			return SEMI
-		case '|':
-			return PIPE
-		case '&':
-			return AMP
 		}
 		panic("unreachable")
 
