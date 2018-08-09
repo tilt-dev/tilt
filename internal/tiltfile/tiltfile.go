@@ -3,10 +3,10 @@ package tiltfile
 import (
 	"fmt"
 	"github.com/google/skylark"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/proto"
 	"io/ioutil"
 	"os/exec"
-	"github.com/pkg/errors"
 )
 
 type Tiltfile struct {
@@ -62,7 +62,7 @@ func Load(filename string) (*Tiltfile, error) {
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
-		"local":        skylark.NewBuiltin("local", runLocalCmd),
+		"local":              skylark.NewBuiltin("local", runLocalCmd),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)

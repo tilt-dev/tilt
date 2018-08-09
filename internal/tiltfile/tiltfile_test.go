@@ -161,7 +161,7 @@ func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
 	// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
 	// not in the command
 	for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
-		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%v' did not contain '%v'", err.Error(), s)
 	}
 }
 
