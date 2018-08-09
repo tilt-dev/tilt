@@ -32,6 +32,9 @@ func TestTagFromSingleStepOutput(t *testing.T) {
 }
 
 func TestBuildBase(t *testing.T) {
+	if os.Getenv("CIRCLECI") == "true" {
+		t.Skipf("Skipping on CircleCI")
+	}
 	f := newTestFixture(t)
 	defer f.teardown()
 	baseDockerFile := `FROM alpine
