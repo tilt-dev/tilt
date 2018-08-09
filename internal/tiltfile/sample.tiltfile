@@ -1,0 +1,53 @@
+
+def blorgly():
+  return composite_service(blorgly_backend(), blorgly_frontend())
+
+def blorgly_backend():
+  return k8s_service(
+    img=blorgly_backend_image,
+    cfg=blorgly_backend_config,
+    )
+
+def blorgly_backend_config(image_id):
+  return local('m4 -DIMAGE=%s -DUSER=%s backend.yaml' % (image_id, username), capture_stdout=True).stdout()
+
+def blorgly_backend_image():
+  r = git_repo('../blorgly-backend')
+  base = build_docker_image('Dockerfile-go', 'gcr.io/blorgly/blorgly-dev')
+  base.add('/go/src/github.com/windmilleng/blorgly-backend', r)
+  c = base.start_run_cache()
+  run('go install github.com/windmilleng/blorgly-backend/server/...')
+  return c.stop()
+
+def blorgly_frontend():
+  return k8s_service(
+    img=blorgly_frontend_image,
+    cfg=blorgly_frontend_config,
+    )
+
+def blorgly_frontend_config(image_id):
+  return local('m4 -DIMAGE=%s -DUSER=%s frontend.yaml' % (image_id, username), capture_stdout=True).stdout()
+
+def blorgly_frontend_image():
+  r = git_repo('../blorgly-frontend')
+  base = build_docker_image('Dockerfile-go', 'gcr.io/blorgly/blorgly-dev')
+  // base.add('/go/src/github.com/windmilleng/blorgly-frontend', r)
+  //c = base.start_run_cache()
+  run('go install github.com/windmilleng/blorgly-frontend/server/...')
+  //return c.stop()
+
+
+def blorgly2():
+    k8s_service(
+      yaml="yaml",
+      docker_image="eoihgliaeth",
+      cmds=["cmd1", "cmd2"],
+      docker_tag="aeriguh"
+    )
+
+    image = build_docker_image('eoihgliaeth', "aeriguh")
+    image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+    k8s_service(
+        yaml="yaml",
+        docker_image=image
+    )

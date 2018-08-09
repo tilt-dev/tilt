@@ -44,7 +44,11 @@ def blorgly_frontend():
 func TestGetServiceConfig(t *testing.T) {
 	file := tempFile(
 		`def blorgly():
-  return "yaaaaaaaml"
+  image = build_docker_image("docker text", "docker tag")
+  print(image.file_name)
+  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.add_cmd("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
 `)
 	defer os.Remove(file)
 	tiltconfig, err := Load(file)
@@ -100,7 +104,8 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 	defer os.Remove(file)
 	tiltConfig, err := Load(file)
 	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	assert.NotNil(t, err, "GetServiceConfig did not return an error")
 	for _, s := range []string{"blorgly2", "string index", "out of range"} {
-		assert.True(t, strings.Contains(err.Error(), s))
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
 }
