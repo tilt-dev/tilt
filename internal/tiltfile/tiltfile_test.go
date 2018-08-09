@@ -51,7 +51,7 @@ func TestGetServiceConfig(t *testing.T) {
 	assert.Nil(t, err)
 	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
 	assert.Nil(t, err)
-	assert.Equal(t, "yaaaaaaaml", *serviceConfig)
+	assert.Equal(t, "yaaaaaaaml", serviceConfig)
 }
 
 func TestGetServiceConfigUndefined(t *testing.T) {

@@ -1,12 +1,12 @@
 package cli
 
 import (
-		"context"
+	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
 )
 
 type upCmd struct{}
@@ -45,7 +45,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = dCli.CreateService(ctx, *serviceYaml)
+	err = dCli.CreateService(ctx, serviceYaml)
 	if err != nil {
 		return err
 	}
