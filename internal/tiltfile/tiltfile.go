@@ -1,9 +1,9 @@
 package tiltfile
 
 import (
+	"errors"
 	"fmt"
 	"github.com/google/skylark"
-	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/proto"
 	"io/ioutil"
 	"os/exec"
