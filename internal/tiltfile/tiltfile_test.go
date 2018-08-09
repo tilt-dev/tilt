@@ -1,11 +1,12 @@
 package tiltfile
 
 import (
-	"testing"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"os"
-	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
 )
 
 func tempFile(content string) string {
@@ -23,7 +24,7 @@ func tempFile(content string) string {
 
 func TestLoadFunctions(t *testing.T) {
 	file := tempFile(
-`def blorgly():
+		`def blorgly():
   return "blorgly"
 
 def blorgly_backend():
@@ -34,8 +35,72 @@ def blorgly_frontend():
 `)
 	defer os.Remove(file)
 	tiltConfig, err := Load(file)
-	for _, s := range([]string{"blorgly", "blorgly_backend", "blorgly_frontend"}) {
+	for _, s := range []string{"blorgly", "blorgly_backend", "blorgly_frontend"} {
 		assert.Contains(t, tiltConfig.globals, s)
 	}
 	assert.Nil(t, err)
+}
+
+func TestGetServiceConfig(t *testing.T) {
+	file := tempFile(
+		`def blorgly():
+  return "yaaaaaaaml"
+`)
+	defer os.Remove(file)
+	tiltconfig, err := Load(file)
+	assert.Nil(t, err)
+	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	assert.Nil(t, err)
+	assert.Equal(t, "yaaaaaaaml", serviceConfig)
+}
+
+func TestGetServiceConfigUndefined(t *testing.T) {
+	file := tempFile(
+		`def blorgly():
+  return "yaaaaaaaml"
+`)
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	assert.Nil(t, err)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	for _, s := range []string{"does not define", "blorgly2"} {
+		assert.True(t, strings.Contains(err.Error(), s))
+	}
+}
+
+func TestGetServiceConfigNonFunction(t *testing.T) {
+	file := tempFile("blorgly2 = 3")
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	assert.Nil(t, err)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	for _, s := range []string{"blorgly2", "function", "int"} {
+		assert.True(t, strings.Contains(err.Error(), s))
+	}
+}
+
+func TestGetServiceConfigTakesArgs(t *testing.T) {
+	file := tempFile(
+		`def blorgly2(x):
+			return "foo"
+`)
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	assert.Nil(t, err)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	for _, s := range []string{"blorgly2", "0 arguments"} {
+		assert.True(t, strings.Contains(err.Error(), s))
+	}
+}
+
+func TestGetServiceConfigRaisesError(t *testing.T) {
+	file := tempFile(
+		`def blorgly2():
+			"foo"[10]`) // index out of range
+	defer os.Remove(file)
+	tiltConfig, err := Load(file)
+	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	for _, s := range []string{"blorgly2", "string index", "out of range"} {
+		assert.True(t, strings.Contains(err.Error(), s))
+	}
 }
