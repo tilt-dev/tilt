@@ -40,7 +40,7 @@ func (k8sService) Hash() (uint32, error) {
 }
 
 type mount struct {
-	mount_point string
+	mountPoint string
 	repo gitRepo
 }
 
