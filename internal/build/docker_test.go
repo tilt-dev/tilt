@@ -66,6 +66,72 @@ func TestMount(t *testing.T) {
 	f.assertFilesInImageWithContents(tag, pcs)
 }
 
+func TestMultipleMounts(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+	baseDockerFile := "FROM alpine"
+
+	// write some files in to it
+	f.writeFile("hi/hello", "hi hello")
+	f.writeFile("bye/ciao/goodbye", "bye laterz")
+
+	m1 := Mount{
+		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
+		ContainerPath: "/hello_there",
+	}
+	m2 := Mount{
+		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
+		ContainerPath: "goodbye_there",
+	}
+
+	builder := f.newBuilderForTesting()
+	imageTag := strings.ToLower(f.t.Name())
+
+	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{}, imageTag)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO(dmiller): this is slow
+	f.assertFileInImageWithContents(tag, "/hello_there/hello", "hi hello")
+	f.assertFileInImageWithContents(tag, "/goodbye_there/ciao/goodbye", "bye laterz")
+}
+
+func TestMountCollisions(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+	baseDockerFile := "FROM alpine"
+
+	// write some files in to it
+	f.writeFile("hi/hello", "hi hello")
+	f.writeFile("bye/hello", "bye laterz")
+
+	// Mounting two files to the same place in the container -- expect the second mount
+	// to take precedence (file should contain "bye laterz")
+	m1 := Mount{
+		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
+		ContainerPath: "/hello_there",
+	}
+	m2 := Mount{
+		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
+		ContainerPath: "/hello_there",
+	}
+
+	builder := f.newBuilderForTesting()
+	imageTag := strings.ToLower(f.t.Name())
+
+	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{}, imageTag)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO(dmiller): this is slow
+	f.assertFileInImageWithContents(tag, "/hello_there/hello", "bye laterz")
+}
+
+// TODO(maia): test mount err cases
+// TODO(maia): tests for tar code
+
 type testFixture struct {
 	t    *testing.T
 	repo *temp.TempDir
