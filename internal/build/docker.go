@@ -123,7 +123,7 @@ func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 	}
 
 	for _, m := range mounts {
-		err = tarFile(tw, m.Repo.LocalPath, m.ContainerPath)
+		err = tarPath(tw, m.Repo.LocalPath, m.ContainerPath)
 		if err != nil {
 			return nil, err
 		}
@@ -132,9 +132,8 @@ func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-// tarFile writes the file at source into tarWriter. It does so
-// recursively for directories.
-func tarFile(tarWriter *tar.Writer, source, dest string) error {
+// tarPath writes the the given path into tarWriter (recursively for directories).
+func tarPath(tarWriter *tar.Writer, source, dest string) error {
 	sourceInfo, err := os.Stat(source)
 	if err != nil {
 		return fmt.Errorf("%s: stat: %v", source, err)
