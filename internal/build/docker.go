@@ -13,11 +13,15 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
 )
+
+// Tilt always pushes to the same tag. We never push to latest.
+const pushTag = "wm-tilt"
 
 type Mount struct {
 	// TODO(dmiller) make this more generic
@@ -44,13 +48,13 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 }
 
 // NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd, tag string) (digest.Digest, error) {
-	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, tag, mounts)
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd) (digest.Digest, error) {
+	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, mounts)
 	if err != nil {
 		return "", err
 	}
 
-	newDigest, err := l.buildImageWithSteps(ctx, baseDigest, tag, steps)
+	newDigest, err := l.buildImageWithSteps(ctx, baseDigest, steps)
 	if err != nil {
 		return "", err
 	}
@@ -58,7 +62,42 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 	return newDigest, nil
 }
 
-func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, tag string, mounts []Mount) (digest.Digest, error) {
+// Naively tag the digest and push it up to the docker registry specified in the name.
+//
+// TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
+// we're running in has access to the given registry. And if it doesn't, we should either emit an
+// error, or push to a registry that kubernetes does have access to (e.g., a local registry).
+func (l *localDockerBuilder) PushDocker(ctx context.Context, name string, dig digest.Digest) error {
+	ref, err := reference.ParseNormalizedNamed(name)
+	if err != nil {
+		return fmt.Errorf("PushDocker: %v", err)
+	}
+
+	if reference.Domain(ref) == "" {
+		return fmt.Errorf("PushDocker: no domain in container name: %s", ref)
+	}
+
+	tag, err := reference.WithTag(ref, pushTag)
+	if err != nil {
+		return fmt.Errorf("PushDocker: %v", err)
+	}
+
+	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
+	if err != nil {
+		return fmt.Errorf("PushDocker#ImageTag: %v", err)
+	}
+
+	outputIO, err := l.dcli.ImagePush(
+		ctx,
+		tag.String(),
+		types.ImagePushOptions{RegistryAuth: "{}"})
+	if err != nil {
+		return fmt.Errorf("PushDocker#ImagePush: %v", err)
+	}
+	return outputIO.Close()
+}
+
+func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []Mount) (digest.Digest, error) {
 	tar, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
@@ -81,7 +120,6 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 		types.ImageBuildOptions{
 			Context:    tar,
 			Dockerfile: "Dockerfile",
-			Tags:       []string{tag},
 			Remove:     shouldRemoveImage(),
 		})
 
@@ -99,7 +137,7 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	return getDigestFromOutput(output.String())
 }
 
-func (l *localDockerBuilder) buildImageWithSteps(ctx context.Context, baseDigest digest.Digest, tag string, steps []Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) buildImageWithSteps(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
 	imageWithSteps := baseDigest
 	for _, s := range steps {
 		resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
