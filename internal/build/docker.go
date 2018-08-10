@@ -123,26 +123,13 @@ func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 	}
 
 	for _, m := range mounts {
-		// TODO(dmiller): doesn't seem like we _need_ to walk here, and in `tarFile`
-		// but removing either causes the test to fail
-		err := filepath.Walk(m.Repo.LocalPath, func(path string, info os.FileInfo, err error) error {
-			err = tarFile(tw, path, m.ContainerPath)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-
+		err = tarFile(tw, m.Repo.LocalPath, m.ContainerPath)
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
-	contextTarReader := bytes.NewReader(buf.Bytes())
-
-	return contextTarReader, nil
+	return bytes.NewReader(buf.Bytes()), nil
 }
 
 // tarFile writes the file at source into tarWriter. It does so
@@ -153,9 +140,12 @@ func tarFile(tarWriter *tar.Writer, source, dest string) error {
 		return fmt.Errorf("%s: stat: %v", source, err)
 	}
 
-	var baseDir string
-	if sourceInfo.IsDir() {
-		baseDir = filepath.Base(source)
+	sourceIsDir := sourceInfo.IsDir()
+	if sourceIsDir {
+		// Make sure we can trim this off filenames to get valid relative filepaths
+		if !strings.HasSuffix(source, "/") {
+			source += "/"
+		}
 	}
 
 	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
@@ -168,17 +158,14 @@ func tarFile(tarWriter *tar.Writer, source, dest string) error {
 			return fmt.Errorf("%s: making header: %v", path, err)
 		}
 
-		if baseDir != "" {
-			header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+		if sourceIsDir {
+			// Name of file in tar should be relative to source directory
+			header.Name = strings.TrimPrefix(path, source)
 		}
 
 		if header.Name == dest {
 			// our new tar file is inside the directory being archived; skip it
 			return nil
-		}
-
-		if info.IsDir() {
-			header.Name += "/"
 		}
 
 		err = tarWriter.WriteHeader(header)
