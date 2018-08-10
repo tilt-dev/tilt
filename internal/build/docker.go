@@ -15,6 +15,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	digest "github.com/opencontainers/go-digest"
 )
 
 type Mount struct {
@@ -33,16 +34,12 @@ type Cmd struct {
 	argv []string
 }
 
-type DockerBuilder interface {
-	BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (string, error)
-}
-
 type localDockerBuilder struct {
 	dcli *client.Client
 }
 
 // NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (string, error) {
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (digest.Digest, error) {
 	baseTag, err := l.buildBaseWithMounts(ctx, baseDockerfile, tag, mounts)
 	if err != nil {
 		return "", err
@@ -53,7 +50,7 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 	return baseTag, nil
 }
 
-func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, tag string, mounts []Mount) (string, error) {
+func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, tag string, mounts []Mount) (digest.Digest, error) {
 	tar, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
@@ -205,13 +202,19 @@ func tarFile(tarWriter *tar.Writer, source, dest string) error {
 	})
 }
 
-func getDigestFromOutput(output string) (string, error) {
-	re := regexp.MustCompile("Successfully built ([[:alnum:]]*)")
+func getDigestFromOutput(output string) (digest.Digest, error) {
+	re := regexp.MustCompile(`{"aux":{"ID":"([[:alnum:]:]+)"}}`)
 	res := re.FindStringSubmatch(output)
 	if len(res) != 2 {
-		return "", fmt.Errorf("Expected to get two matches for regex, but for %d", len(res))
+		return "", fmt.Errorf("Digest not found in output: %s", output)
 	}
-	return res[1], nil
+
+	d, err := digest.Parse(res[1])
+	if err != nil {
+		return "", fmt.Errorf("getDigestFromOutput: %v", err)
+	}
+
+	return d, nil
 }
 
 func shouldRemoveImage() bool {
