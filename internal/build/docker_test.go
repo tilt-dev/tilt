@@ -47,7 +47,9 @@ func TestBuildBase(t *testing.T) {
 
 	builder := f.newBuilderForTesting()
 
-	tag, err := builder.buildBase(context.Background(), baseDockerFile, "hi")
+	imageTag := "hi"
+	f.imageTag = imageTag
+	tag, err := builder.buildBase(context.Background(), baseDockerFile, imageTag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,8 +72,10 @@ func TestMount(t *testing.T) {
 	}
 
 	builder := f.newBuilderForTesting()
+	imageTag := f.t.Name()
+	f.imageTag = imageTag
 
-	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, "hi")
+	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, imageTag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,6 +88,7 @@ type testFixture struct {
 	repo        *temp.TempDir
 	dcli        *client.Client
 	containerID string
+	imageTag    string
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -108,6 +113,10 @@ func (f *testFixture) teardown() {
 	err := f.dcli.ContainerRemove(context.Background(), f.containerID, types.ContainerRemoveOptions{})
 	if err != nil {
 		fmt.Printf("Error removing container ID %s: %s", f.containerID, err.Error())
+	}
+	_, err = f.dcli.ImageRemove(context.Background(), f.imageTag, types.ImageRemoveOptions{})
+	if err != nil {
+		fmt.Printf("Error removing image tag %s: %s", f.imageTag, err.Error())
 	}
 }
 
@@ -136,7 +145,6 @@ func (f *testFixture) assertFileInImage(tag string, path string) {
 	}
 
 	containerID := resp.ID
-	f.containerID = containerID
 
 	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
