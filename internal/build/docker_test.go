@@ -102,7 +102,9 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	// Use client for docker 17
 	// https://docs.docker.com/develop/sdk/#api-version-matrix
-	opts = append(opts, client.WithVersion("1.26"))
+	// API version 1.30 is the first version where the full digest
+	// shows up in the API output of BuildImage
+	opts = append(opts, client.WithVersion("1.30"))
 	dcli, err := client.NewClientWithOpts(opts...)
 	if err != nil {
 		t.Fatal(err)
