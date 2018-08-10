@@ -6,5 +6,6 @@ jobs:
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
+      - setup_remote_docker
       - run: make lint
       - run: make test
