@@ -39,9 +39,15 @@ func (k8sService) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: k8sService")
 }
 
+type mount struct {
+	mountPoint string
+	repo gitRepo
+}
+
 type dockerImage struct {
 	fileName skylark.String
 	fileTag  skylark.String
+	mounts	 []mount
 	cmds     []string
 }
 
@@ -63,6 +69,24 @@ func addDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, errors.New("internal error: skylarkCmd was not a string")
 	}
 	image.cmds = append(image.cmds, cmd)
+	return skylark.None, nil
+}
+
+func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var mountPoint string
+	var gitRepo gitRepo
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "mount_point", &mountPoint, "git_repo", &gitRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	image, ok := fn.Receiver().(*dockerImage)
+	if !ok {
+		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
+	}
+
+	image.mounts = append(image.mounts, mount{mountPoint, gitRepo})
+
 	return skylark.None, nil
 }
 
@@ -92,7 +116,9 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	case "file_tag":
 		return d.fileTag, nil
 	case "add_cmd":
-		return skylark.NewBuiltin("add_cmd", addDockerImageCmd).BindReceiver(d), nil
+		return skylark.NewBuiltin(name, addDockerImageCmd).BindReceiver(d), nil
+	case "add_mount":
+		return skylark.NewBuiltin(name, addMount).BindReceiver(d), nil
 	default:
 		return nil, nil
 	}
@@ -100,4 +126,29 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 
 func (*dockerImage) AttrNames() []string {
 	return []string{"file_name", "file_tag", "add_cmd"}
+}
+
+type gitRepo struct {
+	path string
+}
+
+var _ skylark.Value = gitRepo{}
+
+func (gr gitRepo) String() string {
+	return fmt.Sprintf("[gitRepo] '%v'", gr.path)
+}
+
+func (gr gitRepo) Type() string {
+	return "gitRepo"
+}
+
+func (gr gitRepo) Freeze() {
+}
+
+func (gitRepo) Truth() skylark.Bool {
+	return true
+}
+
+func (gitRepo) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: gitRepo")
 }

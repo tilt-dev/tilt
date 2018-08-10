@@ -28,6 +28,7 @@ func TestGetServiceConfig(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag")
+  image.add_mount('/mount_points/1', git_repo('.'))
   print(image.file_name)
   image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.add_cmd("echo hi")
@@ -42,6 +43,9 @@ func TestGetServiceConfig(t *testing.T) {
 	assert.Equal(t, "docker text", serviceConfig.DockerfileText)
 	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
 	assert.Equal(t, "yaaaaaaaaml", serviceConfig.K8SYaml)
+	assert.Equal(t, 1, len(serviceConfig.Mounts))
+	assert.Equal(t, "/mount_points/1", serviceConfig.Mounts[0].ContainerPath)
+	assert.Equal(t, ".", serviceConfig.Mounts[0].Repo.GetGitRepo().LocalPath)
 	assert.Equal(t, 2, len(serviceConfig.Steps))
 	assert.Equal(t, []string{"bash", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
 	assert.Equal(t, []string{"bash", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
