@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -60,16 +61,16 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 		return "", err
 	}
 	// TODO(dmiller): remove this debugging code
-	// tar2, err := tarFromDockerfileWithMounts(baseDockerfile, mounts)
-	// if err != nil {
-	// 	return "", err
-	// }
-	//buf := new(bytes.Buffer)
-	//buf.ReadFrom(tar2)
-	//err = ioutil.WriteFile("/tmp/debug.tar", buf.Bytes(), os.FileMode(0777))
-	// if err != nil {
-	// 	return "", err
-	// }
+	tar2, err := tarContext(baseDockerfile, mounts)
+	if err != nil {
+		return "", err
+	}
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(tar2)
+	err = ioutil.WriteFile("/tmp/debug.tar", buf.Bytes(), os.FileMode(0777))
+	if err != nil {
+		return "", err
+	}
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		tar,
@@ -106,8 +107,10 @@ func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 		}
 	}()
 
-	// TODO(dmiller) is this a hack, or is it OK because we are filtering down the files available in the context below?
-	newdf := fmt.Sprintf("%s\nADD . %s", df, "/src")
+	// We'll tar all mounts so that their contents live inside their own dest
+	// directories; since we generate the tar properly, can just dump everything
+	// from the root into the container at /
+	newdf := fmt.Sprintf("%s\nADD . /", df)
 
 	tarHeader := &tar.Header{
 		Name: "Dockerfile",
@@ -132,7 +135,8 @@ func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-// tarPath writes the the given path into tarWriter (recursively for directories).
+// tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
+// e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 func tarPath(tarWriter *tar.Writer, source, dest string) error {
 	sourceInfo, err := os.Stat(source)
 	if err != nil {
@@ -147,6 +151,8 @@ func tarPath(tarWriter *tar.Writer, source, dest string) error {
 		}
 	}
 
+	dest = strings.TrimPrefix(dest, "/")
+
 	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking to %s: %v", path, err)
@@ -158,13 +164,13 @@ func tarPath(tarWriter *tar.Writer, source, dest string) error {
 		}
 
 		if sourceIsDir {
-			// Name of file in tar should be relative to source directory
+			// Name of file in tar should be relative to source directory...
 			header.Name = strings.TrimPrefix(path, source)
 		}
 
-		if header.Name == dest {
-			// our new tar file is inside the directory being archived; skip it
-			return nil
+		if dest != "" {
+			// ...and live inside `dest` (if given)
+			header.Name = filepath.Join(dest, header.Name)
 		}
 
 		err = tarWriter.WriteHeader(header)
