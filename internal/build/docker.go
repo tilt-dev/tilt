@@ -223,8 +223,7 @@ func getDigestFromOutput(output string) (digest.Digest, error) {
 
 func shouldRemoveImage() bool {
 	if flag.Lookup("test.v") == nil {
-		fmt.Println("normal run")
-		return true
+		return false
 	}
-	return false
+	return true
 }
