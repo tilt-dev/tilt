@@ -164,11 +164,7 @@ func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents
 	output := &strings.Builder{}
 	io.Copy(output, out)
 
-	if strings.Contains(output.String(), "No such file") {
-		f.t.Errorf("Expected to find file in container. Got: %s", output)
-	}
-
 	if strings.Contains(output.String(), "contents not found") {
-		f.t.Errorf("Expected to find contents in container. Got: %s", output)
+		f.t.Errorf("Failed to find one or more expected files in container with output: %s", output)
 	}
 }
