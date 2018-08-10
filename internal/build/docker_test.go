@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -49,22 +50,26 @@ func TestBuildBase(t *testing.T) {
 
 	imageTag := "hi"
 	f.imageTag = imageTag
-	tag, err := builder.buildBase(context.Background(), baseDockerFile, imageTag)
+	tag, err := builder.buildBase(context.Background(), baseDockerFile, imageTag, []Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f.assertFileInImage(tag, "hi")
+	f.assertFileInImageWithContents(tag, "hi", "")
 }
 
 func TestMount(t *testing.T) {
-	t.Skipf("Not implemented yet")
+	if os.Getenv("CIRCLECI") == "true" {
+		t.Skipf("Skipping on CircleCI")
+	}
 	f := newTestFixture(t)
-	defer f.teardown()
+	//defer f.teardown()
+	fmt.Println(f.repo.Path())
 	baseDockerFile := "FROM alpine"
 
 	// write some files in to it
-	f.writeFile("hello", "hi hello")
+	f.writeFile("hi/hello", "hi hello")
+	f.writeFile("sup", "my name is dan")
 
 	m := Mount{
 		Repo:          LocalGithubRepo{LocalPath: f.repo.Path()},
@@ -72,7 +77,7 @@ func TestMount(t *testing.T) {
 	}
 
 	builder := f.newBuilderForTesting()
-	imageTag := f.t.Name()
+	imageTag := strings.ToLower(f.t.Name())
 	f.imageTag = imageTag
 
 	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, imageTag)
@@ -80,7 +85,9 @@ func TestMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.assertFileInImage(tag, "src/hello")
+	// TODO(dmiller): this is slow
+	f.assertFileInImageWithContents(tag, "/src/hi/hello", "hi hello")
+	f.assertFileInImageWithContents(tag, "/src/sup", "my name is dan")
 }
 
 type testFixture struct {
@@ -121,7 +128,13 @@ func (f *testFixture) teardown() {
 }
 
 func (f *testFixture) writeFile(pathInRepo string, contents string) {
-	err := ioutil.WriteFile(pathInRepo, []byte(contents), os.FileMode(0777))
+	fullPath := filepath.Join(f.repo.Path(), pathInRepo)
+	base := filepath.Dir(fullPath)
+	err := os.MkdirAll(base, os.FileMode(0777))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -133,7 +146,7 @@ func (f *testFixture) newBuilderForTesting() *localDockerBuilder {
 	}
 }
 
-func (f *testFixture) assertFileInImage(tag string, path string) {
+func (f *testFixture) assertFileInImageWithContents(tag string, path string, contents string) {
 	ctx := context.Background()
 	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
 		Image: tag,
@@ -169,5 +182,9 @@ func (f *testFixture) assertFileInImage(tag string, path string) {
 
 	if strings.Contains(output.String(), "No such file") {
 		f.t.Errorf("Expected to find file %s in container. Got: %s", path, output)
+	}
+
+	if !strings.Contains(output.String(), contents) {
+		f.t.Errorf("Expected file %s to have contents %s but got %s", path, contents, output)
 	}
 }
