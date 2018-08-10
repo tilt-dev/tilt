@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
 )
@@ -43,15 +44,18 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 }
 
 // NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (digest.Digest, error) {
-	baseTag, err := l.buildBaseWithMounts(ctx, baseDockerfile, tag, mounts)
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd, tag string) (digest.Digest, error) {
+	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, tag, mounts)
 	if err != nil {
 		return "", err
 	}
 
-	// TODO(dmiller): steps
+	newDigest, err := l.buildImageWithSteps(ctx, baseDigest, tag, steps)
+	if err != nil {
+		return "", err
+	}
 
-	return baseTag, nil
+	return newDigest, nil
 }
 
 func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, tag string, mounts []Mount) (digest.Digest, error) {
@@ -93,6 +97,42 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	}
 
 	return getDigestFromOutput(output.String())
+}
+
+func (l *localDockerBuilder) buildImageWithSteps(ctx context.Context, baseDigest digest.Digest, tag string, steps []Cmd) (digest.Digest, error) {
+	imageWithSteps := baseDigest
+	for _, s := range steps {
+		resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
+			Image: string(baseDigest),
+			Cmd:   s.argv,
+		}, nil, nil, "")
+		if err != nil {
+			return "", nil
+		}
+		containerID := resp.ID
+
+		err = l.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+		if err != nil {
+			return "", err
+		}
+
+		statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+		select {
+		case err := <-errCh:
+			if err != nil {
+				return "", err
+			}
+		case <-statusCh:
+		}
+
+		id, err := l.dcli.ContainerCommit(ctx, containerID, types.ContainerCommitOptions{})
+		imageWithSteps = digest.Digest(id.ID)
+		if err != nil {
+			return "", nil
+		}
+	}
+
+	return imageWithSteps, nil
 }
 
 // tarContext amends the dockerfile with appropriate ADD statements,

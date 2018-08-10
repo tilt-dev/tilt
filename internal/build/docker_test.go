@@ -132,6 +132,26 @@ func TestMountCollisions(t *testing.T) {
 	f.assertFilesInImageWithContents(tag, pcs)
 }
 
+func TestBuildOneStep(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+	baseDockerFile := "FROM alpine"
+
+	steps := []Cmd{
+		Cmd{argv: []string{"touch", "hi"}},
+	}
+
+	builder := f.newBuilderForTesting()
+	imageTag := strings.ToLower(f.t.Name())
+
+	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{}, steps, imageTag)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertFileInImage(tag, "hi")
+}
+
 // TODO(maia): test mount err cases
 // TODO(maia): tests for tar code
 
@@ -191,6 +211,46 @@ func (f *testFixture) newBuilderForTesting() *localDockerBuilder {
 type pathContent struct {
 	path     string
 	contents string
+}
+
+func (f *testFixture) assertFileInImage(tag digest.Digest, path string) {
+	ctx := context.Background()
+
+	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
+		Image: string(tag),
+		Cmd:   []string{"cat", path},
+		Tty:   true,
+	}, nil, nil, "")
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	containerID := resp.ID
+
+	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	statusCh, errCh := f.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			f.t.Fatal(err)
+		}
+	case <-statusCh:
+	}
+
+	out, err := f.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	output := &strings.Builder{}
+	io.Copy(output, out)
+
+	if strings.Contains(output.String(), "not found") {
+		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
+	}
 }
 
 func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents []pathContent) {
