@@ -37,6 +37,10 @@ type localDockerBuilder struct {
 	dcli *client.Client
 }
 
+func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
+	return &localDockerBuilder{cli}
+}
+
 // NOTE(dmiller): not fully implemented yet
 func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (string, error) {
 	baseTag, err := l.buildBase(ctx, baseDockerfile, tag)
@@ -104,3 +108,5 @@ func getDigestFromOutput(output string) (string, error) {
 	}
 	return res[1], nil
 }
+
+var _ DockerBuilder = &localDockerBuilder{}

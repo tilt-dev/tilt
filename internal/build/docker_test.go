@@ -96,7 +96,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)
 	}
-	dcli, err := client.NewEnvClient()
+
+	opts := make([]func(*client.Client) error, 0)
+	opts = append(opts, client.FromEnv)
+
+	// Use client for docker 17
+	// https://docs.docker.com/develop/sdk/#api-version-matrix
+	opts = append(opts, client.WithVersion("1.26"))
+	dcli, err := client.NewClientWithOpts(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,9 +135,7 @@ func (f *testFixture) writeFile(pathInRepo string, contents string) {
 }
 
 func (f *testFixture) newBuilderForTesting() *localDockerBuilder {
-	return &localDockerBuilder{
-		dcli: f.dcli,
-	}
+	return NewLocalDockerBuilder(f.dcli)
 }
 
 func (f *testFixture) assertFileInImage(tag string, path string) {
