@@ -62,7 +62,6 @@ func TestMount(t *testing.T) {
 		pathContent{path: "/src/hi/hello", contents: "hi hello"},
 		pathContent{path: "/src/sup", contents: "my name is dan"},
 	}
-
 	f.assertFilesInImageWithContents(tag, pcs)
 }
 
@@ -92,9 +91,11 @@ func TestMultipleMounts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO(dmiller): this is slow
-	f.assertFileInImageWithContents(tag, "/hello_there/hello", "hi hello")
-	f.assertFileInImageWithContents(tag, "/goodbye_there/ciao/goodbye", "bye laterz")
+	pcs := []pathContent{
+		pathContent{path: "/hello_there/hello", contents: "hi hello"},
+		pathContent{path: "/goodbye_there/ciao/goodbye", contents: "bye laterz"},
+	}
+	f.assertFilesInImageWithContents(tag, pcs)
 }
 
 func TestMountCollisions(t *testing.T) {
@@ -125,8 +126,10 @@ func TestMountCollisions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO(dmiller): this is slow
-	f.assertFileInImageWithContents(tag, "/hello_there/hello", "bye laterz")
+	pcs := []pathContent{
+		pathContent{path: "/hello_there/hello", contents: "bye laterz"},
+	}
+	f.assertFilesInImageWithContents(tag, pcs)
 }
 
 // TODO(maia): test mount err cases
@@ -194,7 +197,10 @@ func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents
 	ctx := context.Background()
 	var cmd strings.Builder
 	for _, c := range contents {
-		cs := fmt.Sprintf("cat %s | grep \"%s\" || echo \"contents not found\"; ", c.path, c.contents)
+		notFound := fmt.Sprintf("ERROR: file %s not found or didn't have expected contents '%s'",
+			c.path, c.contents)
+		cs := fmt.Sprintf("cat %s | grep \"%s\" || echo \"%s\"; ",
+			c.path, c.contents, notFound)
 		cmd.WriteString(cs)
 	}
 
@@ -230,7 +236,7 @@ func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents
 	output := &strings.Builder{}
 	io.Copy(output, out)
 
-	if strings.Contains(output.String(), "contents not found") {
-		f.t.Errorf("Failed to find one or more expected files in container with output: %s", output)
+	if strings.Contains(output.String(), "ERROR:") {
+		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
 	}
 }
