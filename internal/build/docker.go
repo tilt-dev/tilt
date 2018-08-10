@@ -228,5 +228,3 @@ func shouldRemoveImage() bool {
 	}
 	return false
 }
-
-var _ DockerBuilder = &localDockerBuilder{}
