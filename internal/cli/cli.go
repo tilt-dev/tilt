@@ -14,6 +14,7 @@ func Execute() {
 	}
 
 	addCommand(rootCmd, &upCmd{})
+	addCommand(rootCmd, &daemonCmd{})
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
