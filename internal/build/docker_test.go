@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -48,7 +47,7 @@ func TestBuildBase(t *testing.T) {
 
 	builder := f.newBuilderForTesting()
 
-	tag, err := builder.buildBase(context.Background(), baseDockerFile, "hi", []Mount{})
+	tag, err := builder.buildBaseWithMounts(context.Background(), baseDockerFile, "hi", []Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +61,6 @@ func TestMount(t *testing.T) {
 	}
 	f := newTestFixture(t)
 	defer f.teardown()
-	fmt.Println(f.repo.Path())
 	baseDockerFile := "FROM alpine"
 
 	// write some files in to it

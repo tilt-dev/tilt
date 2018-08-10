@@ -43,19 +43,18 @@ type localDockerBuilder struct {
 
 // NOTE(dmiller): not fully implemented yet
 func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (string, error) {
-	baseTag, err := l.buildBase(ctx, baseDockerfile, tag, mounts)
+	baseTag, err := l.buildBaseWithMounts(ctx, baseDockerfile, tag, mounts)
 	if err != nil {
 		return "", err
 	}
 
-	// TODO(dmiller): mounts
 	// TODO(dmiller): steps
 
 	return baseTag, nil
 }
 
-func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile string, tag string, mounts []Mount) (string, error) {
-	tar, err := tarFromDockerfileWithMounts(baseDockerfile, mounts)
+func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, tag string, mounts []Mount) (string, error) {
+	tar, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +93,9 @@ func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile strin
 	return getDigestFromOutput(output.String())
 }
 
-func tarFromDockerfileWithMounts(df string, mounts []Mount) (*bytes.Reader, error) {
+// tarContext amends the dockerfile with appropriate ADD statements,
+// and returns that new dockerfile + necessary files in a tar
+func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer func() {
@@ -138,9 +139,9 @@ func tarFromDockerfileWithMounts(df string, mounts []Mount) (*bytes.Reader, erro
 
 	}
 
-	dockerFileTarReader := bytes.NewReader(buf.Bytes())
+	contextTarReader := bytes.NewReader(buf.Bytes())
 
-	return dockerFileTarReader, nil
+	return contextTarReader, nil
 }
 
 // tarFile writes the file at source into tarWriter. It does so
