@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -76,6 +77,7 @@ func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile strin
 			Context:    tar,
 			Dockerfile: "Dockerfile",
 			Tags:       []string{tag},
+			Remove:     shouldRemoveImage(),
 		})
 
 	if err != nil {
@@ -209,4 +211,12 @@ func getDigestFromOutput(output string) (string, error) {
 		return "", fmt.Errorf("Expected to get two matches for regex, but for %d", len(res))
 	}
 	return res[1], nil
+}
+
+func shouldRemoveImage() bool {
+	if flag.Lookup("test.v") == nil {
+		fmt.Println("normal run")
+		return true
+	}
+	return false
 }

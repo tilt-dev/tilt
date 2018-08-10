@@ -48,9 +48,7 @@ func TestBuildBase(t *testing.T) {
 
 	builder := f.newBuilderForTesting()
 
-	imageTag := "hi"
-	f.imageTag = imageTag
-	tag, err := builder.buildBase(context.Background(), baseDockerFile, imageTag, []Mount{})
+	tag, err := builder.buildBase(context.Background(), baseDockerFile, "hi", []Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +61,7 @@ func TestMount(t *testing.T) {
 		t.Skipf("Skipping on CircleCI")
 	}
 	f := newTestFixture(t)
-	//defer f.teardown()
+	defer f.teardown()
 	fmt.Println(f.repo.Path())
 	baseDockerFile := "FROM alpine"
 
@@ -78,7 +76,6 @@ func TestMount(t *testing.T) {
 
 	builder := f.newBuilderForTesting()
 	imageTag := strings.ToLower(f.t.Name())
-	f.imageTag = imageTag
 
 	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, imageTag)
 	if err != nil {
@@ -91,11 +88,9 @@ func TestMount(t *testing.T) {
 }
 
 type testFixture struct {
-	t           *testing.T
-	repo        *temp.TempDir
-	dcli        *client.Client
-	containerID string
-	imageTag    string
+	t    *testing.T
+	repo *temp.TempDir
+	dcli *client.Client
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -117,14 +112,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 func (f *testFixture) teardown() {
 	f.repo.TearDown()
-	err := f.dcli.ContainerRemove(context.Background(), f.containerID, types.ContainerRemoveOptions{})
-	if err != nil {
-		fmt.Printf("Error removing container ID %s: %s", f.containerID, err.Error())
-	}
-	_, err = f.dcli.ImageRemove(context.Background(), f.imageTag, types.ImageRemoveOptions{})
-	if err != nil {
-		fmt.Printf("Error removing image tag %s: %s", f.imageTag, err.Error())
-	}
 }
 
 func (f *testFixture) writeFile(pathInRepo string, contents string) {
