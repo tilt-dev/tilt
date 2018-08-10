@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -35,23 +36,6 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 	}
 }
 
-func TestBuildBase(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.teardown()
-	baseDockerFile := `FROM alpine
-	RUN touch hi
-	`
-
-	builder := f.newBuilderForTesting()
-
-	tag, err := builder.buildBaseWithMounts(context.Background(), baseDockerFile, "hi", []Mount{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f.assertFileInImageWithContents(tag, "hi", "")
-}
-
 func TestMount(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
@@ -74,9 +58,12 @@ func TestMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO(dmiller): this is slow
-	f.assertFileInImageWithContents(tag, "/src/hi/hello", "hi hello")
-	f.assertFileInImageWithContents(tag, "/src/sup", "my name is dan")
+	pcs := []pathContent{
+		pathContent{path: "/src/hi/hello", contents: "hi hello"},
+		pathContent{path: "/src/sup", contents: "my name is dan"},
+	}
+
+	f.assertFilesInImageWithContents(tag, pcs)
 }
 
 type testFixture struct {
@@ -132,11 +119,22 @@ func (f *testFixture) newBuilderForTesting() *localDockerBuilder {
 	return NewLocalDockerBuilder(f.dcli)
 }
 
-func (f *testFixture) assertFileInImageWithContents(tag digest.Digest, path string, contents string) {
+type pathContent struct {
+	path     string
+	contents string
+}
+
+func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents []pathContent) {
 	ctx := context.Background()
+	var cmd strings.Builder
+	for _, c := range contents {
+		cs := fmt.Sprintf("cat %s | grep \"%s\" || echo \"contents not found\"; ", c.path, c.contents)
+		cmd.WriteString(cs)
+	}
+
 	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
 		Image: string(tag),
-		Cmd:   []string{"cat", path},
+		Cmd:   []string{"sh", "-c", cmd.String()},
 		Tty:   true,
 	}, nil, nil, "")
 	if err != nil {
@@ -166,11 +164,7 @@ func (f *testFixture) assertFileInImageWithContents(tag digest.Digest, path stri
 	output := &strings.Builder{}
 	io.Copy(output, out)
 
-	if strings.Contains(output.String(), "No such file") {
-		f.t.Errorf("Expected to find file %s in container. Got: %s", path, output)
-	}
-
-	if !strings.Contains(output.String(), contents) {
-		f.t.Errorf("Expected file %s to have contents %s but got %s", path, contents, output)
+	if strings.Contains(output.String(), "contents not found") {
+		f.t.Errorf("Failed to find one or more expected files in container with output: %s", output)
 	}
 }
