@@ -11,11 +11,12 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	digest "github.com/opencontainers/go-digest"
 
 	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
-func TestDigiestFromSingleStepOutput(t *testing.T) {
+func TestDigestFromSingleStepOutput(t *testing.T) {
 	input := `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"\n"}
 	{"stream":" ---\u003e 11cd0b38bc3c\n"}
@@ -24,7 +25,7 @@ func TestDigiestFromSingleStepOutput(t *testing.T) {
 	{"stream":"Successfully tagged hi:latest\n"}
 `
 
-	expected := "11cd0b38bc3c"
+	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	actual, err := getDigestFromOutput(input)
 	if err != nil {
 		t.Fatal(err)
@@ -118,11 +119,11 @@ func (f *testFixture) newBuilderForTesting() *localDockerBuilder {
 	}
 }
 
-func (f *testFixture) assertFileInImage(tag string, path string) {
+func (f *testFixture) assertFileInImage(tag digest.Digest, path string) {
 	// TODO remove this container
 	ctx := context.Background()
 	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
-		Image: tag,
+		Image: string(tag),
 		Cmd:   []string{"cat", path},
 		Tty:   true,
 	}, nil, nil, "")

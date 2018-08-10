@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	digest "github.com/opencontainers/go-digest"
 )
 
 type Mount struct {
@@ -38,7 +39,7 @@ type localDockerBuilder struct {
 }
 
 // NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (string, error) {
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, cmds []Cmd, tag string) (digest.Digest, error) {
 	baseTag, err := l.buildBase(ctx, baseDockerfile, tag)
 	if err != nil {
 		return "", err
@@ -50,7 +51,7 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 	return baseTag, nil
 }
 
-func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile string, tag string) (string, error) {
+func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile string, tag string) (digest.Digest, error) {
 	tar, err := tarFromDockerfile(baseDockerfile)
 	if err != nil {
 		return "", err
@@ -63,6 +64,9 @@ func (l *localDockerBuilder) buildBase(ctx context.Context, baseDockerfile strin
 			Dockerfile: "Dockerfile",
 			Tags:       []string{tag},
 		})
+	if err != nil {
+		return "", err
+	}
 
 	defer imageBuildResponse.Body.Close()
 	output := &strings.Builder{}
@@ -96,11 +100,16 @@ func tarFromDockerfile(df string) (*bytes.Reader, error) {
 	return dockerFileTarReader, nil
 }
 
-func getDigestFromOutput(output string) (string, error) {
-	re := regexp.MustCompile("Successfully built ([[:alnum:]]*)")
+func getDigestFromOutput(output string) (digest.Digest, error) {
+	re := regexp.MustCompile(`{"aux":{"ID":"([[:alnum:]:]+)"}}`)
 	res := re.FindStringSubmatch(output)
 	if len(res) != 2 {
-		return "", fmt.Errorf("Expected to get two matches for regex, but for %d", len(res))
+		return "", fmt.Errorf("Digest not found in output: %s", output)
 	}
-	return res[1], nil
+
+	d, err := digest.Parse(res[1])
+	if err != nil {
+		return "", fmt.Errorf("getDigestFromOutput: %v", err)
+	}
+	return d, nil
 }
