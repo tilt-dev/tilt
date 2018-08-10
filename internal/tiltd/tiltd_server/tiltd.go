@@ -22,7 +22,6 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string) error {
 }
 
 func RunDaemon(ctx context.Context) (*os.Process, error) {
-	// Relies on having the latest tiltd go install'd.
 	cmd := exec.CommandContext(ctx, os.Args[0], "daemon")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
