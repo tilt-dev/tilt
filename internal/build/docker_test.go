@@ -18,6 +18,8 @@ import (
 	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
+const simpleDockerfile = "FROM alpine"
+
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	input := `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"\n"}
@@ -40,7 +42,6 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 func TestMount(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
-	baseDockerFile := "FROM alpine"
 
 	// write some files in to it
 	f.writeFile("hi/hello", "hi hello")
@@ -51,7 +52,7 @@ func TestMount(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m}, []Cmd{}, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,6 @@ func TestMount(t *testing.T) {
 func TestMultipleMounts(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
-	baseDockerFile := "FROM alpine"
 
 	// write some files in to it
 	f.writeFile("hi/hello", "hi hello")
@@ -81,7 +81,7 @@ func TestMultipleMounts(t *testing.T) {
 		ContainerPath: "goodbye_there",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m1, m2}, []Cmd{}, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,6 @@ func TestMultipleMounts(t *testing.T) {
 func TestMountCollisions(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
-	baseDockerFile := "FROM alpine"
 
 	// write some files in to it
 	f.writeFile("hi/hello", "hi hello")
@@ -113,7 +112,7 @@ func TestMountCollisions(t *testing.T) {
 		ContainerPath: "/hello_there",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m1, m2}, []Cmd{}, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,8 +129,6 @@ func TestPush(t *testing.T) {
 
 	f.startRegistry()
 
-	baseDockerFile := "FROM alpine"
-
 	// write some files in to it
 	f.writeFile("hi/hello", "hi hello")
 	f.writeFile("sup", "my name is dan")
@@ -141,7 +138,7 @@ func TestPush(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m}, []Cmd{}, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,13 +160,12 @@ func TestPush(t *testing.T) {
 func TestBuildOneStep(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
-	baseDockerFile := "FROM alpine"
 
 	steps := []Cmd{
 		Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), baseDockerFile, []Mount{}, steps, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, steps, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,14 +179,13 @@ func TestBuildOneStep(t *testing.T) {
 func TestBuildMultipleSteps(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
-	baseDockerFile := "FROM alpine"
 
 	steps := []Cmd{
 		Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
 		Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
 	}
 
-	tag, err := f.b.BuildDocker(context.Background(), baseDockerFile, []Mount{}, steps, Cmd{})
+	tag, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, steps, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -114,7 +114,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, name string, dig di
 }
 
 func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []Mount) (digest.Digest, error) {
-	tar, err := tarContext(baseDockerfile, mounts)
+	archive, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
 	}
@@ -132,9 +132,9 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
-		tar,
+		archive,
 		types.ImageBuildOptions{
-			Context:    tar,
+			Context:    archive,
 			Dockerfile: "Dockerfile",
 			Remove:     shouldRemoveImage(),
 		})
