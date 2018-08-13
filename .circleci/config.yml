@@ -8,5 +8,5 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: make lint
-      - run: make verifyfmt
+      - run: make verify_gofmt
       - run: make test
