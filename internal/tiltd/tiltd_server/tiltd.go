@@ -34,7 +34,26 @@ func NewDaemon() (*Daemon, error) {
 	return &Daemon{b: b}, nil
 }
 
-func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []*build.Mount, steps []*build.Cmd, dockerfileTag string) error {
+func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []build.Mount, steps []build.Cmd, dockerfileTag string) error {
+	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps)
+	if err != nil {
+		return err
+	}
+	err = d.b.PushDocker(ctx, dockerfileTag, digest)
+	if err != nil {
+		return err
+	}
+
+	_, err = k8s.ParseYAMLFromString(k8sYaml)
+	if err != nil {
+		return err
+	}
+
+	// TODO(dmiller): not sure how to use this API
+	// newK8s, replaced, err := k8s.InjectImageDigest(k8sEntity[0], dockerfileTag, digest)
+	// if err != nil {
+	// 	return err
+	// }
 	return k8s.Apply(ctx, k8sYaml)
 }
 
