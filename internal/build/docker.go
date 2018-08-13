@@ -18,43 +18,18 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/tiltd"
 )
 
 // Tilt always pushes to the same tag. We never push to latest.
 const pushTag = "wm-tilt"
-
-type Mount struct {
-	// TODO(dmiller) make this more generic
-	Repo          LocalGithubRepo
-	ContainerPath string
-}
-
-type Repo interface {
-	IsRepo()
-}
-
-type LocalGithubRepo struct {
-	LocalPath string
-}
-
-func (LocalGithubRepo) IsRepo() {}
-
-type Cmd struct {
-	Argv []string
-}
-
-// entrypointStr returns the Cmd in string form for use as an entrypoint,
-// e.g. 'ENTRYPOINT ["executable", "param1", "param2"]'
-func (c Cmd) entrypointStr() string {
-	return fmt.Sprintf("ENTRYPOINT [\"%s\"]", strings.Join(c.Argv, "\", \""))
-}
 
 type localDockerBuilder struct {
 	dcli *client.Client
 }
 
 type Builder interface {
-	BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd, entrypoint Cmd) (digest.Digest, error)
+	BuildDocker(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name string, dig digest.Digest) error
 }
 
@@ -65,7 +40,7 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 }
 
 // NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd, entrypoint Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd) (digest.Digest, error) {
 	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, mounts)
 	if err != nil {
 		return "", fmt.Errorf("buildBaseWithMounts: %v", err)
@@ -119,7 +94,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, name string, dig di
 	return outputIO.Close()
 }
 
-func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []Mount) (digest.Digest, error) {
+func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount) (digest.Digest, error) {
 	archive, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
@@ -159,7 +134,7 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	return getDigestFromOutput(output.String())
 }
 
-func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []tiltd.Cmd) (digest.Digest, error) {
 	imageWithSteps := string(baseDigest)
 	for _, s := range steps {
 		cId, err := l.startContainer(ctx, imageWithSteps, &s)
@@ -176,11 +151,11 @@ func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest di
 
 // TODO(maia): can probs do this in a more efficient place -- e.g. `execStepsOnImage`
 // already spins up + commits a container, maybe piggyback off that?
-func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, d digest.Digest, entrypoint Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, d digest.Digest, entrypoint tiltd.Cmd) (digest.Digest, error) {
 	cId, err := l.startContainer(ctx, string(d), nil)
 
 	opts := types.ContainerCommitOptions{
-		Changes: []string{entrypoint.entrypointStr()},
+		Changes: []string{entrypoint.EntrypointStr()},
 	}
 
 	id, err := l.dcli.ContainerCommit(ctx, cId, opts)
@@ -193,7 +168,7 @@ func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, d digest.D
 
 // startContainer starts a container from the given image ref, exec'ing a command if given.
 // Returns the container id iff the container successfully starts up; else, error.
-func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, cmd *Cmd) (cId string, err error) {
+func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, cmd *tiltd.Cmd) (cId string, err error) {
 	config := &container.Config{Image: imgRef}
 	if cmd != nil {
 		config.Cmd = cmd.Argv
@@ -223,7 +198,7 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 
 // tarContext amends the dockerfile with appropriate ADD statements,
 // and returns that new dockerfile + necessary files in a tar
-func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
+func tarContext(df string, mounts []tiltd.Mount) (*bytes.Reader, error) {
 	buf := new(bytes.Buffer)
 	err := tarToBuf(buf, df, mounts)
 	if err != nil {
@@ -232,7 +207,7 @@ func tarContext(df string, mounts []Mount) (*bytes.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func tarToBuf(buf *bytes.Buffer, df string, mounts []Mount) error {
+func tarToBuf(buf *bytes.Buffer, df string, mounts []tiltd.Mount) error {
 	tw := tar.NewWriter(buf)
 	defer func() {
 		err := tw.Close()
