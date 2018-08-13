@@ -32,16 +32,18 @@ func mountsP2D(mounts []*Mount) []build.Mount {
 
 func mountP2D(mount *Mount) build.Mount {
 	return build.Mount{
-		// TODO(dmiller): convert to repo, we need a path
-		Repo:          build.LocalGithubRepo{LocalPath: ""},
+		Repo:          repoP2D(mount.Repo),
 		ContainerPath: mount.ContainerPath,
 	}
 }
 
-func repoP2D(repo *Repo) build.Repo {
-	// TODO(dmiller): we need a path here
-	// TODO(dmiller): laborious type conversion for multiple repos
-	return build.LocalGithubRepo{}
+// TODO(dmiller): right now this only supports github repos
+// if we add other types we'll have to change this
+func repoP2D(repo *Repo) build.LocalGithubRepo {
+	githubRepo := repo.GetGitRepo()
+	return build.LocalGithubRepo{
+		LocalPath: githubRepo.LocalPath,
+	}
 }
 
 func cmdsP2D(cmds []*Cmd) []build.Cmd {
