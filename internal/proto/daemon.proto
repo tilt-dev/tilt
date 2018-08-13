@@ -5,7 +5,7 @@ package daemon;
 option go_package = "github.com/windmilleng/tilt/internal/proto/;proto";
 
 service Daemon {
-    rpc CreateService(Service) returns (CreateServiceReply) {}
+    rpc CreateService(Service) returns (stream CreateServiceReply) {}
     // rpc UpdateService(Service) returns (UpdateServiceReply) {}
     // rpc DeleteService(Service) returns (DeleteServiceReply) {}
     // rpc GetServiceStatus(Service) returns (ServiceStatus) {}
@@ -40,6 +40,11 @@ message GitRepo {
     string local_path = 1;
 }
 
+message Output {
+    bytes stdout = 1;
+    bytes stderr = 2;
+}
+
 // message ServiceStatus {
 //   string name = 1;
 //   enum Status {
@@ -53,6 +58,10 @@ message GitRepo {
 //     repeated ServiceStatus statuses = 1;
 // }
 
-message CreateServiceReply {}
+message CreateServiceReply {
+    oneof body {
+        Output output = 1;
+    }
+}
 // message UpdateServiceReply {}
 // message DeleteServiceReply {}

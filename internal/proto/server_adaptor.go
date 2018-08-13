@@ -3,7 +3,7 @@ package proto
 import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/tiltd"
-	context "golang.org/x/net/context"
+	"log"
 )
 
 type GRPCServer struct {
@@ -16,8 +16,30 @@ func NewGRPCServer(del tiltd.TiltD) *GRPCServer {
 
 var _ DaemonServer = &GRPCServer{}
 
-func (s *GRPCServer) CreateService(ctx context.Context, service *Service) (*CreateServiceReply, error) {
-	return &CreateServiceReply{}, s.del.CreateService(ctx, service.K8SYaml, service.DockerfileText, mountsP2D(service.Mounts), cmdsP2D(service.Steps), service.DockerfileTag)
+func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServer) error {
+	sendOutput := func(output Output) {
+		d.Send(&CreateServiceReply{&CreateServiceReply_Output{Output: &output}})
+	}
+
+	outputStream := MakeStdoutStderrWriter(sendOutput)
+	defer func() {
+		err := outputStream.Close()
+		if err != nil {
+			log.Printf("error closing outputStream: %v", err)
+		}
+	}()
+
+	err := s.del.CreateService(
+		d.Context(),
+		service.K8SYaml,
+		service.DockerfileText,
+		mountsP2D(service.Mounts),
+		cmdsP2D(service.Steps),
+		service.DockerfileTag,
+		outputStream.GetStdoutWriter(),
+		outputStream.GetStderrWriter())
+
+	return err
 }
 
 func mountsP2D(mounts []*Mount) []build.Mount {
