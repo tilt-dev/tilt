@@ -174,7 +174,7 @@ func TestBuildOneStep(t *testing.T) {
 	baseDockerFile := "FROM alpine"
 
 	steps := []Cmd{
-		Cmd{argv: []string{"touch", "hi"}},
+		Cmd{argv: []string{"sh", "-c", "echo hello >> hi"}},
 	}
 
 	builder := f.newBuilderForTesting()
@@ -184,7 +184,35 @@ func TestBuildOneStep(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.assertFileInImage(string(digest), "hi")
+	contents := []pathContent{
+		pathContent{path: "hi", contents: "hello"},
+	}
+	f.assertFilesInImageWithContents(string(digest), contents)
+}
+
+func TestBuildMultipleSteps(t *testing.T) {
+	t.Skip("Fails atm")
+	f := newTestFixture(t)
+	defer f.teardown()
+	baseDockerFile := "FROM alpine"
+
+	steps := []Cmd{
+		Cmd{argv: []string{"sh", "-c", "echo hello >> hi"}},
+		Cmd{argv: []string{"sh", "-c", "echo sup >> hi2"}},
+	}
+
+	builder := f.newBuilderForTesting()
+
+	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{}, steps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contents := []pathContent{
+		pathContent{path: "hi", contents: "hello"},
+		pathContent{path: "sup", contents: "hi2"},
+	}
+	f.assertFilesInImageWithContents(string(tag), contents)
 }
 
 // TODO(maia): test mount err cases
@@ -266,46 +294,6 @@ func (f *testFixture) newBuilderForTesting() *localDockerBuilder {
 type pathContent struct {
 	path     string
 	contents string
-}
-
-func (f *testFixture) assertFileInImage(ref string, path string) {
-	ctx := context.Background()
-
-	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
-		Image: ref,
-		Cmd:   []string{"cat", path},
-		Tty:   true,
-	}, nil, nil, "")
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	containerID := resp.ID
-
-	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	statusCh, errCh := f.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			f.t.Fatal(err)
-		}
-	case <-statusCh:
-	}
-
-	out, err := f.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	output := &strings.Builder{}
-	io.Copy(output, out)
-
-	if strings.Contains(output.String(), "not found") {
-		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
-	}
 }
 
 func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {

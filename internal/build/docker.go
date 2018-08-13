@@ -54,7 +54,7 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 		return "", err
 	}
 
-	newDigest, err := l.buildImageWithSteps(ctx, baseDigest, steps)
+	newDigest, err := l.execStepsOnImage(ctx, baseDigest, steps)
 	if err != nil {
 		return "", err
 	}
@@ -137,11 +137,11 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	return getDigestFromOutput(output.String())
 }
 
-func (l *localDockerBuilder) buildImageWithSteps(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
 	imageWithSteps := baseDigest
 	for _, s := range steps {
 		resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
-			Image: string(baseDigest),
+			Image: string(imageWithSteps),
 			Cmd:   s.argv,
 		}, nil, nil, "")
 		if err != nil {
@@ -164,10 +164,10 @@ func (l *localDockerBuilder) buildImageWithSteps(ctx context.Context, baseDigest
 		}
 
 		id, err := l.dcli.ContainerCommit(ctx, containerID, types.ContainerCommitOptions{})
-		imageWithSteps = digest.Digest(id.ID)
 		if err != nil {
 			return "", nil
 		}
+		imageWithSteps = digest.Digest(id.ID)
 	}
 
 	return imageWithSteps, nil
