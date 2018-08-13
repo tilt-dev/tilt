@@ -191,7 +191,6 @@ func TestBuildOneStep(t *testing.T) {
 }
 
 func TestBuildMultipleSteps(t *testing.T) {
-	t.Skip("Fails atm")
 	f := newTestFixture(t)
 	defer f.teardown()
 	baseDockerFile := "FROM alpine"
@@ -210,7 +209,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 
 	contents := []pathContent{
 		pathContent{path: "hi", contents: "hello"},
-		pathContent{path: "sup", contents: "hi2"},
+		pathContent{path: "hi2", contents: "sup"},
 	}
 	f.assertFilesInImageWithContents(string(tag), contents)
 }
