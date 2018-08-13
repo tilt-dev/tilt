@@ -2,12 +2,13 @@ package tiltfile
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func tempFile(content string) string {
@@ -47,8 +48,8 @@ func TestGetServiceConfig(t *testing.T) {
 	assert.Equal(t, "/mount_points/1", serviceConfig.Mounts[0].ContainerPath)
 	assert.Equal(t, ".", serviceConfig.Mounts[0].Repo.GetGitRepo().LocalPath)
 	assert.Equal(t, 2, len(serviceConfig.Steps))
-	assert.Equal(t, []string{"bash", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
-	assert.Equal(t, []string{"bash", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
 }
 
 func TestGetServiceConfigMissingDockerFile(t *testing.T) {
@@ -190,6 +191,6 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
 	assert.Equal(t, "yaaaaaaaaml\n", serviceConfig.K8SYaml)
 	assert.Equal(t, 2, len(serviceConfig.Steps))
-	assert.Equal(t, []string{"bash", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
-	assert.Equal(t, []string{"bash", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
 }

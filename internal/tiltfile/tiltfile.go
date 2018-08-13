@@ -3,10 +3,11 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
-	"github.com/google/skylark"
-	"github.com/windmilleng/tilt/internal/proto"
 	"io/ioutil"
 	"os/exec"
+
+	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/proto"
 )
 
 type Tiltfile struct {
@@ -52,7 +53,7 @@ func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple
 		return nil, err
 	}
 
-	out, err := exec.Command("bash", "-c", command).Output()
+	out, err := exec.Command("sh", "-c", command).Output()
 	if err != nil {
 		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", command, err, string(out))
 		exitError, ok := err.(*exec.ExitError)
@@ -72,7 +73,7 @@ func Load(filename string) (*Tiltfile, error) {
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
-		"git_repo":			  skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
+		"git_repo":           skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
 	}
 
@@ -141,7 +142,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 
 	dockerCmds := make([]*proto.Cmd, 0, len(service.dockerImage.cmds))
 	for _, cmd := range service.dockerImage.cmds {
-		dockerCmds = append(dockerCmds, &proto.Cmd{Argv: []string{"bash", "-c", cmd}})
+		dockerCmds = append(dockerCmds, &proto.Cmd{Argv: []string{"sh", "-c", cmd}})
 	}
 
 	return &proto.Service{K8SYaml: k8sYaml, DockerfileText: dockerFileText, Mounts: mounts, Steps: dockerCmds, DockerfileTag: dockerFileTag}, nil
