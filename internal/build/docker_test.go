@@ -1,6 +1,7 @@
 package build
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -30,7 +32,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 `
 
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := getDigestFromOutput(input)
+	actual, err := getDigestFromOutput(bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +145,7 @@ func TestPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name := "localhost:5000/myimage"
+	name := "localhost:5005/myimage"
 	err = f.b.PushDocker(context.Background(), name, digest)
 	if err != nil {
 		t.Fatal(err)
@@ -155,6 +157,27 @@ func TestPush(t *testing.T) {
 	}
 
 	f.assertFilesInImageWithContents(fmt.Sprintf("%s:%s", name, pushTag), pcs)
+}
+
+func TestPushInvalid(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	m := Mount{
+		Repo:          LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m}, []Cmd{}, Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := "localhost:6666/myimage"
+	err = f.b.PushDocker(context.Background(), name, digest)
+	if err == nil || !strings.Contains(err.Error(), "PushDocker#ImagePush") {
+		t.Fatal(err)
+	}
 }
 
 func TestBuildOneStep(t *testing.T) {
@@ -261,16 +284,34 @@ func (f *testFixture) teardown() {
 
 		// ignore the error. we expect it to be killed
 		_ = f.registry.Wait()
+
+		_ = exec.Command("docker", "kill", "tilt-registry").Run()
+		_ = exec.Command("docker", "rm", "tilt-registry").Run()
 	}
 	f.repo.TearDown()
 }
 
 func (f *testFixture) startRegistry() {
-	f.registry = exec.Command("docker", "run", "-p", "5005:5000", "registry:2")
-	err := f.registry.Start()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd := exec.Command("docker", "run", "--name", "tilt-registry", "-p", "5005:5000", "registry:2")
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	f.registry = cmd
+
+	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)
 	}
+
+	// Wait until the registry starts
+	start := time.Now()
+	for time.Since(start) < 5*time.Second {
+		if strings.Contains(stdout.String(), "listening on") {
+			return
+		}
+	}
+	f.t.Fatalf("Timed out waiting for registry to start. Output:\n%s\n%s", stdout.String(), stderr.String())
 }
 
 func (f *testFixture) writeFile(pathInRepo string, contents string) {
