@@ -29,18 +29,27 @@ type Mount struct {
 	ContainerPath string
 }
 
-type Repo interface{}
+type Repo interface {
+	IsRepo()
+}
 
 type LocalGithubRepo struct {
 	LocalPath string
 }
 
+func (LocalGithubRepo) IsRepo() {}
+
 type Cmd struct {
-	argv []string
+	Argv []string
 }
 
 type localDockerBuilder struct {
 	dcli *client.Client
+}
+
+type Builder interface {
+	BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd) (digest.Digest, error)
+	PushDocker(ctx context.Context, name string, dig digest.Digest) error
 }
 
 func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
@@ -142,7 +151,7 @@ func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest di
 	for _, s := range steps {
 		resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
 			Image: string(imageWithSteps),
-			Cmd:   s.argv,
+			Cmd:   s.Argv,
 		}, nil, nil, "")
 		if err != nil {
 			return "", nil
