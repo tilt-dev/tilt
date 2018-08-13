@@ -174,7 +174,7 @@ func TestBuildOneStep(t *testing.T) {
 	baseDockerFile := "FROM alpine"
 
 	steps := []Cmd{
-		Cmd{argv: []string{"sh", "-c", "echo hello >> hi"}},
+		Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
 	}
 
 	builder := f.newBuilderForTesting()
@@ -196,8 +196,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 	baseDockerFile := "FROM alpine"
 
 	steps := []Cmd{
-		Cmd{argv: []string{"sh", "-c", "echo hello >> hi"}},
-		Cmd{argv: []string{"sh", "-c", "echo sup >> hi2"}},
+		Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
+		Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
 	}
 
 	builder := f.newBuilderForTesting()

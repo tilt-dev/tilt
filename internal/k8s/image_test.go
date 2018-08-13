@@ -49,7 +49,7 @@ func TestInjectDigestSanchoYAML(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]k8sEntity{newEntity})
+	result, err := SerializeYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
