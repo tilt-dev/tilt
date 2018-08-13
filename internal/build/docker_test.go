@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -51,9 +53,8 @@ func TestMount(t *testing.T) {
 	}
 
 	builder := f.newBuilderForTesting()
-	imageTag := strings.ToLower(f.t.Name())
 
-	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{}, imageTag)
+	digest, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestMount(t *testing.T) {
 		pathContent{path: "/src/hi/hello", contents: "hi hello"},
 		pathContent{path: "/src/sup", contents: "my name is dan"},
 	}
-	f.assertFilesInImageWithContents(tag, pcs)
+	f.assertFilesInImageWithContents(string(digest), pcs)
 }
 
 func TestMultipleMounts(t *testing.T) {
@@ -84,9 +85,8 @@ func TestMultipleMounts(t *testing.T) {
 	}
 
 	builder := f.newBuilderForTesting()
-	imageTag := strings.ToLower(f.t.Name())
 
-	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{}, imageTag)
+	digest, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestMultipleMounts(t *testing.T) {
 		pathContent{path: "/hello_there/hello", contents: "hi hello"},
 		pathContent{path: "/goodbye_there/ciao/goodbye", contents: "bye laterz"},
 	}
-	f.assertFilesInImageWithContents(tag, pcs)
+	f.assertFilesInImageWithContents(string(digest), pcs)
 }
 
 func TestMountCollisions(t *testing.T) {
@@ -119,9 +119,7 @@ func TestMountCollisions(t *testing.T) {
 	}
 
 	builder := f.newBuilderForTesting()
-	imageTag := strings.ToLower(f.t.Name())
-
-	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{}, imageTag)
+	digest, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m1, m2}, []Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +127,45 @@ func TestMountCollisions(t *testing.T) {
 	pcs := []pathContent{
 		pathContent{path: "/hello_there/hello", contents: "bye laterz"},
 	}
-	f.assertFilesInImageWithContents(tag, pcs)
+	f.assertFilesInImageWithContents(string(digest), pcs)
+}
+
+func TestPush(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	f.startRegistry()
+
+	baseDockerFile := "FROM alpine"
+
+	// write some files in to it
+	f.writeFile("hi/hello", "hi hello")
+	f.writeFile("sup", "my name is dan")
+
+	m := Mount{
+		Repo:          LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+
+	builder := f.newBuilderForTesting()
+
+	digest, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{m}, []Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := "localhost:5000/myimage"
+	err = builder.PushDocker(context.Background(), name, digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []pathContent{
+		pathContent{path: "/src/hi/hello", contents: "hi hello"},
+		pathContent{path: "/src/sup", contents: "my name is dan"},
+	}
+
+	f.assertFilesInImageWithContents(fmt.Sprintf("%s:%s", name, pushTag), pcs)
 }
 
 func TestBuildOneStep(t *testing.T) {
@@ -142,23 +178,23 @@ func TestBuildOneStep(t *testing.T) {
 	}
 
 	builder := f.newBuilderForTesting()
-	imageTag := strings.ToLower(f.t.Name())
 
-	tag, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{}, steps, imageTag)
+	digest, err := builder.BuildDocker(context.Background(), baseDockerFile, []Mount{}, steps)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f.assertFileInImage(tag, "hi")
+	f.assertFileInImage(string(digest), "hi")
 }
 
 // TODO(maia): test mount err cases
 // TODO(maia): tests for tar code
 
 type testFixture struct {
-	t    *testing.T
-	repo *temp.TempDir
-	dcli *client.Client
+	t        *testing.T
+	repo     *temp.TempDir
+	dcli     *client.Client
+	registry *exec.Cmd
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -188,7 +224,26 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) teardown() {
+	if f.registry != nil {
+		go func() {
+			err := f.registry.Process.Kill()
+			if err != nil {
+				log.Printf("killing the registry failed: %v\n", err)
+			}
+		}()
+
+		// ignore the error. we expect it to be killed
+		_ = f.registry.Wait()
+	}
 	f.repo.TearDown()
+}
+
+func (f *testFixture) startRegistry() {
+	f.registry = exec.Command("docker", "run", "-p", "5005:5000", "registry:2")
+	err := f.registry.Start()
+	if err != nil {
+		f.t.Fatal(err)
+	}
 }
 
 func (f *testFixture) writeFile(pathInRepo string, contents string) {
@@ -213,11 +268,11 @@ type pathContent struct {
 	contents string
 }
 
-func (f *testFixture) assertFileInImage(tag digest.Digest, path string) {
+func (f *testFixture) assertFileInImage(ref string, path string) {
 	ctx := context.Background()
 
 	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
-		Image: string(tag),
+		Image: ref,
 		Cmd:   []string{"cat", path},
 		Tty:   true,
 	}, nil, nil, "")
@@ -253,7 +308,7 @@ func (f *testFixture) assertFileInImage(tag digest.Digest, path string) {
 	}
 }
 
-func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents []pathContent) {
+func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {
 	ctx := context.Background()
 	var cmd strings.Builder
 	for _, c := range contents {
@@ -265,7 +320,7 @@ func (f *testFixture) assertFilesInImageWithContents(tag digest.Digest, contents
 	}
 
 	resp, err := f.dcli.ContainerCreate(ctx, &container.Config{
-		Image: string(tag),
+		Image: ref,
 		Cmd:   []string{"sh", "-c", cmd.String()},
 		Tty:   true,
 	}, nil, nil, "")
