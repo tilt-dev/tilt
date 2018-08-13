@@ -1,0 +1,18 @@
+FROM golang:1.10
+
+RUN apt update && apt install unzip
+
+ENV PROTOC_VERSION 3.5.1
+
+RUN wget https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+  unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d protoc && \
+  mv protoc/bin/protoc /usr/bin/protoc
+
+RUN go get github.com/golang/protobuf/protoc-gen-go
+
+ADD internal/proto /go/src/github.com/windmilleng/tilt/internal/proto
+
+WORKDIR /go/src/github.com/windmilleng/tilt
+
+RUN protoc --go_out=plugins=grpc:../../../ -I. internal/proto/*.proto
+
