@@ -2,6 +2,7 @@ package tiltd_server
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -44,17 +45,35 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 		return err
 	}
 
-	_, err = k8s.ParseYAMLFromString(k8sYaml)
+	entities, err := k8s.ParseYAMLFromString(k8sYaml)
 	if err != nil {
 		return err
 	}
 
-	// TODO(dmiller): not sure how to use this API
-	// newK8s, replaced, err := k8s.InjectImageDigest(k8sEntity[0], dockerfileTag, digest)
-	// if err != nil {
-	// 	return err
-	// }
-	return k8s.Apply(ctx, k8sYaml)
+	didReplace := false
+	newK8sEntities := []k8s.K8sEntity{}
+	for _, e := range entities {
+		newK8s, replaced, err := k8s.InjectImageDigestWithStrings(e, dockerfileTag, string(digest))
+		if err != nil {
+			return err
+		}
+		if replaced {
+			didReplace = true
+		}
+		newK8sEntities = append(newK8sEntities, newK8s)
+	}
+
+	if !didReplace {
+		return fmt.Errorf("Expected to find a matching k8s config to replace, but didn't")
+	}
+
+	newYAMLString, err := k8s.SerializeYAML(newK8sEntities)
+	if err != nil {
+		return err
+	}
+
+	return k8s.Apply(ctx, newYAMLString)
+
 }
 
 func RunDaemon(ctx context.Context) (*os.Process, error) {

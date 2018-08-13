@@ -12,21 +12,21 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-type k8sEntity struct {
+type K8sEntity struct {
 	Obj  runtime.Object
 	Kind *schema.GroupVersionKind
 }
 
-func ParseYAMLFromString(yaml string) ([]k8sEntity, error) {
+func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 	buf := bytes.NewBuffer([]byte(yaml))
 	return ParseYAML(buf)
 }
 
-func ParseYAML(k8sYaml io.Reader) ([]k8sEntity, error) {
+func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 	reader := bufio.NewReader(k8sYaml)
 	yamlReader := yaml.NewYAMLReader(reader)
 
-	result := make([]k8sEntity, 0)
+	result := make([]K8sEntity, 0)
 	for true {
 		yamlPart, err := yamlReader.Read()
 		if err != nil && err != io.EOF {
@@ -43,7 +43,7 @@ func ParseYAML(k8sYaml io.Reader) ([]k8sEntity, error) {
 			return nil, err
 		}
 
-		result = append(result, k8sEntity{
+		result = append(result, K8sEntity{
 			Obj:  obj,
 			Kind: groupVersionKind,
 		})
@@ -52,7 +52,7 @@ func ParseYAML(k8sYaml io.Reader) ([]k8sEntity, error) {
 	return nil, nil
 }
 
-func SerializeYAML(decoded []k8sEntity) (string, error) {
+func SerializeYAML(decoded []K8sEntity) (string, error) {
 	yamlSerializer := json.NewYAMLSerializer(json.DefaultMetaFactory, scheme.Scheme, scheme.Scheme)
 	buf := bytes.NewBuffer(nil)
 	for i, obj := range decoded {

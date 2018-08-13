@@ -10,15 +10,15 @@ import (
 )
 
 // Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigestWithStrings(entity k8sEntity, original string, newDigest string) (k8sEntity, bool, error) {
+func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string) (K8sEntity, bool, error) {
 	originalRef, err := reference.ParseNamed(original)
 	if err != nil {
-		return k8sEntity{}, false, err
+		return K8sEntity{}, false, err
 	}
 
 	d, err := digest.Parse(newDigest)
 	if err != nil {
-		return k8sEntity{}, false, err
+		return K8sEntity{}, false, err
 	}
 
 	return InjectImageDigest(entity, originalRef, d)
@@ -28,22 +28,22 @@ func InjectImageDigestWithStrings(entity k8sEntity, original string, newDigest s
 // replace a image name with its digest.
 //
 // Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigest(entity k8sEntity, originalRef reference.Named, digest digest.Digest) (k8sEntity, bool, error) {
+func InjectImageDigest(entity K8sEntity, originalRef reference.Named, digest digest.Digest) (K8sEntity, bool, error) {
 	newRef, err := reference.WithDigest(originalRef, digest)
 	if err != nil {
-		return k8sEntity{}, false, err
+		return K8sEntity{}, false, err
 	}
 
 	containers, err := extractContainers(&entity)
 	if err != nil {
-		return k8sEntity{}, false, err
+		return K8sEntity{}, false, err
 	}
 
 	replaced := false
 	for _, container := range containers {
 		existingRef, err := reference.ParseNamed(container.Image)
 		if err != nil {
-			return k8sEntity{}, false, err
+			return K8sEntity{}, false, err
 		}
 
 		if existingRef.Name() == originalRef.Name() {
