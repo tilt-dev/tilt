@@ -48,24 +48,31 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd) (digest.Digest, error)
+	BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd, entrypoint Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name string, dig digest.Digest) error
 }
+
+var _ Builder = &localDockerBuilder{}
 
 func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 	return &localDockerBuilder{cli}
 }
 
 // NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []Mount, steps []Cmd, entrypoint Cmd) (digest.Digest, error) {
 	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, mounts)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("buildBaseWithMounts: %v", err)
 	}
 
 	newDigest, err := l.execStepsOnImage(ctx, baseDigest, steps)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("execStepsOnImage: %v", err)
+	}
+
+	newDigest, err = l.imageWithEntrypoint(ctx, newDigest, entrypoint)
+	if err != nil {
+		return "", fmt.Errorf("imageWithEntrypoint: %v", err)
 	}
 
 	return newDigest, nil
@@ -147,39 +154,53 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 }
 
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
-	imageWithSteps := baseDigest
+	imageWithSteps := string(baseDigest)
 	for _, s := range steps {
-		resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
-			Image: string(imageWithSteps),
-			Cmd:   s.Argv,
-		}, nil, nil, "")
+		cId, err := l.startContainer(ctx, imageWithSteps, s)
+
+		id, err := l.dcli.ContainerCommit(ctx, cId, types.ContainerCommitOptions{})
 		if err != nil {
 			return "", nil
 		}
-		containerID := resp.ID
+		imageWithSteps = id.ID
+	}
 
-		err = l.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	return digest.Digest(imageWithSteps), nil
+}
+
+// TODO(maia): can probs do this in a more efficient place -- e.g. `execStepsOnImage`
+// already spins up + commits a container, maybe piggyback off that?
+func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, digest digest.Digest, entrypoint Cmd) (digest.Digest, error) {
+	return digest, nil
+}
+
+// startContainer starts a container from the given image ref, exec'ing the given command.
+// Returns the container id iff the container successfully starts up; else, error.
+func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, cmd Cmd) (cId string, err error) {
+	resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
+		Image: imgRef,
+		Cmd:   cmd.Argv,
+	}, nil, nil, "")
+	if err != nil {
+		return "", nil
+	}
+	containerID := resp.ID
+
+	err = l.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
 		if err != nil {
 			return "", err
 		}
-
-		statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
-		select {
-		case err := <-errCh:
-			if err != nil {
-				return "", err
-			}
-		case <-statusCh:
-		}
-
-		id, err := l.dcli.ContainerCommit(ctx, containerID, types.ContainerCommitOptions{})
-		if err != nil {
-			return "", nil
-		}
-		imageWithSteps = digest.Digest(id.ID)
+	case <-statusCh:
 	}
 
-	return imageWithSteps, nil
+	return containerID, nil
 }
 
 // tarContext amends the dockerfile with appropriate ADD statements,
@@ -296,7 +317,7 @@ func getDigestFromOutput(output string) (digest.Digest, error) {
 	re := regexp.MustCompile(`{"aux":{"ID":"([[:alnum:]:]+)"}}`)
 	res := re.FindStringSubmatch(output)
 	if len(res) != 2 {
-		return "", fmt.Errorf("Digest not found in output: %s", output)
+		return "", fmt.Errorf("digest not found in output: %s", output)
 	}
 
 	d, err := digest.Parse(res[1])
