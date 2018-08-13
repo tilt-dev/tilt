@@ -43,6 +43,12 @@ type Cmd struct {
 	Argv []string
 }
 
+// entrypointStr returns the Cmd in string form for use as an entrypoint,
+// e.g. 'ENTRYPOINT ["executable", "param1", "param2"]'
+func (c Cmd) entrypointStr() string {
+	return fmt.Sprintf("ENTRYPOINT [\"%s\"]", strings.Join(c.Argv, "\", \""))
+}
+
 type localDockerBuilder struct {
 	dcli *client.Client
 }
@@ -156,7 +162,7 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
 	imageWithSteps := string(baseDigest)
 	for _, s := range steps {
-		cId, err := l.startContainer(ctx, imageWithSteps, s)
+		cId, err := l.startContainer(ctx, imageWithSteps, &s)
 
 		id, err := l.dcli.ContainerCommit(ctx, cId, types.ContainerCommitOptions{})
 		if err != nil {
@@ -170,17 +176,29 @@ func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest di
 
 // TODO(maia): can probs do this in a more efficient place -- e.g. `execStepsOnImage`
 // already spins up + commits a container, maybe piggyback off that?
-func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, digest digest.Digest, entrypoint Cmd) (digest.Digest, error) {
-	return digest, nil
+func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, d digest.Digest, entrypoint Cmd) (digest.Digest, error) {
+	cId, err := l.startContainer(ctx, string(d), nil)
+
+	opts := types.ContainerCommitOptions{
+		Changes: []string{entrypoint.entrypointStr()},
+	}
+
+	id, err := l.dcli.ContainerCommit(ctx, cId, opts)
+	if err != nil {
+		return "", nil
+	}
+
+	return digest.Digest(id.ID), nil
 }
 
-// startContainer starts a container from the given image ref, exec'ing the given command.
+// startContainer starts a container from the given image ref, exec'ing a command if given.
 // Returns the container id iff the container successfully starts up; else, error.
-func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, cmd Cmd) (cId string, err error) {
-	resp, err := l.dcli.ContainerCreate(ctx, &container.Config{
-		Image: imgRef,
-		Cmd:   cmd.Argv,
-	}, nil, nil, "")
+func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, cmd *Cmd) (cId string, err error) {
+	config := &container.Config{Image: imgRef}
+	if cmd != nil {
+		config.Cmd = cmd.Argv
+	}
+	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		return "", nil
 	}
