@@ -185,7 +185,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 		Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
 	}
 
-	tag, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, steps, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, steps, Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,22 @@ func TestBuildMultipleSteps(t *testing.T) {
 		pathContent{path: "hi", contents: "hello"},
 		pathContent{path: "hi2", contents: "sup"},
 	}
-	f.assertFilesInImageWithContents(string(tag), contents)
+	f.assertFilesInImageWithContents(string(digest), contents)
+}
+
+func TestEntrypoint(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+	entrypoint := Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}}
+	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, []Cmd{}, entrypoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contents := []pathContent{
+		pathContent{path: "hi", contents: "hello"},
+	}
+	f.assertFilesInImageWithContents(string(d), contents)
 }
 
 // TODO(maia): test mount err cases
@@ -288,7 +303,7 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 	}
 	cmdToRun := Cmd{Argv: []string{"sh", "-c", cmd.String()}}
 
-	cId, err := f.b.startContainer(ctx, ref, cmdToRun)
+	cId, err := f.b.startContainer(ctx, ref, &cmdToRun)
 	if err != nil {
 		f.t.Fatal(err)
 	}
