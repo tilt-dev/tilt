@@ -16,3 +16,6 @@ test:
 
 ensure:
 	dep ensure
+
+verify_gofmt:
+	bash -c 'diff <(go fmt ./...) <(echo -n)'

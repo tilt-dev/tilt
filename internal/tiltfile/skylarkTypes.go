@@ -41,13 +41,13 @@ func (k8sService) Hash() (uint32, error) {
 
 type mount struct {
 	mountPoint string
-	repo gitRepo
+	repo       gitRepo
 }
 
 type dockerImage struct {
 	fileName skylark.String
 	fileTag  skylark.String
-	mounts	 []mount
+	mounts   []mount
 	cmds     []string
 }
 
