@@ -64,7 +64,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 	}
 
 	if !didReplace {
-		return fmt.Errorf("Expected to find a matching k8s config to replace, but didn't")
+		return fmt.Errorf("Docker image missing from yaml: %s", dockerfileTag)
 	}
 
 	newYAMLString, err := k8s.SerializeYAML(newK8sEntities)
