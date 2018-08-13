@@ -4,19 +4,21 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -103,14 +105,21 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, name string, dig di
 		return fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
-	outputIO, err := l.dcli.ImagePush(
+	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
 		tag.String(),
 		types.ImagePushOptions{RegistryAuth: "{}"})
 	if err != nil {
 		return fmt.Errorf("PushDocker#ImagePush: %v", err)
 	}
-	return outputIO.Close()
+
+	defer imagePushResponse.Close()
+	_, err = readDockerOutput(imagePushResponse)
+	if err != nil {
+		return fmt.Errorf("PushDocker#ImagePush: %v", err)
+	}
+
+	return nil
 }
 
 func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []Mount) (digest.Digest, error) {
@@ -138,19 +147,17 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 			Dockerfile: "Dockerfile",
 			Remove:     shouldRemoveImage(),
 		})
-
 	if err != nil {
 		return "", err
 	}
 
 	defer imageBuildResponse.Body.Close()
-	output := &strings.Builder{}
-	_, err = io.Copy(output, imageBuildResponse.Body)
+	result, err := readDockerOutput(imageBuildResponse.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("ImageBuild: %v", err)
 	}
 
-	return getDigestFromOutput(output.String())
+	return getDigestFromAux(*result)
 }
 
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []Cmd) (digest.Digest, error) {
@@ -313,19 +320,63 @@ func tarPath(tarWriter *tar.Writer, source, dest string) error {
 	})
 }
 
-func getDigestFromOutput(output string) (digest.Digest, error) {
-	re := regexp.MustCompile(`{"aux":{"ID":"([[:alnum:]:]+)"}}`)
-	res := re.FindStringSubmatch(output)
-	if len(res) != 2 {
-		return "", fmt.Errorf("digest not found in output: %s", output)
-	}
+// Docker API commands stream back a sequence of JSON messages.
+//
+// The result of the command is in a JSON object with field "aux".
+//
+// Errors are reported in a JSON object with field "errorDetail"
+//
+// NOTE(nick): I haven't found a good document describing this protocol
+// but you can find it implemented in Docker here:
+// https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
+func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
+	var result *json.RawMessage
+	decoder := json.NewDecoder(reader)
+	for decoder.More() {
+		message := jsonmessage.JSONMessage{}
+		err := decoder.Decode(&message)
+		if err != nil {
+			return nil, fmt.Errorf("decoding docker output: %v", err)
+		}
 
-	d, err := digest.Parse(res[1])
+		if message.ErrorMessage != "" {
+			return nil, errors.New(message.ErrorMessage)
+		}
+
+		if message.Error != nil {
+			return nil, errors.New(message.Error.Message)
+		}
+
+		if message.Aux != nil {
+			result = message.Aux
+		}
+	}
+	return result, nil
+}
+
+func getDigestFromOutput(reader io.Reader) (digest.Digest, error) {
+	aux, err := readDockerOutput(reader)
 	if err != nil {
-		return "", fmt.Errorf("getDigestFromOutput: %v", err)
+		return "", err
+	}
+	if aux == nil {
+		return "", fmt.Errorf("getDigestFromOutput: No results found in docker output")
+	}
+	return getDigestFromAux(*aux)
+}
+
+func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
+	digestMap := make(map[string]string, 0)
+	err := json.Unmarshal(aux, &digestMap)
+	if err != nil {
+		return "", fmt.Errorf("getDigestFromAux: %v", err)
 	}
 
-	return d, nil
+	id, ok := digestMap["ID"]
+	if !ok {
+		return "", fmt.Errorf("getDigestFromAux: ID not found")
+	}
+	return digest.Digest(id), nil
 }
 
 func shouldRemoveImage() bool {
