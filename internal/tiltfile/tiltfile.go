@@ -72,7 +72,7 @@ func Load(filename string) (*Tiltfile, error) {
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
-		"git_repo":			  skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
+		"git_repo":           skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
 	}
 
