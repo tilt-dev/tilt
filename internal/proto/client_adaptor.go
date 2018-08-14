@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"io"
 )
 
 type Client struct {
@@ -16,8 +17,28 @@ func NewGRPCClient(conn *grpc.ClientConn) *Client {
 }
 
 func (c *Client) CreateService(ctx context.Context, service Service) error {
-	_, err := c.del.CreateService(ctx, &service)
-	return err
+	stream, err := c.del.CreateService(ctx, &service)
+	if err != nil {
+		return err
+	}
+
+	for {
+		reply, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		output := reply.GetOutput()
+		if output != nil {
+			err := printOutput(*reply.Output)
+			if err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func (c *Client) Close() error {
