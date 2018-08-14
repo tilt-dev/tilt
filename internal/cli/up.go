@@ -30,7 +30,12 @@ func foo(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer proc.Kill()
+	defer func() {
+		err := proc.Kill()
+		if err != nil {
+			log.Fatalf("failed to shut down daemon: %v", err)
+		}
+	}()
 
 	dCli, err := tiltd_client.NewDaemonClient()
 	if err != nil {
