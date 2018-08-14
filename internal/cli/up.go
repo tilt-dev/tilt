@@ -2,11 +2,13 @@ package cli
 
 import (
 	"context"
-
+	"errors"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log"
 )
 
@@ -52,8 +54,9 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	err = dCli.CreateService(ctx, *service)
-	if err != nil {
-		return err
+	s, ok := status.FromError(err)
+	if ok && s.Code() == codes.Unknown {
+		return errors.New(s.Message())
 	}
 
 	return nil

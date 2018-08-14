@@ -29,8 +29,15 @@ type tiltCmd interface {
 
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
-	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
-		return child.run(args)
+	cobraChild.Run = func(_ *cobra.Command, args []string) {
+		err := child.run(args)
+		if err != nil {
+			_, err := fmt.Fprintf(os.Stderr, "Error: %v", err)
+			if err != nil {
+				panic(err)
+			}
+			os.Exit(1)
+		}
 	}
 
 	parent.AddCommand(cobraChild)
