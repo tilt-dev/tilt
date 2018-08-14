@@ -17,12 +17,16 @@ type Tiltfile struct {
 }
 
 func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerfileName, dockerfileTag skylark.String
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "docker_file_name", &dockerfileName, "docker_file_tag", &dockerfileTag)
+	var dockerfileName, entrypoint, dockerfileTag skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+		"docker_file_name", &dockerfileName,
+		"docker_file_tag", &dockerfileTag,
+		"entrypoint", &entrypoint,
+	)
 	if err != nil {
 		return nil, err
 	}
-	return &dockerImage{dockerfileName, dockerfileTag, []mount{}, []string{}}, nil
+	return &dockerImage{dockerfileName, dockerfileTag, []mount{}, []string{}, entrypoint}, nil
 }
 
 func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -95,11 +99,11 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 	serviceFunction, ok := f.(*skylark.Function)
 
 	if !ok {
-		return nil, fmt.Errorf("'%v' is a '%v', not a function. service definitions must be functions.", serviceName, f.Type())
+		return nil, fmt.Errorf("'%v' is a '%v', not a function. service definitions must be functions", serviceName, f.Type())
 	}
 
 	if serviceFunction.NumParams() != 0 {
-		return nil, fmt.Errorf("'%v' is defined to take more than 0 arguments. service definitions must take 0 arguments.", serviceName)
+		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", serviceName)
 	}
 
 	val, err := serviceFunction.Call(tiltfile.thread, nil, nil)
@@ -109,7 +113,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 
 	service, ok := val.(k8sService)
 	if !ok {
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service.", serviceName, val.Type())
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service", serviceName, val.Type())
 	}
 
 	k8sYaml, ok := skylark.AsString(service.k8sYaml)
@@ -134,6 +138,12 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		return nil, fmt.Errorf("internal error: k8sService.dockerFileTag was not a string in '%v'", service)
 	}
 
+	entrypoint, ok := skylark.AsString(service.dockerImage.entrypoint)
+	if !ok {
+		return nil, fmt.Errorf("internal error: k8sService.entrypoint was not a string in '%v'", service)
+	}
+	entrypointCmd := toBashCmd(entrypoint)
+
 	mounts := make([]*proto.Mount, 0, len(service.dockerImage.mounts))
 	for _, mount := range service.dockerImage.mounts {
 		repo := proto.Repo{RepoType: &proto.Repo_GitRepo{GitRepo: &proto.GitRepo{LocalPath: mount.repo.path}}}
@@ -142,8 +152,14 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 
 	dockerCmds := make([]*proto.Cmd, 0, len(service.dockerImage.cmds))
 	for _, cmd := range service.dockerImage.cmds {
-		dockerCmds = append(dockerCmds, &proto.Cmd{Argv: []string{"sh", "-c", cmd}})
+		dockerCmds = append(dockerCmds, toBashCmd(cmd))
 	}
 
-	return &proto.Service{K8SYaml: k8sYaml, DockerfileText: dockerFileText, Mounts: mounts, Steps: dockerCmds, DockerfileTag: dockerFileTag}, nil
+	return &proto.Service{K8SYaml: k8sYaml, DockerfileText: dockerFileText,
+		Mounts: mounts, Steps: dockerCmds, Entrypoint: entrypointCmd,
+		DockerfileTag: dockerFileTag}, nil
+}
+
+func toBashCmd(cmd string) *proto.Cmd {
+	return &proto.Cmd{Argv: []string{"sh", "-c", cmd}}
 }

@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+
 	"github.com/google/skylark"
 )
 
@@ -45,10 +46,11 @@ type mount struct {
 }
 
 type dockerImage struct {
-	fileName skylark.String
-	fileTag  skylark.String
-	mounts   []mount
-	cmds     []string
+	fileName   skylark.String
+	fileTag    skylark.String
+	mounts     []mount
+	cmds       []string
+	entrypoint skylark.String
 }
 
 var _ skylark.Value = &dockerImage{}

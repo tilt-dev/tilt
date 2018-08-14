@@ -291,6 +291,22 @@ type pathContent struct {
 	contents string
 }
 
+func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd *Cmd) string {
+	cId, err := f.b.startContainer(ctx, ref, cmd)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	out, err := f.dcli.ContainerLogs(ctx, cId, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	output := &strings.Builder{}
+	io.Copy(output, out)
+	return output.String()
+}
+
 func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {
 	ctx := context.Background()
 	var cmd strings.Builder
@@ -303,19 +319,9 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 	}
 	cmdToRun := Cmd{Argv: []string{"sh", "-c", cmd.String()}}
 
-	cId, err := f.b.startContainer(ctx, ref, &cmdToRun)
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	output := f.startContainerWithOutput(ctx, ref, &cmdToRun)
 
-	out, err := f.dcli.ContainerLogs(ctx, cId, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	output := &strings.Builder{}
-	io.Copy(output, out)
-
-	if strings.Contains(output.String(), "ERROR:") {
+	if strings.Contains(output, "ERROR:") {
 		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
 	}
 }

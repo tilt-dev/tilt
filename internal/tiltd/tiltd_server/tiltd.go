@@ -35,9 +35,9 @@ func NewDaemon() (*Daemon, error) {
 	return &Daemon{b: b}, nil
 }
 
-func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []build.Mount, steps []build.Cmd, dockerfileTag string) error {
-	// TODO(maia): a real entrypoint here
-	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, build.Cmd{})
+func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []build.Mount,
+	steps []build.Cmd, entrypoint build.Cmd, dockerfileTag string) error {
+	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, entrypoint)
 	if err != nil {
 		return err
 	}

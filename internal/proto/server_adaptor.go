@@ -17,7 +17,7 @@ func NewGRPCServer(del tiltd.TiltD) *GRPCServer {
 var _ DaemonServer = &GRPCServer{}
 
 func (s *GRPCServer) CreateService(ctx context.Context, service *Service) (*CreateServiceReply, error) {
-	return &CreateServiceReply{}, s.del.CreateService(ctx, service.K8SYaml, service.DockerfileText, mountsP2D(service.Mounts), cmdsP2D(service.Steps), service.DockerfileTag)
+	return &CreateServiceReply{}, s.del.CreateService(ctx, service.K8SYaml, service.DockerfileText, mountsP2D(service.Mounts), cmdsP2D(service.Steps), cmdP2D(service.Entrypoint), service.DockerfileTag)
 }
 
 func mountsP2D(mounts []*Mount) []build.Mount {
