@@ -164,12 +164,12 @@ func TestPushInvalid(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	m := Mount{
-		Repo:          LocalGithubRepo{LocalPath: f.repo.Path()},
+	m := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: f.repo.Path()},
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{m}, []tiltd.Cmd{}, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
