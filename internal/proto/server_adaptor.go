@@ -2,6 +2,7 @@ package proto
 
 import (
 	"github.com/windmilleng/tilt/internal/tiltd"
+	context "golang.org/x/net/context"
 )
 
 type GRPCServer struct {
@@ -26,6 +27,11 @@ func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServe
 		service.DockerfileTag, outputStream.stdout, outputStream.stderr)
 
 	return err
+}
+
+func (s *GRPCServer) SetDebug(ctx context.Context, debug *Debug) (*DebugReply, error) {
+	s.del.SetDebug(ctx, debug.Mode)
+	return &DebugReply{}, nil
 }
 
 func mountsP2D(mounts []*Mount) []tiltd.Mount {
