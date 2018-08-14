@@ -3,6 +3,7 @@ package tiltd_server
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -35,8 +36,7 @@ func NewDaemon() (*Daemon, error) {
 	return &Daemon{b: b}, nil
 }
 
-func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []build.Mount,
-	steps []build.Cmd, entrypoint build.Cmd, dockerfileTag string) error {
+func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd, dockerfileTag string, stdout io.Writer, stderr io.Writer) error {
 	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, entrypoint)
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 		return err
 	}
 
-	return k8s.Apply(ctx, newYAMLString)
+	return k8s.Apply(ctx, newYAMLString, stdout, stderr)
 
 }
 
