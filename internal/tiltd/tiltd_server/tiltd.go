@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/debug"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltd"
 )
@@ -36,7 +37,7 @@ func NewDaemon() (*Daemon, error) {
 }
 
 func (d *Daemon) SetDebug(ctx context.Context, mode bool) {
-	fmt.Println(mode)
+	debug.SetDebugMode(mode)
 }
 
 func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, dockerfileTag string) error {

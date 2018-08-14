@@ -7,9 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var debug bool
-
 func Execute() {
+
+	var debug bool
+
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
 		Short: "tilt is great, yo",
