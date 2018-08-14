@@ -9,7 +9,8 @@ import (
 const Port = 10000
 
 type TiltD interface {
-	CreateService(ctx context.Context, k8sYaml string, dockerFileText string, mounts []Mount, steps []Cmd, dockerfileTag string) error
+	CreateService(ctx context.Context, k8sYaml string, dockerFileText string, mounts []Mount,
+		steps []Cmd, entryfile Cmd, dockerfileTag string, stdout io.Writer, stderr io.Writer) error
 	SetDebug(ctx context.Context, mode bool)
 }
 

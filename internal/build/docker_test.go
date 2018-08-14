@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -334,6 +333,30 @@ type pathContent struct {
 	contents string
 }
 
+func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd *tiltd.Cmd) string {
+	cId, err := f.b.startContainer(ctx, ref, cmd)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	out, err := f.dcli.ContainerLogs(ctx, cId, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	defer func() {
+		err := out.Close()
+		if err != nil {
+			f.t.Fatal("closing container logs reader:", err)
+		}
+	}()
+
+	output, err := ioutil.ReadAll(out)
+	if err != nil {
+		f.t.Fatal("reading container logs:", err)
+	}
+	return string(output)
+}
+
 func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {
 	ctx := context.Background()
 	var cmd strings.Builder
@@ -346,19 +369,9 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 	}
 	cmdToRun := tiltd.Cmd{Argv: []string{"sh", "-c", cmd.String()}}
 
-	cId, err := f.b.startContainer(ctx, ref, &cmdToRun)
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	output := f.startContainerWithOutput(ctx, ref, &cmdToRun)
 
-	out, err := f.dcli.ContainerLogs(ctx, cId, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	output := &strings.Builder{}
-	io.Copy(output, out)
-
-	if strings.Contains(output.String(), "ERROR:") {
+	if strings.Contains(output, "ERROR:") {
 		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
 	}
 }

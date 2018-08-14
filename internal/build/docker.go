@@ -44,8 +44,10 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 	return &localDockerBuilder{cli}
 }
 
-// NOTE(dmiller): not fully implemented yet
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd) (digest.Digest, error) {
+// NOTE(dmiller): procedure for building a Docker image from scratch/for the first time.
+// Different from procedure for incremental build.
+func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string,
+	mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd) (digest.Digest, error) {
 	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, mounts)
 	if err != nil {
 		return "", fmt.Errorf("buildBaseWithMounts: %v", err)
