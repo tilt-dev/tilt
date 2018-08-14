@@ -7,14 +7,17 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltd"
 )
 
 type Daemon struct {
-	b build.Builder
+	b       build.Builder
+	history image.ImageHistory
 }
 
 var _ tiltd.TiltD = &Daemon{}
@@ -33,16 +36,29 @@ func NewDaemon() (*Daemon, error) {
 		return nil, err
 	}
 	b := build.NewLocalDockerBuilder(dcli)
-	return &Daemon{b: b}, nil
+	history := image.NewImageHistory()
+	return &Daemon{
+		b:       b,
+		history: history,
+	}, nil
 }
 
-func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, dockerfileTag string, stdout io.Writer, stderr io.Writer) error {
+func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, dockerfileTag string, stdout, stderr io.Writer) error {
+	checkpoint := d.history.CheckpointNow()
+	name, err := reference.ParseNormalizedNamed(dockerfileTag)
+	if err != nil {
+		return err
+	}
+
 	// TODO(maia): a real entrypoint here
 	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, tiltd.Cmd{})
 	if err != nil {
 		return err
 	}
-	err = d.b.PushDocker(ctx, dockerfileTag, digest)
+
+	d.history.Add(name, digest, checkpoint)
+
+	err = d.b.PushDocker(ctx, name, digest)
 	if err != nil {
 		return err
 	}

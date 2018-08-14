@@ -32,7 +32,7 @@ type localDockerBuilder struct {
 
 type Builder interface {
 	BuildDocker(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd) (digest.Digest, error)
-	PushDocker(ctx context.Context, name string, dig digest.Digest) error
+	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) error
 }
 
 var _ Builder = &localDockerBuilder{}
@@ -66,12 +66,7 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, name string, dig digest.Digest) error {
-	ref, err := reference.ParseNormalizedNamed(name)
-	if err != nil {
-		return fmt.Errorf("PushDocker: %v", err)
-	}
-
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) error {
 	if reference.Domain(ref) == "" {
 		return fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}

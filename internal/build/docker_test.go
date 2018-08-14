@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
@@ -146,7 +147,7 @@ func TestPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name := "localhost:5005/myimage"
+	name, _ := reference.ParseNormalizedNamed("localhost:5005/myimage")
 	err = f.b.PushDocker(context.Background(), name, digest)
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +175,7 @@ func TestPushInvalid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name := "localhost:6666/myimage"
+	name, _ := reference.ParseNormalizedNamed("localhost:6666/myimage")
 	err = f.b.PushDocker(context.Background(), name, digest)
 	if err == nil || !strings.Contains(err.Error(), "PushDocker#ImagePush") {
 		t.Fatal(err)

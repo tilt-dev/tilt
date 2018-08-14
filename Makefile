@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test
 
-all: proto
+all: lint test verify_gofmt
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
