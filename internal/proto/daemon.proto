@@ -18,8 +18,8 @@ message Service {
     string dockerfile_text = 2; // base, e.g. no code
     repeated Mount mounts = 3;
     repeated Cmd steps = 4;
-    Cmd entrypoint = 5;
-    string dockerfile_tag = 6; // e.g. gcr.io/blorgly/blorgly-dev
+    Cmd entrypoint = 6;
+    string dockerfile_tag = 5; // e.g. gcr.io/blorgly/blorgly-dev
 }
 
 message Cmd {

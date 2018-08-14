@@ -28,8 +28,8 @@ type Service struct {
 	DockerfileText       string   `protobuf:"bytes,2,opt,name=dockerfile_text,json=dockerfileText,proto3" json:"dockerfile_text,omitempty"`
 	Mounts               []*Mount `protobuf:"bytes,3,rep,name=mounts,proto3" json:"mounts,omitempty"`
 	Steps                []*Cmd   `protobuf:"bytes,4,rep,name=steps,proto3" json:"steps,omitempty"`
-	Entrypoint           *Cmd     `protobuf:"bytes,5,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
-	DockerfileTag        string   `protobuf:"bytes,6,opt,name=dockerfile_tag,json=dockerfileTag,proto3" json:"dockerfile_tag,omitempty"`
+	Entrypoint           *Cmd     `protobuf:"bytes,6,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
+	DockerfileTag        string   `protobuf:"bytes,5,opt,name=dockerfile_tag,json=dockerfileTag,proto3" json:"dockerfile_tag,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -39,7 +39,7 @@ func (m *Service) Reset()         { *m = Service{} }
 func (m *Service) String() string { return proto.CompactTextString(m) }
 func (*Service) ProtoMessage()    {}
 func (*Service) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{0}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{0}
 }
 func (m *Service) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Service.Unmarshal(m, b)
@@ -112,7 +112,7 @@ func (m *Cmd) Reset()         { *m = Cmd{} }
 func (m *Cmd) String() string { return proto.CompactTextString(m) }
 func (*Cmd) ProtoMessage()    {}
 func (*Cmd) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{1}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{1}
 }
 func (m *Cmd) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cmd.Unmarshal(m, b)
@@ -151,7 +151,7 @@ func (m *Mount) Reset()         { *m = Mount{} }
 func (m *Mount) String() string { return proto.CompactTextString(m) }
 func (*Mount) ProtoMessage()    {}
 func (*Mount) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{2}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{2}
 }
 func (m *Mount) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Mount.Unmarshal(m, b)
@@ -198,7 +198,7 @@ func (m *Repo) Reset()         { *m = Repo{} }
 func (m *Repo) String() string { return proto.CompactTextString(m) }
 func (*Repo) ProtoMessage()    {}
 func (*Repo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{3}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{3}
 }
 func (m *Repo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Repo.Unmarshal(m, b)
@@ -308,7 +308,7 @@ func (m *GitRepo) Reset()         { *m = GitRepo{} }
 func (m *GitRepo) String() string { return proto.CompactTextString(m) }
 func (*GitRepo) ProtoMessage()    {}
 func (*GitRepo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{4}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{4}
 }
 func (m *GitRepo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GitRepo.Unmarshal(m, b)
@@ -347,7 +347,7 @@ func (m *Output) Reset()         { *m = Output{} }
 func (m *Output) String() string { return proto.CompactTextString(m) }
 func (*Output) ProtoMessage()    {}
 func (*Output) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{5}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{5}
 }
 func (m *Output) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Output.Unmarshal(m, b)
@@ -392,7 +392,7 @@ func (m *CreateServiceReply) Reset()         { *m = CreateServiceReply{} }
 func (m *CreateServiceReply) String() string { return proto.CompactTextString(m) }
 func (*CreateServiceReply) ProtoMessage()    {}
 func (*CreateServiceReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_6382cf112eee2b2c, []int{6}
+	return fileDescriptor_daemon_3a631d3bcb016a01, []int{6}
 }
 func (m *CreateServiceReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateServiceReply.Unmarshal(m, b)
@@ -528,9 +528,9 @@ var _Daemon_serviceDesc = grpc.ServiceDesc{
 	Metadata: "internal/proto/daemon.proto",
 }
 
-func init() { proto.RegisterFile("internal/proto/daemon.proto", fileDescriptor_daemon_6382cf112eee2b2c) }
+func init() { proto.RegisterFile("internal/proto/daemon.proto", fileDescriptor_daemon_3a631d3bcb016a01) }
 
-var fileDescriptor_daemon_6382cf112eee2b2c = []byte{
+var fileDescriptor_daemon_3a631d3bcb016a01 = []byte{
 	// 452 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x52, 0x41, 0x6f, 0xd3, 0x30,
 	0x18, 0x5d, 0x68, 0x9b, 0xae, 0x5f, 0xd7, 0x4e, 0xf2, 0x01, 0x65, 0x43, 0x48, 0x25, 0xd2, 0xa0,
@@ -544,8 +544,8 @@ var fileDescriptor_daemon_6382cf112eee2b2c = []byte{
 	0x07, 0x7f, 0xc7, 0x3b, 0x62, 0x17, 0x10, 0x16, 0xa6, 0xd6, 0x54, 0x45, 0x9d, 0x49, 0x67, 0x3a,
 	0x5c, 0x8c, 0x66, 0x3e, 0xf6, 0x4b, 0x83, 0x72, 0x4f, 0xb2, 0x67, 0xd0, 0xab, 0x08, 0xcb, 0x2a,
 	0xea, 0x3a, 0xd5, 0x70, 0xa7, 0x5a, 0x15, 0x19, 0x6f, 0x19, 0xf6, 0x12, 0x00, 0x35, 0xd9, 0x6d,
-	0x69, 0xa4, 0xa6, 0xa8, 0x37, 0x09, 0xfe, 0xd7, 0x1d, 0xd0, 0xec, 0x02, 0xc6, 0x87, 0xfd, 0x44,
-	0x1e, 0x85, 0xae, 0xde, 0xe8, 0xa0, 0x9e, 0xc8, 0xe3, 0x33, 0xe8, 0xac, 0x8a, 0x8c, 0x31, 0xe8,
+	0x69, 0xa4, 0xa6, 0x28, 0x9c, 0x04, 0xff, 0xeb, 0x0e, 0x68, 0x76, 0x01, 0xe3, 0xc3, 0x7e, 0x22,
+	0x8f, 0x7a, 0xae, 0xde, 0xe8, 0xa0, 0x9e, 0xc8, 0xe3, 0x33, 0xe8, 0xac, 0x8a, 0x8c, 0x31, 0xe8,
 	0x0a, 0x9b, 0xdf, 0x46, 0xc1, 0xa4, 0x33, 0x1d, 0x70, 0xb7, 0x8e, 0xaf, 0xa1, 0xe7, 0x2a, 0xb2,
 	0x09, 0x74, 0x2d, 0x96, 0xc6, 0xed, 0xc0, 0x70, 0x71, 0xb2, 0x4b, 0xe4, 0x58, 0x1a, 0xee, 0x98,
 	0x26, 0x2c, 0x35, 0x9a, 0x84, 0xd4, 0x68, 0x93, 0x52, 0xd0, 0xda, 0xef, 0xc5, 0x68, 0x8f, 0x5e,
@@ -559,6 +559,6 @@ var fileDescriptor_daemon_6382cf112eee2b2c = []byte{
 	0x60, 0xef, 0x60, 0x74, 0xcf, 0x87, 0xed, 0xff, 0xd2, 0x03, 0xe7, 0xe7, 0xfb, 0xd3, 0x7b, 0x90,
 	0x17, 0x1f, 0x5d, 0x06, 0x57, 0x8b, 0x9f, 0x97, 0xb9, 0xa4, 0x75, 0x7d, 0x33, 0x4b, 0x4d, 0x31,
 	0xff, 0x2d, 0x75, 0x56, 0x48, 0xa5, 0x50, 0xe7, 0x73, 0x92, 0x8a, 0xe6, 0xf7, 0xaf, 0xf3, 0x1b,
-	0xf7, 0xbc, 0x09, 0xdd, 0xeb, 0xf5, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xa1, 0x7b, 0x9c, 0x05,
+	0xf7, 0xbc, 0x09, 0xdd, 0xeb, 0xf5, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf8, 0xdc, 0xdf, 0x4b,
 	0xed, 0x02, 0x00, 0x00,
 }
