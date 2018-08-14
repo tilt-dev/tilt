@@ -29,6 +29,9 @@ import (
 // Tilt always pushes to the same tag. We never push to latest.
 const pushTag = "wm-tilt"
 
+var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT, " +
+	"which is not currently supported -- provide an entrypoint in your Tiltfile")
+
 type localDockerBuilder struct {
 	dcli *client.Client
 }
@@ -175,8 +178,7 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 // TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
 func checkDockerfileForEntrypoint(df string) error {
 	if strings.Contains(df, "ENTRYPOINT") {
-		return fmt.Errorf("base Dockerfile contains an ENTRYPOINT, which is not " +
-			"currently suported -- provide an entrypoint in your Tiltfile")
+		return ErrEntrypointInDockerfile
 	}
 	return nil
 }

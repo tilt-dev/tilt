@@ -248,6 +248,10 @@ ENTRYPOINT ["sleep", "100000"]`
 	if err == nil {
 		t.Fatal("expected an err b/c dockerfile contains an ENTRYPOINT")
 	}
+	if !strings.Contains(err.Error(), ErrEntrypointInDockerfile.Error()) {
+		t.Fatalf("error '%v' did not contain expected string '%v'",
+			err.Error(), ErrEntrypointInDockerfile.Error())
+	}
 }
 
 // TODO(maia): test mount err cases
