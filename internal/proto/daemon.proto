@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package daemon;
 
-option go_package = "github.com/windmilleng/tilt/internal/proto/;proto";
+option go_package = "github.com/windmilleng/tilt/internal/proto;proto";
 
 service Daemon {
     rpc CreateService(Service) returns (stream CreateServiceReply) {}
