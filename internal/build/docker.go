@@ -14,11 +14,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/cli/cli/command"
+	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/tiltd"
 )
@@ -67,6 +70,29 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
 func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) error {
+	repoInfo, err := registry.ParseRepositoryInfo(ref)
+	if err != nil {
+		return fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
+	}
+
+	cli := command.NewDockerCli(nil, os.Stdout, os.Stderr, true)
+	err = cli.Initialize(cliflags.NewClientOptions())
+	if err != nil {
+		return fmt.Errorf("PushDocker#InitializeCLI: %s", err)
+	}
+	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
+	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
+
+	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
+	if err != nil {
+		return fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
+	}
+
+	options := types.ImagePushOptions{
+		RegistryAuth:  encodedAuth,
+		PrivilegeFunc: requestPrivilege,
+	}
+
 	if reference.Domain(ref) == "" {
 		return fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
@@ -84,7 +110,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
 		tag.String(),
-		types.ImagePushOptions{RegistryAuth: "{}"})
+		options)
 	if err != nil {
 		return fmt.Errorf("PushDocker#ImagePush: %v", err)
 	}
