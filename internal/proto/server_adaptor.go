@@ -19,6 +19,10 @@ func (s *GRPCServer) CreateService(ctx context.Context, service *Service) (*Crea
 	return &CreateServiceReply{}, s.del.CreateService(ctx, service.K8SYaml, service.DockerfileText, mountsP2D(service.Mounts), cmdsP2D(service.Steps), service.DockerfileTag)
 }
 
+func (s *GRPCServer) SetDebug(ctx context.Context, debug *Debug) (*DebugReply, error) {
+	return &DebugReply{}, s.del.SetDebug(ctx, debug.Mode)
+}
+
 func mountsP2D(mounts []*Mount) []tiltd.Mount {
 	r := []tiltd.Mount{}
 

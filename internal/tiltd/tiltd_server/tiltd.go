@@ -35,6 +35,10 @@ func NewDaemon() (*Daemon, error) {
 	return &Daemon{b: b}, nil
 }
 
+func (d *Daemon) SetDebug(ctx context.Context, mode bool) {
+	fmt.Println(mode)
+}
+
 func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, dockerfileTag string) error {
 	// TODO(maia): a real entrypoint here
 	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, tiltd.Cmd{})

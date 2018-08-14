@@ -6,6 +6,7 @@ option go_package = "github.com/windmilleng/tilt/internal/proto;proto";
 
 service Daemon {
     rpc CreateService(Service) returns (CreateServiceReply) {}
+    rpc SetDebug(Debug) returns (DebugReply) {}
     // rpc UpdateService(Service) returns (UpdateServiceReply) {}
     // rpc DeleteService(Service) returns (DeleteServiceReply) {}
     // rpc GetServiceStatus(Service) returns (ServiceStatus) {}
@@ -19,6 +20,10 @@ message Service {
     repeated Mount mounts = 3;
     repeated Cmd steps = 4;
     string dockerfile_tag = 5; // e.g. gcr.io/blorgly/blorgly-dev
+}
+
+message Debug {
+    bool mode = 1;
 }
 
 message Cmd {
@@ -54,5 +59,6 @@ message GitRepo {
 // }
 
 message CreateServiceReply {}
+message DebugReply {}
 // message UpdateServiceReply {}
 // message DeleteServiceReply {}
