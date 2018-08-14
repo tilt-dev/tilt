@@ -171,8 +171,8 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 
 // NOTE(maia): currently just returns an error if Dockerfile contains an ENTRYPOINT,
 // which is illegal in Tilt right now (an ENTRYPOINT overrides a ContainerCreate Cmd,
-// which we rely on). In future, we may want to extract the ENTRYPOINT line from the
-// Dockerfile and reapply it later?
+// which we rely on).
+// TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
 func checkDockerfileForEntrypoint(df string) error {
 	if strings.Contains(df, "ENTRYPOINT") {
 		return fmt.Errorf("base Dockerfile contains an ENTRYPOINT, which is not " +
