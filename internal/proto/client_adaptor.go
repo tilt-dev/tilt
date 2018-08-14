@@ -31,12 +31,11 @@ func (c *Client) CreateService(ctx context.Context, service Service) error {
 			return err
 		}
 
-		body := reply.GetBody()
-		if body != nil {
-			switch reply.GetBody().(type) {
-			case *CreateServiceReply_Output:
-				output := reply.GetOutput()
-				printOutput(*output)
+		output := reply.GetOutput()
+		if output != nil {
+			err := printOutput(*reply.Output)
+			if err != nil {
+				return err
 			}
 		}
 	}

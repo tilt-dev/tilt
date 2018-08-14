@@ -2,7 +2,6 @@ package proto
 
 import (
 	"github.com/windmilleng/tilt/internal/tiltd"
-	"log"
 )
 
 type GRPCServer struct {
@@ -16,17 +15,11 @@ func NewGRPCServer(del tiltd.TiltD) *GRPCServer {
 var _ DaemonServer = &GRPCServer{}
 
 func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServer) error {
-	sendOutput := func(output Output) {
-		d.Send(&CreateServiceReply{&CreateServiceReply_Output{Output: &output}})
+	sendOutput := func(output Output) error {
+		return d.Send(&CreateServiceReply{Output: &output})
 	}
 
 	outputStream := MakeStdoutStderrWriter(sendOutput)
-	defer func() {
-		err := outputStream.Close()
-		if err != nil {
-			log.Printf("error closing outputStream: %v", err)
-		}
-	}()
 
 	err := s.del.CreateService(
 		d.Context(),
@@ -35,8 +28,8 @@ func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServe
 		mountsP2D(service.Mounts),
 		cmdsP2D(service.Steps),
 		service.DockerfileTag,
-		outputStream.GetStdoutWriter(),
-		outputStream.GetStderrWriter())
+		outputStream.stdout,
+		outputStream.stderr)
 
 	return err
 }

@@ -59,9 +59,7 @@ message Output {
 // }
 
 message CreateServiceReply {
-    oneof body {
-        Output output = 1;
-    }
+    Output output = 1;
 }
 // message UpdateServiceReply {}
 // message DeleteServiceReply {}
