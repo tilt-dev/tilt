@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -29,8 +30,11 @@ type tiltCmd interface {
 
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
-	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
-		return child.run(args)
+	cobraChild.Run = func(_ *cobra.Command, args []string) {
+		err := child.run(args)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
 	}
 
 	parent.AddCommand(cobraChild)

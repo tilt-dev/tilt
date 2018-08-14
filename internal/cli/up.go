@@ -24,7 +24,7 @@ func (c *upCmd) register() *cobra.Command {
 	return cmd
 }
 
-func foo(args []string) error {
+func (c *upCmd) run(args []string) error {
 	ctx := context.Background()
 	proc, err := tiltd_server.RunDaemon(ctx)
 	if err != nil {
@@ -57,16 +57,6 @@ func foo(args []string) error {
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
-	}
-
-	return nil
-}
-
-func (c *upCmd) run(args []string) error {
-	err := foo(args)
-	if err != nil {
-		// log the error and exit so that cobra doesn't print usage
-		log.Fatalf("Error: %v", err)
 	}
 
 	return nil
