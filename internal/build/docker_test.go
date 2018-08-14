@@ -333,7 +333,7 @@ type pathContent struct {
 	contents string
 }
 
-func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd *Cmd) string {
+func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd *tiltd.Cmd) string {
 	cId, err := f.b.startContainer(ctx, ref, cmd)
 	if err != nil {
 		f.t.Fatal(err)
