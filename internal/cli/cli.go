@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var debug bool
+
 func Execute() {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
@@ -15,6 +17,7 @@ func Execute() {
 
 	addCommand(rootCmd, &upCmd{})
 	addCommand(rootCmd, &daemonCmd{})
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Run with verbose debug messages")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

@@ -3,14 +3,18 @@ package tiltd
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 )
 
 const Port = 10000
 
 type TiltD interface {
-	CreateService(ctx context.Context, k8sYaml string, dockerFileText string, mounts []Mount, steps []Cmd, dockerfileTag string, stdout io.Writer, stderr io.Writer) error
+	CreateService(ctx context.Context, k8sYaml string, dockerFileText string, mounts []Mount, steps []Cmd, dockerfileTag string) error
+	SetDebug(ctx context.Context, mode bool)
+}
+
+type Debug struct {
+	Mode bool
 }
 
 type Mount struct {

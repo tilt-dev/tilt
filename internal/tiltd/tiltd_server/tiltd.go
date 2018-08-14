@@ -94,6 +94,10 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 
 }
 
+func (d *Daemon) SetDebug(ctx context.Context, mode bool) {
+	fmt.Println(mode)
+}
+
 func RunDaemon(ctx context.Context) (*os.Process, error) {
 	cmd := exec.CommandContext(ctx, os.Args[0], "daemon")
 	cmd.Stdout = os.Stdout
