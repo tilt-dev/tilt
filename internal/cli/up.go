@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -41,6 +42,9 @@ func (c *upCmd) run(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	protoBug := &proto.Debug{Mode: debug}
+	err = dCli.SetDebug(ctx, *protoBug)
 
 	tf, err := tiltfile.Load("Tiltfile")
 	if err != nil {
