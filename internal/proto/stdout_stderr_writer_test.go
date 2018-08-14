@@ -1,12 +1,12 @@
 package proto
 
 import (
-	"testing"
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
+	"testing"
 )
 
 func TestOutputStreamSuccess(t *testing.T) {
@@ -23,9 +23,9 @@ func TestOutputStreamSuccess(t *testing.T) {
 }
 
 type failingReadCloser struct {
-	name string
+	name       string
 	underlying io.ReadCloser
-	readFails bool
+	readFails  bool
 	closeFails bool
 }
 

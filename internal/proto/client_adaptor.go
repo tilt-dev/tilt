@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/grpc"
 	"io"
-	)
+)
 
 type Client struct {
 	del  DaemonClient

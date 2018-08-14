@@ -3,8 +3,8 @@ package tiltd
 import (
 	"context"
 	"fmt"
-	"strings"
 	"io"
+	"strings"
 )
 
 const Port = 10000
