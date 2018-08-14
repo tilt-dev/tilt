@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/tiltd"
 	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
@@ -49,12 +50,12 @@ func TestMount(t *testing.T) {
 	f.writeFile("hi/hello", "hi hello")
 	f.writeFile("sup", "my name is dan")
 
-	m := Mount{
-		Repo:          LocalGithubRepo{LocalPath: f.repo.Path()},
+	m := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: f.repo.Path()},
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{m}, []tiltd.Cmd{}, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,16 +75,16 @@ func TestMultipleMounts(t *testing.T) {
 	f.writeFile("hi/hello", "hi hello")
 	f.writeFile("bye/ciao/goodbye", "bye laterz")
 
-	m1 := Mount{
-		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
+	m1 := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
 		ContainerPath: "/hello_there",
 	}
-	m2 := Mount{
-		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
+	m2 := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
 		ContainerPath: "goodbye_there",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m1, m2}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{m1, m2}, []tiltd.Cmd{}, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,16 +106,16 @@ func TestMountCollisions(t *testing.T) {
 
 	// Mounting two files to the same place in the container -- expect the second mount
 	// to take precedence (file should contain "bye laterz")
-	m1 := Mount{
-		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
+	m1 := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
 		ContainerPath: "/hello_there",
 	}
-	m2 := Mount{
-		Repo:          LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
+	m2 := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
 		ContainerPath: "/hello_there",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m1, m2}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{m1, m2}, []tiltd.Cmd{}, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,12 +136,12 @@ func TestPush(t *testing.T) {
 	f.writeFile("hi/hello", "hi hello")
 	f.writeFile("sup", "my name is dan")
 
-	m := Mount{
-		Repo:          LocalGithubRepo{LocalPath: f.repo.Path()},
+	m := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: f.repo.Path()},
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{m}, []Cmd{}, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{m}, []tiltd.Cmd{}, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,11 +185,11 @@ func TestBuildOneStep(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	steps := []Cmd{
-		Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
+	steps := []tiltd.Cmd{
+		tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, steps, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, steps, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,12 +204,12 @@ func TestBuildMultipleSteps(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	steps := []Cmd{
-		Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
-		Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
+	steps := []tiltd.Cmd{
+		tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
+		tiltd.Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, steps, Cmd{})
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, steps, tiltd.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,8 +224,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 func TestEntrypoint(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
-	entrypoint := Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}}
-	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []Mount{}, []Cmd{}, entrypoint)
+	entrypoint := tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}}
+	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, []tiltd.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +343,7 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 			c.path, c.contents, notFound)
 		cmd.WriteString(cs)
 	}
-	cmdToRun := Cmd{Argv: []string{"sh", "-c", cmd.String()}}
+	cmdToRun := tiltd.Cmd{Argv: []string{"sh", "-c", cmd.String()}}
 
 	cId, err := f.b.startContainer(ctx, ref, &cmdToRun)
 	if err != nil {
