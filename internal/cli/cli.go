@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -33,7 +32,11 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
 		err := child.run(args)
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			_, err := fmt.Fprintf(os.Stderr, "Error: %v", err)
+			if err != nil {
+				panic(err)
+			}
+			os.Exit(1)
 		}
 	}
 
