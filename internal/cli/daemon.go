@@ -2,13 +2,14 @@ package cli
 
 import (
 	"fmt"
+	"log"
+	"net"
+
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
 	"google.golang.org/grpc"
-	"log"
-	"net"
 )
 
 type daemonCmd struct{}

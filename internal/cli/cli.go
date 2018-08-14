@@ -7,9 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Execute() {
+var debug bool
 
-	var debug bool
+func Execute() {
 
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
