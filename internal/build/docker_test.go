@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -344,10 +343,18 @@ func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, 
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	defer func() {
+		err := out.Close()
+		if err != nil {
+			f.t.Fatal("closing container logs reader:", err)
+		}
+	}()
 
-	output := &strings.Builder{}
-	io.Copy(output, out)
-	return output.String()
+	output, err := ioutil.ReadAll(out)
+	if err != nil {
+		f.t.Fatal("reading container logs:", err)
+	}
+	return string(output)
 }
 
 func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {

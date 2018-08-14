@@ -3,8 +3,9 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os/exec"
+
+	"io/ioutil"
 
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/proto"
@@ -17,7 +18,7 @@ type Tiltfile struct {
 }
 
 func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerfileName, entrypoint, dockerfileTag skylark.String
+	var dockerfileName, entrypoint, dockerfileTag string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"docker_file_name", &dockerfileName,
 		"docker_file_tag", &dockerfileTag,
@@ -121,28 +122,10 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
 	}
 
-	dockerFileName, ok := skylark.AsString(service.dockerImage.fileName)
-	if !ok {
-		return nil, fmt.Errorf("internal error: k8sService.dockerFileName was not a string in '%v'", service)
-	}
-
-	dockerFileBytes, err := ioutil.ReadFile(dockerFileName)
+	dockerFileBytes, err := ioutil.ReadFile(service.dockerImage.fileName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open dockerfile '%v': %v", dockerFileName, err)
+		return nil, fmt.Errorf("failed to open dockerfile '%v': %v", service.dockerImage.fileName, err)
 	}
-
-	dockerFileText := string(dockerFileBytes)
-
-	dockerFileTag, ok := skylark.AsString(service.dockerImage.fileTag)
-	if !ok {
-		return nil, fmt.Errorf("internal error: k8sService.dockerFileTag was not a string in '%v'", service)
-	}
-
-	entrypoint, ok := skylark.AsString(service.dockerImage.entrypoint)
-	if !ok {
-		return nil, fmt.Errorf("internal error: k8sService.entrypoint was not a string in '%v'", service)
-	}
-	entrypointCmd := toBashCmd(entrypoint)
 
 	mounts := make([]*proto.Mount, 0, len(service.dockerImage.mounts))
 	for _, mount := range service.dockerImage.mounts {
@@ -152,14 +135,19 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 
 	dockerCmds := make([]*proto.Cmd, 0, len(service.dockerImage.cmds))
 	for _, cmd := range service.dockerImage.cmds {
-		dockerCmds = append(dockerCmds, toBashCmd(cmd))
+		dockerCmds = append(dockerCmds, toShellCmd(cmd))
 	}
 
-	return &proto.Service{K8SYaml: k8sYaml, DockerfileText: dockerFileText,
-		Mounts: mounts, Steps: dockerCmds, Entrypoint: entrypointCmd,
-		DockerfileTag: dockerFileTag}, nil
+	return &proto.Service{
+		K8SYaml:        k8sYaml,
+		DockerfileText: string(dockerFileBytes),
+		Mounts:         mounts,
+		Steps:          dockerCmds,
+		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
+		DockerfileTag:  service.dockerImage.fileTag,
+	}, nil
 }
 
-func toBashCmd(cmd string) *proto.Cmd {
+func toShellCmd(cmd string) *proto.Cmd {
 	return &proto.Cmd{Argv: []string{"sh", "-c", cmd}}
 }
