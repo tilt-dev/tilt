@@ -2,7 +2,6 @@ package proto
 
 import (
 	"io"
-	"k8s.io/apimachinery/pkg/util/errors"
 	"os"
 )
 
@@ -12,13 +11,11 @@ type StdoutStderrWriter struct {
 }
 
 func printOutput(output Output) error {
-	errs := make([]error, 0)
-
 	stdout := output.GetStdout()
 	if stdout != nil {
 		_, err := os.Stdout.Write(stdout)
 		if err != nil {
-			errs = append(errs, err)
+			return err
 		}
 	}
 
@@ -26,11 +23,11 @@ func printOutput(output Output) error {
 	if stderr != nil {
 		_, err := os.Stderr.Write(stderr)
 		if err != nil {
-			errs = append(errs, err)
+			return err
 		}
 	}
 
-	return errors.NewAggregate(errs)
+	return nil
 }
 
 type outputWriter struct {
