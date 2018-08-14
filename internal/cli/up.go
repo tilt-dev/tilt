@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
@@ -57,8 +56,5 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	if debug {
-		fmt.Println("HI PAT AND HAN!!!!!!")
-	}
 	return nil
 }

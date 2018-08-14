@@ -35,7 +35,8 @@ func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServe
 }
 
 func (s *GRPCServer) SetDebug(ctx context.Context, debug *Debug) (*DebugReply, error) {
-	return &DebugReply{}, s.del.SetDebug(ctx, debug.Mode)
+	s.del.SetDebug(ctx, debug.Mode)
+	return &DebugReply{}, nil
 }
 
 func mountsP2D(mounts []*Mount) []tiltd.Mount {
