@@ -43,15 +43,17 @@ func NewDaemon() (*Daemon, error) {
 	}, nil
 }
 
-func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, dockerfileTag string, stdout, stderr io.Writer) error {
+func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile string,
+	mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd,
+	dockerfileTag string, stdout, stderr io.Writer) error {
 	checkpoint := d.history.CheckpointNow()
 	name, err := reference.ParseNormalizedNamed(dockerfileTag)
 	if err != nil {
 		return err
 	}
 
-	// TODO(maia): a real entrypoint here
-	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, tiltd.Cmd{})
+	digest, err := d.b.BuildDocker(ctx, dockerfile, mounts, steps, entrypoint)
+
 	if err != nil {
 		return err
 	}

@@ -21,15 +21,9 @@ func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServe
 
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
-	err := s.del.CreateService(
-		d.Context(),
-		service.K8SYaml,
-		service.DockerfileText,
-		mountsP2D(service.Mounts),
-		cmdsP2D(service.Steps),
-		service.DockerfileTag,
-		outputStream.stdout,
-		outputStream.stderr)
+	err := s.del.CreateService(d.Context(), service.K8SYaml, service.DockerfileText,
+		mountsP2D(service.Mounts), cmdsP2D(service.Steps), cmdP2D(service.Entrypoint),
+		service.DockerfileTag, outputStream.stdout, outputStream.stderr)
 
 	return err
 }

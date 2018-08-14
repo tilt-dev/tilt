@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+
 	"github.com/google/skylark"
 )
 
@@ -45,10 +46,11 @@ type mount struct {
 }
 
 type dockerImage struct {
-	fileName skylark.String
-	fileTag  skylark.String
-	mounts   []mount
-	cmds     []string
+	fileName   string
+	fileTag    string
+	mounts     []mount
+	cmds       []string
+	entrypoint string
 }
 
 var _ skylark.Value = &dockerImage{}
@@ -112,9 +114,9 @@ func (*dockerImage) Hash() (uint32, error) {
 func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	switch name {
 	case "file_name":
-		return d.fileName, nil
+		return skylark.String(d.fileName), nil
 	case "file_tag":
-		return d.fileTag, nil
+		return skylark.String(d.fileTag), nil
 	case "add_cmd":
 		return skylark.NewBuiltin(name, addDockerImageCmd).BindReceiver(d), nil
 	case "add_mount":
