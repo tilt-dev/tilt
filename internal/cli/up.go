@@ -2,6 +2,10 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
@@ -13,9 +17,10 @@ type upCmd struct{}
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up <servicename>",
-		Short: "stand up a service",
-		Args:  cobra.ExactArgs(1),
+		Use:           "up <servicename>",
+		Short:         "stand up a service",
+		Args:          cobra.ExactArgs(1),
+		SilenceErrors: true,
 	}
 
 	return cmd
@@ -46,7 +51,9 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	err = dCli.CreateService(ctx, *service)
-	if err != nil {
+	status, ok := status.FromError(err)
+	if ok && status.Code() == codes.Unknown {
+		fmt.Fprintf(os.Stderr, status.Message())
 		return err
 	}
 

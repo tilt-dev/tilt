@@ -9,8 +9,9 @@ import (
 
 func Execute() {
 	rootCmd := &cobra.Command{
-		Use:   "tilt",
-		Short: "tilt is great, yo",
+		Use:          "tilt",
+		Short:        "tilt is great, yo",
+		SilenceUsage: true,
 	}
 
 	addCommand(rootCmd, &upCmd{})
