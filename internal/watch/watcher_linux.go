@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/windmilleng/fsnotify"
-	"github.com/windmilleng/tesseract/pkg/fs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -112,7 +111,7 @@ func (d *linuxNotify) sendEventIfWatched(e fsnotify.Event) {
 	} else {
 		// TODO(dmiller): maybe use a prefix tree here?
 		for path := range d.watchList {
-			if fs.PathIsChildOf(e.Name, path) {
+			if pathIsChildOf(e.Name, path) {
 				d.wrappedEvents <- e
 				break
 			}

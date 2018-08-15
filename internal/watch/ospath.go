@@ -1,11 +1,12 @@
-package fs
+package watch
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
 
-func PathIsChildOf(path string, parent string) bool {
+func pathIsChildOf(path string, parent string) bool {
 	relPath, err := filepath.Rel(parent, path)
 	if err != nil {
 		return true
@@ -15,7 +16,7 @@ func PathIsChildOf(path string, parent string) bool {
 		return true
 	}
 
-	if filepath.IsAbs(relPath) || strings.HasPrefix(relPath, "..") {
+	if filepath.IsAbs(relPath) || strings.HasPrefix(relPath, ".."+string(os.PathSeparator)) {
 		return false
 	}
 

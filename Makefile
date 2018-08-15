@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test
 
-all: lint darwin linux test verify_gofmt
+all: lint test verify_gofmt
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
@@ -20,12 +20,6 @@ test:
 
 ensure:
 	dep ensure
-
-darwin:
-	GOOS=darwin go build ./...
-
-linux:
-	GOOS=linux go build ./...
 
 verify_gofmt:
 	bash -c 'diff <(go fmt ./...) <(echo -n)'

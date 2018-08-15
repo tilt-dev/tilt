@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  build-linux:
     docker:
       - image: circleci/golang:1.10
     working_directory: /go/src/github.com/windmilleng/tilt
@@ -8,3 +8,21 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: make all
+  build-macos:
+    macos:
+      xcode: "9.4.0"
+
+    working_directory: ~/go/src/github.com/windmilleng/tilt
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: brew install go
+      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
+      - run: make all
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build-linux
+      - build-macos

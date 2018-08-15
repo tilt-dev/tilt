@@ -7,7 +7,6 @@ import (
 
 	"github.com/windmilleng/fsevents"
 	"github.com/windmilleng/fsnotify"
-	"github.com/windmilleng/tesseract/pkg/ospath"
 )
 
 type darwinNotify struct {
@@ -89,7 +88,7 @@ func (d *darwinNotify) Add(name string) error {
 	// Check if this is a subdirectory of any of the paths
 	// we're already watching.
 	for _, parent := range es.Paths {
-		_, isChild := ospath.Child(parent, name)
+		isChild := pathIsChildOf(name, parent)
 		if isChild {
 			return nil
 		}
