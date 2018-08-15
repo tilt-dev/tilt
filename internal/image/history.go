@@ -74,7 +74,7 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint CheckpointID) {
+func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -93,6 +93,7 @@ func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint
 	if entry.After(bucket.mostRecent.CheckpointID) {
 		bucket.mostRecent = entry
 	}
+	return addHistoryToFS(h.dir, key, entry)
 }
 
 func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, CheckpointID, bool) {
@@ -107,17 +108,6 @@ func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, Checkpoin
 
 	mostRecent := bucket.mostRecent
 	return mostRecent.Digest, mostRecent.CheckpointID, true
-}
-
-func (h ImageHistory) SaveToFS() error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	entryMap := make(map[refKey][]historyEntry, 0)
-	for key, bucket := range h.byName {
-		entryMap[key] = bucket.entries
-	}
-	return historyToFS(h.dir, entryMap)
 }
 
 type refKey string
