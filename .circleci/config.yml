@@ -10,7 +10,7 @@ jobs:
       - run: make all
   build-macos:
     macos:
-      xcode: "9.4.0"
+      xcode: "10.0.0"
 
     working_directory: ~/go/src/github.com/windmilleng/tilt
     steps:
