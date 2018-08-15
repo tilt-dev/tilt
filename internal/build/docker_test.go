@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -294,9 +296,10 @@ func (f *testFixture) teardown() {
 
 func (f *testFixture) startRegistry() {
 	stdout := &bytes.Buffer{}
+	stdoutSafe := makeThreadSafe(stdout)
 	stderr := &bytes.Buffer{}
 	cmd := exec.Command("docker", "run", "--name", "tilt-registry", "-p", "5005:5000", "registry:2")
-	cmd.Stdout = stdout
+	cmd.Stdout = stdoutSafe
 	cmd.Stderr = stderr
 	f.registry = cmd
 
@@ -308,7 +311,10 @@ func (f *testFixture) startRegistry() {
 	// Wait until the registry starts
 	start := time.Now()
 	for time.Since(start) < 5*time.Second {
-		if strings.Contains(stdout.String(), "listening on") {
+		stdoutSafe.mu.Lock()
+		result := stdout.String()
+		stdoutSafe.mu.Unlock()
+		if strings.Contains(result, "listening on") {
 			return
 		}
 	}
@@ -374,4 +380,19 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 	if strings.Contains(output, "ERROR:") {
 		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
 	}
+}
+
+type threadSafeWriter struct {
+	writer io.Writer
+	mu     *sync.Mutex
+}
+
+func makeThreadSafe(writer io.Writer) threadSafeWriter {
+	return threadSafeWriter{writer: writer, mu: &sync.Mutex{}}
+}
+
+func (w threadSafeWriter) Write(b []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.writer.Write(b)
 }
