@@ -33,7 +33,32 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 `
 
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := getDigestFromOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromBuildOutput(bytes.NewBuffer([]byte(input)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual != expected {
+		t.Errorf("Expected %s, got %s", expected, actual)
+	}
+}
+
+func TestDigestFromPushOutput(t *testing.T) {
+	input := `{"status":"The push refers to repository [localhost:5005/myimage]"}
+	{"status":"Preparing","progressDetail":{},"id":"2a88b569da78"}
+	{"status":"Preparing","progressDetail":{},"id":"73046094a9b8"}
+	{"status":"Pushing","progressDetail":{"current":512,"total":41},"progress":"[==================================================\u003e]     512B","id":"2a88b569da78"}
+	{"status":"Pushing","progressDetail":{"current":68608,"total":4413370},"progress":"[\u003e                                                  ]  68.61kB/4.413MB","id":"73046094a9b8"}
+	{"status":"Pushing","progressDetail":{"current":5120,"total":41},"progress":"[==================================================\u003e]   5.12kB","id":"2a88b569da78"}
+	{"status":"Pushed","progressDetail":{},"id":"2a88b569da78"}
+	{"status":"Pushing","progressDetail":{"current":1547776,"total":4413370},"progress":"[=================\u003e                                 ]  1.548MB/4.413MB","id":"73046094a9b8"}
+	{"status":"Pushing","progressDetail":{"current":3247616,"total":4413370},"progress":"[====================================\u003e              ]  3.248MB/4.413MB","id":"73046094a9b8"}
+	{"status":"Pushing","progressDetail":{"current":4672000,"total":4413370},"progress":"[==================================================\u003e]  4.672MB","id":"73046094a9b8"}
+	{"status":"Pushed","progressDetail":{},"id":"73046094a9b8"}
+	{"status":"wm-tilt: digest: sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1 size: 735"}
+	{"progressDetail":{},"aux":{"Tag":"wm-tilt","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
+
+	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
+	actual, err := getDigestFromPushOutput(bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +172,7 @@ func TestPush(t *testing.T) {
 	}
 
 	name, _ := reference.ParseNormalizedNamed("localhost:5005/myimage")
-	err = f.b.PushDocker(context.Background(), name, digest)
+	_, err = f.b.PushDocker(context.Background(), name, digest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,8 +200,8 @@ func TestPushInvalid(t *testing.T) {
 	}
 
 	name, _ := reference.ParseNormalizedNamed("localhost:6666/myimage")
-	err = f.b.PushDocker(context.Background(), name, digest)
-	if err == nil || !strings.Contains(err.Error(), "PushDocker#ImagePush") {
+	_, err = f.b.PushDocker(context.Background(), name, digest)
+	if err == nil || !strings.Contains(err.Error(), "PushDocker#getDigestFromPushOutput") {
 		t.Fatal(err)
 	}
 }
