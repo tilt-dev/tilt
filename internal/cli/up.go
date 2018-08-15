@@ -58,7 +58,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = dCli.CreateService(ctx, *service)
+	err = dCli.CreateService(ctx, proto.CreateServiceRequest{Service: service})
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())

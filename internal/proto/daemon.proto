@@ -5,8 +5,8 @@ package daemon;
 option go_package = "github.com/windmilleng/tilt/internal/proto;proto";
 
 service Daemon {
-    rpc CreateService(Service) returns (stream CreateServiceReply) {}
-    rpc SetDebug(Debug) returns (DebugReply) {} 
+    rpc CreateService(CreateServiceRequest) returns (stream CreateServiceReply) {}
+    rpc SetDebug(Debug) returns (DebugReply) {}
     // rpc UpdateService(Service) returns (UpdateServiceReply) {}
     // rpc DeleteService(Service) returns (DeleteServiceReply) {}
     // rpc GetServiceStatus(Service) returns (ServiceStatus) {}
@@ -63,6 +63,11 @@ message Output {
 // message ListServicesReply {
 //     repeated ServiceStatus statuses = 1;
 // }
+
+message CreateServiceRequest {
+    Service service = 1;
+    bool watch = 2;
+}
 
 message CreateServiceReply {
     Output output = 1;
