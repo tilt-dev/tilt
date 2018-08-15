@@ -224,6 +224,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 func TestEntrypoint(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
+
 	entrypoint := tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}}
 	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, []tiltd.Cmd{}, entrypoint)
 	if err != nil {
@@ -234,6 +235,23 @@ func TestEntrypoint(t *testing.T) {
 		pathContent{path: "hi", contents: "hello"},
 	}
 	f.assertFilesInImageWithContents(string(d), contents)
+}
+
+func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	df := `FROM alpine
+ENTRYPOINT ["sleep", "100000"]`
+
+	_, err := f.b.BuildDocker(context.Background(), df, []tiltd.Mount{}, []tiltd.Cmd{}, tiltd.Cmd{})
+	if err == nil {
+		t.Fatal("expected an err b/c dockerfile contains an ENTRYPOINT")
+	}
+	if !strings.Contains(err.Error(), ErrEntrypointInDockerfile.Error()) {
+		t.Fatalf("error '%v' did not contain expected string '%v'",
+			err.Error(), ErrEntrypointInDockerfile.Error())
+	}
 }
 
 // TODO(maia): test mount err cases

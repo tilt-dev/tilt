@@ -29,6 +29,9 @@ import (
 // Tilt always pushes to the same tag. We never push to latest.
 const pushTag = "wm-tilt"
 
+var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT, " +
+	"which is not currently supported -- provide an entrypoint in your Tiltfile")
+
 type localDockerBuilder struct {
 	dcli *client.Client
 }
@@ -127,6 +130,11 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 }
 
 func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount) (digest.Digest, error) {
+	err := validateDockerfile(baseDockerfile)
+	if err != nil {
+		return "", err
+	}
+
 	archive, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
@@ -162,6 +170,19 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	}
 
 	return getDigestFromAux(*result)
+}
+
+// NOTE(maia): can put more logic in here sometime; currently just returns an error
+// if Dockerfile contains an ENTRYPOINT, which is illegal in Tilt right now (an
+// ENTRYPOINT overrides a ContainerCreate Cmd, which we rely on).
+// TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
+func validateDockerfile(df string) error {
+	for _, line := range strings.Split(df, "\n") {
+		if strings.HasPrefix(line, "ENTRYPOINT") {
+			return ErrEntrypointInDockerfile
+		}
+	}
+	return nil
 }
 
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []tiltd.Cmd) (digest.Digest, error) {
