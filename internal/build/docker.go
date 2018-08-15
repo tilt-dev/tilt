@@ -130,7 +130,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 }
 
 func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount) (digest.Digest, error) {
-	err := checkDockerfileForEntrypoint(baseDockerfile)
+	err := validateDockerfile(baseDockerfile)
 	if err != nil {
 		return "", err
 	}
@@ -172,13 +172,15 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	return getDigestFromAux(*result)
 }
 
-// NOTE(maia): currently just returns an error if Dockerfile contains an ENTRYPOINT,
-// which is illegal in Tilt right now (an ENTRYPOINT overrides a ContainerCreate Cmd,
-// which we rely on).
+// NOTE(maia): can put more logic in here sometime; currently just returns an error
+// if Dockerfile contains an ENTRYPOINT, which is illegal in Tilt right now (an
+// ENTRYPOINT overrides a ContainerCreate Cmd, which we rely on).
 // TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
-func checkDockerfileForEntrypoint(df string) error {
-	if strings.Contains(df, "ENTRYPOINT") {
-		return ErrEntrypointInDockerfile
+func validateDockerfile(df string) error {
+	for _, line := range strings.Split(df, "\n") {
+		if strings.HasPrefix(line, "ENTRYPOINT") {
+			return ErrEntrypointInDockerfile
+		}
 	}
 	return nil
 }
