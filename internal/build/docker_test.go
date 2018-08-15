@@ -232,7 +232,7 @@ func TestEntrypoint(t *testing.T) {
 	}
 
 	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello"},
+		pathContent{path: "hi", contents: "heasdfdsafllo"},
 	}
 	f.assertFilesInImageWithContents(string(d), contents)
 }
@@ -256,6 +256,71 @@ ENTRYPOINT ["sleep", "100000"]`
 
 // TODO(maia): test mount err cases
 // TODO(maia): tests for tar code
+
+func TestAddMountsToExisting(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	f.writeFile("hi/hello", "hi hello")
+	f.writeFile("sup", "yo dawg, i heard you like docker")
+
+	m := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+
+	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{m}, []tiltd.Cmd{}, tiltd.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.writeFile("hi/hello", "hello world") // change contents
+	f.rm("sup")
+
+	digest, err := f.b.BuildDockerFromExisting(context.Background(), existing, []tiltd.Mount{m}, []tiltd.Cmd{}, tiltd.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []pathContent{
+		pathContent{path: "/src/hi/hello", contents: "hello world"},
+	}
+	f.assertFilesInImageWithContents(string(digest), pcs)
+
+	//TODO(maia): assert file 'sup' does NOT exist
+}
+
+func todo_TestExecStepsOnExisting(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	// NOTE(maia): currently this should fail b/c if an img has entrypoint,
+	// we can't exec steps on it/its ancestors w/o removing the entrypoint;
+	// but can't accurately test without smarter assert's.
+	sayHi := tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello"}}
+	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, []tiltd.Cmd{}, sayHi)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.writeFile("foo", "hello world")
+	step := tiltd.Cmd{Argv: []string{"sh", "-c", "echo foo contains: $(cat /src/foo) >> /src/bar"}}
+	m := tiltd.Mount{
+		Repo:          tiltd.LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+
+	digest, err := f.b.BuildDockerFromExisting(context.Background(), existing, []tiltd.Mount{m}, []tiltd.Cmd{step}, tiltd.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []pathContent{
+		pathContent{path: "/src/foo", contents: "hello world"},
+		pathContent{path: "/src/bar", contents: "foo contains: hello world"},
+	}
+	f.assertFilesInImageWithContents(string(digest), pcs)
+}
 
 type testFixture struct {
 	t        *testing.T
@@ -346,6 +411,14 @@ func (f *testFixture) writeFile(pathInRepo string, contents string) {
 	}
 }
 
+func (f *testFixture) rm(pathInRepo string) {
+	fullPath := filepath.Join(f.repo.Path(), pathInRepo)
+	err := os.Remove(fullPath)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+}
+
 type pathContent struct {
 	path     string
 	contents string
@@ -388,7 +461,6 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 	cmdToRun := tiltd.Cmd{Argv: []string{"sh", "-c", cmd.String()}}
 
 	output := f.startContainerWithOutput(ctx, ref, &cmdToRun)
-
 	if strings.Contains(output, "ERROR:") {
 		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
 	}
