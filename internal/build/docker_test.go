@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
 	"log"
@@ -246,6 +247,21 @@ func TestBuildMultipleSteps(t *testing.T) {
 		pathContent{path: "hi2", contents: "sup"},
 	}
 	f.assertFilesInImageWithContents(string(digest), contents)
+}
+
+func TestBuildFailingStep(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	steps := []tiltd.Cmd{
+		tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello && exit 1"}},
+	}
+
+	_, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, steps, tiltd.Cmd{})
+	if assert.NotNil(t, err) {
+		assert.Contains(t, err.Error(), "hello")
+		assert.Contains(t, err.Error(), "exit code 1")
+	}
 }
 
 func TestEntrypoint(t *testing.T) {
