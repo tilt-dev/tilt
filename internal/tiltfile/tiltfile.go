@@ -70,6 +70,16 @@ func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple
 	return skylark.String(out), nil
 }
 
+func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var services []skylark.Value
+
+	for i := range args {
+		services = append(services, args[i])
+	}
+
+	return compService{services}, nil
+}
+
 func Load(filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
@@ -80,6 +90,7 @@ func Load(filename string) (*Tiltfile, error) {
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
 		"git_repo":           skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
+		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeService),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)

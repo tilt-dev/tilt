@@ -7,6 +7,31 @@ import (
 	"github.com/google/skylark"
 )
 
+type compService struct {
+	cService []skylark.Value
+}
+
+var _ skylark.Value = compService{}
+
+func (s compService) String() string {
+	return fmt.Sprintf("composite service: %+v", s.cService)
+}
+
+func (s compService) Type() string {
+	return "compService"
+}
+
+func (s compService) Freeze() {
+}
+
+func (compService) Truth() skylark.Bool {
+	return true
+}
+
+func (compService) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: composite service")
+}
+
 type k8sService struct {
 	k8sYaml     skylark.String
 	dockerImage dockerImage

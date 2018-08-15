@@ -31,7 +31,6 @@ func (c *Client) CreateService(ctx context.Context, req CreateServiceRequest) er
 			}
 			return err
 		}
-
 		output := reply.GetOutput()
 		if output != nil {
 			err := printOutput(*reply.Output)
