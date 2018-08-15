@@ -15,12 +15,14 @@ func NewGRPCServer(del tiltd.TiltD) *GRPCServer {
 
 var _ DaemonServer = &GRPCServer{}
 
-func (s *GRPCServer) CreateService(service *Service, d Daemon_CreateServiceServer) error {
+func (s *GRPCServer) CreateService(req *CreateServiceRequest, d Daemon_CreateServiceServer) error {
 	sendOutput := func(output Output) error {
 		return d.Send(&CreateServiceReply{Output: &output})
 	}
 
 	outputStream := MakeStdoutStderrWriter(sendOutput)
+
+	service := req.Service
 
 	err := s.del.CreateService(d.Context(), service.K8SYaml, service.DockerfileText,
 		mountsP2D(service.Mounts), cmdsP2D(service.Steps), cmdP2D(service.Entrypoint),

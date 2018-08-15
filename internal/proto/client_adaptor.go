@@ -17,8 +17,8 @@ func NewGRPCClient(conn *grpc.ClientConn) *Client {
 	return &Client{del: NewDaemonClient(conn), conn: conn}
 }
 
-func (c *Client) CreateService(ctx context.Context, service Service) error {
-	stream, err := c.del.CreateService(ctx, &service)
+func (c *Client) CreateService(ctx context.Context, req CreateServiceRequest) error {
+	stream, err := c.del.CreateService(ctx, &req)
 	if err != nil {
 		return err
 	}
