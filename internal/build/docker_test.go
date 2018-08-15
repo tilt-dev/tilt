@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -213,9 +214,7 @@ func TestBuildOneStep(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	steps := []tiltd.Cmd{
-		tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
-	}
+	steps := []tiltd.Cmd{tiltd.ToShellCmd("echo hello >> hi")}
 
 	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, steps, tiltd.Cmd{})
 	if err != nil {
@@ -233,8 +232,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 	defer f.teardown()
 
 	steps := []tiltd.Cmd{
-		tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
-		tiltd.Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
+		tiltd.ToShellCmd("echo hello >> hi"),
+		tiltd.ToShellCmd("echo sup >> hi2"),
 	}
 
 	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, steps, tiltd.Cmd{})
@@ -253,9 +252,7 @@ func TestBuildFailingStep(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	steps := []tiltd.Cmd{
-		tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello && exit 1"}},
-	}
+	steps := []tiltd.Cmd{tiltd.ToShellCmd("echo hello && exit 1")}
 
 	_, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, steps, tiltd.Cmd{})
 	if assert.NotNil(t, err) {
@@ -268,7 +265,7 @@ func TestEntrypoint(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	entrypoint := tiltd.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}}
+	entrypoint := tiltd.ToShellCmd("echo hello >> hi")
 	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []tiltd.Mount{}, []tiltd.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -432,7 +429,7 @@ func (f *testFixture) assertFilesInImageWithContents(ref string, contents []path
 			c.path, c.contents, notFound)
 		cmd.WriteString(cs)
 	}
-	cmdToRun := tiltd.Cmd{Argv: []string{"sh", "-c", cmd.String()}}
+	cmdToRun := tiltd.ToShellCmd(cmd.String())
 
 	output := f.startContainerWithOutput(ctx, ref, &cmdToRun)
 
