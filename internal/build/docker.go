@@ -244,7 +244,10 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 	config := &container.Config{Image: imgRef}
 	if cmd != nil {
 		config.Cmd = cmd.Argv
+	} else {
+		config.Cmd = []string{"sh", "-c", "# NOTE(nick): a fake entrypoint"}
 	}
+
 	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		return "", err
