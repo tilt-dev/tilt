@@ -78,7 +78,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigestWithStrings(e, dockerfileTag, string(pushedDigest))
+		newK8s, replaced, err := k8s.InjectImageDigest(e, name, pushedDigest)
 		if err != nil {
 			return err
 		}
