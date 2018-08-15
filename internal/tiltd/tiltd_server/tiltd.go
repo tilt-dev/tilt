@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltd"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 type Daemon struct {
@@ -37,7 +38,14 @@ func NewDaemon() (*Daemon, error) {
 		return nil, err
 	}
 	b := build.NewLocalDockerBuilder(dcli)
-	history := image.NewImageHistory()
+	dir, err := dirs.UseWindmillDir()
+	if err != nil {
+		return nil, err
+	}
+	history, err := image.NewImageHistory(dir)
+	if err != nil {
+		return nil, err
+	}
 	return &Daemon{
 		b:       b,
 		history: history,
