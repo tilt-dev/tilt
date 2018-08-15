@@ -1,11 +1,13 @@
 package image
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // A monotonically increasing ID.
@@ -18,17 +20,50 @@ func (c CheckpointID) After(d CheckpointID) bool {
 	return time.Time(c).After(time.Time(d))
 }
 
+func (c CheckpointID) MarshalJSON() ([]byte, error) {
+	return time.Time(c).MarshalJSON()
+}
+
+func (c *CheckpointID) UnmarshalJSON(b []byte) error {
+	if c == nil {
+		return nil
+	}
+	t := time.Time(*c)
+	err := (&t).UnmarshalJSON(b)
+	*c = CheckpointID(t)
+	return err
+}
+
 // Track all the images that tilt has ever built.
 type ImageHistory struct {
+	dir    *dirs.WindmillDir
 	byName map[refKey]*NamedImageHistory
 	mu     *sync.Mutex
 }
 
-func NewImageHistory() ImageHistory {
-	return ImageHistory{
+func NewImageHistory(dir *dirs.WindmillDir) (ImageHistory, error) {
+	history := ImageHistory{
+		dir:    dir,
 		byName: make(map[refKey]*NamedImageHistory, 0),
 		mu:     &sync.Mutex{},
 	}
+	entryMap, err := historyFromFS(dir)
+	if err != nil {
+		return ImageHistory{}, err
+	}
+
+	for ref, entries := range entryMap {
+		name, err := reference.ParseNormalizedNamed(string(ref))
+		if err != nil {
+			return ImageHistory{}, fmt.Errorf("NewImageHistory: %v", err)
+		}
+
+		for _, entry := range entries {
+			history.Add(name, entry.Digest, entry.CheckpointID)
+		}
+	}
+
+	return history, nil
 }
 
 // Create a new checkpoint ID.
@@ -72,6 +107,17 @@ func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, Checkpoin
 
 	mostRecent := bucket.mostRecent
 	return mostRecent.Digest, mostRecent.CheckpointID, true
+}
+
+func (h ImageHistory) SaveToFS() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	entryMap := make(map[refKey][]historyEntry, 0)
+	for key, bucket := range h.byName {
+		entryMap[key] = bucket.entries
+	}
+	return historyToFS(h.dir, entryMap)
 }
 
 type refKey string
