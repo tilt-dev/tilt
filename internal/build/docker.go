@@ -195,10 +195,13 @@ func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest di
 	imageWithSteps := string(baseDigest)
 	for _, s := range steps {
 		cId, err := l.startContainer(ctx, imageWithSteps, &s)
+		if err != nil {
+			return "", err
+		}
 
 		id, err := l.dcli.ContainerCommit(ctx, cId, types.ContainerCommitOptions{})
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 		imageWithSteps = id.ID
 	}
@@ -232,7 +235,7 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 	}
 	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	containerID := resp.ID
 
@@ -247,7 +250,23 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 		if err != nil {
 			return "", err
 		}
-	case <-statusCh:
+	case status := <-statusCh:
+		if status.Error != nil {
+			return "", errors.New(status.Error.Message)
+		}
+		// TODO(matt) feed this reader into the logger
+		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+		if err != nil {
+			return "", err
+		}
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(r)
+		if err != nil {
+			return "", err
+		}
+		if status.StatusCode != 0 {
+			return "", fmt.Errorf("command '%v' had non-0 exit code %v. output: '%v'", cmd, status.StatusCode, string(buf.Bytes()))
+		}
 	}
 
 	return containerID, nil
