@@ -65,7 +65,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 
 	d.history.Add(name, digest, checkpoint)
 
-	err = d.b.PushDocker(ctx, name, digest)
+	pushedDigest, err := d.b.PushDocker(ctx, name, digest)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigestWithStrings(e, dockerfileTag, string(digest))
+		newK8s, replaced, err := k8s.InjectImageDigestWithStrings(e, dockerfileTag, string(pushedDigest))
 		if err != nil {
 			return err
 		}
