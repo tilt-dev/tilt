@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltd"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 type Daemon struct {
@@ -37,7 +38,14 @@ func NewDaemon() (*Daemon, error) {
 		return nil, err
 	}
 	b := build.NewLocalDockerBuilder(dcli)
-	history := image.NewImageHistory()
+	dir, err := dirs.UseWindmillDir()
+	if err != nil {
+		return nil, err
+	}
+	history, err := image.NewImageHistory(dir)
+	if err != nil {
+		return nil, err
+	}
 	return &Daemon{
 		b:       b,
 		history: history,
@@ -65,7 +73,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 
 	d.history.Add(name, digest, checkpoint)
 
-	err = d.b.PushDocker(ctx, name, digest)
+	pushedDigest, err := d.b.PushDocker(ctx, name, digest)
 	if err != nil {
 		return err
 	}
@@ -78,7 +86,7 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigestWithStrings(e, dockerfileTag, string(digest))
+		newK8s, replaced, err := k8s.InjectImageDigest(e, name, pushedDigest)
 		if err != nil {
 			return err
 		}

@@ -29,13 +29,22 @@ import (
 // Tilt always pushes to the same tag. We never push to latest.
 const pushTag = "wm-tilt"
 
+var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT, " +
+	"which is not currently supported -- provide an entrypoint in your Tiltfile")
+
 type localDockerBuilder struct {
 	dcli *client.Client
 }
 
 type Builder interface {
 	BuildDocker(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount, steps []tiltd.Cmd, entrypoint tiltd.Cmd) (digest.Digest, error)
-	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) error
+	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
+}
+
+type pushOutput struct {
+	Tag    string
+	Digest string
+	Size   int
 }
 
 var _ Builder = &localDockerBuilder{}
@@ -71,23 +80,23 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) error {
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (digest.Digest, error) {
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
-		return fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
+		return "", fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
 	}
 
 	cli := command.NewDockerCli(nil, os.Stdout, os.Stderr, true)
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
-		return fmt.Errorf("PushDocker#InitializeCLI: %s", err)
+		return "", fmt.Errorf("PushDocker#InitializeCLI: %s", err)
 	}
 	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
 
 	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
 	if err != nil {
-		return fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
+		return "", fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
 	}
 
 	options := types.ImagePushOptions{
@@ -96,17 +105,17 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}
 
 	if reference.Domain(ref) == "" {
-		return fmt.Errorf("PushDocker: no domain in container name: %s", ref)
+		return "", fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
 	tag, err := reference.WithTag(ref, pushTag)
 	if err != nil {
-		return fmt.Errorf("PushDocker: %v", err)
+		return "", fmt.Errorf("PushDocker: %v", err)
 	}
 
 	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
 	if err != nil {
-		return fmt.Errorf("PushDocker#ImageTag: %v", err)
+		return "", fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
 	imagePushResponse, err := l.dcli.ImagePush(
@@ -114,19 +123,24 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		tag.String(),
 		options)
 	if err != nil {
-		return fmt.Errorf("PushDocker#ImagePush: %v", err)
+		return "", fmt.Errorf("PushDocker#ImagePush: %v", err)
 	}
 
 	defer imagePushResponse.Close()
-	_, err = readDockerOutput(imagePushResponse)
+	pushedDigest, err := getDigestFromPushOutput(imagePushResponse)
 	if err != nil {
-		return fmt.Errorf("PushDocker#ImagePush: %v", err)
+		return "", fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
 
-	return nil
+	return pushedDigest, nil
 }
 
 func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []tiltd.Mount) (digest.Digest, error) {
+	err := validateDockerfile(baseDockerfile)
+	if err != nil {
+		return "", err
+	}
+
 	archive, err := tarContext(baseDockerfile, mounts)
 	if err != nil {
 		return "", err
@@ -164,14 +178,30 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 	return getDigestFromAux(*result)
 }
 
+// NOTE(maia): can put more logic in here sometime; currently just returns an error
+// if Dockerfile contains an ENTRYPOINT, which is illegal in Tilt right now (an
+// ENTRYPOINT overrides a ContainerCreate Cmd, which we rely on).
+// TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
+func validateDockerfile(df string) error {
+	for _, line := range strings.Split(df, "\n") {
+		if strings.HasPrefix(line, "ENTRYPOINT") {
+			return ErrEntrypointInDockerfile
+		}
+	}
+	return nil
+}
+
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, baseDigest digest.Digest, steps []tiltd.Cmd) (digest.Digest, error) {
 	imageWithSteps := string(baseDigest)
 	for _, s := range steps {
 		cId, err := l.startContainer(ctx, imageWithSteps, &s)
+		if err != nil {
+			return "", err
+		}
 
 		id, err := l.dcli.ContainerCommit(ctx, cId, types.ContainerCommitOptions{})
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 		imageWithSteps = id.ID
 	}
@@ -205,7 +235,7 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 	}
 	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	containerID := resp.ID
 
@@ -220,7 +250,23 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 		if err != nil {
 			return "", err
 		}
-	case <-statusCh:
+	case status := <-statusCh:
+		if status.Error != nil {
+			return "", errors.New(status.Error.Message)
+		}
+		// TODO(matt) feed this reader into the logger
+		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+		if err != nil {
+			return "", err
+		}
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(r)
+		if err != nil {
+			return "", err
+		}
+		if status.StatusCode != 0 {
+			return "", fmt.Errorf("command '%v' had non-0 exit code %v. output: '%v'", cmd, status.StatusCode, string(buf.Bytes()))
+		}
 	}
 
 	return containerID, nil
@@ -370,15 +416,33 @@ func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
 	return result, nil
 }
 
-func getDigestFromOutput(reader io.Reader) (digest.Digest, error) {
+func getDigestFromBuildOutput(reader io.Reader) (digest.Digest, error) {
 	aux, err := readDockerOutput(reader)
 	if err != nil {
 		return "", err
 	}
 	if aux == nil {
-		return "", fmt.Errorf("getDigestFromOutput: No results found in docker output")
+		return "", fmt.Errorf("getDigestFromBuildOutput: No results found in docker output")
 	}
 	return getDigestFromAux(*aux)
+}
+
+func getDigestFromPushOutput(reader io.Reader) (digest.Digest, error) {
+	aux, err := readDockerOutput(reader)
+	if err != nil {
+		return "", err
+	}
+	d := pushOutput{}
+	err = json.Unmarshal(*aux, &d)
+	if err != nil {
+		return "", fmt.Errorf("getDigestFromPushOutput#Unmarshal: %v, json string: %+v", err, aux)
+	}
+
+	if d.Digest == "" {
+		return "", fmt.Errorf("getDigestFromPushOutput: Digest not found in %+v", aux)
+	}
+
+	return digest.Digest(d.Digest), nil
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
