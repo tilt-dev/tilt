@@ -1,10 +1,10 @@
 package build
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +15,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -223,7 +225,7 @@ func TestBuildOneStep(t *testing.T) {
 	}
 
 	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello"},
+		pathContent{path: "hi", contents: "hello\n"},
 	}
 	f.assertFilesInImageWithContents(string(digest), contents)
 }
@@ -243,8 +245,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 	}
 
 	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello"},
-		pathContent{path: "hi2", contents: "sup"},
+		pathContent{path: "hi", contents: "hello\n"},
+		pathContent{path: "hi2", contents: "sup\n"},
 	}
 	f.assertFilesInImageWithContents(string(digest), contents)
 }
@@ -275,7 +277,7 @@ func TestEntrypoint(t *testing.T) {
 	}
 
 	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello"},
+		pathContent{path: "hi", contents: "hello\n"},
 	}
 	f.assertFilesInImageWithContents(string(d), contents)
 }
@@ -424,20 +426,43 @@ func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, 
 
 func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {
 	ctx := context.Background()
-	var cmd strings.Builder
-	for _, c := range contents {
-		notFound := fmt.Sprintf("ERROR: file %s not found or didn't have expected contents '%s'",
-			c.path, c.contents)
-		cs := fmt.Sprintf("cat %s | grep \"%s\" || echo \"%s\"; ",
-			c.path, c.contents, notFound)
-		cmd.WriteString(cs)
+	cId, err := f.b.startContainer(ctx, ref, &tiltd.Cmd{Argv: []string{"sh"}})
+	if err != nil {
+		f.t.Fatal(err)
 	}
-	cmdToRun := tiltd.Cmd{Argv: []string{"sh", "-c", cmd.String()}}
 
-	output := f.startContainerWithOutput(ctx, ref, &cmdToRun)
+	for _, c := range contents {
+		reader, _, err := f.dcli.CopyFromContainer(ctx, cId, c.path)
+		if err != nil {
+			f.t.Fatal(err)
+		}
 
-	if strings.Contains(output, "ERROR:") {
-		f.t.Errorf("Failed to find one or more expected files in container with output:\n%s", output)
+		f.assertFileInTar(tar.NewReader(reader), c)
+	}
+}
+
+func (f *testFixture) assertFileInTar(tr *tar.Reader, content pathContent) {
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			f.t.Fatalf("File not found in container: %s", content.path)
+		} else if err != nil {
+			f.t.Fatalf("Error reading tar file: %v", err)
+		}
+
+		if header.Typeflag == tar.TypeReg {
+			contents := bytes.NewBuffer(nil)
+			_, err = io.Copy(contents, tr)
+			if err != nil {
+				f.t.Fatalf("Error reading tar file: %v", err)
+			}
+
+			if contents.String() != content.contents {
+				f.t.Errorf("Wrong contents in %q. Expected: %q. Actual: %q",
+					content.path, content.contents, contents.String())
+			}
+			return // we found it!
+		}
 	}
 }
 
