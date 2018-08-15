@@ -42,3 +42,7 @@ type Cmd struct {
 func (c Cmd) EntrypointStr() string {
 	return fmt.Sprintf("ENTRYPOINT [\"%s\"]", strings.Join(c.Argv, "\", \""))
 }
+
+func ToShellCmd(cmd string) Cmd {
+	return Cmd{Argv: []string{"sh", "-c", cmd}}
+}
