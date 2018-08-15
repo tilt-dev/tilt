@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 
@@ -72,6 +73,14 @@ func (d *Daemon) CreateService(ctx context.Context, k8sYaml string, dockerfile s
 	}
 
 	d.history.Add(name, digest, checkpoint)
+	defer func() {
+		// For now, we naively save after every Add. In the future, we might do this
+		// on shutdown or on a timer.
+		err := d.history.SaveToFS()
+		if err != nil {
+			log.Printf("Error backing up image digests: %v", err)
+		}
+	}()
 
 	pushedDigest, err := d.b.PushDocker(ctx, name, digest)
 	if err != nil {
