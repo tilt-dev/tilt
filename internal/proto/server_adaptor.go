@@ -5,7 +5,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
-	)
+)
 
 type grpcServer struct {
 	sm service.Manager
