@@ -24,7 +24,7 @@ func (c *upCmd) register() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 	}
 
-	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically redeployed when files in their repos change")
+	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically rebuilt and redeployed when files in their repos change")
 
 	return cmd
 }

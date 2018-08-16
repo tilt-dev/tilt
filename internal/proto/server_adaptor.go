@@ -4,16 +4,14 @@ import (
 	"github.com/windmilleng/tilt/internal/debug"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/tiltd"
-	context "golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 type GRPCServer struct {
-	del tiltd.TiltD
 }
 
-func NewGRPCServer(del tiltd.TiltD) *GRPCServer {
-	return &GRPCServer{del: del}
+func NewGRPCServer() *GRPCServer {
+	return &GRPCServer{}
 }
 
 var _ DaemonServer = &GRPCServer{}

@@ -4,18 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
-
-	"github.com/windmilleng/tilt/internal/tiltd"
 )
-
-type Daemon struct {
-}
-
-var _ tiltd.TiltD = &Daemon{}
-
-func NewDaemon() (*Daemon, error) {
-	return &Daemon{}, nil
-}
 
 func RunDaemon(ctx context.Context) (*os.Process, error) {
 	cmd := exec.CommandContext(ctx, os.Args[0], "daemon")
