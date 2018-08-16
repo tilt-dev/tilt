@@ -271,8 +271,9 @@ func TestEntrypoint(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
+	ctx := context.Background()
 	entrypoint := model.ToShellCmd("echo hello >> hi")
-	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
+	d, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +281,12 @@ func TestEntrypoint(t *testing.T) {
 	contents := []pathContent{
 		pathContent{path: "hi", contents: "hello\n"},
 	}
-	f.assertFilesInImageWithContents(string(d), contents)
+
+	cID, err := f.b.startContainer(ctx, containerConfig(d))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.assertFilesInContainerWithContents(ctx, cID, contents)
 }
 
 func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
@@ -474,8 +480,8 @@ type pathContent struct {
 	contents string
 }
 
-func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd *model.Cmd) string {
-	cId, err := f.b.startContainer(ctx, ref, cmd)
+func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
+	cId, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), cmd))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -498,28 +504,32 @@ func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, 
 	return string(output)
 }
 
-func (f *testFixture) assertFilesInImageWithContents(ref string, contents []pathContent) {
+func (f *testFixture) assertFilesInImageWithContents(ref string, expectedFiles []pathContent) {
 	ctx := context.Background()
-	cId, err := f.b.startContainer(ctx, ref, &model.Cmd{Argv: []string{"sh"}})
+	cID, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	f.assertFilesInContainerWithContents(ctx, cID, expectedFiles)
+}
 
-	for _, c := range contents {
-		reader, _, err := f.dcli.CopyFromContainer(ctx, cId, c.path)
+func (f *testFixture) assertFilesInContainerWithContents(
+	ctx context.Context, containerID string, expectedFiles []pathContent) {
+	for _, expectedFile := range expectedFiles {
+		reader, _, err := f.dcli.CopyFromContainer(ctx, containerID, expectedFile.path)
 		if err != nil {
 			f.t.Fatal(err)
 		}
 
-		f.assertFileInTar(tar.NewReader(reader), c)
+		f.assertFileInTar(tar.NewReader(reader), expectedFile)
 	}
 }
 
-func (f *testFixture) assertFileInTar(tr *tar.Reader, content pathContent) {
+func (f *testFixture) assertFileInTar(tr *tar.Reader, expected pathContent) {
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
-			f.t.Fatalf("File not found in container: %s", content.path)
+			f.t.Fatalf("File not found in container: %s", expected.path)
 		} else if err != nil {
 			f.t.Fatalf("Error reading tar file: %v", err)
 		}
@@ -531,9 +541,9 @@ func (f *testFixture) assertFileInTar(tr *tar.Reader, content pathContent) {
 				f.t.Fatalf("Error reading tar file: %v", err)
 			}
 
-			if contents.String() != content.contents {
+			if contents.String() != expected.contents {
 				f.t.Errorf("Wrong contents in %q. Expected: %q. Actual: %q",
-					content.path, content.contents, contents.String())
+					expected.path, expected.contents, contents.String())
 			}
 			return // we found it!
 		}
