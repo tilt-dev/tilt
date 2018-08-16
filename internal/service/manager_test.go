@@ -107,6 +107,25 @@ func TestRemoveService(t *testing.T) {
 	f.AssertServiceList([]model.Service{})
 }
 
+func TestGetService(t *testing.T) {
+	f := newServiceManagerFixture(t)
+
+	name := model.ServiceName("hello")
+	expected := model.Service{Name: name}
+	err := f.sm.Add(expected)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
+	actual, err := f.sm.Get(expected.Name)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
+
+	if !assert.EqualValues(t, actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+}
+
 type serviceManagerFixture struct {
 	t  *testing.T
 	sm service.Manager

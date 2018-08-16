@@ -12,6 +12,7 @@ type Manager interface {
 	Update(s model.Service) error
 	Remove(s model.ServiceName)
 	List() []model.Service
+	Get(n model.ServiceName) (model.Service, error)
 }
 
 type memoryManager struct {
@@ -75,4 +76,15 @@ func (m *memoryManager) Remove(n model.ServiceName) {
 	defer m.mu.Unlock()
 
 	delete(m.services, n)
+}
+
+func (m *memoryManager) Get(n model.ServiceName) (model.Service, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.serviceExists(n) {
+		return m.services[n], nil
+	}
+
+	return model.Service{}, fmt.Errorf("Unable to find service %s", n)
 }
