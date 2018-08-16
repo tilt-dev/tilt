@@ -20,7 +20,7 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token BuildToken) (BuildToken, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken) (*buildToken, error) {
 	b.startedServices = append(b.startedServices, service)
 	b.calls <- true
 	return nil, nil
