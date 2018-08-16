@@ -1,1 +1,0 @@
-synclet/deploy_synclet.py

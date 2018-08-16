@@ -3,8 +3,9 @@ package proto
 import (
 	"context"
 
-	"google.golang.org/grpc"
 	"io"
+
+	"google.golang.org/grpc"
 )
 
 type Client struct {
@@ -16,8 +17,8 @@ func NewGRPCClient(conn *grpc.ClientConn) *Client {
 	return &Client{del: NewDaemonClient(conn), conn: conn}
 }
 
-func (c *Client) CreateService(ctx context.Context, service Service) error {
-	stream, err := c.del.CreateService(ctx, &service)
+func (c *Client) CreateService(ctx context.Context, req CreateServiceRequest) error {
+	stream, err := c.del.CreateService(ctx, &req)
 	if err != nil {
 		return err
 	}
@@ -39,6 +40,11 @@ func (c *Client) CreateService(ctx context.Context, service Service) error {
 			}
 		}
 	}
+}
+
+func (c *Client) SetDebug(ctx context.Context, debug Debug) error {
+	_, err := c.del.SetDebug(ctx, &debug)
+	return err
 }
 
 func (c *Client) Close() error {

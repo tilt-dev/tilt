@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var debug bool
+
 func Execute() {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
@@ -15,6 +17,7 @@ func Execute() {
 
 	addCommand(rootCmd, &upCmd{})
 	addCommand(rootCmd, &daemonCmd{})
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Run with verbose debug messages")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -32,7 +35,7 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
 		err := child.run(args)
 		if err != nil {
-			_, err := fmt.Fprintf(os.Stderr, "Error: %v", err)
+			_, err := fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			if err != nil {
 				panic(err)
 			}

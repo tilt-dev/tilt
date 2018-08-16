@@ -481,17 +481,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8473a7cbf0c84f20361a12129a85bc62b3f396b2b8cbeb57767e998a6d8af120"
-  name = "github.com/windmilleng/tesseract"
-  packages = ["pkg/temp"]
-  pruneopts = "UT"
-  revision = "9161baa4cd435d5677aca5edd026f7de3e2a8d91"
-
-[[projects]]
-  branch = "master"
-  digest = "1:249cc5321a774aac14af6048aca78e72afbcf70325849a550c1bce5ab6c99811"
+  digest = "1:03559ebd560c35c65ede0edfe5925156e58636f144ca87f79703da1e2bf48d2e"
   name = "github.com/windmilleng/wmclient"
   packages = [
+    "pkg/dirs",
     "pkg/env",
     "pkg/os/temp",
   ]
@@ -725,7 +718,7 @@
     "github.com/stretchr/testify/assert",
     "github.com/windmilleng/fsevents",
     "github.com/windmilleng/fsnotify",
-    "github.com/windmilleng/tesseract/pkg/temp",
+    "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",
     "golang.org/x/net/context",
     "google.golang.org/grpc",

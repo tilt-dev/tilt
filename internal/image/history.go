@@ -1,11 +1,13 @@
 package image
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // A monotonically increasing ID.
@@ -18,17 +20,50 @@ func (c CheckpointID) After(d CheckpointID) bool {
 	return time.Time(c).After(time.Time(d))
 }
 
+func (c CheckpointID) MarshalJSON() ([]byte, error) {
+	return time.Time(c).MarshalJSON()
+}
+
+func (c *CheckpointID) UnmarshalJSON(b []byte) error {
+	if c == nil {
+		return nil
+	}
+	t := time.Time(*c)
+	err := (&t).UnmarshalJSON(b)
+	*c = CheckpointID(t)
+	return err
+}
+
 // Track all the images that tilt has ever built.
 type ImageHistory struct {
+	dir    *dirs.WindmillDir
 	byName map[refKey]*NamedImageHistory
 	mu     *sync.Mutex
 }
 
-func NewImageHistory() ImageHistory {
-	return ImageHistory{
+func NewImageHistory(dir *dirs.WindmillDir) (ImageHistory, error) {
+	history := ImageHistory{
+		dir:    dir,
 		byName: make(map[refKey]*NamedImageHistory, 0),
 		mu:     &sync.Mutex{},
 	}
+	entryMap, err := historyFromFS(dir)
+	if err != nil {
+		return ImageHistory{}, err
+	}
+
+	for ref, entries := range entryMap {
+		name, err := reference.ParseNormalizedNamed(string(ref))
+		if err != nil {
+			return ImageHistory{}, fmt.Errorf("NewImageHistory: %v", err)
+		}
+
+		for _, entry := range entries {
+			history.Add(name, entry.Digest, entry.CheckpointID)
+		}
+	}
+
+	return history, nil
 }
 
 // Create a new checkpoint ID.
@@ -39,7 +74,7 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint CheckpointID) {
+func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -58,6 +93,7 @@ func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint
 	if entry.After(bucket.mostRecent.CheckpointID) {
 		bucket.mostRecent = entry
 	}
+	return addHistoryToFS(h.dir, key, entry)
 }
 
 func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, CheckpointID, bool) {

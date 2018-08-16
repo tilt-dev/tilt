@@ -18,6 +18,8 @@ type Tiltfile struct {
 }
 
 func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	// TODO(maia): `entrypoint` should be an optional arg; user should be able to declare
+	// it in base Dockerfile and Tilt should be able to parse it out and apply it.
 	var dockerfileName, entrypoint, dockerfileTag string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"docker_file_name", &dockerfileName,

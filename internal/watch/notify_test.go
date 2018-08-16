@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/windmilleng/fsnotify"
-	"github.com/windmilleng/tesseract/pkg/temp"
 )
 
 // Each implementation of the notify interface should have the same basic
@@ -290,8 +289,8 @@ func TestSingleFile(t *testing.T) {
 
 type notifyFixture struct {
 	t       *testing.T
-	root    *temp.TempDir
-	watched *temp.TempDir
+	root    *TempDir
+	watched *TempDir
 	notify  Notify
 	events  []fsnotify.Event
 }
@@ -303,7 +302,7 @@ func newNotifyFixture(t *testing.T) *notifyFixture {
 		t.Fatal(err)
 	}
 
-	root, err := temp.NewDir(t.Name())
+	root, err := NewDir(t.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
