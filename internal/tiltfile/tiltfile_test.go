@@ -108,6 +108,35 @@ def blorgly_frontend():
 	}
 }
 
+func TestCompositeService(t *testing.T) {
+	file := tempFile(
+		`def blorgly():
+	return composite_service(blorgly_backend(), blorgly_frontend())
+
+def blorgly_backend():
+  return "blorgly_backend"
+
+def blorgly_frontend():
+  return "blorgly_frontend"
+`)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	serviceConfig, err := tiltConfig.GetServiceConfig("blorgly")
+	if err != nil {
+		t.Fatal("getting service config:", err)
+	}
+
+	for _, s := range []string{"blorgly", "blorgly_backend", "blorgly_frontend"} {
+		assert.Contains(t, tiltConfig.globals, s)
+		assert.Contains(t, []string{"blorgly_backend()", "blorgly_frontend()"}, serviceConfig.Steps[0].Argv)
+	}
+}
+
 func TestGetServiceConfigUndefined(t *testing.T) {
 	file := tempFile(
 		`def blorgly():
