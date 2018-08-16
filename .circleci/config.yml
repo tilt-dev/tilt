@@ -24,4 +24,5 @@ workflows:
   build:
     jobs:
       - build-linux
-      - build-macos
+      # TODO(matt) fix macos builds and uncomment (ticket opened with circleci 2018/08/16)
+      # - build-macos
