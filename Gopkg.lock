@@ -237,14 +237,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:a88c5f70005e121cfe4eb9e1dd76065ab1c204de6e8e5b9b4fec41a83fe1338b"
-  name = "github.com/google/go-cloud"
-  packages = ["wire"]
-  pruneopts = "UT"
-  revision = "5fb966ac9a602519675a9fb8dae2f421001e1094"
-  version = "v0.1.1"
-
-[[projects]]
   branch = "master"
   digest = "1:3ee90c0d94da31b442dde97c99635aaafec68d0b8a3c12ee2075c6bdabeec6bb"
   name = "github.com/google/gofuzz"
@@ -720,7 +712,6 @@
     "github.com/docker/docker/pkg/jsonmessage",
     "github.com/docker/docker/registry",
     "github.com/golang/protobuf/proto",
-    "github.com/google/go-cloud/wire",
     "github.com/google/skylark",
     "github.com/opencontainers/go-digest",
     "github.com/spf13/cobra",
