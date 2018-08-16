@@ -63,7 +63,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	digest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, &service.Entrypoint)
+	digest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
 
 	if err != nil {
 		return nil, err

@@ -38,7 +38,7 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDocker(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint *model.Cmd) (digest.Digest, error)
+	BuildDocker(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
 	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, mounts []model.Mount, steps []model.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
 }
@@ -56,8 +56,13 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 }
 
 func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string,
-	mounts []model.Mount, steps []model.Cmd, entrypoint *model.Cmd) (digest.Digest, error) {
-	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, mounts)
+	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	return l.buildDocker(ctx, baseDockerfile, mounts, steps, entrypoint)
+}
+
+func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
+	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	baseDigest, err := l.buildBaseWithMounts(ctx, df, mounts)
 	if err != nil {
 		return "", fmt.Errorf("buildBaseWithMounts: %v", err)
 	}
@@ -67,8 +72,8 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 		return "", fmt.Errorf("execStepsOnImage: %v", err)
 	}
 
-	if entrypoint != nil {
-		newDigest, err = l.imageWithEntrypoint(ctx, newDigest, *entrypoint)
+	if !entrypoint.Empty() {
+		newDigest, err = l.imageWithEntrypoint(ctx, newDigest, entrypoint)
 		if err != nil {
 			return "", fmt.Errorf("imageWithEntrypoint: %v", err)
 		}
@@ -79,10 +84,8 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	mounts []model.Mount, steps []model.Cmd) (digest.Digest, error) {
-	// TODO(maia): unset entrypoint from existing so that we can exec steps on it
-	// (Maybe don't pass entrypoint, and instead read and parse existing entrypoint and reapply?)
 	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
-	return l.BuildDocker(ctx, dfForExisting, mounts, steps, nil)
+	return l.buildDocker(ctx, dfForExisting, mounts, steps, model.Cmd{})
 }
 
 // Naively tag the digest and push it up to the docker registry specified in the name.

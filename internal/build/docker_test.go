@@ -86,7 +86,7 @@ func TestMount(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestMultipleMounts(t *testing.T) {
 		ContainerPath: "goodbye_there",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestMountCollisions(t *testing.T) {
 		ContainerPath: "/hello_there",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestPush(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestPushInvalid(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestBuildOneStep(t *testing.T) {
 		model.ToShellCmd("echo hello >> hi"),
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 		model.ToShellCmd("echo sup >> hi2"),
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
 	}
 
-	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, nil)
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestBuildFailingStep(t *testing.T) {
 		model.ToShellCmd("echo hello && exit 1"),
 	}
 
-	_, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, nil)
+	_, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
 		assert.Contains(t, err.Error(), "exit code 1")
@@ -295,7 +295,7 @@ func TestEntrypoint(t *testing.T) {
 
 	ctx := context.Background()
 	entrypoint := model.ToShellCmd("echo hello >> hi")
-	d, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{}, []model.Cmd{}, &entrypoint)
+	d, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
 	df := `FROM alpine
 ENTRYPOINT ["sleep", "100000"]`
 
-	_, err := f.b.BuildDocker(context.Background(), df, []model.Mount{}, []model.Cmd{}, nil)
+	_, err := f.b.BuildDocker(context.Background(), df, []model.Mount{}, []model.Cmd{}, model.Cmd{})
 	if err == nil {
 		t.Fatal("expected an err b/c dockerfile contains an ENTRYPOINT")
 	}
@@ -345,7 +345,7 @@ func TestAddMountsToExisting(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	existing, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, nil)
+	existing, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +376,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, nil)
+	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,7 +407,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	existing, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, &entrypoint)
+	existing, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
