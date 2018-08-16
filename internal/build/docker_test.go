@@ -217,7 +217,7 @@ func TestBuildOneStep(t *testing.T) {
 	defer f.teardown()
 
 	steps := []model.Cmd{
-		model.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
+		model.ToShellCmd("echo hello >> hi"),
 	}
 
 	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
@@ -236,8 +236,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 	defer f.teardown()
 
 	steps := []model.Cmd{
-		model.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
-		model.Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
+		model.ToShellCmd("echo hello >> hi"),
+		model.ToShellCmd("echo sup >> hi2"),
 	}
 
 	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
@@ -257,7 +257,7 @@ func TestBuildFailingStep(t *testing.T) {
 	defer f.teardown()
 
 	steps := []model.Cmd{
-		model.Cmd{Argv: []string{"sh", "-c", "echo hello && exit 1"}},
+		model.ToShellCmd("echo hello && exit 1"),
 	}
 
 	_, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
@@ -271,7 +271,7 @@ func TestEntrypoint(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	entrypoint := model.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}}
+	entrypoint := model.ToShellCmd("echo hello >> hi")
 	d, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -343,14 +343,14 @@ func todo_TestExecStepsOnExisting(t *testing.T) {
 	// NOTE(maia): currently this should fail b/c if an img has entrypoint,
 	// we can't exec steps on it/its ancestors w/o removing the entrypoint;
 	// but can't accurately test without smarter assert's.
-	sayHi := model.Cmd{Argv: []string{"sh", "-c", "echo hello"}}
+	sayHi := model.ToShellCmd("echo hello")
 	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, []model.Cmd{}, sayHi)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	f.writeFile("foo", "hello world")
-	step := model.Cmd{Argv: []string{"sh", "-c", "echo foo contains: $(cat /src/foo) >> /src/bar"}}
+	step := model.ToShellCmd("echo foo contains: $(cat /src/foo) >> /src/bar")
 	m := model.Mount{
 		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
 		ContainerPath: "/src",

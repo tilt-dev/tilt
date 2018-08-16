@@ -42,3 +42,7 @@ func (c Cmd) EntrypointStr() string {
 func (c Cmd) Empty() bool {
 	return len(c.Argv) == 0
 }
+
+func ToShellCmd(cmd string) Cmd {
+	return Cmd{Argv: []string{"sh", "-c", cmd}}
+}
