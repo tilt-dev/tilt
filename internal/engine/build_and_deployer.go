@@ -22,10 +22,6 @@ type BuildAndDeployer interface {
 
 var _ BuildAndDeployer = localBuildAndDeployer{}
 
-func ProvideBuildAndDeployer(b build.Builder, history image.ImageHistory) BuildAndDeployer {
-	return localBuildAndDeployer{b, history}
-}
-
 type localBuildAndDeployer struct {
 	b       build.Builder
 	history image.ImageHistory

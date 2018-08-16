@@ -11,26 +11,30 @@ import (
 	"io"
 )
 
-func UpService(ctx context.Context, buildAndDeployer BuildAndDeployer, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
-	bad, err := NewLocalBuildAndDeployer()
-	if err != nil {
-		return err
-	}
+type Upper struct {
+	b            BuildAndDeployer
+	watcherMaker func() (watch.Notify, error)
+}
 
-	buildToken, err := bad.BuildAndDeploy(ctx, service, nil)
+func NewUpper() (Upper, error) {
+	b, err := NewLocalBuildAndDeployer()
+	if err != nil {
+		return Upper{}, err
+	}
+	watcherMaker := func() (watch.Notify, error) {
+		return watch.NewWatcher()
+	}
+	return Upper{b, watcherMaker}, nil
+}
+
+func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
+	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil)
 	if err != nil {
 		return err
 	}
 
 	if watchMounts {
-		watcher, err := watch.NewWatcher()
-		defer func() {
-			err := watcher.Close()
-			if err != nil {
-				logger.Get(ctx).Info(err.Error())
-			}
-		}()
-
+		watcher, err := u.watcherMaker()
 		if err != nil {
 			return err
 		}
@@ -44,12 +48,14 @@ func UpService(ctx context.Context, buildAndDeployer BuildAndDeployer, service m
 		}
 
 		for {
+			// TODO(matt) honor .gitignore / .dockerignore
+			// TODO(matt) buffer events a bit so that we're not triggering 10 builds when you change branches
 			select {
 			case err := <-watcher.Errors():
 				return err
 			case <-watcher.Events():
 				logger.Get(ctx).Verbose("file changed, rebuilding %v", service.Name)
-				buildToken, err = bad.BuildAndDeploy(ctx, service, buildToken)
+				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken)
 				if err != nil {
 					return err
 				}
