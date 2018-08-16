@@ -3,8 +3,6 @@ package cli
 import (
 	"context"
 	"errors"
-	"log"
-
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
@@ -12,9 +10,12 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 )
 
-type upCmd struct{}
+type upCmd struct {
+	watch bool
+}
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -22,6 +23,8 @@ func (c *upCmd) register() *cobra.Command {
 		Short: "stand up a service",
 		Args:  cobra.ExactArgs(1),
 	}
+
+	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically rebuilt and redeployed when files in their repos change")
 
 	return cmd
 }
@@ -58,7 +61,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = dCli.CreateService(ctx, proto.CreateServiceRequest{Service: service})
+	err = dCli.CreateService(ctx, proto.CreateServiceRequest{Service: service, Watch: c.watch})
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
