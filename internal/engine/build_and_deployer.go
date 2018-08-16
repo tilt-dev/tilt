@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	"github.com/windmilleng/tilt/internal/build"
@@ -10,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/dirs"
-	"os"
 )
 
 type BuildToken interface{}
@@ -62,7 +63,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	digest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
+	digest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, &service.Entrypoint)
 
 	if err != nil {
 		return nil, err
