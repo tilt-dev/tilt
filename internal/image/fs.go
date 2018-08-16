@@ -41,21 +41,17 @@ func historyFromFS(dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {
 	return result, nil
 }
 
-func historyToFS(dir *dirs.WindmillDir, entriesMap map[refKey][]historyEntry) error {
-	file, err := dir.OpenFile(imagesPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(0644))
+func addHistoryToFS(dir *dirs.WindmillDir, ref refKey, entry historyEntry) error {
+	file, err := dir.OpenFile(imagesPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, os.FileMode(0644))
 	if err != nil {
-		return fmt.Errorf("historyToFS: %v", err)
+		return fmt.Errorf("addHistoryToFS: %v", err)
 	}
 
 	encoder := json.NewEncoder(file)
-	for ref, entries := range entriesMap {
-		for _, entry := range entries {
-			diskEntry := diskEntry{Ref: ref, Digest: entry.Digest, CheckpointID: entry.CheckpointID}
-			err := encoder.Encode(diskEntry)
-			if err != nil {
-				return fmt.Errorf("historyToFS: %v", err)
-			}
-		}
+	diskEntry := diskEntry{Ref: ref, Digest: entry.Digest, CheckpointID: entry.CheckpointID}
+	err = encoder.Encode(diskEntry)
+	if err != nil {
+		return fmt.Errorf("addHistoryToFS: %v", err)
 	}
 	return nil
 }
