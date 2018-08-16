@@ -2,26 +2,62 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
+	"github.com/windmilleng/tilt/internal/watch"
 )
 
-func UpService(ctx context.Context, service model.Service, watch bool, stdout io.Writer, stderr io.Writer, manager service.Manager) error {
-	bad, err := NewLocalBuildAndDeployer(manager)
+type Upper struct {
+	b            BuildAndDeployer
+	watcherMaker func() (watch.Notify, error)
+}
+
+func NewUpper(manager service.Manager) (Upper, error) {
+	b, err := NewLocalBuildAndDeployer(manager)
+	if err != nil {
+		return Upper{}, err
+	}
+	watcherMaker := func() (watch.Notify, error) {
+		return watch.NewWatcher()
+	}
+	return Upper{b, watcherMaker}, nil
+}
+
+func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
+	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil)
 	if err != nil {
 		return err
 	}
-	buildToken, err := bad.BuildAndDeploy(ctx, service, nil)
-	if watch {
+
+	if watchMounts {
+		watcher, err := u.watcherMaker()
+		if err != nil {
+			return err
+		}
+
+		if len(service.Mounts) == 0 {
+			return errors.New("service has 0 repos - nothing to watch")
+		}
+
+		for _, mount := range service.Mounts {
+			watcher.Add(mount.Repo.LocalPath)
+		}
+
 		for {
-			// TODO(matt) actually wait for a file to change instead of building on a loop
-			logger.Get(ctx).Verbose("building and deploying")
-			buildToken, err = bad.BuildAndDeploy(ctx, service, buildToken)
-			if err != nil {
+			// TODO(matt) buffer events a bit so that we're not triggering 10 builds when you change branches
+			select {
+			case err := <-watcher.Errors():
 				return err
+			case <-watcher.Events():
+				logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
+				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken)
+				if err != nil {
+					logger.Get(ctx).Info("build failed: %v", err.Error())
+				}
 			}
 		}
 	}
