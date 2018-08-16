@@ -13,7 +13,7 @@
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
-  digest = "1:d4484d5ea343882677abd9f42b100954f53e500c31e2e8945003ef84280c52a5"
+  digest = "1:adbfc2db750d6fbe0c165ad801ba2d730883a3bc40bc8fe829516eb42ed17771"
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
   pruneopts = "UT"
@@ -64,7 +64,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:adf8217f5ae84fca5c9c56c13c1f943b153f0e8ebbb3fd52c719b65d8c1a14b1"
+  digest = "1:e17af969bbcc92986ef3034690e33f0ec8e6ca6d9c254fe04726dbe101dc14e0"
   name = "github.com/docker/cli"
   packages = [
     "cli",
@@ -85,7 +85,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9b8daf83617dcc32fab8f2662432a6f796dad4557a0092f218fea1d5d91c346a"
+  digest = "1:82a4132c6dbe7bde2714715a66e6cc5677a9dc3b37b18ba437bd8cacdba860a3"
   name = "github.com/docker/distribution"
   packages = [
     ".",
@@ -110,7 +110,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:caf224964773f5cd81fcc15255cba021177ba7f486cd7f323e1ccc66a14e5250"
+  digest = "1:e8ae53e92343d7d50acb10b987846af89e7c523721d09fc4e5527f079cf34893"
   name = "github.com/docker/docker"
   packages = [
     "api",
@@ -149,7 +149,7 @@
   revision = "4122eb1a43a42c4c8b827b4d0fb3d6543f9f2c91"
 
 [[projects]]
-  digest = "1:15e7be8bdfcc1ea804cedc8e3187605c58642cddd1d333781b888e4873c1ed5b"
+  digest = "1:8866486038791fe65ea1abf660041423954b1f3fb99ea6a0ad8424422e943458"
   name = "github.com/docker/docker-credential-helpers"
   packages = [
     "client",
@@ -168,7 +168,7 @@
   version = "v1.5.1-1"
 
 [[projects]]
-  digest = "1:4c160152c819904d45c3a50f3e5c7abfef6cb6bb182c5ab69c28c196871695d5"
+  digest = "1:811c86996b1ca46729bad2724d4499014c4b9effd05ef8c71b852aad90deb0ce"
   name = "github.com/docker/go-connections"
   packages = [
     "nat",
@@ -204,7 +204,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:3c5fa2da8cbfa81f2811f5164a60801f4b6fdb0160636da2b228cbbdec4da098"
+  digest = "1:34e709f36fd4f868fb00dbaf8a6cab4c1ae685832d392874ba9d7c5dec2429d1"
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
@@ -223,7 +223,7 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:cb22af0ed7c72d495d8be1106233ee553898950f15fd3f5404406d44c2e86888"
+  digest = "1:17fe264ee908afc795734e8c4e63db2accabaf57326dbf21763a7d6b86096260"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -246,7 +246,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ec24baa1f6aa7f0316af2bc801cef09b19240367c25228428ea2aa9504088d9b"
+  digest = "1:a55cb823fc75f55d49b115558bf8a0f5290021183d9fb62e778a9b23bf2441ab"
   name = "github.com/google/skylark"
   packages = [
     ".",
@@ -330,7 +330,7 @@
   version = "v1.0.0-rc1"
 
 [[projects]]
-  digest = "1:7c5c09ec84d18b0dc5ec0de36c1b8d12d3bf1815d04b90dc50ab082f3b8f13f1"
+  digest = "1:11db38d694c130c800d0aefb502fb02519e514dc53d9804ce51d1ad25ec27db6"
   name = "github.com/opencontainers/image-spec"
   packages = [
     "specs-go",
@@ -341,7 +341,7 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:d77051a4a6de36d3dd26d2cd84434c84436fb7b3ffcae0d9585d492d197ea600"
+  digest = "1:38ee335aedf4626620f3cf8f605661e71abdcce7b40b38921962beb3980f0a20"
   name = "github.com/opencontainers/runc"
   packages = ["libcontainer/user"]
   pruneopts = "UT"
@@ -366,7 +366,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:65bc96524cd62880e2adc2e43451fc4dfd4810f0491140cff5710a79b941936f"
+  digest = "1:f83333225a296265066eebe16f96b48d1d10ec9388b51159008b73151d9c7194"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
@@ -377,7 +377,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0f37e09b3e92aaeda5991581311f8dbf38944b36a3edec61cc2d1991f527554a"
+  digest = "1:2d5cd61daa5565187e1d96bae64dbbc6080dacf741448e9629c64fd93203b0d4"
   name = "github.com/prometheus/client_model"
   packages = ["go"]
   pruneopts = "UT"
@@ -385,7 +385,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dad2e5a2153ee7a6c9ab8fc13673a16ee4fb64434a7da980965a3741b0c981a3"
+  digest = "1:63b68062b8968092eb86bedc4e68894bd096ea6b24920faca8b9dcf451f54bb5"
   name = "github.com/prometheus/common"
   packages = [
     "expfmt",
@@ -397,7 +397,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a37c98f4b7a66bb5c539c0539f0915a74ef1c8e0b3b6f45735289d94cae92bfd"
+  digest = "1:8c49953a1414305f2ff5465147ee576dd705487c35b15918fcd4efdc0cb7a290"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -417,7 +417,7 @@
   version = "v1.0.6"
 
 [[projects]]
-  digest = "1:872fa275c31e1f9db31d66fa9b1d4a7bb9a080ff184e6977da01f36bfbe07f11"
+  digest = "1:645cabccbb4fa8aab25a956cbcbdf6a6845ca736b2c64e197ca7cbb9d210b939"
   name = "github.com/spf13/cobra"
   packages = ["."]
   pruneopts = "UT"
@@ -441,7 +441,7 @@
   version = "v1.2.2"
 
 [[projects]]
-  digest = "1:e5cfdcfcdae61db571020b5ef2a5ff2157d34cd04f48442ee06e10d591011ec2"
+  digest = "1:3b65d4044b1331df2a369f8e75eef5972eb0c28a90159d25e317db2cee95a3b6"
   name = "github.com/theupdateframework/notary"
   packages = [
     ".",
@@ -465,7 +465,23 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f2d440935f7fa0483a0d30b49ce9c557a29e5079967a8127e61b9bef87e457d8"
+  digest = "1:63b47efba686806fc8497f752b3955224c4e9459bea6cf2851ec8070c913aa16"
+  name = "github.com/windmilleng/fsevents"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d9060b7f56f98ec69d5c6c1c03a87c8b7a7bc140"
+
+[[projects]]
+  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
+  name = "github.com/windmilleng/fsnotify"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
+
+[[projects]]
+  branch = "master"
+  digest = "1:03559ebd560c35c65ede0edfe5925156e58636f144ca87f79703da1e2bf48d2e"
   name = "github.com/windmilleng/wmclient"
   packages = [
     "pkg/dirs",
@@ -477,7 +493,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:53078c9e741e588d7cbf480c07c7b5099b3099a607f6c4b5ba3ac7821af9a267"
+  digest = "1:cb77e5934866333fa0784326a57e64c4da128001c94fbd1d29819d79bd3b1087"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
@@ -488,7 +504,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7c417e9b52eaf46826906b6b438186de5da04186e024330b540ea7defe3df4a4"
+  digest = "1:697bd8cd865debce7ac2799e3ee75fa0cd9a5a95946072b4c82e001cbf1c9811"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -507,7 +523,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:07318fef47190bca8891e301b3d1f7d0158d8fcaad22f7eb1dbad3c85513a60b"
+  digest = "1:4d16433c0d2c24761b8a507e8c2e9c8cf9193b497d6b38aaeffca038070bc8f5"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -517,7 +533,7 @@
   revision = "904bdc257025c7b3f43c19360ad3ab85783fad78"
 
 [[projects]]
-  digest = "1:7509ba4347d1f8de6ae9be8818b0cd1abc3deeffe28aeaf4be6d4b6b5178d9ca"
+  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -548,7 +564,7 @@
   revision = "383e8b2c3b9e36c4076b235b32537292176bae20"
 
 [[projects]]
-  digest = "1:74f4a872f90f363778088654a2edea7101d62e6fc0784945d38b0ef85e1828d8"
+  digest = "1:3dd7996ce6bf52dec6a2f69fa43e7c4cefea1d4dfa3c8ab7a5f8a9f7434e239d"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -600,7 +616,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3370a047631ea3665c814ffac017bd359fde62c8fc751e1389d960b4587fb190"
+  digest = "1:2105cfe56bf20a5244e168a5b3d06be34cdca7e674d2f30a7167bef74af4b778"
   name = "k8s.io/api"
   packages = [
     "admissionregistration/v1alpha1",
@@ -638,7 +654,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1e588aadb47cb114826e3aa4ffdb05ab3f37f61141023303f9681fb9d68508ab"
+  digest = "1:e355cc3d437d4db0eca4910b6d659eff459db2f24f5e63de0a826f135649df21"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/resource",
@@ -700,6 +716,8 @@
     "github.com/opencontainers/go-digest",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/assert",
+    "github.com/windmilleng/fsevents",
+    "github.com/windmilleng/fsnotify",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",
     "golang.org/x/net/context",

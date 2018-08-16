@@ -1,12 +1,28 @@
 version: 2
 jobs:
-  build:
+  build-linux:
     docker:
       - image: circleci/golang:1.10
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
       - setup_remote_docker
-      - run: make lint
-      - run: make verify_gofmt
-      - run: make test
+      - run: make all
+  build-macos:
+    macos:
+      xcode: "10.0.0"
+    working_directory: ~/go/src/github.com/windmilleng/tilt
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: brew install go
+      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
+      - run: make all
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build-linux
+      # TODO(matt) fix macos builds and uncomment (ticket opened with circleci 2018/08/16)
+      # - build-macos
