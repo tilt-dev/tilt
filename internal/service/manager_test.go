@@ -14,7 +14,9 @@ func TestAdd(t *testing.T) {
 
 	s := model.Service{Name: model.ServiceName("hello")}
 	err := f.sm.Add(s)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 
 	f.AssertServiceList([]model.Service{s})
 }
@@ -26,11 +28,17 @@ func TestAddManyServices(t *testing.T) {
 	s2 := model.Service{Name: model.ServiceName("world")}
 	s3 := model.Service{Name: model.ServiceName("name")}
 	err := f.sm.Add(s1)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 	err = f.sm.Add(s2)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 	err = f.sm.Add(s3)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 
 	expected := []model.Service{s1, s2, s3}
 
@@ -42,11 +50,15 @@ func TestUpdate(t *testing.T) {
 
 	s1 := model.Service{Name: model.ServiceName("hello"), DockerfileText: "FROM alpine1"}
 	err := f.sm.Add(s1)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 
 	s1.DockerfileText = "FROM alpine2"
 	err = f.sm.Update(s1)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 
 	f.AssertServiceList([]model.Service{s1})
 }
@@ -56,7 +68,9 @@ func TestUpdateNonexistantService(t *testing.T) {
 
 	s1 := model.Service{Name: model.ServiceName("hello"), DockerfileText: "FROM alpine1"}
 	err := f.sm.Add(s1)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 
 	s2 := model.Service{Name: model.ServiceName("hi"), DockerfileText: "FROM alpine2"}
 	err = f.sm.Update(s2)
@@ -70,7 +84,9 @@ func TestAddDuplicateService(t *testing.T) {
 
 	s := model.Service{Name: model.ServiceName("hello")}
 	err := f.sm.Add(s)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 	err = f.sm.Add(s)
 	assert.Error(t, err)
 
@@ -83,7 +99,9 @@ func TestRemoveService(t *testing.T) {
 	name := model.ServiceName("hello")
 	s := model.Service{Name: name}
 	err := f.sm.Add(s)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
 	f.sm.Remove(name)
 
 	f.AssertServiceList([]model.Service{})
