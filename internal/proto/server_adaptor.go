@@ -1,16 +1,17 @@
 package proto
 
 import (
-	"github.com/windmilleng/tilt/internal/tiltd"
-	context "golang.org/x/net/context"
+	"github.com/windmilleng/tilt/internal/debug"
+	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/model"
+	"golang.org/x/net/context"
 )
 
 type GRPCServer struct {
-	del tiltd.TiltD
 }
 
-func NewGRPCServer(del tiltd.TiltD) *GRPCServer {
-	return &GRPCServer{del: del}
+func NewGRPCServer() *GRPCServer {
+	return &GRPCServer{}
 }
 
 var _ DaemonServer = &GRPCServer{}
@@ -22,22 +23,18 @@ func (s *GRPCServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
-	service := req.Service
-
-	err := s.del.CreateService(d.Context(), service.K8SYaml, service.DockerfileText,
-		mountsP2D(service.Mounts), cmdsP2D(service.Steps), cmdP2D(service.Entrypoint),
-		service.DockerfileTag, outputStream.stdout, outputStream.stderr)
+	err := engine.UpService(d.Context(), serviceP2D(req.Service), req.Watch, outputStream.stdout, outputStream.stderr)
 
 	return err
 }
 
-func (s *GRPCServer) SetDebug(ctx context.Context, debug *Debug) (*DebugReply, error) {
-	s.del.SetDebug(ctx, debug.Mode)
+func (s *GRPCServer) SetDebug(ctx context.Context, d *Debug) (*DebugReply, error) {
+	debug.SetDebugMode(d.Mode)
 	return &DebugReply{}, nil
 }
 
-func mountsP2D(mounts []*Mount) []tiltd.Mount {
-	r := []tiltd.Mount{}
+func mountsP2D(mounts []*Mount) []model.Mount {
+	r := []model.Mount{}
 
 	for _, m := range mounts {
 		r = append(r, mountP2D(m))
@@ -46,8 +43,8 @@ func mountsP2D(mounts []*Mount) []tiltd.Mount {
 	return r
 }
 
-func mountP2D(mount *Mount) tiltd.Mount {
-	return tiltd.Mount{
+func mountP2D(mount *Mount) model.Mount {
+	return model.Mount{
 		Repo:          repoP2D(mount.Repo),
 		ContainerPath: mount.ContainerPath,
 	}
@@ -55,15 +52,15 @@ func mountP2D(mount *Mount) tiltd.Mount {
 
 // TODO(dmiller): right now this only supports github repos
 // if we add other types we'll have to change this
-func repoP2D(repo *Repo) tiltd.LocalGithubRepo {
+func repoP2D(repo *Repo) model.LocalGithubRepo {
 	githubRepo := repo.GetGitRepo()
-	return tiltd.LocalGithubRepo{
+	return model.LocalGithubRepo{
 		LocalPath: githubRepo.LocalPath,
 	}
 }
 
-func cmdsP2D(cmds []*Cmd) []tiltd.Cmd {
-	r := []tiltd.Cmd{}
+func cmdsP2D(cmds []*Cmd) []model.Cmd {
+	r := []model.Cmd{}
 
 	for _, c := range cmds {
 		r = append(r, cmdP2D(c))
@@ -72,8 +69,20 @@ func cmdsP2D(cmds []*Cmd) []tiltd.Cmd {
 	return r
 }
 
-func cmdP2D(cmd *Cmd) tiltd.Cmd {
-	return tiltd.Cmd{
+func cmdP2D(cmd *Cmd) model.Cmd {
+	return model.Cmd{
 		Argv: cmd.Argv,
+	}
+}
+
+func serviceP2D(service *Service) model.Service {
+	return model.Service{
+		K8sYaml:        service.K8SYaml,
+		DockerfileText: service.DockerfileText,
+		Mounts:         mountsP2D(service.Mounts),
+		Steps:          cmdsP2D(service.Steps),
+		Entrypoint:     cmdP2D(service.Entrypoint),
+		DockerfileTag:  service.DockerfileTag,
+		Name:           service.Name,
 	}
 }
