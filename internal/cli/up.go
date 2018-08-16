@@ -47,9 +47,6 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	protoBug := &proto.Debug{Mode: debug}
-	err = dCli.SetDebug(ctx, *protoBug)
-
 	tf, err := tiltfile.Load("Tiltfile")
 	if err != nil {
 		return err
@@ -61,7 +58,9 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = dCli.CreateService(ctx, proto.CreateServiceRequest{Service: service, Watch: c.watch})
+	req := proto.CreateServiceRequest{Service: service, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
+
+	err = dCli.CreateService(ctx, req)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
