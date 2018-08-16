@@ -63,11 +63,11 @@ func TestRemoveService(t *testing.T) {
 
 type serviceManagerFixture struct {
 	t  *testing.T
-	sm *service.Manager
+	sm service.Manager
 }
 
 func newServiceManagerFixture(t *testing.T) *serviceManagerFixture {
-	sm := service.NewManager()
+	sm := service.NewMemoryManager()
 
 	return &serviceManagerFixture{
 		t:  t,

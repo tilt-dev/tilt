@@ -9,11 +9,11 @@ import (
 )
 
 type grpcServer struct {
-	sm *service.Manager
+	sm service.Manager
 }
 
 func NewGRPCServer() *grpcServer {
-	sm := service.NewManager()
+	sm := service.NewMemoryManager()
 	return &grpcServer{sm: sm}
 }
 

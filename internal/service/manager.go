@@ -7,17 +7,23 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-type Manager struct {
+type Manager interface {
+	AddService(s model.Service) error
+	RemoveService(s model.ServiceName)
+	List() []model.Service
+}
+
+type memoryManager struct {
 	mu       *sync.Mutex
 	services map[model.ServiceName]model.Service
 }
 
-func NewManager() *Manager {
+func NewMemoryManager() *memoryManager {
 	m := make(map[model.ServiceName]model.Service)
-	return &Manager{mu: &sync.Mutex{}, services: m}
+	return &memoryManager{mu: &sync.Mutex{}, services: m}
 }
 
-func (m *Manager) AddService(s model.Service) error {
+func (m *memoryManager) AddService(s model.Service) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -30,12 +36,12 @@ func (m *Manager) AddService(s model.Service) error {
 	return nil
 }
 
-func (m *Manager) serviceExists(n model.ServiceName) bool {
+func (m *memoryManager) serviceExists(n model.ServiceName) bool {
 	_, servicePresent := m.services[n]
 	return servicePresent
 }
 
-func (m *Manager) List() []model.Service {
+func (m *memoryManager) List() []model.Service {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -51,7 +57,7 @@ func (m *Manager) List() []model.Service {
 	return v
 }
 
-func (m *Manager) RemoveService(n model.ServiceName) {
+func (m *memoryManager) RemoveService(n model.ServiceName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
