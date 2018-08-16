@@ -57,6 +57,6 @@ func (l logger) Debug(format string, a ...interface{}) {
 func (l logger) write(level Level, format string, a ...interface{}) {
 	if l.level >= level {
 		fmt.Printf(format, a...)
-		fmt.Printf("")
+		fmt.Println("")
 	}
 }
