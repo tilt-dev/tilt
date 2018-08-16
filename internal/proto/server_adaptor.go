@@ -4,31 +4,38 @@ import (
 	"github.com/windmilleng/tilt/internal/debug"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/service"
 	"golang.org/x/net/context"
 )
 
-type GRPCServer struct {
+type grpcServer struct {
+	sm *service.Manager
 }
 
-func NewGRPCServer() *GRPCServer {
-	return &GRPCServer{}
+func NewGRPCServer() *grpcServer {
+	sm := service.NewManager()
+	return &grpcServer{sm: sm}
 }
 
-var _ DaemonServer = &GRPCServer{}
+var _ DaemonServer = &grpcServer{}
 
-func (s *GRPCServer) CreateService(req *CreateServiceRequest, d Daemon_CreateServiceServer) error {
+func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateServiceServer) error {
 	sendOutput := func(output Output) error {
 		return d.Send(&CreateServiceReply{Output: &output})
 	}
 
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
-	err := engine.UpService(d.Context(), serviceP2D(req.Service), req.Watch, outputStream.stdout, outputStream.stderr)
+	service := serviceP2D(req.Service)
+	err := engine.UpService(d.Context(), service, req.Watch, outputStream.stdout, outputStream.stderr)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return s.sm.AddService(service)
 }
 
-func (s *GRPCServer) SetDebug(ctx context.Context, d *Debug) (*DebugReply, error) {
+func (s *grpcServer) SetDebug(ctx context.Context, d *Debug) (*DebugReply, error) {
 	debug.SetDebugMode(d.Mode)
 	return &DebugReply{}, nil
 }
