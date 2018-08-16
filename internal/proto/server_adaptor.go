@@ -28,7 +28,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
 	svc := serviceP2D(req.Service)
-	upper, err := engine.NewUpper()
+	upper, err := engine.NewUpper(s.sm)
 	if err != nil {
 		return err
 	}

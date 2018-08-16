@@ -3,12 +3,12 @@ package engine
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/watch"
-
-	"io"
 )
 
 type Upper struct {
@@ -16,8 +16,8 @@ type Upper struct {
 	watcherMaker func() (watch.Notify, error)
 }
 
-func NewUpper() (Upper, error) {
-	b, err := NewLocalBuildAndDeployer()
+func NewUpper(manager service.Manager) (Upper, error) {
+	b, err := NewLocalBuildAndDeployer(manager)
 	if err != nil {
 		return Upper{}, err
 	}
