@@ -42,11 +42,6 @@ func (c *Client) CreateService(ctx context.Context, req CreateServiceRequest) er
 	}
 }
 
-func (c *Client) SetDebug(ctx context.Context, debug Debug) error {
-	_, err := c.del.SetDebug(ctx, &debug)
-	return err
-}
-
 func (c *Client) Close() error {
 	return c.conn.Close()
 }

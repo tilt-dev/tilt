@@ -1,10 +1,9 @@
 package proto
 
 import (
-	"github.com/windmilleng/tilt/internal/debug"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"golang.org/x/net/context"
 )
 
 type GRPCServer struct {
@@ -21,16 +20,13 @@ func (s *GRPCServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 		return d.Send(&CreateServiceReply{Output: &output})
 	}
 
+	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel)))
+
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
-	err := engine.UpService(d.Context(), serviceP2D(req.Service), req.Watch, outputStream.stdout, outputStream.stderr)
+	err := engine.UpService(ctx, serviceP2D(req.Service), req.Watch, outputStream.stdout, outputStream.stderr)
 
 	return err
-}
-
-func (s *GRPCServer) SetDebug(ctx context.Context, d *Debug) (*DebugReply, error) {
-	debug.SetDebugMode(d.Mode)
-	return &DebugReply{}, nil
 }
 
 func mountsP2D(mounts []*Mount) []model.Mount {
