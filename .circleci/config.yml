@@ -1,23 +1,34 @@
+# Golang CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
 jobs:
   build-linux:
     docker:
+      # specify the version
       - image: circleci/golang:1.10
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
-      - setup_remote_docker
-      - run: make all
+
+      # specify any bash command here prefixed with `run: `
+      - run: go test -v ./...
   build-macos:
     macos:
-      xcode: "10.0.0"
+      xcode: "9.4.0"
+
     working_directory: ~/go/src/github.com/windmilleng/tilt
     steps:
       - checkout
-      - setup_remote_docker
       - run: brew install go
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - run: make all
+      - run: go test -v ./...
 
 workflows:
   version: 2
