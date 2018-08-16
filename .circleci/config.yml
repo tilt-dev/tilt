@@ -11,9 +11,6 @@ jobs:
   build-macos:
     macos:
       xcode: "10.0.0"
-
-    docker:
-      - image: circleci/golang:1.10
     working_directory: ~/go/src/github.com/windmilleng/tilt
     steps:
       - checkout
