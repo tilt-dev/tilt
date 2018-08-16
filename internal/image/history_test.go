@@ -96,11 +96,6 @@ func TestPersistence(t *testing.T) {
 	c2 := history.CheckpointNow()
 	history.Add(n1, d2, c2)
 
-	err := history.SaveToFS()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	history2, err := NewImageHistory(f.dir)
 	if err != nil {
 		t.Fatal(err)
