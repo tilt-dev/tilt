@@ -3,9 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,21 +15,19 @@ import (
 
 type fakeBuildAndDeployer struct {
 	startedServices []model.Service
-	cond            *sync.Cond
+	calls           chan bool
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token BuildToken) (BuildToken, error) {
 	b.startedServices = append(b.startedServices, service)
-	b.cond.L.Lock()
-	b.cond.Broadcast()
-	b.cond.L.Unlock()
+	b.calls <- true
 	return nil, nil
 }
 
 func newFakeBuildAndDeployer() *fakeBuildAndDeployer {
-	return &fakeBuildAndDeployer{cond: sync.NewCond(&sync.Mutex{})}
+	return &fakeBuildAndDeployer{calls: make(chan bool, 5)}
 }
 
 type fakeNotify struct {
@@ -84,11 +80,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
-	f.b.cond.L.Lock()
 	go func() {
-		fmt.Println("waiting for first create")
-		f.b.cond.Wait()
-		f.b.cond.L.Unlock()
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
@@ -103,16 +95,10 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	f := newTestFixture(t)
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
-	f.b.cond.L.Lock()
 	go func() {
-		fmt.Println("waiting for first create")
-		f.b.cond.Wait()
-		f.b.cond.L.Unlock()
+		<-f.b.calls
 		f.watcher.events <- fsnotify.Event{}
-		fmt.Println("waiting for second create")
-		f.b.cond.L.Lock()
-		f.b.cond.Wait()
-		f.b.cond.L.Unlock()
+		<-f.b.calls
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)

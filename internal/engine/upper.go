@@ -48,16 +48,15 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 		}
 
 		for {
-			// TODO(matt) honor .gitignore / .dockerignore
 			// TODO(matt) buffer events a bit so that we're not triggering 10 builds when you change branches
 			select {
 			case err := <-watcher.Errors():
 				return err
 			case <-watcher.Events():
-				logger.Get(ctx).Verbose("file changed, rebuilding %v", service.Name)
+				logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
 				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken)
 				if err != nil {
-					return err
+					logger.Get(ctx).Info("build failed: %v", err.Error())
 				}
 			}
 		}
