@@ -6,8 +6,12 @@ import (
 )
 
 type Logger interface {
+	// log information that we always want to show
 	Info(format string, a ...interface{})
+	// log information that a tilt user might not want to see on every run, but that they might find
+	// useful when debugging their Tiltfile/docker/k8s configs
 	Verbose(format string, a ...interface{})
+	// log information that is likely to only be of interest to tilt developers
 	Debug(format string, a ...interface{})
 }
 
@@ -52,6 +56,7 @@ func (l logger) Debug(format string, a ...interface{}) {
 
 func (l logger) write(level Level, format string, a ...interface{}) {
 	if l.level >= level {
-		fmt.Printf(format+"\n", a...)
+		fmt.Printf(format, a...)
+		fmt.Printf("")
 	}
 }

@@ -58,14 +58,9 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	var logLevel proto.LogLevel
-	if debug {
-		logLevel = proto.LogLevel_DEBUG
-	} else {
-		logLevel = proto.LogLevel_INFO
-	}
+	req := proto.CreateServiceRequest{Service: service, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
 
-	err = dCli.CreateService(ctx, proto.CreateServiceRequest{Service: service, Watch: c.watch, LogLevel: logLevel})
+	err = dCli.CreateService(ctx, req)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
