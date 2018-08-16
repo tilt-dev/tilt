@@ -11,7 +11,7 @@ import (
 var debug bool
 var verbose bool
 
-func logLevel() logger.Level{
+func logLevel() logger.Level {
 	if debug {
 		return logger.DebugLvl
 	} else if verbose {
