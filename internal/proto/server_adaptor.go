@@ -1,36 +1,39 @@
 package proto
 
 import (
-	"github.com/windmilleng/tilt/internal/debug"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"golang.org/x/net/context"
+	"github.com/windmilleng/tilt/internal/service"
 )
 
-type GRPCServer struct {
+type grpcServer struct {
+	sm service.Manager
 }
 
-func NewGRPCServer() *GRPCServer {
-	return &GRPCServer{}
+func NewGRPCServer() *grpcServer {
+	sm := service.NewMemoryManager()
+	return &grpcServer{sm: sm}
 }
 
-var _ DaemonServer = &GRPCServer{}
+var _ DaemonServer = &grpcServer{}
 
-func (s *GRPCServer) CreateService(req *CreateServiceRequest, d Daemon_CreateServiceServer) error {
+func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateServiceServer) error {
 	sendOutput := func(output Output) error {
 		return d.Send(&CreateServiceReply{Output: &output})
 	}
 
+	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel)))
+
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
-	err := engine.UpService(d.Context(), serviceP2D(req.Service), req.Watch, outputStream.stdout, outputStream.stderr)
+	svc := serviceP2D(req.Service)
+	err := engine.UpService(ctx, svc, req.Watch, outputStream.stdout, outputStream.stderr)
+	if err != nil {
+		return err
+	}
 
-	return err
-}
-
-func (s *GRPCServer) SetDebug(ctx context.Context, d *Debug) (*DebugReply, error) {
-	debug.SetDebugMode(d.Mode)
-	return &DebugReply{}, nil
+	return s.sm.Add(svc)
 }
 
 func mountsP2D(mounts []*Mount) []model.Mount {
@@ -75,6 +78,10 @@ func cmdP2D(cmd *Cmd) model.Cmd {
 	}
 }
 
+func serviceNameP2D(s string) model.ServiceName {
+	return model.ServiceName(s)
+}
+
 func serviceP2D(service *Service) model.Service {
 	return model.Service{
 		K8sYaml:        service.K8SYaml,
@@ -83,6 +90,6 @@ func serviceP2D(service *Service) model.Service {
 		Steps:          cmdsP2D(service.Steps),
 		Entrypoint:     cmdP2D(service.Entrypoint),
 		DockerfileTag:  service.DockerfileTag,
-		Name:           service.Name,
+		Name:           serviceNameP2D(service.Name),
 	}
 }

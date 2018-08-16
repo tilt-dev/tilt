@@ -2,12 +2,24 @@ package cli
 
 import (
 	"fmt"
+	"github.com/windmilleng/tilt/internal/logger"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 var debug bool
+var verbose bool
+
+func logLevel() logger.Level {
+	if debug {
+		return logger.DebugLvl
+	} else if verbose {
+		return logger.VerboseLvl
+	} else {
+		return logger.InfoLvl
+	}
+}
 
 func Execute() {
 	rootCmd := &cobra.Command{
@@ -17,7 +29,8 @@ func Execute() {
 
 	addCommand(rootCmd, &upCmd{})
 	addCommand(rootCmd, &daemonCmd{})
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Run with verbose debug messages")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

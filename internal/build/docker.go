@@ -39,7 +39,7 @@ type localDockerBuilder struct {
 
 type Builder interface {
 	BuildDocker(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
+	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, mounts []model.Mount, steps []model.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
 }
 
@@ -57,7 +57,12 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 
 func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	baseDigest, err := l.buildBaseWithMounts(ctx, baseDockerfile, mounts)
+	return l.buildDocker(ctx, baseDockerfile, mounts, steps, entrypoint)
+}
+
+func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
+	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	baseDigest, err := l.buildBaseWithMounts(ctx, df, mounts)
 	if err != nil {
 		return "", fmt.Errorf("buildBaseWithMounts: %v", err)
 	}
@@ -67,20 +72,20 @@ func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile str
 		return "", fmt.Errorf("execStepsOnImage: %v", err)
 	}
 
-	newDigest, err = l.imageWithEntrypoint(ctx, newDigest, entrypoint)
-	if err != nil {
-		return "", fmt.Errorf("imageWithEntrypoint: %v", err)
+	if !entrypoint.Empty() {
+		newDigest, err = l.imageWithEntrypoint(ctx, newDigest, entrypoint)
+		if err != nil {
+			return "", fmt.Errorf("imageWithEntrypoint: %v", err)
+		}
 	}
 
 	return newDigest, nil
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	// TODO(maia): unset entrypoint from existing so that we can exec steps on it
-	// (Maybe don't pass entrypoint, and instead read and parse existing entrypoint and reapply?)
+	mounts []model.Mount, steps []model.Cmd) (digest.Digest, error) {
 	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
-	return l.BuildDocker(ctx, dfForExisting, mounts, steps, entrypoint)
+	return l.buildDocker(ctx, dfForExisting, mounts, steps, model.Cmd{})
 }
 
 // Naively tag the digest and push it up to the docker registry specified in the name.
@@ -200,9 +205,9 @@ func validateDockerfile(df string) error {
 }
 
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, img digest.Digest, steps []model.Cmd) (digest.Digest, error) {
-	imageWithSteps := string(img)
+	imageWithSteps := img
 	for _, s := range steps {
-		cId, err := l.startContainer(ctx, imageWithSteps, &s)
+		cId, err := l.startContainer(ctx, containerConfigRunCmd(imageWithSteps, s))
 		if err != nil {
 			return "", fmt.Errorf("startContainer '%s': %v", img, err)
 		}
@@ -211,7 +216,7 @@ func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, img digest.Di
 		if err != nil {
 			return "", fmt.Errorf("containerCommit: %v", err)
 		}
-		imageWithSteps = id.ID
+		imageWithSteps = digest.Digest(id.ID)
 	}
 
 	return digest.Digest(imageWithSteps), nil
@@ -220,7 +225,7 @@ func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, img digest.Di
 // TODO(maia): can probs do this in a more efficient place -- e.g. `execStepsOnImage`
 // already spins up + commits a container, maybe piggyback off that?
 func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, img digest.Digest, entrypoint model.Cmd) (digest.Digest, error) {
-	cId, err := l.startContainer(ctx, string(img), nil)
+	cId, err := l.startContainer(ctx, containerConfigRunCmd(img, model.Cmd{}))
 	if err != nil {
 		return "", fmt.Errorf("startContainer '%s': %v", string(img), err)
 	}
@@ -239,16 +244,9 @@ func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, img digest
 	return digest.Digest(id.ID), nil
 }
 
-// startContainer starts a container from the given image ref, exec'ing a command if given.
+// startContainer starts a container from the given config.
 // Returns the container id iff the container successfully runs; else, error.
-func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, cmd *model.Cmd) (cId string, err error) {
-	config := &container.Config{Image: imgRef}
-	if cmd != nil {
-		config.Cmd = cmd.Argv
-	} else {
-		config.Cmd = []string{"sh", "-c", "# NOTE(nick): a fake entrypoint"}
-	}
-
+func (l *localDockerBuilder) startContainer(ctx context.Context, config *container.Config) (cId string, err error) {
 	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		return "", err
@@ -281,7 +279,7 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, imgRef string, 
 			return "", err
 		}
 		if status.StatusCode != 0 {
-			return "", fmt.Errorf("command '%v' had non-0 exit code %v. output: '%v'", cmd, status.StatusCode, string(buf.Bytes()))
+			return "", fmt.Errorf("container '%+v' had non-0 exit code %v. output: '%v'", config, status.StatusCode, string(buf.Bytes()))
 		}
 	}
 

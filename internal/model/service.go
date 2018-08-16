@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+type ServiceName string
+
 type Service struct {
 	K8sYaml        string
 	DockerfileText string
@@ -12,7 +14,7 @@ type Service struct {
 	Steps          []Cmd
 	Entrypoint     Cmd
 	DockerfileTag  string
-	Name           string
+	Name           ServiceName
 }
 
 type Mount struct {
@@ -41,4 +43,8 @@ func (c Cmd) EntrypointStr() string {
 
 func (c Cmd) Empty() bool {
 	return len(c.Argv) == 0
+}
+
+func ToShellCmd(cmd string) Cmd {
+	return Cmd{Argv: []string{"sh", "-c", cmd}}
 }

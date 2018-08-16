@@ -1,12 +1,39 @@
 version: 2
 jobs:
-  build:
+  build-linux:
     docker:
       - image: circleci/golang:1.10
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
       - setup_remote_docker
-      - run: make lint
-      - run: make verify_gofmt
-      - run: make test
+      - run: make all
+
+  build-macos:
+    macos:
+      xcode: "10.0.0"
+
+    working_directory: ~/go/src/github.com/windmilleng/tilt
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - homebrew_cache_v1
+      - run: brew install go # bump cache version when changing this
+      - save_cache:
+          paths:
+            - /usr/local/Homebrew
+          key: homebrew_cache_v1
+      # We can't run the container tests on macos because nested
+      # VMs don't work on circleci.
+      - run: go test -tags 'skipcontainertests' ./...
+
+workflows:
+  version: 2
+  build:
+    # The linux job is cheaper than the others, so run that first.
+    jobs:
+      - build-linux
+      - build-macos:
+          requires:
+            - build-linux

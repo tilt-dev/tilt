@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"io"
 )
@@ -15,6 +16,7 @@ func UpService(ctx context.Context, service model.Service, watch bool, stdout io
 	if watch {
 		for {
 			// TODO(matt) actually wait for a file to change instead of building on a loop
+			logger.Get(ctx).Verbose("building and deploying")
 			buildToken, err = bad.BuildAndDeploy(ctx, service, buildToken)
 			if err != nil {
 				return err
