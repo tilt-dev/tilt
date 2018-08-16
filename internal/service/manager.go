@@ -8,8 +8,9 @@ import (
 )
 
 type Manager interface {
-	AddService(s model.Service) error
-	RemoveService(s model.ServiceName)
+	Add(s model.Service) error
+	Update(s model.Service) error
+	Remove(s model.ServiceName)
 	List() []model.Service
 }
 
@@ -23,12 +24,25 @@ func NewMemoryManager() *memoryManager {
 	return &memoryManager{mu: &sync.Mutex{}, services: m}
 }
 
-func (m *memoryManager) AddService(s model.Service) error {
+func (m *memoryManager) Add(s model.Service) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.serviceExists(s.Name) {
 		return fmt.Errorf("Service %s already exists", s.Name)
+	}
+
+	m.services[s.Name] = s
+
+	return nil
+}
+
+func (m *memoryManager) Update(s model.Service) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if !m.serviceExists(s.Name) {
+		return fmt.Errorf("Service %s doesn't exist", s.Name)
 	}
 
 	m.services[s.Name] = s
@@ -57,7 +71,7 @@ func (m *memoryManager) List() []model.Service {
 	return v
 }
 
-func (m *memoryManager) RemoveService(n model.ServiceName) {
+func (m *memoryManager) Remove(n model.ServiceName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

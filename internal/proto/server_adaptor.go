@@ -32,7 +32,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 		return err
 	}
 
-	return s.sm.AddService(service)
+	return s.sm.Add(service)
 }
 
 func (s *grpcServer) SetDebug(ctx context.Context, d *Debug) (*DebugReply, error) {
