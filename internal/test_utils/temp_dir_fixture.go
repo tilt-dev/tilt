@@ -30,8 +30,8 @@ func (f *TempDirFixture) Path() string {
 	return f.dir.Path()
 }
 
-func (f *TempDirFixture) WriteFile(pathInRepo string, contents string) {
-	fullPath := filepath.Join(f.Path(), pathInRepo)
+func (f *TempDirFixture) WriteFile(path string, contents string) {
+	fullPath := filepath.Join(f.Path(), path)
 	base := filepath.Dir(fullPath)
 	err := os.MkdirAll(base, os.FileMode(0777))
 	if err != nil {
@@ -40,6 +40,12 @@ func (f *TempDirFixture) WriteFile(pathInRepo string, contents string) {
 	err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
+	}
+}
+
+func (f *TempDirFixture) TouchFiles(paths []string) {
+	for _, p := range paths {
+		f.WriteFile(p, "")
 	}
 }
 
