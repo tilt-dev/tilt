@@ -225,10 +225,10 @@ func TestBuildOneStep(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []expectedFile{
+	expected := []expectedFile{
 		expectedFile{path: "hi", contents: "hello\n"},
 	}
-	f.assertFilesInImage(string(digest), contents)
+	f.assertFilesInImage(string(digest), expected)
 }
 
 func TestBuildMultipleSteps(t *testing.T) {
@@ -245,11 +245,11 @@ func TestBuildMultipleSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []expectedFile{
+	expected := []expectedFile{
 		expectedFile{path: "hi", contents: "hello\n"},
 		expectedFile{path: "hi2", contents: "sup\n"},
 	}
-	f.assertFilesInImage(string(digest), contents)
+	f.assertFilesInImage(string(digest), expected)
 }
 
 func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
@@ -267,11 +267,11 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []expectedFile{
+	expected := []expectedFile{
 		expectedFile{path: "hi2", contents: "sup\n"},
 		expectedFile{path: "hi", missing: true},
 	}
-	f.assertFilesInImage(string(digest), contents)
+	f.assertFilesInImage(string(digest), expected)
 }
 
 func TestBuildFailingStep(t *testing.T) {
@@ -300,15 +300,16 @@ func TestEntrypoint(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []expectedFile{
+	expected := []expectedFile{
 		expectedFile{path: "hi", contents: "hello\n"},
 	}
 
+	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
 	cID, err := f.b.startContainer(ctx, containerConfig(d))
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.assertFilesInContainer(ctx, cID, contents)
+	f.assertFilesInContainer(ctx, cID, expected)
 }
 
 func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
@@ -365,27 +366,24 @@ func TestAddMountsToExisting(t *testing.T) {
 	//TODO(maia): assert file 'sup' does NOT exist
 }
 
-func todo_TestExecStepsOnExisting(t *testing.T) {
+func TestExecStepsOnExisting(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	// NOTE(maia): currently this should fail b/c if an img has entrypoint,
-	// we can't exec steps on it/its ancestors w/o removing the entrypoint;
-	// but can't accurately test without smarter assert's.
-	sayHi := model.ToShellCmd("echo hello")
-	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, []model.Cmd{}, sayHi)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	f.writeFile("foo", "hello world")
-	step := model.ToShellCmd("echo foo contains: $(cat /src/foo) >> /src/bar")
 	m := model.Mount{
 		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDockerFromExisting(context.Background(), existing, []model.Mount{m}, []model.Cmd{step}, model.Cmd{})
+	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+
+	digest, err := f.b.BuildDockerFromExisting(context.Background(), existing, []model.Mount{m}, []model.Cmd{step})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,6 +393,45 @@ func todo_TestExecStepsOnExisting(t *testing.T) {
 		expectedFile{path: "/src/bar", contents: "foo contains: hello world"},
 	}
 	f.assertFilesInImage(string(digest), pcs)
+}
+
+func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+	ctx := context.Background()
+
+	f.writeFile("foo", "hello world")
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+
+	existing, err := f.b.BuildDocker(ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, &entrypoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change contents of `foo` so when entrypoint exec's the second time, it
+	// will change the contents of `bar`
+	f.writeFile("foo", "a whole new world")
+
+	digest, err := f.b.BuildDockerFromExisting(ctx, existing, []model.Mount{m}, []model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{path: "/src/foo", contents: "a whole new world"},
+		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
+	}
+
+	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
+	cID, err := f.b.startContainer(ctx, containerConfig(digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.assertFilesInContainer(ctx, cID, expected)
 }
 
 type testFixture struct {
