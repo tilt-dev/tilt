@@ -21,7 +21,13 @@ type buildToken struct {
 }
 
 func (b *buildToken) isEmpty() bool {
-	return b.d == ""
+	if b == nil {
+		return true
+	} else if b.d == "" {
+		return true
+	}
+
+	return false
 }
 
 type BuildAndDeployer interface {
@@ -85,10 +91,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	} else {
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
 		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, service.Mounts, service.Steps)
-		d = newDigest
 		if err != nil {
 			return nil, err
 		}
+		d = newDigest
 	}
 	pushedDigest, err := l.b.PushDocker(ctx, name, d)
 	if err != nil {
