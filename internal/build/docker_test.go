@@ -91,11 +91,11 @@ func TestMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pcs := []pathContent{
-		pathContent{path: "/src/hi/hello", contents: "hi hello"},
-		pathContent{path: "/src/sup", contents: "my name is dan"},
+	pcs := []expectedFile{
+		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
+		expectedFile{path: "/src/sup", contents: "my name is dan"},
 	}
-	f.assertFilesInImageWithContents(string(digest), pcs)
+	f.assertFilesInImage(string(digest), pcs)
 }
 
 func TestMultipleMounts(t *testing.T) {
@@ -120,11 +120,11 @@ func TestMultipleMounts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pcs := []pathContent{
-		pathContent{path: "/hello_there/hello", contents: "hi hello"},
-		pathContent{path: "/goodbye_there/ciao/goodbye", contents: "bye laterz"},
+	pcs := []expectedFile{
+		expectedFile{path: "/hello_there/hello", contents: "hi hello"},
+		expectedFile{path: "/goodbye_there/ciao/goodbye", contents: "bye laterz"},
 	}
-	f.assertFilesInImageWithContents(string(digest), pcs)
+	f.assertFilesInImage(string(digest), pcs)
 }
 
 func TestMountCollisions(t *testing.T) {
@@ -151,10 +151,10 @@ func TestMountCollisions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pcs := []pathContent{
-		pathContent{path: "/hello_there/hello", contents: "bye laterz"},
+	pcs := []expectedFile{
+		expectedFile{path: "/hello_there/hello", contents: "bye laterz"},
 	}
-	f.assertFilesInImageWithContents(string(digest), pcs)
+	f.assertFilesInImage(string(digest), pcs)
 }
 
 func TestPush(t *testing.T) {
@@ -183,12 +183,12 @@ func TestPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pcs := []pathContent{
-		pathContent{path: "/src/hi/hello", contents: "hi hello"},
-		pathContent{path: "/src/sup", contents: "my name is dan"},
+	pcs := []expectedFile{
+		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
+		expectedFile{path: "/src/sup", contents: "my name is dan"},
 	}
 
-	f.assertFilesInImageWithContents(fmt.Sprintf("%s:%s", name, pushTag), pcs)
+	f.assertFilesInImage(fmt.Sprintf("%s:%s", name, pushTag), pcs)
 }
 
 func TestPushInvalid(t *testing.T) {
@@ -225,10 +225,10 @@ func TestBuildOneStep(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello\n"},
+	contents := []expectedFile{
+		expectedFile{path: "hi", contents: "hello\n"},
 	}
-	f.assertFilesInImageWithContents(string(digest), contents)
+	f.assertFilesInImage(string(digest), contents)
 }
 
 func TestBuildMultipleSteps(t *testing.T) {
@@ -245,11 +245,33 @@ func TestBuildMultipleSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello\n"},
-		pathContent{path: "hi2", contents: "sup\n"},
+	contents := []expectedFile{
+		expectedFile{path: "hi", contents: "hello\n"},
+		expectedFile{path: "hi2", contents: "sup\n"},
 	}
-	f.assertFilesInImageWithContents(string(digest), contents)
+	f.assertFilesInImage(string(digest), contents)
+}
+
+func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	steps := []model.Cmd{
+		model.Cmd{Argv: []string{"sh", "-c", "echo hello >> hi"}},
+		model.Cmd{Argv: []string{"sh", "-c", "echo sup >> hi2"}},
+		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
+	}
+
+	digest, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contents := []expectedFile{
+		expectedFile{path: "hi2", contents: "sup\n"},
+		expectedFile{path: "hi", missing: true},
+	}
+	f.assertFilesInImage(string(digest), contents)
 }
 
 func TestBuildFailingStep(t *testing.T) {
@@ -278,15 +300,15 @@ func TestEntrypoint(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	contents := []pathContent{
-		pathContent{path: "hi", contents: "hello\n"},
+	contents := []expectedFile{
+		expectedFile{path: "hi", contents: "hello\n"},
 	}
 
 	cID, err := f.b.startContainer(ctx, containerConfig(d))
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.assertFilesInContainerWithContents(ctx, cID, contents)
+	f.assertFilesInContainer(ctx, cID, contents)
 }
 
 func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
@@ -334,10 +356,10 @@ func TestAddMountsToExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pcs := []pathContent{
-		pathContent{path: "/src/hi/hello", contents: "hello world"},
+	pcs := []expectedFile{
+		expectedFile{path: "/src/hi/hello", contents: "hello world"},
 	}
-	f.assertFilesInImageWithContents(string(digest), pcs)
+	f.assertFilesInImage(string(digest), pcs)
 
 	//TODO(maia): assert file 'sup' does NOT exist
 }
@@ -367,11 +389,11 @@ func todo_TestExecStepsOnExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pcs := []pathContent{
-		pathContent{path: "/src/foo", contents: "hello world"},
-		pathContent{path: "/src/bar", contents: "foo contains: hello world"},
+	pcs := []expectedFile{
+		expectedFile{path: "/src/foo", contents: "hello world"},
+		expectedFile{path: "/src/bar", contents: "foo contains: hello world"},
 	}
-	f.assertFilesInImageWithContents(string(digest), pcs)
+	f.assertFilesInImage(string(digest), pcs)
 }
 
 type testFixture struct {
@@ -475,9 +497,12 @@ func (f *testFixture) rm(pathInRepo string) {
 	}
 }
 
-type pathContent struct {
+type expectedFile struct {
 	path     string
 	contents string
+
+	// If true, we will assert that the file is not in the container.
+	missing bool
 }
 
 func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
@@ -504,19 +529,26 @@ func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, 
 	return string(output)
 }
 
-func (f *testFixture) assertFilesInImageWithContents(ref string, expectedFiles []pathContent) {
+func (f *testFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
 	ctx := context.Background()
 	cID, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	f.assertFilesInContainerWithContents(ctx, cID, expectedFiles)
+	f.assertFilesInContainer(ctx, cID, expectedFiles)
 }
 
-func (f *testFixture) assertFilesInContainerWithContents(
-	ctx context.Context, containerID string, expectedFiles []pathContent) {
+func (f *testFixture) assertFilesInContainer(
+	ctx context.Context, containerID string, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
 		reader, _, err := f.dcli.CopyFromContainer(ctx, containerID, expectedFile.path)
+		if expectedFile.missing {
+			if err == nil || !strings.Contains(err.Error(), "No such container:path") {
+				f.t.Errorf("Expected path %q to not exist: %v", expectedFile.path, err)
+			}
+			continue
+		}
+
 		if err != nil {
 			f.t.Fatal(err)
 		}
@@ -525,7 +557,7 @@ func (f *testFixture) assertFilesInContainerWithContents(
 	}
 }
 
-func (f *testFixture) assertFileInTar(tr *tar.Reader, expected pathContent) {
+func (f *testFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
