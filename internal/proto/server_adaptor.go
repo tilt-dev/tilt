@@ -75,6 +75,10 @@ func cmdP2D(cmd *Cmd) model.Cmd {
 	}
 }
 
+func serviceNameP2D(s string) model.ServiceName {
+	return model.ServiceName(s)
+}
+
 func serviceP2D(service *Service) model.Service {
 	return model.Service{
 		K8sYaml:        service.K8SYaml,
@@ -83,6 +87,6 @@ func serviceP2D(service *Service) model.Service {
 		Steps:          cmdsP2D(service.Steps),
 		Entrypoint:     cmdP2D(service.Entrypoint),
 		DockerfileTag:  service.DockerfileTag,
-		Name:           service.Name,
+		Name:           serviceNameP2D(service.Name),
 	}
 }

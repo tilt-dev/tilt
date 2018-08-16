@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+type ServiceName string
+
 type Service struct {
 	K8sYaml        string
 	DockerfileText string
@@ -12,7 +14,7 @@ type Service struct {
 	Steps          []Cmd
 	Entrypoint     Cmd
 	DockerfileTag  string
-	Name           string
+	Name           ServiceName
 }
 
 type Mount struct {
