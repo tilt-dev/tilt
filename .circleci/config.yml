@@ -8,21 +8,32 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: make all
+
   build-macos:
     macos:
       xcode: "10.0.0"
+
     working_directory: ~/go/src/github.com/windmilleng/tilt
     steps:
       - checkout
-      - setup_remote_docker
-      - run: brew install go
-      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - run: make all
+      - restore_cache:
+          keys:
+            - homebrew_cache_v1
+      - run: brew install go # bump cache version when changing this
+      - save_cache:
+          paths:
+            - /usr/local/Homebrew
+          key: homebrew_cache_v1
+      # We can't run the container tests on macos because nested
+      # VMs don't work on circleci.
+      - run: go test -tags 'skipcontainertests' ./...
 
 workflows:
   version: 2
   build:
+    # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
-      # TODO(matt) fix macos builds and uncomment (ticket opened with circleci 2018/08/16)
-      # - build-macos
+      - build-macos:
+          requires:
+            - build-linux

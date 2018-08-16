@@ -1,3 +1,5 @@
+//+build !skipcontainertests
+
 package build
 
 import (
