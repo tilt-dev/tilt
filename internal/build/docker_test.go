@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/windmilleng/tilt/internal/model"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,6 +15,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/stretchr/testify/assert"
 
@@ -302,6 +303,71 @@ ENTRYPOINT ["sleep", "100000"]`
 // TODO(maia): test mount err cases
 // TODO(maia): tests for tar code
 
+func TestAddMountsToExisting(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	f.writeFile("hi/hello", "hi hello")
+	f.writeFile("sup", "yo dawg, i heard you like docker")
+
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+
+	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.writeFile("hi/hello", "hello world") // change contents
+	f.rm("sup")
+
+	digest, err := f.b.BuildDockerFromExisting(context.Background(), existing, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []pathContent{
+		pathContent{path: "/src/hi/hello", contents: "hello world"},
+	}
+	f.assertFilesInImageWithContents(string(digest), pcs)
+
+	//TODO(maia): assert file 'sup' does NOT exist
+}
+
+func todo_TestExecStepsOnExisting(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.teardown()
+
+	// NOTE(maia): currently this should fail b/c if an img has entrypoint,
+	// we can't exec steps on it/its ancestors w/o removing the entrypoint;
+	// but can't accurately test without smarter assert's.
+	sayHi := model.Cmd{Argv: []string{"sh", "-c", "echo hello"}}
+	existing, err := f.b.BuildDocker(context.Background(), simpleDockerfile, []model.Mount{}, []model.Cmd{}, sayHi)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.writeFile("foo", "hello world")
+	step := model.Cmd{Argv: []string{"sh", "-c", "echo foo contains: $(cat /src/foo) >> /src/bar"}}
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		ContainerPath: "/src",
+	}
+
+	digest, err := f.b.BuildDockerFromExisting(context.Background(), existing, []model.Mount{m}, []model.Cmd{step}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []pathContent{
+		pathContent{path: "/src/foo", contents: "hello world"},
+		pathContent{path: "/src/bar", contents: "foo contains: hello world"},
+	}
+	f.assertFilesInImageWithContents(string(digest), pcs)
+}
+
 type testFixture struct {
 	t        *testing.T
 	repo     *temp.TempDir
@@ -390,6 +456,14 @@ func (f *testFixture) writeFile(pathInRepo string, contents string) {
 		f.t.Fatal(err)
 	}
 	err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0777))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func (f *testFixture) rm(pathInRepo string) {
+	fullPath := filepath.Join(f.repo.Path(), pathInRepo)
+	err := os.Remove(fullPath)
 	if err != nil {
 		f.t.Fatal(err)
 	}

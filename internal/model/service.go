@@ -38,3 +38,7 @@ type Cmd struct {
 func (c Cmd) EntrypointStr() string {
 	return fmt.Sprintf("ENTRYPOINT [\"%s\"]", strings.Join(c.Argv, "\", \""))
 }
+
+func (c Cmd) Empty() bool {
+	return len(c.Argv) == 0
+}
