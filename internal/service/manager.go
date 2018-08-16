@@ -60,7 +60,6 @@ func (m *memoryManager) List() []model.Service {
 	defer m.mu.Unlock()
 
 	v := make([]model.Service, len(m.services))
-	fmt.Printf("%+v\n", len(v))
 
 	i := 0
 	for _, s := range m.services {
