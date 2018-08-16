@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/exec"
 
-				"github.com/windmilleng/tilt/internal/tiltd"
-	)
+	"github.com/windmilleng/tilt/internal/tiltd"
+)
 
 type Daemon struct {
 }
