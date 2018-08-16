@@ -28,7 +28,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
 	svc := serviceP2D(req.Service)
-	err := engine.UpService(ctx, svc, req.Watch, outputStream.stdout, outputStream.stderr)
+	err := engine.UpService(ctx, svc, req.Watch, outputStream.stdout, outputStream.stderr, s.sm)
 	if err != nil {
 		return err
 	}
