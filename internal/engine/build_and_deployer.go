@@ -18,16 +18,11 @@ import (
 
 type buildToken struct {
 	d digest.Digest
+	n reference.Named
 }
 
 func (b *buildToken) isEmpty() bool {
-	if b == nil {
-		return true
-	} else if b.d == "" {
-		return true
-	}
-
-	return false
+	return b == nil
 }
 
 type BuildAndDeployer interface {
@@ -74,20 +69,21 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 
 func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken) (*buildToken, error) {
 	checkpoint := l.history.CheckpointNow()
-	name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
-	if err != nil {
-		return nil, err
-	}
 
+	var name reference.Named
 	var d digest.Digest
 	if token.isEmpty() {
-		d, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
+		newDigest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
+		if err != nil {
+			return nil, err
+		}
+		d = newDigest
 
+		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
 		if err != nil {
 			return nil, err
 		}
 
-		l.history.Add(name, d, checkpoint)
 	} else {
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
 		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, service.Mounts, service.Steps)
@@ -95,7 +91,9 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 			return nil, err
 		}
 		d = newDigest
+		name = token.n
 	}
+	l.history.Add(name, d, checkpoint)
 	pushedDigest, err := l.b.PushDocker(ctx, name, d)
 	if err != nil {
 		return nil, err
@@ -129,5 +127,5 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}
 
 	// TODO(matt) wire up logging to the grpc stream and drop the stdout/stderr args here
-	return &buildToken{d: d}, k8s.Apply(ctx, newYAMLString, os.Stdout, os.Stderr)
+	return &buildToken{d: d, n: name}, k8s.Apply(ctx, newYAMLString, os.Stdout, os.Stderr)
 }
