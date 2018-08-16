@@ -43,16 +43,16 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 }
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var services []skylark.Value
+	var k8sS []k8sService
 
 	for i := range args {
-		_, ok := args[i].(k8sService)
+		k8sServ, ok := args[i].(k8sService)
 		if !ok {
-			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%v'", args)
+			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
 		}
-		services = append(services, args[i])
+		k8sS = append(k8sS, k8sServ)
 	}
-	return compService{services}, nil
+	return compService{k8sS}, nil
 }
 
 func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {

@@ -8,7 +8,7 @@ import (
 )
 
 type compService struct {
-	cService []skylark.Value
+	cService []k8sService
 }
 
 var _ skylark.Value = compService{}
