@@ -6,6 +6,8 @@ jobs:
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
+      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
+      - run: go get -u github.com/kisielk/errcheck
       - setup_remote_docker
       - run: make all
 
@@ -24,6 +26,7 @@ jobs:
           paths:
             - /usr/local/Homebrew
           key: homebrew_cache_v1
+      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: go test -tags 'skipcontainertests' ./...
