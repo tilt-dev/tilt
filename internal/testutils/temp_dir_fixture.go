@@ -73,5 +73,8 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 }
 
 func (f *TempDirFixture) TearDown() {
-	f.dir.TearDown()
+	err := f.dir.TearDown()
+	if err != nil {
+		f.t.Fatal(err)
+	}
 }

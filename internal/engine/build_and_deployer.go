@@ -97,7 +97,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		d = newDigest
 		name = token.n
 	}
-	l.history.Add(name, d, checkpoint)
+	err := l.history.Add(name, d, checkpoint)
+	if err != nil {
+		return nil, err
+	}
 	pushedDigest, err := l.b.PushDocker(ctx, name, d)
 	if err != nil {
 		return nil, err

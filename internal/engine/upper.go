@@ -45,7 +45,10 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 		}
 
 		for _, mount := range service.Mounts {
-			watcher.Add(mount.Repo.LocalPath)
+			err = watcher.Add(mount.Repo.LocalPath)
+			if err != nil {
+				return err
+			}
 		}
 
 		for {
