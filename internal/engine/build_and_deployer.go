@@ -7,17 +7,30 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-type BuildToken interface{}
+type buildToken struct {
+	d digest.Digest
+	n reference.Named
+}
+
+func (b *buildToken) isEmpty() bool {
+	return b == nil
+}
 
 type BuildAndDeployer interface {
-	BuildAndDeploy(ctx context.Context, service model.Service, token BuildToken) (BuildToken, error)
+	// Builds and deployed the specified service.
+	// Returns a buildToken that can be passed on successive calls to allow incremental builds.
+	// If buildToken is passed and changedFiles is non-nil, changedFiles should specify the list of files that have
+	//   changed since the last build.
+	BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error)
 }
 
 var _ BuildAndDeployer = localBuildAndDeployer{}
@@ -25,9 +38,10 @@ var _ BuildAndDeployer = localBuildAndDeployer{}
 type localBuildAndDeployer struct {
 	b       build.Builder
 	history image.ImageHistory
+	sm      service.Manager
 }
 
-func NewLocalBuildAndDeployer() (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -53,25 +67,38 @@ func NewLocalBuildAndDeployer() (BuildAndDeployer, error) {
 	return localBuildAndDeployer{
 		b:       b,
 		history: history,
+		sm:      m,
 	}, nil
 }
 
-func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token BuildToken) (BuildToken, error) {
+func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	checkpoint := l.history.CheckpointNow()
-	name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
-	if err != nil {
-		return nil, err
+
+	var name reference.Named
+	var d digest.Digest
+	if token.isEmpty() {
+		newDigest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
+		if err != nil {
+			return nil, err
+		}
+		d = newDigest
+
+		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, service.Mounts, service.Steps)
+		if err != nil {
+			return nil, err
+		}
+		d = newDigest
+		name = token.n
 	}
-
-	digest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	l.history.Add(name, digest, checkpoint)
-
-	pushedDigest, err := l.b.PushDocker(ctx, name, digest)
+	l.history.Add(name, d, checkpoint)
+	pushedDigest, err := l.b.PushDocker(ctx, name, d)
 	if err != nil {
 		return nil, err
 	}
@@ -104,5 +131,5 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}
 
 	// TODO(matt) wire up logging to the grpc stream and drop the stdout/stderr args here
-	return nil, k8s.Apply(ctx, newYAMLString, os.Stdout, os.Stderr)
+	return &buildToken{d: d, n: name}, k8s.Apply(ctx, newYAMLString, os.Stdout, os.Stderr)
 }
