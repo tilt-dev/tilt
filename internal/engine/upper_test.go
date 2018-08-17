@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/fsnotify"
@@ -13,21 +16,29 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+type startCall struct {
+	service model.Service
+	files   []string
+}
+
 type fakeBuildAndDeployer struct {
-	startedServices []model.Service
-	calls           chan bool
+	t     *testing.T
+	calls chan startCall
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
-	b.startedServices = append(b.startedServices, service)
-	b.calls <- true
+	select {
+	case b.calls <- startCall{service, changedFiles}:
+	default:
+		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
+	}
 	return nil, nil
 }
 
-func newFakeBuildAndDeployer() *fakeBuildAndDeployer {
-	return &fakeBuildAndDeployer{calls: make(chan bool, 5)}
+func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
+	return &fakeBuildAndDeployer{t: t, calls: make(chan startCall, 5)}
 }
 
 type fakeNotify struct {
@@ -63,8 +74,13 @@ func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
 	err := f.upper.Up(f.context, service, false, os.Stdout, os.Stderr)
+	close(f.b.calls)
 	assert.Nil(t, err)
-	assert.Equal(t, []model.Service{service}, f.b.startedServices)
+	var startedServices []model.Service
+	for call := range f.b.calls {
+		startedServices = append(startedServices, call.service)
+	}
+	assert.Equal(t, []model.Service{service}, startedServices)
 }
 
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
@@ -84,10 +100,18 @@ func TestUpper_UpWatchError(t *testing.T) {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	close(f.b.calls)
+
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
-	assert.Equal(t, []model.Service{service}, f.b.startedServices)
+
+	var startedServices []model.Service
+	for call := range f.b.calls {
+		startedServices = append(startedServices, call.service)
+	}
+
+	assert.Equal(t, []model.Service{service}, startedServices)
 }
 
 // we can't have a test for a file change w/o error because Up doesn't return unless there's an error
@@ -96,25 +120,73 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
-		<-f.b.calls
-		f.watcher.events <- fsnotify.Event{}
-		<-f.b.calls
+		call := <-f.b.calls
+		assert.Equal(t, service, call.service)
+		assert.Equal(t, []string(nil), call.files)
+		fileRelPath := "fdas"
+		f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+		call = <-f.b.calls
+		assert.Equal(t, service, call.service)
+		fileAbsPath, err := filepath.Abs(fileRelPath)
+		if err != nil {
+			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+		}
+		assert.Equal(t, []string{fileAbsPath}, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	close(f.b.calls)
+
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
-	//file was touched once, so service should have been deployed twice
-	assert.Equal(t, []model.Service{service, service}, f.b.startedServices)
+}
+
+func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
+	go func() {
+		call := <-f.b.calls
+		assert.Equal(t, service, call.service)
+		assert.Equal(t, []string(nil), call.files)
+
+		f.sleepLock.Lock()
+		fileRelPaths := []string{"fdas", "giueheh"}
+		for _, fileRelPath := range fileRelPaths {
+			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+		}
+		f.sleepLock.Unlock()
+
+		call = <-f.b.calls
+		assert.Equal(t, service, call.service)
+
+		var fileAbsPaths []string
+		for _, fileRelPath := range fileRelPaths {
+			fileAbsPath, err := filepath.Abs(fileRelPath)
+			if err != nil {
+				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+			}
+			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+		}
+		assert.Equal(t, fileAbsPaths, call.files)
+		f.watcher.errors <- errors.New("bazquu")
+	}()
+	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	close(f.b.calls)
+
+	if assert.NotNil(t, err) {
+		assert.Equal(t, "bazquu", err.Error())
+	}
 }
 
 type testFixture struct {
-	t       *testing.T
-	upper   Upper
-	b       *fakeBuildAndDeployer
-	watcher *fakeNotify
-	context context.Context
+	t         *testing.T
+	upper     Upper
+	b         *fakeBuildAndDeployer
+	watcher   *fakeNotify
+	context   context.Context
+	sleepLock *sync.Mutex
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -122,8 +194,11 @@ func newTestFixture(t *testing.T) *testFixture {
 	watcherMaker := func() (watch.Notify, error) {
 		return watcher, nil
 	}
-	b := newFakeBuildAndDeployer()
-	upper := Upper{b, watcherMaker}
+	b := newFakeBuildAndDeployer(t)
+	sleepLock := &sync.Mutex{}
+	// a sleeper that is blockable by tests via sleepLock.Lock()
+	sleeper := func(d time.Duration) { sleepLock.Lock(); sleepLock.Unlock() }
+	upper := Upper{b, watcherMaker, sleeper}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl))
-	return &testFixture{t, upper, b, watcher, ctx}
+	return &testFixture{t, upper, b, watcher, ctx, sleepLock}
 }
