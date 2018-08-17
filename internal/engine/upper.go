@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -28,7 +29,7 @@ func NewUpper(manager service.Manager) (Upper, error) {
 }
 
 func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
-	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil)
+	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -52,9 +53,13 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			select {
 			case err := <-watcher.Errors():
 				return err
-			case <-watcher.Events():
+			case event := <-watcher.Events():
 				logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
-				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken)
+				path, err := filepath.Abs(event.Name)
+				if err != nil {
+					return err
+				}
+				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, []string{path})
 				if err != nil {
 					logger.Get(ctx).Info("build failed: %v", err.Error())
 				}

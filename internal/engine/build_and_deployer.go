@@ -26,7 +26,11 @@ func (b *buildToken) isEmpty() bool {
 }
 
 type BuildAndDeployer interface {
-	BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken) (*buildToken, error)
+	// Builds and deployed the specified service.
+	// Returns a buildToken that can be passed on successive calls to allow incremental builds.
+	// If buildToken is passed and changedFiles is non-nil, changedFiles should specify the list of files that have
+	//   changed since the last build.
+	BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error)
 }
 
 var _ BuildAndDeployer = localBuildAndDeployer{}
@@ -67,7 +71,7 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	}, nil
 }
 
-func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken) (*buildToken, error) {
+func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	checkpoint := l.history.CheckpointNow()
 
 	var name reference.Named
