@@ -62,7 +62,7 @@ var _ watch.Notify = &fakeNotify{}
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, service, false, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, service, false)
 	assert.Nil(t, err)
 	assert.Equal(t, []model.Service{service}, f.b.startedServices)
 }
@@ -70,7 +70,7 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, service, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "0 repos")
 	}
@@ -83,7 +83,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, service, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -101,7 +101,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		<-f.b.calls
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, service, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -124,6 +124,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	b := newFakeBuildAndDeployer()
 	upper := Upper{b, watcherMaker}
-	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl))
+	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl, os.Stdout))
 	return &testFixture{t, upper, b, watcher, ctx}
 }

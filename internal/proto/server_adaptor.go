@@ -23,9 +23,9 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 		return d.Send(&CreateServiceReply{Output: &output})
 	}
 
-	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel)))
-
 	outputStream := MakeStdoutStderrWriter(sendOutput)
+
+	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel), outputStream.stdout))
 
 	svc := serviceP2D(req.Service)
 	upper, err := engine.NewUpper(s.sm)
@@ -33,7 +33,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 		return err
 	}
 
-	err = upper.Up(ctx, svc, req.Watch, outputStream.stdout, outputStream.stderr)
+	err = upper.Up(ctx, svc, req.Watch)
 	if err != nil {
 		return err
 	}

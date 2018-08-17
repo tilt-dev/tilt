@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"io"
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -28,7 +27,7 @@ func NewUpper(manager service.Manager) (Upper, error) {
 	return Upper{b, watcherMaker}, nil
 }
 
-func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
+func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool) error {
 	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
 	if err != nil {
 		return err

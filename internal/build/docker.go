@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/cli/cli/command"
@@ -99,7 +100,8 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return "", fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
 	}
 
-	cli := command.NewDockerCli(nil, os.Stdout, os.Stderr, true)
+	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+	cli := command.NewDockerCli(nil, writer, writer, true)
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
 		return "", fmt.Errorf("PushDocker#InitializeCLI: %s", err)
@@ -258,6 +260,8 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 		return "", err
 	}
 
+	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+
 	statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
@@ -273,13 +277,22 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 		if err != nil {
 			return "", err
 		}
-		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(r)
-		if err != nil {
-			return "", err
+		buf := make([]byte, 1024)
+		for {
+			n, err := r.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return "", err
+			}
+			_, err = writer.Write(buf[:n])
+			if err != nil {
+				return "", err
+			}
 		}
 		if status.StatusCode != 0 {
-			return "", fmt.Errorf("container '%+v' had non-0 exit code %v. output: '%v'", config, status.StatusCode, string(buf.Bytes()))
+			return "", fmt.Errorf("container '%+v' had non-0 exit code %v", config, status.StatusCode)
 		}
 	}
 

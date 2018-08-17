@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/stretchr/testify/assert"
@@ -461,9 +462,11 @@ func newTestFixture(t *testing.T) *testFixture {
 		t.Fatal(err)
 	}
 
+	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl, os.Stdout))
+
 	return &testFixture{
 		t:    t,
-		ctx:  context.Background(),
+		ctx:  ctx,
 		repo: repo,
 		dcli: dcli,
 		b:    NewLocalDockerBuilder(dcli),

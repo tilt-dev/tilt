@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"fmt"
+	"io"
 )
 
 type Logger interface {
@@ -13,7 +14,12 @@ type Logger interface {
 	Verbose(format string, a ...interface{})
 	// log information that is likely to only be of interest to tilt developers
 	Debug(format string, a ...interface{})
+
+	// gets an io.Writer that filters to the specified level for, e.g., passing to a subprocess
+	Writer(level Level) io.Writer
 }
+
+var _ Logger = logger{}
 
 type Level int
 
@@ -30,8 +36,8 @@ func Get(ctx context.Context) Logger {
 	return ctx.Value(loggerContextKey).(Logger)
 }
 
-func NewLogger(level Level) Logger {
-	return logger{level}
+func NewLogger(level Level, writer io.Writer) Logger {
+	return logger{level, writer}
 }
 
 func WithLogger(ctx context.Context, logger Logger) context.Context {
@@ -39,7 +45,8 @@ func WithLogger(ctx context.Context, logger Logger) context.Context {
 }
 
 type logger struct {
-	level Level
+	level  Level
+	writer io.Writer
 }
 
 func (l logger) Info(format string, a ...interface{}) {
@@ -56,7 +63,26 @@ func (l logger) Debug(format string, a ...interface{}) {
 
 func (l logger) write(level Level, format string, a ...interface{}) {
 	if l.level >= level {
-		fmt.Printf(format, a...)
-		fmt.Println("")
+		fmt.Fprintf(l.writer, format, a...)
+		fmt.Fprintln(l.writer, "")
 	}
+}
+
+type levelWriter struct {
+	logger logger
+	level  Level
+}
+
+var _ io.Writer = levelWriter{}
+
+func (lw levelWriter) Write(p []byte) (n int, err error) {
+	if lw.logger.level >= lw.level {
+		return lw.logger.writer.Write(p)
+	} else {
+		return len(p), nil
+	}
+}
+
+func (l logger) Writer(level Level) io.Writer {
+	return levelWriter{l, level}
 }
