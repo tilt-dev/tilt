@@ -75,7 +75,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 }
 
 func TestMount(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	// write some files in to it
@@ -100,7 +100,7 @@ func TestMount(t *testing.T) {
 }
 
 func TestMultipleMounts(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	// write some files in to it
@@ -129,7 +129,7 @@ func TestMultipleMounts(t *testing.T) {
 }
 
 func TestMountCollisions(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	// write some files in to it
@@ -159,7 +159,7 @@ func TestMountCollisions(t *testing.T) {
 }
 
 func TestPush(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.startRegistry()
@@ -193,7 +193,7 @@ func TestPush(t *testing.T) {
 }
 
 func TestPushInvalid(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	m := model.Mount{
@@ -214,7 +214,7 @@ func TestPushInvalid(t *testing.T) {
 }
 
 func TestBuildOneStep(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
@@ -233,7 +233,7 @@ func TestBuildOneStep(t *testing.T) {
 }
 
 func TestBuildMultipleSteps(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
@@ -254,7 +254,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 }
 
 func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
@@ -276,7 +276,7 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 }
 
 func TestBuildFailingStep(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
@@ -291,7 +291,7 @@ func TestBuildFailingStep(t *testing.T) {
 }
 
 func TestEntrypoint(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	entrypoint := model.ToShellCmd("echo -n hello >> hi")
@@ -313,7 +313,7 @@ func TestEntrypoint(t *testing.T) {
 }
 
 func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	df := `FROM alpine
@@ -333,11 +333,12 @@ ENTRYPOINT ["sleep", "100000"]`
 // TODO(maia): tests for tar code
 
 func TestAddMountsToExisting(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("hi/hello", "hi hello")
 	f.WriteFile("sup", "yo dawg, i heard you like docker")
+	f.WriteFile("unchanged", "should be unchanged")
 
 	m := model.Mount{
 		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
@@ -359,6 +360,7 @@ func TestAddMountsToExisting(t *testing.T) {
 
 	pcs := []expectedFile{
 		expectedFile{path: "/src/hi/hello", contents: "hello world"},
+		expectedFile{path: "/src/unchanged", contents: "should be unchanged"},
 	}
 	f.assertFilesInImage(string(digest), pcs)
 
@@ -366,7 +368,7 @@ func TestAddMountsToExisting(t *testing.T) {
 }
 
 func TestExecStepsOnExisting(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
@@ -395,7 +397,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 }
 
 func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
@@ -432,7 +434,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
-type testFixture struct {
+type dockerBuildFixture struct {
 	*testutils.TempDirFixture
 	t        *testing.T
 	ctx      context.Context
@@ -441,7 +443,7 @@ type testFixture struct {
 	registry *exec.Cmd
 }
 
-func newTestFixture(t *testing.T) *testFixture {
+func newDockerBuildFixture(t *testing.T) *dockerBuildFixture {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -455,7 +457,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		t.Fatal(err)
 	}
 
-	return &testFixture{
+	return &dockerBuildFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 		ctx:            context.Background(),
@@ -464,7 +466,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 }
 
-func (f *testFixture) teardown() {
+func (f *dockerBuildFixture) teardown() {
 	if f.registry != nil {
 		go func() {
 			err := f.registry.Process.Kill()
@@ -482,7 +484,7 @@ func (f *testFixture) teardown() {
 	f.TempDirFixture.TearDown()
 }
 
-func (f *testFixture) startRegistry() {
+func (f *dockerBuildFixture) startRegistry() {
 	stdout := &bytes.Buffer{}
 	stdoutSafe := makeThreadSafe(stdout)
 	stderr := &bytes.Buffer{}
@@ -517,7 +519,7 @@ type expectedFile struct {
 	missing bool
 }
 
-func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
+func (f *dockerBuildFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
 	cId, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), cmd))
 	if err != nil {
 		f.t.Fatal(err)
@@ -541,7 +543,7 @@ func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, 
 	return string(output)
 }
 
-func (f *testFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
+func (f *dockerBuildFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
 	cID, err := f.b.startContainer(f.ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
 	if err != nil {
 		f.t.Fatal(err)
@@ -549,7 +551,7 @@ func (f *testFixture) assertFilesInImage(ref string, expectedFiles []expectedFil
 	f.assertFilesInContainer(f.ctx, cID, expectedFiles)
 }
 
-func (f *testFixture) assertFilesInContainer(
+func (f *dockerBuildFixture) assertFilesInContainer(
 	ctx context.Context, containerID string, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
 		reader, _, err := f.dcli.CopyFromContainer(ctx, containerID, expectedFile.path)
@@ -568,7 +570,7 @@ func (f *testFixture) assertFilesInContainer(
 	}
 }
 
-func (f *testFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
+func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {

@@ -27,7 +27,14 @@ const (
 const loggerContextKey = "Logger"
 
 func Get(ctx context.Context) Logger {
-	return ctx.Value(loggerContextKey).(Logger)
+	val := ctx.Value(loggerContextKey)
+
+	if val != nil {
+		return val.(Logger)
+	}
+
+	// No logger found in context, make a new one.
+	return NewLogger(InfoLvl)
 }
 
 func NewLogger(level Level) Logger {
