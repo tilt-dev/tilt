@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -108,11 +107,11 @@ func TestMultipleMounts(t *testing.T) {
 	f.WriteFile("bye/ciao/goodbye", "bye laterz")
 
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "hi")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "bye")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
 		ContainerPath: "goodbye_there",
 	}
 
@@ -139,11 +138,11 @@ func TestMountCollisions(t *testing.T) {
 	// Mounting two files to the same place in the container -- expect the second mount
 	// to take precedence (file should contain "bye laterz")
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "hi")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "bye")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
 		ContainerPath: "/hello_there",
 	}
 

@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func TestFilesToPathMappings(t *testing.T) {
-	f := newFileOpsFixture(t)
+	f := testutils.NewTempDirFixture(t)
 	defer f.TearDown()
 
 	paths := []string{
@@ -23,7 +22,7 @@ func TestFilesToPathMappings(t *testing.T) {
 
 	absPaths := make([]string, len(paths))
 	for i, p := range paths {
-		absPaths[i] = filepath.Join(f.Path(), p)
+		absPaths[i] = f.JoinPath(p)
 	}
 	// Add a file that doesn't exist on local -- but we still expect it to successfully
 	// map to a ContainerPath.
@@ -31,17 +30,17 @@ func TestFilesToPathMappings(t *testing.T) {
 
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "mount1")},
+			Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("mount1")},
 			ContainerPath: "/dest1",
 		},
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "mount2")},
+			Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("mount2")},
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	actual, err := FilesToPathMappings(f.ctx, absPaths, mounts)
+	actual, err := FilesToPathMappings(f.Ctx(), absPaths, mounts)
 	if err != nil {
-		f.t.Fatal(err)
+		f.T().Fatal(err)
 	}
 
 	expected := []PathMapping{
@@ -67,34 +66,20 @@ func TestFilesToPathMappings(t *testing.T) {
 }
 
 func TestFileNotInMountThrowsErr(t *testing.T) {
-	f := newFileOpsFixture(t)
+	f := testutils.NewTempDirFixture(t)
 	defer f.TearDown()
 
-	files := []string{filepath.Join(f.Path(), "not/a/mount/fileA")}
+	files := []string{f.JoinPath("not/a/mount/fileA")}
 
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "mount1")},
+			Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("mount1")},
 			ContainerPath: "/dest1",
 		},
 	}
 
-	_, err := FilesToPathMappings(f.ctx, files, mounts)
+	_, err := FilesToPathMappings(f.Ctx(), files, mounts)
 	if assert.NotNil(t, err, "expected error for file not matching any mounts") {
 		assert.Contains(t, err.Error(), "matches no mounts")
-	}
-}
-
-type fileOpsFixture struct {
-	*testutils.TempDirFixture
-	t   *testing.T
-	ctx context.Context
-}
-
-func newFileOpsFixture(t *testing.T) *fileOpsFixture {
-	return &fileOpsFixture{
-		TempDirFixture: testutils.NewTempDirFixture(t),
-		t:              t,
-		ctx:            testutils.CtxForTest(),
 	}
 }
