@@ -105,7 +105,7 @@ func Load(filename string) (*Tiltfile, error) {
 	return &Tiltfile{globals, filename, thread}, nil
 }
 
-func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, error) {
+func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service, error) { // array
 	f, ok := tiltfile.globals[serviceName]
 
 	if !ok {
@@ -152,14 +152,18 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 				dockerCmds = append(dockerCmds, toShellCmd(cmd))
 			}
 
-			return &proto.Service{
+			var protoServ []proto.Service
+
+			protoServ = append(protoServ, proto.Service{
 				K8SYaml:        k8sYaml,
 				DockerfileText: string(dockerFileBytes),
 				Mounts:         mounts,
 				Steps:          dockerCmds,
 				Entrypoint:     toShellCmd(cServ.dockerImage.entrypoint),
 				DockerfileTag:  cServ.dockerImage.fileTag,
-			}, nil
+			})
+
+			return protoServ, nil
 		}
 	}
 	if !ok {
@@ -196,14 +200,18 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		dockerCmds = append(dockerCmds, toShellCmd(cmd))
 	}
 
-	return &proto.Service{
+	var protoServ []proto.Service
+
+	protoServ = append(protoServ, proto.Service{
 		K8SYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
 		Mounts:         mounts,
 		Steps:          dockerCmds,
 		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
-	}, nil
+	})
+
+	return protoServ, nil
 }
 
 func toShellCmd(cmd string) *proto.Cmd {
