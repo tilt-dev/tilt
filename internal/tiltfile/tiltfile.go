@@ -92,7 +92,7 @@ func Load(filename string) (*Tiltfile, error) {
 	return &Tiltfile{globals, filename, thread}, nil
 }
 
-func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, error) {
+func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service, error) { // array
 	f, ok := tiltfile.globals[serviceName]
 
 	if !ok {
@@ -114,6 +114,56 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		return nil, fmt.Errorf("error running '%v': %v", serviceName, err.Error())
 	}
 
+<<<<<<< HEAD
+=======
+	compService, ok := val.(compService)
+	if ok {
+		for _, cServ := range compService.cService {
+
+			k8sYaml, ok := skylark.AsString(cServ.k8sYaml)
+			if !ok {
+				return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", cServ)
+			}
+
+			dockerFileBytes, err := ioutil.ReadFile(cServ.dockerImage.fileName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open dockerfile '%v': %v", cServ.dockerImage.fileName, err)
+			}
+
+			mounts := make([]*proto.Mount, 0, len(cServ.dockerImage.mounts))
+			for _, mount := range cServ.dockerImage.mounts {
+				repo := proto.Repo{RepoType: &proto.Repo_GitRepo{GitRepo: &proto.GitRepo{LocalPath: mount.repo.path}}}
+				mounts = append(mounts, &proto.Mount{Repo: &repo, ContainerPath: mount.mountPoint})
+			}
+
+			dockerCmds := make([]*proto.Cmd, 0, len(cServ.dockerImage.cmds))
+			for _, cmd := range cServ.dockerImage.cmds {
+				dockerCmds = append(dockerCmds, toShellCmd(cmd))
+			}
+
+			var protoServ []proto.Service
+
+			protoServ = append(protoServ, proto.Service{
+				K8SYaml:        k8sYaml,
+				DockerfileText: string(dockerFileBytes),
+				Mounts:         mounts,
+				Steps:          dockerCmds,
+				Entrypoint:     toShellCmd(cServ.dockerImage.entrypoint),
+				DockerfileTag:  cServ.dockerImage.fileTag,
+			})
+
+			return protoServ, nil
+		}
+	}
+	if !ok {
+		_, ok := val.(k8sService)
+		if !ok {
+			return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service", serviceName, val.Type())
+		}
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
+	}
+
+>>>>>>> 4b5755d... Slowly turning Service into []Service
 	service, ok := val.(k8sService)
 	if !ok {
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service", serviceName, val.Type())
@@ -140,14 +190,18 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		dockerCmds = append(dockerCmds, toShellCmd(cmd))
 	}
 
-	return &proto.Service{
+	var protoServ []proto.Service
+
+	protoServ = append(protoServ, proto.Service{
 		K8SYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
 		Mounts:         mounts,
 		Steps:          dockerCmds,
 		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
-	}, nil
+	})
+
+	return protoServ, nil
 }
 
 func toShellCmd(cmd string) *proto.Cmd {
