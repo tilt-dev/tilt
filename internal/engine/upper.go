@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/fsnotify"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
@@ -33,8 +34,8 @@ type Upper struct {
 	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
-func NewUpper(manager service.Manager) (Upper, error) {
-	b, err := NewLocalBuildAndDeployer(manager)
+func NewUpper(manager service.Manager, env k8s.Env) (Upper, error) {
+	b, err := NewLocalBuildAndDeployer(manager, env)
 	if err != nil {
 		return Upper{}, err
 	}
