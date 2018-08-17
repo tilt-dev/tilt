@@ -90,7 +90,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 
 	} else {
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, service.Mounts, service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps)
 		if err != nil {
 			return nil, err
 		}

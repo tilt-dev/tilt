@@ -38,7 +38,7 @@ type localDockerBuilder struct {
 
 type Builder interface {
 	BuildDockerFromScratch(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []PathMapping, steps []model.Cmd) (digest.Digest, error)
+	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
 }
 
@@ -56,17 +56,17 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile string,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	return l.buildDocker(ctx, baseDockerfile, MountsToPaths(mounts), steps, entrypoint)
+	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	paths []PathMapping, steps []model.Cmd) (digest.Digest, error) {
+	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
 	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
 	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
-	paths []PathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
 	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
 	if err != nil {
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
@@ -147,18 +147,18 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return pushedDigest, nil
 }
 
-func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string, paths []PathMapping) (digest.Digest, error) {
+func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string, paths []pathMapping) (digest.Digest, error) {
 	err := validateDockerfile(df)
 	if err != nil {
 		return "", err
 	}
 
-	archive, err := TarContext(df, paths)
+	archive, err := TarContextAndUpdateDf(df, paths)
 	if err != nil {
 		return "", err
 	}
 	// TODO(dmiller): remove this debugging code
-	//tar2, err := TarContext(df, mounts)
+	//tar2, err := TarContextAndUpdateDf(df, mounts)
 	//if err != nil {
 	//	return "", err
 	//}
@@ -285,8 +285,8 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 	return containerID, nil
 }
 
-func TarContext(df string, paths []PathMapping) (*bytes.Reader, error) {
-	buf, err := tarContext(df, paths)
+func TarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Reader, error) {
+	buf, err := tarContextAndUpdateDf(df, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -294,11 +294,10 @@ func TarContext(df string, paths []PathMapping) (*bytes.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-// tarContext amends the dockerfile with appropriate ADD statements,
+// tarContextAndUpdateDf amends the dockerfile with appropriate ADD statements,
 // and returns that new dockerfile + necessary files in a tar
 // NOTE(maia) now that there's more stuff to this, maybe want a more illustrative name for this?
-// TODO(maia): do we need BOTH paths and mounts??
-func tarContext(df string, paths []PathMapping) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer func() {
@@ -323,7 +322,7 @@ func tarContext(df string, paths []PathMapping) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-func updateDf(df string, dnePaths []PathMapping) string {
+func updateDf(df string, dnePaths []pathMapping) string {
 	// Add 'ADD' statements (right now just add whatever's in context;
 	// this is safe b/c only adds/overwrites, doesn't remove).
 	newDf := fmt.Sprintf("%s\nADD . /", df)

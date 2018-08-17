@@ -27,17 +27,17 @@ func archiveDf(tw *tar.Writer, df string) error {
 }
 
 // archiveIfExists creates a tar archive of all local files in `paths` _if they exist_,
-// and returns a list of all PathMappings that point to nonexistant LocalPaths (we'll
+// and returns a list of all PathMappings that point to nonexistent LocalPaths (we'll
 // use that later to add RM statements).
 // NOTE: modifies tw in place.
-func archiveIfExists(tw *tar.Writer, paths []PathMapping) (dnePaths []PathMapping, err error) {
+func archiveIfExists(tw *tar.Writer, paths []pathMapping) (dnePaths []pathMapping, err error) {
 	for _, p := range paths {
 		dne, err := tarPath(tw, p.LocalPath, p.ContainerPath)
 		if err != nil {
 			return nil, fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
 		}
 		if dne {
-			// Tried to tar path but it didn't exist -- expected error, add it to list of nonexistant paths
+			// Tried to tar path but it didn't exist -- expected error, add it to list of nonexistent paths
 			dnePaths = append(dnePaths, p)
 		}
 	}
