@@ -18,7 +18,6 @@ func TestFilesToPathMappings(t *testing.T) {
 		"mount1/fileA",
 		"mount1/child/fileB",
 		"mount2/fileC",
-		"notAMount/fileD",
 	}
 	f.TouchFiles(paths)
 
@@ -40,7 +39,10 @@ func TestFilesToPathMappings(t *testing.T) {
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	actual := FilesToPathMappings(f.ctx, absPaths, mounts)
+	actual, err := FilesToPathMappings(f.ctx, absPaths, mounts)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
 	expected := []PathMapping{
 		PathMapping{
@@ -62,6 +64,25 @@ func TestFilesToPathMappings(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestFileNotInMountThrowsErr(t *testing.T) {
+	f := newFileOpsFixture(t)
+	defer f.TearDown()
+
+	files := []string{filepath.Join(f.Path(), "not/a/mount/fileA")}
+
+	mounts := []model.Mount{
+		model.Mount{
+			Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "mount1")},
+			ContainerPath: "/dest1",
+		},
+	}
+
+	_, err := FilesToPathMappings(f.ctx, files, mounts)
+	if assert.NotNil(t, err, "expected error for file not matching any mounts") {
+		assert.Contains(t, err.Error(), "matches no mounts")
+	}
 }
 
 type fileOpsFixture struct {

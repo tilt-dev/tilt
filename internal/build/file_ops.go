@@ -2,9 +2,9 @@ package build
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
@@ -18,7 +18,7 @@ type PathMapping struct {
 
 // FilesToPathMappings converts a list of absolute local filepaths into FileOps (i.e.
 // associates local filepaths with their mounts and destination paths).
-func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mount) []PathMapping {
+func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mount) ([]PathMapping, error) {
 	var pms []PathMapping
 	for _, f := range files {
 		foundMount := false
@@ -37,13 +37,10 @@ func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mou
 			}
 		}
 		if !foundMount {
-			// TODO(maia) should maybe be returned as an error, depending on the contract
-			// with the file watcher.
-			logger.Get(ctx).Info(
-				"Found no mount matching file %s, this probs shouldn't happen.", f)
+			return nil, fmt.Errorf("file %s matches no mounts", f)
 		}
 
 	}
 
-	return pms
+	return pms, nil
 }
