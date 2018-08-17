@@ -121,6 +121,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
+		f.maxTimerLock.Lock()
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
@@ -148,16 +149,56 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
+		f.maxTimerLock.Lock()
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
 
-		f.sleepLock.Lock()
+		f.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
 			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
 		}
-		f.sleepLock.Unlock()
+		f.restTimerLock.Unlock()
+
+		call = <-f.b.calls
+		assert.Equal(t, service, call.service)
+
+		var fileAbsPaths []string
+		for _, fileRelPath := range fileRelPaths {
+			fileAbsPath, err := filepath.Abs(fileRelPath)
+			if err != nil {
+				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+			}
+			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+		}
+		assert.Equal(t, fileAbsPaths, call.files)
+		f.watcher.errors <- errors.New("bazquu")
+	}()
+	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	close(f.b.calls)
+
+	if assert.NotNil(t, err) {
+		assert.Equal(t, "bazquu", err.Error())
+	}
+}
+
+func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
+	go func() {
+		call := <-f.b.calls
+		assert.Equal(t, service, call.service)
+		assert.Equal(t, []string(nil), call.files)
+
+		f.maxTimerLock.Lock()
+		f.restTimerLock.Lock()
+		fileRelPaths := []string{"fdas", "giueheh"}
+		for _, fileRelPath := range fileRelPaths {
+			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+		}
+		f.maxTimerLock.Unlock()
 
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
@@ -182,12 +223,13 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 }
 
 type testFixture struct {
-	t         *testing.T
-	upper     Upper
-	b         *fakeBuildAndDeployer
-	watcher   *fakeNotify
-	context   context.Context
-	sleepLock *sync.Mutex
+	t             *testing.T
+	upper         Upper
+	b             *fakeBuildAndDeployer
+	watcher       *fakeNotify
+	context       context.Context
+	restTimerLock *sync.Mutex
+	maxTimerLock  *sync.Mutex
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -196,10 +238,33 @@ func newTestFixture(t *testing.T) *testFixture {
 		return watcher, nil
 	}
 	b := newFakeBuildAndDeployer(t)
-	sleepLock := &sync.Mutex{}
-	// a sleeper that is blockable by tests via sleepLock.Lock()
-	sleeper := func(d time.Duration) { sleepLock.Lock(); sleepLock.Unlock() }
-	upper := Upper{b, watcherMaker, sleeper}
+	restTimerLock := new(sync.Mutex)
+	maxTimerLock := new(sync.Mutex)
+
+	makeTimer := func(d time.Duration) <-chan time.Time {
+		var lock *sync.Mutex
+		// we have separate locks for the separate uses of timer so that tests can control the timers independently
+		switch d {
+		case watchBufferMinRestDuration:
+			lock = restTimerLock
+		case watchBufferMaxDuration:
+			lock = maxTimerLock
+		default:
+			// if you hit this, someone (you!?) might have added a new timer with a new duration, and you probably
+			// want to add a case above
+			t.Error("makeTimer called on unsupported duration")
+		}
+		ret := make(chan time.Time, 1)
+		go func() {
+			lock.Lock()
+			ret <- time.Unix(0, 0)
+			lock.Unlock()
+			close(ret)
+		}()
+		return ret
+	}
+
+	upper := Upper{b, watcherMaker, makeTimer}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl))
-	return &testFixture{t, upper, b, watcher, ctx, sleepLock}
+	return &testFixture{t, upper, b, watcher, ctx, restTimerLock, maxTimerLock}
 }

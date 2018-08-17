@@ -19,12 +19,19 @@ import (
 // it might end up being a significant part of deployment delay, if we get the total latency <2s
 // it might also be long enough that it misses some changes if the user has some operation involving a large file
 //   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
-const watchBufferDurationInMs = 200
+const watchBufferMinRestInMs = 200
+
+// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
+// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
+const watchBufferMaxTimeInMs = 10000
+
+var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
+var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
 type Upper struct {
 	b            BuildAndDeployer
 	watcherMaker func() (watch.Notify, error)
-	sleeper      func(d time.Duration)
+	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
 func NewUpper(manager service.Manager) (Upper, error) {
@@ -35,31 +42,30 @@ func NewUpper(manager service.Manager) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	sleeper := time.Sleep
-	return Upper{b, watcherMaker, sleeper}, nil
+	return Upper{b, watcherMaker, time.After}, nil
 }
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
 //from the user's perspective are grouped together.
 func (u Upper) coalesceEvents(eventChan chan fsnotify.Event) []fsnotify.Event {
 	var events []fsnotify.Event
-	doneWaitingForChanges := false
-	for !doneWaitingForChanges {
-		// keep grabbing changes until we've gone `watchBufferDurationInMs` without seeing a change
-		u.sleeper(watchBufferDurationInMs * time.Millisecond)
-		filesHaveChanged := false
-		haveReadAllChangesSinceTimeout := false
-		for !haveReadAllChangesSinceTimeout {
-			select {
-			case event := <-eventChan:
-				events = append(events, event)
-				filesHaveChanged = true
-			default:
-				haveReadAllChangesSinceTimeout = true
-			}
-		}
-		if !filesHaveChanged {
-			doneWaitingForChanges = true
+	// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
+	minRestTimer := u.makeTimer(watchBufferMinRestDuration)
+
+	// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
+	// then just send what we've got
+	timeout := u.makeTimer(watchBufferMaxDuration)
+
+	done := false
+	for !done {
+		select {
+		case event := <-eventChan:
+			minRestTimer = u.makeTimer(watchBufferMinRestDuration)
+			events = append(events, event)
+		case <-minRestTimer:
+			done = true
+		case <-timeout:
+			done = true
 		}
 	}
 	return events
