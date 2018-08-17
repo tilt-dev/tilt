@@ -11,12 +11,12 @@ import (
 )
 
 type TempDirFixture struct {
-	t   *testing.T
+	t   testing.TB
 	ctx context.Context
 	dir *temp.TempDir
 }
 
-func NewTempDirFixture(t *testing.T) *TempDirFixture {
+func NewTempDirFixture(t testing.TB) *TempDirFixture {
 	dir, err := temp.NewDir(t.Name())
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)
@@ -29,7 +29,7 @@ func NewTempDirFixture(t *testing.T) *TempDirFixture {
 	}
 }
 
-func (f *TempDirFixture) T() *testing.T {
+func (f *TempDirFixture) T() testing.TB {
 	return f.t
 }
 

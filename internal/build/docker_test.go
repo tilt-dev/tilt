@@ -435,14 +435,14 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 
 type dockerBuildFixture struct {
 	*testutils.TempDirFixture
-	t        *testing.T
+	t        testing.TB
 	ctx      context.Context
 	dcli     *client.Client
 	b        *localDockerBuilder
 	registry *exec.Cmd
 }
 
-func newDockerBuildFixture(t *testing.T) *dockerBuildFixture {
+func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
