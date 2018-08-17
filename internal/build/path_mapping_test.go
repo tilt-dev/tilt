@@ -38,7 +38,7 @@ func TestFilesToPathMappings(t *testing.T) {
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	actual, err := FilesToPathMappings(f.Ctx(), absPaths, mounts)
+	actual, err := FilesToPathMappings(absPaths, mounts)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestFileNotInMountThrowsErr(t *testing.T) {
 		},
 	}
 
-	_, err := FilesToPathMappings(f.Ctx(), files, mounts)
+	_, err := FilesToPathMappings(files, mounts)
 	if assert.NotNil(t, err, "expected error for file not matching any mounts") {
 		assert.Contains(t, err.Error(), "matches no mounts")
 	}

@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 
@@ -18,7 +17,7 @@ type PathMapping struct {
 
 // FilesToPathMappings converts a list of absolute local filepaths into FileOps (i.e.
 // associates local filepaths with their mounts and destination paths).
-func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mount) ([]PathMapping, error) {
+func FilesToPathMappings(files []string, mounts []model.Mount) ([]PathMapping, error) {
 	var pms []PathMapping
 	for _, f := range files {
 		foundMount := false
@@ -43,4 +42,15 @@ func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mou
 	}
 
 	return pms, nil
+}
+
+func MountsToPaths(mounts []model.Mount) []PathMapping {
+	pms := make([]PathMapping, len(mounts))
+	for i, m := range mounts {
+		pms[i] = PathMapping{
+			LocalPath:     m.Repo.LocalPath,
+			ContainerPath: m.ContainerPath,
+		}
+	}
+	return pms
 }

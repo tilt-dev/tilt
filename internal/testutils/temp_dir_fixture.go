@@ -45,6 +45,14 @@ func (f *TempDirFixture) JoinPath(path string) string {
 	return filepath.Join(f.Path(), path)
 }
 
+func (f *TempDirFixture) JoinPaths(paths []string) []string {
+	joined := make([]string, len(paths))
+	for i, p := range paths {
+		joined[i] = f.JoinPath(p)
+	}
+	return joined
+}
+
 func (f *TempDirFixture) WriteFile(path string, contents string) {
 	fullPath := filepath.Join(f.Path(), path)
 	base := filepath.Dir(fullPath)

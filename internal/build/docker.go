@@ -1,6 +1,7 @@
 package build
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -35,8 +37,8 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDocker(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, mounts []model.Mount, steps []model.Cmd) (digest.Digest, error)
+	BuildDockerFromScratch(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
+	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []PathMapping, steps []model.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
 }
 
@@ -52,16 +54,22 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 	return &localDockerBuilder{cli}
 }
 
-func (l *localDockerBuilder) BuildDocker(ctx context.Context, baseDockerfile string,
+func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile string,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	return l.buildDocker(ctx, baseDockerfile, mounts, steps, entrypoint)
+	return l.buildDocker(ctx, baseDockerfile, MountsToPaths(mounts), steps, entrypoint)
+}
+
+func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
+	paths []PathMapping, steps []model.Cmd) (digest.Digest, error) {
+	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
+	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
-	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	baseDigest, err := l.buildBaseWithMounts(ctx, df, mounts)
+	paths []PathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
 	if err != nil {
-		return "", fmt.Errorf("buildBaseWithMounts: %v", err)
+		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
 	}
 
 	newDigest, err := l.execStepsOnImage(ctx, baseDigest, steps)
@@ -77,12 +85,6 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
 	}
 
 	return newDigest, nil
-}
-
-func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	mounts []model.Mount, steps []model.Cmd) (digest.Digest, error) {
-	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
-	return l.buildDocker(ctx, dfForExisting, mounts, steps, model.Cmd{})
 }
 
 // Naively tag the digest and push it up to the docker registry specified in the name.
@@ -145,18 +147,18 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return pushedDigest, nil
 }
 
-func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDockerfile string, mounts []model.Mount) (digest.Digest, error) {
-	err := validateDockerfile(baseDockerfile)
+func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string, paths []PathMapping) (digest.Digest, error) {
+	err := validateDockerfile(df)
 	if err != nil {
 		return "", err
 	}
 
-	archive, err := tarContext(baseDockerfile, mounts)
+	archive, err := TarContext(df, paths)
 	if err != nil {
 		return "", err
 	}
 	// TODO(dmiller): remove this debugging code
-	//tar2, err := tarContext(baseDockerfile, mounts)
+	//tar2, err := TarContext(df, mounts)
 	//if err != nil {
 	//	return "", err
 	//}
@@ -283,21 +285,59 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 	return containerID, nil
 }
 
-// tarContext amends the dockerfile with appropriate ADD statements,
-// and returns that new dockerfile + necessary files in a tar
-func tarContext(df string, mounts []model.Mount) (*bytes.Reader, error) {
-	buf := new(bytes.Buffer)
-
-	// We'll tar all mounts so that their contents live inside their own dest
-	// directories; since we generate the tar properly, can just dump everything
-	// from the root into the container at /
-	newdf := fmt.Sprintf("%s\nADD . /", df)
-
-	err := tarToBuf(buf, newdf, mounts)
+func TarContext(df string, paths []PathMapping) (*bytes.Reader, error) {
+	buf, err := tarContext(df, paths)
 	if err != nil {
 		return nil, err
 	}
+
 	return bytes.NewReader(buf.Bytes()), nil
+}
+
+// tarContext amends the dockerfile with appropriate ADD statements,
+// and returns that new dockerfile + necessary files in a tar
+// NOTE(maia) now that there's more stuff to this, maybe want a more illustrative name for this?
+// TODO(maia): do we need BOTH paths and mounts??
+func tarContext(df string, paths []PathMapping) (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+	defer func() {
+		err := tw.Close()
+		if err != nil {
+			log.Printf("Error closing tar writer: %s", err.Error())
+		}
+	}()
+
+	// TODO: maybe write our own tarWriter struct with methods on it, so it's clearer that we're modifying the tar writer in place
+	dnePaths, err := archiveIfExists(tw, paths)
+	if err != nil {
+		return nil, fmt.Errorf("archiveIfExists: %v", err)
+	}
+
+	newDf := updateDf(df, dnePaths)
+	err = archiveDf(tw, newDf)
+	if err != nil {
+		return nil, fmt.Errorf("archiveDf: %v", err)
+	}
+
+	return buf, nil
+}
+
+func updateDf(df string, dnePaths []PathMapping) string {
+	// Add 'ADD' statements (right now just add whatever's in context;
+	// this is safe b/c only adds/overwrites, doesn't remove).
+	newDf := fmt.Sprintf("%s\nADD . /", df)
+
+	if len(dnePaths) > 0 {
+		// Add 'rm' statements; if changed file was deleted locally, remove if from container
+		rmCmd := strings.Builder{}
+		rmCmd.WriteString("rm") // sh -c?
+		for _, p := range dnePaths {
+			rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
+		}
+		newDf = fmt.Sprintf("%s\nRUN %s", newDf, rmCmd.String())
+	}
+	return newDf
 }
 
 // Docker API commands stream back a sequence of JSON messages.
