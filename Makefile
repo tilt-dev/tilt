@@ -23,3 +23,6 @@ ensure:
 
 verify_gofmt:
 	bash -c 'diff <(go fmt ./...) <(echo -n)'
+
+benchmark:
+	go test -run=XXX -bench=. ./...
