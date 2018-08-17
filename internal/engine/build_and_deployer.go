@@ -42,9 +42,10 @@ type localBuildAndDeployer struct {
 	b       build.Builder
 	history image.ImageHistory
 	sm      service.Manager
+	env     k8s.Env
 }
 
-func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -57,6 +58,7 @@ func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager) (BuildAndD
 	if err != nil {
 		return nil, err
 	}
+
 	b := build.NewLocalDockerBuilder(dcli)
 	dir, err := dirs.UseWindmillDir()
 	if err != nil {
@@ -71,6 +73,7 @@ func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager) (BuildAndD
 		b:       b,
 		history: history,
 		sm:      m,
+		env:     env,
 	}, nil
 }
 
@@ -102,14 +105,31 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		d = newDigest
 		name = token.n
 	}
+
 	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
 	err := l.history.Add(ctx, name, d, checkpoint)
 	if err != nil {
 		return nil, err
 	}
-	pushedRef, err := l.b.PushDocker(ctx, name, d)
-	if err != nil {
-		return nil, err
+
+	var refToInject reference.Canonical
+
+	// If we're using docker-for-desktop as our k8s backend,
+	// we don't need to push to the central registry.
+	// The k8s will use the image already available
+	// in the local docker daemon.
+	if l.env == k8s.EnvDockerDesktop {
+		taggedRef, err := l.b.TagDocker(ctx, name, d)
+		if err != nil {
+			return nil, err
+		}
+		refToInject = taggedRef
+	} else {
+		pushedRef, err := l.b.PushDocker(ctx, name, d)
+		if err != nil {
+			return nil, err
+		}
+		refToInject = pushedRef
 	}
 
 	logger.Get(ctx).Verbosef("- Parsing and templating YAML")
@@ -129,9 +149,13 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 			return nil, err
 		}
 
-		// TODO(nick):When working with a local k8s cluster, we want to set this to Never,
+		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
-		e, replaced, err := k8s.InjectImageDigest(e, pushedRef, v1.PullIfNotPresent)
+		policy := v1.PullIfNotPresent
+		if l.env == k8s.EnvDockerDesktop {
+			policy = v1.PullNever
+		}
+		e, replaced, err := k8s.InjectImageDigest(e, refToInject, policy)
 		if err != nil {
 			return nil, err
 		}

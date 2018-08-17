@@ -190,7 +190,7 @@ func TestPush(t *testing.T) {
 		expectedFile{path: "/src/sup", contents: "my name is dan"},
 	}
 
-	f.assertFilesInImage(fmt.Sprintf("%s:%s", name, pushTag), pcs)
+	f.assertFilesInImage(fmt.Sprintf("%s:%s", name, tiltTag), pcs)
 }
 
 func TestPushInvalid(t *testing.T) {

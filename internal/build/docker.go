@@ -26,7 +26,7 @@ import (
 )
 
 // Tilt always pushes to the same tag. We never push to latest.
-const pushTag = "wm-tilt"
+const tiltTag = "wm-tilt"
 
 var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT, " +
 	"which is not currently supported -- provide an entrypoint in your Tiltfile")
@@ -39,6 +39,7 @@ type Builder interface {
 	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
 	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.Canonical, error)
+	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.Canonical, error)
 }
 
 type pushOutput struct {
@@ -102,6 +103,21 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 	return resultDigest, nil
 }
 
+// Tag the digest with the given name and wm-tilt tag.
+func (l *localDockerBuilder) TagDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
+	tag, err := reference.WithTag(ref, tiltTag)
+	if err != nil {
+		return nil, fmt.Errorf("TaggDocker: %v", err)
+	}
+
+	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
+	if err != nil {
+		return nil, fmt.Errorf("TagDocker#ImageTag: %v", err)
+	}
+
+	return reference.WithDigest(tag, dig)
+}
+
 // Naively tag the digest and push it up to the docker registry specified in the name.
 //
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
@@ -143,7 +159,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
-	tag, err := reference.WithTag(ref, pushTag)
+	tag, err := reference.WithTag(ref, tiltTag)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker: %v", err)
 	}
