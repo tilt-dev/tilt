@@ -33,8 +33,8 @@ func Get(ctx context.Context) Logger {
 		return val.(Logger)
 	}
 
-	// No logger found in context, make a new one.
-	return NewLogger(InfoLvl)
+	// No logger found in context, something is wrong.
+	panic("Called logger.Get(ctx) on a context with no logger attached!")
 }
 
 func NewLogger(level Level) Logger {

@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -10,30 +9,27 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-// FileOp represents an operation we want to perform on the container -- either
-// a. copying the file at LocalPath --> Containerpath, or
-// b. if file at LocalPath doesn't exist, rm Containerpath
-// Both LocalPath and ContainerPath are absolute paths
-type FileOp struct {
+// PathMapping represents a mapping from a local path to the path on a container
+// where it should be mounted. Both LocalPath and ContainerPath are absolute paths.
+type PathMapping struct {
 	LocalPath     string
 	ContainerPath string
 }
 
-// FilesToOps converts a list of absolute local filepaths into FileOps (i.e.
+// FilesToPathMappings converts a list of absolute local filepaths into FileOps (i.e.
 // associates local filepaths with their mounts and destination paths).
-func FilesToOps(ctx context.Context, files []string, mounts []model.Mount) ([]FileOp, error) {
-	var ops []FileOp
+func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mount) []PathMapping {
+	var pms []PathMapping
 	for _, f := range files {
 		foundMount := false
 		for _, m := range mounts {
 			// Open Q: can you mount inside of mounts?! o_0
-			relPath, isChild, err := ospath.RealChild(m.Repo.LocalPath, f)
-			if err != nil {
-				return ops, fmt.Errorf("realChild: %v", err)
-			}
+			// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
+			// need ospath.RealChild -- but then can't deal with deleted local files.
+			relPath, isChild := ospath.Child(m.Repo.LocalPath, f)
 			if isChild {
 				foundMount = true
-				ops = append(ops, FileOp{
+				pms = append(pms, PathMapping{
 					LocalPath:     f,
 					ContainerPath: filepath.Join(m.ContainerPath, relPath),
 				})
@@ -41,11 +37,13 @@ func FilesToOps(ctx context.Context, files []string, mounts []model.Mount) ([]Fi
 			}
 		}
 		if !foundMount {
+			// TODO(maia) should maybe be returned as an error, depending on the contract
+			// with the file watcher.
 			logger.Get(ctx).Info(
 				"Found no mount matching file %s, this probs shouldn't happen.", f)
 		}
 
 	}
 
-	return ops, nil
+	return pms
 }

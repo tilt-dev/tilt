@@ -10,7 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
-func TestFilesToOps(t *testing.T) {
+func TestFilesToPathMappings(t *testing.T) {
 	f := newFileOpsFixture(t)
 	defer f.TearDown()
 
@@ -26,6 +26,9 @@ func TestFilesToOps(t *testing.T) {
 	for i, p := range paths {
 		absPaths[i] = filepath.Join(f.Path(), p)
 	}
+	// Add a file that doesn't exist on local -- but we still expect it to successfully
+	// map to a ContainerPath.
+	absPaths = append(absPaths, filepath.Join(f.Path(), "mount2/file_deleted"))
 
 	mounts := []model.Mount{
 		model.Mount{
@@ -37,27 +40,28 @@ func TestFilesToOps(t *testing.T) {
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	ops, err := FilesToOps(f.ctx, absPaths, mounts)
-	if err != nil {
-		t.Fatal(err)
-	}
+	actual := FilesToPathMappings(f.ctx, absPaths, mounts)
 
-	expected := []FileOp{
-		FileOp{
+	expected := []PathMapping{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount1/fileA"),
 			ContainerPath: "/dest1/fileA",
 		},
-		FileOp{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount1/child/fileB"),
 			ContainerPath: "/dest1/child/fileB",
 		},
-		FileOp{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount2/fileC"),
 			ContainerPath: "/nested/dest2/fileC",
 		},
+		PathMapping{
+			LocalPath:     filepath.Join(f.Path(), "mount2/file_deleted"),
+			ContainerPath: "/nested/dest2/file_deleted",
+		},
 	}
 
-	assert.ElementsMatch(t, expected, ops)
+	assert.ElementsMatch(t, expected, actual)
 }
 
 type fileOpsFixture struct {
@@ -70,6 +74,6 @@ func newFileOpsFixture(t *testing.T) *fileOpsFixture {
 	return &fileOpsFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
-		ctx:            context.Background(),
+		ctx:            testutils.CtxForTest(),
 	}
 }
