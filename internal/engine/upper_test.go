@@ -16,21 +16,22 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-type startCall struct {
+//represents a single call to `BuildAndDeploy`
+type buildAndDeployCall struct {
 	service model.Service
 	files   []string
 }
 
 type fakeBuildAndDeployer struct {
 	t     *testing.T
-	calls chan startCall
+	calls chan buildAndDeployCall
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	select {
-	case b.calls <- startCall{service, changedFiles}:
+	case b.calls <- buildAndDeployCall{service, changedFiles}:
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
@@ -38,7 +39,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
-	return &fakeBuildAndDeployer{t: t, calls: make(chan startCall, 5)}
+	return &fakeBuildAndDeployer{t: t, calls: make(chan buildAndDeployCall, 5)}
 }
 
 type fakeNotify struct {
