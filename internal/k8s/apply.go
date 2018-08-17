@@ -16,7 +16,7 @@ func Apply(ctx context.Context, rawYAML string) error {
 	r := bytes.NewReader([]byte(rawYAML))
 	c.Stdin = r
 
-	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+	writer := logger.Get(ctx).Writer(logger.InfoLvl)
 
 	c.Stdout = writer
 

@@ -272,25 +272,16 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 		if status.Error != nil {
 			return "", errors.New(status.Error.Message)
 		}
-		// TODO(matt) feed this reader into the logger
 		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
 			return "", err
 		}
-		buf := make([]byte, 1024)
-		for {
-			n, err := r.Read(buf)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return "", err
-			}
-			_, err = writer.Write(buf[:n])
-			if err != nil {
-				return "", err
-			}
+
+		_, err = io.Copy(writer, r)
+		if err != nil {
+			return "", err
 		}
+
 		if status.StatusCode != 0 {
 			return "", fmt.Errorf("container '%+v' had non-0 exit code %v", config, status.StatusCode)
 		}
