@@ -162,7 +162,11 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 			}, nil
 		}
 	}
-	if !ok { // check service
+	if !ok {
+		_, ok := val.(k8sService)
+		if !ok {
+			return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service", serviceName, val.Type())
+		}
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
 	}
 
