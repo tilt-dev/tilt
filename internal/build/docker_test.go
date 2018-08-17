@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/stretchr/testify/assert"
 
@@ -26,7 +26,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
-	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
 const simpleDockerfile = "FROM alpine"
@@ -80,11 +79,11 @@ func TestMount(t *testing.T) {
 	defer f.teardown()
 
 	// write some files in to it
-	f.writeFile("hi/hello", "hi hello")
-	f.writeFile("sup", "my name is dan")
+	f.WriteFile("hi/hello", "hi hello")
+	f.WriteFile("sup", "my name is dan")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
 
@@ -105,15 +104,15 @@ func TestMultipleMounts(t *testing.T) {
 	defer f.teardown()
 
 	// write some files in to it
-	f.writeFile("hi/hello", "hi hello")
-	f.writeFile("bye/ciao/goodbye", "bye laterz")
+	f.WriteFile("hi/hello", "hi hello")
+	f.WriteFile("bye/ciao/goodbye", "bye laterz")
 
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
+		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "hi")},
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
+		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "bye")},
 		ContainerPath: "goodbye_there",
 	}
 
@@ -134,17 +133,17 @@ func TestMountCollisions(t *testing.T) {
 	defer f.teardown()
 
 	// write some files in to it
-	f.writeFile("hi/hello", "hi hello")
-	f.writeFile("bye/hello", "bye laterz")
+	f.WriteFile("hi/hello", "hi hello")
+	f.WriteFile("bye/hello", "bye laterz")
 
 	// Mounting two files to the same place in the container -- expect the second mount
 	// to take precedence (file should contain "bye laterz")
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "hi")},
+		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "hi")},
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.repo.Path(), "bye")},
+		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "bye")},
 		ContainerPath: "/hello_there",
 	}
 
@@ -166,11 +165,11 @@ func TestPush(t *testing.T) {
 	f.startRegistry()
 
 	// write some files in to it
-	f.writeFile("hi/hello", "hi hello")
-	f.writeFile("sup", "my name is dan")
+	f.WriteFile("hi/hello", "hi hello")
+	f.WriteFile("sup", "my name is dan")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
 
@@ -198,7 +197,7 @@ func TestPushInvalid(t *testing.T) {
 	defer f.teardown()
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
 
@@ -337,11 +336,11 @@ func TestAddMountsToExisting(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	f.writeFile("hi/hello", "hi hello")
-	f.writeFile("sup", "yo dawg, i heard you like docker")
+	f.WriteFile("hi/hello", "hi hello")
+	f.WriteFile("sup", "yo dawg, i heard you like docker")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
 
@@ -350,8 +349,8 @@ func TestAddMountsToExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.writeFile("hi/hello", "hello world") // change contents
-	f.rm("sup")
+	f.WriteFile("hi/hello", "hello world") // change contents
+	f.Rm("sup")
 
 	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, []model.Mount{m}, []model.Cmd{})
 	if err != nil {
@@ -370,9 +369,9 @@ func TestExecStepsOnExisting(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	f.writeFile("foo", "hello world")
+	f.WriteFile("foo", "hello world")
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
 
@@ -399,9 +398,9 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.teardown()
 
-	f.writeFile("foo", "hello world")
+	f.WriteFile("foo", "hello world")
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.repo.Path()},
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
@@ -413,7 +412,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 
 	// change contents of `foo` so when entrypoint exec's the second time, it
 	// will change the contents of `bar`
-	f.writeFile("foo", "a whole new world")
+	f.WriteFile("foo", "a whole new world")
 
 	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, []model.Mount{m}, []model.Cmd{})
 	if err != nil {
@@ -434,20 +433,15 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 }
 
 type testFixture struct {
+	*testutils.TempDirFixture
 	t        *testing.T
 	ctx      context.Context
-	repo     *temp.TempDir
 	dcli     *client.Client
 	b        *localDockerBuilder
 	registry *exec.Cmd
 }
 
 func newTestFixture(t *testing.T) *testFixture {
-	repo, err := temp.NewDir(t.Name())
-	if err != nil {
-		t.Fatalf("Error making temp dir: %v", err)
-	}
-
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -462,11 +456,11 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 
 	return &testFixture{
-		t:    t,
-		ctx:  context.Background(),
-		repo: repo,
-		dcli: dcli,
-		b:    NewLocalDockerBuilder(dcli),
+		TempDirFixture: testutils.NewTempDirFixture(t),
+		t:              t,
+		ctx:            context.Background(),
+		dcli:           dcli,
+		b:              NewLocalDockerBuilder(dcli),
 	}
 }
 
@@ -485,7 +479,7 @@ func (f *testFixture) teardown() {
 		_ = exec.Command("docker", "kill", "tilt-registry").Run()
 		_ = exec.Command("docker", "rm", "tilt-registry").Run()
 	}
-	f.repo.TearDown()
+	f.TempDirFixture.TearDown()
 }
 
 func (f *testFixture) startRegistry() {
@@ -513,27 +507,6 @@ func (f *testFixture) startRegistry() {
 		}
 	}
 	f.t.Fatalf("Timed out waiting for registry to start. Output:\n%s\n%s", stdout.String(), stderr.String())
-}
-
-func (f *testFixture) writeFile(pathInRepo string, contents string) {
-	fullPath := filepath.Join(f.repo.Path(), pathInRepo)
-	base := filepath.Dir(fullPath)
-	err := os.MkdirAll(base, os.FileMode(0777))
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0777))
-	if err != nil {
-		f.t.Fatal(err)
-	}
-}
-
-func (f *testFixture) rm(pathInRepo string) {
-	fullPath := filepath.Join(f.repo.Path(), pathInRepo)
-	err := os.Remove(fullPath)
-	if err != nil {
-		f.t.Fatal(err)
-	}
 }
 
 type expectedFile struct {
