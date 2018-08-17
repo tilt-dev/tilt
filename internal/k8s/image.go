@@ -5,29 +5,8 @@ import (
 	"reflect"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
 	"k8s.io/api/core/v1"
 )
-
-// Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
-	originalRef, err := reference.ParseNamed(original)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
-
-	d, err := digest.Parse(newDigest)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
-
-	canonicalRef, err := reference.WithDigest(originalRef, d)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
-
-	return InjectImageDigest(entity, canonicalRef, policy)
-}
 
 // Iterate through the fields of a k8s entity and
 // replace the image pull policy on all images.
@@ -51,7 +30,21 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 //   to ensure that k8s fails hard if the image is missing from docker.
 //
 // Returns: the new entity, whether the image was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, canonicalRef reference.Canonical, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
+	// NOTE(nick): For some reason, if you have a reference with a digest,
+	// kubernetes will never find it in the local registry and always tries to do a
+	// pull. It's not clear to me why it behaves this way.
+	//
+	// There is not a simple way to resolve this problem at this level of the
+	// API. In some cases, the digest won't matter and the name/tag will be
+	// enough. In other cases, the digest will be critical if we don't have good
+	// synchronization that the name/tag currently matches the digest.
+	//
+	// For now, we try to detect this case and push the error up to the caller.
+	_, hasDigest := injectRef.(reference.Digested)
+	if hasDigest && policy == v1.PullNever {
+		return K8sEntity{}, false, fmt.Errorf("INTERNAL TILT ERROR: Cannot set PullNever with digest")
+	}
 
 	containers, err := extractContainers(&entity)
 	if err != nil {
@@ -65,8 +58,8 @@ func InjectImageDigest(entity K8sEntity, canonicalRef reference.Canonical, polic
 			return K8sEntity{}, false, err
 		}
 
-		if existingRef.Name() == canonicalRef.Name() {
-			container.Image = canonicalRef.String()
+		if existingRef.Name() == injectRef.Name() {
+			container.Image = injectRef.String()
 			container.ImagePullPolicy = policy
 			replaced = true
 		}
