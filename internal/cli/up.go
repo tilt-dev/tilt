@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"errors"
+	"log"
+
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
@@ -10,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
 )
 
 type upCmd struct {

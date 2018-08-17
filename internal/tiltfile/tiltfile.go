@@ -43,16 +43,16 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 }
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var k8sS []k8sService
+	var k8sServArray []k8sService
 
 	for i := range args {
 		k8sServ, ok := args[i].(k8sService)
 		if !ok {
 			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
 		}
-		k8sS = append(k8sS, k8sServ)
+		k8sServArray = append(k8sServArray, k8sServ)
 	}
-	return compService{k8sS}, nil
+	return compService{k8sServArray}, nil
 }
 
 func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -125,6 +125,45 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 	val, err := serviceFunction.Call(tiltfile.thread, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running '%v': %v", serviceName, err.Error())
+	}
+
+	compService, ok := val.(compService)
+	if ok {
+		for _, cServ := range compService.cService {
+
+			k8sYaml, ok := skylark.AsString(cServ.k8sYaml)
+			if !ok {
+				return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", cServ)
+			}
+
+			dockerFileBytes, err := ioutil.ReadFile(cServ.dockerImage.fileName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open dockerfile '%v': %v", cServ.dockerImage.fileName, err)
+			}
+
+			mounts := make([]*proto.Mount, 0, len(cServ.dockerImage.mounts))
+			for _, mount := range cServ.dockerImage.mounts {
+				repo := proto.Repo{RepoType: &proto.Repo_GitRepo{GitRepo: &proto.GitRepo{LocalPath: mount.repo.path}}}
+				mounts = append(mounts, &proto.Mount{Repo: &repo, ContainerPath: mount.mountPoint})
+			}
+
+			dockerCmds := make([]*proto.Cmd, 0, len(cServ.dockerImage.cmds))
+			for _, cmd := range cServ.dockerImage.cmds {
+				dockerCmds = append(dockerCmds, toShellCmd(cmd))
+			}
+
+			return &proto.Service{
+				K8SYaml:        k8sYaml,
+				DockerfileText: string(dockerFileBytes),
+				Mounts:         mounts,
+				Steps:          dockerCmds,
+				Entrypoint:     toShellCmd(cServ.dockerImage.entrypoint),
+				DockerfileTag:  cServ.dockerImage.fileTag,
+			}, nil
+		}
+	}
+	if !ok { // check service
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
 	}
 
 	service, ok := val.(k8sService)
