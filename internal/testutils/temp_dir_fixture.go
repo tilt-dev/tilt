@@ -1,4 +1,4 @@
-package test_utils
+package testutils
 
 import (
 	"io/ioutil"
@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/windmilleng/wat/os/temp"
+	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
 type TempDirFixture struct {

@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/test_utils"
+	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/stretchr/testify/assert"
 
@@ -433,7 +433,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 }
 
 type testFixture struct {
-	*test_utils.TempDirFixture
+	*testutils.TempDirFixture
 	t        *testing.T
 	ctx      context.Context
 	dcli     *client.Client
@@ -456,7 +456,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 
 	return &testFixture{
-		TempDirFixture: test_utils.NewTempDirFixture(t),
+		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 		ctx:            context.Background(),
 		dcli:           dcli,

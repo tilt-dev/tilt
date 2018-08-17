@@ -3,7 +3,7 @@ package ospath
 import (
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/test_utils"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func TestChild(t *testing.T) {
@@ -28,13 +28,13 @@ func TestChild(t *testing.T) {
 }
 
 type OspathFixture struct {
-	*test_utils.TempDirFixture
+	*testutils.TempDirFixture
 	t *testing.T
 }
 
 func NewOspathFixture(t *testing.T) *OspathFixture {
 	return &OspathFixture{
-		TempDirFixture: test_utils.NewTempDirFixture(t),
+		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 	}
 }

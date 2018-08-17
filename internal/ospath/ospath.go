@@ -5,15 +5,11 @@ import (
 	"path/filepath"
 )
 
-func Child(dir string, file string) (string, bool) {
-	return child(theOsPathUtil, dir, file)
-}
-
 // Given absolute paths `dir` and `file`, returns
 // the relative path of `file` relative to `dir`.
 //
 // Returns true if successful. If `file` is not under `dir`, returns false.
-func child(util osPathUtil, dir, file string) (string, bool) {
+func Child(dir string, file string) (string, bool) {
 	current := file
 	child := ""
 	for true {
@@ -25,9 +21,9 @@ func child(util osPathUtil, dir, file string) (string, bool) {
 			return "", false
 		}
 
-		cDir := util.Dir(current)
-		cBase := util.Base(current)
-		child = util.Join(cBase, child)
+		cDir := filepath.Dir(current)
+		cBase := filepath.Base(current)
+		child = filepath.Join(cBase, child)
 		current = cDir
 	}
 
@@ -83,13 +79,3 @@ func IsDir(path string) bool {
 
 	return f.Mode().IsDir()
 }
-
-type osPathUtil struct{}
-
-func (p osPathUtil) Base(path string) string                  { return filepath.Base(path) }
-func (p osPathUtil) Dir(path string) string                   { return filepath.Dir(path) }
-func (p osPathUtil) Join(a, b string) string                  { return filepath.Join(a, b) }
-func (p osPathUtil) Match(pattern, path string) (bool, error) { return filepath.Match(pattern, path) }
-func (p osPathUtil) Separator() rune                          { return filepath.Separator }
-
-var theOsPathUtil = osPathUtil{}
