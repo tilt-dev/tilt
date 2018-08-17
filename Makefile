@@ -26,3 +26,6 @@ verify_gofmt:
 
 benchmark:
 	go test -run=XXX -bench=. ./...
+
+errcheck:
+	errcheck -ignoretests -ignoregenerated ./...
