@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/cli/cli/command"
@@ -136,7 +137,12 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return "", fmt.Errorf("PushDocker#ImagePush: %v", err)
 	}
 
-	defer imagePushResponse.Close()
+	defer func() {
+		err := imagePushResponse.Close()
+		if err != nil {
+			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
+		}
+	}()
 	pushedDigest, err := getDigestFromPushOutput(imagePushResponse)
 	if err != nil {
 		return "", fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
@@ -179,7 +185,12 @@ func (l *localDockerBuilder) buildBaseWithMounts(ctx context.Context, baseDocker
 		return "", err
 	}
 
-	defer imageBuildResponse.Body.Close()
+	defer func() {
+		err := imageBuildResponse.Body.Close()
+		if err != nil {
+			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
+		}
+	}()
 	result, err := readDockerOutput(imageBuildResponse.Body)
 	if err != nil {
 		return "", fmt.Errorf("ImageBuild: %v", err)

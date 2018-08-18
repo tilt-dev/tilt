@@ -96,7 +96,9 @@ func tarPath(tarWriter *tar.Writer, source, dest string) error {
 			if err != nil {
 				return fmt.Errorf("%s: open: %v", path, err)
 			}
-			defer file.Close()
+			defer func() {
+				_ = file.Close()
+			}()
 
 			_, err = io.CopyN(tarWriter, file, info.Size())
 			if err != nil && err != io.EOF {
