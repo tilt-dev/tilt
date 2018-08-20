@@ -135,7 +135,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				if !ok {
 					return nil
 				}
-				logger.Get(ctx).Info("files changed, rebuilding %v", service.Name)
+				logger.Get(ctx).Infof("files changed, rebuilding %v", service.Name)
 
 				var changedPaths []string
 				for _, e := range events {
@@ -147,7 +147,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				}
 				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
 				if err != nil {
-					logger.Get(ctx).Info("build failed: %v", err.Error())
+					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				}
 
 			}
