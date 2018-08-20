@@ -70,8 +70,12 @@ func (l logger) Debug(format string, a ...interface{}) {
 
 func (l logger) write(level Level, format string, a ...interface{}) {
 	if l.level >= level {
-		fmt.Fprintf(l.writer, format, a...)
-		fmt.Fprintln(l.writer, "")
+		// swallowing errors because:
+		// 1) if we can't write to the log, what else are we going to do?
+		// 2) a logger interface that returns error becomes really distracting at call sites,
+		//    increasing friction and reducing logging
+		_, _ = fmt.Fprintf(l.writer, format, a...)
+		_, _ = fmt.Fprintln(l.writer, "")
 	}
 }
 
