@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 func Apply(ctx context.Context, rawYAML string, stdout io.Writer, stderr io.Writer) error {
 	// TODO(dmiller) validate that the string is YAML and give a good error
+	logger.Get(ctx).Verbose("- Applying YAML via kubectl")
 	c := exec.CommandContext(ctx, "kubectl", "apply", "-f", "-")
 	r := bytes.NewReader([]byte(rawYAML))
 	c.Stdin = r
