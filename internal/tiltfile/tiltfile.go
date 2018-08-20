@@ -119,7 +119,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 		var protoServ []*proto.Service
 
 		for _, cServ := range service.cService {
-			s, err := addToService(cServ)
+			s, err := skylarkServiceToProto(cServ)
 			if err != nil {
 				return nil, err
 			}
@@ -128,7 +128,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 		}
 		return protoServ, nil
 	case k8sService:
-		s, err := addToService(service)
+		s, err := skylarkServiceToProto(service)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +139,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 	}
 }
 
-func addToService(service k8sService) (*proto.Service, error) {
+func skylarkServiceToProto(service k8sService) (*proto.Service, error) {
 	k8sYaml, ok := skylark.AsString(service.k8sYaml)
 	if !ok {
 		return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
