@@ -5,16 +5,33 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"time"
 
+	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+// When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
+// 200ms is not the result of any kind of research or experimentation
+// it might end up being a significant part of deployment delay, if we get the total latency <2s
+// it might also be long enough that it misses some changes if the user has some operation involving a large file
+//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
+const watchBufferMinRestInMs = 200
+
+// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
+// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
+const watchBufferMaxTimeInMs = 10000
+
+var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
+var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
+
 type Upper struct {
 	b            BuildAndDeployer
 	watcherMaker func() (watch.Notify, error)
+	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
 func NewUpper(manager service.Manager) (Upper, error) {
@@ -25,7 +42,57 @@ func NewUpper(manager service.Manager) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	return Upper{b, watcherMaker}, nil
+	return Upper{b, watcherMaker, time.After}, nil
+}
+
+//makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
+//from the user's perspective are grouped together.
+func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
+	ret := make(chan []fsnotify.Event)
+	go func() {
+		defer close(ret)
+		for {
+			event, ok := <-eventChan
+			if !ok {
+				return
+			}
+			events := []fsnotify.Event{event}
+
+			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
+			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
+
+			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
+			// then just send what we've got
+			timeout := u.makeTimer(watchBufferMaxDuration)
+
+			done := false
+			channelClosed := false
+			for !done && !channelClosed {
+				select {
+				case event, ok := <-eventChan:
+					if !ok {
+						channelClosed = true
+					} else {
+						minRestTimer = u.makeTimer(watchBufferMinRestDuration)
+						events = append(events, event)
+					}
+				case <-minRestTimer:
+					done = true
+				case <-timeout:
+					done = true
+				}
+			}
+			if len(events) > 0 {
+				ret <- events
+			}
+
+			if channelClosed {
+				return
+			}
+		}
+
+	}()
+	return ret
 }
 
 func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
@@ -51,18 +118,27 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			}
 		}
 
+		coalescedEvents := u.coalesceEvents(watcher.Events())
+
 		for {
-			// TODO(matt) buffer events a bit so that we're not triggering 10 builds when you change branches
 			select {
 			case err := <-watcher.Errors():
 				return err
-			case event := <-watcher.Events():
-				logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
-				path, err := filepath.Abs(event.Name)
-				if err != nil {
-					return err
+			case events, ok := <-coalescedEvents:
+				if !ok {
+					return nil
 				}
-				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, []string{path})
+				logger.Get(ctx).Info("files changed, rebuilding %v", service.Name)
+
+				var changedPaths []string
+				for _, e := range events {
+					path, err := filepath.Abs(e.Name)
+					if err != nil {
+						return err
+					}
+					changedPaths = append(changedPaths, path)
+				}
+				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, changedPaths)
 				if err != nil {
 					logger.Get(ctx).Info("build failed: %v", err.Error())
 				}

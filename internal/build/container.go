@@ -6,7 +6,10 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-// Get a container config to run a container with a given tilt command instead of
+type containerID string
+type execID string
+
+// Get a container config to run a container with a given command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.
 func containerConfigRunCmd(imgRef digest.Digest, cmd model.Cmd) *container.Config {
 	config := containerConfig(imgRef)
@@ -20,7 +23,7 @@ func containerConfigRunCmd(imgRef digest.Digest, cmd model.Cmd) *container.Confi
 	//
 	// https://github.com/opencontainers/image-spec/blob/master/config.md#properties
 	if cmd.Empty() {
-		config.Cmd = []string{"sh", "-c", "# NOTE(nick): a fake cmd"}
+		config.Cmd = model.ToShellCmd("# NOTE(nick): a fake cmd").Argv
 	} else {
 		config.Cmd = cmd.Argv
 	}
