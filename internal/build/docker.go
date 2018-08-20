@@ -19,7 +19,6 @@ import (
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/registry"
@@ -265,53 +264,6 @@ func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerI
 		return nil
 	}
 	return nil
-}
-
-// startContainer starts a container from the given config.
-// Returns the container id iff the container successfully runs; else, error.
-//
-// TODO(nick): Remove this function. It's currently only used in tests.
-// It will be better to use the container pool with exec.
-func (l *localDockerBuilder) startContainer(ctx context.Context, config *container.Config) (cId string, err error) {
-	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
-	if err != nil {
-		return "", fmt.Errorf("startContainer: %v", err)
-	}
-	containerID := resp.ID
-
-	err = l.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
-	if err != nil {
-		return "", fmt.Errorf("startContainer: %v", err)
-	}
-
-	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
-
-	statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return "", fmt.Errorf("startContainer: %v", err)
-		}
-	case status := <-statusCh:
-		if status.Error != nil {
-			return "", fmt.Errorf("startContainer: %v", status.Error.Message)
-		}
-		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
-		if err != nil {
-			return "", fmt.Errorf("startContainer: %v", err)
-		}
-
-		_, err = io.Copy(writer, r)
-		if err != nil {
-			return "", fmt.Errorf("startContainer: %v", err)
-		}
-
-		if status.StatusCode != 0 {
-			return "", fmt.Errorf("container '%+v' had non-0 exit code %v", config, status.StatusCode)
-		}
-	}
-
-	return containerID, nil
 }
 
 func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
