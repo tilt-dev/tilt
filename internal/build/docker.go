@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
@@ -57,11 +58,15 @@ func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
+	defer span.Finish()
 	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
+	defer span.Finish()
 	dfForExisting := DockerfileFromExisting(existing)
 	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
@@ -96,6 +101,8 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
 func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
+	defer span.Finish()
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
@@ -156,12 +163,14 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 }
 
 func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDfWithFiles")
+	defer span.Finish()
 	err := df.Validate()
 	if err != nil {
 		return "", err
 	}
 
-	archive, err := TarContextAndUpdateDf(df, paths)
+	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return "", err
 	}
@@ -193,6 +202,8 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 }
 
 func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-execInContainer")
+	defer span.Finish()
 	created, err := l.dcli.ContainerExecCreate(ctx, string(cID), types.ExecConfig{
 		Cmd: cmd.Argv,
 	})
@@ -284,7 +295,9 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 	return containerID, nil
 }
 
-func TarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
+func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-TarContextAndUpdateDf")
+	defer span.Finish()
 	buf, err := tarContextAndUpdateDf(df, paths)
 	if err != nil {
 		return nil, err
