@@ -21,18 +21,19 @@ func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest s
 		return K8sEntity{}, false, err
 	}
 
-	return InjectImageDigest(entity, originalRef, d)
+	canonicalRef, err := reference.WithDigest(originalRef, d)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+
+	return InjectImageDigest(entity, canonicalRef)
 }
 
 // Iterate through the fields of a k8s entity and
 // replace a image name with its digest.
 //
 // Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, originalRef reference.Named, digest digest.Digest) (K8sEntity, bool, error) {
-	newRef, err := reference.WithDigest(originalRef, digest)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
+func InjectImageDigest(entity K8sEntity, canonicalRef reference.Canonical) (K8sEntity, bool, error) {
 
 	containers, err := extractContainers(&entity)
 	if err != nil {
@@ -46,8 +47,8 @@ func InjectImageDigest(entity K8sEntity, originalRef reference.Named, digest dig
 			return K8sEntity{}, false, err
 		}
 
-		if existingRef.Name() == originalRef.Name() {
-			container.Image = newRef.String()
+		if existingRef.Name() == canonicalRef.Name() {
+			container.Image = canonicalRef.String()
 			replaced = true
 		}
 	}

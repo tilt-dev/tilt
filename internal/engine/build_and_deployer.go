@@ -101,7 +101,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	if err != nil {
 		return nil, err
 	}
-	pushedDigest, err := l.b.PushDocker(ctx, name, d)
+	pushedRef, err := l.b.PushDocker(ctx, name, d)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigest(e, name, pushedDigest)
+		newK8s, replaced, err := k8s.InjectImageDigest(e, pushedRef)
 		if err != nil {
 			return nil, err
 		}
