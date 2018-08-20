@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 )
 
 type Dockerfile string
