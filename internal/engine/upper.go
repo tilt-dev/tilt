@@ -50,9 +50,14 @@ func NewUpper(manager service.Manager) (Upper, error) {
 func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
 	ret := make(chan []fsnotify.Event)
 	go func() {
-		select {
-		case event := <-eventChan:
+		defer close(ret)
+		for {
+			event, ok := <-eventChan
+			if !ok {
+				return
+			}
 			events := []fsnotify.Event{event}
+
 			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
 			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
 
@@ -61,20 +66,31 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 			timeout := u.makeTimer(watchBufferMaxDuration)
 
 			done := false
-			for !done {
+			channelClosed := false
+			for !done && !channelClosed {
 				select {
-				case event := <-eventChan:
-					minRestTimer = u.makeTimer(watchBufferMinRestDuration)
-					events = append(events, event)
+				case event, ok := <-eventChan:
+					if !ok {
+						channelClosed = true
+					} else {
+						minRestTimer = u.makeTimer(watchBufferMinRestDuration)
+						events = append(events, event)
+					}
 				case <-minRestTimer:
 					done = true
 				case <-timeout:
 					done = true
 				}
 			}
-			ret <- events
+			if len(events) > 0 {
+				ret <- events
+			}
+
+			if channelClosed {
+				return
+			}
 		}
-		close(ret)
+
 	}()
 	return ret
 }
@@ -99,11 +115,16 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			watcher.Add(mount.Repo.LocalPath)
 		}
 
+		coalescedEvents := u.coalesceEvents(watcher.Events())
+
 		for {
 			select {
 			case err := <-watcher.Errors():
 				return err
-			case events := <-u.coalesceEvents(watcher.Events()):
+			case events, ok := <-coalescedEvents:
+				if !ok {
+					return nil
+				}
 				logger.Get(ctx).Info("files changed, rebuilding %v", service.Name)
 
 				var changedPaths []string
