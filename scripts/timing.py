@@ -4,6 +4,8 @@ from collections import namedtuple
 import datetime
 import functools
 import os
+import random
+import string
 from subprocess import call
 
 RESULTS_BLOCKLTR = '''  ____                 _ _
@@ -14,8 +16,13 @@ RESULTS_BLOCKLTR = '''  ____                 _ _
 
 BLORGLY_BACKEND_DIR = os.path.join(os.environ['GOPATH'], 'src/github.com/windmilleng/blorgly-backend')
 SERVICE_NAME = 'blorgly_backend_local'
+TOUCHED_FILES = []
 
+Case = namedtuple('Case', ['name', 'setup', 'test'])
 Result = namedtuple('Result', ['name', 'time_seconds'])
+
+tilt_up_called = False
+tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d']
 
 
 def main():
@@ -25,33 +32,62 @@ def main():
 
     os.chdir(BLORGLY_BACKEND_DIR)
 
+    cases = [
+        make_case_tilt_up_once(),
+        make_case_tilt_up_again_no_change(),
+        make_case_tilt_up_again_new_file(),
+    ]
     results = []
-    tilt_up_called = False
 
-    # TEST CASE: `tilt up` 1x
-    tilt_up = ["tilt", "up", SERVICE_NAME, '-d']
-    time_tilt_up = functools.partial(time_call, tilt_up)
+    try:
+        for c in cases:
+            print '~~ RUNNING CASE: %s' % c.name
+            c.setup()
+            timetake = c.test()
+            results.append(Result(c.name, timetake))
 
-    def tilt_up_was_called():
+        print
+        print RESULTS_BLOCKLTR
+        print
+
+        for res in results:
+            print '\t%s --> %f seconds' % (res.name, res.time_seconds)
+    finally:
+        clean_up()
+
+
+def make_case_tilt_up_once():
+    def set_tilt_up_called():
         global tilt_up_called
         tilt_up_called = True
-        
-    timetake = run_test_case(tilt_up_called, time_tilt_up)
-    results.append(Result("tilt up x 1", timetake))
 
-    print
-    print RESULTS_BLOCKLTR
-    print
-
-    for res in results:
-        print '\t%s --> %f seconds' % (res.name, res.time_seconds)
+    return Case("tilt up 1x", set_tilt_up_called,
+                functools.partial(time_call, tilt_up_cmd))
 
 
-def run_test_case(setup, test):
-    if setup is not None:
-        setup()
+def make_case_tilt_up_again_no_change():
+    def tilt_up_if_not_called():
+        global tilt_up_called
+        if not tilt_up_called:
+            print 'Initial call to `tilt up`'
+            call(tilt_up_cmd)
 
-    return test()
+    return Case("tilt up again, no change", tilt_up_if_not_called,
+                functools.partial(time_call, tilt_up_cmd))
+
+
+def make_case_tilt_up_again_new_file():
+    def tilt_up_if_not_called():
+        global tilt_up_called
+        if not tilt_up_called:
+            print 'Initial call to `tilt up`'
+            call(tilt_up_cmd)
+
+        # TODO: clean this file up
+        write_file(1000)  # 1KB
+
+    return Case("tilt up again, new file", tilt_up_if_not_called,
+                functools.partial(time_call, tilt_up_cmd))
 
 
 def time_call(cmd):
@@ -65,6 +101,39 @@ def time_call(cmd):
     end = datetime.datetime.now()
 
     return (end - start).total_seconds()
+
+
+def write_file(n):
+    """
+    Create a new file in the cwd containing the given number of
+    byes (randomly generated).
+    """
+    name = '%s-%s' % ('timing_script', randstr(10))
+    with open(name, 'w+b') as f:
+        f.write(randbytes(n))
+
+    # TODO(maia): this should be stored on an object instead of in a global var :-/
+    global TOUCHED_FILES
+    TOUCHED_FILES.append(name)
+
+
+def clean_up():
+    # delete any files we touched
+    # TODO(maia): this info should be stored better than in a global var :-/
+    global TOUCHED_FILES
+    for f in TOUCHED_FILES:
+        if os.path.isfile(f):
+            os.remove(f)
+
+
+# Some utils
+def randstr(n):
+    chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    return ''.join(random.choice(chars) for _ in range(n))
+
+
+def randbytes(n):
+    return bytearray(os.urandom(n))
 
 
 if __name__ == "__main__":
