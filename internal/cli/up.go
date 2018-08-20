@@ -57,13 +57,12 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	serviceName := args[0]
-	service, err := tf.GetServiceConfig(serviceName)
+	services, err := tf.GetServiceConfig(serviceName)
 	if err != nil {
 		return err
 	}
 
-	req := proto.CreateServiceRequest{Service: service, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
-
+	req := proto.CreateServiceRequest{Services: services, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
 	err = dCli.CreateService(ctx, req)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {

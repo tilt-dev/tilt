@@ -71,7 +71,7 @@ enum LogLevel {
 }
 
 message CreateServiceRequest {
-    Service service = 1;
+    repeated Service services = 1;
     bool watch = 2;
     LogLevel log_level = 3;
 }

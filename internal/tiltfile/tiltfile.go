@@ -92,7 +92,7 @@ func Load(filename string) (*Tiltfile, error) {
 	return &Tiltfile{globals, filename, thread}, nil
 }
 
-func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, error) {
+func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service, error) {
 	f, ok := tiltfile.globals[serviceName]
 
 	if !ok {
@@ -114,11 +114,32 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		return nil, fmt.Errorf("error running '%v': %v", serviceName, err.Error())
 	}
 
-	service, ok := val.(k8sService)
-	if !ok {
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service", serviceName, val.Type())
-	}
+	switch service := val.(type) {
+	case compService:
+		var protoServ []*proto.Service
 
+		for _, cServ := range service.cService {
+			s, err := skylarkServiceToProto(cServ)
+			if err != nil {
+				return nil, err
+			}
+
+			protoServ = append(protoServ, s)
+		}
+		return protoServ, nil
+	case k8sService:
+		s, err := skylarkServiceToProto(service)
+		if err != nil {
+			return nil, err
+		}
+		return []*proto.Service{s}, nil
+
+	default:
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
+	}
+}
+
+func skylarkServiceToProto(service k8sService) (*proto.Service, error) {
 	k8sYaml, ok := skylark.AsString(service.k8sYaml)
 	if !ok {
 		return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
@@ -148,6 +169,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) (*proto.Service, e
 		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
 	}, nil
+
 }
 
 func toShellCmd(cmd string) *proto.Cmd {
