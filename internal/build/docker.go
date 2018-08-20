@@ -40,7 +40,7 @@ type localDockerBuilder struct {
 type Builder interface {
 	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
 	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
-	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
+	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.Canonical, error)
 }
 
 type pushOutput struct {
@@ -94,23 +94,23 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (digest.Digest, error) {
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
+		return nil, fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
 	}
 
 	cli := command.NewDockerCli(nil, os.Stdout, os.Stderr, true)
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#InitializeCLI: %s", err)
+		return nil, fmt.Errorf("PushDocker#InitializeCLI: %s", err)
 	}
 	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
 
 	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
+		return nil, fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
 	}
 
 	options := types.ImagePushOptions{
@@ -119,17 +119,17 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}
 
 	if reference.Domain(ref) == "" {
-		return "", fmt.Errorf("PushDocker: no domain in container name: %s", ref)
+		return nil, fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
 	tag, err := reference.WithTag(ref, pushTag)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker: %v", err)
+		return nil, fmt.Errorf("PushDocker: %v", err)
 	}
 
 	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#ImageTag: %v", err)
+		return nil, fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
 	imagePushResponse, err := l.dcli.ImagePush(
@@ -137,7 +137,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		tag.String(),
 		options)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#ImagePush: %v", err)
+		return nil, fmt.Errorf("PushDocker#ImagePush: %v", err)
 	}
 
 	defer func() {
@@ -148,10 +148,10 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}()
 	pushedDigest, err := getDigestFromPushOutput(imagePushResponse)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
+		return nil, fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
 
-	return pushedDigest, nil
+	return reference.WithDigest(tag, pushedDigest)
 }
 
 func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
