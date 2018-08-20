@@ -234,6 +234,12 @@
   version = "v1.6.2"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/grpc-opentracing"
+  packages = ["go/otgrpc"]
+  revision = "8e809c8a86450a29b90dcc9efbf062d0fe6d9746"
+
+[[projects]]
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
@@ -633,6 +639,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b0b585594ac242056bed4d68d8cef86dd3020e9f3d0d88c6ccb2ef7295c0910a"
+  inputs-digest = "c34434e4bfd0421ae2f9636652a2fe6daa9707b78979427917a49bf54fbcfbe6"
   solver-name = "gps-cdcl"
   solver-version = 1

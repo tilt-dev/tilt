@@ -5,11 +5,14 @@ import (
 	"log"
 	"net"
 
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd"
 	_ "github.com/windmilleng/tilt/internal/tracer"
-	"google.golang.org/grpc"
 )
 
 type daemonCmd struct{}
@@ -32,7 +35,12 @@ func (c *daemonCmd) run(args []string) error {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer())),
+		grpc.StreamInterceptor(
+			otgrpc.OpenTracingStreamServerInterceptor(opentracing.GlobalTracer())),
+	)
 
 	proto.RegisterDaemonServer(s, proto.NewGRPCServer())
 
