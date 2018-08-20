@@ -39,7 +39,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 `
 
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := getDigestFromBuildOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromBuildOutput(context.Background(), bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 	{"progressDetail":{},"aux":{"Tag":"wm-tilt","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	actual, err := getDigestFromPushOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromPushOutput(context.Background(), bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}

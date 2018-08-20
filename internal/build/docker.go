@@ -168,7 +168,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	pushedDigest, err := getDigestFromPushOutput(imagePushResponse)
+	pushedDigest, err := getDigestFromPushOutput(ctx, imagePushResponse)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
@@ -210,7 +210,7 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := readDockerOutput(imageBuildResponse.Body)
+	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
 	if err != nil {
 		return "", fmt.Errorf("ImageBuild: %v", err)
 	}
@@ -365,7 +365,7 @@ func updateDf(df Dockerfile, dnePaths []pathMapping) Dockerfile {
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
+func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
 	for decoder.More() {
@@ -374,6 +374,9 @@ func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decoding docker output: %v", err)
 		}
+
+		// TODO(Han): make me smarter! 🤓
+		logger.Get(ctx).Info(fmt.Sprintf("%+v\n", message))
 
 		if message.ErrorMessage != "" {
 			return nil, errors.New(message.ErrorMessage)
@@ -390,8 +393,8 @@ func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
 	return result, nil
 }
 
-func getDigestFromBuildOutput(reader io.Reader) (digest.Digest, error) {
-	aux, err := readDockerOutput(reader)
+func getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	aux, err := readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", err
 	}
@@ -401,8 +404,8 @@ func getDigestFromBuildOutput(reader io.Reader) (digest.Digest, error) {
 	return getDigestFromAux(*aux)
 }
 
-func getDigestFromPushOutput(reader io.Reader) (digest.Digest, error) {
-	aux, err := readDockerOutput(reader)
+func getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	aux, err := readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", err
 	}
