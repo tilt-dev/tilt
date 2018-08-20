@@ -154,5 +154,5 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 			}
 		}
 	}
-	return err
+	return nil
 }
