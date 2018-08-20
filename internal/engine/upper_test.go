@@ -74,7 +74,7 @@ var _ watch.Notify = &fakeNotify{}
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, service, false, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, false, os.Stdout, os.Stderr)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedServices []model.Service
@@ -87,7 +87,7 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "0 repos")
 	}
@@ -100,7 +100,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -136,7 +136,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -175,7 +175,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -214,7 +214,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, service, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
