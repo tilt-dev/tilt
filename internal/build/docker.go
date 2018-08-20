@@ -63,7 +63,7 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Verbose("- Building Docker image from existing image: %s", existing.String()[:10])
+	logger.Get(ctx).Verbose("- Building Docker image from existing image: %s", existing.Encoded()[:10])
 	dfForExisting := DockerfileFromExisting(existing)
 	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
