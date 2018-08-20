@@ -27,7 +27,7 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-const simpleDockerfile = "FROM alpine"
+const simpleDockerfile = Dockerfile("FROM alpine")
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	input := `{"stream":"Step 1/1 : FROM alpine"}
@@ -315,8 +315,8 @@ func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	df := `FROM alpine
-ENTRYPOINT ["sleep", "100000"]`
+	df := Dockerfile(`FROM alpine
+ENTRYPOINT ["sleep", "100000"]`)
 
 	_, err := f.b.BuildDockerFromScratch(f.ctx, df, []model.Mount{}, []model.Cmd{}, model.Cmd{})
 	if err == nil {

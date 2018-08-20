@@ -77,7 +77,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	var name reference.Named
 	var d digest.Digest
 	if token.isEmpty() {
-		newDigest, err := l.b.BuildDockerFromScratch(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
+		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 		if err != nil {
 			return nil, err
 		}
