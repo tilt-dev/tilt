@@ -114,8 +114,6 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 		return nil, fmt.Errorf("error running '%v': %v", serviceName, err.Error())
 	}
 
-<<<<<<< HEAD
-=======
 	compService, ok := val.(compService)
 	if ok {
 		for _, cServ := range compService.cService {
@@ -163,7 +161,6 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
 	}
 
->>>>>>> 4b5755d... Slowly turning Service into []Service
 	service, ok := val.(k8sService)
 	if !ok {
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service", serviceName, val.Type())
