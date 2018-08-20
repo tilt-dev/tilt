@@ -39,8 +39,8 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
+	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd, stdout io.Writer) (digest.Digest, error)
+	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd, stdout io.Writer) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.Canonical, error)
 }
 
@@ -57,29 +57,28 @@ func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
 }
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
-	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd, stdout io.Writer) (digest.Digest, error) {
 	logger.Get(ctx).Verbose("- Building Docker image from scratch")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
 
-	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint)
+	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint, stdout)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
+	paths []pathMapping, steps []model.Cmd, stdout io.Writer) (digest.Digest, error) {
 	logger.Get(ctx).Verbose("- Building Docker image from existing image: %s", existing.Encoded()[:10])
-
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
 
 	dfForExisting := DockerfileFromExisting(existing)
-	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
+	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{}, stdout)
 }
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
-	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
+	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd, stdout io.Writer) (digest.Digest, error) {
+	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths, stdout)
 	if err != nil {
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
 	}
@@ -176,7 +175,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return reference.WithDigest(tag, pushedDigest)
 }
 
-func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
+func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping, stdout io.Writer) (digest.Digest, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDfWithFiles")
 	defer span.Finish()
 	err := df.Validate()
@@ -210,7 +209,7 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := readDockerOutput(imageBuildResponse.Body)
+	result, err := readDockerOutput(imageBuildResponse.Body, stdout)
 	if err != nil {
 		return "", fmt.Errorf("ImageBuild: %v", err)
 	}
@@ -365,7 +364,7 @@ func updateDf(df Dockerfile, dnePaths []pathMapping) Dockerfile {
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
+func readDockerOutput(reader io.Reader, stdout io.Writer) (*json.RawMessage, error) {
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
 	for decoder.More() {
@@ -373,6 +372,12 @@ func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
 		err := decoder.Decode(&message)
 		if err != nil {
 			return nil, fmt.Errorf("decoding docker output: %v", err)
+		}
+
+		// TODO(Han): make me smarter! 🤓
+		_, err = stdout.Write([]byte(fmt.Sprintf("%+v\n", message)))
+		if err != nil {
+			return nil, fmt.Errorf("error printing docker output to stdout stream: %v", err)
 		}
 
 		if message.ErrorMessage != "" {
@@ -391,7 +396,7 @@ func readDockerOutput(reader io.Reader) (*json.RawMessage, error) {
 }
 
 func getDigestFromBuildOutput(reader io.Reader) (digest.Digest, error) {
-	aux, err := readDockerOutput(reader)
+	aux, err := readDockerOutput(reader, os.Stdout)
 	if err != nil {
 		return "", err
 	}
@@ -402,7 +407,7 @@ func getDigestFromBuildOutput(reader io.Reader) (digest.Digest, error) {
 }
 
 func getDigestFromPushOutput(reader io.Reader) (digest.Digest, error) {
-	aux, err := readDockerOutput(reader)
+	aux, err := readDockerOutput(reader, os.Stdout)
 	if err != nil {
 		return "", err
 	}
