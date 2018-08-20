@@ -12,7 +12,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd"
-	_ "github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/tilt/internal/tracer"
 )
 
 type daemonCmd struct{}
@@ -28,6 +28,10 @@ func (c *daemonCmd) register() *cobra.Command {
 }
 
 func (c *daemonCmd) run(args []string) error {
+	err := tracer.Init()
+	if err != nil {
+		log.Printf("Warning: unable to initialize tracer: %s", err)
+	}
 	addr := fmt.Sprintf("127.0.0.1:%d", tiltd.Port)
 	log.Printf("Running tiltd listening on %s", addr)
 	l, err := net.Listen("tcp", addr)
