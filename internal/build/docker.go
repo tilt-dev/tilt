@@ -67,7 +67,6 @@ func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existi
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	fmt.Printf("df: %+v\n", df)
 	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
 	if err != nil {
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
@@ -281,9 +280,6 @@ func TarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Reader, e
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-// tarContextAndUpdateDf amends the dockerfile with appropriate ADD statements,
-// and returns that new dockerfile + necessary files in a tar
-// NOTE(maia) now that there's more stuff to this, maybe want a more illustrative name for this?
 func tarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
@@ -314,7 +310,7 @@ func updateDf(df Dockerfile, dnePaths []pathMapping) Dockerfile {
 	// this is safe b/c only adds/overwrites, doesn't remove).
 	newDf := df.AddAll()
 
-	return newDf.AddRun(dnePaths)
+	return newDf.RmPaths(dnePaths)
 }
 
 // Docker API commands stream back a sequence of JSON messages.
