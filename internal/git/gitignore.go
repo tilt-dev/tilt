@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/monochromegane/go-gitignore"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type IgnoreTester interface {
@@ -13,26 +14,30 @@ type IgnoreTester interface {
 }
 
 type gitIgnoreTester struct {
+	repoRoot      string
 	ignoreMatcher gitignore.IgnoreMatcher
 }
 
 var _ IgnoreTester = gitIgnoreTester{}
 
 func (i gitIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
+	_, isChild := ospath.Child(i.repoRoot, f)
+	if !isChild {
+		return false, nil
+	}
 	return i.ignoreMatcher.Match(f, isDir), nil
 }
 
-func NewGitIgnoreTester(repoRoot string) (IgnoreTester, error) {
+func NewGitIgnoreTester(repoRoot string) (*gitIgnoreTester, error) {
 	i, err := gitignore.NewGitIgnore(path.Join(repoRoot, ".gitignore"))
 	if err != nil {
 		return nil, err
 	}
-	return &gitIgnoreTester{i}, nil
+	return &gitIgnoreTester{repoRoot, i}, nil
 }
 
 type repoIgnoreTester struct {
-	repoRoot string
-	g        gitIgnoreTester
+	g gitIgnoreTester
 }
 
 var _ IgnoreTester = repoIgnoreTester{}
@@ -43,7 +48,7 @@ func (r repoIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 		return false, err
 	}
 
-	if strings.HasPrefix(absPath, filepath.Join(r.repoRoot, ".git/")) {
+	if strings.HasPrefix(absPath, filepath.Join(r.g.repoRoot, ".git/")) {
 		return true, nil
 	}
 
@@ -55,7 +60,7 @@ func NewRepoIgnoreTester(repoRoot string) (IgnoreTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &repoIgnoreTester{repoRoot, g}, nil
+	return &repoIgnoreTester{*g}, nil
 }
 
 type compositeIgnoreTester struct {

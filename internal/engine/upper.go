@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
@@ -44,11 +46,19 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			return errors.New("service has 0 repos - nothing to watch")
 		}
 
+		var repoRoots []string
+
 		for _, mount := range service.Mounts {
+			repoRoots = append(repoRoots, mount.Repo.LocalPath)
 			err = watcher.Add(mount.Repo.LocalPath)
 			if err != nil {
 				return err
 			}
+		}
+
+		eventFilter, err := git.NewMultiRepoIgnoreTester(repoRoots)
+		if err != nil {
+			return err
 		}
 
 		for {
@@ -57,14 +67,21 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			case err := <-watcher.Errors():
 				return err
 			case event := <-watcher.Events():
-				logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
+				log.Printf("observed filechange. kicking off rebuild.")
 				path, err := filepath.Abs(event.Name)
 				if err != nil {
 					return err
 				}
-				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, []string{path})
+				isIgnored, err := eventFilter.IsIgnored(path, false)
 				if err != nil {
-					logger.Get(ctx).Info("build failed: %v", err.Error())
+					return err
+				}
+				if !isIgnored {
+					logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
+					buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, []string{path})
+					if err != nil {
+						logger.Get(ctx).Info("build failed: %v", err.Error())
+					}
 				}
 			}
 		}
