@@ -287,7 +287,7 @@ func TestBuildFailingStep(t *testing.T) {
 	_, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
-		assert.Contains(t, err.Error(), "exit code 1")
+		assert.Contains(t, err.Error(), "returned a non-zero code: 1")
 	}
 }
 
@@ -427,6 +427,43 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	expected := []expectedFile{
 		expectedFile{path: "/src/foo", contents: "a whole new world"},
 		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
+	}
+
+	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
+	cID := f.startContainer(f.ctx, containerConfig(digest))
+	f.assertFilesInContainer(f.ctx, cID, expected)
+}
+
+func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("foo", "hello world")
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+	step := model.ToShellCmd("echo -n hello >> /src/baz")
+	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+
+	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{step}, entrypoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change contents of `foo` so when entrypoint exec's the second time, it
+	// will change the contents of `bar`
+	f.WriteFile("foo", "a whole new world")
+
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{path: "/src/foo", contents: "a whole new world"},
+		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
+		expectedFile{path: "/src/baz", contents: "hellohello"},
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)

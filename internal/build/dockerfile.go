@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type Dockerfile string
@@ -24,6 +25,14 @@ func (d Dockerfile) AddAll() Dockerfile {
 	return d.join("ADD . /")
 }
 
+func (d Dockerfile) Run(cmd model.Cmd) Dockerfile {
+	return d.join(cmd.RunStr())
+}
+
+func (d Dockerfile) Entrypoint(cmd model.Cmd) Dockerfile {
+	return d.join(cmd.EntrypointStr())
+}
+
 func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
 	var newDf string
 	if len(pathsToRm) > 0 {
@@ -38,11 +47,7 @@ func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
 	return d.join(newDf)
 }
 
-// NOTE(maia): can put more logic in here sometime; currently just returns an error
-// if Dockerfile contains an ENTRYPOINT, which is illegal in Tilt right now (an
-// ENTRYPOINT overrides a ContainerCreate Cmd, which we rely on).
-// TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
-func (d Dockerfile) Validate() error {
+func (d Dockerfile) ForbidEntrypoint() error {
 	for _, line := range strings.Split(string(d), "\n") {
 		if strings.HasPrefix(line, "ENTRYPOINT") {
 			return ErrEntrypointInDockerfile

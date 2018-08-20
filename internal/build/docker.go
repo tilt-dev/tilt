@@ -33,7 +33,6 @@ var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOI
 
 type localDockerBuilder struct {
 	dcli *client.Client
-	pool containerPool
 }
 
 type Builder interface {
@@ -51,7 +50,7 @@ type pushOutput struct {
 var _ Builder = &localDockerBuilder{}
 
 func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
-	return &localDockerBuilder{dcli: dcli, pool: newContainerPool(dcli)}
+	return &localDockerBuilder{dcli: dcli}
 }
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
@@ -77,29 +76,30 @@ func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existi
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
+	// Do a docker build with the new files.
+	resultDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
 	if err != nil {
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
 	}
 
-	// Start a container from the base image so we can run steps on it.
-	cID, err := l.pool.claimContainer(ctx, baseDigest)
+	if len(steps) > 0 || !entrypoint.Empty() {
+		// Do a separate docker build with the new steps.
+		stepsDf := DockerfileFromExisting(resultDigest)
+		for _, step := range steps {
+			stepsDf = stepsDf.Run(step)
+		}
 
-	logger.Get(ctx).Verbose("-- executing steps on base image")
-	for i, s := range steps {
-		logger.Get(ctx).Verbose("--- step %d/%d: %v", i+1, len(steps), s.Argv)
-		err := l.execInContainer(ctx, cID, s)
+		if !entrypoint.Empty() {
+			stepsDf = stepsDf.Entrypoint(entrypoint)
+		}
+
+		resultDigest, err = l.buildWithDfOnly(ctx, stepsDf)
 		if err != nil {
-			return "", fmt.Errorf("buildDocker#step(%v): %v", s, err)
+			return "", fmt.Errorf("buildWithDfOnly: %v", err)
 		}
 	}
 
-	logger.Get(ctx).Verbose("-- committing container")
-	newDigest, err := l.pool.commitContainer(ctx, cID, entrypoint)
-	if err != nil {
-		return "", fmt.Errorf("buildDocker: %v", err)
-	}
-	return newDigest, nil
+	return resultDigest, nil
 }
 
 // Naively tag the digest and push it up to the docker registry specified in the name.
@@ -175,10 +175,46 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return reference.WithDigest(tag, pushedDigest)
 }
 
+// TODO(nick): Unify this with buildFromDfWithFiles
+func (l *localDockerBuilder) buildWithDfOnly(ctx context.Context, df Dockerfile) (digest.Digest, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildWithDfOnly")
+	defer span.Finish()
+
+	archive, err := TarWithDfOnly(ctx, df)
+	if err != nil {
+		return "", err
+	}
+
+	imageBuildResponse, err := l.dcli.ImageBuild(
+		ctx,
+		archive,
+		types.ImageBuildOptions{
+			Context:    archive,
+			Dockerfile: "Dockerfile",
+			Remove:     shouldRemoveImage(),
+		})
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		err := imageBuildResponse.Body.Close()
+		if err != nil {
+			logger.Get(ctx).Info("unable to close imageBuildResponse: %s", err)
+		}
+	}()
+	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
+	if err != nil {
+		return "", fmt.Errorf("ImageBuild: %v", err)
+	}
+
+	return getDigestFromAux(*result)
+}
+
 func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDfWithFiles")
 	defer span.Finish()
-	err := df.Validate()
+	err := df.ForbidEntrypoint()
 	if err != nil {
 		return "", err
 	}
@@ -206,7 +242,7 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 	defer func() {
 		err := imageBuildResponse.Body.Close()
 		if err != nil {
-			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
+			logger.Get(ctx).Info("unable to close imageBuildResponse: %s", err)
 		}
 	}()
 	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
@@ -266,6 +302,16 @@ func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerI
 	return nil
 }
 
+// TODO(nick): Unify this with TarContextAndUpdateDf
+func TarWithDfOnly(ctx context.Context, df Dockerfile) (*bytes.Reader, error) {
+	buf, err := tarWithDfOnly(ctx, df)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewReader(buf.Bytes()), nil
+}
+
 func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-TarContextAndUpdateDf")
 	defer span.Finish()
@@ -275,6 +321,25 @@ func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 	}
 
 	return bytes.NewReader(buf.Bytes()), nil
+}
+
+// TODO(nick): Unify this with tarContextAndUpdateDf
+func tarWithDfOnly(ctx context.Context, df Dockerfile) (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+	defer func() {
+		err := tw.Close()
+		if err != nil {
+			log.Printf("Error closing tar writer: %s", err.Error())
+		}
+	}()
+
+	err := archiveDf(tw, df)
+	if err != nil {
+		return nil, fmt.Errorf("archiveDf: %v", err)
+	}
+
+	return buf, nil
 }
 
 func tarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
