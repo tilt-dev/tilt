@@ -30,6 +30,7 @@ import (
 const simpleDockerfile = Dockerfile("FROM alpine")
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
+	f := newDockerBuildFixture(t)
 	input := `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"\n"}
 	{"stream":" ---\u003e 11cd0b38bc3c\n"}
@@ -39,7 +40,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 `
 
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := getDigestFromBuildOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +50,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 }
 
 func TestDigestFromPushOutput(t *testing.T) {
+	f := newDockerBuildFixture(t)
 	input := `{"status":"The push refers to repository [localhost:5005/myimage]"}
 	{"status":"Preparing","progressDetail":{},"id":"2a88b569da78"}
 	{"status":"Preparing","progressDetail":{},"id":"73046094a9b8"}
@@ -64,7 +66,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 	{"progressDetail":{},"aux":{"Tag":"wm-tilt","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	actual, err := getDigestFromPushOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
