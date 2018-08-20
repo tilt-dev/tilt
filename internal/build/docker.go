@@ -375,7 +375,10 @@ func readDockerOutput(reader io.Reader, stdout io.Writer) (*json.RawMessage, err
 		}
 
 		// TODO(Han): make me smarter! 🤓
-		stdout.Write([]byte(fmt.Sprintf("%+v\n", message)))
+		_, err = stdout.Write([]byte(fmt.Sprintf("%+v\n", message)))
+		if err != nil {
+			return nil, fmt.Errorf("error printing docker output to stdout stream: %v", err)
+		}
 
 		if message.ErrorMessage != "" {
 			return nil, errors.New(message.ErrorMessage)
