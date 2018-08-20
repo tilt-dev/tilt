@@ -95,13 +95,21 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 	return ret
 }
 
-func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
-	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
-	if err != nil {
-		return err
+func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
+	var buildTokens []*buildToken
+	for i := range services {
+		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
+		buildTokens = append(buildTokens, buildToken)
+		if err != nil {
+			return err
+		}
 	}
 
 	if watchMounts {
+		service := services[0]
+		if len(services) > 1 {
+			return errors.New("There is more than 1 service")
+		}
 		watcher, err := u.watcherMaker()
 		if err != nil {
 			return err
@@ -138,10 +146,11 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 					}
 					changedPaths = append(changedPaths, path)
 				}
-				buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, changedPaths)
+				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
 				if err != nil {
 					logger.Get(ctx).Info("build failed: %v", err.Error())
 				}
+
 			}
 		}
 	}

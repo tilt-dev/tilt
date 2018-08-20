@@ -62,13 +62,11 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	for i := range services {
-		req := proto.CreateServiceRequest{Service: services[i], Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
-		err = dCli.CreateService(ctx, req)
-		s, ok := status.FromError(err)
-		if ok && s.Code() == codes.Unknown {
-			return errors.New(s.Message())
-		}
+	req := proto.CreateServiceRequest{Services: services, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
+	err = dCli.CreateService(ctx, req)
+	s, ok := status.FromError(err)
+	if ok && s.Code() == codes.Unknown {
+		return errors.New(s.Message())
 	}
 
 	return nil
