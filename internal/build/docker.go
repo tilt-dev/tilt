@@ -34,6 +34,7 @@ var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOI
 
 type localDockerBuilder struct {
 	dcli *client.Client
+	pool containerPool
 }
 
 type Builder interface {
@@ -50,8 +51,8 @@ type pushOutput struct {
 
 var _ Builder = &localDockerBuilder{}
 
-func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
-	return &localDockerBuilder{cli}
+func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
+	return &localDockerBuilder{dcli: dcli, pool: newContainerPool(dcli)}
 }
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
@@ -72,18 +73,19 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
 	}
 
-	newDigest, err := l.execStepsOnImage(ctx, baseDigest, steps)
-	if err != nil {
-		return "", fmt.Errorf("execStepsOnImage: %v", err)
-	}
+	cID, err := l.pool.claimContainer(ctx, baseDigest)
 
-	if !entrypoint.Empty() {
-		newDigest, err = l.imageWithEntrypoint(ctx, newDigest, entrypoint)
+	for _, s := range steps {
+		err := l.execInContainer(ctx, cID, s)
 		if err != nil {
-			return "", fmt.Errorf("imageWithEntrypoint: %v", err)
+			return "", fmt.Errorf("buildDocker#step(%v): %v", s, err)
 		}
 	}
 
+	newDigest, err := l.pool.commitContainer(ctx, cID, entrypoint)
+	if err != nil {
+		return "", fmt.Errorf("buildDocker: %v", err)
+	}
 	return newDigest, nil
 }
 
@@ -189,79 +191,87 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 	return getDigestFromAux(*result)
 }
 
-func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, img digest.Digest, steps []model.Cmd) (digest.Digest, error) {
-	imageWithSteps := img
-	for _, s := range steps {
-		cId, err := l.startContainer(ctx, containerConfigRunCmd(imageWithSteps, s))
+func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+	created, err := l.dcli.ContainerExecCreate(ctx, string(cID), types.ExecConfig{
+		Cmd: cmd.Argv,
+	})
+	if err != nil {
+		return err
+	}
+
+	execID := execID(created.ID)
+	if execID == "" {
+		return fmt.Errorf("execInContainer: failed to create")
+	}
+
+	attached, err := l.dcli.ContainerExecAttach(ctx, string(execID), types.ExecStartCheck{})
+	if err != nil {
+		return fmt.Errorf("execInContainer#attach: %v", err)
+	}
+	defer attached.Close()
+
+	// TODO(nick): feed this reader into the logger
+	buf := bytes.NewBuffer(nil)
+	_, err = io.Copy(buf, attached.Reader)
+	if err != nil {
+		return fmt.Errorf("execInContainer#copy: %v", err)
+	}
+
+	for true {
+		inspected, err := l.dcli.ContainerExecInspect(ctx, string(execID))
 		if err != nil {
-			return "", fmt.Errorf("startContainer '%s': %v", img, err)
+			return fmt.Errorf("execInContainer#inspect: %v", err)
 		}
 
-		id, err := l.dcli.ContainerCommit(ctx, cId, types.ContainerCommitOptions{})
-		if err != nil {
-			return "", fmt.Errorf("containerCommit: %v", err)
+		if inspected.Running {
+			continue
 		}
-		imageWithSteps = digest.Digest(id.ID)
+
+		status := inspected.ExitCode
+		if status != 0 {
+			return fmt.Errorf("Failed with exit code %d. Output:\n%s", status, buf.String())
+		}
+		return nil
 	}
-
-	return digest.Digest(imageWithSteps), nil
-}
-
-// TODO(maia): can probs do this in a more efficient place -- e.g. `execStepsOnImage`
-// already spins up + commits a container, maybe piggyback off that?
-func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, img digest.Digest, entrypoint model.Cmd) (digest.Digest, error) {
-	cId, err := l.startContainer(ctx, containerConfigRunCmd(img, model.Cmd{}))
-	if err != nil {
-		return "", fmt.Errorf("startContainer '%s': %v", string(img), err)
-	}
-
-	// Only attach the entrypoint if there's something in it
-	opts := types.ContainerCommitOptions{}
-	if !entrypoint.Empty() {
-		opts.Changes = []string{entrypoint.EntrypointStr()}
-	}
-
-	id, err := l.dcli.ContainerCommit(ctx, cId, opts)
-	if err != nil {
-		return "", fmt.Errorf("containerCommit: %v", err)
-	}
-
-	return digest.Digest(id.ID), nil
+	return nil
 }
 
 // startContainer starts a container from the given config.
 // Returns the container id iff the container successfully runs; else, error.
+//
+// TODO(nick): Remove this function. It's currently only used in tests.
+// It will be better to use the container pool with exec.
 func (l *localDockerBuilder) startContainer(ctx context.Context, config *container.Config) (cId string, err error) {
 	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("startContainer: %v", err)
 	}
 	containerID := resp.ID
 
 	err = l.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("startContainer: %v", err)
 	}
 
 	statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("startContainer: %v", err)
 		}
 	case status := <-statusCh:
 		if status.Error != nil {
-			return "", errors.New(status.Error.Message)
+			return "", fmt.Errorf("startContainer: %v", status.Error.Message)
 		}
 		// TODO(matt) feed this reader into the logger
 		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("startContainer: %v", err)
 		}
 		buf := new(bytes.Buffer)
 		_, err = buf.ReadFrom(r)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("startContainer: %v", err)
 		}
 		if status.StatusCode != 0 {
 			return "", fmt.Errorf("container '%+v' had non-0 exit code %v. output: '%v'", config, status.StatusCode, string(buf.Bytes()))

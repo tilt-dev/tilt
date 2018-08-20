@@ -6,6 +6,9 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+type containerID string
+type execID string
+
 // Get a container config to run a container with a given tilt command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.
 func containerConfigRunCmd(imgRef digest.Digest, cmd model.Cmd) *container.Config {
