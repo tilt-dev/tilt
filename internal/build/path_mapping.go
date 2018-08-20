@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 
@@ -9,17 +8,18 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-// PathMapping represents a mapping from a local path to the path on a container
+// pathMapping represents a mapping from a local path to the path on a container
 // where it should be mounted. Both LocalPath and ContainerPath are absolute paths.
-type PathMapping struct {
+// May be files or directories.
+type pathMapping struct {
 	LocalPath     string
 	ContainerPath string
 }
 
-// FilesToPathMappings converts a list of absolute local filepaths into FileOps (i.e.
+// filesToPathMappings converts a list of absolute local filepaths into FileOps (i.e.
 // associates local filepaths with their mounts and destination paths).
-func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mount) ([]PathMapping, error) {
-	var pms []PathMapping
+func filesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, error) {
+	var pms []pathMapping
 	for _, f := range files {
 		foundMount := false
 		for _, m := range mounts {
@@ -29,7 +29,7 @@ func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mou
 			relPath, isChild := ospath.Child(m.Repo.LocalPath, f)
 			if isChild {
 				foundMount = true
-				pms = append(pms, PathMapping{
+				pms = append(pms, pathMapping{
 					LocalPath:     f,
 					ContainerPath: filepath.Join(m.ContainerPath, relPath),
 				})
@@ -43,4 +43,15 @@ func FilesToPathMappings(ctx context.Context, files []string, mounts []model.Mou
 	}
 
 	return pms, nil
+}
+
+func MountsToPath(mounts []model.Mount) []pathMapping {
+	pms := make([]pathMapping, len(mounts))
+	for i, m := range mounts {
+		pms[i] = pathMapping{
+			LocalPath:     m.Repo.LocalPath,
+			ContainerPath: m.ContainerPath,
+		}
+	}
+	return pms
 }

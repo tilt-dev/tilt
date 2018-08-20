@@ -2,26 +2,14 @@ package build
 
 import (
 	"archive/tar"
-	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/windmilleng/tilt/internal/model"
 )
 
-func tarToBuf(buf *bytes.Buffer, df string, mounts []model.Mount) error {
-	tw := tar.NewWriter(buf)
-	defer func() {
-		err := tw.Close()
-		if err != nil {
-			log.Printf("Error closing tar writer: %s", err.Error())
-		}
-	}()
-
+func archiveDf(tw *tar.Writer, df string) error {
 	tarHeader := &tar.Header{
 		Name: "Dockerfile",
 		Size: int64(len(df)),
@@ -35,21 +23,37 @@ func tarToBuf(buf *bytes.Buffer, df string, mounts []model.Mount) error {
 		return err
 	}
 
-	for _, m := range mounts {
-		err = tarPath(tw, m.Repo.LocalPath, m.ContainerPath)
+	return nil
+}
+
+// archiveIfExists creates a tar archive of all local files in `paths` _if they exist_,
+// and returns a list of all PathMappings that point to nonexistent LocalPaths (we'll
+// use that later to add RM statements).
+// NOTE: modifies tw in place.
+func archiveIfExists(tw *tar.Writer, paths []pathMapping) (dnePaths []pathMapping, err error) {
+	for _, p := range paths {
+		dne, err := tarPath(tw, p.LocalPath, p.ContainerPath)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
+		}
+		if dne {
+			// Tried to tar path but it didn't exist -- expected error, add it to list of nonexistent paths
+			dnePaths = append(dnePaths, p)
 		}
 	}
-	return nil
+	return dnePaths, nil
 }
 
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
-func tarPath(tarWriter *tar.Writer, source, dest string) error {
+// If source path does not exist, returns `doesNotExist = true` and no err (DNE is an expected error)
+func tarPath(tarWriter *tar.Writer, source, dest string) (doesNotExist bool, err error) {
 	sourceInfo, err := os.Stat(source)
 	if err != nil {
-		return fmt.Errorf("%s: stat: %v", source, err)
+		if os.IsNotExist(err) {
+			return true, nil
+		}
+		return false, fmt.Errorf("%s: stat: %v", source, err)
 	}
 
 	sourceIsDir := sourceInfo.IsDir()
@@ -62,7 +66,7 @@ func tarPath(tarWriter *tar.Writer, source, dest string) error {
 
 	dest = strings.TrimPrefix(dest, "/")
 
-	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking to %s: %v", path, err)
 		}
@@ -107,4 +111,5 @@ func tarPath(tarWriter *tar.Writer, source, dest string) error {
 		}
 		return nil
 	})
+	return false, err
 }
