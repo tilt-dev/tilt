@@ -376,7 +376,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 		}
 
 		// TODO(Han): make me smarter! 🤓
-		logger.Get(ctx).Info(fmt.Sprintf("%+v\n", message))
+		logger.Get(ctx).Info("%+v\n", message)
 
 		if message.ErrorMessage != "" {
 			return nil, errors.New(message.ErrorMessage)
