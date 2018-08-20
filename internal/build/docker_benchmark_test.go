@@ -19,7 +19,7 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 			steps = append(steps, model.ToShellCmd(fmt.Sprintf("echo -n %d > hi", i)))
 		}
 
-		digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+		digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
