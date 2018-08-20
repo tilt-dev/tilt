@@ -73,6 +73,7 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
 	}
 
+	// Start a container from the base image so we can run steps on it.
 	cID, err := l.pool.claimContainer(ctx, baseDigest)
 
 	for _, s := range steps {
@@ -217,6 +218,8 @@ func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerI
 		return fmt.Errorf("execInContainer#copy: %v", err)
 	}
 
+	// Poll docker until the daemon collects the exit code of the process.
+	// This may happen after it collects the stdout above.
 	for true {
 		inspected, err := l.dcli.ContainerExecInspect(ctx, string(execID))
 		if err != nil {

@@ -72,8 +72,8 @@ func (p containerPool) commitContainer(ctx context.Context, cID containerID, ent
 		// Attach an entrypoint provided by the caller.
 		opts.Changes = []string{entrypoint.EntrypointStr()}
 	} else {
-		// When the container was claimed, we overwrote the entrypoint with tail -f /dev/null.
-		// Let's restore it from the original digest.
+		// When the container was claimed, we overwrote the cmd and the entrypoint
+		// with tail -f /dev/null.  Let's restore it from the original digest.
 		inspected, _, err := p.docker.ImageInspectWithRaw(ctx, string(baseDigest))
 		if err != nil {
 			return "", fmt.Errorf("error inspected image: %s", baseDigest)
@@ -86,7 +86,7 @@ func (p containerPool) commitContainer(ctx context.Context, cID containerID, ent
 			cmd := model.Cmd{Argv: inspected.Config.Cmd}
 			opts.Changes = []string{cmd.EntrypointStr()}
 		} else {
-			cmd := model.Cmd{Argv: []string{"sh", "-c", "# NOTE(nick): no cmd found"}}
+			cmd := model.ToShellCmd("# NOTE(nick): no cmd found")
 			opts.Changes = []string{cmd.EntrypointStr()}
 		}
 	}
@@ -97,6 +97,8 @@ func (p containerPool) commitContainer(ctx context.Context, cID containerID, ent
 	}
 
 	go func() {
+		// Kill and remove the container in the background. If it doesn't
+		// finish it doesn't really matter.
 		err = p.docker.ContainerKill(ctx, string(cID), "SIGKILL")
 		if err != nil {
 			log.Printf("failed to kill container: %v\n", err)
