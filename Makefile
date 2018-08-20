@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test
 
-all: lint test verify_gofmt
+all: lint errcheck test verify_gofmt
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
@@ -16,10 +16,19 @@ lint:
 	go vet ./...
 
 test:
-	go test ./...
+	go test -timeout 60s ./...
 
 ensure:
 	dep ensure
 
 verify_gofmt:
 	bash -c 'diff <(go fmt ./...) <(echo -n)'
+
+benchmark:
+	go test -run=XXX -bench=. ./...
+
+errcheck:
+	errcheck -ignoretests -ignoregenerated ./...
+
+start_tracer:
+	docker run -d -p5775:5775/udp -p6831:6831/udp -p6832:6832/udp -p5778:5778 -p16686:16686 -p14268:14268 -p9411:9411 jaegertracing/all-in-one:0.8.0

@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,11 +11,12 @@ import (
 )
 
 type TempDirFixture struct {
-	t   *testing.T
+	t   testing.TB
+	ctx context.Context
 	dir *temp.TempDir
 }
 
-func NewTempDirFixture(t *testing.T) *TempDirFixture {
+func NewTempDirFixture(t testing.TB) *TempDirFixture {
 	dir, err := temp.NewDir(t.Name())
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)
@@ -22,12 +24,33 @@ func NewTempDirFixture(t *testing.T) *TempDirFixture {
 
 	return &TempDirFixture{
 		t:   t,
+		ctx: CtxForTest(),
 		dir: dir,
 	}
 }
 
+func (f *TempDirFixture) T() testing.TB {
+	return f.t
+}
+
+func (f *TempDirFixture) Ctx() context.Context {
+	return f.ctx
+}
+
 func (f *TempDirFixture) Path() string {
 	return f.dir.Path()
+}
+
+func (f *TempDirFixture) JoinPath(path string) string {
+	return filepath.Join(f.Path(), path)
+}
+
+func (f *TempDirFixture) JoinPaths(paths []string) []string {
+	joined := make([]string, len(paths))
+	for i, p := range paths {
+		joined[i] = f.JoinPath(p)
+	}
+	return joined
 }
 
 func (f *TempDirFixture) WriteFile(path string, contents string) {
@@ -58,5 +81,8 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 }
 
 func (f *TempDirFixture) TearDown() {
-	f.dir.TearDown()
+	err := f.dir.TearDown()
+	if err != nil {
+		f.t.Fatal(err)
+	}
 }

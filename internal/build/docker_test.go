@@ -10,15 +10,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 
@@ -30,7 +27,7 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-const simpleDockerfile = "FROM alpine"
+const simpleDockerfile = Dockerfile("FROM alpine")
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	input := `{"stream":"Step 1/1 : FROM alpine"}
@@ -77,7 +74,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 }
 
 func TestMount(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	// write some files in to it
@@ -89,7 +86,7 @@ func TestMount(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +99,7 @@ func TestMount(t *testing.T) {
 }
 
 func TestMultipleMounts(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	// write some files in to it
@@ -110,15 +107,15 @@ func TestMultipleMounts(t *testing.T) {
 	f.WriteFile("bye/ciao/goodbye", "bye laterz")
 
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "hi")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "bye")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
 		ContainerPath: "goodbye_there",
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +128,7 @@ func TestMultipleMounts(t *testing.T) {
 }
 
 func TestMountCollisions(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	// write some files in to it
@@ -141,15 +138,15 @@ func TestMountCollisions(t *testing.T) {
 	// Mounting two files to the same place in the container -- expect the second mount
 	// to take precedence (file should contain "bye laterz")
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "hi")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: filepath.Join(f.Path(), "bye")},
+		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
 		ContainerPath: "/hello_there",
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +158,7 @@ func TestMountCollisions(t *testing.T) {
 }
 
 func TestPush(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.startRegistry()
@@ -175,7 +172,7 @@ func TestPush(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +192,7 @@ func TestPush(t *testing.T) {
 }
 
 func TestPushInvalid(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	m := model.Mount{
@@ -203,7 +200,7 @@ func TestPushInvalid(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,14 +213,14 @@ func TestPushInvalid(t *testing.T) {
 }
 
 func TestBuildOneStep(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +232,7 @@ func TestBuildOneStep(t *testing.T) {
 }
 
 func TestBuildMultipleSteps(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
@@ -243,7 +240,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 		model.ToShellCmd("echo -n sup >> hi2"),
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +253,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 }
 
 func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
@@ -265,7 +262,7 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
 	}
 
-	digest, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,14 +275,14 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 }
 
 func TestBuildFailingStep(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	steps := []model.Cmd{
 		model.ToShellCmd("echo hello && exit 1"),
 	}
 
-	_, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	_, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
 		assert.Contains(t, err.Error(), "exit code 1")
@@ -293,11 +290,11 @@ func TestBuildFailingStep(t *testing.T) {
 }
 
 func TestEntrypoint(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	entrypoint := model.ToShellCmd("echo -n hello >> hi")
-	d, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
+	d, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,13 +312,13 @@ func TestEntrypoint(t *testing.T) {
 }
 
 func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	df := `FROM alpine
-ENTRYPOINT ["sleep", "100000"]`
+	df := Dockerfile(`FROM alpine
+ENTRYPOINT ["sleep", "100000"]`)
 
-	_, err := f.b.BuildDocker(f.ctx, df, []model.Mount{}, []model.Cmd{}, model.Cmd{})
+	_, err := f.b.BuildDockerFromScratch(f.ctx, df, []model.Mount{}, []model.Cmd{}, model.Cmd{})
 	if err == nil {
 		t.Fatal("expected an err b/c dockerfile contains an ENTRYPOINT")
 	}
@@ -334,41 +331,48 @@ ENTRYPOINT ["sleep", "100000"]`
 // TODO(maia): test mount err cases
 // TODO(maia): tests for tar code
 
-func TestAddMountsToExisting(t *testing.T) {
-	f := newTestFixture(t)
+func TestSelectiveAddFilesToExisting(t *testing.T) {
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("hi/hello", "hi hello")
 	f.WriteFile("sup", "yo dawg, i heard you like docker")
-
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
+	f.WriteFile("unchanged", "should be unchanged")
+	mounts := []model.Mount{
+		model.Mount{
+			Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+			ContainerPath: "/src",
+		},
 	}
 
-	existing, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, mounts, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	f.WriteFile("hi/hello", "hello world") // change contents
 	f.Rm("sup")
+	files := []string{"hi/hello", "sup"}
+	pms, err := filesToPathMappings(f.JoinPaths(files), mounts)
+	if err != nil {
+		f.t.Fatal("filesToPathMappings:", err)
+	}
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, []model.Mount{m}, []model.Cmd{})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, pms, []model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	pcs := []expectedFile{
 		expectedFile{path: "/src/hi/hello", contents: "hello world"},
+		expectedFile{path: "/src/sup", missing: true}, // TODO(maia): test deletion
+		expectedFile{path: "/src/unchanged", contents: "should be unchanged"},
 	}
 	f.assertFilesInImage(string(digest), pcs)
-
-	//TODO(maia): assert file 'sup' does NOT exist
 }
 
 func TestExecStepsOnExisting(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
@@ -377,14 +381,14 @@ func TestExecStepsOnExisting(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	existing, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, []model.Mount{m}, []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +401,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 }
 
 func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
-	f := newTestFixture(t)
+	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
@@ -407,7 +411,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	existing, err := f.b.BuildDocker(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, entrypoint)
+	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +420,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, []model.Mount{m}, []model.Cmd{})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,16 +438,16 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
-type testFixture struct {
+type dockerBuildFixture struct {
 	*testutils.TempDirFixture
-	t        *testing.T
+	t        testing.TB
 	ctx      context.Context
 	dcli     *client.Client
 	b        *localDockerBuilder
 	registry *exec.Cmd
 }
 
-func newTestFixture(t *testing.T) *testFixture {
+func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -457,18 +461,16 @@ func newTestFixture(t *testing.T) *testFixture {
 		t.Fatal(err)
 	}
 
-	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl, os.Stdout))
-
-	return &testFixture{
+	return &dockerBuildFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
-		ctx:            ctx,
+		ctx:            testutils.CtxForTest(),
 		dcli:           dcli,
 		b:              NewLocalDockerBuilder(dcli),
 	}
 }
 
-func (f *testFixture) teardown() {
+func (f *dockerBuildFixture) teardown() {
 	if f.registry != nil {
 		go func() {
 			err := f.registry.Process.Kill()
@@ -486,7 +488,7 @@ func (f *testFixture) teardown() {
 	f.TempDirFixture.TearDown()
 }
 
-func (f *testFixture) startRegistry() {
+func (f *dockerBuildFixture) startRegistry() {
 	stdout := &bytes.Buffer{}
 	stdoutSafe := makeThreadSafe(stdout)
 	stderr := &bytes.Buffer{}
@@ -521,7 +523,7 @@ type expectedFile struct {
 	missing bool
 }
 
-func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
+func (f *dockerBuildFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
 	cId, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), cmd))
 	if err != nil {
 		f.t.Fatal(err)
@@ -545,7 +547,7 @@ func (f *testFixture) startContainerWithOutput(ctx context.Context, ref string, 
 	return string(output)
 }
 
-func (f *testFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
+func (f *dockerBuildFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
 	cID, err := f.b.startContainer(f.ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
 	if err != nil {
 		f.t.Fatal(err)
@@ -553,14 +555,17 @@ func (f *testFixture) assertFilesInImage(ref string, expectedFiles []expectedFil
 	f.assertFilesInContainer(f.ctx, cID, expectedFiles)
 }
 
-func (f *testFixture) assertFilesInContainer(
+func (f *dockerBuildFixture) assertFilesInContainer(
 	ctx context.Context, containerID string, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
 		reader, _, err := f.dcli.CopyFromContainer(ctx, containerID, expectedFile.path)
 		if expectedFile.missing {
-			if err == nil || !strings.Contains(err.Error(), "No such container:path") {
-				f.t.Errorf("Expected path %q to not exist: %v", expectedFile.path, err)
+			if err == nil {
+				f.t.Errorf("Expected path %q to not exist", expectedFile.path)
+			} else if !strings.Contains(err.Error(), "No such container:path") {
+				f.t.Errorf("Expected path %q to not exist, but got a different error: %v", expectedFile.path, err)
 			}
+
 			continue
 		}
 
@@ -572,7 +577,7 @@ func (f *testFixture) assertFilesInContainer(
 	}
 }
 
-func (f *testFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
+func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {

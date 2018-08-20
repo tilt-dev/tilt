@@ -59,7 +59,10 @@ func NewImageHistory(dir *dirs.WindmillDir) (ImageHistory, error) {
 		}
 
 		for _, entry := range entries {
-			history.Add(name, entry.Digest, entry.CheckpointID)
+			err = history.Add(name, entry.Digest, entry.CheckpointID)
+			if err != nil {
+				return ImageHistory{}, err
+			}
 		}
 	}
 

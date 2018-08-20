@@ -76,7 +76,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	var name reference.Named
 	var d digest.Digest
 	if token.isEmpty() {
-		newDigest, err := l.b.BuildDocker(ctx, service.DockerfileText, service.Mounts, service.Steps, service.Entrypoint)
+		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 		if err != nil {
 			return nil, err
 		}
@@ -89,15 +89,18 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 
 	} else {
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, service.Mounts, service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps)
 		if err != nil {
 			return nil, err
 		}
 		d = newDigest
 		name = token.n
 	}
-	l.history.Add(name, d, checkpoint)
-	pushedDigest, err := l.b.PushDocker(ctx, name, d)
+	err := l.history.Add(name, d, checkpoint)
+	if err != nil {
+		return nil, err
+	}
+	pushedRef, err := l.b.PushDocker(ctx, name, d)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +113,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigest(e, name, pushedDigest)
+		newK8s, replaced, err := k8s.InjectImageDigest(e, pushedRef)
 		if err != nil {
 			return nil, err
 		}

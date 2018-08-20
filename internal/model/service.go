@@ -19,6 +19,7 @@ type Service struct {
 
 type Mount struct {
 	// TODO(dmiller) make this more generic
+	// TODO(maia): or maybe don't make this a repo necessarily, just a path?
 	Repo          LocalGithubRepo
 	ContainerPath string
 }
