@@ -116,24 +116,30 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 
 	switch service := val.(type) {
 	case compService:
-		compService := val.(compService)
-		for _, cServ := range compService.cService {
-			return addToService(cServ)
+		var protoServ []*proto.Service
+
+		for _, cServ := range service.cService {
+			s, err := addToService(cServ)
+			if err != nil {
+				return nil, err
+			}
+
+			protoServ = append(protoServ, s)
 		}
+		return protoServ, nil
 	case k8sService:
-		return addToService(service)
+		s, err := addToService(service)
+		if err != nil {
+			return nil, err
+		}
+		return []*proto.Service{s}, nil
+
 	default:
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
 	}
-
-	// what do I return here?
-	return nil, nil
 }
 
-func addToService(service k8sService) ([]*proto.Service, error) {
-
-	var protoServ []*proto.Service
-
+func addToService(service k8sService) (*proto.Service, error) {
 	k8sYaml, ok := skylark.AsString(service.k8sYaml)
 	if !ok {
 		return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
@@ -155,16 +161,14 @@ func addToService(service k8sService) ([]*proto.Service, error) {
 		dockerCmds = append(dockerCmds, toShellCmd(cmd))
 	}
 
-	protoServ = append(protoServ, &proto.Service{
+	return &proto.Service{
 		K8SYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
 		Mounts:         mounts,
 		Steps:          dockerCmds,
 		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
-	})
-
-	return protoServ, nil
+	}, nil
 
 }
 
