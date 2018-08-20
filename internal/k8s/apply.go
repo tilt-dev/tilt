@@ -8,9 +8,13 @@ import (
 	"os/exec"
 
 	"github.com/windmilleng/tilt/internal/logger"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 func Apply(ctx context.Context, rawYAML string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
+	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
 	c := exec.CommandContext(ctx, "kubectl", "apply", "-f", "-")
 	r := bytes.NewReader([]byte(rawYAML))

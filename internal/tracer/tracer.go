@@ -12,9 +12,6 @@ func Init() error {
 			Type:  "const",
 			Param: 1,
 		},
-		Reporter: &config.ReporterConfig{
-			LogSpans: true,
-		},
 	}
 	tracer, _, err := cfg.New("tilt", config.Logger(jaeger.StdLogger))
 	if err != nil {
