@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os/exec"
 	"strings"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
 )
@@ -306,10 +306,7 @@ func TestEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID, err := f.b.startContainer(f.ctx, containerConfig(d))
-	if err != nil {
-		t.Fatal(err)
-	}
+	cID := f.startContainer(f.ctx, containerConfig(d))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -433,10 +430,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID, err := f.b.startContainer(f.ctx, containerConfig(digest))
-	if err != nil {
-		t.Fatal(err)
-	}
+	cID := f.startContainer(f.ctx, containerConfig(digest))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -525,35 +519,8 @@ type expectedFile struct {
 	missing bool
 }
 
-func (f *dockerBuildFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
-	cId, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), cmd))
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	out, err := f.dcli.ContainerLogs(ctx, cId, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	defer func() {
-		err := out.Close()
-		if err != nil {
-			f.t.Fatal("closing container logs reader:", err)
-		}
-	}()
-
-	output, err := ioutil.ReadAll(out)
-	if err != nil {
-		f.t.Fatal("reading container logs:", err)
-	}
-	return string(output)
-}
-
 func (f *dockerBuildFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
-	cID, err := f.b.startContainer(f.ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	cID := f.startContainer(f.ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
 	f.assertFilesInContainer(f.ctx, cID, expectedFiles)
 }
 
@@ -602,6 +569,22 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 			return // we found it!
 		}
 	}
+}
+
+// startContainer starts a container from the given config
+func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
+	resp, err := f.b.dcli.ContainerCreate(ctx, config, nil, nil, "")
+	if err != nil {
+		f.t.Fatalf("startContainer: %v", err)
+	}
+	containerID := resp.ID
+
+	err = f.b.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	if err != nil {
+		f.t.Fatalf("startContainer: %v", err)
+	}
+
+	return containerID
 }
 
 type threadSafeWriter struct {
