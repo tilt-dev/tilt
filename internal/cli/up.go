@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"errors"
+	"log"
+
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
@@ -10,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
 )
 
 type upCmd struct {
@@ -59,9 +60,8 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	for i := range service {
-		var req []proto.CreateServiceRequest
-		req[i] = proto.CreateServiceRequest{Service: service[i], Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
-		err = dCli.CreateService(ctx, req[i])
+		req := proto.CreateServiceRequest{Service: service[i], Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
+		err = dCli.CreateService(ctx, req)
 		s, ok := status.FromError(err)
 		if ok && s.Code() == codes.Unknown {
 			return errors.New(s.Message())
