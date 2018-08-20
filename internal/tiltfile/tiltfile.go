@@ -186,8 +186,6 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 		dockerCmds = append(dockerCmds, toShellCmd(cmd))
 	}
 
-	var protoServ []*proto.Service
-
 	protoServ = append(protoServ, &proto.Service{
 		K8SYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
