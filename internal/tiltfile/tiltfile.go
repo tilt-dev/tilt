@@ -115,6 +115,8 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 	}
 
 	compService, ok := val.(compService)
+	var protoServ []*proto.Service
+
 	if ok {
 		for _, cServ := range compService.cService {
 
@@ -139,8 +141,6 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 				dockerCmds = append(dockerCmds, toShellCmd(cmd))
 			}
 
-			var protoServ []*proto.Service
-
 			protoServ = append(protoServ, &proto.Service{
 				K8SYaml:        k8sYaml,
 				DockerfileText: string(dockerFileBytes),
@@ -149,9 +149,9 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 				Entrypoint:     toShellCmd(cServ.dockerImage.entrypoint),
 				DockerfileTag:  cServ.dockerImage.fileTag,
 			})
-
-			return protoServ, nil
 		}
+		return protoServ, nil
+
 	}
 	if !ok {
 		_, ok := val.(k8sService)
