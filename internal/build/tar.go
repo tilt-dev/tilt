@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func archiveDf(tw *tar.Writer, df string) error {
+func archiveDf(tw *tar.Writer, df Dockerfile) error {
 	tarHeader := &tar.Header{
 		Name: "Dockerfile",
 		Size: int64(len(df)),

@@ -11,7 +11,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -38,7 +37,7 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDockerFromScratch(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
+	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
 	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
 }
@@ -55,18 +54,18 @@ func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
 	return &localDockerBuilder{cli}
 }
 
-func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile string,
+func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
 	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
-	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
+	dfForExisting := DockerfileFromExisting(existing)
 	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
 
-func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
+func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
 	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
 	if err != nil {
@@ -153,8 +152,8 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return pushedDigest, nil
 }
 
-func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string, paths []pathMapping) (digest.Digest, error) {
-	err := validateDockerfile(df)
+func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
+	err := df.Validate()
 	if err != nil {
 		return "", err
 	}
@@ -163,17 +162,6 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string
 	if err != nil {
 		return "", err
 	}
-	// TODO(dmiller): remove this debugging code
-	//tar2, err := TarContextAndUpdateDf(df, mounts)
-	//if err != nil {
-	//	return "", err
-	//}
-	//buf := new(bytes.Buffer)
-	//buf.ReadFrom(tar2)
-	//err = ioutil.WriteFile("/tmp/debug.tar", buf.Bytes(), os.FileMode(0777))
-	//if err != nil {
-	//	return "", err
-	//}
 
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
@@ -199,19 +187,6 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string
 	}
 
 	return getDigestFromAux(*result)
-}
-
-// NOTE(maia): can put more logic in here sometime; currently just returns an error
-// if Dockerfile contains an ENTRYPOINT, which is illegal in Tilt right now (an
-// ENTRYPOINT overrides a ContainerCreate Cmd, which we rely on).
-// TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
-func validateDockerfile(df string) error {
-	for _, line := range strings.Split(df, "\n") {
-		if strings.HasPrefix(line, "ENTRYPOINT") {
-			return ErrEntrypointInDockerfile
-		}
-	}
-	return nil
 }
 
 func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, img digest.Digest, steps []model.Cmd) (digest.Digest, error) {
@@ -296,7 +271,7 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 	return containerID, nil
 }
 
-func TarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Reader, error) {
+func TarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
 	buf, err := tarContextAndUpdateDf(df, paths)
 	if err != nil {
 		return nil, err
@@ -305,10 +280,7 @@ func TarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Reader, error
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-// tarContextAndUpdateDf amends the dockerfile with appropriate ADD statements,
-// and returns that new dockerfile + necessary files in a tar
-// NOTE(maia) now that there's more stuff to this, maybe want a more illustrative name for this?
-func tarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer func() {
@@ -333,21 +305,12 @@ func tarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Buffer, error
 	return buf, nil
 }
 
-func updateDf(df string, dnePaths []pathMapping) string {
+func updateDf(df Dockerfile, dnePaths []pathMapping) Dockerfile {
 	// Add 'ADD' statements (right now just add whatever's in context;
 	// this is safe b/c only adds/overwrites, doesn't remove).
-	newDf := fmt.Sprintf("%s\nADD . /", df)
+	newDf := df.AddAll()
 
-	if len(dnePaths) > 0 {
-		// Add 'rm' statements; if changed file was deleted locally, remove if from container
-		rmCmd := strings.Builder{}
-		rmCmd.WriteString("rm") // sh -c?
-		for _, p := range dnePaths {
-			rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
-		}
-		newDf = fmt.Sprintf("%s\nRUN %s", newDf, rmCmd.String())
-	}
-	return newDf
+	return newDf.RmPaths(dnePaths)
 }
 
 // Docker API commands stream back a sequence of JSON messages.
