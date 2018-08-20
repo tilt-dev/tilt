@@ -27,18 +27,27 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 
 	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel), outputStream.stdout))
 
-	svc := serviceP2D(req.Service)
+	var svcArray []model.Service
+	for i := range req.Services {
+		svcArray = append(svcArray, serviceP2D(req.Services[i]))
+	}
 	upper, err := engine.NewUpper(s.sm)
 	if err != nil {
 		return err
 	}
 
-	err = upper.Up(ctx, svc, req.Watch)
+	err = upper.Up(ctx, svcArray, req.Watch)
 	if err != nil {
 		return err
 	}
 
-	return s.sm.Add(svc)
+	for j := range req.Services {
+		err := s.sm.Add(svcArray[j])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func mountsP2D(mounts []*Mount) []model.Mount {

@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -96,6 +97,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		d = newDigest
 		name = token.n
 	}
+	logger.Get(ctx).Verbose("- (Adding checkpoint to history)")
 	err := l.history.Add(name, d, checkpoint)
 	if err != nil {
 		return nil, err
@@ -105,6 +107,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
+	logger.Get(ctx).Verbose("- Parsing and templating YAML")
 	entities, err := k8s.ParseYAMLFromString(service.K8sYaml)
 	if err != nil {
 		return nil, err

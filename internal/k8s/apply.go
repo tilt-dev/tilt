@@ -16,6 +16,7 @@ func Apply(ctx context.Context, rawYAML string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
+	logger.Get(ctx).Verbose("- Applying YAML via kubectl")
 	c := exec.CommandContext(ctx, "kubectl", "apply", "-f", "-")
 	r := bytes.NewReader([]byte(rawYAML))
 	c.Stdin = r
