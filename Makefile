@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test
 
-all: lint test verify_gofmt
+all: lint errcheck test verify_gofmt
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
@@ -26,3 +26,6 @@ verify_gofmt:
 
 benchmark:
 	go test -run=XXX -bench=. ./...
+
+errcheck:
+	errcheck -ignoretests -ignoregenerated ./...
