@@ -47,28 +47,36 @@ func NewUpper(manager service.Manager) (Upper, error) {
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
 //from the user's perspective are grouped together.
-func (u Upper) coalesceEvents(eventChan chan fsnotify.Event) []fsnotify.Event {
-	var events []fsnotify.Event
-	// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
-	minRestTimer := u.makeTimer(watchBufferMinRestDuration)
-
-	// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
-	// then just send what we've got
-	timeout := u.makeTimer(watchBufferMaxDuration)
-
-	done := false
-	for !done {
+func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
+	ret := make(chan []fsnotify.Event)
+	go func() {
 		select {
 		case event := <-eventChan:
-			minRestTimer = u.makeTimer(watchBufferMinRestDuration)
-			events = append(events, event)
-		case <-minRestTimer:
-			done = true
-		case <-timeout:
-			done = true
+			events := []fsnotify.Event{event}
+			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
+			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
+
+			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
+			// then just send what we've got
+			timeout := u.makeTimer(watchBufferMaxDuration)
+
+			done := false
+			for !done {
+				select {
+				case event := <-eventChan:
+					minRestTimer = u.makeTimer(watchBufferMinRestDuration)
+					events = append(events, event)
+				case <-minRestTimer:
+					done = true
+				case <-timeout:
+					done = true
+				}
+			}
+			ret <- events
 		}
-	}
-	return events
+		close(ret)
+	}()
+	return ret
 }
 
 func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
@@ -95,10 +103,8 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			select {
 			case err := <-watcher.Errors():
 				return err
-			case event := <-watcher.Events():
+			case events := <-u.coalesceEvents(watcher.Events()):
 				logger.Get(ctx).Info("files changed, rebuilding %v", service.Name)
-				events := []fsnotify.Event{event}
-				events = append(events, u.coalesceEvents(watcher.Events())...)
 
 				var changedPaths []string
 				for _, e := range events {
