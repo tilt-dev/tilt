@@ -46,6 +46,14 @@ func (c Cmd) EntrypointStr() string {
 	return fmt.Sprintf("ENTRYPOINT [%s]", strings.Join(quoted, ", "))
 }
 
+func (c Cmd) RunStr() string {
+	quoted := make([]string, len(c.Argv))
+	for i, arg := range c.Argv {
+		quoted[i] = fmt.Sprintf("%q", arg)
+	}
+	return fmt.Sprintf("RUN [%s]", strings.Join(quoted, ", "))
+}
+
 func (c Cmd) Empty() bool {
 	return len(c.Argv) == 0
 }
