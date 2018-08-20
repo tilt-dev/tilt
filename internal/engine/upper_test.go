@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -11,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/fsnotify"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -74,7 +73,7 @@ var _ watch.Notify = &fakeNotify{}
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, []model.Service{service}, false, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedServices []model.Service
@@ -87,7 +86,7 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "0 repos")
 	}
@@ -100,7 +99,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -136,7 +135,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -175,7 +174,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -214,7 +213,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true, os.Stdout, os.Stderr)
+	err := f.upper.Up(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -265,6 +264,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 
 	upper := Upper{b, watcherMaker, makeTimer}
-	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl))
+	ctx := testutils.CtxForTest()
 	return &testFixture{t, upper, b, watcher, ctx, restTimerLock, maxTimerLock}
 }

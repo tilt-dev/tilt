@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -121,7 +120,8 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}
 
 	logger.Get(ctx).Verbose("-- connecting to repository")
-	cli := command.NewDockerCli(nil, os.Stdout, os.Stderr, true)
+	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+	cli := command.NewDockerCli(nil, writer, writer, true)
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#InitializeCLI: %s", err)
@@ -284,6 +284,8 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 		return "", fmt.Errorf("startContainer: %v", err)
 	}
 
+	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+
 	statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
@@ -294,18 +296,18 @@ func (l *localDockerBuilder) startContainer(ctx context.Context, config *contain
 		if status.Error != nil {
 			return "", fmt.Errorf("startContainer: %v", status.Error.Message)
 		}
-		// TODO(matt) feed this reader into the logger
 		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
 			return "", fmt.Errorf("startContainer: %v", err)
 		}
-		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(r)
+
+		_, err = io.Copy(writer, r)
 		if err != nil {
 			return "", fmt.Errorf("startContainer: %v", err)
 		}
+
 		if status.StatusCode != 0 {
-			return "", fmt.Errorf("container '%+v' had non-0 exit code %v. output: '%v'", config, status.StatusCode, string(buf.Bytes()))
+			return "", fmt.Errorf("container '%+v' had non-0 exit code %v", config, status.StatusCode)
 		}
 	}
 

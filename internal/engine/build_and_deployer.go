@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
@@ -136,6 +135,5 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	// TODO(matt) wire up logging to the grpc stream and drop the stdout/stderr args here
-	return &buildToken{d: d, n: name}, k8s.Apply(ctx, newYAMLString, os.Stdout, os.Stderr)
+	return &buildToken{d: d, n: name}, k8s.Apply(ctx, newYAMLString)
 }

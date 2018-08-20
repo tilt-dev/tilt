@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"io"
 	"path/filepath"
 	"time"
 
@@ -95,7 +94,7 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 	return ret
 }
 
-func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
+func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool) error {
 	var buildTokens []*buildToken
 	for i := range services {
 		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
