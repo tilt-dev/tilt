@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -34,6 +35,8 @@ func newContainerPool(docker *client.Client) containerPool {
 //
 // TODO(nick): Right now, this always creates a new container.
 func (p containerPool) claimContainer(ctx context.Context, digest digest.Digest) (containerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-claimContainer")
+	defer span.Finish()
 	config := containerConfigRunCmd(digest, sleepForeverCmd)
 	resp, err := p.docker.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
