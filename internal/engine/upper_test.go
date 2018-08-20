@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -29,7 +30,7 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string, stdout io.Writer) (*buildToken, error) {
 	select {
 	case b.calls <- buildAndDeployCall{service, changedFiles}:
 	default:

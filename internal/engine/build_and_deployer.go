@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/docker/distribution/reference"
@@ -31,7 +32,7 @@ type BuildAndDeployer interface {
 	// Returns a buildToken that can be passed on successive calls to allow incremental builds.
 	// If buildToken is passed and changedFiles is non-nil, changedFiles should specify the list of files that have
 	//   changed since the last build.
-	BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error)
+	BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string, stdout io.Writer) (*buildToken, error)
 }
 
 var _ BuildAndDeployer = localBuildAndDeployer{}
@@ -72,13 +73,13 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	}, nil
 }
 
-func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string, stdout io.Writer) (*buildToken, error) {
 	checkpoint := l.history.CheckpointNow()
 
 	var name reference.Named
 	var d digest.Digest
 	if token.isEmpty() {
-		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint, stdout)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +92,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 
 	} else {
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps, stdout)
 		if err != nil {
 			return nil, err
 		}

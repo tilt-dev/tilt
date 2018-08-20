@@ -98,7 +98,7 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
 	var buildTokens []*buildToken
 	for i := range services {
-		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
+		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil, stdout)
 		buildTokens = append(buildTokens, buildToken)
 		if err != nil {
 			return err
@@ -146,7 +146,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 					}
 					changedPaths = append(changedPaths, path)
 				}
-				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
+				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths, stdout)
 				if err != nil {
 					logger.Get(ctx).Info("build failed: %v", err.Error())
 				}
