@@ -2,10 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"github.com/windmilleng/tilt/internal/logger"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 var debug bool
@@ -24,7 +24,7 @@ func logLevel() logger.Level {
 func Execute() {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
-		Short: "tilt is great, yo",
+		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
 	}
 
 	addCommand(rootCmd, &upCmd{})
