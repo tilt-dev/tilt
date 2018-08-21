@@ -39,6 +39,7 @@ func (c *upCmd) run(args []string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		err := proc.Kill()
 		if err != nil {
@@ -50,6 +51,8 @@ func (c *upCmd) run(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	logOutput("Starting Tilt…")
 
 	tf, err := tiltfile.Load("Tiltfile")
 	if err != nil {
@@ -69,5 +72,14 @@ func (c *upCmd) run(args []string) error {
 		return errors.New(s.Message())
 	}
 
+	logOutput("Services created")
+
 	return nil
+}
+
+func logOutput(s string) {
+	cGreen := "\033[32m"
+	cReset := "\u001b[0m"
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+	log.Printf("%s%s%s", cGreen, s, cReset)
 }
