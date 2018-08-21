@@ -107,7 +107,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}
 
 	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
-	err := l.history.Add(ctx, name, d, checkpoint)
+	err := l.history.AddAndPersist(ctx, name, d, checkpoint)
 	if err != nil {
 		return nil, err
 	}

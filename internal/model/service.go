@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -15,6 +16,10 @@ type Service struct {
 	Entrypoint     Cmd
 	DockerfileTag  string
 	Name           ServiceName
+}
+
+type ServiceCreator interface {
+	CreateServices(ctx context.Context, svcs []Service, watch bool) error
 }
 
 type Mount struct {
