@@ -8,6 +8,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/fsnotify"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
@@ -39,8 +40,8 @@ type watchEvent struct {
 	fileName string
 }
 
-func NewUpper(ctx context.Context, manager service.Manager) (Upper, error) {
-	b, err := NewLocalBuildAndDeployer(ctx, manager)
+func NewUpper(ctx context.Context, manager service.Manager, env k8s.Env) (Upper, error) {
+	b, err := NewLocalBuildAndDeployer(ctx, manager, env)
 	if err != nil {
 		return Upper{}, err
 	}
