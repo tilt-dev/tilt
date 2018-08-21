@@ -1,11 +1,13 @@
 package image
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	digest "github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -17,7 +19,9 @@ type diskEntry struct {
 	CheckpointID CheckpointID
 }
 
-func historyFromFS(dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {
+func historyFromFS(ctx context.Context, dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-historyFromFS")
+	defer span.Finish()
 	file, err := dir.OpenFile(imagesPath, os.O_RDONLY, os.FileMode(0))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -44,7 +48,7 @@ func historyFromFS(dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {
 	return result, nil
 }
 
-func addHistoryToFS(dir *dirs.WindmillDir, ref refKey, entry historyEntry) error {
+func addHistoryToFS(ctx context.Context, dir *dirs.WindmillDir, ref refKey, entry historyEntry) error {
 	file, err := dir.OpenFile(imagesPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, os.FileMode(0644))
 	if err != nil {
 		return fmt.Errorf("addHistoryToFS: %v", err)
