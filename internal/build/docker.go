@@ -424,7 +424,6 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 
 		if len(message.Stream) > 0 && message.Stream != "\n" {
 			msg := strings.TrimSuffix(message.Stream, "\n")
-			indented := strings.(msg, "--->", "  →", -1)
 			logger.Get(ctx).Infof("%+v", msg)
 		}
 		// }
