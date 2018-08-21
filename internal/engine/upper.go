@@ -124,11 +124,11 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				return err
 			}
 
-			if len(services[0].Mounts) == 0 {
+			if len(service.Mounts) == 0 {
 				return errors.New("service has 0 repos - nothing to watch")
 			}
 
-			for _, mount := range services[0].Mounts {
+			for _, mount := range service.Mounts {
 				err = watcher.Add(mount.Repo.LocalPath)
 				if err != nil {
 					return err
@@ -138,10 +138,14 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 		}
 		watchEvents, errs = u.combineWatchers(watchers)
 	}
-	for i := range services {
-		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
-		buildTokens[string(services[i].Name)] = buildToken
-		servicesByName[string(services[i].Name)] = services[i]
+	for _, service := range services {
+		buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
+		_, exists := servicesByName[string(service.Name)]
+		if exists {
+			return errors.New("multiple services with the same name")
+		}
+		buildTokens[string(service.Name)] = buildToken
+		servicesByName[string(service.Name)] = service
 		if err != nil {
 			return err
 		}
