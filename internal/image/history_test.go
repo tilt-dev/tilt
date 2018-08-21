@@ -33,10 +33,8 @@ func TestCheckpointOne(t *testing.T) {
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(f.ctx, n1, d1, c1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	history.Load(f.ctx, n1, d1, c1)
+
 	d, c, ok := history.MostRecent(n1)
 	if !ok || d != d1 || c != c1 {
 		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c1, d1, c, d)
@@ -51,19 +49,13 @@ func TestCheckpointAfter(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(f.ctx, n1, d1, c1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	history.Load(f.ctx, n1, d1, c1)
 
 	time.Sleep(time.Millisecond)
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	err = history.Add(f.ctx, n1, d2, c2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	history.Load(f.ctx, n1, d2, c2)
 
 	d, c, ok := history.MostRecent(n1)
 	if !ok || d != d2 || c != c2 {
@@ -82,14 +74,8 @@ func TestCheckpointBefore(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(f.ctx, n1, d1, c1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = history.Add(f.ctx, n1, d0, c0)
-	if err != nil {
-		t.Fatal(err)
-	}
+	history.Load(f.ctx, n1, d1, c1)
+	history.Load(f.ctx, n1, d0, c0)
 
 	d, c, ok := history.MostRecent(n1)
 	if !ok || d != d1 || c != c1 {
@@ -105,7 +91,7 @@ func TestPersistence(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(f.ctx, n1, d1, c1)
+	err := history.AddAndPersist(f.ctx, n1, d1, c1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +100,7 @@ func TestPersistence(t *testing.T) {
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	err = history.Add(f.ctx, n1, d2, c2)
+	err = history.AddAndPersist(f.ctx, n1, d2, c2)
 	if err != nil {
 		t.Fatal(err)
 	}
