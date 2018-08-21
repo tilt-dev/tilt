@@ -1,5 +1,60 @@
 package k8s
 
+const BlorgBackendYAML = `
+# Template should be populated using populate_config_template.py
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: devel-nick-lb-blorg-be
+  labels:
+    app: blorg
+    owner: nick
+    environment: devel
+    tier: backend
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: blorg
+    owner: nick
+    environment: devel
+    tier: backend
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: devel-nick-blorg-be
+spec:
+  selector:
+    matchLabels:
+      app: blorg
+      owner: nick
+      environment: devel
+      tier: backend
+  template:
+    metadata:
+      name: devel-nick-blorg-be
+      labels:
+        app: blorg
+        owner: nick
+        environment: devel
+        tier: backend
+    spec:
+      containers:
+      - name: backend
+        imagePullPolicy: Always
+        image: gcr.io/blorg-dev/blorg-backend:devel-nick
+        command: [
+          "/app/server",
+          "--dbAddr", "hissing-cockroach-cockroachdb:26257"
+        ]
+        ports:
+        - containerPort: 8080
+`
+
 const SanchoYAML = `
 apiVersion: apps/v1
 kind: Deployment

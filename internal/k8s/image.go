@@ -10,7 +10,7 @@ import (
 )
 
 // Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string) (K8sEntity, bool, error) {
+func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	originalRef, err := reference.ParseNamed(original)
 	if err != nil {
 		return K8sEntity{}, false, err
@@ -26,14 +26,32 @@ func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest s
 		return K8sEntity{}, false, err
 	}
 
-	return InjectImageDigest(entity, canonicalRef)
+	return InjectImageDigest(entity, canonicalRef, policy)
+}
+
+// Iterate through the fields of a k8s entity and
+// replace the image pull policy on all images.
+func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, error) {
+	containers, err := extractContainers(&entity)
+	if err != nil {
+		return K8sEntity{}, err
+	}
+
+	for _, container := range containers {
+		container.ImagePullPolicy = policy
+	}
+	return entity, nil
 }
 
 // Iterate through the fields of a k8s entity and
 // replace a image name with its digest.
 //
-// Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, canonicalRef reference.Canonical) (K8sEntity, bool, error) {
+// policy: The pull policy to set on the replaced image.
+//   When working with a local k8s cluster, we want to set this to Never,
+//   to ensure that k8s fails hard if the image is missing from docker.
+//
+// Returns: the new entity, whether the image was replaced, and an error.
+func InjectImageDigest(entity K8sEntity, canonicalRef reference.Canonical, policy v1.PullPolicy) (K8sEntity, bool, error) {
 
 	containers, err := extractContainers(&entity)
 	if err != nil {
@@ -49,6 +67,7 @@ func InjectImageDigest(entity K8sEntity, canonicalRef reference.Canonical) (K8sE
 
 		if existingRef.Name() == canonicalRef.Name() {
 			container.Image = canonicalRef.String()
+			container.ImagePullPolicy = policy
 			replaced = true
 		}
 	}
