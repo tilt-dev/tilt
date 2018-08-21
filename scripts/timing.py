@@ -6,7 +6,9 @@ import functools
 import os
 import random
 import string
-from subprocess import call
+import subprocess
+import time
+from typing import List
 
 
 RESULTS_BLOCKLTR = '''  ____                 _ _
@@ -27,6 +29,17 @@ Result = namedtuple('Result', ['name', 'time_seconds'])
 
 tilt_up_called = False
 tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d']
+tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d']
+
+
+class Timer:
+    def __enter__(self):
+        self.start = datetime.datetime.now()
+        return self
+
+    def __exit__(self, *args):
+        self.end = datetime.datetime.now()
+        self.seconds = (self.end - self.start).total_seconds()
 
 
 def main():
@@ -40,12 +53,13 @@ def main():
         make_case_tilt_up_once(),
         make_case_tilt_up_again_no_change(),
         make_case_tilt_up_again_new_file(),
+        # make_case_watch(),
     ]
     results = []
 
     try:
         for c in cases:
-            print('~~ RUNNING CASE: %s' % c.name)
+            print('~~ RUNNING CASE: {}'.format(c.name))
             c.setup()
             timetake = c.test()
             results.append(Result(c.name, timetake))
@@ -55,7 +69,7 @@ def main():
         print()
 
         for res in results:
-            print('\t%s --> %f seconds' % (res.name, res.time_seconds))
+            print('\t{} --> {:.5f} seconds'.format(res.name, res.time_seconds))
     finally:
         clean_up()
 
@@ -96,24 +110,27 @@ def make_case_tilt_up_again_new_file():
                 functools.partial(time_call, tilt_up_cmd))
 
 
+def make_case_watch():
+    pass
+
+
 def time_call(cmd):
     """
         Call the given command (a list of strings representing command and args),
         return time in seconds.
     """
+    with Timer() as t:
+        call_or_error(cmd)
 
-    start = datetime.datetime.now()
-    call_or_error(cmd)
-    end = datetime.datetime.now()
+    return t.seconds
 
-    return (end - start).total_seconds()
 
 def call_or_error(cmd):
     """
         Call the given command (a list of strings representing command and args),
         raising an error if it fails.
     """
-    return_code = call(cmd)
+    return_code = subprocess.call(cmd)
     if return_code != 0:
         raise Exception('Command {} exited with exit code {}'.format(cmd, return_code))
 
@@ -123,7 +140,7 @@ def write_file(n):
     Create a new file in the cwd containing the given number of
     byes (randomly generated).
     """
-    name = '%s-%s' % ('timing_script', randstr(10))
+    name = '{}-{}'.format('timing_script', randstr(10))
     with open(name, 'w+b') as f:
         f.write(randbytes(n))
 
