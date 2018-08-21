@@ -19,7 +19,7 @@ func TestGitIgnoreTester_Simple(t *testing.T) {
 	}
 
 	ret, err := g.IsIgnored(tf.repoRoots[0].JoinPath("a", "b", ".foo.swp"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, ret)
 }
 
@@ -39,7 +39,7 @@ func TestNewGitIgnoreTester_NoGitignore(t *testing.T) {
 	assert.False(t, ret)
 
 	ret, err = g.IsIgnored(tempDir.JoinPath("foo.txt"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.False(t, ret)
 
 }
@@ -55,7 +55,7 @@ func TestGitIgnoreTester_FileOutsideOfRepo(t *testing.T) {
 	}
 
 	ret, err := g.IsIgnored("/tmp/.foo.swp", false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.False(t, ret)
 }
 
@@ -70,7 +70,7 @@ func TestGitIgnoreTester_GitDirIsIgnored(t *testing.T) {
 	}
 
 	ret, err := g.IsIgnored(tf.repoRoots[0].JoinPath(".git/foo/bar"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, ret)
 }
 
@@ -85,19 +85,19 @@ func TestNewMultiRepoIgnoreTester(t *testing.T) {
 	}
 
 	ret, err := g.IsIgnored(tf.repoRoots[0].JoinPath(".git/foo/bar"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, ret)
 
 	ret, err = g.IsIgnored(tf.repoRoots[0].JoinPath(".foo.swp"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, ret)
 
 	ret, err = g.IsIgnored(tf.repoRoots[1].JoinPath("a.out"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, ret)
 
 	ret, err = g.IsIgnored(tf.repoRoots[1].JoinPath(".foo.swp"), false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.False(t, ret)
 
 }
