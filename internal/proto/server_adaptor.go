@@ -31,7 +31,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	for i := range req.Services {
 		svcArray = append(svcArray, serviceP2D(req.Services[i]))
 	}
-	upper, err := engine.NewUpper(s.sm)
+	upper, err := engine.NewUpper(ctx, s.sm)
 	if err != nil {
 		return err
 	}

@@ -186,6 +186,7 @@ func (l *localDockerBuilder) buildWithDfOnly(ctx context.Context, df Dockerfile)
 		return "", err
 	}
 
+	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		archive,
@@ -194,6 +195,7 @@ func (l *localDockerBuilder) buildWithDfOnly(ctx context.Context, df Dockerfile)
 			Dockerfile: "Dockerfile",
 			Remove:     shouldRemoveImage(),
 		})
+	spanBuild.Finish()
 	if err != nil {
 		return "", err
 	}
@@ -228,6 +230,7 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 	}
 
 	logger.Get(ctx).Verbosef("-- building image")
+	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		archive,
@@ -236,6 +239,7 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 			Dockerfile: "Dockerfile",
 			Remove:     shouldRemoveImage(),
 		})
+	spanBuild.Finish()
 	if err != nil {
 		return "", err
 	}
@@ -305,6 +309,8 @@ func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerI
 
 // TODO(nick): Unify this with TarContextAndUpdateDf
 func TarWithDfOnly(ctx context.Context, df Dockerfile) (*bytes.Reader, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-TarWithDfOnly")
+	defer span.Finish()
 	buf, err := tarWithDfOnly(ctx, df)
 	if err != nil {
 		return nil, err
@@ -316,7 +322,7 @@ func TarWithDfOnly(ctx context.Context, df Dockerfile) (*bytes.Reader, error) {
 func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-TarContextAndUpdateDf")
 	defer span.Finish()
-	buf, err := tarContextAndUpdateDf(df, paths)
+	buf, err := tarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +341,7 @@ func tarWithDfOnly(ctx context.Context, df Dockerfile) (*bytes.Buffer, error) {
 		}
 	}()
 
-	err := archiveDf(tw, df)
+	err := archiveDf(ctx, tw, df)
 	if err != nil {
 		return nil, fmt.Errorf("archiveDf: %v", err)
 	}
@@ -343,7 +349,9 @@ func tarWithDfOnly(ctx context.Context, df Dockerfile) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-func tarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
+	defer span.Finish()
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer func() {
@@ -354,13 +362,13 @@ func tarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Buffer, e
 	}()
 
 	// TODO: maybe write our own tarWriter struct with methods on it, so it's clearer that we're modifying the tar writer in place
-	dnePaths, err := archiveIfExists(tw, paths)
+	dnePaths, err := archiveIfExists(ctx, tw, paths)
 	if err != nil {
 		return nil, fmt.Errorf("archiveIfExists: %v", err)
 	}
 
 	newDf := updateDf(df, dnePaths)
-	err = archiveDf(tw, newDf)
+	err = archiveDf(ctx, tw, newDf)
 	if err != nil {
 		return nil, fmt.Errorf("archiveDf: %v", err)
 	}
@@ -386,6 +394,8 @@ func updateDf(df Dockerfile, dnePaths []pathMapping) Dockerfile {
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
 func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
+	defer span.Finish()
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
 	for decoder.More() {
