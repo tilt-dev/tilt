@@ -15,7 +15,9 @@ RESULTS_BLOCKLTR = '''  ____                 _ _
  |  _ <  __/\__ \ |_| | | |_\__ \_
  |_| \_\___||___/\__,_|_|\__|___(_)'''
 
-BLORGLY_BACKEND_DIR = os.path.join(os.environ['GOPATH'], 'src/github.com/windmilleng/blorgly-backend')
+
+GOPATH = os.environ['GOPATH'] if 'GOPATH' in os.environ else os.path.join(os.environ['HOME'], 'go')
+BLORGLY_BACKEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorgly-backend')
 SERVICE_NAME = 'blorgly_backend_local'
 TOUCHED_FILES = []
 
