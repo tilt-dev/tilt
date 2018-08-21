@@ -39,9 +39,10 @@ type localBuildAndDeployer struct {
 	b       build.Builder
 	history image.ImageHistory
 	sm      service.Manager
+	env     k8s.Env
 }
 
-func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -54,6 +55,7 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	b := build.NewLocalDockerBuilder(dcli)
 	dir, err := dirs.UseWindmillDir()
 	if err != nil {
@@ -68,6 +70,7 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 		b:       b,
 		history: history,
 		sm:      m,
+		env:     env,
 	}, nil
 }
 
@@ -97,14 +100,32 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		d = newDigest
 		name = token.n
 	}
+
 	logger.Get(ctx).Verbose("- (Adding checkpoint to history)")
+
 	err := l.history.Add(name, d, checkpoint)
 	if err != nil {
 		return nil, err
 	}
-	pushedRef, err := l.b.PushDocker(ctx, name, d)
-	if err != nil {
-		return nil, err
+
+	var refToInject reference.Canonical
+
+	// If we're using docker-for-desktop as our k8s backend,
+	// we don't need to push to the central registry.
+	// The k8s will use the image already available
+	// in the local docker daemon.
+	if l.env == k8s.EnvDockerDesktop {
+		taggedRef, err := l.b.TagDocker(ctx, name, d)
+		if err != nil {
+			return nil, err
+		}
+		refToInject = taggedRef
+	} else {
+		pushedRef, err := l.b.PushDocker(ctx, name, d)
+		if err != nil {
+			return nil, err
+		}
+		refToInject = pushedRef
 	}
 
 	logger.Get(ctx).Verbose("- Parsing and templating YAML")
@@ -116,7 +137,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigest(e, pushedRef)
+		newK8s, replaced, err := k8s.InjectImageDigest(e, refToInject)
 		if err != nil {
 			return nil, err
 		}
