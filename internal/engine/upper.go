@@ -3,10 +3,10 @@ package engine
 import (
 	"context"
 	"errors"
-	"io"
-	"log"
 	"path/filepath"
+	"time"
 
+	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -14,9 +14,27 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+// When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
+// 200ms is not the result of any kind of research or experimentation
+// it might end up being a significant part of deployment delay, if we get the total latency <2s
+// it might also be long enough that it misses some changes if the user has some operation involving a large file
+//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
+const watchBufferMinRestInMs = 200
+
+// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
+// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
+const watchBufferMaxTimeInMs = 10000
+
+var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
+var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
+
+// When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
+const maxChangedFilesToPrint = 5
+
 type Upper struct {
 	b            BuildAndDeployer
 	watcherMaker func() (watch.Notify, error)
+	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
 func NewUpper(manager service.Manager) (Upper, error) {
@@ -27,16 +45,74 @@ func NewUpper(manager service.Manager) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	return Upper{b, watcherMaker}, nil
+	return Upper{b, watcherMaker, time.After}, nil
 }
 
-func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, stdout io.Writer, stderr io.Writer) error {
-	buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
-	if err != nil {
-		return err
+//makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
+//from the user's perspective are grouped together.
+func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
+	ret := make(chan []fsnotify.Event)
+	go func() {
+		defer close(ret)
+		for {
+			event, ok := <-eventChan
+			if !ok {
+				return
+			}
+			events := []fsnotify.Event{event}
+
+			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
+			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
+
+			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
+			// then just send what we've got
+			timeout := u.makeTimer(watchBufferMaxDuration)
+
+			done := false
+			channelClosed := false
+			for !done && !channelClosed {
+				select {
+				case event, ok := <-eventChan:
+					if !ok {
+						channelClosed = true
+					} else {
+						minRestTimer = u.makeTimer(watchBufferMinRestDuration)
+						events = append(events, event)
+					}
+				case <-minRestTimer:
+					done = true
+				case <-timeout:
+					done = true
+				}
+			}
+			if len(events) > 0 {
+				ret <- events
+			}
+
+			if channelClosed {
+				return
+			}
+		}
+
+	}()
+	return ret
+}
+
+func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool) error {
+	var buildTokens []*buildToken
+	for i := range services {
+		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
+		buildTokens = append(buildTokens, buildToken)
+		if err != nil {
+			return err
+		}
 	}
 
 	if watchMounts {
+		service := services[0]
+		if len(services) > 1 {
+			return errors.New("There is more than 1 service")
+		}
 		watcher, err := u.watcherMaker()
 		if err != nil {
 			return err
@@ -56,35 +132,53 @@ func (u Upper) Up(ctx context.Context, service model.Service, watchMounts bool, 
 			}
 		}
 
-		eventFilter, err := git.NewMultiRepoIgnoreTester(repoRoots)
+		eventFilter, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
 		if err != nil {
 			return err
 		}
 
+		coalescedEvents := u.coalesceEvents(watcher.Events())
+
 		for {
-			// TODO(matt) buffer events a bit so that we're not triggering 10 builds when you change branches
 			select {
 			case err := <-watcher.Errors():
 				return err
-			case event := <-watcher.Events():
-				log.Printf("observed filechange. kicking off rebuild.")
-				path, err := filepath.Abs(event.Name)
-				if err != nil {
-					return err
+			case events, ok := <-coalescedEvents:
+				if !ok {
+					return nil
 				}
-				isIgnored, err := eventFilter.IsIgnored(path, false)
-				if err != nil {
-					return err
-				}
-				if !isIgnored {
-					logger.Get(ctx).Info("file changed, rebuilding %v", service.Name)
-					buildToken, err = u.b.BuildAndDeploy(ctx, service, buildToken, []string{path})
+
+				var changedPaths []string
+				for _, e := range events {
+					path, err := filepath.Abs(e.Name)
 					if err != nil {
-						logger.Get(ctx).Info("build failed: %v", err.Error())
+						return err
+					}
+					isIgnored, err := eventFilter.IsIgnored(path, false)
+					if err != nil {
+						return err
+					}
+					if !isIgnored {
+						changedPaths = append(changedPaths, path)
 					}
 				}
+				if len(changedPaths) > 0 {
+					var changedPathsToPrint []string
+					if len(changedPaths) > maxChangedFilesToPrint {
+						changedPathsToPrint = append(changedPaths[:maxChangedFilesToPrint], "...")
+					} else {
+						changedPathsToPrint = changedPaths
+					}
+					logger.Get(ctx).Info("files changed. rebuilding %v. observed changes: %v", service.Name, changedPathsToPrint)
+
+					buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
+				}
+				if err != nil {
+					logger.Get(ctx).Info("build failed: %v", err.Error())
+				}
+
 			}
 		}
 	}
-	return err
+	return nil
 }

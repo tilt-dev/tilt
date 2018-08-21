@@ -3,6 +3,9 @@ package cli
 import (
 	"context"
 	"errors"
+	"log"
+
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
@@ -10,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
 )
 
 type upCmd struct {
@@ -30,7 +32,9 @@ func (c *upCmd) register() *cobra.Command {
 }
 
 func (c *upCmd) run(args []string) error {
-	ctx := context.Background()
+	span := opentracing.StartSpan("Up")
+	defer span.Finish()
+	ctx := opentracing.ContextWithSpan(context.Background(), span)
 	proc, err := tiltd_server.RunDaemon(ctx)
 	if err != nil {
 		return err
@@ -53,13 +57,12 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	serviceName := args[0]
-	service, err := tf.GetServiceConfig(serviceName)
+	services, err := tf.GetServiceConfig(serviceName)
 	if err != nil {
 		return err
 	}
 
-	req := proto.CreateServiceRequest{Service: service, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
-
+	req := proto.CreateServiceRequest{Services: services, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
 	err = dCli.CreateService(ctx, req)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {

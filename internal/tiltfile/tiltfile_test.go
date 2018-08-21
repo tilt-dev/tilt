@@ -48,16 +48,17 @@ func TestGetServiceConfig(t *testing.T) {
 		t.Fatal("getting service config:", err)
 	}
 
-	assert.Equal(t, "docker text", serviceConfig.DockerfileText)
-	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
-	assert.Equal(t, "yaaaaaaaaml", serviceConfig.K8SYaml)
-	assert.Equal(t, 1, len(serviceConfig.Mounts))
-	assert.Equal(t, "/mount_points/1", serviceConfig.Mounts[0].ContainerPath)
-	assert.Equal(t, ".", serviceConfig.Mounts[0].Repo.GetGitRepo().LocalPath)
-	assert.Equal(t, 2, len(serviceConfig.Steps))
-	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
-	assert.Equal(t, []string{"sh", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
-	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, serviceConfig.Entrypoint.Argv)
+	service := serviceConfig[0]
+	assert.Equal(t, "docker text", service.DockerfileText)
+	assert.Equal(t, "docker tag", service.DockerfileTag)
+	assert.Equal(t, "yaaaaaaaaml", service.K8SYaml)
+	assert.Equal(t, 1, len(service.Mounts))
+	assert.Equal(t, "/mount_points/1", service.Mounts[0].ContainerPath)
+	assert.Equal(t, ".", service.Mounts[0].Repo.GetGitRepo().LocalPath)
+	assert.Equal(t, 2, len(service.Steps))
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv)
+	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
 }
 
 func TestGetServiceConfigMissingDockerFile(t *testing.T) {
@@ -250,11 +251,12 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 		t.Fatal("getting service config:", err)
 	}
 
-	assert.Equal(t, "docker text", serviceConfig.DockerfileText)
-	assert.Equal(t, "docker tag", serviceConfig.DockerfileTag)
-	assert.Equal(t, "yaaaaaaaaml\n", serviceConfig.K8SYaml)
-	assert.Equal(t, 2, len(serviceConfig.Steps))
-	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, serviceConfig.Steps[0].Argv)
-	assert.Equal(t, []string{"sh", "-c", "echo hi"}, serviceConfig.Steps[1].Argv)
-	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, serviceConfig.Entrypoint.Argv)
+	service := serviceConfig[0]
+	assert.Equal(t, "docker text", service.DockerfileText)
+	assert.Equal(t, "docker tag", service.DockerfileTag)
+	assert.Equal(t, "yaaaaaaaaml\n", service.K8SYaml)
+	assert.Equal(t, 2, len(service.Steps))
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv)
+	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
 }

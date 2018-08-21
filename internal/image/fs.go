@@ -25,6 +25,9 @@ func historyFromFS(dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {
 		}
 		return nil, fmt.Errorf("historyFromFS: %v", err)
 	}
+	defer func() {
+		_ = file.Close()
+	}()
 
 	result := make(map[refKey][]historyEntry, 0)
 	decoder := json.NewDecoder(file)
@@ -46,6 +49,9 @@ func addHistoryToFS(dir *dirs.WindmillDir, ref refKey, entry historyEntry) error
 	if err != nil {
 		return fmt.Errorf("addHistoryToFS: %v", err)
 	}
+	defer func() {
+		_ = file.Close()
+	}()
 
 	encoder := json.NewEncoder(file)
 	diskEntry := diskEntry{Ref: ref, Digest: entry.Digest, CheckpointID: entry.CheckpointID}

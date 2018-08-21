@@ -1,17 +1,30 @@
 package git
 
 import (
+	"context"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/monochromegane/go-gitignore"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type IgnoreTester interface {
 	IsIgnored(f string, isDir bool) (bool, error)
 }
+
+// an IgnoreTester that ignores nothing
+type falseIgnoreTester struct{}
+
+func (falseIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
+	return false, nil
+}
+
+var _ IgnoreTester = falseIgnoreTester{}
 
 type gitIgnoreTester struct {
 	repoRoot      string
@@ -25,19 +38,35 @@ func (i gitIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	if !isChild {
 		return false, nil
 	}
+
 	return i.ignoreMatcher.Match(f, isDir), nil
 }
 
-func NewGitIgnoreTester(repoRoot string) (*gitIgnoreTester, error) {
-	i, err := gitignore.NewGitIgnore(path.Join(repoRoot, ".gitignore"))
+func NewGitIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, error) {
+	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
 	}
-	return &gitIgnoreTester{repoRoot, i}, nil
+
+	p := path.Join(absRoot, ".gitignore")
+	i, err := gitignore.NewGitIgnore(p)
+	if err != nil {
+		_, err = os.Open(path.Join(absRoot, ".gitignore"))
+
+		pathError, ok := err.(*os.PathError)
+		//if the error is that file isn't there (ENOENT), then we don't need a warning, since that's a normal case
+		//if it's any other error, log a warning and pretend the file doesn't exist (matching git's behavior)
+		if ok && pathError.Err != syscall.ENOENT {
+			logger.Get(ctx).Info("warning: failed to open %V: %V", p, err)
+		}
+		return &falseIgnoreTester{}, nil
+	}
+	return &gitIgnoreTester{absRoot, i}, nil
 }
 
 type repoIgnoreTester struct {
-	g gitIgnoreTester
+	repoRoot        string
+	gitIgnoreTester IgnoreTester
 }
 
 var _ IgnoreTester = repoIgnoreTester{}
@@ -48,19 +77,19 @@ func (r repoIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 		return false, err
 	}
 
-	if strings.HasPrefix(absPath, filepath.Join(r.g.repoRoot, ".git/")) {
+	if strings.HasPrefix(absPath, filepath.Join(r.repoRoot, ".git/")) {
 		return true, nil
 	}
 
-	return r.g.IsIgnored(f, isDir)
+	return r.gitIgnoreTester.IsIgnored(f, isDir)
 }
 
-func NewRepoIgnoreTester(repoRoot string) (IgnoreTester, error) {
-	g, err := NewGitIgnoreTester(repoRoot)
+func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, error) {
+	g, err := NewGitIgnoreTester(ctx, repoRoot)
 	if err != nil {
 		return nil, err
 	}
-	return &repoIgnoreTester{*g}, nil
+	return &repoIgnoreTester{repoRoot, g}, nil
 }
 
 type compositeIgnoreTester struct {
@@ -82,10 +111,10 @@ func (c compositeIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 
 var _ IgnoreTester = compositeIgnoreTester{}
 
-func NewMultiRepoIgnoreTester(repoRoots []string) (IgnoreTester, error) {
+func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (IgnoreTester, error) {
 	var testers []IgnoreTester
 	for _, repoRoot := range repoRoots {
-		t, err := NewRepoIgnoreTester(repoRoot)
+		t, err := NewRepoIgnoreTester(ctx, repoRoot)
 		if err != nil {
 			return nil, err
 		}

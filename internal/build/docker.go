@@ -10,9 +10,8 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
-	"strings"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
@@ -35,12 +34,13 @@ var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOI
 
 type localDockerBuilder struct {
 	dcli *client.Client
+	pool containerPool
 }
 
 type Builder interface {
-	BuildDockerFromScratch(ctx context.Context, baseDockerfile string, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
+	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
 	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
-	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (digest.Digest, error)
+	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.Canonical, error)
 }
 
 type pushOutput struct {
@@ -51,40 +51,55 @@ type pushOutput struct {
 
 var _ Builder = &localDockerBuilder{}
 
-func NewLocalDockerBuilder(cli *client.Client) *localDockerBuilder {
-	return &localDockerBuilder{cli}
+func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
+	return &localDockerBuilder{dcli: dcli, pool: newContainerPool(dcli)}
 }
 
-func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile string,
+func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	logger.Get(ctx).Verbose("- Building Docker image from scratch")
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
+	defer span.Finish()
+
 	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
-	dfForExisting := fmt.Sprintf("FROM %s", existing.Encoded())
+	logger.Get(ctx).Verbose("- Building Docker image from existing image: %s", existing.Encoded()[:10])
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
+	defer span.Finish()
+
+	dfForExisting := DockerfileFromExisting(existing)
 	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
 
-func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
+func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
 	baseDigest, err := l.buildFromDfWithFiles(ctx, df, paths)
 	if err != nil {
 		return "", fmt.Errorf("buildFromDfWithFiles: %v", err)
 	}
 
-	newDigest, err := l.execStepsOnImage(ctx, baseDigest, steps)
-	if err != nil {
-		return "", fmt.Errorf("execStepsOnImage: %v", err)
-	}
+	// Start a container from the base image so we can run steps on it.
+	cID, err := l.pool.claimContainer(ctx, baseDigest)
 
-	if !entrypoint.Empty() {
-		newDigest, err = l.imageWithEntrypoint(ctx, newDigest, entrypoint)
+	logger.Get(ctx).Verbose("-- executing steps on base image")
+	for i, s := range steps {
+		logger.Get(ctx).Verbose("--- step %d/%d: %v", i+1, len(steps), s.Argv)
+		err := l.execInContainer(ctx, cID, s)
 		if err != nil {
-			return "", fmt.Errorf("imageWithEntrypoint: %v", err)
+			return "", fmt.Errorf("buildDocker#step(%v): %v", s, err)
 		}
 	}
 
+	logger.Get(ctx).Verbose("-- committing container")
+	newDigest, err := l.pool.commitContainer(ctx, cID, entrypoint)
+	if err != nil {
+		return "", fmt.Errorf("buildDocker: %v", err)
+	}
 	return newDigest, nil
 }
 
@@ -93,23 +108,30 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df string,
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (digest.Digest, error) {
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
+	logger.Get(ctx).Verbose("- Pushing Docker image")
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
+	defer span.Finish()
+
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
+		return nil, fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
 	}
 
-	cli := command.NewDockerCli(nil, os.Stdout, os.Stderr, true)
+	logger.Get(ctx).Verbose("-- connecting to repository")
+	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+	cli := command.NewDockerCli(nil, writer, writer, true)
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#InitializeCLI: %s", err)
+		return nil, fmt.Errorf("PushDocker#InitializeCLI: %s", err)
 	}
 	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
 
 	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
+		return nil, fmt.Errorf("PushDocker#EncodeAuthToBase64: %s", err)
 	}
 
 	options := types.ImagePushOptions{
@@ -118,25 +140,26 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}
 
 	if reference.Domain(ref) == "" {
-		return "", fmt.Errorf("PushDocker: no domain in container name: %s", ref)
+		return nil, fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
 	tag, err := reference.WithTag(ref, pushTag)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker: %v", err)
+		return nil, fmt.Errorf("PushDocker: %v", err)
 	}
 
 	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#ImageTag: %v", err)
+		return nil, fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
+	logger.Get(ctx).Verbose("-- pushing the image")
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
 		tag.String(),
 		options)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#ImagePush: %v", err)
+		return nil, fmt.Errorf("PushDocker#ImagePush: %v", err)
 	}
 
 	defer func() {
@@ -147,34 +170,28 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}()
 	pushedDigest, err := getDigestFromPushOutput(imagePushResponse)
 	if err != nil {
-		return "", fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
+		return nil, fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
 
-	return pushedDigest, nil
+	return reference.WithDigest(tag, pushedDigest)
 }
 
-func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string, paths []pathMapping) (digest.Digest, error) {
-	err := validateDockerfile(df)
+func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDfWithFiles")
+	defer span.Finish()
+	err := df.Validate()
 	if err != nil {
 		return "", err
 	}
 
-	archive, err := TarContextAndUpdateDf(df, paths)
+	logger.Get(ctx).Verbose("-- tarring context")
+
+	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return "", err
 	}
-	// TODO(dmiller): remove this debugging code
-	//tar2, err := TarContextAndUpdateDf(df, mounts)
-	//if err != nil {
-	//	return "", err
-	//}
-	//buf := new(bytes.Buffer)
-	//buf.ReadFrom(tar2)
-	//err = ioutil.WriteFile("/tmp/debug.tar", buf.Bytes(), os.FileMode(0777))
-	//if err != nil {
-	//	return "", err
-	//}
 
+	logger.Get(ctx).Verbose("-- building image")
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		archive,
@@ -201,102 +218,105 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df string
 	return getDigestFromAux(*result)
 }
 
-// NOTE(maia): can put more logic in here sometime; currently just returns an error
-// if Dockerfile contains an ENTRYPOINT, which is illegal in Tilt right now (an
-// ENTRYPOINT overrides a ContainerCreate Cmd, which we rely on).
-// TODO: extract the ENTRYPOINT line from the Dockerfile and reapply it later.
-func validateDockerfile(df string) error {
-	for _, line := range strings.Split(df, "\n") {
-		if strings.HasPrefix(line, "ENTRYPOINT") {
-			return ErrEntrypointInDockerfile
+func (l *localDockerBuilder) execInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-execInContainer")
+	defer span.Finish()
+	created, err := l.dcli.ContainerExecCreate(ctx, string(cID), types.ExecConfig{
+		Cmd: cmd.Argv,
+	})
+	if err != nil {
+		return err
+	}
+
+	execID := execID(created.ID)
+	if execID == "" {
+		return fmt.Errorf("execInContainer: failed to create")
+	}
+
+	attached, err := l.dcli.ContainerExecAttach(ctx, string(execID), types.ExecStartCheck{})
+	if err != nil {
+		return fmt.Errorf("execInContainer#attach: %v", err)
+	}
+	defer attached.Close()
+
+	// TODO(nick): feed this reader into the logger
+	buf := bytes.NewBuffer(nil)
+	_, err = io.Copy(buf, attached.Reader)
+	if err != nil {
+		return fmt.Errorf("execInContainer#copy: %v", err)
+	}
+
+	// Poll docker until the daemon collects the exit code of the process.
+	// This may happen after it collects the stdout above.
+	for true {
+		inspected, err := l.dcli.ContainerExecInspect(ctx, string(execID))
+		if err != nil {
+			return fmt.Errorf("execInContainer#inspect: %v", err)
 		}
+
+		if inspected.Running {
+			continue
+		}
+
+		status := inspected.ExitCode
+		if status != 0 {
+			return fmt.Errorf("Failed with exit code %d. Output:\n%s", status, buf.String())
+		}
+		return nil
 	}
 	return nil
 }
 
-func (l *localDockerBuilder) execStepsOnImage(ctx context.Context, img digest.Digest, steps []model.Cmd) (digest.Digest, error) {
-	imageWithSteps := img
-	for _, s := range steps {
-		cId, err := l.startContainer(ctx, containerConfigRunCmd(imageWithSteps, s))
-		if err != nil {
-			return "", fmt.Errorf("startContainer '%s': %v", img, err)
-		}
-
-		id, err := l.dcli.ContainerCommit(ctx, cId, types.ContainerCommitOptions{})
-		if err != nil {
-			return "", fmt.Errorf("containerCommit: %v", err)
-		}
-		imageWithSteps = digest.Digest(id.ID)
-	}
-
-	return digest.Digest(imageWithSteps), nil
-}
-
-// TODO(maia): can probs do this in a more efficient place -- e.g. `execStepsOnImage`
-// already spins up + commits a container, maybe piggyback off that?
-func (l *localDockerBuilder) imageWithEntrypoint(ctx context.Context, img digest.Digest, entrypoint model.Cmd) (digest.Digest, error) {
-	cId, err := l.startContainer(ctx, containerConfigRunCmd(img, model.Cmd{}))
-	if err != nil {
-		return "", fmt.Errorf("startContainer '%s': %v", string(img), err)
-	}
-
-	// Only attach the entrypoint if there's something in it
-	opts := types.ContainerCommitOptions{}
-	if !entrypoint.Empty() {
-		opts.Changes = []string{entrypoint.EntrypointStr()}
-	}
-
-	id, err := l.dcli.ContainerCommit(ctx, cId, opts)
-	if err != nil {
-		return "", fmt.Errorf("containerCommit: %v", err)
-	}
-
-	return digest.Digest(id.ID), nil
-}
-
 // startContainer starts a container from the given config.
 // Returns the container id iff the container successfully runs; else, error.
+//
+// TODO(nick): Remove this function. It's currently only used in tests.
+// It will be better to use the container pool with exec.
 func (l *localDockerBuilder) startContainer(ctx context.Context, config *container.Config) (cId string, err error) {
 	resp, err := l.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("startContainer: %v", err)
 	}
 	containerID := resp.ID
 
 	err = l.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("startContainer: %v", err)
 	}
+
+	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
 
 	statusCh, errCh := l.dcli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("startContainer: %v", err)
 		}
 	case status := <-statusCh:
 		if status.Error != nil {
-			return "", errors.New(status.Error.Message)
+			return "", fmt.Errorf("startContainer: %v", status.Error.Message)
 		}
-		// TODO(matt) feed this reader into the logger
 		r, err := l.dcli.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("startContainer: %v", err)
 		}
-		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(r)
+
+		_, err = io.Copy(writer, r)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("startContainer: %v", err)
 		}
+
 		if status.StatusCode != 0 {
-			return "", fmt.Errorf("container '%+v' had non-0 exit code %v. output: '%v'", config, status.StatusCode, string(buf.Bytes()))
+			return "", fmt.Errorf("container '%+v' had non-0 exit code %v", config, status.StatusCode)
 		}
 	}
 
 	return containerID, nil
 }
 
-func TarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Reader, error) {
+func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-TarContextAndUpdateDf")
+	defer span.Finish()
 	buf, err := tarContextAndUpdateDf(df, paths)
 	if err != nil {
 		return nil, err
@@ -305,10 +325,7 @@ func TarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Reader, error
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-// tarContextAndUpdateDf amends the dockerfile with appropriate ADD statements,
-// and returns that new dockerfile + necessary files in a tar
-// NOTE(maia) now that there's more stuff to this, maybe want a more illustrative name for this?
-func tarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer func() {
@@ -333,21 +350,12 @@ func tarContextAndUpdateDf(df string, paths []pathMapping) (*bytes.Buffer, error
 	return buf, nil
 }
 
-func updateDf(df string, dnePaths []pathMapping) string {
+func updateDf(df Dockerfile, dnePaths []pathMapping) Dockerfile {
 	// Add 'ADD' statements (right now just add whatever's in context;
 	// this is safe b/c only adds/overwrites, doesn't remove).
-	newDf := fmt.Sprintf("%s\nADD . /", df)
+	newDf := df.AddAll()
 
-	if len(dnePaths) > 0 {
-		// Add 'rm' statements; if changed file was deleted locally, remove if from container
-		rmCmd := strings.Builder{}
-		rmCmd.WriteString("rm") // sh -c?
-		for _, p := range dnePaths {
-			rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
-		}
-		newDf = fmt.Sprintf("%s\nRUN %s", newDf, rmCmd.String())
-	}
-	return newDf
+	return newDf.RmPaths(dnePaths)
 }
 
 // Docker API commands stream back a sequence of JSON messages.

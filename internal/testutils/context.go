@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"os"
 
 	"github.com/windmilleng/tilt/internal/logger"
 )
@@ -9,5 +10,5 @@ import (
 // CtxForTest returns a context.Context suitable for use in tests.
 // Currently, this means that it has a Logger attached.
 func CtxForTest() context.Context {
-	return logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl))
+	return logger.WithLogger(context.Background(), logger.NewLogger(logger.DebugLvl, os.Stdout))
 }
