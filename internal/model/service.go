@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -15,6 +16,10 @@ type Service struct {
 	Entrypoint     Cmd
 	DockerfileTag  string
 	Name           ServiceName
+}
+
+type ServiceCreator interface {
+	CreateServices(ctx context.Context, svcs []Service, watch bool) error
 }
 
 type Mount struct {
@@ -44,6 +49,14 @@ func (c Cmd) EntrypointStr() string {
 		quoted[i] = fmt.Sprintf("%q", arg)
 	}
 	return fmt.Sprintf("ENTRYPOINT [%s]", strings.Join(quoted, ", "))
+}
+
+func (c Cmd) RunStr() string {
+	quoted := make([]string, len(c.Argv))
+	for i, arg := range c.Argv {
+		quoted[i] = fmt.Sprintf("%q", arg)
+	}
+	return fmt.Sprintf("RUN [%s]", strings.Join(quoted, ", "))
 }
 
 func (c Cmd) Empty() bool {

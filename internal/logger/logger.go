@@ -8,13 +8,12 @@ import (
 
 type Logger interface {
 	// log information that we always want to show
-	Info(format string, a ...interface{})
+	Infof(format string, a ...interface{})
 	// log information that a tilt user might not want to see on every run, but that they might find
 	// useful when debugging their Tiltfile/docker/k8s configs
-	Verbose(format string, a ...interface{})
+	Verbosef(format string, a ...interface{})
 	// log information that is likely to only be of interest to tilt developers
-	Debug(format string, a ...interface{})
-
+	Debugf(format string, a ...interface{})
 	// gets an io.Writer that filters to the specified level for, e.g., passing to a subprocess
 	Writer(level Level) io.Writer
 }
@@ -56,15 +55,15 @@ type logger struct {
 	writer io.Writer
 }
 
-func (l logger) Info(format string, a ...interface{}) {
+func (l logger) Infof(format string, a ...interface{}) {
 	l.write(InfoLvl, format, a...)
 }
 
-func (l logger) Verbose(format string, a ...interface{}) {
+func (l logger) Verbosef(format string, a ...interface{}) {
 	l.write(VerboseLvl, format, a...)
 }
 
-func (l logger) Debug(format string, a ...interface{}) {
+func (l logger) Debugf(format string, a ...interface{}) {
 	l.write(DebugLvl, format, a...)
 }
 

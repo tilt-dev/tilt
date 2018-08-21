@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os/exec"
 	"strings"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
 )
@@ -30,6 +30,7 @@ import (
 const simpleDockerfile = Dockerfile("FROM alpine")
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
+	f := newDockerBuildFixture(t)
 	input := `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"\n"}
 	{"stream":" ---\u003e 11cd0b38bc3c\n"}
@@ -39,7 +40,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 `
 
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := getDigestFromBuildOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +50,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 }
 
 func TestDigestFromPushOutput(t *testing.T) {
+	f := newDockerBuildFixture(t)
 	input := `{"status":"The push refers to repository [localhost:5005/myimage]"}
 	{"status":"Preparing","progressDetail":{},"id":"2a88b569da78"}
 	{"status":"Preparing","progressDetail":{},"id":"73046094a9b8"}
@@ -64,7 +66,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 	{"progressDetail":{},"aux":{"Tag":"wm-tilt","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	actual, err := getDigestFromPushOutput(bytes.NewBuffer([]byte(input)))
+	actual, err := getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +190,7 @@ func TestPush(t *testing.T) {
 		expectedFile{path: "/src/sup", contents: "my name is dan"},
 	}
 
-	f.assertFilesInImage(fmt.Sprintf("%s:%s", name, pushTag), pcs)
+	f.assertFilesInImage(fmt.Sprintf("%s:%s", name, tiltTag), pcs)
 }
 
 func TestPushInvalid(t *testing.T) {
@@ -285,7 +287,7 @@ func TestBuildFailingStep(t *testing.T) {
 	_, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
-		assert.Contains(t, err.Error(), "exit code 1")
+		assert.Contains(t, err.Error(), "returned a non-zero code: 1")
 	}
 }
 
@@ -304,10 +306,7 @@ func TestEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID, err := f.b.startContainer(f.ctx, containerConfig(d))
-	if err != nil {
-		t.Fatal(err)
-	}
+	cID := f.startContainer(f.ctx, containerConfig(d))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -431,10 +430,44 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID, err := f.b.startContainer(f.ctx, containerConfig(digest))
+	cID := f.startContainer(f.ctx, containerConfig(digest))
+	f.assertFilesInContainer(f.ctx, cID, expected)
+}
+
+func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("foo", "hello world")
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+	step := model.ToShellCmd("echo -n hello >> /src/baz")
+	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+
+	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{step}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// change contents of `foo` so when entrypoint exec's the second time, it
+	// will change the contents of `bar`
+	f.WriteFile("foo", "a whole new world")
+
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{path: "/src/foo", contents: "a whole new world"},
+		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
+		expectedFile{path: "/src/baz", contents: "hellohello"},
+	}
+
+	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
+	cID := f.startContainer(f.ctx, containerConfig(digest))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -523,35 +556,8 @@ type expectedFile struct {
 	missing bool
 }
 
-func (f *dockerBuildFixture) startContainerWithOutput(ctx context.Context, ref string, cmd model.Cmd) string {
-	cId, err := f.b.startContainer(ctx, containerConfigRunCmd(digest.Digest(ref), cmd))
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	out, err := f.dcli.ContainerLogs(ctx, cId, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	defer func() {
-		err := out.Close()
-		if err != nil {
-			f.t.Fatal("closing container logs reader:", err)
-		}
-	}()
-
-	output, err := ioutil.ReadAll(out)
-	if err != nil {
-		f.t.Fatal("reading container logs:", err)
-	}
-	return string(output)
-}
-
 func (f *dockerBuildFixture) assertFilesInImage(ref string, expectedFiles []expectedFile) {
-	cID, err := f.b.startContainer(f.ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	cID := f.startContainer(f.ctx, containerConfigRunCmd(digest.Digest(ref), model.Cmd{}))
 	f.assertFilesInContainer(f.ctx, cID, expectedFiles)
 }
 
@@ -600,6 +606,22 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 			return // we found it!
 		}
 	}
+}
+
+// startContainer starts a container from the given config
+func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
+	resp, err := f.b.dcli.ContainerCreate(ctx, config, nil, nil, "")
+	if err != nil {
+		f.t.Fatalf("startContainer: %v", err)
+	}
+	containerID := resp.ID
+
+	err = f.b.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	if err != nil {
+		f.t.Fatalf("startContainer: %v", err)
+	}
+
+	return containerID
 }
 
 type threadSafeWriter struct {

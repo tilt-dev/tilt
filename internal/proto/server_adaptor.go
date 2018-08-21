@@ -1,19 +1,16 @@
 package proto
 
 import (
-	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/service"
 )
 
 type grpcServer struct {
-	sm service.Manager
+	delegate model.ServiceCreator
 }
 
-func NewGRPCServer() *grpcServer {
-	sm := service.NewMemoryManager()
-	return &grpcServer{sm: sm}
+func NewGRPCServer(delegate model.ServiceCreator) *grpcServer {
+	return &grpcServer{delegate: delegate}
 }
 
 var _ DaemonServer = &grpcServer{}
@@ -31,23 +28,8 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	for i := range req.Services {
 		svcArray = append(svcArray, serviceP2D(req.Services[i]))
 	}
-	upper, err := engine.NewUpper(s.sm)
-	if err != nil {
-		return err
-	}
 
-	err = upper.Up(ctx, svcArray, req.Watch)
-	if err != nil {
-		return err
-	}
-
-	for j := range req.Services {
-		err := s.sm.Add(svcArray[j])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.delegate.CreateServices(ctx, svcArray, req.Watch)
 }
 
 func mountsP2D(mounts []*Mount) []model.Mount {

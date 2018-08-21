@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -39,9 +42,10 @@ type localBuildAndDeployer struct {
 	b       build.Builder
 	history image.ImageHistory
 	sm      service.Manager
+	env     k8s.Env
 }
 
-func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -54,12 +58,13 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	b := build.NewLocalDockerBuilder(dcli)
 	dir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return nil, err
 	}
-	history, err := image.NewImageHistory(dir)
+	history, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +73,13 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 		b:       b,
 		history: history,
 		sm:      m,
+		env:     env,
 	}, nil
 }
 
 func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildAndDeploy")
+	defer span.Finish()
 	checkpoint := l.history.CheckpointNow()
 
 	var name reference.Named
@@ -97,17 +105,33 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		d = newDigest
 		name = token.n
 	}
-	logger.Get(ctx).Verbose("- (Adding checkpoint to history)")
-	err := l.history.Add(name, d, checkpoint)
-	if err != nil {
-		return nil, err
-	}
-	pushedRef, err := l.b.PushDocker(ctx, name, d)
+
+	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
+	err := l.history.AddAndPersist(ctx, name, d, checkpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Get(ctx).Verbose("- Parsing and templating YAML")
+	var refToInject reference.Named
+
+	// If we're using docker-for-desktop as our k8s backend,
+	// we don't need to push to the central registry.
+	// The k8s will use the image already available
+	// in the local docker daemon.
+	canSkipPush := l.env == k8s.EnvDockerDesktop
+	if canSkipPush {
+		refToInject, err = l.b.TagDocker(ctx, name, d)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		refToInject, err = l.b.PushDocker(ctx, name, d)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	logger.Get(ctx).Verbosef("- Parsing and templating YAML")
 	entities, err := k8s.ParseYAMLFromString(service.K8sYaml)
 	if err != nil {
 		return nil, err
@@ -116,14 +140,28 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigest(e, pushedRef)
+		// For development, image pull policy should never be set to "Always",
+		// even if it might make sense to use "Always" in prod. People who
+		// set "Always" for development are shooting their own feet.
+		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+		if err != nil {
+			return nil, err
+		}
+
+		// When working with a local k8s cluster, we set the pull policy to Never,
+		// to ensure that k8s fails hard if the image is missing from docker.
+		policy := v1.PullIfNotPresent
+		if canSkipPush {
+			policy = v1.PullNever
+		}
+		e, replaced, err := k8s.InjectImageDigest(e, refToInject, policy)
 		if err != nil {
 			return nil, err
 		}
 		if replaced {
 			didReplace = true
 		}
-		newK8sEntities = append(newK8sEntities, newK8s)
+		newK8sEntities = append(newK8sEntities, e)
 	}
 
 	if !didReplace {
