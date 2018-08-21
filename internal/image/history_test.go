@@ -1,6 +1,7 @@
 package image
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
@@ -31,7 +33,7 @@ func TestCheckpointOne(t *testing.T) {
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(n1, d1, c1)
+	err := history.Add(f.ctx, n1, d1, c1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +51,7 @@ func TestCheckpointAfter(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(n1, d1, c1)
+	err := history.Add(f.ctx, n1, d1, c1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +60,7 @@ func TestCheckpointAfter(t *testing.T) {
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	err = history.Add(n1, d2, c2)
+	err = history.Add(f.ctx, n1, d2, c2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,11 +82,11 @@ func TestCheckpointBefore(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(n1, d1, c1)
+	err := history.Add(f.ctx, n1, d1, c1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = history.Add(n1, d0, c0)
+	err = history.Add(f.ctx, n1, d0, c0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +105,7 @@ func TestPersistence(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	err := history.Add(n1, d1, c1)
+	err := history.Add(f.ctx, n1, d1, c1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,12 +114,12 @@ func TestPersistence(t *testing.T) {
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	err = history.Add(n1, d2, c2)
+	err = history.Add(f.ctx, n1, d2, c2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	history2, err := NewImageHistory(f.dir)
+	history2, err := NewImageHistory(f.ctx, f.dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +132,7 @@ func TestPersistence(t *testing.T) {
 
 type fixture struct {
 	t       *testing.T
+	ctx     context.Context
 	temp    *temp.TempDir
 	dir     *dirs.WindmillDir
 	history ImageHistory
@@ -141,14 +144,16 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 
+	ctx := testutils.CtxForTest()
 	dir := dirs.NewWindmillDirAt(temp.Path())
-	history, err := NewImageHistory(dir)
+	history, err := NewImageHistory(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &fixture{
 		t:       t,
+		ctx:     ctx,
 		temp:    temp,
 		dir:     dir,
 		history: history,

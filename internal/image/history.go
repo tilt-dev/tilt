@@ -1,12 +1,14 @@
 package image
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -41,13 +43,15 @@ type ImageHistory struct {
 	mu     *sync.Mutex
 }
 
-func NewImageHistory(dir *dirs.WindmillDir) (ImageHistory, error) {
+func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-NewImageHistory")
+	defer span.Finish()
 	history := ImageHistory{
 		dir:    dir,
 		byName: make(map[refKey]*NamedImageHistory, 0),
 		mu:     &sync.Mutex{},
 	}
-	entryMap, err := historyFromFS(dir)
+	entryMap, err := historyFromFS(ctx, dir)
 	if err != nil {
 		return ImageHistory{}, err
 	}
@@ -59,7 +63,7 @@ func NewImageHistory(dir *dirs.WindmillDir) (ImageHistory, error) {
 		}
 
 		for _, entry := range entries {
-			err = history.Add(name, entry.Digest, entry.CheckpointID)
+			err = history.Add(ctx, name, entry.Digest, entry.CheckpointID)
 			if err != nil {
 				return ImageHistory{}, err
 			}
@@ -77,7 +81,9 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
+func (h ImageHistory) Add(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-historyAdd")
+	defer span.Finish()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -96,7 +102,7 @@ func (h ImageHistory) Add(name reference.Named, digest digest.Digest, checkpoint
 	if entry.After(bucket.mostRecent.CheckpointID) {
 		bucket.mostRecent = entry
 	}
-	return addHistoryToFS(h.dir, key, entry)
+	return addHistoryToFS(ctx, h.dir, key, entry)
 }
 
 func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, CheckpointID, bool) {

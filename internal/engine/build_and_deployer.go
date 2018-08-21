@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -41,7 +42,7 @@ type localBuildAndDeployer struct {
 	sm      service.Manager
 }
 
-func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager) (BuildAndDeployer, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -59,7 +60,7 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	if err != nil {
 		return nil, err
 	}
-	history, err := image.NewImageHistory(dir)
+	history, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +73,8 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 }
 
 func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildAndDeploy")
+	defer span.Finish()
 	checkpoint := l.history.CheckpointNow()
 
 	var name reference.Named
@@ -98,7 +101,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		name = token.n
 	}
 	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
-	err := l.history.Add(name, d, checkpoint)
+	err := l.history.Add(ctx, name, d, checkpoint)
 	if err != nil {
 		return nil, err
 	}
