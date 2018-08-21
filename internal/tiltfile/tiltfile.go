@@ -45,8 +45,8 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var k8sServArray []k8sService
-	for i := range args {
-		k8sServ, ok := args[i].(k8sService)
+	for _, arg := range args {
+		k8sServ, ok := arg.(k8sService)
 		if !ok {
 			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
 		}
