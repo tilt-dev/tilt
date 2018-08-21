@@ -219,7 +219,7 @@ func TestBuildOneStep(t *testing.T) {
 	defer f.teardown()
 
 	steps := []model.Cmd{
-		model.ToShellCmd("echo -n hello >> hi"),
+		model.ToShellCmd("echo -n hello > hi"),
 	}
 
 	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
@@ -238,8 +238,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 	defer f.teardown()
 
 	steps := []model.Cmd{
-		model.ToShellCmd("echo -n hello >> hi"),
-		model.ToShellCmd("echo -n sup >> hi2"),
+		model.ToShellCmd("echo -n hello > hi"),
+		model.ToShellCmd("echo -n sup > hi2"),
 	}
 
 	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
@@ -259,8 +259,8 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 	defer f.teardown()
 
 	steps := []model.Cmd{
-		model.Cmd{Argv: []string{"sh", "-c", "echo -n hello >> hi"}},
-		model.Cmd{Argv: []string{"sh", "-c", "echo -n sup >> hi2"}},
+		model.Cmd{Argv: []string{"sh", "-c", "echo -n hello > hi"}},
+		model.Cmd{Argv: []string{"sh", "-c", "echo -n sup > hi2"}},
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
 	}
 
@@ -295,7 +295,7 @@ func TestEntrypoint(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	entrypoint := model.ToShellCmd("echo -n hello >> hi")
+	entrypoint := model.ToShellCmd("echo -n hello > hi")
 	d, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -385,7 +385,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) > /src/bar")
 
 	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
 	if err != nil {
@@ -408,7 +408,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
 		ContainerPath: "/src",
 	}
-	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) > /src/bar")
 
 	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, entrypoint)
 	if err != nil {
@@ -444,7 +444,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 		ContainerPath: "/src",
 	}
 	step := model.ToShellCmd("echo -n hello >> /src/baz")
-	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
+	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) > /src/bar")
 
 	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{step}, entrypoint)
 	if err != nil {
