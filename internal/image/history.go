@@ -63,7 +63,7 @@ func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, 
 		}
 
 		for _, entry := range entries {
-			history.Load(ctx, name, entry.Digest, entry.CheckpointID)
+			history.load(ctx, name, entry.Digest, entry.CheckpointID)
 		}
 	}
 
@@ -78,7 +78,7 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-func (h ImageHistory) Load(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) (refKey, historyEntry) {
+func (h ImageHistory) load(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) (refKey, historyEntry) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -102,7 +102,7 @@ func (h ImageHistory) Load(ctx context.Context, name reference.Named, digest dig
 }
 
 func (h ImageHistory) AddAndPersist(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
-	key, entry := h.Load(ctx, name, digest, checkpoint)
+	key, entry := h.load(ctx, name, digest, checkpoint)
 
 	return addHistoryToFS(ctx, h.dir, key, entry)
 }

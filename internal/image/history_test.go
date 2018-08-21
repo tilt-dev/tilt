@@ -37,7 +37,7 @@ func TestCheckpointOne(t *testing.T) {
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	history.Load(f.ctx, n1, d1, c1)
+	history.load(f.ctx, n1, d1, c1)
 
 	d, c, ok := history.MostRecent(n1)
 	if !ok || d != d1 || c != c1 {
@@ -53,13 +53,13 @@ func TestCheckpointAfter(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	history.Load(f.ctx, n1, d1, c1)
+	history.load(f.ctx, n1, d1, c1)
 
 	time.Sleep(time.Millisecond)
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	history.Load(f.ctx, n1, d2, c2)
+	history.load(f.ctx, n1, d2, c2)
 
 	d, c, ok := history.MostRecent(n1)
 	if !ok || d != d2 || c != c2 {
@@ -78,8 +78,8 @@ func TestCheckpointBefore(t *testing.T) {
 
 	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
-	history.Load(f.ctx, n1, d1, c1)
-	history.Load(f.ctx, n1, d0, c0)
+	history.load(f.ctx, n1, d1, c1)
+	history.load(f.ctx, n1, d0, c0)
 
 	d, c, ok := history.MostRecent(n1)
 	if !ok || d != d1 || c != c1 {
