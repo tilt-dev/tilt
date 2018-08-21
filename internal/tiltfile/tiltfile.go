@@ -43,6 +43,18 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 	return k8sService{yaml, *dockerImage}, nil
 }
 
+func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var k8sServArray []k8sService
+	for i := range args {
+		k8sServ, ok := args[i].(k8sService)
+		if !ok {
+			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
+		}
+		k8sServArray = append(k8sServArray, k8sServ)
+	}
+	return compService{k8sServArray}, nil
+}
+
 func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var path string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
@@ -82,6 +94,7 @@ func Load(filename string) (*Tiltfile, error) {
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
 		"git_repo":           skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
+		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeService),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
