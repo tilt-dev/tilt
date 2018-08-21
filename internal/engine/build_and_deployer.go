@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
@@ -119,14 +121,24 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigest(e, pushedRef)
+		// For development, image pull policy should never be set to "Always",
+		// even if it might make sense to use "Always" in prod. People who
+		// set "Always" for development are shooting their own feet.
+		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO(nick):When working with a local k8s cluster, we want to set this to Never,
+		// to ensure that k8s fails hard if the image is missing from docker.
+		e, replaced, err := k8s.InjectImageDigest(e, pushedRef, v1.PullIfNotPresent)
 		if err != nil {
 			return nil, err
 		}
 		if replaced {
 			didReplace = true
 		}
-		newK8sEntities = append(newK8sEntities, newK8s)
+		newK8sEntities = append(newK8sEntities, e)
 	}
 
 	if !didReplace {
