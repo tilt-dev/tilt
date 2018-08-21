@@ -39,11 +39,12 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 	if err != nil {
 		return nil, err
 	}
-	// todo... name
+	// Name will be initialized later
 	return k8sService{yaml, *dockerImage, ""}, nil
 }
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	// TODO - validate args / err handling / or change the format of the input
 	m := args[0].(*skylark.Dict)
 	var k8sServArray []k8sService
 
