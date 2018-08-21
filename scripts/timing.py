@@ -8,6 +8,7 @@ import random
 import string
 from subprocess import call
 
+
 RESULTS_BLOCKLTR = '''  ____                 _ _
  |  _ \ ___  ___ _   _| | |_ ___ _
  | |_) / _ \/ __| | | | | __/ __(_)
@@ -18,6 +19,7 @@ BLORGLY_BACKEND_DIR = os.path.join(os.environ['GOPATH'], 'src/github.com/windmil
 SERVICE_NAME = 'blorgly_backend_local'
 TOUCHED_FILES = []
 
+# TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
 Case = namedtuple('Case', ['name', 'setup', 'test'])
 Result = namedtuple('Result', ['name', 'time_seconds'])
 
@@ -26,9 +28,9 @@ tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d']
 
 
 def main():
-    print 'NOTE: this script doesn\'t install `tilt` for you, and relies on you having the ' \
-          'blorgly-backend project in your $GOPATH (`github.com/windmilleng/blorgly-backend`)'
-    print
+    print('NOTE: this script doesn\'t install `tilt` for you, and relies on you having the ' \
+          'blorgly-backend project in your $GOPATH (`github.com/windmilleng/blorgly-backend`)')
+    print()
 
     os.chdir(BLORGLY_BACKEND_DIR)
 
@@ -41,17 +43,17 @@ def main():
 
     try:
         for c in cases:
-            print '~~ RUNNING CASE: %s' % c.name
+            print('~~ RUNNING CASE: %s' % c.name)
             c.setup()
             timetake = c.test()
             results.append(Result(c.name, timetake))
 
-        print
-        print RESULTS_BLOCKLTR
-        print
+        print()
+        print(RESULTS_BLOCKLTR)
+        print()
 
         for res in results:
-            print '\t%s --> %f seconds' % (res.name, res.time_seconds)
+            print('\t%s --> %f seconds' % (res.name, res.time_seconds))
     finally:
         clean_up()
 
@@ -68,9 +70,11 @@ def make_case_tilt_up_once():
 def make_case_tilt_up_again_no_change():
     def tilt_up_if_not_called():
         global tilt_up_called
-        if not tilt_up_called:
-            print 'Initial call to `tilt up`'
-            call(tilt_up_cmd)
+        if tilt_up_called:
+            print('Initial `tilt up` already called, no setup required')
+            return
+        print('Initial call to `tilt up`')
+        call(tilt_up_cmd)
 
     return Case("tilt up again, no change", tilt_up_if_not_called,
                 functools.partial(time_call, tilt_up_cmd))
@@ -80,7 +84,7 @@ def make_case_tilt_up_again_new_file():
     def tilt_up_if_not_called():
         global tilt_up_called
         if not tilt_up_called:
-            print 'Initial call to `tilt up`'
+            print('Initial call to `tilt up`')
             call(tilt_up_cmd)
 
         # TODO: clean this file up
