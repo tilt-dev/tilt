@@ -55,7 +55,7 @@ func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Verbose("- Building Docker image from scratch")
+	logger.Get(ctx).Verbosef("- Building Docker image from scratch")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
@@ -65,7 +65,7 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Verbose("- Building Docker image from existing image: %s", existing.Encoded()[:10])
+	logger.Get(ctx).Verbosef("- Building Docker image from existing image: %s", existing.Encoded()[:10])
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
@@ -108,7 +108,7 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, df Dockerfile,
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
 func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
-	logger.Get(ctx).Verbose("- Pushing Docker image")
+	logger.Get(ctx).Verbosef("- Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
 	defer span.Finish()
@@ -118,9 +118,10 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
 	}
 
-	logger.Get(ctx).Verbose("-- connecting to repository")
+	logger.Get(ctx).Verbosef("-- connecting to repository")
 	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
 	cli := command.NewDockerCli(nil, writer, writer, true)
+
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#InitializeCLI: %s", err)
@@ -152,7 +153,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
-	logger.Get(ctx).Verbose("-- pushing the image")
+	logger.Get(ctx).Verbosef("-- pushing the image")
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
 		tag.String(),
@@ -164,7 +165,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	defer func() {
 		err := imagePushResponse.Close()
 		if err != nil {
-			logger.Get(ctx).Info("unable to close imagePushResponse: %s", err)
+			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
 	pushedDigest, err := getDigestFromPushOutput(ctx, imagePushResponse)
@@ -200,7 +201,7 @@ func (l *localDockerBuilder) buildWithDfOnly(ctx context.Context, df Dockerfile)
 	defer func() {
 		err := imageBuildResponse.Body.Close()
 		if err != nil {
-			logger.Get(ctx).Info("unable to close imageBuildResponse: %s", err)
+			logger.Get(ctx).Infof("unable to close imageBuildResponse: %s", err)
 		}
 	}()
 	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
@@ -219,14 +220,14 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 		return "", err
 	}
 
-	logger.Get(ctx).Verbose("-- tarring context")
+	logger.Get(ctx).Verbosef("-- tarring context")
 
 	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return "", err
 	}
 
-	logger.Get(ctx).Verbose("-- building image")
+	logger.Get(ctx).Verbosef("-- building image")
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		archive,
@@ -242,7 +243,7 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 	defer func() {
 		err := imageBuildResponse.Body.Close()
 		if err != nil {
-			logger.Get(ctx).Info("unable to close imageBuildResponse: %s", err)
+			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
 	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
@@ -395,7 +396,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 		}
 
 		// TODO(Han): make me smarter! 🤓
-		logger.Get(ctx).Info("%+v\n", message)
+		logger.Get(ctx).Infof("%+v\n", message)
 
 		if message.ErrorMessage != "" {
 			return nil, errors.New(message.ErrorMessage)
