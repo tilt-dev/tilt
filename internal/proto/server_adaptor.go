@@ -2,18 +2,20 @@ package proto
 
 import (
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
 )
 
 type grpcServer struct {
-	sm service.Manager
+	sm  service.Manager
+	env k8s.Env
 }
 
-func NewGRPCServer() *grpcServer {
+func NewGRPCServer(env k8s.Env) *grpcServer {
 	sm := service.NewMemoryManager()
-	return &grpcServer{sm: sm}
+	return &grpcServer{sm: sm, env: env}
 }
 
 var _ DaemonServer = &grpcServer{}
@@ -31,7 +33,8 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	for i := range req.Services {
 		svcArray = append(svcArray, serviceP2D(req.Services[i]))
 	}
-	upper, err := engine.NewUpper(ctx, s.sm)
+
+	upper, err := engine.NewUpper(ctx, s.sm, s.env)
 	if err != nil {
 		return err
 	}

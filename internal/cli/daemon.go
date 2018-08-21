@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltd"
 	"github.com/windmilleng/tilt/internal/tracer"
@@ -45,8 +46,12 @@ func (c *daemonCmd) run(args []string) error {
 		grpc.StreamInterceptor(
 			otgrpc.OpenTracingStreamServerInterceptor(opentracing.GlobalTracer())),
 	)
+	env, err := k8s.DetectEnv()
+	if err != nil {
+		log.Fatalf("failed to detect kubernetes: %v", err)
+	}
 
-	proto.RegisterDaemonServer(s, proto.NewGRPCServer())
+	proto.RegisterDaemonServer(s, proto.NewGRPCServer(env))
 
 	err = s.Serve(l)
 	if err != nil {
