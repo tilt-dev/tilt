@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -56,7 +57,7 @@ func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Verbosef("- Building Docker image from scratch")
+	logger.Get(ctx).Infof("Building Docker image from scratch")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
@@ -66,7 +67,7 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Verbosef("- Building Docker image from existing image: %s", existing.Encoded()[:10])
+	logger.Get(ctx).Infof("Building Docker image from existing image: %s", existing.Encoded()[:10])
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
@@ -124,7 +125,7 @@ func (l *localDockerBuilder) TagDocker(ctx context.Context, ref reference.Named,
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
 func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
-	logger.Get(ctx).Verbosef("- Pushing Docker image")
+	logger.Get(ctx).Infof("Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
 	defer span.Finish()
@@ -134,7 +135,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker#ParseRepositoryInfo: %s", err)
 	}
 
-	logger.Get(ctx).Verbosef("-- connecting to repository")
+	logger.Get(ctx).Infof("%sconnecting to repository", logger.Tab)
 	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
 	cli := command.NewDockerCli(nil, writer, writer, true)
 
@@ -169,7 +170,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
-	logger.Get(ctx).Verbosef("-- pushing the image")
+	logger.Get(ctx).Infof("%spushing the image", logger.Tab)
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
 		tag.String(),
@@ -238,14 +239,14 @@ func (l *localDockerBuilder) buildFromDfWithFiles(ctx context.Context, df Docker
 		return "", err
 	}
 
-	logger.Get(ctx).Verbosef("-- tarring context")
+	logger.Get(ctx).Infof("%starring context", logger.Tab)
 
 	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return "", err
 	}
 
-	logger.Get(ctx).Verbosef("-- building image")
+	logger.Get(ctx).Infof("%sbuilding image", logger.Tab)
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
@@ -421,8 +422,12 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			return nil, fmt.Errorf("decoding docker output: %v", err)
 		}
 
-		// TODO(Han): make me smarter! 🤓
-		logger.Get(ctx).Infof("%+v\n", message)
+		if len(message.Stream) > 0 && message.Stream != "\n" {
+			msg := strings.TrimSuffix(message.Stream, "\n")
+			indented := strings.(msg, "--->", "  →", -1)
+			logger.Get(ctx).Infof("%+v", msg)
+		}
+		// }
 
 		if message.ErrorMessage != "" {
 			return nil, errors.New(message.ErrorMessage)
