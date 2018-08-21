@@ -33,6 +33,11 @@ type Upper struct {
 	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
+type watchEvent struct {
+	svcName  string
+	fileName string
+}
+
 func NewUpper(manager service.Manager) (Upper, error) {
 	b, err := NewLocalBuildAndDeployer(manager)
 	if err != nil {
@@ -95,63 +100,114 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 }
 
 func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool) error {
-	var buildTokens []*buildToken
+
+	var watcher watch.Notify
+	buildTokens := make(map[string]*buildToken)
+	servicesByName := make(map[string]model.Service)
+	var watchEvents <-chan []watchEvent
+	var errs <-chan error
+
+	if watchMounts {
+		var err error
+		watchers := make(map[string]watch.Notify)
+		for _, service := range services {
+
+			watcher, err = u.watcherMaker()
+			if err != nil {
+				return err
+			}
+
+			if len(services[0].Mounts) == 0 {
+				return errors.New("service has 0 repos - nothing to watch")
+			}
+
+			for _, mount := range services[0].Mounts {
+				err = watcher.Add(mount.Repo.LocalPath)
+				if err != nil {
+					return err
+				}
+			}
+			watchers[string(service.Name)] = watcher
+		}
+		watchEvents, errs = u.combineWatchers(watchers)
+	}
+
 	for i := range services {
 		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
-		buildTokens = append(buildTokens, buildToken)
+		buildTokens[string(services[i].Name)] = buildToken
+		servicesByName[string(services[i].Name)] = services[i]
 		if err != nil {
 			return err
 		}
 	}
 
 	if watchMounts {
-		service := services[0]
-		if len(services) > 1 {
-			return errors.New("There is more than 1 service")
-		}
-		watcher, err := u.watcherMaker()
-		if err != nil {
-			return err
-		}
 
-		if len(service.Mounts) == 0 {
-			return errors.New("service has 0 repos - nothing to watch")
-		}
-
-		for _, mount := range service.Mounts {
-			err = watcher.Add(mount.Repo.LocalPath)
-			if err != nil {
-				return err
-			}
-		}
-
-		coalescedEvents := u.coalesceEvents(watcher.Events())
-
+		leftover := make(map[string][]string)
 		for {
-			select {
-			case err := <-watcher.Errors():
-				return err
-			case events, ok := <-coalescedEvents:
-				if !ok {
-					return nil
+			if len(leftover) == 0 {
+				events := <-watchEvents
+				for _, event := range events {
+					leftover[event.svcName] = append(leftover[event.svcName], event.fileName)
 				}
-				logger.Get(ctx).Info("files changed, rebuilding %v", service.Name)
-
-				var changedPaths []string
-				for _, e := range events {
-					path, err := filepath.Abs(e.Name)
-					if err != nil {
-						return err
+			} else {
+				select {
+				case events := <-watchEvents:
+					for _, event := range events {
+						leftover[event.svcName] = append(leftover[event.svcName], event.fileName)
 					}
-					changedPaths = append(changedPaths, path)
+				case err := <-errs:
+					return err
+				default:
 				}
-				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
-				if err != nil {
-					logger.Get(ctx).Info("build failed: %v", err.Error())
-				}
-
 			}
+			var serviceName string
+			for i := range leftover {
+				serviceName = i
+				break
+			}
+			var err error
+			logger.Get(ctx).Info("files changed, rebuilding %v", serviceName)
+			buildTokens[serviceName], err = u.b.BuildAndDeploy(ctx, servicesByName[serviceName], buildTokens[serviceName], leftover[serviceName])
+			if err != nil {
+				logger.Get(ctx).Info("build failed: %v", err.Error())
+			}
+			delete(leftover, serviceName)
 		}
 	}
 	return nil
+}
+
+func (u Upper) combineWatchers(watchers map[string]watch.Notify) (<-chan []watchEvent, <-chan error) {
+	events := make(chan []watchEvent)
+	errs := make(chan error)
+
+	for s, watcher := range watchers {
+		coalescedEvents := u.coalesceEvents(watcher.Events())
+		go func(s string, watcher watch.Notify) {
+			for {
+				select {
+				case err := <-watcher.Errors():
+					errs <- err
+				case fsEvents, ok := <-coalescedEvents:
+					if !ok {
+						close(events)
+						close(errs)
+						return
+					}
+					var watchEvents []watchEvent
+					for _, fe := range fsEvents {
+						path, err := filepath.Abs(fe.Name)
+						if err != nil {
+							errs <- err
+						}
+						watchEvents = append(watchEvents, watchEvent{s, path})
+					}
+					events <- watchEvents
+				}
+			}
+		}(s, watcher)
+	}
+
+	return events, errs
 }
