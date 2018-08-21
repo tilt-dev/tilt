@@ -1,7 +1,11 @@
 package image
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -104,15 +108,22 @@ func TestPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	oldLen := f.getLengthOfFile()
 
 	history2, err := NewImageHistory(f.ctx, f.dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	newLen := f.getLengthOfFile()
+
 	d, _, ok := history2.MostRecent(n1)
 	if !ok || d != d2 {
 		t.Errorf("Expected most recent image (%v). Actual: (%v)", d2, d)
+	}
+
+	if oldLen != newLen {
+		t.Errorf("Expected the length of the history file to not change when reloaded. Old length was %d, new length was %d", oldLen, newLen)
 	}
 }
 
@@ -150,5 +161,37 @@ func (f *fixture) tearDown() {
 	err := f.temp.TearDown()
 	if err != nil {
 		f.t.Fatal(err)
+	}
+}
+
+func (f *fixture) getLengthOfFile() int {
+	h, err := f.dir.OpenFile(filepath.Join("tilt", "images.json"), os.O_RDONLY, 0755)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	c, err := lineCounter(h)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	return c
+}
+
+func lineCounter(r io.Reader) (int, error) {
+	buf := make([]byte, 32*1024)
+	count := 0
+	lineSep := []byte{'\n'}
+
+	for {
+		c, err := r.Read(buf)
+		count += bytes.Count(buf[:c], lineSep)
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
 	}
 }
