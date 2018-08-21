@@ -188,6 +188,10 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 	return nil
 }
 
+func (u Upper) servicesToWatchers(services []model.Service) {
+
+}
+
 func (u Upper) combineWatchers(watchers map[string]watch.Notify) (<-chan []watchEvent, <-chan error) {
 	events := make(chan []watchEvent)
 	errs := make(chan error)
