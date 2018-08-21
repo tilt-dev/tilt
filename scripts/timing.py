@@ -76,7 +76,7 @@ def make_case_tilt_up_again_no_change():
             print('Initial `tilt up` already called, no setup required')
             return
         print('Initial call to `tilt up`')
-        call(tilt_up_cmd)
+        call_or_error(tilt_up_cmd)
 
     return Case("tilt up again, no change", tilt_up_if_not_called,
                 functools.partial(time_call, tilt_up_cmd))
@@ -87,7 +87,7 @@ def make_case_tilt_up_again_new_file():
         global tilt_up_called
         if not tilt_up_called:
             print('Initial call to `tilt up`')
-            call(tilt_up_cmd)
+            call_or_error(tilt_up_cmd)
 
         # TODO: clean this file up
         write_file(1000)  # 1KB
@@ -103,10 +103,19 @@ def time_call(cmd):
     """
 
     start = datetime.datetime.now()
-    call(cmd)
+    call_or_error(cmd)
     end = datetime.datetime.now()
 
     return (end - start).total_seconds()
+
+def call_or_error(cmd):
+    """
+        Call the given command (a list of strings representing command and args),
+        raising an error if it fails.
+    """
+    return_code = call(cmd)
+    if return_code != 0:
+        raise Exception('Command {} exited with exit code {}'.format(cmd, return_code))
 
 
 def write_file(n):
