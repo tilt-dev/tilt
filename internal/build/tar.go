@@ -31,30 +31,24 @@ func archiveDf(ctx context.Context, tw *tar.Writer, df Dockerfile) error {
 	return nil
 }
 
-// archiveIfExists creates a tar archive of all local files in `paths` _if they exist_,
-// and returns a list of all PathMappings that point to nonexistent LocalPaths (we'll
-// use that later to add RM statements).
+// archivePaths creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
 // NOTE: modifies tw in place.
-func archiveIfExists(ctx context.Context, tw *tar.Writer, paths []pathMapping) (dnePaths []pathMapping, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveIfExists")
+func archivePaths(ctx context.Context, tw *tar.Writer, paths []pathMapping) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archivePaths")
 	defer span.Finish()
 	for _, p := range paths {
-		dne, err := tarPath(ctx, tw, p.LocalPath, p.ContainerPath)
+		err := tarPath(ctx, tw, p.LocalPath, p.ContainerPath)
 		if err != nil {
-			return nil, fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
-		}
-		if dne {
-			// Tried to tar path but it didn't exist -- expected error, add it to list of nonexistent paths
-			dnePaths = append(dnePaths, p)
+			return fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
 		}
 	}
-	return dnePaths, nil
+	return nil
 }
 
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
-// If source path does not exist, returns `doesNotExist = true` and no err (DNE is an expected error)
-func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) (doesNotExist bool, err error) {
+// If source path does not exist, quietly skips it and returns no err
+func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, fmt.Sprintf("daemon-tarPath-%s", source))
 	span.SetTag("source", source)
 	span.SetTag("dest", dest)
@@ -62,9 +56,9 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) (d
 	sourceInfo, err := os.Stat(source)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return true, nil
+			return nil
 		}
-		return false, fmt.Errorf("%s: stat: %v", source, err)
+		return fmt.Errorf("%s: stat: %v", source, err)
 	}
 
 	sourceIsDir := sourceInfo.IsDir()
@@ -109,6 +103,10 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) (d
 		if header.Typeflag == tar.TypeReg {
 			file, err := os.Open(path)
 			if err != nil {
+				// In case the file has been deleted since we last looked at it.
+				if os.IsNotExist(err) {
+					return nil
+				}
 				return fmt.Errorf("%s: open: %v", path, err)
 			}
 			defer func() {
@@ -122,5 +120,5 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) (d
 		}
 		return nil
 	})
-	return false, err
+	return err
 }
