@@ -31,6 +31,7 @@ func (compService) Hash() (uint32, error) {
 type k8sService struct {
 	k8sYaml     skylark.String
 	dockerImage dockerImage
+	name        string
 }
 
 var _ skylark.Value = k8sService{}
