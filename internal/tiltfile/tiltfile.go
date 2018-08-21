@@ -39,16 +39,26 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 	if err != nil {
 		return nil, err
 	}
-
-	return k8sService{yaml, *dockerImage}, nil
+	// todo... name
+	return k8sService{yaml, *dockerImage, ""}, nil
 }
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	m := args[0].(*skylark.Dict)
 	var k8sServArray []k8sService
-	for _, arg := range args {
-		k8sServ, ok := arg.(k8sService)
+
+	for _, name := range m.Keys() {
+		service, _, err := m.Get(name)
+		if err != nil {
+			return nil, err
+		}
+		k8sServ, ok := service.(k8sService)
 		if !ok {
 			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
+		}
+		k8sServ.name, ok = skylark.AsString(name)
+		if !ok {
+			return nil, fmt.Errorf("'%v' is a '%v', not a string. service definitions must be strings", name, name.Type())
 		}
 		k8sServArray = append(k8sServArray, k8sServ)
 	}
@@ -145,6 +155,7 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 		if err != nil {
 			return nil, err
 		}
+		s.Name = serviceName
 		return []*proto.Service{s}, nil
 
 	default:
@@ -181,6 +192,7 @@ func skylarkServiceToProto(service k8sService) (*proto.Service, error) {
 		Steps:          dockerCmds,
 		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
+		Name:           service.name,
 	}, nil
 
 }
