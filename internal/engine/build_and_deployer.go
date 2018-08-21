@@ -45,25 +45,8 @@ type localBuildAndDeployer struct {
 	env     k8s.Env
 }
 
-func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
-	opts := make([]func(*client.Client) error, 0)
-	opts = append(opts, client.FromEnv)
-
-	// Use client for docker 17
-	// https://docs.docker.com/develop/sdk/#api-version-matrix
-	// API version 1.30 is the first version where the full digest
-	// shows up in the API output of BuildImage
-	opts = append(opts, client.WithVersion("1.30"))
-	dcli, err := client.NewClientWithOpts(opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	b := build.NewLocalDockerBuilder(dcli)
-	dir, err := dirs.UseWindmillDir()
-	if err != nil {
-		return nil, err
-	}
+func NewLocalBuildAndDeployer(ctx context.Context, docker *client.Client, dir *dirs.WindmillDir, m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
+	b := build.NewLocalDockerBuilder(docker)
 	history, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err
