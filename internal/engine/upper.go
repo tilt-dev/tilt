@@ -29,6 +29,8 @@ const watchBufferMaxTimeInMs = 10000
 var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
 var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
+// TODO(nick): maybe this should be called 'BuildEngine' or something?
+// Upper seems like a poor and undescriptive name.
 type Upper struct {
 	b            BuildAndDeployer
 	watcherMaker func() (watch.Notify, error)

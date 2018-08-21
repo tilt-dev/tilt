@@ -10,8 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
+	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/proto"
+	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/tiltd"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
@@ -51,7 +53,11 @@ func (c *daemonCmd) run(args []string) error {
 		log.Fatalf("failed to detect kubernetes: %v", err)
 	}
 
-	proto.RegisterDaemonServer(s, proto.NewGRPCServer(env))
+	serviceManager := service.NewMemoryManager()
+	upperCreator := engine.NewUpperServiceCreator(serviceManager, env)
+	creator := service.TrackServices(upperCreator, serviceManager)
+
+	proto.RegisterDaemonServer(s, proto.NewGRPCServer(creator))
 
 	err = s.Serve(l)
 	if err != nil {
