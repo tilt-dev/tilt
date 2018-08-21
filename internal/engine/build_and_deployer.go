@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -41,7 +44,7 @@ type localBuildAndDeployer struct {
 	sm      service.Manager
 }
 
-func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(ctx context.Context, m service.Manager) (BuildAndDeployer, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 
@@ -59,7 +62,7 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 	if err != nil {
 		return nil, err
 	}
-	history, err := image.NewImageHistory(dir)
+	history, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +75,8 @@ func NewLocalBuildAndDeployer(m service.Manager) (BuildAndDeployer, error) {
 }
 
 func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildAndDeploy")
+	defer span.Finish()
 	checkpoint := l.history.CheckpointNow()
 
 	var name reference.Named
@@ -97,8 +102,8 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		d = newDigest
 		name = token.n
 	}
-	logger.Get(ctx).Verbose("- (Adding checkpoint to history)")
-	err := l.history.Add(name, d, checkpoint)
+	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
+	err := l.history.Add(ctx, name, d, checkpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +112,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	logger.Get(ctx).Verbose("- Parsing and templating YAML")
+	logger.Get(ctx).Verbosef("- Parsing and templating YAML")
 	entities, err := k8s.ParseYAMLFromString(service.K8sYaml)
 	if err != nil {
 		return nil, err
@@ -116,14 +121,24 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
-		newK8s, replaced, err := k8s.InjectImageDigest(e, pushedRef)
+		// For development, image pull policy should never be set to "Always",
+		// even if it might make sense to use "Always" in prod. People who
+		// set "Always" for development are shooting their own feet.
+		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO(nick):When working with a local k8s cluster, we want to set this to Never,
+		// to ensure that k8s fails hard if the image is missing from docker.
+		e, replaced, err := k8s.InjectImageDigest(e, pushedRef, v1.PullIfNotPresent)
 		if err != nil {
 			return nil, err
 		}
 		if replaced {
 			didReplace = true
 		}
-		newK8sEntities = append(newK8sEntities, newK8s)
+		newK8sEntities = append(newK8sEntities, e)
 	}
 
 	if !didReplace {

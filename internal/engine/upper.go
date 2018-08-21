@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -33,8 +34,8 @@ type Upper struct {
 	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
-func NewUpper(manager service.Manager) (Upper, error) {
-	b, err := NewLocalBuildAndDeployer(manager)
+func NewUpper(ctx context.Context, manager service.Manager) (Upper, error) {
+	b, err := NewLocalBuildAndDeployer(ctx, manager)
 	if err != nil {
 		return Upper{}, err
 	}
@@ -95,6 +96,8 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 }
 
 func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
+	defer span.Finish()
 	var buildTokens []*buildToken
 	for i := range services {
 		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
@@ -135,7 +138,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				if !ok {
 					return nil
 				}
-				logger.Get(ctx).Info("files changed, rebuilding %v", service.Name)
+				logger.Get(ctx).Infof("files changed, rebuilding %v", service.Name)
 
 				var changedPaths []string
 				for _, e := range events {
@@ -147,7 +150,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				}
 				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
 				if err != nil {
-					logger.Get(ctx).Info("build failed: %v", err.Error())
+					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				}
 
 			}

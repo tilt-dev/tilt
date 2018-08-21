@@ -7,6 +7,11 @@
 - `make`
 - **[go 1.10](https://golang.org/dl/)**
 - **protobuf 3.2**: `brew install protobuf` or install `protoc-3.2.0-[your_OS]` [from Github](https://github.com/google/protobuf/releases?after=v3.2.1)
+- Our Python scripts are in Python 3.6.0. To run them:
+  - **[pyenv](https://github.com/pyenv/pyenv#installation)**
+  - **python**: `pyenv install`
+  - if you're using GKE and get the error: "pyenv: python2: command not found", run:
+    - `export CLOUDSDK_PYTHON="$HOME/.pyenv/versions/2.7/bin/python"` (or whatever the path to a Python2 executable is) 
 
 ## Developing
 Run `make` from the root of the repo to generate all protobuf files.

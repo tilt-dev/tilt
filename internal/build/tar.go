@@ -2,14 +2,19 @@ package build
 
 import (
 	"archive/tar"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func archiveDf(tw *tar.Writer, df Dockerfile) error {
+func archiveDf(ctx context.Context, tw *tar.Writer, df Dockerfile) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
+	defer span.Finish()
 	tarHeader := &tar.Header{
 		Name: "Dockerfile",
 		Size: int64(len(df)),
@@ -30,9 +35,11 @@ func archiveDf(tw *tar.Writer, df Dockerfile) error {
 // and returns a list of all PathMappings that point to nonexistent LocalPaths (we'll
 // use that later to add RM statements).
 // NOTE: modifies tw in place.
-func archiveIfExists(tw *tar.Writer, paths []pathMapping) (dnePaths []pathMapping, err error) {
+func archiveIfExists(ctx context.Context, tw *tar.Writer, paths []pathMapping) (dnePaths []pathMapping, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveIfExists")
+	defer span.Finish()
 	for _, p := range paths {
-		dne, err := tarPath(tw, p.LocalPath, p.ContainerPath)
+		dne, err := tarPath(ctx, tw, p.LocalPath, p.ContainerPath)
 		if err != nil {
 			return nil, fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
 		}
@@ -47,7 +54,11 @@ func archiveIfExists(tw *tar.Writer, paths []pathMapping) (dnePaths []pathMappin
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 // If source path does not exist, returns `doesNotExist = true` and no err (DNE is an expected error)
-func tarPath(tarWriter *tar.Writer, source, dest string) (doesNotExist bool, err error) {
+func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) (doesNotExist bool, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, fmt.Sprintf("daemon-tarPath-%s", source))
+	span.SetTag("source", source)
+	span.SetTag("dest", dest)
+	defer span.Finish()
 	sourceInfo, err := os.Stat(source)
 	if err != nil {
 		if os.IsNotExist(err) {
