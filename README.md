@@ -11,7 +11,7 @@
   - **[pyenv](https://github.com/pyenv/pyenv#installation)**
   - **python**: `pyenv install`
   - if you're using GKE and get the error: "pyenv: python2: command not found", run:
-    - `export CLOUDSDK_PYTHON="$HOME/.pyenv/versions/2.7/bin/python"` (or whatever the path to a Python2 executable is) 
+    - `git clone git://github.com/concordusapps/pyenv-implict.git ~/.pyenv/plugins/pyenv-implict`
 
 ## Developing
 Run `make` from the root of the repo to generate all protobuf files.
