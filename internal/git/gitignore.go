@@ -13,6 +13,12 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
+// Known feature differences from git:
+// 1. does not use git config core.excludesfile
+// 2. only looks for .gitignore in repo root, instead of all directories between dirname(file) and repo root
+// 3. does not use .git/info/exclude
+// 4. does not take index into account
+
 type IgnoreTester interface {
 	IsIgnored(f string, isDir bool) (bool, error)
 }
@@ -26,6 +32,7 @@ func (falseIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 
 var _ IgnoreTester = falseIgnoreTester{}
 
+// ignores files specified in .gitignore
 type gitIgnoreTester struct {
 	repoRoot      string
 	ignoreMatcher gitignore.IgnoreMatcher
@@ -64,6 +71,7 @@ func NewGitIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, err
 	return &gitIgnoreTester{absRoot, i}, nil
 }
 
+// ignores files specified in .gitignore plus any files in $ROOT/.git/
 type repoIgnoreTester struct {
 	repoRoot        string
 	gitIgnoreTester IgnoreTester
