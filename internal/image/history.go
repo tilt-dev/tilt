@@ -82,8 +82,6 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 }
 
 func (h ImageHistory) Add(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-historyAdd")
-	defer span.Finish()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

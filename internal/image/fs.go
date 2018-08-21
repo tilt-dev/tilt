@@ -49,8 +49,6 @@ func historyFromFS(ctx context.Context, dir *dirs.WindmillDir) (map[refKey][]his
 }
 
 func addHistoryToFS(ctx context.Context, dir *dirs.WindmillDir, ref refKey, entry historyEntry) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-addHistoryToFS")
-	defer span.Finish()
 	file, err := dir.OpenFile(imagesPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, os.FileMode(0644))
 	if err != nil {
 		return fmt.Errorf("addHistoryToFS: %v", err)
