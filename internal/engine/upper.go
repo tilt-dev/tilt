@@ -7,12 +7,9 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/git"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -41,11 +38,7 @@ type Upper struct {
 	makeTimer    func(d time.Duration) <-chan time.Time
 }
 
-func NewUpper(ctx context.Context, manager service.Manager, env k8s.Env) (Upper, error) {
-	b, err := NewLocalBuildAndDeployer(ctx, manager, env)
-	if err != nil {
-		return Upper{}, err
-	}
+func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -54,8 +47,8 @@ func NewUpper(ctx context.Context, manager service.Manager, env k8s.Env) (Upper,
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
 //from the user's perspective are grouped together.
-func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
-	ret := make(chan []fsnotify.Event)
+func (u Upper) coalesceEvents(eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
+	ret := make(chan []watch.FileEvent)
 	go func() {
 		defer close(ret)
 		for {
@@ -63,7 +56,7 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 			if !ok {
 				return
 			}
-			events := []fsnotify.Event{event}
+			events := []watch.FileEvent{event}
 
 			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
 			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
@@ -102,7 +95,7 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 	return ret
 }
 
-func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool) error {
+func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 	var buildTokens []*buildToken
@@ -157,7 +150,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				logger.Get(ctx).Infof("files changed, rebuilding %v", service.Name)
 				var changedPaths []string
 				for _, e := range events {
-					path, err := filepath.Abs(e.Name)
+					path, err := filepath.Abs(e.Path)
 					if err != nil {
 						return err
 					}
@@ -190,3 +183,5 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 	}
 	return nil
 }
+
+var _ model.ServiceCreator = Upper{}

@@ -3,18 +3,15 @@ package cli
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/proto"
-	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -62,23 +59,17 @@ func (c *upCmd) run(args []string) error {
 		services[i] = proto.ServiceP2D(s)
 	}
 
-	env, err := k8s.DetectEnv()
-	if err != nil {
-		return fmt.Errorf("failed to detect kubernetes: %v", err)
-	}
-
-	serviceManager := service.NewMemoryManager()
-	upperCreator := engine.NewUpperServiceCreator(serviceManager, env)
-	creator := service.TrackServices(upperCreator, serviceManager)
-
+	serviceCreator, err := wireServiceCreator(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = creator.CreateServices(ctx, services, c.watch)
+	err = serviceCreator.CreateServices(ctx, services, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
+	} else if err != nil {
+		return err
 	}
 
 	logOutput("Services created")
@@ -91,4 +82,21 @@ func logOutput(s string) {
 	cReset := "\u001b[0m"
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	log.Printf("%s%s%s", cGreen, s, cReset)
+}
+
+type atomicEvent struct {
+	finished bool
+	mu       sync.Mutex
+}
+
+func (e *atomicEvent) fire() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.finished = true
+}
+
+func (e *atomicEvent) hasFired() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.finished
 }

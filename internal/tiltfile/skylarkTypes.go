@@ -77,7 +77,7 @@ type dockerImage struct {
 
 var _ skylark.Value = &dockerImage{}
 
-func addDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var skylarkCmd skylark.String
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &skylarkCmd)
 	if err != nil {
@@ -99,6 +99,9 @@ func addDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var mountPoint string
 	var gitRepo gitRepo
+	if len(fn.Receiver().(*dockerImage).cmds) > 0 {
+		return nil, errors.New("add mount before run command")
+	}
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "mount_point", &mountPoint, "git_repo", &gitRepo)
 	if err != nil {
 		return nil, err
@@ -139,9 +142,9 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 		return skylark.String(d.fileName), nil
 	case "file_tag":
 		return skylark.String(d.fileTag), nil
-	case "add_cmd":
-		return skylark.NewBuiltin(name, addDockerImageCmd).BindReceiver(d), nil
-	case "add_mount":
+	case "run":
+		return skylark.NewBuiltin(name, runDockerImageCmd).BindReceiver(d), nil
+	case "add":
 		return skylark.NewBuiltin(name, addMount).BindReceiver(d), nil
 	default:
 		return nil, nil
@@ -149,7 +152,7 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 }
 
 func (*dockerImage) AttrNames() []string {
-	return []string{"file_name", "file_tag", "add_cmd"}
+	return []string{"file_name", "file_tag", "run"}
 }
 
 type gitRepo struct {
