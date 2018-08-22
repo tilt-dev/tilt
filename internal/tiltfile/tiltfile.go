@@ -3,9 +3,8 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
-	"os/exec"
-
 	"io/ioutil"
+	"os/exec"
 
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/model"
@@ -44,26 +43,37 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 }
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	// TODO - validate args / err handling / or change the format of the input
-	m := args[0].(*skylark.Dict)
-	var k8sServArray []k8sService
 
-	for _, name := range m.Keys() {
-		service, _, err := m.Get(name)
-		if err != nil {
-			return nil, err
-		}
-		k8sServ, ok := service.(k8sService)
-		if !ok {
-			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
-		}
-		k8sServ.name, ok = skylark.AsString(name)
-		if !ok {
-			return nil, fmt.Errorf("'%v' is a '%v', not a string. service definitions must be strings", name, name.Type())
-		}
-		k8sServArray = append(k8sServArray, k8sServ)
+	var serviceFuncs skylark.Iterable
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+		"services", &serviceFuncs)
+	if err != nil {
+		return nil, err
 	}
-	return compService{k8sServArray}, nil
+
+	var services []k8sService
+
+	var v skylark.Value
+	i := serviceFuncs.Iterate()
+	defer i.Done()
+	for i.Next(&v) {
+		switch v := v.(type) {
+		case *skylark.Function:
+			r, err := v.Call(thread, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			s, ok := r.(k8sService)
+			if !ok {
+				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
+			}
+			s.name = v.Name()
+			services = append(services, s)
+		default:
+			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
+		}
+	}
+	return compService{services}, nil
 }
 
 func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
