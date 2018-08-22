@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"time"
 )
@@ -12,10 +13,15 @@ func main() {
 	println(100, "Building [my-app-frontend]")
 	println(500, "Build complete in 3.3423s")
 
-	awaitInput('\n')
+	awaitInput()
 
 	println(100, "Building [my-app-backend]")
 	println(500, "Build complete in 0.1232s")
+
+	awaitInput()
+
+	println(100, "Building [my-app-backend2]")
+	println(500, "Build complete in 1.3532s")
 }
 
 func println(ms int, msg string) {
@@ -23,15 +29,10 @@ func println(ms int, msg string) {
 	fmt.Println(msg)
 }
 
-func awaitInput(input byte) {
+func awaitInput() {
 	reader := bufio.NewReader(os.Stdin)
-	c, err := reader.ReadByte()
+	_, err := reader.ReadByte()
 	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if c == input {
-		return
+		log.Fatal(err)
 	}
 }
