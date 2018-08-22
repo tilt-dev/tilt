@@ -38,11 +38,12 @@ func makeServiceWatcher(
 	go func() {
 		// a map of service names to a list of any unprocessed changes
 		leftover := make(map[string]*serviceFilesChangedEvent)
+		var leftoverServiceOrder []string
 		for {
 			if len(leftover) == 0 {
 				select {
 				case events := <-watchEventsStream.events:
-					addEventsToLeftover(leftover, events)
+					addEventsToLeftover(leftover, &leftoverServiceOrder, events)
 				case err := <-watchEventsStream.errs:
 					errs <- err
 					close(serviceChan)
@@ -52,7 +53,7 @@ func makeServiceWatcher(
 			} else {
 				select {
 				case events := <-watchEventsStream.events:
-					addEventsToLeftover(leftover, events)
+					addEventsToLeftover(leftover, &leftoverServiceOrder, events)
 				case err := <-watchEventsStream.errs:
 					errs <- err
 					close(serviceChan)
@@ -61,12 +62,9 @@ func makeServiceWatcher(
 				default:
 				}
 			}
-			var serviceName string
-			for i := range leftover {
-				serviceName = i
-				break
-			}
+			serviceName := leftoverServiceOrder[0]
 			serviceChan <- *leftover[serviceName]
+			leftoverServiceOrder = leftoverServiceOrder[1:]
 			delete(leftover, serviceName)
 		}
 	}()
@@ -163,10 +161,12 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan fsnotify.Event) <-ch
 	return ret
 }
 
-func addEventsToLeftover(leftover map[string]*serviceFilesChangedEvent, events []serviceSingleFileChangeEvent) {
+func addEventsToLeftover(leftover map[string]*serviceFilesChangedEvent, leftoverServiceOrder *[]string, events []serviceSingleFileChangeEvent) {
 	for _, event := range events {
 		if _, exists := leftover[string(event.service.Name)]; !exists {
 			leftover[string(event.service.Name)] = &serviceFilesChangedEvent{event.service, []string{event.fileName}}
+			// if we weren't already tracking this service name, stick it at the end of the order
+			*leftoverServiceOrder = append(*leftoverServiceOrder, string(event.service.Name))
 		} else {
 			leftover[string(event.service.Name)].files = append(leftover[string(event.service.Name)].files, event.fileName)
 		}

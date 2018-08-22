@@ -124,7 +124,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
-		f.maxTimerLock.Lock()
+		f.timerMaker.maxTimerLock.Lock()
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
@@ -153,17 +153,17 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
-		f.maxTimerLock.Lock()
+		f.timerMaker.maxTimerLock.Lock()
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
 
-		f.restTimerLock.Lock()
+		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
 			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
 		}
-		f.restTimerLock.Unlock()
+		f.timerMaker.restTimerLock.Unlock()
 
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
@@ -196,13 +196,13 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
 
-		f.maxTimerLock.Lock()
-		f.restTimerLock.Lock()
+		f.timerMaker.maxTimerLock.Lock()
+		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
 			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
 		}
-		f.maxTimerLock.Unlock()
+		f.timerMaker.maxTimerLock.Unlock()
 
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
@@ -226,22 +226,25 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	}
 }
 
-func makeFakeTimerMaker(t *testing.T) (timerMaker timerMaker, restTimerLock *sync.Mutex, maxTimerLock *sync.Mutex) {
-	restTimerLock = new(sync.Mutex)
-	maxTimerLock = new(sync.Mutex)
+type fakeTimerMaker struct {
+	restTimerLock *sync.Mutex
+	maxTimerLock  *sync.Mutex
+	t             *testing.T
+}
 
-	timerMaker = func(d time.Duration) <-chan time.Time {
+func (f fakeTimerMaker) maker() timerMaker {
+	return func(d time.Duration) <-chan time.Time {
 		var lock *sync.Mutex
 		// we have separate locks for the separate uses of timer so that tests can control the timers independently
 		switch d {
 		case watchBufferMinRestDuration:
-			lock = restTimerLock
+			lock = f.restTimerLock
 		case watchBufferMaxDuration:
-			lock = maxTimerLock
+			lock = f.maxTimerLock
 		default:
 			// if you hit this, someone (you!?) might have added a new timer with a new duration, and you probably
 			// want to add a case above
-			t.Error("makeTimer called on unsupported duration")
+			f.t.Error("makeTimer called on unsupported duration")
 		}
 		ret := make(chan time.Time, 1)
 		go func() {
@@ -252,30 +255,38 @@ func makeFakeTimerMaker(t *testing.T) (timerMaker timerMaker, restTimerLock *syn
 		}()
 		return ret
 	}
+}
 
-	return
+func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
+	restTimerLock := new(sync.Mutex)
+	maxTimerLock := new(sync.Mutex)
+
+	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
+}
+
+func makeFakeWatcherMaker(fn *fakeNotify) watcherMaker {
+	return func() (watch.Notify, error) {
+		return fn, nil
+	}
 }
 
 type testFixture struct {
-	t             *testing.T
-	upper         Upper
-	b             *fakeBuildAndDeployer
-	watcher       *fakeNotify
-	context       context.Context
-	restTimerLock *sync.Mutex
-	maxTimerLock  *sync.Mutex
+	t          *testing.T
+	upper      Upper
+	b          *fakeBuildAndDeployer
+	watcher    *fakeNotify
+	context    context.Context
+	timerMaker *fakeTimerMaker
 }
 
 func newTestFixture(t *testing.T) *testFixture {
 	watcher := newFakeNotify()
-	watcherMaker := func() (watch.Notify, error) {
-		return watcher, nil
-	}
+	watcherMaker := makeFakeWatcherMaker(watcher)
 	b := newFakeBuildAndDeployer(t)
 
-	makeTimer, restTimerLock, maxTimerLock := makeFakeTimerMaker(t)
+	timerMaker := makeFakeTimerMaker(t)
 
-	upper := Upper{b, watcherMaker, makeTimer}
+	upper := Upper{b, watcherMaker, timerMaker.maker()}
 	ctx := testutils.CtxForTest()
-	return &testFixture{t, upper, b, watcher, ctx, restTimerLock, maxTimerLock}
+	return &testFixture{t, upper, b, watcher, ctx, &timerMaker}
 }
