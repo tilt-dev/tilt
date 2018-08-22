@@ -170,8 +170,9 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 		}
 
 		go func(service model.Service, watcher watch.Notify) {
-			defer close(events)
-			defer close(errs)
+			// TODO(matt) this will panic if we actually close channels. look at "merge" in https://blog.golang.org/pipelines
+			//defer close(events)
+			//defer close(errs)
 
 			for {
 				select {

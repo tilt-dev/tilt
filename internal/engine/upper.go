@@ -68,10 +68,10 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 
 	for _, service := range services {
 		buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
-		buildTokens[service.Name] = buildToken
 		if err != nil {
 			return err
 		}
+		buildTokens[service.Name] = buildToken
 	}
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
@@ -89,13 +89,15 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", event.service.Name, changedPathsToPrint)
 
 				var err error
-				buildTokens[event.service.Name], err = u.b.BuildAndDeploy(
+				token, err := u.b.BuildAndDeploy(
 					ctx,
 					event.service,
 					buildTokens[event.service.Name],
 					event.files)
 				if err != nil {
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
+				} else {
+					buildTokens[event.service.Name] = token
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 

@@ -48,18 +48,6 @@ func TestServiceWatcherTwoServicesErr(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// creates a new file with random name, notifies `watcher`, and returns the file's name
-func writeEvent(t *testing.T, name string, watcher watch.Notify, td *testutils.TempDirFixture) string {
-	f, err := td.NewFile(name + "_")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	watcher.Events() <- fsnotify.Event{Name: f.Name()}
-
-	return f.Name()
-}
-
 type serviceWatcherTestFixture struct {
 	sw              *serviceWatcher
 	watcherMaker    watcherMaker
@@ -130,7 +118,7 @@ type testServiceFilesChangedEvent struct {
 	files         []string
 }
 
-func (s *serviceWatcherTestFixture) ReadEvents(numExpectedEvents int) []testServiceFilesChangedEvent {
+func (s *serviceWatcherTestFixture) readEvents(numExpectedEvents int) []testServiceFilesChangedEvent {
 	var ret []testServiceFilesChangedEvent
 	for i := 0; i < numExpectedEvents; i++ {
 		e := <-s.sw.events
@@ -159,7 +147,7 @@ func (s *serviceWatcherTestFixture) AssertNextEvent(serviceNumber int, files []s
 }
 
 func (s *serviceWatcherTestFixture) AssertNextEvents(expectedEvents []testServiceFilesChangedEvent) bool {
-	actualEvents := s.ReadEvents(len(expectedEvents))
+	actualEvents := s.readEvents(len(expectedEvents))
 	return assert.ElementsMatch(s.t, expectedEvents, actualEvents)
 }
 
