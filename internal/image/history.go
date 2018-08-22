@@ -6,6 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mitchellh/hashstructure"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -63,7 +67,7 @@ func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, 
 		}
 
 		for _, entry := range entries {
-			history.load(ctx, name, entry.Digest, entry.CheckpointID)
+			history.loadFromEntry(ctx, name, entry)
 		}
 	}
 
@@ -78,7 +82,7 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-func (h ImageHistory) load(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) (refKey, historyEntry) {
+func (h ImageHistory) loadFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -89,25 +93,100 @@ func (h ImageHistory) load(ctx context.Context, name reference.Named, digest dig
 		h.byName[key] = bucket
 	}
 
+	bucket.entries = append(bucket.entries, entry)
+	if entry.After(bucket.mostRecent.CheckpointID) {
+		bucket.mostRecent = entry
+	}
+}
+
+func (h ImageHistory) load(
+	ctx context.Context,
+	name reference.Named,
+	digest digest.Digest,
+	checkpoint CheckpointID,
+	baseDockerfile build.Dockerfile,
+	mounts []model.Mount,
+	steps []model.Cmd,
+	entrypoint model.Cmd,
+) (refKey, historyEntry, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	key := makeRefKey(name)
+	bucket, ok := h.byName[key]
+	if !ok {
+		bucket = &NamedImageHistory{name: name}
+		h.byName[key] = bucket
+	}
+
+	hi, err := hashInputs(baseDockerfile, mounts, steps, entrypoint)
+	if err != nil {
+		return "", historyEntry{}, err
+	}
+
 	entry := historyEntry{
 		Digest:       digest,
 		CheckpointID: checkpoint,
+		HashedInputs: hi,
 	}
 	bucket.entries = append(bucket.entries, entry)
 	if entry.After(bucket.mostRecent.CheckpointID) {
 		bucket.mostRecent = entry
 	}
 
-	return key, entry
+	return key, entry, nil
 }
 
-func (h ImageHistory) AddAndPersist(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
-	key, entry := h.load(ctx, name, digest, checkpoint)
+type hash struct {
+	BaseDockerfile build.Dockerfile
+	Mounts         []model.Mount
+	Steps          []model.Cmd
+	Entrypoint     model.Cmd
+}
+
+type HashedInputs = uint64
+
+func hashInputs(baseDockerfile build.Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (HashedInputs, error) {
+	hi := hash{
+		BaseDockerfile: baseDockerfile,
+		Mounts:         mounts,
+		Steps:          steps,
+		Entrypoint:     entrypoint,
+	}
+
+	hash, err := hashstructure.Hash(hi, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	return HashedInputs(hash), nil
+}
+
+func (h ImageHistory) AddAndPersist(
+	ctx context.Context,
+	name reference.Named,
+	digest digest.Digest,
+	checkpoint CheckpointID,
+	baseDockerfile build.Dockerfile,
+	mounts []model.Mount,
+	steps []model.Cmd,
+	entrypoint model.Cmd,
+) error {
+	key, entry, err := h.load(ctx, name, digest, checkpoint, baseDockerfile, mounts, steps, entrypoint)
+	if err != nil {
+		return err
+	}
 
 	return addHistoryToFS(ctx, h.dir, key, entry)
 }
 
-func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, CheckpointID, bool) {
+func (h ImageHistory) MostRecent(
+	name reference.Named,
+	baseDockerfile build.Dockerfile,
+	mounts []model.Mount,
+	steps []model.Cmd,
+	entrypoint model.Cmd,
+) (digest.Digest, CheckpointID, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -117,7 +196,16 @@ func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, Checkpoin
 		return "", CheckpointID{}, false
 	}
 
+	hi, err := hashInputs(baseDockerfile, mounts, steps, entrypoint)
+	if err != nil {
+		// TODO(dmiller) return error here?
+		return "", CheckpointID{}, false
+	}
+
 	mostRecent := bucket.mostRecent
+	if mostRecent.HashedInputs != hi {
+		return "", CheckpointID{}, false
+	}
 	return mostRecent.Digest, mostRecent.CheckpointID, true
 }
 
@@ -137,4 +225,5 @@ type NamedImageHistory struct {
 type historyEntry struct {
 	digest.Digest
 	CheckpointID
+	HashedInputs
 }
