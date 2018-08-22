@@ -106,7 +106,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		name = token.n
 	}
 
-	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
+	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
 	err := l.history.AddAndPersist(ctx, name, d, checkpoint)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 	}
 
-	logger.Get(ctx).Verbosef("- Parsing and templating YAML")
+	logger.Get(ctx).Infof("Parsing Kubernetes config YAML")
 	entities, err := k8s.ParseYAMLFromString(service.K8sYaml)
 	if err != nil {
 		return nil, err
