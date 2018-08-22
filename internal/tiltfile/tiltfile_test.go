@@ -29,10 +29,10 @@ func TestGetServiceConfig(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
-  image.add_mount('/mount_points/1', git_repo('.'))
+  image.add('/mount_points/1', local_git_repo('.'))
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -43,7 +43,7 @@ func TestGetServiceConfig(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	serviceConfig, err := tiltconfig.GetServiceConfigs("blorgly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
@@ -51,10 +51,10 @@ func TestGetServiceConfig(t *testing.T) {
 	service := serviceConfig[0]
 	assert.Equal(t, "docker text", service.DockerfileText)
 	assert.Equal(t, "docker tag", service.DockerfileTag)
-	assert.Equal(t, "yaaaaaaaaml", service.K8SYaml)
+	assert.Equal(t, "yaaaaaaaaml", service.K8sYaml)
 	assert.Equal(t, 1, len(service.Mounts))
 	assert.Equal(t, "/mount_points/1", service.Mounts[0].ContainerPath)
-	assert.Equal(t, ".", service.Mounts[0].Repo.GetGitRepo().LocalPath)
+	assert.Equal(t, ".", service.Mounts[0].Repo.LocalPath)
 	assert.Equal(t, 2, len(service.Steps))
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv)
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv)
@@ -66,8 +66,8 @@ func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("asfaergiuhaeriguhaergiu", "docker tag", "the entrypoint")
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   return k8s_service("yaaaaaaaaml", image)
 `))
 	defer os.Remove(file)
@@ -77,7 +77,7 @@ func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetServiceConfig("blorgly")
+	_, err = tiltconfig.GetServiceConfigs("blorgly")
 	if assert.NotNil(t, err, "expected error from missing dockerfile") {
 		for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
 			assert.True(t, strings.Contains(err.Error(), s),
@@ -118,15 +118,15 @@ func TestCompositeFunction(t *testing.T) {
 def blorgly_backend():
     image = build_docker_image("%v", "docker tag", "the entrypoint")
     print(image.file_name)
-    image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-    image.add_cmd("echo hi")
+    image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+    image.run("echo hi")
     return k8s_service("yaml", image)
 
 def blorgly_frontend():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile, dockerfile))
 	defer os.Remove(file)
@@ -137,13 +137,13 @@ def blorgly_frontend():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltConfig.GetServiceConfig("blorgly")
+	serviceConfig, err := tiltConfig.GetServiceConfigs("blorgly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
 
-	assert.Equal(t, "blorgly_backend", serviceConfig[0].Name)
-	assert.Equal(t, "blorgly_frontend", serviceConfig[1].Name)
+	assert.Equal(t, "blorgly_backend", serviceConfig[0].Name.String())
+	assert.Equal(t, "blorgly_frontend", serviceConfig[1].Name.String())
 }
 
 func TestGetServiceConfigUndefined(t *testing.T) {
@@ -158,7 +158,7 @@ func TestGetServiceConfigUndefined(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
 	if err == nil {
 		t.Fatal("expected error b/c of undefined service config:")
 	}
@@ -177,8 +177,8 @@ func TestGetServiceConfigNonFunction(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "function", "int"} {
 			assert.True(t, strings.Contains(err.Error(), s))
 		}
@@ -197,8 +197,8 @@ func TestGetServiceConfigTakesArgs(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "0 arguments"} {
 			assert.True(t, strings.Contains(err.Error(), s))
 		}
@@ -216,8 +216,8 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "string index", "out of range"} {
 			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 		}
@@ -235,8 +235,8 @@ func TestGetServiceConfigReturnsWrongType(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "string", "k8s_service"} {
 			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 		}
@@ -254,8 +254,8 @@ func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
 		// not in the command
 		for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
@@ -270,8 +270,8 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   yaml = local('echo yaaaaaaaaml')
   return k8s_service(yaml, image)
 `, dockerfile))
@@ -283,7 +283,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	serviceConfig, err := tiltconfig.GetServiceConfigs("blorgly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
@@ -291,7 +291,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 	service := serviceConfig[0]
 	assert.Equal(t, "docker text", service.DockerfileText)
 	assert.Equal(t, "docker tag", service.DockerfileTag)
-	assert.Equal(t, "yaaaaaaaaml\n", service.K8SYaml)
+	assert.Equal(t, "yaaaaaaaaml\n", service.K8sYaml)
 	assert.Equal(t, 2, len(service.Steps))
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv)
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv)

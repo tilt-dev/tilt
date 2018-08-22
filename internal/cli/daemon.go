@@ -40,7 +40,7 @@ func (c *daemonCmd) run(args []string) error {
 	log.Printf("Running tiltd listening on %s", addr)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer(
@@ -53,13 +53,13 @@ func (c *daemonCmd) run(args []string) error {
 	ctx := context.Background()
 	serviceCreator, err := wireServiceCreator(ctx)
 	if err != nil {
-		log.Fatalf("failed to build daemon: %v", err)
+		return fmt.Errorf("failed to build daemon: %v", err)
 	}
 	proto.RegisterDaemonServer(s, proto.NewGRPCServer(serviceCreator))
 
 	err = s.Serve(l)
 	if err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %v", err)
 	}
 	return nil
 }

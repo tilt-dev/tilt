@@ -77,6 +77,7 @@ func serviceNameP2D(s string) model.ServiceName {
 	return model.ServiceName(s)
 }
 
+// NOTE(maia): public b/c we're hacking out the daemon and will likely put it back soon.
 func serviceP2D(service *Service) model.Service {
 	return model.Service{
 		K8sYaml:        service.K8SYaml,

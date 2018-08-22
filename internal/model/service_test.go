@@ -3,18 +3,27 @@ package model
 import "testing"
 
 func TestEscapingEntrypoint(t *testing.T) {
-	cmd := ToShellCmd("echo \"hi\"")
+	cmd := Cmd{Argv: []string{"bash", "-c", "echo \"hi\""}}
 	actual := cmd.EntrypointStr()
-	expected := `ENTRYPOINT ["sh", "-c", "echo \"hi\""]`
+	expected := `ENTRYPOINT ["bash", "-c", "echo \"hi\""]`
 	if actual != expected {
 		t.Fatalf("expected %q, actual %q", expected, actual)
 	}
 }
 
 func TestEscapingRun(t *testing.T) {
+	cmd := Cmd{Argv: []string{"bash", "-c", "echo \"hi\""}}
+	actual := cmd.RunStr()
+	expected := `RUN ["bash", "-c", "echo \"hi\""]`
+	if actual != expected {
+		t.Fatalf("expected %q, actual %q", expected, actual)
+	}
+}
+
+func TestNormalFormRun(t *testing.T) {
 	cmd := ToShellCmd("echo \"hi\"")
 	actual := cmd.RunStr()
-	expected := `RUN ["sh", "-c", "echo \"hi\""]`
+	expected := `RUN echo "hi"`
 	if actual != expected {
 		t.Fatalf("expected %q, actual %q", expected, actual)
 	}

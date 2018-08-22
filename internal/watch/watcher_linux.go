@@ -20,7 +20,7 @@ const inotifyMin = 8192
 type linuxNotify struct {
 	watcher       *fsnotify.Watcher
 	events        chan fsnotify.Event
-	wrappedEvents chan fsnotify.Event
+	wrappedEvents chan FileEvent
 	errors        chan error
 	watchList     map[string]bool
 }
@@ -69,7 +69,7 @@ func (d *linuxNotify) Close() error {
 	return d.watcher.Close()
 }
 
-func (d *linuxNotify) Events() chan fsnotify.Event {
+func (d *linuxNotify) Events() chan FileEvent {
 	return d.wrappedEvents
 }
 
@@ -79,7 +79,17 @@ func (d *linuxNotify) Errors() chan error {
 
 func (d *linuxNotify) loop() {
 	for e := range d.events {
-		if e.Op&fsnotify.Create == fsnotify.Create && isDir(e.Name) {
+		isCreateOp := e.Op&fsnotify.Create == fsnotify.Create
+		shouldWalk := false
+		if isCreateOp {
+			isDir, err := isDir(e.Name)
+			if err != nil {
+				log.Printf("Error stat-ing file %s: %s", e.Name, err)
+				continue
+			}
+			shouldWalk = isDir
+		}
+		if shouldWalk {
 			err := filepath.Walk(e.Name, func(path string, mode os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -107,12 +117,12 @@ func (d *linuxNotify) loop() {
 
 func (d *linuxNotify) sendEventIfWatched(e fsnotify.Event) {
 	if _, ok := d.watchList[e.Name]; ok {
-		d.wrappedEvents <- e
+		d.wrappedEvents <- FileEvent{e.Name}
 	} else {
 		// TODO(dmiller): maybe use a prefix tree here?
 		for path := range d.watchList {
 			if pathIsChildOf(e.Name, path) {
-				d.wrappedEvents <- e
+				d.wrappedEvents <- FileEvent{e.Name}
 				break
 			}
 		}
@@ -125,7 +135,7 @@ func NewWatcher() (*linuxNotify, error) {
 		return nil, err
 	}
 
-	wrappedEvents := make(chan fsnotify.Event)
+	wrappedEvents := make(chan FileEvent)
 
 	wmw := &linuxNotify{
 		watcher:       fsw,
@@ -140,10 +150,14 @@ func NewWatcher() (*linuxNotify, error) {
 	return wmw, nil
 }
 
-func isDir(pth string) bool {
-	fi, _ := os.Stat(pth)
-
-	return fi.IsDir()
+func isDir(pth string) (bool, error) {
+	fi, err := os.Lstat(pth)
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return fi.IsDir(), nil
 }
 
 func checkInotifyLimits() error {
@@ -171,3 +185,5 @@ func checkInotifyLimits() error {
 
 	return nil
 }
+
+var _ Notify = &linuxNotify{}
