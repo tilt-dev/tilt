@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	println(0, "Starting tilt...")
+	printlnColor(0, "Starting tilt…")
 	println(100, "Building [my-app-frontend]")
 	println(500, "Build complete in 3.3423s")
 
@@ -27,6 +27,13 @@ func main() {
 func println(ms int, msg string) {
 	time.Sleep(time.Duration(ms) * time.Millisecond)
 	fmt.Println(msg)
+}
+
+func printlnColor(ms int, msg string) {
+	cGreen := "\033[32m"
+	cReset := "\u001b[0m"
+	time.Sleep(time.Duration(ms) * time.Millisecond)
+	fmt.Printf("%s%s%s\n", cGreen, msg, cReset)
 }
 
 func awaitInput() {
