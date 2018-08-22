@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/model"
@@ -17,8 +18,9 @@ import (
 
 //represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
-	service model.Service
-	files   []string
+	service    model.Service
+	files      []string
+	buildToken *buildToken
 }
 
 type fakeBuildAndDeployer struct {
@@ -28,13 +30,15 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
+var dummyBuildToken = &buildToken{digest.Digest("foo"), nil}
+
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	select {
-	case b.calls <- buildAndDeployCall{service, changedFiles}:
+	case b.calls <- buildAndDeployCall{service, changedFiles, token}:
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
-	return nil, nil
+	return dummyBuildToken, nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -128,6 +132,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- fsnotify.Event{Name: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
+		assert.Equal(t, dummyBuildToken, call.buildToken)
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {
 			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
@@ -221,26 +226,11 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	}
 }
 
-type testFixture struct {
-	t             *testing.T
-	upper         Upper
-	b             *fakeBuildAndDeployer
-	watcher       *fakeNotify
-	context       context.Context
-	restTimerLock *sync.Mutex
-	maxTimerLock  *sync.Mutex
-}
+func makeFakeTimerMaker(t *testing.T) (timerMaker timerMaker, restTimerLock *sync.Mutex, maxTimerLock *sync.Mutex) {
+	restTimerLock = new(sync.Mutex)
+	maxTimerLock = new(sync.Mutex)
 
-func newTestFixture(t *testing.T) *testFixture {
-	watcher := newFakeNotify()
-	watcherMaker := func() (watch.Notify, error) {
-		return watcher, nil
-	}
-	b := newFakeBuildAndDeployer(t)
-	restTimerLock := new(sync.Mutex)
-	maxTimerLock := new(sync.Mutex)
-
-	makeTimer := func(d time.Duration) <-chan time.Time {
+	timerMaker = func(d time.Duration) <-chan time.Time {
 		var lock *sync.Mutex
 		// we have separate locks for the separate uses of timer so that tests can control the timers independently
 		switch d {
@@ -262,6 +252,28 @@ func newTestFixture(t *testing.T) *testFixture {
 		}()
 		return ret
 	}
+
+	return
+}
+
+type testFixture struct {
+	t             *testing.T
+	upper         Upper
+	b             *fakeBuildAndDeployer
+	watcher       *fakeNotify
+	context       context.Context
+	restTimerLock *sync.Mutex
+	maxTimerLock  *sync.Mutex
+}
+
+func newTestFixture(t *testing.T) *testFixture {
+	watcher := newFakeNotify()
+	watcherMaker := func() (watch.Notify, error) {
+		return watcher, nil
+	}
+	b := newFakeBuildAndDeployer(t)
+
+	makeTimer, restTimerLock, maxTimerLock := makeFakeTimerMaker(t)
 
 	upper := Upper{b, watcherMaker, makeTimer}
 	ctx := testutils.CtxForTest()
