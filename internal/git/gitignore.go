@@ -64,7 +64,7 @@ func NewGitIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, err
 		//if the error is that file isn't there (ENOENT), then we don't need a warning, since that's a normal case
 		//if it's any other error, log a warning and pretend the file doesn't exist (matching git's behavior)
 		if ok && pathError.Err != syscall.ENOENT {
-			logger.Get(ctx).Infof("warning: failed to open %V: %V", p, err)
+			logger.Get(ctx).Infof("warning: failed to open %v: %v", p, err)
 		}
 		return &falseIgnoreTester{}, nil
 	}
@@ -80,6 +80,7 @@ type repoIgnoreTester struct {
 var _ IgnoreTester = repoIgnoreTester{}
 
 func (r repoIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
+	// TODO(matt) what do we want to do with symlinks?
 	absPath, err := filepath.Abs(f)
 	if err != nil {
 		return false, err
