@@ -70,6 +70,8 @@ func (c *upCmd) run(args []string) error {
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
+	} else if err != nil {
+		return err
 	}
 
 	logOutput("Services created")
