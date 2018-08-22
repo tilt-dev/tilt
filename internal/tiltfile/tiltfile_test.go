@@ -29,10 +29,10 @@ func TestGetServiceConfig(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
-  image.add_mount('/mount_points/1', git_repo('.'))
+  image.add('/mount_points/1', git_repo('.'))
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -66,8 +66,8 @@ func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("asfaergiuhaeriguhaergiu", "docker tag", "the entrypoint")
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   return k8s_service("yaaaaaaaaml", image)
 `))
 	defer os.Remove(file)
@@ -118,15 +118,15 @@ func TestCompositeFunction(t *testing.T) {
 def blorgly_backend():
     image = build_docker_image("%v", "docker tag", "the entrypoint")
     print(image.file_name)
-    image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-    image.add_cmd("echo hi")
+    image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+    image.run("echo hi")
     return k8s_service("yaml", image)
 
 def blorgly_frontend():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile, dockerfile))
 	defer os.Remove(file)
@@ -270,8 +270,8 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   print(image.file_name)
-  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.add_cmd("echo hi")
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
   yaml = local('echo yaaaaaaaaml')
   return k8s_service(yaml, image)
 `, dockerfile))
