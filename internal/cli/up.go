@@ -1,19 +1,17 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"log"
-	"strings"
+	"os"
 	"sync"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/proto"
-	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
-	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,41 +36,10 @@ func (c *upCmd) register() *cobra.Command {
 func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
 	defer span.Finish()
-	ctx := opentracing.ContextWithSpan(context.Background(), span)
-	buf := bytes.NewBuffer(nil)
-	cmd, err := tiltd_server.RunDaemon(ctx, buf)
-	if err != nil {
-		return err
-	}
-
-	finished := &atomicEvent{}
-
-	go func() {
-		err := cmd.Wait()
-		if err == nil || finished.hasFired() {
-			return
-		}
-
-		output := strings.TrimSpace(buf.String())
-		formattedOutput := ""
-		if len(output) > 0 {
-			formattedOutput = fmt.Sprintf("\ndaemon output:\n%s", output)
-		}
-		log.Fatalf("daemon exited abnormally: %v%s\n", err, formattedOutput)
-	}()
-
-	defer func() {
-		finished.fire()
-		err := cmd.Process.Kill()
-		if err != nil && !strings.Contains(err.Error(), "process already finished") {
-			log.Fatalf("failed to shut down daemon: %v", err)
-		}
-	}()
-
-	dCli, err := tiltd_client.NewDaemonClient()
-	if err != nil {
-		return err
-	}
+	ctx := logger.WithLogger(
+		opentracing.ContextWithSpan(context.Background(), span),
+		logger.NewLogger(logLevel(), os.Stdout),
+	)
 
 	logOutput("Starting Tilt…")
 
@@ -82,13 +49,22 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	serviceName := args[0]
-	services, err := tf.GetServiceConfig(serviceName)
+	protoServices, err := tf.GetServiceConfig(serviceName)
 	if err != nil {
 		return err
 	}
 
-	req := proto.CreateServiceRequest{Services: services, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
-	err = dCli.CreateService(ctx, req)
+	services := make([]model.Service, len(protoServices))
+	for i, s := range protoServices {
+		services[i] = proto.ServiceP2D(s)
+	}
+
+	serviceCreator, err := wireServiceCreator(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = serviceCreator.CreateServices(ctx, services, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
