@@ -1,10 +1,12 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 
 	"github.com/windmilleng/fsnotify"
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -19,9 +21,14 @@ type serviceWatcher struct {
 	errs   <-chan error
 }
 
-// returns a serviceWatcher that tells its reader when to try to start a service
-func makeServiceWatcher(watcherMaker watcherMaker, timerMaker timerMaker, services []model.Service) (*serviceWatcher, error) {
-	watchEventsStream, err := makeWatchEventsStream(watcherMaker, timerMaker, services)
+// returns a serviceWatcher that tells its reader when a service's file dependencies have changed
+func makeServiceWatcher(
+	ctx context.Context,
+	watcherMaker watcherMaker,
+	timerMaker timerMaker,
+	services []model.Service) (*serviceWatcher, error) {
+
+	watchEventsStream, err := makeWatchEventsStream(ctx, watcherMaker, timerMaker, services)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +74,12 @@ func makeServiceWatcher(watcherMaker watcherMaker, timerMaker timerMaker, servic
 	return &serviceWatcher{serviceChan, errs}, nil
 }
 
-func makeWatchEventsStream(watcherMaker watcherMaker, timerMaker timerMaker, services []model.Service) (*watchEventsStream, error) {
+func makeWatchEventsStream(
+	ctx context.Context,
+	watcherMaker watcherMaker,
+	timerMaker timerMaker,
+	services []model.Service) (*watchEventsStream, error) {
+
 	var sns []serviceNotifyPair
 	for _, service := range services {
 		watcher, err := watcherMaker()
@@ -93,7 +105,12 @@ func makeWatchEventsStream(watcherMaker watcherMaker, timerMaker timerMaker, ser
 		return nil, errors.New("--watch used when no services define mounts - nothing to watch")
 	}
 
-	return snsToServiceWatcher(timerMaker, sns), nil
+	ret, err := snsToServiceWatcher(ctx, timerMaker, sns)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
@@ -171,13 +188,33 @@ type serviceNotifyPair struct {
 	notify  watch.Notify
 }
 
+func makeFilter(ctx context.Context, service model.Service) (git.IgnoreTester, error) {
+	var repoRoots []string
+
+	for _, mount := range service.Mounts {
+		repoRoots = append(repoRoots, mount.Repo.LocalPath)
+	}
+
+	eventFilter, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
+	if err != nil {
+		return nil, err
+	}
+
+	return eventFilter, nil
+}
+
 // turns a list of (service, chan fsevent) pairs into a single chan (service, fsevent)
-func snsToServiceWatcher(timerMaker timerMaker, sns []serviceNotifyPair) *watchEventsStream {
+func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []serviceNotifyPair) (*watchEventsStream, error) {
 	events := make(chan []serviceSingleFileChangeEvent)
 	errs := make(chan error)
 
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
+		filter, err := makeFilter(ctx, sn.service)
+		if err != nil {
+			return nil, err
+		}
+
 		go func(service model.Service, watcher watch.Notify) {
 			for {
 				select {
@@ -200,13 +237,18 @@ func snsToServiceWatcher(timerMaker timerMaker, sns []serviceNotifyPair) *watchE
 						if err != nil {
 							errs <- err
 						}
-						watchEvents = append(watchEvents, serviceSingleFileChangeEvent{service, path})
+						isIgnored, err := filter.IsIgnored(path, false)
+						if !isIgnored {
+							watchEvents = append(watchEvents, serviceSingleFileChangeEvent{service, path})
+						}
 					}
-					events <- watchEvents
+					if len(watchEvents) > 0 {
+						events <- watchEvents
+					}
 				}
 			}
 		}(sn.service, sn.notify)
 	}
 
-	return &watchEventsStream{events, errs}
+	return &watchEventsStream{events, errs}, nil
 }

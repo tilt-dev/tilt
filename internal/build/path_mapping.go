@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -54,4 +55,22 @@ func MountsToPath(mounts []model.Mount) []pathMapping {
 		}
 	}
 	return pms
+}
+
+// Return all the path mappings for local paths that do not exist.
+func missingLocalPaths(mappings []pathMapping) ([]pathMapping, error) {
+	result := make([]pathMapping, 0)
+	for _, mapping := range mappings {
+		_, err := os.Stat(mapping.LocalPath)
+		if err == nil {
+			continue
+		}
+
+		if os.IsNotExist(err) {
+			result = append(result, mapping)
+		} else {
+			return nil, fmt.Errorf("missingLocalPaths: %v", err)
+		}
+	}
+	return result, nil
 }

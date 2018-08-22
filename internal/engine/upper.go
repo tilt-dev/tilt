@@ -26,6 +26,9 @@ const watchBufferMaxTimeInMs = 10000
 var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
 var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
+// When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
+const maxChangedFilesToPrint = 5
+
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
@@ -57,7 +60,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 	var sw *serviceWatcher
 	var err error
 	if watchMounts {
-		sw, err = makeServiceWatcher(u.watcherMaker, u.timerMaker, services)
+		sw, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
 		if err != nil {
 			return err
 		}
@@ -75,7 +78,15 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 		for {
 			select {
 			case event := <-sw.events:
-				logger.Get(ctx).Infof("files changed, rebuilding %v", event.service.Name)
+				var changedPathsToPrint []string
+				if len(event.files) > maxChangedFilesToPrint {
+					changedPathsToPrint = append(event.files[:maxChangedFilesToPrint], "...")
+				} else {
+					changedPathsToPrint = event.files
+				}
+
+				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", event.service.Name, changedPathsToPrint)
+
 				var err error
 				buildTokens[event.service.Name], err = u.b.BuildAndDeploy(
 					ctx,
