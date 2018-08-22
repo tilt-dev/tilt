@@ -18,50 +18,83 @@ def backend():
 ```
 
 ## Mill
-written in a Mill, a dialect of python.
+written in a Mill, a dialect of python. It's based on [starlark](https://github.com/bazelbuild/starlark), using the implementation in [go](https://github.com/google/skylark).
 
 ### Mill Builtins
 Mill comes with built-in functions.
 
-### local_git_repo
-`local_git_repo(path)` returns a `repo` with the content at `path`.
+#### local_git_repo(path)
+Creates a `repo` with the content at `path`.
 
-### build_docker_image
-`build_docker_image(dockerfile_path, img_name, entrypoint)` builds a docker image.
+Args:
+```
+  path: string
+```
+Returns: Repo
 
-### add
-`img.add(path, repo)` adds the content from `repo` into the image at `path'.
+#### build_docker_image(dockerfile_path, img_name, entrypoint)
+Builds a docker image.
 
-### run
-`img.run(cmd)` runs `cmd` as a build step in the image.
+Args:
+```
+  dockerfile_path: str
+  img_name: str, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
+  entrypoint: str
+```
+Returns: Image
 
-### k8s_service
-`k8s_service(yaml_text, img)` declares a kubernetes service that tilt can deploy using the yaml text and the image passed in.
+#### Image.add(path, repo)
+Adds the content from `repo` into the image at `path'.
 
-### composite_service
-`composite_service([services])` creates a composite service; it will deploy (and watch) all `services`.
+Args:
+```
+  path: str
+  repo: Repo (returned by local_git_repo)
+```
+Returns: None
 
-### local
-`local(cmd)` runs cmd and returns its stdout.
+#### Image.run(cmd)
+Runs `cmd` as a build step in the image.
 
+Args:
+```
+  cmd: str
+```
+Returns: None
 
-## Prereqs
-- `make`
-- **[go 1.10](https://golang.org/dl/)**
-- **errcheck**: `go get -u github.com/kisielk/errcheck`
-- **protobuf 3.2**: `brew install protobuf` or install `protoc-3.2.0-[your_OS]` [from Github](https://github.com/google/protobuf/releases?after=v3.2.1)
-- `wire` (`go get -u github.com/google/go-cloud/wire`)
-- Our Python scripts are in Python 3.6.0. To run them:
-  - **[pyenv](https://github.com/pyenv/pyenv#installation)**
-  - **python**: `pyenv install`
-  - if you're using GKE and get the error: "pyenv: python2: command not found", run:
-    - `git clone git://github.com/concordusapps/pyenv-implict.git ~/.pyenv/plugins/pyenv-implict`
+#### k8s_service(yaml_text, img)
+Creates a kubernetes service that tilt can deploy using the yaml text and the image passed in.
+
+Args:
+```
+  yaml_text: text of yaml configuration
+  img: Image
+```
+Returns: Service
+
+#### composite_service(services)
+Creates a composite service; tilt will deploy (and watch) all services in `services`.
+
+Args:
+```
+  services: array of Service
+```
+Returns: Service
+
+#### local(cmd)
+Runs cmd, waits for it to finish, and returns its stdout.
+
+Args:
+```
+  cmd: str
+```
+Returns: str
 
 ## Installing
 Run `go get -u github.com/windmilleng/tilt`
 
 ## Developing
-See `Makefile`.
+See DEVELOPING.md
 
 ## License
 Copyright 2018 Windmill Engineering
