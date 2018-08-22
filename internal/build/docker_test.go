@@ -6,7 +6,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os/exec"
@@ -28,6 +27,28 @@ import (
 )
 
 const simpleDockerfile = Dockerfile("FROM alpine")
+
+func TestDigestAsTag(t *testing.T) {
+	dig := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
+	tag, err := digestAsTag(dig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := "tilt-cc5f4c463f81c551"
+	if tag != expected {
+		t.Errorf("Expected %s, actual: %s", expected, tag)
+	}
+}
+
+func TestDigestAsTagToShort(t *testing.T) {
+	dig := digest.Digest("sha256:cc")
+	_, err := digestAsTag(dig)
+	expected := "too short"
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Errorf("expected error %q, actual: %v", expected, err)
+	}
+}
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	f := newDockerBuildFixture(t)
@@ -180,7 +201,7 @@ func TestPush(t *testing.T) {
 	}
 
 	name, _ := reference.ParseNormalizedNamed("localhost:5005/myimage")
-	_, err = f.b.PushDocker(f.ctx, name, digest)
+	namedTagged, err := f.b.PushDocker(f.ctx, name, digest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +211,7 @@ func TestPush(t *testing.T) {
 		expectedFile{path: "/src/sup", contents: "my name is dan"},
 	}
 
-	f.assertFilesInImage(fmt.Sprintf("%s:%s", name, tiltTag), pcs)
+	f.assertFilesInImage(namedTagged.String(), pcs)
 }
 
 func TestPushInvalid(t *testing.T) {
