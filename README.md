@@ -3,6 +3,8 @@
 [![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
 [![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
 
+## Installing
+Run `go get -u github.com/windmilleng/tilt`
 
 ## Using tilt
 `tilt up <service_name>` starts a service once; `tilt up --watch <service_name>` starts it and watches for changes.
@@ -44,7 +46,7 @@ Args:
 Returns: Image
 
 #### Image.add(path, repo)
-Adds the content from `repo` into the image at `path'.
+Adds the content from `repo` into the image at `path`.
 
 Args:
 ```
@@ -89,9 +91,6 @@ Args:
   cmd: str
 ```
 Returns: str
-
-## Installing
-Run `go get -u github.com/windmilleng/tilt`
 
 ## Developing
 See DEVELOPING.md
