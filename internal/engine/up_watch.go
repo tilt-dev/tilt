@@ -28,56 +28,6 @@ func makeServiceWatcher(
 	timerMaker timerMaker,
 	services []model.Service) (*serviceWatcher, error) {
 
-	watchEventsStream, err := makeWatchEventsStream(ctx, watcherMaker, timerMaker, services)
-	if err != nil {
-		return nil, err
-	}
-
-	serviceChan := make(chan serviceFilesChangedEvent)
-	errs := make(chan error)
-	go func() {
-		// a map of service names to a list of any unprocessed changes
-		leftover := make(map[string]*serviceFilesChangedEvent)
-		var leftoverServiceOrder []string
-		for {
-			if len(leftover) == 0 {
-				select {
-				case events := <-watchEventsStream.events:
-					addEventsToLeftover(leftover, &leftoverServiceOrder, events)
-				case err := <-watchEventsStream.errs:
-					errs <- err
-					close(serviceChan)
-					close(errs)
-					return
-				}
-			} else {
-				select {
-				case events := <-watchEventsStream.events:
-					addEventsToLeftover(leftover, &leftoverServiceOrder, events)
-				case err := <-watchEventsStream.errs:
-					errs <- err
-					close(serviceChan)
-					close(errs)
-					return
-				default:
-				}
-			}
-			serviceName := leftoverServiceOrder[0]
-			serviceChan <- *leftover[serviceName]
-			leftoverServiceOrder = leftoverServiceOrder[1:]
-			delete(leftover, serviceName)
-		}
-	}()
-
-	return &serviceWatcher{serviceChan, errs}, nil
-}
-
-func makeWatchEventsStream(
-	ctx context.Context,
-	watcherMaker watcherMaker,
-	timerMaker timerMaker,
-	services []model.Service) (*watchEventsStream, error) {
-
 	var sns []serviceNotifyPair
 	for _, service := range services {
 		watcher, err := watcherMaker()
@@ -117,6 +67,7 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan fsnotify.Event) <-ch
 	ret := make(chan []fsnotify.Event)
 	go func() {
 		defer close(ret)
+
 		for {
 			event, ok := <-eventChan
 			if !ok {
@@ -161,7 +112,10 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan fsnotify.Event) <-ch
 	return ret
 }
 
-func addEventsToLeftover(leftover map[string]*serviceFilesChangedEvent, leftoverServiceOrder *[]string, events []serviceSingleFileChangeEvent) {
+func addEventsToLeftover(
+	leftover map[string]*serviceFilesChangedEvent,
+	leftoverServiceOrder *[]string,
+	events []serviceSingleFileChangeEvent) {
 	for _, event := range events {
 		if _, exists := leftover[string(event.service.Name)]; !exists {
 			leftover[string(event.service.Name)] = &serviceFilesChangedEvent{event.service, []string{event.fileName}}
@@ -174,7 +128,7 @@ func addEventsToLeftover(leftover map[string]*serviceFilesChangedEvent, leftover
 }
 
 type watchEventsStream struct {
-	events <-chan []serviceSingleFileChangeEvent
+	events <-chan serviceFilesChangedEvent
 	errs   <-chan error
 }
 
@@ -204,8 +158,8 @@ func makeFilter(ctx context.Context, service model.Service) (git.IgnoreTester, e
 }
 
 // turns a list of (service, chan fsevent) pairs into a single chan (service, fsevent)
-func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []serviceNotifyPair) (*watchEventsStream, error) {
-	events := make(chan []serviceSingleFileChangeEvent)
+func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []serviceNotifyPair) (*serviceWatcher, error) {
+	events := make(chan serviceFilesChangedEvent)
 	errs := make(chan error)
 
 	for _, sn := range sns {
@@ -216,22 +170,21 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 		}
 
 		go func(service model.Service, watcher watch.Notify) {
+			defer close(events)
+			defer close(errs)
+
 			for {
 				select {
 				case err, ok := <-watcher.Errors():
 					if !ok {
-						close(events)
-						close(errs)
 						return
 					}
 					errs <- err
 				case fsEvents, ok := <-coalescedEvents:
 					if !ok {
-						close(events)
-						close(errs)
 						return
 					}
-					var watchEvents []serviceSingleFileChangeEvent
+					watchEvent := serviceFilesChangedEvent{service: service}
 					for _, fe := range fsEvents {
 						path, err := filepath.Abs(fe.Name)
 						if err != nil {
@@ -239,16 +192,16 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 						}
 						isIgnored, err := filter.IsIgnored(path, false)
 						if !isIgnored {
-							watchEvents = append(watchEvents, serviceSingleFileChangeEvent{service, path})
+							watchEvent.files = append(watchEvent.files, path)
 						}
 					}
-					if len(watchEvents) > 0 {
-						events <- watchEvents
+					if len(watchEvent.files) > 0 {
+						events <- watchEvent
 					}
 				}
 			}
 		}(sn.service, sn.notify)
 	}
 
-	return &watchEventsStream{events, errs}, nil
+	return &serviceWatcher{events, errs}, nil
 }

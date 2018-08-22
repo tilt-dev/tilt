@@ -57,6 +57,8 @@ func (n *fakeNotify) Add(name string) error {
 }
 
 func (n *fakeNotify) Close() error {
+	close(n.events)
+	close(n.errors)
 	return nil
 }
 

@@ -2,6 +2,9 @@ package engine
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,58 +17,40 @@ import (
 func TestServiceWatcher(t *testing.T) {
 	tf := makeServiceWatcherTestFixture(t, 1)
 
-	services := []model.Service{
-		{Name: model.ServiceName("service1"), Mounts: []model.Mount{tf.mounts[0]}},
-	}
+	f1 := tf.WriteFile(0)
 
-	sw, err := makeServiceWatcher(tf.ctx, tf.watcherMaker, tf.timerMaker.maker(), services)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tf.timerMaker.maxTimerLock.Lock()
-	f1 := tf.tempDirs[0].JoinPath("foo")
-	tf.watchers[0].events <- fsnotify.Event{Name: f1}
-	event := <-sw.events
-	assert.Equal(t, event.service, services[0])
-	assert.Equal(t, []string{f1}, event.files)
+	tf.AssertNextEvent(0, []string{f1})
 }
 
 func TestServiceWatcherTwoServices(t *testing.T) {
 	tf := makeServiceWatcherTestFixture(t, 2)
 
-	services := []model.Service{
-		{Name: model.ServiceName("service1"), Mounts: []model.Mount{tf.mounts[0]}},
-		{Name: model.ServiceName("service2"), Mounts: []model.Mount{tf.mounts[1]}},
-	}
+	f1 := tf.WriteFile(0)
 
-	sw, err := makeServiceWatcher(tf.ctx, tf.watcherMaker, tf.timerMaker.maker(), services)
+	tf.AssertNextEvent(0, []string{f1})
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	tf.FreezeTimer()
+	f2 := tf.WriteFile(1)
+	f3 := tf.WriteFile(0)
+	f4 := tf.WriteFile(1)
+	tf.UnfreezeTimer()
 
-	tf.timerMaker.maxTimerLock.Lock()
-	f1 := writeEvent(t, tf.watchers[0], tf.tempDirs[0])
-	event := <-sw.events
-	assert.Equal(t, services[0], event.service)
-	assert.Equal(t, []string{f1}, event.files)
-	tf.timerMaker.restTimerLock.Lock()
-	f2 := writeEvent(t, tf.watchers[1], tf.tempDirs[1])
-	f3 := writeEvent(t, tf.watchers[0], tf.tempDirs[0])
-	f4 := writeEvent(t, tf.watchers[1], tf.tempDirs[1])
-	event = <-sw.events
-	assert.Equal(t, services[1], event.service)
-	assert.Equal(t, []string{f2, f4}, event.files)
-	event = <-sw.events
-	assert.Equal(t, services[0], event.service)
-	assert.Equal(t, []string{f3}, event.files)
+	tf.AssertNextEvents([]testServiceFilesChangedEvent{
+		{1, []string{f2, f4}},
+		{0, []string{f3}}})
+}
+
+func TestServiceWatcherTwoServicesErr(t *testing.T) {
+	tf := makeServiceWatcherTestFixture(t, 2)
+
+	tf.WriteError(1)
+	err := tf.Error()
+	assert.Error(t, err)
 }
 
 // creates a new file with random name, notifies `watcher`, and returns the file's name
-func writeEvent(t *testing.T, watcher watch.Notify, td *testutils.TempDirFixture) string {
-	f, err := td.NewFile()
+func writeEvent(t *testing.T, name string, watcher watch.Notify, td *testutils.TempDirFixture) string {
+	f, err := td.NewFile(name + "_")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,15 +61,18 @@ func writeEvent(t *testing.T, watcher watch.Notify, td *testutils.TempDirFixture
 }
 
 type serviceWatcherTestFixture struct {
-	watcherMaker watcherMaker
-	ctx          context.Context
-	tempDirs     []*testutils.TempDirFixture
-	mounts       []model.Mount
-	watchers     []*fakeNotify
-	timerMaker   fakeTimerMaker
+	sw              *serviceWatcher
+	watcherMaker    watcherMaker
+	ctx             context.Context
+	tempDirs        []*testutils.TempDirFixture
+	services        []model.Service
+	watchers        []*fakeNotify
+	timerMaker      fakeTimerMaker
+	t               *testing.T
+	numFilesWritten int
 }
 
-func makeServiceWatcherTestFixture(t *testing.T, mountCount int) *serviceWatcherTestFixture {
+func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatcherTestFixture {
 	var watchers []*fakeNotify
 	nextWatcher := 0
 	watcherMaker := func() (watch.Notify, error) {
@@ -96,11 +84,15 @@ func makeServiceWatcherTestFixture(t *testing.T, mountCount int) *serviceWatcher
 		return ret, nil
 	}
 
-	var mounts []model.Mount
+	var services []model.Service
 	var tempDirs []*testutils.TempDirFixture
-	for i := 0; i < mountCount; i++ {
+	for i := 0; i < serviceCount; i++ {
 		tempDir := testutils.NewTempDirFixture(t)
-		mounts = append(mounts, model.Mount{Repo: model.LocalGithubRepo{LocalPath: tempDir.Path()}, ContainerPath: ""})
+		services = append(services,
+			model.Service{
+				Name:   model.ServiceName(fmt.Sprintf("service%v", i)),
+				Mounts: []model.Mount{{Repo: model.LocalGithubRepo{LocalPath: tempDir.Path()}, ContainerPath: ""}}})
+
 		tempDirs = append(tempDirs, tempDir)
 		watcher := newFakeNotify()
 		watchers = append(watchers, watcher)
@@ -109,7 +101,82 @@ func makeServiceWatcherTestFixture(t *testing.T, mountCount int) *serviceWatcher
 	timerMaker := makeFakeTimerMaker(t)
 
 	ctx := testutils.CtxForTest()
-	return &serviceWatcherTestFixture{watcherMaker, ctx, tempDirs, mounts, watchers, timerMaker}
+
+	sw, err := makeServiceWatcher(ctx, watcherMaker, timerMaker.maker(), services)
+
+	timerMaker.maxTimerLock.Lock()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &serviceWatcherTestFixture{sw, watcherMaker, ctx, tempDirs, services, watchers, timerMaker, t, 0}
+}
+
+func (s *serviceWatcherTestFixture) WriteFile(serviceNumber int) string {
+	s.numFilesWritten++
+	f, err := s.tempDirs[serviceNumber].NewFile(fmt.Sprintf("f%v_", s.numFilesWritten))
+	if err != nil {
+		s.t.Fatal(err)
+	}
+
+	s.watchers[serviceNumber].Events() <- fsnotify.Event{Name: f.Name()}
+
+	return filepath.Base(f.Name())
+}
+
+type testServiceFilesChangedEvent struct {
+	serviceNumber int
+	files         []string
+}
+
+func (s *serviceWatcherTestFixture) ReadEvents(numExpectedEvents int) []testServiceFilesChangedEvent {
+	var ret []testServiceFilesChangedEvent
+	for i := 0; i < numExpectedEvents; i++ {
+		e := <-s.sw.events
+		serviceNumber := -1
+		for i := 0; i < len(s.services); i++ {
+			if s.services[i].Name == e.service.Name {
+				serviceNumber = i
+			}
+		}
+		if serviceNumber == -1 {
+			s.t.Fatalf("got event for unknown service %v", e.service)
+		}
+
+		var fileBaseNames []string
+		for _, f := range e.files {
+			fileBaseNames = append(fileBaseNames, filepath.Base(f))
+		}
+		ret = append(ret, testServiceFilesChangedEvent{serviceNumber, fileBaseNames})
+	}
+
+	return ret
+}
+
+func (s *serviceWatcherTestFixture) AssertNextEvent(serviceNumber int, files []string) bool {
+	return s.AssertNextEvents([]testServiceFilesChangedEvent{{serviceNumber, files}})
+}
+
+func (s *serviceWatcherTestFixture) AssertNextEvents(expectedEvents []testServiceFilesChangedEvent) bool {
+	actualEvents := s.ReadEvents(len(expectedEvents))
+	return assert.ElementsMatch(s.t, expectedEvents, actualEvents)
+}
+
+func (s *serviceWatcherTestFixture) WriteError(serviceNumber int) {
+	s.watchers[serviceNumber].errors <- errors.New("test error")
+}
+
+func (s *serviceWatcherTestFixture) Error() error {
+	return <-s.sw.errs
+}
+
+func (s *serviceWatcherTestFixture) FreezeTimer() {
+	s.timerMaker.restTimerLock.Lock()
+}
+
+func (s *serviceWatcherTestFixture) UnfreezeTimer() {
+	s.timerMaker.restTimerLock.Unlock()
 }
 
 func (s *serviceWatcherTestFixture) TearDown() {
