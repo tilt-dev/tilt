@@ -48,6 +48,7 @@ Mill comes with built-in functions.
 ## Prereqs
 - `make`
 - **[go 1.10](https://golang.org/dl/)**
+- **errcheck**: `go get -u github.com/kisielk/errcheck`
 - **protobuf 3.2**: `brew install protobuf` or install `protoc-3.2.0-[your_OS]` [from Github](https://github.com/google/protobuf/releases?after=v3.2.1)
 - `wire` (`go get -u github.com/google/go-cloud/wire`)
 - Our Python scripts are in Python 3.6.0. To run them:
@@ -56,8 +57,11 @@ Mill comes with built-in functions.
   - if you're using GKE and get the error: "pyenv: python2: command not found", run:
     - `git clone git://github.com/concordusapps/pyenv-implict.git ~/.pyenv/plugins/pyenv-implict`
 
+## Installing
+Run `go get -u github.com/windmilleng/tilt`
+
 ## Developing
-Run `make` from the root of the repo to generate all protobuf files.
+See `Makefile`.
 
 ## License
 Copyright 2018 Windmill Engineering
