@@ -99,6 +99,9 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var mountPoint string
 	var gitRepo gitRepo
+	if len(fn.Receiver().(*dockerImage).cmds) > 0 {
+		return nil, errors.New("add mount before run command")
+	}
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "mount_point", &mountPoint, "git_repo", &gitRepo)
 	if err != nil {
 		return nil, err
