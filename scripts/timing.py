@@ -5,9 +5,9 @@ import datetime
 import functools
 import os
 import random
+import signal
 import string
 import subprocess
-import time
 from typing import List
 
 
@@ -22,6 +22,7 @@ GOPATH = os.environ['GOPATH'] if 'GOPATH' in os.environ else os.path.join(os.env
 BLORGLY_BACKEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorgly-backend')
 SERVICE_NAME = 'blorgly_backend_local'
 TOUCHED_FILES = []
+OUTPUT_WAIT_TIMEOUT_SECS = 10  # max time we'll wait on a process for output
 
 # TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
 Case = namedtuple('Case', ['name', 'setup', 'test'])
@@ -38,8 +39,7 @@ class Timer:
         return self
 
     def __exit__(self, *args):
-        self.end = datetime.datetime.now()
-        self.seconds = (self.end - self.start).total_seconds()
+        self.duration_secs = secs_since(self.start)
 
 
 def main():
@@ -50,9 +50,9 @@ def main():
     os.chdir(BLORGLY_BACKEND_DIR)
 
     cases = [
-        make_case_tilt_up_once(),
-        make_case_tilt_up_again_no_change(),
-        make_case_tilt_up_again_new_file(),
+        # make_case_tilt_up_once(),
+        # make_case_tilt_up_again_no_change(),
+        # make_case_tilt_up_again_new_file(),
         make_case_watch(),
     ]
     results = []
@@ -104,22 +104,34 @@ def wait_for_stdout(process: subprocess.Popen, s: str, kill_on_match=False):
         raise Exception('Process {} is no longer running (exit code {}), can\'t wait on stdout'.
                         format(process.args, process.returncode))
 
-    # TODO(maia): add timeout
     while True:
-        output = process.stdout.readline().decode('utf-8').strip()
+        output = get_stdout_with_timeout(process)
         if output == '' and process.poll() is not None:
             break
         if output:
             print(output)
             if s in output:
                 if kill_on_match:
-                    process.kill()
+                    process.terminate()
                 return
 
     # if we got here, means process exited and we didn't find the string we were looking for
     rc = process.poll()
     raise Exception('Process {} exited with code {} and we didn\'t find expected '
                     'string "{}" in output'.format(process.args, rc, s))
+
+
+def get_stdout_with_timeout(proc: subprocess.Popen):
+    def _handle_timeout(signum, frame):
+        raise TimeoutError('Timed out while waiting for output from process {}'.
+                           format(proc.args))
+
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.alarm(OUTPUT_WAIT_TIMEOUT_SECS)
+    try:
+        return proc.stdout.readline().decode('utf-8').strip()
+    finally:
+        signal.alarm(0)
 
 
 def make_case_tilt_up_once() -> Case:
@@ -171,7 +183,7 @@ def make_case_watch() -> Case:
         with Timer() as t:
             wait_for_stdout(proc, '[timing.py] finished build from file change',
                             kill_on_match=True)
-        return t.seconds
+        return t.duration_secs
 
     return Case("watch file changed", tilt_watch_and_wait_for_initial_build,
                 time_wait_for_next_build)
@@ -185,7 +197,7 @@ def time_call(cmd):
     with Timer() as t:
         call_or_error(cmd)
 
-    return t.seconds
+    return t.duration_secs
 
 
 def call_or_error(cmd):
@@ -229,6 +241,10 @@ def randstr(n):
 
 def randbytes(n):
     return bytearray(os.urandom(n))
+
+
+def secs_since(t: datetime.datetime) -> float:
+    return(datetime.datetime.now() - t).total_seconds()
 
 
 if __name__ == "__main__":
