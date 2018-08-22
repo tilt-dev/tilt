@@ -3,13 +3,18 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"os"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/proto"
-	"github.com/windmilleng/tilt/internal/tiltd/tiltd_client"
-	"github.com/windmilleng/tilt/internal/tiltd/tiltd_server"
+	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,23 +39,10 @@ func (c *upCmd) register() *cobra.Command {
 func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
 	defer span.Finish()
-	ctx := opentracing.ContextWithSpan(context.Background(), span)
-	proc, err := tiltd_server.RunDaemon(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		err := proc.Kill()
-		if err != nil {
-			log.Fatalf("failed to shut down daemon: %v", err)
-		}
-	}()
-
-	dCli, err := tiltd_client.NewDaemonClient()
-	if err != nil {
-		return err
-	}
+	ctx := logger.WithLogger(
+		opentracing.ContextWithSpan(context.Background(), span),
+		logger.NewLogger(logLevel(), os.Stdout),
+	)
 
 	logOutput("Starting Tilt…")
 
@@ -60,13 +52,30 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	serviceName := args[0]
-	services, err := tf.GetServiceConfig(serviceName)
+	protoServices, err := tf.GetServiceConfig(serviceName)
 	if err != nil {
 		return err
 	}
 
-	req := proto.CreateServiceRequest{Services: services, Watch: c.watch, LogLevel: proto.LogLevel(logLevel())}
-	err = dCli.CreateService(ctx, req)
+	services := make([]model.Service, len(protoServices))
+	for i, s := range protoServices {
+		services[i] = proto.ServiceP2D(s)
+	}
+
+	env, err := k8s.DetectEnv()
+	if err != nil {
+		return fmt.Errorf("failed to detect kubernetes: %v", err)
+	}
+
+	serviceManager := service.NewMemoryManager()
+	upperCreator := engine.NewUpperServiceCreator(serviceManager, env)
+	creator := service.TrackServices(upperCreator, serviceManager)
+
+	if err != nil {
+		return err
+	}
+
+	err = creator.CreateServices(ctx, services, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())

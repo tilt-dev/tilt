@@ -39,7 +39,7 @@ func (c *daemonCmd) run(args []string) error {
 	log.Printf("Running tiltd listening on %s", addr)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer(
@@ -50,7 +50,7 @@ func (c *daemonCmd) run(args []string) error {
 	)
 	env, err := k8s.DetectEnv()
 	if err != nil {
-		log.Fatalf("failed to detect kubernetes: %v", err)
+		return fmt.Errorf("failed to detect kubernetes: %v", err)
 	}
 
 	serviceManager := service.NewMemoryManager()
@@ -61,7 +61,7 @@ func (c *daemonCmd) run(args []string) error {
 
 	err = s.Serve(l)
 	if err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %v", err)
 	}
 	return nil
 }
