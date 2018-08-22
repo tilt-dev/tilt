@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -113,6 +113,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 			return err
 		}
 	}
+	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
 		service := services[0]
@@ -154,7 +155,6 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 					return nil
 				}
 				logger.Get(ctx).Infof("files changed, rebuilding %v", service.Name)
-
 				var changedPaths []string
 				for _, e := range events {
 					path, err := filepath.Abs(e.Name)
@@ -184,6 +184,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				}
 
+				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 			}
 		}
 	}
