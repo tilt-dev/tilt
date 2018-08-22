@@ -88,7 +88,7 @@ func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	service := model.Service{Name: "foobar"}
 	err := f.upper.Up(f.context, []model.Service{service}, true)
 	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "0 repos")
+		assert.Contains(t, err.Error(), "nothing to watch")
 	}
 }
 
