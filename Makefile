@@ -35,3 +35,7 @@ start_tracer:
 
 timing:
 	./scripts/timing.py
+
+wire:
+	wire ./internal/engine
+	wire ./internal/cli
