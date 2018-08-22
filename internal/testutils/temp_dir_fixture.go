@@ -82,6 +82,10 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 	}
 }
 
+func (tempDir *TempDirFixture) NewFile(prefix string) (f *os.File, err error) {
+	return ioutil.TempFile(tempDir.dir.Path(), prefix)
+}
+
 func (f *TempDirFixture) TearDown() {
 	err := f.dir.TearDown()
 	if err != nil {

@@ -2,12 +2,9 @@ package engine
 
 import (
 	"context"
-	"errors"
-	"path/filepath"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -34,9 +31,12 @@ const maxChangedFilesToPrint = 5
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	b            BuildAndDeployer
-	watcherMaker func() (watch.Notify, error)
-	makeTimer    func(d time.Duration) <-chan time.Time
+	watcherMaker watcherMaker
+	timerMaker   timerMaker
 }
+
+type watcherMaker func() (watch.Notify, error)
+type timerMaker func(d time.Duration) <-chan time.Time
 
 func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
@@ -45,139 +45,58 @@ func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 	return Upper{b, watcherMaker, time.After}, nil
 }
 
-//makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
-//from the user's perspective are grouped together.
-func (u Upper) coalesceEvents(eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
-	ret := make(chan []watch.FileEvent)
-	go func() {
-		defer close(ret)
-		for {
-			event, ok := <-eventChan
-			if !ok {
-				return
-			}
-			events := []watch.FileEvent{event}
-
-			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
-			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
-
-			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
-			// then just send what we've got
-			timeout := u.makeTimer(watchBufferMaxDuration)
-
-			done := false
-			channelClosed := false
-			for !done && !channelClosed {
-				select {
-				case event, ok := <-eventChan:
-					if !ok {
-						channelClosed = true
-					} else {
-						minRestTimer = u.makeTimer(watchBufferMinRestDuration)
-						events = append(events, event)
-					}
-				case <-minRestTimer:
-					done = true
-				case <-timeout:
-					done = true
-				}
-			}
-			if len(events) > 0 {
-				ret <- events
-			}
-
-			if channelClosed {
-				return
-			}
-		}
-
-	}()
-	return ret
-}
-
 func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
-	var buildTokens []*buildToken
-	for i := range services {
-		buildToken, err := u.b.BuildAndDeploy(ctx, services[i], nil, nil)
-		buildTokens = append(buildTokens, buildToken)
+
+	buildTokens := make(map[model.ServiceName]*buildToken)
+
+	var sw *serviceWatcher
+	var err error
+	if watchMounts {
+		sw, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
 		if err != nil {
 			return err
 		}
 	}
+
+	for _, service := range services {
+		buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
+		if err != nil {
+			return err
+		}
+		buildTokens[service.Name] = buildToken
+	}
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
-		service := services[0]
-		if len(services) > 1 {
-			return errors.New("There is more than 1 service")
-		}
-		watcher, err := u.watcherMaker()
-		if err != nil {
-			return err
-		}
-
-		if len(service.Mounts) == 0 {
-			return errors.New("service has 0 repos - nothing to watch")
-		}
-
-		var repoRoots []string
-
-		for _, mount := range service.Mounts {
-			repoRoots = append(repoRoots, mount.Repo.LocalPath)
-			err = watcher.Add(mount.Repo.LocalPath)
-			if err != nil {
-				return err
-			}
-		}
-
-		eventFilter, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
-		if err != nil {
-			return err
-		}
-
-		coalescedEvents := u.coalesceEvents(watcher.Events())
-
 		for {
 			select {
-			case err := <-watcher.Errors():
-				return err
-			case events, ok := <-coalescedEvents:
-				if !ok {
-					return nil
+			case event := <-sw.events:
+				var changedPathsToPrint []string
+				if len(event.files) > maxChangedFilesToPrint {
+					changedPathsToPrint = append(event.files[:maxChangedFilesToPrint], "...")
+				} else {
+					changedPathsToPrint = event.files
 				}
-				logger.Get(ctx).Infof("files changed, rebuilding %v", service.Name)
-				var changedPaths []string
-				for _, e := range events {
-					path, err := filepath.Abs(e.Path)
-					if err != nil {
-						return err
-					}
-					isIgnored, err := eventFilter.IsIgnored(path, false)
-					if err != nil {
-						return err
-					}
-					if !isIgnored {
-						changedPaths = append(changedPaths, path)
-					}
-				}
-				if len(changedPaths) > 0 {
-					var changedPathsToPrint []string
-					if len(changedPaths) > maxChangedFilesToPrint {
-						changedPathsToPrint = append(changedPaths[:maxChangedFilesToPrint], "...")
-					} else {
-						changedPathsToPrint = changedPaths
-					}
-					logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", service.Name, changedPathsToPrint)
 
-					buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
-				}
+				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", event.service.Name, changedPathsToPrint)
+
+				var err error
+				token, err := u.b.BuildAndDeploy(
+					ctx,
+					event.service,
+					buildTokens[event.service.Name],
+					event.files)
 				if err != nil {
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
+				} else {
+					buildTokens[event.service.Name] = token
 				}
-
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+			case err := <-sw.errs:
+				return err
 			}
 		}
 	}
