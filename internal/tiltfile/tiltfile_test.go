@@ -113,7 +113,7 @@ func TestCompositeFunction(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  return composite_service({"blorgly_backend": blorgly_backend(), "blorgly_frontend": blorgly_frontend()})
+  return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
     image = build_docker_image("%v", "docker tag", "the entrypoint")
