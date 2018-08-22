@@ -20,6 +20,10 @@ type memoryManager struct {
 	services map[model.ServiceName]model.Service
 }
 
+func ProvideMemoryManager() Manager {
+	return NewMemoryManager()
+}
+
 func NewMemoryManager() *memoryManager {
 	m := make(map[model.ServiceName]model.Service)
 	return &memoryManager{mu: &sync.Mutex{}, services: m}
