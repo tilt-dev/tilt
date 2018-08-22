@@ -43,7 +43,7 @@ func TestGetServiceConfig(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	serviceConfig, err := tiltconfig.GetServiceConfigs("blorgly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
@@ -77,7 +77,7 @@ func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetServiceConfig("blorgly")
+	_, err = tiltconfig.GetServiceConfigs("blorgly")
 	if assert.NotNil(t, err, "expected error from missing dockerfile") {
 		for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
 			assert.True(t, strings.Contains(err.Error(), s),
@@ -137,7 +137,7 @@ def blorgly_frontend():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltConfig.GetServiceConfig("blorgly")
+	serviceConfig, err := tiltConfig.GetServiceConfigs("blorgly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
@@ -158,7 +158,7 @@ func TestGetServiceConfigUndefined(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
 	if err == nil {
 		t.Fatal("expected error b/c of undefined service config:")
 	}
@@ -177,8 +177,8 @@ func TestGetServiceConfigNonFunction(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "function", "int"} {
 			assert.True(t, strings.Contains(err.Error(), s))
 		}
@@ -197,8 +197,8 @@ func TestGetServiceConfigTakesArgs(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "0 arguments"} {
 			assert.True(t, strings.Contains(err.Error(), s))
 		}
@@ -216,8 +216,8 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "string index", "out of range"} {
 			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 		}
@@ -235,8 +235,8 @@ func TestGetServiceConfigReturnsWrongType(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "string", "k8s_service"} {
 			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 		}
@@ -254,8 +254,8 @@ func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfig("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfig did not return an error") {
+	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
 		// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
 		// not in the command
 		for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
@@ -283,7 +283,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltconfig.GetServiceConfig("blorgly")
+	serviceConfig, err := tiltconfig.GetServiceConfigs("blorgly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
