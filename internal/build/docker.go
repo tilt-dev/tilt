@@ -26,9 +26,6 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-// Tilt always pushes to the same tag. We never push to latest.
-const tiltTag = "wm-tilt"
-
 var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT, " +
 	"which is not currently supported -- provide an entrypoint in your Tiltfile")
 
@@ -39,7 +36,7 @@ type localDockerBuilder struct {
 type Builder interface {
 	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
 	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
-	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.Canonical, error)
+	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
@@ -111,17 +108,22 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Doc
 
 // Tag the digest with the given name and wm-tilt tag.
 func (l *localDockerBuilder) TagDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
-	tag, err := reference.WithTag(ref, tiltTag)
+	tag, err := digestAsTag(dig)
 	if err != nil {
 		return nil, fmt.Errorf("TagDocker: %v", err)
 	}
 
-	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
+	namedTagged, err := reference.WithTag(ref, tag)
+	if err != nil {
+		return nil, fmt.Errorf("TagDocker: %v", err)
+	}
+
+	err = l.dcli.ImageTag(ctx, dig.String(), namedTagged.String())
 	if err != nil {
 		return nil, fmt.Errorf("TagDocker#ImageTag: %v", err)
 	}
 
-	return tag, nil
+	return namedTagged, nil
 }
 
 // Naively tag the digest and push it up to the docker registry specified in the name.
@@ -129,7 +131,7 @@ func (l *localDockerBuilder) TagDocker(ctx context.Context, ref reference.Named,
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.Canonical, error) {
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
 	logger.Get(ctx).Infof("Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
@@ -165,20 +167,15 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
-	tag, err := reference.WithTag(ref, tiltTag)
+	namedTagged, err := l.TagDocker(ctx, ref, dig)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker: %v", err)
-	}
-
-	err = l.dcli.ImageTag(ctx, dig.String(), tag.String())
-	if err != nil {
-		return nil, fmt.Errorf("PushDocker#ImageTag: %v", err)
 	}
 
 	logger.Get(ctx).Infof("%spushing the image", logger.Tab)
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
-		tag.String(),
+		namedTagged.String(),
 		options)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#ImagePush: %v", err)
@@ -190,12 +187,12 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	pushedDigest, err := getDigestFromPushOutput(ctx, imagePushResponse)
+	_, err = getDigestFromPushOutput(ctx, imagePushResponse)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
 
-	return reference.WithDigest(tag, pushedDigest)
+	return namedTagged, nil
 }
 
 func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
@@ -365,4 +362,12 @@ func shouldRemoveImage() bool {
 		return false
 	}
 	return true
+}
+
+func digestAsTag(d digest.Digest) (string, error) {
+	str := d.Encoded()
+	if len(str) < 16 {
+		return "", fmt.Errorf("Digest too short: %s", str)
+	}
+	return fmt.Sprintf("tilt-%s", str[:16]), nil
 }

@@ -3,12 +3,11 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os/exec"
 
-	"io/ioutil"
-
 	"github.com/google/skylark"
-	"github.com/windmilleng/tilt/internal/proto"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type Tiltfile struct {
@@ -44,26 +43,37 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 }
 
 func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	// TODO - validate args / err handling / or change the format of the input
-	m := args[0].(*skylark.Dict)
-	var k8sServArray []k8sService
 
-	for _, name := range m.Keys() {
-		service, _, err := m.Get(name)
-		if err != nil {
-			return nil, err
-		}
-		k8sServ, ok := service.(k8sService)
-		if !ok {
-			return nil, fmt.Errorf("error: arguments in composite_service are not of type k8s_service '%+v'", args)
-		}
-		k8sServ.name, ok = skylark.AsString(name)
-		if !ok {
-			return nil, fmt.Errorf("'%v' is a '%v', not a string. service definitions must be strings", name, name.Type())
-		}
-		k8sServArray = append(k8sServArray, k8sServ)
+	var serviceFuncs skylark.Iterable
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+		"services", &serviceFuncs)
+	if err != nil {
+		return nil, err
 	}
-	return compService{k8sServArray}, nil
+
+	var services []k8sService
+
+	var v skylark.Value
+	i := serviceFuncs.Iterate()
+	defer i.Done()
+	for i.Next(&v) {
+		switch v := v.(type) {
+		case *skylark.Function:
+			r, err := v.Call(thread, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			s, ok := r.(k8sService)
+			if !ok {
+				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
+			}
+			s.name = v.Name()
+			services = append(services, s)
+		default:
+			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
+		}
+	}
+	return compService{services}, nil
 }
 
 func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -103,7 +113,7 @@ func Load(filename string) (*Tiltfile, error) {
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
 		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
-		"git_repo":           skylark.NewBuiltin("git_repo", makeSkylarkGitRepo),
+		"local_git_repo":     skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
 		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeService),
 	}
@@ -116,7 +126,7 @@ func Load(filename string) (*Tiltfile, error) {
 	return &Tiltfile{globals, filename, thread}, nil
 }
 
-func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service, error) {
+func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Service, error) {
 	f, ok := tiltfile.globals[serviceName]
 
 	if !ok {
@@ -140,64 +150,60 @@ func (tiltfile Tiltfile) GetServiceConfig(serviceName string) ([]*proto.Service,
 
 	switch service := val.(type) {
 	case compService:
-		var protoServ []*proto.Service
+		var servs []model.Service
 
 		for _, cServ := range service.cService {
-			s, err := skylarkServiceToProto(cServ)
+			s, err := skylarkServiceToDomain(cServ)
 			if err != nil {
 				return nil, err
 			}
 
-			protoServ = append(protoServ, s)
+			servs = append(servs, s)
 		}
-		return protoServ, nil
+		return servs, nil
 	case k8sService:
-		s, err := skylarkServiceToProto(service)
+		s, err := skylarkServiceToDomain(service)
 		if err != nil {
 			return nil, err
 		}
-		s.Name = serviceName
-		return []*proto.Service{s}, nil
+		s.Name = model.ServiceName(serviceName)
+		return []model.Service{s}, nil
 
 	default:
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
 	}
 }
 
-func skylarkServiceToProto(service k8sService) (*proto.Service, error) {
+func skylarkServiceToDomain(service k8sService) (model.Service, error) {
 	k8sYaml, ok := skylark.AsString(service.k8sYaml)
 	if !ok {
-		return nil, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
+		return model.Service{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
 	}
 
 	dockerFileBytes, err := ioutil.ReadFile(service.dockerImage.fileName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open dockerfile '%v': %v", service.dockerImage.fileName, err)
+		return model.Service{}, fmt.Errorf("failed to open dockerfile '%v': %v", service.dockerImage.fileName, err)
 	}
 
-	mounts := make([]*proto.Mount, 0, len(service.dockerImage.mounts))
-	for _, mount := range service.dockerImage.mounts {
-		repo := proto.Repo{RepoType: &proto.Repo_GitRepo{GitRepo: &proto.GitRepo{LocalPath: mount.repo.path}}}
-		mounts = append(mounts, &proto.Mount{Repo: &repo, ContainerPath: mount.mountPoint})
-	}
-
-	dockerCmds := make([]*proto.Cmd, 0, len(service.dockerImage.cmds))
-	for _, cmd := range service.dockerImage.cmds {
-		dockerCmds = append(dockerCmds, toShellCmd(cmd))
-	}
-
-	return &proto.Service{
-		K8SYaml:        k8sYaml,
+	return model.Service{
+		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
-		Mounts:         mounts,
-		Steps:          dockerCmds,
-		Entrypoint:     toShellCmd(service.dockerImage.entrypoint),
+		Mounts:         skylarkMountsToDomain(service.dockerImage.mounts),
+		Steps:          model.ToShellCmds(service.dockerImage.cmds),
+		Entrypoint:     model.ToShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
-		Name:           service.name,
+		Name:           model.ServiceName(service.name),
 	}, nil
 
 }
 
-func toShellCmd(cmd string) *proto.Cmd {
-	return &proto.Cmd{Argv: []string{"sh", "-c", cmd}}
+func skylarkMountsToDomain(sMounts []mount) []model.Mount {
+	dMounts := make([]model.Mount, len(sMounts))
+	for i, m := range sMounts {
+		dMounts[i] = model.Mount{
+			Repo:          model.LocalGithubRepo{LocalPath: m.repo.path},
+			ContainerPath: m.mountPoint,
+		}
+	}
+	return dMounts
 }

@@ -8,6 +8,8 @@ import (
 
 type ServiceName string
 
+func (s ServiceName) String() string { return string(s) }
+
 type Service struct {
 	K8sYaml        string
 	DockerfileText string
@@ -43,7 +45,15 @@ type Cmd struct {
 	Argv []string
 }
 
+func (c Cmd) isShellStandardForm() bool {
+	return len(c.Argv) == 3 && c.Argv[0] == "sh" && c.Argv[1] == "-c" && !strings.Contains(c.Argv[2], "\n")
+}
+
 func (c Cmd) EntrypointStr() string {
+	if c.isShellStandardForm() {
+		return fmt.Sprintf("ENTRYPOINT %s", c.Argv[2])
+	}
+
 	quoted := make([]string, len(c.Argv))
 	for i, arg := range c.Argv {
 		quoted[i] = fmt.Sprintf("%q", arg)
@@ -52,6 +62,10 @@ func (c Cmd) EntrypointStr() string {
 }
 
 func (c Cmd) RunStr() string {
+	if c.isShellStandardForm() {
+		return fmt.Sprintf("RUN %s", c.Argv[2])
+	}
+
 	quoted := make([]string, len(c.Argv))
 	for i, arg := range c.Argv {
 		quoted[i] = fmt.Sprintf("%q", arg)
@@ -65,4 +79,12 @@ func (c Cmd) Empty() bool {
 
 func ToShellCmd(cmd string) Cmd {
 	return Cmd{Argv: []string{"sh", "-c", cmd}}
+}
+
+func ToShellCmds(cmds []string) []Cmd {
+	res := make([]Cmd, len(cmds))
+	for i, cmd := range cmds {
+		res[i] = ToShellCmd(cmd)
+	}
+	return res
 }

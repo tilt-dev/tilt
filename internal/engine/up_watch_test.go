@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -108,7 +107,7 @@ func (s *serviceWatcherTestFixture) WriteFile(serviceNumber int) string {
 		s.t.Fatal(err)
 	}
 
-	s.watchers[serviceNumber].Events() <- fsnotify.Event{Name: f.Name()}
+	s.watchers[serviceNumber].Events() <- watch.FileEvent{Path: f.Name()}
 
 	return filepath.Base(f.Name())
 }

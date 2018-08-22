@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -11,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/tiltd"
@@ -39,7 +40,7 @@ func (c *daemonCmd) run(args []string) error {
 	log.Printf("Running tiltd listening on %s", addr)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer(
@@ -48,20 +49,21 @@ func (c *daemonCmd) run(args []string) error {
 		grpc.StreamInterceptor(
 			otgrpc.OpenTracingStreamServerInterceptor(opentracing.GlobalTracer())),
 	)
-	env, err := k8s.DetectEnv()
+
+	ctx := context.Background()
+	serviceCreator, err := wireServiceCreator(ctx)
 	if err != nil {
-		log.Fatalf("failed to detect kubernetes: %v", err)
+		return fmt.Errorf("failed to build daemon: %v", err)
 	}
-
-	serviceManager := service.NewMemoryManager()
-	upperCreator := engine.NewUpperServiceCreator(serviceManager, env)
-	creator := service.TrackServices(upperCreator, serviceManager)
-
-	proto.RegisterDaemonServer(s, proto.NewGRPCServer(creator))
+	proto.RegisterDaemonServer(s, proto.NewGRPCServer(serviceCreator))
 
 	err = s.Serve(l)
 	if err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %v", err)
 	}
 	return nil
+}
+
+func provideServiceCreator(upper engine.Upper, sm service.Manager) model.ServiceCreator {
+	return service.TrackServices(upper, sm)
 }

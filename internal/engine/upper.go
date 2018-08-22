@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/service"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -40,18 +38,14 @@ type Upper struct {
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, manager service.Manager, env k8s.Env) (Upper, error) {
-	b, err := NewLocalBuildAndDeployer(ctx, manager, env)
-	if err != nil {
-		return Upper{}, err
-	}
+func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 	return Upper{b, watcherMaker, time.After}, nil
 }
 
-func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts bool) error {
+func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
@@ -108,3 +102,5 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 	}
 	return nil
 }
+
+var _ model.ServiceCreator = Upper{}

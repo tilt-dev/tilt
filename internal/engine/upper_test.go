@@ -10,7 +10,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -47,7 +46,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 
 type fakeNotify struct {
 	paths  []string
-	events chan fsnotify.Event
+	events chan watch.FileEvent
 	errors chan error
 }
 
@@ -66,12 +65,12 @@ func (n *fakeNotify) Errors() chan error {
 	return n.errors
 }
 
-func (n *fakeNotify) Events() chan fsnotify.Event {
+func (n *fakeNotify) Events() chan watch.FileEvent {
 	return n.events
 }
 
 func newFakeNotify() *fakeNotify {
-	return &fakeNotify{paths: make([]string, 0), errors: make(chan error, 1), events: make(chan fsnotify.Event, 10)}
+	return &fakeNotify{paths: make([]string, 0), errors: make(chan error, 1), events: make(chan watch.FileEvent, 10)}
 }
 
 var _ watch.Notify = &fakeNotify{}
@@ -79,7 +78,7 @@ var _ watch.Notify = &fakeNotify{}
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, []model.Service{service}, false)
+	err := f.upper.CreateServices(f.context, []model.Service{service}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedServices []model.Service
@@ -92,7 +91,7 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.Up(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "nothing to watch")
 	}
@@ -105,7 +104,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -131,7 +130,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
 		fileRelPath := "fdas"
-		f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+		f.watcher.events <- watch.FileEvent{fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, dummyBuildToken, call.buildToken)
@@ -142,7 +141,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -163,7 +162,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
-			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+			f.watcher.events <- watch.FileEvent{fileRelPath}
 		}
 		f.timerMaker.restTimerLock.Unlock()
 
@@ -181,7 +180,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -202,7 +201,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
-			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+			f.watcher.events <- watch.FileEvent{fileRelPath}
 		}
 		f.timerMaker.maxTimerLock.Unlock()
 
@@ -220,7 +219,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.files)
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.Up(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {

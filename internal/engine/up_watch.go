@@ -5,7 +5,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -63,8 +62,8 @@ func makeServiceWatcher(
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
 //from the user's perspective are grouped together.
-func coalesceEvents(timerMaker timerMaker, eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
-	ret := make(chan []fsnotify.Event)
+func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
+	ret := make(chan []watch.FileEvent)
 	go func() {
 		defer close(ret)
 
@@ -73,7 +72,7 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan fsnotify.Event) <-ch
 			if !ok {
 				return
 			}
-			events := []fsnotify.Event{event}
+			events := []watch.FileEvent{event}
 
 			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
 			minRestTimer := timerMaker(watchBufferMinRestDuration)
@@ -187,7 +186,7 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 					}
 					watchEvent := serviceFilesChangedEvent{service: service}
 					for _, fe := range fsEvents {
-						path, err := filepath.Abs(fe.Name)
+						path, err := filepath.Abs(fe.Path)
 						if err != nil {
 							errs <- err
 						}
