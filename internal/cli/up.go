@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"strings"
+	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
@@ -35,14 +39,32 @@ func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
 	defer span.Finish()
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
-	proc, err := tiltd_server.RunDaemon(ctx)
+	buf := bytes.NewBuffer(nil)
+	cmd, err := tiltd_server.RunDaemon(ctx, buf)
 	if err != nil {
 		return err
 	}
 
+	finished := &atomicEvent{}
+
+	go func() {
+		err := cmd.Wait()
+		if err == nil || finished.hasFired() {
+			return
+		}
+
+		output := strings.TrimSpace(buf.String())
+		formattedOutput := ""
+		if len(output) > 0 {
+			formattedOutput = fmt.Sprintf("\ndaemon output:\n%s", output)
+		}
+		log.Fatalf("daemon exited abnormally: %v%s\n", err, formattedOutput)
+	}()
+
 	defer func() {
-		err := proc.Kill()
-		if err != nil {
+		finished.fire()
+		err := cmd.Process.Kill()
+		if err != nil && !strings.Contains(err.Error(), "process already finished") {
 			log.Fatalf("failed to shut down daemon: %v", err)
 		}
 	}()
@@ -84,4 +106,21 @@ func logOutput(s string) {
 	cReset := "\u001b[0m"
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	log.Printf("%s%s%s", cGreen, s, cReset)
+}
+
+type atomicEvent struct {
+	finished bool
+	mu       sync.Mutex
+}
+
+func (e *atomicEvent) fire() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.finished = true
+}
+
+func (e *atomicEvent) hasFired() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.finished
 }
