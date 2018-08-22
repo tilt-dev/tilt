@@ -25,7 +25,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 
 	var svcArray []model.Service
 	for i := range req.Services {
-		svcArray = append(svcArray, ServiceP2D(req.Services[i]))
+		svcArray = append(svcArray, serviceP2D(req.Services[i]))
 	}
 
 	return s.delegate.CreateServices(ctx, svcArray, req.Watch)
@@ -78,7 +78,7 @@ func serviceNameP2D(s string) model.ServiceName {
 }
 
 // NOTE(maia): public b/c we're hacking out the daemon and will likely put it back soon.
-func ServiceP2D(service *Service) model.Service {
+func serviceP2D(service *Service) model.Service {
 	return model.Service{
 		K8sYaml:        service.K8SYaml,
 		DockerfileText: service.DockerfileText,

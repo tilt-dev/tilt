@@ -8,6 +8,8 @@ import (
 
 type ServiceName string
 
+func (s ServiceName) String() string { return string(s) }
+
 type Service struct {
 	K8sYaml        string
 	DockerfileText string
@@ -77,4 +79,12 @@ func (c Cmd) Empty() bool {
 
 func ToShellCmd(cmd string) Cmd {
 	return Cmd{Argv: []string{"sh", "-c", cmd}}
+}
+
+func ToShellCmds(cmds []string) []Cmd {
+	res := make([]Cmd, len(cmds))
+	for i, cmd := range cmds {
+		res[i] = ToShellCmd(cmd)
+	}
+	return res
 }

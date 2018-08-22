@@ -5,13 +5,10 @@ import (
 	"errors"
 	"log"
 	"os"
-	"sync"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/proto"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,14 +46,9 @@ func (c *upCmd) run(args []string) error {
 	}
 
 	serviceName := args[0]
-	protoServices, err := tf.GetServiceConfig(serviceName)
+	services, err := tf.GetServiceConfigs(serviceName)
 	if err != nil {
 		return err
-	}
-
-	services := make([]model.Service, len(protoServices))
-	for i, s := range protoServices {
-		services[i] = proto.ServiceP2D(s)
 	}
 
 	serviceCreator, err := wireServiceCreator(ctx)
@@ -82,21 +74,4 @@ func logOutput(s string) {
 	cReset := "\u001b[0m"
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	log.Printf("%s%s%s", cGreen, s, cReset)
-}
-
-type atomicEvent struct {
-	finished bool
-	mu       sync.Mutex
-}
-
-func (e *atomicEvent) fire() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.finished = true
-}
-
-func (e *atomicEvent) hasFired() bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.finished
 }
