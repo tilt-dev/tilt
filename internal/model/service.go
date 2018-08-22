@@ -43,7 +43,15 @@ type Cmd struct {
 	Argv []string
 }
 
+func (c Cmd) isShellStandardForm() bool {
+	return len(c.Argv) == 3 && c.Argv[0] == "sh" && c.Argv[1] == "-c" && !strings.Contains(c.Argv[2], "\n")
+}
+
 func (c Cmd) EntrypointStr() string {
+	if c.isShellStandardForm() {
+		return fmt.Sprintf("ENTRYPOINT %s", c.Argv[2])
+	}
+
 	quoted := make([]string, len(c.Argv))
 	for i, arg := range c.Argv {
 		quoted[i] = fmt.Sprintf("%q", arg)
@@ -52,6 +60,10 @@ func (c Cmd) EntrypointStr() string {
 }
 
 func (c Cmd) RunStr() string {
+	if c.isShellStandardForm() {
+		return fmt.Sprintf("RUN %s", c.Argv[2])
+	}
+
 	quoted := make([]string, len(c.Argv))
 	for i, arg := range c.Argv {
 		quoted[i] = fmt.Sprintf("%q", arg)
