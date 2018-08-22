@@ -8,6 +8,8 @@ import (
 
 type ServiceName string
 
+func (s ServiceName) String() string { return string(s) }
+
 type Service struct {
 	K8sYaml        string
 	DockerfileText string
