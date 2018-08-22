@@ -109,6 +109,43 @@ def blorgly_frontend():
 	}
 }
 
+func TestCompositeFunction(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  return composite_service({"blorgly_backend": blorgly_backend(), "blorgly_frontend": blorgly_frontend()})
+
+def blorgly_backend():
+    image = build_docker_image("%v", "docker tag", "the entrypoint")
+    print(image.file_name)
+    image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+    image.add_cmd("echo hi")
+    return k8s_service("yaml", image)
+
+def blorgly_frontend():
+  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  print(image.file_name)
+  image.add_cmd("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.add_cmd("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+
+	tiltConfig, err := Load(file)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	serviceConfig, err := tiltConfig.GetServiceConfig("blorgly")
+	if err != nil {
+		t.Fatal("getting service config:", err)
+	}
+
+	assert.Equal(t, "blorgly_backend", serviceConfig[0].Name)
+	assert.Equal(t, "blorgly_frontend", serviceConfig[1].Name)
+}
+
 func TestGetServiceConfigUndefined(t *testing.T) {
 	file := tempFile(
 		`def blorgly():

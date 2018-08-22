@@ -41,8 +41,10 @@ func (f *TempDirFixture) Path() string {
 	return f.dir.Path()
 }
 
-func (f *TempDirFixture) JoinPath(path string) string {
-	return filepath.Join(f.Path(), path)
+func (f *TempDirFixture) JoinPath(path ...string) string {
+	p := []string{f.Path()}
+	p = append(p, path...)
+	return filepath.Join(p...)
 }
 
 func (f *TempDirFixture) JoinPaths(paths []string) []string {

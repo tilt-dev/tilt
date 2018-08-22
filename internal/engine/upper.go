@@ -8,6 +8,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/fsnotify"
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -28,6 +29,9 @@ const watchBufferMaxTimeInMs = 10000
 
 var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
 var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
+
+// When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
+const maxChangedFilesToPrint = 5
 
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
@@ -124,11 +128,19 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 			return errors.New("service has 0 repos - nothing to watch")
 		}
 
+		var repoRoots []string
+
 		for _, mount := range service.Mounts {
+			repoRoots = append(repoRoots, mount.Repo.LocalPath)
 			err = watcher.Add(mount.Repo.LocalPath)
 			if err != nil {
 				return err
 			}
+		}
+
+		eventFilter, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
+		if err != nil {
+			return err
 		}
 
 		coalescedEvents := u.coalesceEvents(watcher.Events())
@@ -149,9 +161,25 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 					if err != nil {
 						return err
 					}
-					changedPaths = append(changedPaths, path)
+					isIgnored, err := eventFilter.IsIgnored(path, false)
+					if err != nil {
+						return err
+					}
+					if !isIgnored {
+						changedPaths = append(changedPaths, path)
+					}
 				}
-				buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
+				if len(changedPaths) > 0 {
+					var changedPathsToPrint []string
+					if len(changedPaths) > maxChangedFilesToPrint {
+						changedPathsToPrint = append(changedPaths[:maxChangedFilesToPrint], "...")
+					} else {
+						changedPathsToPrint = changedPaths
+					}
+					logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", service.Name, changedPathsToPrint)
+
+					buildTokens[0], err = u.b.BuildAndDeploy(ctx, service, buildTokens[0], changedPaths)
+				}
 				if err != nil {
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				}
