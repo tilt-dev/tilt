@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -73,6 +73,7 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 			return err
 		}
 	}
+	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
 		for {
@@ -96,6 +97,8 @@ func (u Upper) Up(ctx context.Context, services []model.Service, watchMounts boo
 				if err != nil {
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				}
+				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
 			case err := <-sw.errs:
 				return err
 			}

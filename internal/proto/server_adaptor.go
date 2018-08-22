@@ -19,7 +19,6 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	sendOutput := func(output Output) error {
 		return d.Send(&CreateServiceReply{Output: &output})
 	}
-
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
 	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel), outputStream.stdout))
