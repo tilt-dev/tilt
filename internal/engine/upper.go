@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -48,8 +47,8 @@ func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
 //from the user's perspective are grouped together.
-func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify.Event {
-	ret := make(chan []fsnotify.Event)
+func (u Upper) coalesceEvents(eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
+	ret := make(chan []watch.FileEvent)
 	go func() {
 		defer close(ret)
 		for {
@@ -57,7 +56,7 @@ func (u Upper) coalesceEvents(eventChan <-chan fsnotify.Event) <-chan []fsnotify
 			if !ok {
 				return
 			}
-			events := []fsnotify.Event{event}
+			events := []watch.FileEvent{event}
 
 			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
 			minRestTimer := u.makeTimer(watchBufferMinRestDuration)
@@ -151,7 +150,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				logger.Get(ctx).Infof("files changed, rebuilding %v", service.Name)
 				var changedPaths []string
 				for _, e := range events {
-					path, err := filepath.Abs(e.Name)
+					path, err := filepath.Abs(e.Path)
 					if err != nil {
 						return err
 					}

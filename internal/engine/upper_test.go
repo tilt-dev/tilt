@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/fsnotify"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -43,7 +42,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 
 type fakeNotify struct {
 	paths  []string
-	events chan fsnotify.Event
+	events chan watch.FileEvent
 	errors chan error
 }
 
@@ -60,12 +59,12 @@ func (n *fakeNotify) Errors() chan error {
 	return n.errors
 }
 
-func (n *fakeNotify) Events() chan fsnotify.Event {
+func (n *fakeNotify) Events() chan watch.FileEvent {
 	return n.events
 }
 
 func newFakeNotify() *fakeNotify {
-	return &fakeNotify{paths: make([]string, 0), errors: make(chan error, 1), events: make(chan fsnotify.Event, 10)}
+	return &fakeNotify{paths: make([]string, 0), errors: make(chan error, 1), events: make(chan watch.FileEvent, 10)}
 }
 
 var _ watch.Notify = &fakeNotify{}
@@ -125,7 +124,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
 		fileRelPath := "fdas"
-		f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+		f.watcher.events <- watch.FileEvent{fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
 		fileAbsPath, err := filepath.Abs(fileRelPath)
@@ -156,7 +155,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		f.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
-			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+			f.watcher.events <- watch.FileEvent{fileRelPath}
 		}
 		f.restTimerLock.Unlock()
 
@@ -195,7 +194,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		f.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
-			f.watcher.events <- fsnotify.Event{Name: fileRelPath}
+			f.watcher.events <- watch.FileEvent{fileRelPath}
 		}
 		f.maxTimerLock.Unlock()
 
