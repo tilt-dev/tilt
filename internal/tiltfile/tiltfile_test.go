@@ -29,7 +29,7 @@ func TestGetServiceConfig(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
-  image.add('/mount_points/1', git_repo('.'))
+  image.add('/mount_points/1', local_git_repo('.'))
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
