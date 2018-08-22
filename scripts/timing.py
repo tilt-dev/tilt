@@ -50,9 +50,9 @@ def main():
     os.chdir(BLORGLY_BACKEND_DIR)
 
     cases = [
-        # make_case_tilt_up_once(),
-        # make_case_tilt_up_again_no_change(),
-        # make_case_tilt_up_again_new_file(),
+        make_case_tilt_up_once(),
+        make_case_tilt_up_again_no_change(),
+        make_case_tilt_up_again_new_file(),
         make_case_watch(),
     ]
     results = []
