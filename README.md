@@ -28,69 +28,55 @@ Mill comes with built-in functions.
 #### local_git_repo(path)
 Creates a `repo` with the content at `path`.
 
-Args:
-```
-  path: string
-```
-Returns: Repo
+* Args:
+    * `path`: **str**
+* Returns: **Repo**
 
 #### build_docker_image(dockerfile_path, img_name, entrypoint)
 Builds a docker image.
 
-Args:
-```
-  dockerfile_path: str
-  img_name: str, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
-  entrypoint: str
-```
-Returns: Image
+* Args:
+  * `dockerfile_path`: **str**
+  * `img_name`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
+  * `entrypoint`: **str**
+* Returns: **Image**
 
 #### Image.add(path, repo)
 Adds the content from `repo` into the image at `path`.
 
-Args:
-```
-  path: str
-  repo: Repo (returned by local_git_repo)
-```
-Returns: None
+* Args:
+  * `path`: **str**
+  * `repo`: **Repo** (returned by `local_git_repo`)
+* Returns: nothing
 
 #### Image.run(cmd)
 Runs `cmd` as a build step in the image.
 
-Args:
-```
-  cmd: str
-```
-Returns: None
+* Args:
+  * `cmd`: **str**
+* Returns: nothing
 
 #### k8s_service(yaml_text, img)
 Creates a kubernetes service that tilt can deploy using the yaml text and the image passed in.
 
-Args:
-```
-  yaml_text: text of yaml configuration
-  img: Image
-```
-Returns: Service
+* Args:
+  * `yaml_text`: **str** (text of yaml configuration)
+  * `img`: **Image**
+* Returns: **Service**
 
 #### composite_service(services)
 Creates a composite service; tilt will deploy (and watch) all services in `services`.
 
-Args:
-```
-  services: array of Service
-```
-Returns: Service
+* Args:
+  * `services`: array of **Service**
+* Returns: **Service**
 
 #### local(cmd)
 Runs cmd, waits for it to finish, and returns its stdout.
 
-Args:
-```
-  cmd: str
-```
-Returns: str
+* Args:
+  * `cmd`: **str**
+* Returns: **str**
 
 ## Developing
 See DEVELOPING.md
