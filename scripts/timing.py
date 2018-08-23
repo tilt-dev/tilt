@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import namedtuple
+from enum import Enum
 import datetime
 import os
 import random
@@ -28,6 +28,11 @@ tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d']
 tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d']
 
 # TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
+
+
+class K8sEnv(Enum):
+    GKE = 1
+    D4M = 2
 
 
 class Case:
@@ -70,6 +75,8 @@ def main():
 
         print()
         print(RESULTS_BLOCKLTR)
+        env = get_k8s_env()
+        print('(Kubernetes environment: {})'.format(env.name))
         print()
 
         for c in cases:
@@ -147,6 +154,19 @@ def call_or_error(cmd: List[str]):
     return_code = subprocess.call(cmd)
     if return_code != 0:
         raise Exception('Command {} exited with exit code {}'.format(cmd, return_code))
+
+
+def get_k8s_env() -> K8sEnv:
+    """Get current Kubernetes env. (or throw an exception)."""
+    out = subprocess.check_output(['kubectl', 'config', 'current-context'])
+
+    outstr = out.decode('utf-8').strip()
+    if outstr == 'docker-for-desktop':
+        return K8sEnv.D4M
+    elif 'gke' in outstr:
+        return K8sEnv.GKE
+    else:
+        raise Exception('Unable to find a matching k8s env for output "{}"'. format(outstr))
 
 
 def write_file(n: int):
