@@ -130,7 +130,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, []string(nil), call.files)
 		fileRelPath := "fdas"
-		f.watcher.events <- watch.FileEvent{fileRelPath}
+		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
 		assert.Equal(t, dummyBuildToken, call.buildToken)
@@ -162,7 +162,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
-			f.watcher.events <- watch.FileEvent{fileRelPath}
+			f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		}
 		f.timerMaker.restTimerLock.Unlock()
 
@@ -201,7 +201,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
 		for _, fileRelPath := range fileRelPaths {
-			f.watcher.events <- watch.FileEvent{fileRelPath}
+			f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		}
 		f.timerMaker.maxTimerLock.Unlock()
 
