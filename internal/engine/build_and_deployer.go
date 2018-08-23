@@ -45,12 +45,8 @@ type localBuildAndDeployer struct {
 	env     k8s.Env
 }
 
-func NewLocalBuildAndDeployer(ctx context.Context, docker *client.Client, dir *dirs.WindmillDir, m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(ctx context.Context, docker *client.Client, dir *dirs.WindmillDir, m service.Manager, env k8s.Env, history image.ImageHistory) (BuildAndDeployer, error) {
 	b := build.NewLocalDockerBuilder(docker)
-	history, err := image.NewImageHistory(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
 
 	return localBuildAndDeployer{
 		b:       b,
