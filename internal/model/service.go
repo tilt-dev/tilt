@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/mitchellh/hashstructure"
 )
 
 type ServiceName string
@@ -18,6 +20,31 @@ type Service struct {
 	Entrypoint     Cmd
 	DockerfileTag  string
 	Name           ServiceName
+}
+
+type HashedService = uint64
+
+type hash struct {
+	BaseDockerfile string
+	Mounts         []Mount
+	Steps          []Cmd
+	Entrypoint     Cmd
+}
+
+func (s *Service) Hash() (HashedService, error) {
+	hi := hash{
+		BaseDockerfile: s.DockerfileText,
+		Mounts:         s.Mounts,
+		Steps:          s.Steps,
+		Entrypoint:     s.Entrypoint,
+	}
+
+	hash, err := hashstructure.Hash(hi, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	return HashedService(hash), nil
 }
 
 type ServiceCreator interface {

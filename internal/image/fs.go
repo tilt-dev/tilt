@@ -8,6 +8,7 @@ import (
 
 	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -17,7 +18,7 @@ type diskEntry struct {
 	Ref          refKey
 	Digest       digest.Digest
 	CheckpointID CheckpointID
-	HashedInputs HashedService
+	HashedInputs model.HashedService
 }
 
 func historyFromFS(ctx context.Context, dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {

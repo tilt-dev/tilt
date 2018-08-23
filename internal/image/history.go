@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mitchellh/hashstructure"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/distribution/reference"
@@ -119,7 +117,7 @@ func (h ImageHistory) addInMemory(
 		h.byName[key] = bucket
 	}
 
-	hi, err := hashService(service)
+	hi, err := service.Hash()
 	if err != nil {
 		return "", historyEntry{}, err
 	}
@@ -135,32 +133,6 @@ func (h ImageHistory) addInMemory(
 	}
 
 	return key, entry, nil
-}
-
-type hash struct {
-	BaseDockerfile build.Dockerfile
-	Mounts         []model.Mount
-	Steps          []model.Cmd
-	Entrypoint     model.Cmd
-}
-
-type HashedService = uint64
-
-// hashService takes a service and returns a hash of all of its contents
-func hashService(service model.Service) (HashedService, error) {
-	hi := hash{
-		BaseDockerfile: build.Dockerfile(service.DockerfileText),
-		Mounts:         service.Mounts,
-		Steps:          service.Steps,
-		Entrypoint:     service.Entrypoint,
-	}
-
-	hash, err := hashstructure.Hash(hi, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	return HashedService(hash), nil
 }
 
 // AddAndPersist takes a checkpoint and a service, loads it in to memory and persists it to disk
@@ -193,7 +165,7 @@ func (h ImageHistory) MostRecent(
 		return "", CheckpointID{}, false
 	}
 
-	hi, err := hashService(service)
+	hi, err := service.Hash()
 	if err != nil {
 		// TODO(dmiller) return error here?
 		return "", CheckpointID{}, false
@@ -222,5 +194,5 @@ type NamedImageHistory struct {
 type historyEntry struct {
 	digest.Digest
 	CheckpointID
-	HashedService
+	model.HashedService
 }
