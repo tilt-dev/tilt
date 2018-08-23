@@ -16,6 +16,10 @@ RESULTS_BLOCKLTR = '''  ____                 _ _
  |  _ <  __/\__ \ |_| | | |_\__ \_
  |_| \_\___||___/\__,_|_|\__|___(_)'''
 
+# SIZES
+B = 1
+KB = 1000 * B
+MB = 1000 * KB
 
 GOPATH = os.environ['GOPATH'] if 'GOPATH' in os.environ else os.path.join(os.environ['HOME'], 'go')
 BLORGLY_BACKEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorgly-backend')
@@ -67,6 +71,10 @@ def main():
         Case('tilt up again, no change', test_tilt_up_again_no_change),
         Case('tilt up again, new file', test_tilt_up_again_new_file),
         Case('watch build from changed file', test_watch_build_from_changed_file),
+        Case('tilt up, big file (5MB)', test_tilt_up_big_file),
+
+        # Leave this commented out unless you particularly want it, it's damn slow.
+        # Case('tilt up, REALLY big file (500MB)', test_tilt_up_really_big_file),
     ]
 
     try:
@@ -210,7 +218,7 @@ def test_tilt_up_again_no_change() -> float:
 def test_tilt_up_again_new_file() -> float:
     tilt_up_if_not_called()
 
-    write_file(1000)  # 1KB
+    write_file(KB)
 
     return time_call(tilt_up_cmd)
 
@@ -228,6 +236,18 @@ def test_watch_build_from_changed_file() -> float:
         wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
                         kill_on_match=True)
     return t.duration_secs
+
+
+def test_tilt_up_big_file() -> float:
+    write_file(5 * MB)
+
+    return time_call(tilt_up_cmd)
+
+
+def test_tilt_up_really_big_file() -> float:
+    write_file(500 * MB)
+
+    return time_call(tilt_up_cmd)
 
 
 def tilt_up_if_not_called():
