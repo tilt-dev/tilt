@@ -52,9 +52,17 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	buildTokens := make(map[model.ServiceName]*buildToken)
 
 	var sw *serviceWatcher
+	var dr *serviceWatcher
 	var err error
 	if watchMounts {
 		sw, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
+		if err != nil {
+			return err
+		}
+	}
+
+	if dryrun {
+		dr, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
 		if err != nil {
 			return err
 		}
@@ -97,7 +105,33 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 			case err := <-sw.errs:
 				return err
-			}
+
+			// case drevent := <-dr.events:
+			// 	var changedPathsToPrint []string
+			// 	if len(drevent.files) > maxChangedFilesToPrint {
+			// 		changedPathsToPrint = append(drevent.files[:maxChangedFilesToPrint], "...")
+			// 	} else {
+			// 		changedPathsToPrint = drevent.files
+			// 	}
+
+			// 	logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", drevent.service.Name, changedPathsToPrint)
+
+			// 	var err error
+			// 	token, err := u.b.BuildAndDeploy(
+			// 		ctx,
+			// 		drevent.service,
+			// 		buildTokens[drevent.service.Name],
+			// 		drevent.files)
+			// 	if err != nil {
+			// 		logger.Get(ctx).Infof("build failed: %v", err.Error())
+			// 	} else {
+			// 		buildTokens[drevent.service.Name] = token
+			// 	}
+			// 	logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+			// case err := <-dr.errs:
+			// 	return err
+			// }
 		}
 	}
 	return nil
