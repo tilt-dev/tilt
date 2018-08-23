@@ -39,9 +39,9 @@ func main() {
 	newline()
 	printlnColor(100, "Awaiting your edits…", cGreen)
 	awaitInput()
+	printlnColor(200, "  → File edited: main.go:123", cBlue)
 
 	newline()
-	printlnColor(200, "File edited: main.go:123", cBlue)
 	printlnColor(100, "Building from existing: [gcr.io/project/app-frontend]", cGreen)
 	println(100, "  → tarring context")
 	println(100, "  → sending to Docker daemon…")
