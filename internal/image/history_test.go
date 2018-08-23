@@ -47,7 +47,7 @@ func TestCheckpointOne(t *testing.T) {
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.load(f.ctx, n1, d1, c1, service)
+	history.addInMemory(f.ctx, n1, d1, c1, service)
 
 	d, c, ok := history.MostRecent(n1, service)
 	if !ok || d != d1 || c != c1 {
@@ -66,13 +66,13 @@ func TestCheckpointAfter(t *testing.T) {
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.load(f.ctx, n1, d1, c1, service)
+	history.addInMemory(f.ctx, n1, d1, c1, service)
 
 	time.Sleep(time.Millisecond)
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	history.load(f.ctx, n1, d2, c2, service)
+	history.addInMemory(f.ctx, n1, d2, c2, service)
 
 	d, c, ok := history.MostRecent(n1, service)
 	if !ok || d != d2 || c != c2 {
@@ -94,8 +94,8 @@ func TestCheckpointBefore(t *testing.T) {
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.load(f.ctx, n1, d1, c1, service)
-	history.load(f.ctx, n1, d0, c0, service)
+	history.addInMemory(f.ctx, n1, d1, c1, service)
+	history.addInMemory(f.ctx, n1, d0, c0, service)
 
 	d, c, ok := history.MostRecent(n1, service)
 	if !ok || d != d1 || c != c1 {
@@ -157,13 +157,13 @@ func TestCheckpointDoesntMatchHash(t *testing.T) {
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.load(f.ctx, n1, d1, c1, service)
+	history.addInMemory(f.ctx, n1, d1, c1, service)
 
 	time.Sleep(time.Millisecond)
 
 	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	history.load(f.ctx, n1, d2, c2, service)
+	history.addInMemory(f.ctx, n1, d2, c2, service)
 
 	service2 := model.Service{
 		DockerfileText: "FROM alpine",

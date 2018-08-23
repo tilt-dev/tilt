@@ -68,7 +68,7 @@ func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, 
 		}
 
 		for _, entry := range entries {
-			history.loadFromEntry(ctx, name, entry)
+			history.addInMemoryFromEntry(ctx, name, entry)
 		}
 	}
 
@@ -83,8 +83,8 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-// loadFromEntry takes a historyEntry and adds it to the appropriate bucket in memory.
-func (h ImageHistory) loadFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
+// addInMemoryFromEntry takes a historyEntry and adds it to the appropriate bucket in memory.
+func (h ImageHistory) addInMemoryFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -101,8 +101,8 @@ func (h ImageHistory) loadFromEntry(ctx context.Context, name reference.Named, e
 	}
 }
 
-// load takes checkpoint and a service definition and loads it in to the appropriate bucket in memory.
-func (h ImageHistory) load(
+// addInMemory takes checkpoint and a service definition and loads it in to the appropriate bucket in memory.
+func (h ImageHistory) addInMemory(
 	ctx context.Context,
 	name reference.Named,
 	digest digest.Digest,
@@ -171,7 +171,7 @@ func (h ImageHistory) AddAndPersist(
 	checkpoint CheckpointID,
 	service model.Service,
 ) error {
-	key, entry, err := h.load(ctx, name, digest, checkpoint, service)
+	key, entry, err := h.addInMemory(ctx, name, digest, checkpoint, service)
 	if err != nil {
 		return err
 	}
