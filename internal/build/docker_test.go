@@ -378,7 +378,7 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 		f.t.Fatal("filesToPathMappings:", err)
 	}
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, pms, []model.Cmd{})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, pms, []model.Cmd{}, []model.Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 
 	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step}, []model.Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +440,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{}, []model.Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +476,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step}, []model.Mount{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -485,6 +485,49 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 		expectedFile{path: "/src/foo", contents: "a whole new world"},
 		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
 		expectedFile{path: "/src/baz", contents: "hellohello"},
+	}
+
+	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
+	cID := f.startContainer(f.ctx, containerConfig(digest))
+	f.assertFilesInContainer(f.ctx, cID, expected)
+}
+
+func TestBuildDockerWithStepsFromExistingRemovesPreviousMounts(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("foo", "hello world")
+	m1 := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src1",
+	}
+	step1 := model.ToShellCmd("echo -n hello >> /src1/baz")
+	entrypoint := model.ToShellCmd("echo hi")
+
+	existing, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m1}, []model.Cmd{step1}, entrypoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change contents of `foo` so when entrypoint exec's the second time, it
+	// will change the contents of `bar`
+	f.WriteFile("foo", "a whole new world")
+	m2 := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src2",
+	}
+
+	step2 := model.ToShellCmd("echo -n hello >> /src2/baz")
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m2}), []model.Cmd{step2}, []model.Mount{m1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{path: "/src2/foo", contents: "a whole new world"},
+		expectedFile{path: "/src1/bar", contents: "foo contains: a whole new world", missing: true},
+		expectedFile{path: "/src1/baz", contents: "hellohello", missing: true},
+		expectedFile{path: "/src2/baz", contents: "hello"},
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)

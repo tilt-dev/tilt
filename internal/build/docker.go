@@ -35,7 +35,7 @@ type localDockerBuilder struct {
 
 type Builder interface {
 	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
+	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd, prevMounts []model.Mount) (digest.Digest, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
@@ -72,13 +72,13 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
+	paths []pathMapping, steps []model.Cmd, prevMounts []model.Mount) (digest.Digest, error) {
 	logger.Get(ctx).Infof("Building Docker image from existing image: %s", existing.Encoded()[:10])
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
 
-	dfForExisting := DockerfileFromExisting(existing)
+	dfForExisting := DockerfileFromExisting(existing, prevMounts)
 	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
 }
 
