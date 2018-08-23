@@ -105,35 +105,42 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 			case err := <-sw.errs:
 				return err
-
-			// case drevent := <-dr.events:
-			// 	var changedPathsToPrint []string
-			// 	if len(drevent.files) > maxChangedFilesToPrint {
-			// 		changedPathsToPrint = append(drevent.files[:maxChangedFilesToPrint], "...")
-			// 	} else {
-			// 		changedPathsToPrint = drevent.files
-			// 	}
-
-			// 	logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", drevent.service.Name, changedPathsToPrint)
-
-			// 	var err error
-			// 	token, err := u.b.BuildAndDeploy(
-			// 		ctx,
-			// 		drevent.service,
-			// 		buildTokens[drevent.service.Name],
-			// 		drevent.files)
-			// 	if err != nil {
-			// 		logger.Get(ctx).Infof("build failed: %v", err.Error())
-			// 	} else {
-			// 		buildTokens[drevent.service.Name] = token
-			// 	}
-			// 	logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-			// case err := <-dr.errs:
-			// 	return err
-			// }
+			}
 		}
 	}
+
+	if dryrun {
+		for {
+			select {
+			case event := <-dr.events:
+				var changedPathsToPrint []string
+				if len(event.files) > maxChangedFilesToPrint {
+					changedPathsToPrint = append(event.files[:maxChangedFilesToPrint], "...")
+				} else {
+					changedPathsToPrint = event.files
+				}
+
+				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", event.service.Name, changedPathsToPrint)
+
+				var err error
+				token, err := u.b.BuildAndDeploy(
+					ctx,
+					event.service,
+					buildTokens[event.service.Name],
+					event.files)
+				if err != nil {
+					logger.Get(ctx).Infof("build failed: %v", err.Error())
+				} else {
+					buildTokens[event.service.Name] = token
+				}
+				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+			case err := <-dr.errs:
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
