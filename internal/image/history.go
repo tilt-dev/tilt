@@ -118,7 +118,7 @@ func (h ImageHistory) addInMemory(
 
 	bucket, key := h.bucketAndKey(name)
 
-	hi, err := service.Hash()
+	hash, err := service.Hash()
 	if err != nil {
 		return "", historyEntry{}, err
 	}
@@ -126,7 +126,7 @@ func (h ImageHistory) addInMemory(
 	entry := historyEntry{
 		Digest:        digest,
 		CheckpointID:  checkpoint,
-		HashedService: hi,
+		HashedService: hash,
 	}
 	bucket.entries = append(bucket.entries, entry)
 	if entry.After(bucket.mostRecent.CheckpointID) {
@@ -166,14 +166,14 @@ func (h ImageHistory) MostRecent(
 		return "", CheckpointID{}, false
 	}
 
-	hi, err := service.Hash()
+	hash, err := service.Hash()
 	if err != nil {
 		// TODO(dmiller) return error here?
 		return "", CheckpointID{}, false
 	}
 
 	mostRecent := bucket.mostRecent
-	if mostRecent.HashedService != hi {
+	if mostRecent.HashedService != hash {
 		return "", CheckpointID{}, false
 	}
 	return mostRecent.Digest, mostRecent.CheckpointID, true

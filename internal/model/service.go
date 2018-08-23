@@ -24,13 +24,6 @@ type Service struct {
 
 type HashedService = uint64
 
-type hash struct {
-	BaseDockerfile string
-	Mounts         []Mount
-	Steps          []Cmd
-	Entrypoint     Cmd
-}
-
 func (s *Service) Hash() (HashedService, error) {
 	hash, err := hashstructure.Hash(s, nil)
 	if err != nil {
