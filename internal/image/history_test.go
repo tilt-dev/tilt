@@ -175,18 +175,18 @@ func TestCheckpointDoesntMatchHash(t *testing.T) {
 	}
 }
 
-func TestHashInputs(t *testing.T) {
+func TestHashService(t *testing.T) {
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	r1, err := hashInputs(service)
+	r1, err := hashService(service)
 	if err != nil {
 		t.Fatal(err)
 	}
 	service2 := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	r2, err := hashInputs(service2)
+	r2, err := hashService(service2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestHashInputs(t *testing.T) {
 		DockerfileText: "FROM alpine2",
 	}
 
-	r3, err := hashInputs(service3)
+	r3, err := hashService(service3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestHashInputs(t *testing.T) {
 		DockerfileText: "FROM alpine",
 		Mounts:         mounts1,
 	}
-	r4, err := hashInputs(service4)
+	r4, err := hashService(service4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestHashInputs(t *testing.T) {
 		DockerfileText: "FROM alpine",
 		Mounts:         mounts2,
 	}
-	r5, err := hashInputs(service5)
+	r5, err := hashService(service5)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -116,15 +116,15 @@ func (h ImageHistory) load(
 		h.byName[key] = bucket
 	}
 
-	hi, err := hashInputs(service)
+	hi, err := hashService(service)
 	if err != nil {
 		return "", historyEntry{}, err
 	}
 
 	entry := historyEntry{
-		Digest:       digest,
-		CheckpointID: checkpoint,
-		HashedInputs: hi,
+		Digest:        digest,
+		CheckpointID:  checkpoint,
+		HashedService: hi,
 	}
 	bucket.entries = append(bucket.entries, entry)
 	if entry.After(bucket.mostRecent.CheckpointID) {
@@ -141,9 +141,9 @@ type hash struct {
 	Entrypoint     model.Cmd
 }
 
-type HashedInputs = uint64
+type HashedService = uint64
 
-func hashInputs(service model.Service) (HashedInputs, error) {
+func hashService(service model.Service) (HashedService, error) {
 	hi := hash{
 		BaseDockerfile: build.Dockerfile(service.DockerfileText),
 		Mounts:         service.Mounts,
@@ -156,7 +156,7 @@ func hashInputs(service model.Service) (HashedInputs, error) {
 		return 0, err
 	}
 
-	return HashedInputs(hash), nil
+	return HashedService(hash), nil
 }
 
 func (h ImageHistory) AddAndPersist(
@@ -187,14 +187,14 @@ func (h ImageHistory) MostRecent(
 		return "", CheckpointID{}, false
 	}
 
-	hi, err := hashInputs(service)
+	hi, err := hashService(service)
 	if err != nil {
 		// TODO(dmiller) return error here?
 		return "", CheckpointID{}, false
 	}
 
 	mostRecent := bucket.mostRecent
-	if mostRecent.HashedInputs != hi {
+	if mostRecent.HashedService != hi {
 		return "", CheckpointID{}, false
 	}
 	return mostRecent.Digest, mostRecent.CheckpointID, true
@@ -216,5 +216,5 @@ type NamedImageHistory struct {
 type historyEntry struct {
 	digest.Digest
 	CheckpointID
-	HashedInputs
+	HashedService
 }

@@ -17,7 +17,7 @@ type diskEntry struct {
 	Ref          refKey
 	Digest       digest.Digest
 	CheckpointID CheckpointID
-	HashedInputs HashedInputs
+	HashedInputs HashedService
 }
 
 func historyFromFS(ctx context.Context, dir *dirs.WindmillDir) (map[refKey][]historyEntry, error) {
@@ -44,7 +44,7 @@ func historyFromFS(ctx context.Context, dir *dirs.WindmillDir) (map[refKey][]his
 		}
 
 		result[entry.Ref] = append(result[entry.Ref],
-			historyEntry{CheckpointID: entry.CheckpointID, Digest: entry.Digest, HashedInputs: entry.HashedInputs})
+			historyEntry{CheckpointID: entry.CheckpointID, Digest: entry.Digest, HashedService: entry.HashedInputs})
 	}
 	return result, nil
 }
@@ -59,7 +59,7 @@ func addHistoryToFS(ctx context.Context, dir *dirs.WindmillDir, ref refKey, entr
 	}()
 
 	encoder := json.NewEncoder(file)
-	diskEntry := diskEntry{Ref: ref, Digest: entry.Digest, CheckpointID: entry.CheckpointID, HashedInputs: entry.HashedInputs}
+	diskEntry := diskEntry{Ref: ref, Digest: entry.Digest, CheckpointID: entry.CheckpointID, HashedInputs: entry.HashedService}
 	err = encoder.Encode(diskEntry)
 	if err != nil {
 		return fmt.Errorf("addHistoryToFS: %v", err)
