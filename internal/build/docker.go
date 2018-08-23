@@ -40,6 +40,10 @@ type Builder interface {
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
+func DefaultBuilder(b *localDockerBuilder) Builder {
+	return b
+}
+
 type pushOutput struct {
 	Tag    string
 	Digest string

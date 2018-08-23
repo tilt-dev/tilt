@@ -20,8 +20,11 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	wire.Build(
 		service.ProvideMemoryManager,
 		k8s.DetectEnv,
+		k8s.DefaultClient,
 		image.NewImageHistory,
 		build.DefaultDockerClient,
+		build.DefaultBuilder,
+		build.NewLocalDockerBuilder,
 		engine.NewUpper,
 		engine.NewLocalBuildAndDeployer,
 		dirs.UseWindmillDir,

@@ -9,6 +9,7 @@ import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
+	image "github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
 	service "github.com/windmilleng/tilt/internal/service"
@@ -22,16 +23,22 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
+	localDockerBuilder := build.NewLocalDockerBuilder(client)
+	builder := build.DefaultBuilder(localDockerBuilder)
+	client2 := k8s.DefaultClient()
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return nil, err
 	}
-	manager := service.ProvideMemoryManager()
+	imageHistory, err := image.NewImageHistory(ctx, windmillDir)
+	if err != nil {
+		return nil, err
+	}
 	env, err := k8s.DetectEnv()
 	if err != nil {
 		return nil, err
 	}
-	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(ctx, client, windmillDir, manager, env)
+	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(builder, client2, imageHistory, env)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +46,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
+	manager := service.ProvideMemoryManager()
 	serviceCreator := provideServiceCreator(upper, manager)
 	return serviceCreator, nil
 }
