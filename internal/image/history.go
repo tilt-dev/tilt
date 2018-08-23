@@ -104,10 +104,7 @@ func (h ImageHistory) load(
 	name reference.Named,
 	digest digest.Digest,
 	checkpoint CheckpointID,
-	baseDockerfile build.Dockerfile,
-	mounts []model.Mount,
-	steps []model.Cmd,
-	entrypoint model.Cmd,
+	service model.Service,
 ) (refKey, historyEntry, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -119,7 +116,7 @@ func (h ImageHistory) load(
 		h.byName[key] = bucket
 	}
 
-	hi, err := hashInputs(baseDockerfile, mounts, steps, entrypoint)
+	hi, err := hashInputs(service)
 	if err != nil {
 		return "", historyEntry{}, err
 	}
@@ -146,12 +143,12 @@ type hash struct {
 
 type HashedInputs = uint64
 
-func hashInputs(baseDockerfile build.Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (HashedInputs, error) {
+func hashInputs(service model.Service) (HashedInputs, error) {
 	hi := hash{
-		BaseDockerfile: baseDockerfile,
-		Mounts:         mounts,
-		Steps:          steps,
-		Entrypoint:     entrypoint,
+		BaseDockerfile: build.Dockerfile(service.DockerfileText),
+		Mounts:         service.Mounts,
+		Steps:          service.Steps,
+		Entrypoint:     service.Entrypoint,
 	}
 
 	hash, err := hashstructure.Hash(hi, nil)
@@ -167,12 +164,9 @@ func (h ImageHistory) AddAndPersist(
 	name reference.Named,
 	digest digest.Digest,
 	checkpoint CheckpointID,
-	baseDockerfile build.Dockerfile,
-	mounts []model.Mount,
-	steps []model.Cmd,
-	entrypoint model.Cmd,
+	service model.Service,
 ) error {
-	key, entry, err := h.load(ctx, name, digest, checkpoint, baseDockerfile, mounts, steps, entrypoint)
+	key, entry, err := h.load(ctx, name, digest, checkpoint, service)
 	if err != nil {
 		return err
 	}
@@ -182,10 +176,7 @@ func (h ImageHistory) AddAndPersist(
 
 func (h ImageHistory) MostRecent(
 	name reference.Named,
-	baseDockerfile build.Dockerfile,
-	mounts []model.Mount,
-	steps []model.Cmd,
-	entrypoint model.Cmd,
+	service model.Service,
 ) (digest.Digest, CheckpointID, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -196,7 +187,7 @@ func (h ImageHistory) MostRecent(
 		return "", CheckpointID{}, false
 	}
 
-	hi, err := hashInputs(baseDockerfile, mounts, steps, entrypoint)
+	hi, err := hashInputs(service)
 	if err != nil {
 		// TODO(dmiller) return error here?
 		return "", CheckpointID{}, false

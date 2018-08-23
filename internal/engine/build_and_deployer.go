@@ -89,8 +89,8 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		name = token.n
 	}
 
-	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	err := l.history.AddAndPersist(ctx, name, d, checkpoint, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+	logger.Get(ctx).Verbosef("- (Adding checkpoint to history)")
+	err := l.history.AddAndPersist(ctx, name, d, checkpoint, service)
 	if err != nil {
 		return nil, err
 	}
