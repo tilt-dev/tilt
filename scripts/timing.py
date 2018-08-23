@@ -2,13 +2,12 @@
 
 from collections import namedtuple
 import datetime
-import functools
 import os
 import random
 import signal
 import string
 import subprocess
-from typing import List
+from typing import List, Callable
 
 
 RESULTS_BLOCKLTR = '''  ____                 _ _
@@ -24,13 +23,22 @@ SERVICE_NAME = 'blorgly_backend_local'
 TOUCHED_FILES = []
 OUTPUT_WAIT_TIMEOUT_SECS = 10  # max time we'll wait on a process for output
 
-# TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
-Case = namedtuple('Case', ['name', 'setup', 'test'])
-Result = namedtuple('Result', ['name', 'time_seconds'])
-
 tilt_up_called = False
 tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d']
 tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d']
+
+# TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
+
+
+class Case:
+    def __init__(self, name: str, func: Callable[[], float]):
+        self.name = name
+        self.func = func
+        self.time_seconds = None
+
+    def run(self):
+        print('~~ RUNNING CASE: {}'.format(self.name))
+        self.time_seconds = self.func()
 
 
 class Timer:
@@ -50,36 +58,22 @@ def main():
     os.chdir(BLORGLY_BACKEND_DIR)
 
     cases = [
-        make_case_tilt_up_once(),
-        make_case_tilt_up_again_no_change(),
-        make_case_tilt_up_again_new_file(),
-        make_case_watch(),
+        Case('tilt up 1x', test_tilt_up_once),
+        Case('tilt up again, no change', test_tilt_up_again_no_change),
+        Case('tilt up again, new file', test_tilt_up_again_new_file),
+        Case('watch build from changed file', test_watch_build_from_changed_file),
     ]
-    results = []
 
     try:
         for c in cases:
-            print('~~ RUNNING CASE: {}'.format(c.name))
-            args = []
-            kwargs = {}
-
-            print('~~~~ setup: {}'.format(c.name))
-            ret = c.setup()
-            if ret is not None:
-                args = ret[0]
-                kwargs = ret[1]
-
-            print('~~~~ test: {}'.format(c.name))
-            timetake = c.test(*args, **kwargs)
-
-            results.append(Result(c.name, timetake))
+            c.run()
 
         print()
         print(RESULTS_BLOCKLTR)
         print()
 
-        for res in results:
-            print('\t{} --> {:.5f} seconds'.format(res.name, res.time_seconds))
+        for c in cases:
+            print('\t{} --> {:.5f} seconds'.format(c.name, c.time_seconds))
     finally:
         clean_up()
 
@@ -134,62 +128,7 @@ def get_stdout_with_timeout(proc: subprocess.Popen):
         signal.alarm(0)
 
 
-def make_case_tilt_up_once() -> Case:
-    def set_tilt_up_called():
-        global tilt_up_called
-        tilt_up_called = True
-
-    return Case("tilt up 1x", set_tilt_up_called,
-                functools.partial(time_call, tilt_up_cmd))
-
-
-def make_case_tilt_up_again_no_change() -> Case:
-    def tilt_up_if_not_called():
-        global tilt_up_called
-        if tilt_up_called:
-            print('Initial `tilt up` already called, no setup required')
-            return
-        print('Initial call to `tilt up`')
-        call_or_error(tilt_up_cmd)
-
-    return Case("tilt up again, no change", tilt_up_if_not_called,
-                functools.partial(time_call, tilt_up_cmd))
-
-
-def make_case_tilt_up_again_new_file() -> Case:
-    def tilt_up_if_not_called():
-        global tilt_up_called
-        if not tilt_up_called:
-            print('Initial call to `tilt up`')
-            call_or_error(tilt_up_cmd)
-
-        write_file(1000)  # 1KB
-
-    return Case("tilt up again, new file", tilt_up_if_not_called,
-                functools.partial(time_call, tilt_up_cmd))
-
-
-def make_case_watch() -> Case:
-    # TODO: make sure `tilt up --watch` isn't already running?
-    def tilt_watch_and_wait_for_initial_build():
-        tilt_proc = run_and_wait_for_stdout(tilt_up_watch_cmd, '[timing.py] finished initial build')
-
-        # change a file
-        write_file(1000)  # 1KB
-
-        return [tilt_proc], {}
-
-    def time_wait_for_next_build(proc: subprocess.Popen) -> float:
-        with Timer() as t:
-            wait_for_stdout(proc, '[timing.py] finished build from file change',
-                            kill_on_match=True)
-        return t.duration_secs
-
-    return Case("watch file changed", tilt_watch_and_wait_for_initial_build,
-                time_wait_for_next_build)
-
-
-def time_call(cmd):
+def time_call(cmd: List[str]):
     """
         Call the given command (a list of strings representing command and args),
         return time in seconds.
@@ -200,7 +139,7 @@ def time_call(cmd):
     return t.duration_secs
 
 
-def call_or_error(cmd):
+def call_or_error(cmd: List[str]):
     """
         Call the given command (a list of strings representing command and args),
         raising an error if it fails.
@@ -210,7 +149,7 @@ def call_or_error(cmd):
         raise Exception('Command {} exited with exit code {}'.format(cmd, return_code))
 
 
-def write_file(n):
+def write_file(n: int):
     """
     Create a new file in the cwd containing the given number of
     byes (randomly generated).
@@ -233,13 +172,61 @@ def clean_up():
             os.remove(f)
 
 
-# Some utils
-def randstr(n):
+### THE TEST CASES
+def test_tilt_up_once() -> float:
+    # Set-up: note that tilt up has been called so we can skip setup for later tests
+    global tilt_up_called
+    tilt_up_called = True
+
+    return time_call(tilt_up_cmd)
+
+
+def test_tilt_up_again_no_change() -> float:
+    tilt_up_if_not_called()
+
+    return time_call(tilt_up_cmd)
+
+
+def test_tilt_up_again_new_file() -> float:
+    tilt_up_if_not_called()
+
+    write_file(1000)  # 1KB
+
+    return time_call(tilt_up_cmd)
+
+
+def test_watch_build_from_changed_file() -> float:
+    # TODO: make sure `tilt up --watch` isn't already running?
+
+    # run `tilt up --watch` and wait for it to finish the initial build
+    tilt_proc = run_and_wait_for_stdout(tilt_up_watch_cmd, '[timing.py] finished initial build')
+
+    # change a file
+    write_file(1000)  # 1KB
+
+    with Timer() as t:
+        wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
+                        kill_on_match=True)
+    return t.duration_secs
+
+
+def tilt_up_if_not_called():
+    global tilt_up_called
+    if tilt_up_called:
+        print('Initial `tilt up` already called, no setup required')
+    else:
+        print('Initial call to `tilt up`')
+        call_or_error(tilt_up_cmd)
+        tilt_up_called = True
+
+
+### UTILS
+def randstr(n: int) -> str:
     chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
     return ''.join(random.choice(chars) for _ in range(n))
 
 
-def randbytes(n):
+def randbytes(n: int) -> bytearray:
     return bytearray(os.urandom(n))
 
 
