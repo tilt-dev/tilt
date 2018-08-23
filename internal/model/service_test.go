@@ -99,3 +99,28 @@ func TestHash(t *testing.T) {
 		t.Errorf("Expected %d to NOT equal %d", r3, r2)
 	}
 }
+
+func TestIgnoredHashFields(t *testing.T) {
+	s1 := Service{
+		DockerfileText: "FROM alpine",
+		DockerfileTag:  "hello",
+	}
+
+	s2 := Service{
+		DockerfileText: "FROM alpine",
+		DockerfileTag:  "world",
+	}
+
+	h1, err := s1.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := s2.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if h1 != h2 {
+		t.Errorf("Expected the hash of %+v to not equal the hash of %+v", s1, s2)
+	}
+}
