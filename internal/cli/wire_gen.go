@@ -9,6 +9,7 @@ import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
+	image "github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
 	service "github.com/windmilleng/tilt/internal/service"
@@ -31,7 +32,11 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
-	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(ctx, client, windmillDir, manager, env)
+	imageHistory, err := image.NewImageHistory(ctx, windmillDir)
+	if err != nil {
+		return nil, err
+	}
+	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(ctx, client, windmillDir, manager, env, imageHistory)
 	if err != nil {
 		return nil, err
 	}
