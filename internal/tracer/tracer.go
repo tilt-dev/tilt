@@ -12,6 +12,7 @@ func Init() error {
 			Param: 1,
 		},
 	}
+	// TODO(dmiller) log output to a file?
 	tracer, _, err := cfg.New("tilt")
 	if err != nil {
 		return err
