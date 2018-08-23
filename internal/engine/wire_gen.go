@@ -8,8 +8,8 @@ package engine
 import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
+	image "github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
-	service "github.com/windmilleng/tilt/internal/service"
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -20,8 +20,14 @@ func ProvideUpperForTesting(ctx context.Context, dir *dirs.WindmillDir, env k8s.
 	if err != nil {
 		return Upper{}, err
 	}
-	manager := service.ProvideMemoryManager()
-	buildAndDeployer, err := NewLocalBuildAndDeployer(ctx, client, dir, manager, env)
+	localDockerBuilder := build.NewLocalDockerBuilder(client)
+	builder := build.DefaultBuilder(localDockerBuilder)
+	client2 := k8s.DefaultClient()
+	imageHistory, err := image.NewImageHistory(ctx, dir)
+	if err != nil {
+		return Upper{}, err
+	}
+	buildAndDeployer, err := NewLocalBuildAndDeployer(builder, client2, imageHistory, env)
 	if err != nil {
 		return Upper{}, err
 	}
