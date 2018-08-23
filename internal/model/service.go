@@ -13,13 +13,13 @@ type ServiceName string
 func (s ServiceName) String() string { return string(s) }
 
 type Service struct {
-	K8sYaml        string
+	K8sYaml        string `hash:"ignore"`
 	DockerfileText string
 	Mounts         []Mount
 	Steps          []Cmd
 	Entrypoint     Cmd
-	DockerfileTag  string
-	Name           ServiceName
+	DockerfileTag  string      `hash:"ignore"`
+	Name           ServiceName `hash:"ignore"`
 }
 
 type HashedService = uint64
@@ -32,14 +32,7 @@ type hash struct {
 }
 
 func (s *Service) Hash() (HashedService, error) {
-	h := hash{
-		BaseDockerfile: s.DockerfileText,
-		Mounts:         s.Mounts,
-		Steps:          s.Steps,
-		Entrypoint:     s.Entrypoint,
-	}
-
-	hash, err := hashstructure.Hash(h, nil)
+	hash, err := hashstructure.Hash(s, nil)
 	if err != nil {
 		return 0, err
 	}
