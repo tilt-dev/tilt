@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -43,6 +45,7 @@ type ImageHistory struct {
 	mu     *sync.Mutex
 }
 
+// NewImageHistory reads the persisted image history from disk and loads it in to memory
 func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-NewImageHistory")
 	defer span.Finish()
@@ -63,14 +66,14 @@ func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, 
 		}
 
 		for _, entry := range entries {
-			history.load(ctx, name, entry.Digest, entry.CheckpointID)
+			history.addInMemoryFromEntry(ctx, name, entry)
 		}
 	}
 
 	return history, nil
 }
 
-// Create a new checkpoint ID.
+// CheckpointNow creates a new checkpoint ID.
 //
 // Clients should call this before they build an image, to ensure that the
 // checkpoint captures all changes to the image before the current checkpoint.
@@ -78,10 +81,7 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-func (h ImageHistory) load(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) (refKey, historyEntry) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
+func (h ImageHistory) bucketAndKey(name reference.Named) (*NamedImageHistory, refKey) {
 	key := makeRefKey(name)
 	bucket, ok := h.byName[key]
 	if !ok {
@@ -89,25 +89,74 @@ func (h ImageHistory) load(ctx context.Context, name reference.Named, digest dig
 		h.byName[key] = bucket
 	}
 
+	return bucket, key
+}
+
+// addInMemoryFromEntry takes a historyEntry and adds it to the appropriate bucket in memory.
+func (h ImageHistory) addInMemoryFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	bucket, _ := h.bucketAndKey(name)
+
+	bucket.entries = append(bucket.entries, entry)
+	if entry.After(bucket.mostRecent.CheckpointID) {
+		bucket.mostRecent = entry
+	}
+}
+
+// addInMemory takes checkpoint and a service definition and loads it in to the appropriate bucket in memory.
+func (h ImageHistory) addInMemory(
+	ctx context.Context,
+	name reference.Named,
+	digest digest.Digest,
+	checkpoint CheckpointID,
+	service model.Service,
+) (refKey, historyEntry, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	bucket, key := h.bucketAndKey(name)
+
+	hash, err := service.Hash()
+	if err != nil {
+		return "", historyEntry{}, err
+	}
+
 	entry := historyEntry{
-		Digest:       digest,
-		CheckpointID: checkpoint,
+		Digest:        digest,
+		CheckpointID:  checkpoint,
+		HashedService: hash,
 	}
 	bucket.entries = append(bucket.entries, entry)
 	if entry.After(bucket.mostRecent.CheckpointID) {
 		bucket.mostRecent = entry
 	}
 
-	return key, entry
+	return key, entry, nil
 }
 
-func (h ImageHistory) AddAndPersist(ctx context.Context, name reference.Named, digest digest.Digest, checkpoint CheckpointID) error {
-	key, entry := h.load(ctx, name, digest, checkpoint)
+// AddAndPersist takes a checkpoint and a service, loads it in to memory and persists it to disk
+func (h ImageHistory) AddAndPersist(
+	ctx context.Context,
+	name reference.Named,
+	digest digest.Digest,
+	checkpoint CheckpointID,
+	service model.Service,
+) error {
+	key, entry, err := h.addInMemory(ctx, name, digest, checkpoint, service)
+	if err != nil {
+		return err
+	}
 
 	return addHistoryToFS(ctx, h.dir, key, entry)
 }
 
-func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, CheckpointID, bool) {
+// MostRecent returns the most recent image for a given image and service, or nothing if the service changed
+func (h ImageHistory) MostRecent(
+	name reference.Named,
+	service model.Service,
+) (digest.Digest, CheckpointID, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -117,7 +166,16 @@ func (h ImageHistory) MostRecent(name reference.Named) (digest.Digest, Checkpoin
 		return "", CheckpointID{}, false
 	}
 
+	hash, err := service.Hash()
+	if err != nil {
+		// TODO(dmiller) return error here?
+		return "", CheckpointID{}, false
+	}
+
 	mostRecent := bucket.mostRecent
+	if mostRecent.HashedService != hash {
+		return "", CheckpointID{}, false
+	}
 	return mostRecent.Digest, mostRecent.CheckpointID, true
 }
 
@@ -137,4 +195,5 @@ type NamedImageHistory struct {
 type historyEntry struct {
 	digest.Digest
 	CheckpointID
+	model.HashedService
 }
