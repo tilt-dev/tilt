@@ -33,6 +33,26 @@ func (s *Service) Hash() (HashedService, error) {
 	return HashedService(hash), nil
 }
 
+func (s Service) Validate() error {
+	if s.Name == "" {
+		return fmt.Errorf("Service missing name: %+v", s)
+	}
+
+	if s.DockerfileTag == "" {
+		return fmt.Errorf("Service %q missing image tag", s.Name)
+	}
+
+	if s.K8sYaml == "" {
+		return fmt.Errorf("Service %q missing YAML file", s.Name)
+	}
+
+	if s.Entrypoint.Empty() {
+		return fmt.Errorf("Service %q missing Entrypoint", s.Name)
+	}
+
+	return nil
+}
+
 type ServiceCreator interface {
 	CreateServices(ctx context.Context, svcs []Service, watch bool) error
 }

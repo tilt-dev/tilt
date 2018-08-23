@@ -15,25 +15,16 @@ import (
 
 // Injectors from wire.go:
 
-func ProvideUpperForTesting(ctx context.Context, dir *dirs.WindmillDir, env k8s.Env) (Upper, error) {
-	client, err := build.DefaultDockerClient()
-	if err != nil {
-		return Upper{}, err
-	}
-	localDockerBuilder := build.NewLocalDockerBuilder(client)
+func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env) (BuildAndDeployer, error) {
+	localDockerBuilder := build.NewLocalDockerBuilder(docker)
 	builder := build.DefaultBuilder(localDockerBuilder)
-	client2 := k8s.DefaultClient()
 	imageHistory, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
-		return Upper{}, err
+		return nil, err
 	}
-	buildAndDeployer, err := NewLocalBuildAndDeployer(builder, client2, imageHistory, env)
+	buildAndDeployer, err := NewLocalBuildAndDeployer(builder, k8s2, imageHistory, env)
 	if err != nil {
-		return Upper{}, err
+		return nil, err
 	}
-	upper, err := NewUpper(ctx, buildAndDeployer)
-	if err != nil {
-		return Upper{}, err
-	}
-	return upper, nil
+	return buildAndDeployer, nil
 }

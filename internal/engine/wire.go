@@ -14,15 +14,18 @@ import (
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-func ProvideUpperForTesting(ctx context.Context, dir *dirs.WindmillDir, env k8s.Env) (Upper, error) {
+func provideBuildAndDeployer(
+	ctx context.Context,
+	docker build.DockerClient,
+	k8s k8s.Client,
+	dir *dirs.WindmillDir,
+	env k8s.Env) (BuildAndDeployer, error) {
 	wire.Build(
 		service.ProvideMemoryManager,
 		image.NewImageHistory,
-		build.DefaultDockerClient,
 		build.DefaultBuilder,
 		build.NewLocalDockerBuilder,
-		k8s.DefaultClient,
 		NewUpper,
 		NewLocalBuildAndDeployer)
-	return Upper{}, nil
+	return nil, nil
 }

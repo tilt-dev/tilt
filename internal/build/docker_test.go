@@ -52,13 +52,7 @@ func TestDigestAsTagToShort(t *testing.T) {
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	input := `{"stream":"Step 1/1 : FROM alpine"}
-	{"stream":"\n"}
-	{"stream":" ---\u003e 11cd0b38bc3c\n"}
-	{"aux":{"ID":"sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab"}}
-	{"stream":"Successfully built 11cd0b38bc3c\n"}
-	{"stream":"Successfully tagged hi:latest\n"}
-`
+	input := ExampleBuildOutput1
 
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	actual, err := getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
@@ -72,19 +66,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 func TestDigestFromPushOutput(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	input := `{"status":"The push refers to repository [localhost:5005/myimage]"}
-	{"status":"Preparing","progressDetail":{},"id":"2a88b569da78"}
-	{"status":"Preparing","progressDetail":{},"id":"73046094a9b8"}
-	{"status":"Pushing","progressDetail":{"current":512,"total":41},"progress":"[==================================================\u003e]     512B","id":"2a88b569da78"}
-	{"status":"Pushing","progressDetail":{"current":68608,"total":4413370},"progress":"[\u003e                                                  ]  68.61kB/4.413MB","id":"73046094a9b8"}
-	{"status":"Pushing","progressDetail":{"current":5120,"total":41},"progress":"[==================================================\u003e]   5.12kB","id":"2a88b569da78"}
-	{"status":"Pushed","progressDetail":{},"id":"2a88b569da78"}
-	{"status":"Pushing","progressDetail":{"current":1547776,"total":4413370},"progress":"[=================\u003e                                 ]  1.548MB/4.413MB","id":"73046094a9b8"}
-	{"status":"Pushing","progressDetail":{"current":3247616,"total":4413370},"progress":"[====================================\u003e              ]  3.248MB/4.413MB","id":"73046094a9b8"}
-	{"status":"Pushing","progressDetail":{"current":4672000,"total":4413370},"progress":"[==================================================\u003e]  4.672MB","id":"73046094a9b8"}
-	{"status":"Pushed","progressDetail":{},"id":"73046094a9b8"}
-	{"status":"wm-tilt: digest: sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1 size: 735"}
-	{"progressDetail":{},"aux":{"Tag":"wm-tilt","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
+	input := ExamplePushOutput1
 
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
 	actual, err := getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)))
@@ -631,13 +613,17 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 
 // startContainer starts a container from the given config
 func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
-	resp, err := f.b.dcli.ContainerCreate(ctx, config, nil, nil, "")
+	dcli, ok := f.b.dcli.(*client.Client)
+	if !ok {
+		f.t.Fatalf("Test requires a real docker client, got %T", f.b.dcli)
+	}
+	resp, err := dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 	containerID := resp.ID
 
-	err = f.b.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	err = dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
