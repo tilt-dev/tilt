@@ -74,12 +74,12 @@ Args:
 ```
 Returns: Service
 
-#### composite_service(services)
-Creates a composite service; tilt will deploy (and watch) all services in `services`.
+#### composite_service(service_fns)
+Creates a composite service; tilt will deploy (and watch) all services returned by the functions in `service_fns`.
 
 Args:
 ```
-  services: array of Service
+  services: array of functions that each return Service
 ```
 Returns: Service
 
