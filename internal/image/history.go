@@ -81,17 +81,23 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
-// addInMemoryFromEntry takes a historyEntry and adds it to the appropriate bucket in memory.
-func (h ImageHistory) addInMemoryFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
+func (h ImageHistory) bucketAndKey(name reference.Named) (*NamedImageHistory, refKey) {
 	key := makeRefKey(name)
 	bucket, ok := h.byName[key]
 	if !ok {
 		bucket = &NamedImageHistory{name: name}
 		h.byName[key] = bucket
 	}
+
+	return bucket, key
+}
+
+// addInMemoryFromEntry takes a historyEntry and adds it to the appropriate bucket in memory.
+func (h ImageHistory) addInMemoryFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	bucket, _ := h.bucketAndKey(name)
 
 	bucket.entries = append(bucket.entries, entry)
 	if entry.After(bucket.mostRecent.CheckpointID) {
@@ -110,12 +116,7 @@ func (h ImageHistory) addInMemory(
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	key := makeRefKey(name)
-	bucket, ok := h.byName[key]
-	if !ok {
-		bucket = &NamedImageHistory{name: name}
-		h.byName[key] = bucket
-	}
+	bucket, key := h.bucketAndKey(name)
 
 	hi, err := service.Hash()
 	if err != nil {
