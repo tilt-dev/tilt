@@ -1,8 +1,25 @@
 package build
 
-import "github.com/docker/docker/client"
+import (
+	"context"
+	"io"
 
-func DefaultDockerClient() (*client.Client, error) {
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
+)
+
+// Create an interface so this can be mocked out.
+type DockerClient interface {
+	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
+	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
+	ImageTag(ctx context.Context, source, target string) error
+}
+
+func DefaultDockerClient() (DockerClient, error) {
+	return newDockerClient()
+}
+
+func newDockerClient() (*client.Client, error) {
 	opts := make([]func(*client.Client) error, 0)
 	opts = append(opts, client.FromEnv)
 

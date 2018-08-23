@@ -20,7 +20,6 @@ import (
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/registry"
 	"github.com/opencontainers/go-digest"
@@ -30,7 +29,7 @@ var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOI
 	"which is not currently supported -- provide an entrypoint in your Tiltfile")
 
 type localDockerBuilder struct {
-	dcli *client.Client
+	dcli DockerClient
 }
 
 type Builder interface {
@@ -52,7 +51,7 @@ type pushOutput struct {
 
 var _ Builder = &localDockerBuilder{}
 
-func NewLocalDockerBuilder(dcli *client.Client) *localDockerBuilder {
+func NewLocalDockerBuilder(dcli DockerClient) *localDockerBuilder {
 	return &localDockerBuilder{dcli: dcli}
 }
 
@@ -334,6 +333,11 @@ func getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Dige
 	if err != nil {
 		return "", err
 	}
+
+	if aux == nil {
+		return "", fmt.Errorf("No digest found in push output")
+	}
+
 	d := pushOutput{}
 	err = json.Unmarshal(*aux, &d)
 	if err != nil {

@@ -55,6 +55,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildAndDeploy")
 	defer span.Finish()
 	checkpoint := l.history.CheckpointNow()
+	err := service.Validate()
+	if err != nil {
+		return nil, err
+	}
 
 	var name reference.Named
 	var d digest.Digest
@@ -81,7 +85,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	err := l.history.AddAndPersist(ctx, name, d, checkpoint, service)
+	err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
 	if err != nil {
 		return nil, err
 	}
