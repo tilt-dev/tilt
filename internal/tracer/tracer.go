@@ -2,7 +2,6 @@ package tracer
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
-	jaeger "github.com/uber/jaeger-client-go"
 	config "github.com/uber/jaeger-client-go/config"
 )
 
@@ -13,7 +12,7 @@ func Init() error {
 			Param: 1,
 		},
 	}
-	tracer, _, err := cfg.New("tilt", config.Logger(jaeger.StdLogger))
+	tracer, _, err := cfg.New("tilt")
 	if err != nil {
 		return err
 	}
