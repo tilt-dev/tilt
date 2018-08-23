@@ -11,10 +11,15 @@ import (
 type Dockerfile string
 
 // DockerfileFromExisting creates a new Dockerfile that uses the supplied image
-// as its base image with a FROM statement. This is necessary for iterative
-// Docker builds.
-func DockerfileFromExisting(existing digest.Digest) Dockerfile {
-	return Dockerfile(fmt.Sprintf("FROM %s", existing.Encoded()))
+// as its base image with a FROM statement, and removes any previously applied mounts
+// This is necessary for iterative Docker builds.
+func DockerfileFromExisting(existing digest.Digest, prevMounts []model.Mount) Dockerfile {
+	df := strings.Builder{}
+	df.WriteString(fmt.Sprintf("FROM %s\n", existing.Encoded()))
+	for _, m := range prevMounts {
+		df.WriteString(fmt.Sprintf("RUN rm -rf %s\n", m.ContainerPath))
+	}
+	return Dockerfile(df.String())
 }
 
 func (d Dockerfile) join(s string) Dockerfile {

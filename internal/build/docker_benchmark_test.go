@@ -76,7 +76,7 @@ func BenchmarkIterativeBuildTenTimes(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
-			digest, err = f.b.BuildDockerFromExisting(f.ctx, digest, nil, steps)
+			digest, err = f.b.BuildDockerFromExisting(f.ctx, digest, nil, steps, []model.Mount{})
 			if err != nil {
 				b.Fatal(err)
 			}

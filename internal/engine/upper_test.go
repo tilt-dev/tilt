@@ -29,7 +29,7 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-var dummyBuildToken = &buildToken{digest.Digest("foo"), nil}
+var dummyBuildToken = &buildToken{digest.Digest("foo"), nil, []model.Mount{}}
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	select {

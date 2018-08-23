@@ -19,6 +19,7 @@ import (
 type buildToken struct {
 	d digest.Digest
 	n reference.Named
+	m []model.Mount
 }
 
 func (b *buildToken) isEmpty() bool {
@@ -75,8 +76,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 	} else {
-		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps, token.m)
 		if err != nil {
 			return nil, err
 		}
@@ -151,5 +151,5 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	return &buildToken{d: d, n: name}, l.k8sClient.Apply(ctx, newYAMLString)
+	return &buildToken{d: d, n: name, m: service.Mounts}, l.k8sClient.Apply(ctx, newYAMLString)
 }
