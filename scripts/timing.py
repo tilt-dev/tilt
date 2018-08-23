@@ -158,16 +158,9 @@ def call_or_error(cmd: List[str]):
 
 def get_k8s_env() -> K8sEnv:
     """Get current Kubernetes env. (or throw an exception)."""
-    p = subprocess.Popen(['kubectl', 'config', 'view', '-o', 'template', '--template={{ index . "current-context" }}'], stdout=subprocess.PIPE)
-    output, err = p.communicate()
-    if err is not None:
-        raise Exception(err)
+    out = subprocess.check_output(['kubectl', 'config', 'current-context'])
 
-    if p.returncode != 0:
-        raise Exception('kubectl config call for current context exited with error code: {}'.
-                        format(p.returncode))
-
-    outstr = output.decode('utf-8').strip()
+    outstr = out.decode('utf-8').strip()
     if outstr == 'docker-for-desktop':
         return K8sEnv.D4M
     elif 'gke' in outstr:
