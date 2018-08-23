@@ -47,6 +47,7 @@ type ImageHistory struct {
 	mu     *sync.Mutex
 }
 
+// NewImageHistory reads the persisted image history from disk and loads it in to memory
 func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-NewImageHistory")
 	defer span.Finish()
@@ -74,7 +75,7 @@ func NewImageHistory(ctx context.Context, dir *dirs.WindmillDir) (ImageHistory, 
 	return history, nil
 }
 
-// Create a new checkpoint ID.
+// CheckpointNow creates a new checkpoint ID.
 //
 // Clients should call this before they build an image, to ensure that the
 // checkpoint captures all changes to the image before the current checkpoint.
@@ -82,6 +83,7 @@ func (h ImageHistory) CheckpointNow() CheckpointID {
 	return CheckpointID(time.Now())
 }
 
+// loadFromEntry takes a historyEntry and adds it to the appropriate bucket in memory.
 func (h ImageHistory) loadFromEntry(ctx context.Context, name reference.Named, entry historyEntry) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -99,6 +101,7 @@ func (h ImageHistory) loadFromEntry(ctx context.Context, name reference.Named, e
 	}
 }
 
+// load takes checkpoint and a service definition and loads it in to the appropriate bucket in memory.
 func (h ImageHistory) load(
 	ctx context.Context,
 	name reference.Named,
@@ -143,6 +146,7 @@ type hash struct {
 
 type HashedService = uint64
 
+// hashService takes a service and returns a hash of all of its contents
 func hashService(service model.Service) (HashedService, error) {
 	hi := hash{
 		BaseDockerfile: build.Dockerfile(service.DockerfileText),
@@ -159,6 +163,7 @@ func hashService(service model.Service) (HashedService, error) {
 	return HashedService(hash), nil
 }
 
+// AddAndPersist takes a checkpoint and a service, loads it in to memory and persists it to disk
 func (h ImageHistory) AddAndPersist(
 	ctx context.Context,
 	name reference.Named,
@@ -174,6 +179,7 @@ func (h ImageHistory) AddAndPersist(
 	return addHistoryToFS(ctx, h.dir, key, entry)
 }
 
+// MostRecent returns the most recent image for a given image and service, or nothing if the service changed
 func (h ImageHistory) MostRecent(
 	name reference.Named,
 	service model.Service,
