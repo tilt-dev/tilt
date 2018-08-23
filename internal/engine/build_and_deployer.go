@@ -96,7 +96,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	// we don't need to push to the central registry.
 	// The k8s will use the image already available
 	// in the local docker daemon.
-	canSkipPush := l.env == k8s.EnvDockerDesktop
+	canSkipPush := l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
 	if canSkipPush {
 		refToInject, err = l.b.TagDocker(ctx, name, d)
 		if err != nil {

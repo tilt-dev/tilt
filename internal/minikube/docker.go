@@ -19,7 +19,9 @@ func DockerEnv(ctx context.Context) (map[string]string, error) {
 	if err != nil {
 		exitErr, isExitErr := err.(*exec.ExitError)
 		if isExitErr {
-			return nil, fmt.Errorf("Could not read docker env from minikube.\n%s", string(exitErr.Stderr))
+			// TODO(nick): Maybe we should automatically run minikube start?
+			return nil, fmt.Errorf("Could not read docker env from minikube.\n"+
+				"Did you forget to run `minikube start`?\n%s", string(exitErr.Stderr))
 		}
 
 		return nil, fmt.Errorf("Could not read docker env from minikube: %v", err)

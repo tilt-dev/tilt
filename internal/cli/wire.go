@@ -6,6 +6,7 @@ package cli
 import (
 	"context"
 
+	"github.com/docker/docker/client"
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
@@ -23,6 +24,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 		k8s.DefaultClient,
 		image.NewImageHistory,
 		build.DefaultDockerClient,
+		wire.Bind(new(build.DockerClient), new(client.Client)),
 		build.DefaultBuilder,
 		build.NewLocalDockerBuilder,
 		engine.NewUpper,

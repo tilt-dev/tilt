@@ -19,13 +19,17 @@ import (
 // Injectors from wire.go:
 
 func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
-	dockerClient, err := build.DefaultDockerClient()
+	env, err := k8s.DetectEnv()
 	if err != nil {
 		return nil, err
 	}
-	localDockerBuilder := build.NewLocalDockerBuilder(dockerClient)
+	client, err := build.DefaultDockerClient(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	localDockerBuilder := build.NewLocalDockerBuilder(client)
 	builder := build.DefaultBuilder(localDockerBuilder)
-	client := k8s.DefaultClient()
+	client2 := k8s.DefaultClient()
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return nil, err
@@ -34,11 +38,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
-	env, err := k8s.DetectEnv()
-	if err != nil {
-		return nil, err
-	}
-	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(builder, client, imageHistory, env)
+	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(builder, client2, imageHistory, env)
 	if err != nil {
 		return nil, err
 	}

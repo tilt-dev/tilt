@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 
@@ -484,15 +485,8 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	opts := make([]func(*client.Client) error, 0)
-	opts = append(opts, client.FromEnv)
-
-	// Use client for docker 17
-	// https://docs.docker.com/develop/sdk/#api-version-matrix
-	// API version 1.30 is the first version where the full digest
-	// shows up in the API output of BuildImage
-	opts = append(opts, client.WithVersion("1.30"))
-	dcli, err := client.NewClientWithOpts(opts...)
+	ctx := testutils.CtxForTest()
+	dcli, err := DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -613,17 +607,13 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 
 // startContainer starts a container from the given config
 func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
-	dcli, ok := f.b.dcli.(*client.Client)
-	if !ok {
-		f.t.Fatalf("Test requires a real docker client, got %T", f.b.dcli)
-	}
-	resp, err := dcli.ContainerCreate(ctx, config, nil, nil, "")
+	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 	containerID := resp.ID
 
-	err = dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
