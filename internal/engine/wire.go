@@ -19,6 +19,9 @@ func ProvideUpperForTesting(ctx context.Context, dir *dirs.WindmillDir, env k8s.
 		service.ProvideMemoryManager,
 		image.NewImageHistory,
 		build.DefaultDockerClient,
+		build.DefaultBuilder,
+		build.NewLocalDockerBuilder,
+		k8s.DefaultClient,
 		NewUpper,
 		NewLocalBuildAndDeployer)
 	return Upper{}, nil

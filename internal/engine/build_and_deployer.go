@@ -7,7 +7,6 @@ import (
 	"k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
-	"github.com/docker/docker/client"
 	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
@@ -15,8 +14,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/service"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 type buildToken struct {
@@ -39,24 +36,18 @@ type BuildAndDeployer interface {
 var _ BuildAndDeployer = localBuildAndDeployer{}
 
 type localBuildAndDeployer struct {
-	b       build.Builder
-	history image.ImageHistory
-	sm      service.Manager
-	env     k8s.Env
+	b         build.Builder
+	history   image.ImageHistory
+	k8sClient k8s.Client
+	env       k8s.Env
 }
 
-func NewLocalBuildAndDeployer(ctx context.Context, docker *client.Client, dir *dirs.WindmillDir, m service.Manager, env k8s.Env) (BuildAndDeployer, error) {
-	b := build.NewLocalDockerBuilder(docker)
-	history, err := image.NewImageHistory(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-
+func NewLocalBuildAndDeployer(b build.Builder, k8sClient k8s.Client, history image.ImageHistory, env k8s.Env) (BuildAndDeployer, error) {
 	return localBuildAndDeployer{
-		b:       b,
-		history: history,
-		sm:      m,
-		env:     env,
+		b:         b,
+		history:   history,
+		k8sClient: k8sClient,
+		env:       env,
 	}, nil
 }
 
@@ -156,5 +147,5 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	return &buildToken{d: d, n: name}, k8s.Apply(ctx, newYAMLString)
+	return &buildToken{d: d, n: name}, l.k8sClient.Apply(ctx, newYAMLString)
 }

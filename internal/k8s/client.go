@@ -7,12 +7,26 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/windmilleng/tilt/internal/logger"
-
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
-func Apply(ctx context.Context, rawYAML string) error {
+type Client interface {
+	Apply(ctx context.Context, rawYAML string) error
+}
+
+func DefaultClient() Client {
+	return NewKubectlClient()
+}
+
+type kubectlClient struct {
+}
+
+func NewKubectlClient() kubectlClient {
+	return kubectlClient{}
+}
+
+func (k kubectlClient) Apply(ctx context.Context, rawYAML string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
