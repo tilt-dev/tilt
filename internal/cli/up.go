@@ -15,7 +15,8 @@ import (
 )
 
 type upCmd struct {
-	watch bool
+	watch  bool
+	dryrun bool
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -26,6 +27,7 @@ func (c *upCmd) register() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically rebuilt and redeployed when files in their repos change")
+	cmd.Flags().BoolVar(&c.dryrun, "dry-run", false, "started services will notify you of potential automatic rebuilds and redeploys on file changes")
 
 	return cmd
 }
@@ -56,7 +58,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = serviceCreator.CreateServices(ctx, services, c.watch)
+	err = serviceCreator.CreateServices(ctx, services, c.watch, c.dryrun)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())

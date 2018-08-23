@@ -45,7 +45,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 	return Upper{b, watcherMaker, time.After}, nil
 }
 
-func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
+func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool, dryrun bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 

@@ -28,7 +28,7 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 		svcArray = append(svcArray, serviceP2D(req.Services[i]))
 	}
 
-	return s.delegate.CreateServices(ctx, svcArray, req.Watch)
+	return s.delegate.CreateServices(ctx, svcArray, req.Watch, req.Dryrun)
 }
 
 func mountsP2D(mounts []*Mount) []model.Mount {
