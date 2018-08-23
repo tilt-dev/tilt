@@ -32,14 +32,14 @@ type hash struct {
 }
 
 func (s *Service) Hash() (HashedService, error) {
-	hi := hash{
+	h := hash{
 		BaseDockerfile: s.DockerfileText,
 		Mounts:         s.Mounts,
 		Steps:          s.Steps,
 		Entrypoint:     s.Entrypoint,
 	}
 
-	hash, err := hashstructure.Hash(hi, nil)
+	hash, err := hashstructure.Hash(h, nil)
 	if err != nil {
 		return 0, err
 	}
