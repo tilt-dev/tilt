@@ -5,17 +5,10 @@ import (
 	"bytes"
 	"io"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
 )
-
-type K8sEntity struct {
-	Obj  runtime.Object
-	Kind *schema.GroupVersionKind
-}
 
 func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 	buf := bytes.NewBuffer([]byte(yaml))
