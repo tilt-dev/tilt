@@ -314,6 +314,9 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			result = message.Aux
 		}
 	}
+	if result == nil {
+		return nil, fmt.Errorf("No JSON docker output found")
+	}
 	return result, nil
 }
 
