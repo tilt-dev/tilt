@@ -46,12 +46,8 @@ func WithOutputter(ctx context.Context, outputter Outputter) context.Context {
 	return context.WithValue(ctx, outputterContextKey, &outputter)
 }
 
-func (o *Outputter) printColorf(color *color.Color, format string, a ...interface{}) {
-	o.logger.Infof(color.Sprintf(format, a...))
-}
-
 func (o *Outputter) StartPipeline(totalStepCount int) {
-	o.printColorf(color.New(color.FgBlue), "──┤ Pipeline Starting … ├────────────────────────────────────────")
+	o.logger.Infof(color.BlueString("──┤ Pipeline Starting … ├────────────────────────────────────────"))
 	o.curPipelineStep = 1
 	o.totalPipelineStepCount = totalStepCount
 	o.pipelineStepDurations = nil
@@ -65,17 +61,16 @@ func (o *Outputter) EndPipeline() {
 
 	elapsed := time.Now().Sub(o.curPipelineStart)
 
-	blue := color.New(color.FgBlue).SprintfFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	green := color.New(color.FgGreen).SprintfFunc()
-
-	line := blue("──┤ ︎Pipeline Done in ") + green("%.3fs", elapsed.Seconds()) + yellow(" ⚡") + blue(" ︎├───────────────────────────────────")
+	line := color.BlueString("──┤ ︎Pipeline Done in ") +
+		color.GreenString("%.3fs", elapsed.Seconds()) +
+		color.YellowString(" ⚡") +
+		color.BlueString(" ︎├───────────────────────────────────")
 	o.logger.Infof(line)
 	o.curPipelineStep = 0
 }
 
 func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
-	o.printColorf(color.New(color.FgGreen), "STEP %d/%d — %s", o.curPipelineStep, o.totalPipelineStepCount, fmt.Sprintf(format, a...))
+	o.logger.Infof(color.GreenString("STEP %d/%d — %s", o.curPipelineStep, o.totalPipelineStepCount, fmt.Sprintf(format, a...)))
 	o.curPipelineStep++
 	o.curBuildStep = 1
 	o.curPipelineStepStart = time.Now()

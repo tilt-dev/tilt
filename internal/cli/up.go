@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -73,8 +74,6 @@ func (c *upCmd) run(args []string) error {
 }
 
 func logOutput(s string) {
-	cGreen := "\033[32m"
-	cReset := "\u001b[0m"
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
-	log.Printf("%s%s%s", cGreen, s, cReset)
+	log.Printf(color.GreenString(s))
 }
