@@ -2,7 +2,6 @@ package git
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -53,23 +52,6 @@ func TestGitIgnoreTester_GitDirIsIgnored(t *testing.T) {
 	defer tf.TearDown()
 
 	tf.UseSingleRepoTester()
-	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
-}
-
-func TestGitIgnoreTester_GitDirIsIgnoredRelativeRepoRoot(t *testing.T) {
-	tf := newTestFixture(t, ".*.swp")
-	defer tf.TearDown()
-
-	origDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	repoRoot := tf.repoRoots[0].Path()
-	os.Chdir(tf.repoRoots[0].JoinPath(".."))
-	defer os.Chdir(origDir)
-
-	tf.UseSingleRepoTesterWithPath(filepath.Base(repoRoot))
-
 	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
 }
 
