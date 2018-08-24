@@ -390,7 +390,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 
 	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{step})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +422,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +458,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{step})
 	if err != nil {
 		t.Fatal(err)
 	}
