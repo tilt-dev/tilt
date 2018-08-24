@@ -54,7 +54,7 @@ func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, e
 	return pms, nil
 }
 
-func MountsToPath(mounts []model.Mount) []pathMapping {
+func MountsToPathMappings(mounts []model.Mount) []pathMapping {
 	pms := make([]pathMapping, len(mounts))
 	for i, m := range mounts {
 		pms[i] = pathMapping{
