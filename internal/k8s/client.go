@@ -9,6 +9,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/output"
 )
 
 type Client interface {
@@ -35,7 +36,7 @@ func (k kubectlClient) Apply(ctx context.Context, rawYAML string) error {
 	r := bytes.NewReader([]byte(rawYAML))
 	c.Stdin = r
 
-	writer := logger.Get(ctx).Writer(logger.InfoLvl)
+	writer := output.Get(ctx).Writer()
 
 	c.Stdout = writer
 

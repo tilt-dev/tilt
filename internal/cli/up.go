@@ -9,6 +9,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,10 +34,12 @@ func (c *upCmd) register() *cobra.Command {
 func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
 	defer span.Finish()
+	l := logger.NewLogger(logLevel(), os.Stdout)
 	ctx := logger.WithLogger(
 		opentracing.ContextWithSpan(context.Background(), span),
-		logger.NewLogger(logLevel(), os.Stdout),
+		l,
 	)
+	ctx = output.WithOutputter(ctx, output.NewOutputter(l))
 
 	logOutput("Starting Tilt…")
 

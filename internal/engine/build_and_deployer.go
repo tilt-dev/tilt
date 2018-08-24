@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/windmilleng/tilt/internal/output"
 	"k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
@@ -54,6 +55,10 @@ func NewLocalBuildAndDeployer(b build.Builder, k8sClient k8s.Client, history ima
 func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildAndDeploy")
 	defer span.Finish()
+
+	output.Get(ctx).StartPipeline()
+	defer output.Get(ctx).EndPipeline()
+
 	checkpoint := l.history.CheckpointNow()
 	err := service.Validate()
 	if err != nil {
@@ -63,10 +68,12 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	var name reference.Named
 	var d digest.Digest
 	if token.isEmpty() {
+		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 		if err != nil {
 			return nil, err
 		}
+		output.Get(ctx).EndPipelineStep()
 		d = newDigest
 
 		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
@@ -75,8 +82,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 	} else {
+		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
 		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps)
+		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +118,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 	}
 
-	logger.Get(ctx).Infof("Parsing Kubernetes config YAML")
+	output.Get(ctx).StartPipelineStep("Deploying")
+	defer output.Get(ctx).EndPipelineStep()
+
+	output.Get(ctx).StartBuildStep("Parsing Kubernetes config YAML")
 	entities, err := k8s.ParseYAMLFromString(service.K8sYaml)
 	if err != nil {
 		return nil, err

@@ -15,6 +15,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/output"
 
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -57,7 +58,6 @@ func NewLocalDockerBuilder(dcli DockerClient) *localDockerBuilder {
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Infof("Building Docker image from scratch")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
@@ -72,7 +72,6 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
 	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
-	logger.Get(ctx).Infof("Building Docker image from existing image: %s", existing.Encoded()[:10])
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
@@ -146,7 +145,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	}
 
 	logger.Get(ctx).Infof("%sconnecting to repository", logger.Tab)
-	writer := logger.Get(ctx).Writer(logger.VerboseLvl)
+	writer := output.Get(ctx).Writer()
 	cli := command.NewDockerCli(nil, writer, writer, true)
 
 	err = cli.Initialize(cliflags.NewClientOptions())
@@ -202,14 +201,14 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
-	logger.Get(ctx).Infof("%starring context", logger.Tab)
+	output.Get(ctx).StartBuildStep("tarring context")
 
 	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return "", err
 	}
 
-	logger.Get(ctx).Infof("%sbuilding image", logger.Tab)
+	output.Get(ctx).StartBuildStep("building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
@@ -298,9 +297,8 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 
 		if len(message.Stream) > 0 && message.Stream != "\n" {
 			msg := strings.TrimSuffix(message.Stream, "\n")
-			logger.Get(ctx).Infof("%+v", msg)
+			output.Get(ctx).Print("%+v", msg)
 		}
-		// }
 
 		if message.ErrorMessage != "" {
 			return nil, errors.New(message.ErrorMessage)
