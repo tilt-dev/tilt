@@ -66,9 +66,11 @@ func (o *Outputter) EndPipeline() {
 	elapsed := time.Now().Sub(o.curPipelineStart)
 
 	blue := color.New(color.FgBlue).SprintfFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintfFunc()
 
-	o.logger.Infof(blue("──┤ ︎Pipeline Done in %s ⚡︎├───────────────────────────────────", green("%.3fs", elapsed.Seconds())))
+	line := blue("──┤ ︎Pipeline Done in ") + green("%.3fs", elapsed.Seconds()) + yellow(" ⚡") + blue(" ︎├───────────────────────────────────")
+	o.logger.Infof(line)
 	o.curPipelineStep = 0
 }
 
