@@ -79,3 +79,25 @@ func IsDir(path string) bool {
 
 	return f.Mode().IsDir()
 }
+
+// TryAsCwdChildren converts the given absolute paths to children of the CWD,
+// if possible (otherwise, leaves them as absolute paths).
+func TryAsCwdChildren(absPaths []string) []string {
+	wd, err := os.Getwd()
+	if err != nil {
+		// This is just a util for printing right now, so don't actually throw an
+		// error, just return back all the absolute paths
+		return absPaths[:]
+	}
+
+	res := make([]string, len(absPaths))
+	for i, abs := range absPaths {
+		rel, isChild := Child(wd, abs)
+		if isChild {
+			res[i] = rel
+		} else {
+			res[i] = abs
+		}
+	}
+	return res
+}

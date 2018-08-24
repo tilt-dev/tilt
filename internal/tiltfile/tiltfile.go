@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/model"
@@ -83,7 +84,12 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 		return nil, err
 	}
 
-	return gitRepo{path}, nil
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("filepath.Abs: %v", err)
+	}
+
+	return gitRepo{absPath}, nil
 }
 
 func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
