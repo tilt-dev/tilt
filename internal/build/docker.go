@@ -288,7 +288,11 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 	defer span.Finish()
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
+	var innerSpan opentracing.Span
 	for decoder.More() {
+		if innerSpan != nil {
+			innerSpan.Finish()
+		}
 		message := jsonmessage.JSONMessage{}
 		err := decoder.Decode(&message)
 		if err != nil {
@@ -298,6 +302,9 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 		if len(message.Stream) > 0 && message.Stream != "\n" {
 			msg := strings.TrimSuffix(message.Stream, "\n")
 			output.Get(ctx).Print("%+v", msg)
+			if strings.HasPrefix(msg, "Step") || strings.HasPrefix(msg, "Running") {
+				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
+			}
 		}
 
 		if message.ErrorMessage != "" {
@@ -311,6 +318,9 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 		if message.Aux != nil {
 			result = message.Aux
 		}
+	}
+	if innerSpan != nil {
+		innerSpan.Finish()
 	}
 	return result, nil
 }
