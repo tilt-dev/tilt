@@ -150,10 +150,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
 	}
 
-	newYAMLString, err := k8s.SerializeYAML(newK8sEntities)
-	if err != nil {
-		return nil, err
-	}
-
-	return &buildToken{d: d, n: name}, l.k8sClient.Apply(ctx, newYAMLString)
+	newToken := &buildToken{d: d, n: name}
+	err = k8s.Update(ctx, l.k8sClient, newK8sEntities)
+	return newToken, err
 }

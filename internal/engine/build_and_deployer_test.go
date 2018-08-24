@@ -2,6 +2,7 @@ package engine
 
 import (
 	context "context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -81,7 +82,15 @@ type FakeK8sClient struct {
 	yaml string
 }
 
-func (c *FakeK8sClient) Apply(ctx context.Context, yaml string) error {
+func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) error {
+	yaml, err := k8s.SerializeYAML(entities)
+	if err != nil {
+		return fmt.Errorf("kubectl apply: %v", err)
+	}
 	c.yaml = yaml
+	return nil
+}
+
+func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) error {
 	return nil
 }
