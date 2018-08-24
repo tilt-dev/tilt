@@ -26,7 +26,7 @@ func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, e
 		for _, m := range mounts {
 			if !filepath.IsAbs(m.Repo.LocalPath) {
 				return nil, fmt.Errorf(
-					"[FilesToPathMappints] mount.Repo.LocalPath must be an absolute path (got: %s)",
+					"[FilesToPathMappings] mount.Repo.LocalPath must be an absolute path (got: %s)",
 					m.Repo.LocalPath)
 			}
 			// Open Q: can you mount inside of mounts?! o_0
