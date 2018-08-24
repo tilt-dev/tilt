@@ -1,7 +1,6 @@
 package build
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -66,40 +65,19 @@ func TestFilesToPathMappings(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestRelativeRepoPathsBecomeAbsolute(t *testing.T) {
-	f := testutils.NewTempDirFixture(t)
-	oldWd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(oldWd)
-	err = os.Chdir(f.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.TearDown()
-
-	files := []string{filepath.Join(f.Path(), "timing_script-W3imtct67O")}
+func TestRelativeRepoPathsThrowError(t *testing.T) {
+	files := []string{"/foo/bar.baz"}
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: "."},
-			ContainerPath: "/go/src/github.com/windmilleng/blorgly-backend",
+			Repo:          model.LocalGithubRepo{LocalPath: "./hello"},
+			ContainerPath: "/src",
 		},
 	}
 
-	actual, err := FilesToPathMappings(files, mounts)
-	if err != nil {
-		t.Fatal(err)
+	_, err := FilesToPathMappings(files, mounts)
+	if assert.NotNil(t, err) {
+		assert.Contains(t, err.Error(), "must be an absolute path")
 	}
-
-	expected := []pathMapping{
-		pathMapping{
-			LocalPath:     filepath.Join(f.Path(), "timing_script-W3imtct67O"),
-			ContainerPath: "/go/src/github.com/windmilleng/blorgly-backend/timing_script-W3imtct67O",
-		},
-	}
-
-	assert.ElementsMatch(t, expected, actual)
 }
 
 func TestFileNotInMountThrowsErr(t *testing.T) {

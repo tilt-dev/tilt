@@ -7,6 +7,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -80,7 +81,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 					changedPathsToPrint = event.files
 				}
 
-				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v", event.service.Name, changedPathsToPrint)
+				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v",
+					event.service.Name, ospath.TryAsCwdChildren(changedPathsToPrint))
 
 				var err error
 				token, err := u.b.BuildAndDeploy(
