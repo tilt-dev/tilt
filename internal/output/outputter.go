@@ -4,30 +4,27 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
-type Color string
-
 const (
-	cGreen                = Color("\033[32m")
-	cBlue                 = Color("\033[34m")
-	cReset                = Color("\u001b[0m")
 	buildStepOutputPrefix = "    ╎ "
+	outputterContextKey   = "outputter"
 )
 
-const outputterContextKey = "outputter"
-
 type Outputter struct {
-	logger                logger.Logger
-	indentation           int
-	curBuildStep          int
-	curPipelineStep       int
-	pipelineStepDurations []time.Duration
-	curPipelineStart      time.Time
-	curPipelineStepStart  time.Time
+	logger                 logger.Logger
+	indentation            int
+	curBuildStep           int
+	curPipelineStep        int
+	totalPipelineStepCount int
+	pipelineStepDurations  []time.Duration
+	curPipelineStart       time.Time
+	curPipelineStepStart   time.Time
 }
 
 func Get(ctx context.Context) *Outputter {
@@ -49,13 +46,14 @@ func WithOutputter(ctx context.Context, outputter Outputter) context.Context {
 	return context.WithValue(ctx, outputterContextKey, &outputter)
 }
 
-func (o *Outputter) printColorf(color Color, format string, a ...interface{}) {
-	o.logger.Infof("%s%s%s", string(color), fmt.Sprintf(format, a...), cReset)
+func (o *Outputter) printColorf(color *color.Color, format string, a ...interface{}) {
+	o.logger.Infof(color.Sprintf(format, a...))
 }
 
-func (o *Outputter) StartPipeline() {
-	o.printColorf(cBlue, "──┤ Pipeline Starting … ├────────────────────────────────────────")
+func (o *Outputter) StartPipeline(totalStepCount int) {
+	o.printColorf(color.New(color.FgBlue), "──┤ Pipeline Starting … ├────────────────────────────────────────")
 	o.curPipelineStep = 1
+	o.totalPipelineStepCount = totalStepCount
 	o.pipelineStepDurations = nil
 	o.curPipelineStart = time.Now()
 }
@@ -66,21 +64,16 @@ func (o *Outputter) EndPipeline() {
 	}
 
 	elapsed := time.Now().Sub(o.curPipelineStart)
-	o.logger.Infof("%s──┤ ︎Pipeline Done in %s%.3fs%s ⚡︎├────────────────────────────────────%s",
-		cBlue,
-		cGreen,
-		elapsed.Seconds(),
-		cBlue,
-		cReset)
+
+	blue := color.New(color.FgBlue).SprintfFunc()
+	green := color.New(color.FgGreen).SprintfFunc()
+
+	o.logger.Infof(blue("──┤ ︎Pipeline Done in %s ⚡︎├───────────────────────────────────", green("%.3fs", elapsed.Seconds())))
 	o.curPipelineStep = 0
 }
 
-// how many steps there are per pipeline
-// we might need to change or remove this if it turns out we can't predict how many steps there will be
-const numSteps = 2
-
 func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
-	o.printColorf(cGreen, "STEP %d/%d — %s", o.curPipelineStep, numSteps, fmt.Sprintf(format, a...))
+	o.printColorf(color.New(color.FgGreen), "STEP %d/%d — %s", o.curPipelineStep, o.totalPipelineStepCount, fmt.Sprintf(format, a...))
 	o.curPipelineStep++
 	o.curBuildStep = 1
 	o.curPipelineStepStart = time.Now()
@@ -120,20 +113,34 @@ func newPrefixedWriter(prefix string, underlying io.Writer) *prefixedWriter {
 }
 
 func (i *prefixedWriter) Write(buf []byte) (n int, err error) {
-	for _, c := range buf {
-		if i.indentBeforeNextWrite {
-			_, err := i.underlying.Write([]byte(i.prefix))
-			if err != nil {
-				return n, err
-			}
-		}
-		nn, err := i.underlying.Write([]byte{c})
-		n += nn
-		if err != nil {
-			return n, err
-		}
-		i.indentBeforeNextWrite = c == '\n'
+	output := ""
+
+	if i.indentBeforeNextWrite {
+		output += i.prefix
 	}
+
+	output += string(buf)
+
+	// temporarily take off a trailing newline so that Replace doesn't add a prefix at the end
+	endsInNewline := output[len(output)-1] == '\n'
+	if endsInNewline {
+		output = output[:len(output)-1]
+	}
+
+	output = strings.Replace(output, "\n", "\n"+i.prefix, -1)
+
+	if endsInNewline {
+		output = output + "\n"
+		i.indentBeforeNextWrite = true
+	} else {
+		i.indentBeforeNextWrite = false
+	}
+
+	_, err = i.underlying.Write([]byte(output))
+	if err != nil {
+		return 0, err
+	}
+
 	return len(buf), nil
 }
 

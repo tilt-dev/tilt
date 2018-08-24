@@ -56,7 +56,8 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildAndDeploy")
 	defer span.Finish()
 
-	output.Get(ctx).StartPipeline()
+	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
+	output.Get(ctx).StartPipeline(2)
 	defer output.Get(ctx).EndPipeline()
 
 	checkpoint := l.history.CheckpointNow()
