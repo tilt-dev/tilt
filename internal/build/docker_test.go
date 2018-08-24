@@ -355,9 +355,9 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f.WriteFile("hi/hello", "hello world") // change contents
 	f.Rm("sup")
 	files := []string{"hi/hello", "sup"}
-	pms, err := filesToPathMappings(f.JoinPaths(files), mounts)
+	pms, err := FilesToPathMappings(f.JoinPaths(files), mounts)
 	if err != nil {
-		f.t.Fatal("filesToPathMappings:", err)
+		f.t.Fatal("FilesToPathMappings:", err)
 	}
 
 	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, pms, []model.Cmd{})
