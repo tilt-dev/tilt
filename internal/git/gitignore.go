@@ -94,11 +94,17 @@ func (r repoIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 }
 
 func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, error) {
-	g, err := NewGitIgnoreTester(ctx, repoRoot)
+	absRepoRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
 	}
-	return &repoIgnoreTester{repoRoot, g}, nil
+
+	g, err := NewGitIgnoreTester(ctx, absRepoRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &repoIgnoreTester{absRepoRoot, g}, nil
 }
 
 type compositeIgnoreTester struct {
