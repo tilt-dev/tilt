@@ -1,6 +1,7 @@
 package build
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestFilesToPathMappings(t *testing.T) {
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	actual, err := filesToPathMappings(absPaths, mounts)
+	actual, err := FilesToPathMappings(absPaths, mounts)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -65,6 +66,42 @@ func TestFilesToPathMappings(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestRelativeRepoPathsBecomeAbsolute(t *testing.T) {
+	f := testutils.NewTempDirFixture(t)
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWd)
+	err = os.Chdir(f.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.TearDown()
+
+	files := []string{filepath.Join(f.Path(), "timing_script-W3imtct67O")}
+	mounts := []model.Mount{
+		model.Mount{
+			Repo:          model.LocalGithubRepo{LocalPath: "."},
+			ContainerPath: "/go/src/github.com/windmilleng/blorgly-backend",
+		},
+	}
+
+	actual, err := FilesToPathMappings(files, mounts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []pathMapping{
+		pathMapping{
+			LocalPath:     filepath.Join(f.Path(), "timing_script-W3imtct67O"),
+			ContainerPath: "/go/src/github.com/windmilleng/blorgly-backend/timing_script-W3imtct67O",
+		},
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
 func TestFileNotInMountThrowsErr(t *testing.T) {
 	f := testutils.NewTempDirFixture(t)
 	defer f.TearDown()
@@ -78,7 +115,7 @@ func TestFileNotInMountThrowsErr(t *testing.T) {
 		},
 	}
 
-	_, err := filesToPathMappings(files, mounts)
+	_, err := FilesToPathMappings(files, mounts)
 	if assert.NotNil(t, err, "expected error for file not matching any mounts") {
 		assert.Contains(t, err.Error(), "matches no mounts")
 	}

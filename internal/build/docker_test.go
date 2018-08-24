@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 
@@ -355,9 +356,9 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f.WriteFile("hi/hello", "hello world") // change contents
 	f.Rm("sup")
 	files := []string{"hi/hello", "sup"}
-	pms, err := filesToPathMappings(f.JoinPaths(files), mounts)
+	pms, err := FilesToPathMappings(f.JoinPaths(files), mounts)
 	if err != nil {
-		f.t.Fatal("filesToPathMappings:", err)
+		f.t.Fatal("FilesToPathMappings:", err)
 	}
 
 	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, pms, []model.Cmd{})
@@ -390,7 +391,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 
 	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{step})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +423,7 @@ func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +459,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPath([]model.Mount{m}), []model.Cmd{step})
+	digest, err := f.b.BuildDockerFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{step})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -484,15 +485,8 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	opts := make([]func(*client.Client) error, 0)
-	opts = append(opts, client.FromEnv)
-
-	// Use client for docker 17
-	// https://docs.docker.com/develop/sdk/#api-version-matrix
-	// API version 1.30 is the first version where the full digest
-	// shows up in the API output of BuildImage
-	opts = append(opts, client.WithVersion("1.30"))
-	dcli, err := client.NewClientWithOpts(opts...)
+	ctx := testutils.CtxForTest()
+	dcli, err := DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -613,17 +607,13 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 
 // startContainer starts a container from the given config
 func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
-	dcli, ok := f.b.dcli.(*client.Client)
-	if !ok {
-		f.t.Fatalf("Test requires a real docker client, got %T", f.b.dcli)
-	}
-	resp, err := dcli.ContainerCreate(ctx, config, nil, nil, "")
+	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 	containerID := resp.ID
 
-	err = dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}

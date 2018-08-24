@@ -84,7 +84,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	} else {
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPath(service.Mounts), service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPathMappings(service.Mounts), service.Steps)
 		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
@@ -105,7 +105,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	// we don't need to push to the central registry.
 	// The k8s will use the image already available
 	// in the local docker daemon.
-	canSkipPush := l.env == k8s.EnvDockerDesktop
+	canSkipPush := l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
 	if canSkipPush {
 		refToInject, err = l.b.TagDocker(ctx, name, d)
 		if err != nil {

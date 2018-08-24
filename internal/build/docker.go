@@ -67,7 +67,7 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 		return "", err
 	}
 
-	return l.buildDocker(ctx, baseDockerfile, MountsToPath(mounts), steps, entrypoint)
+	return l.buildDocker(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,

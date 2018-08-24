@@ -54,6 +54,7 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) er
 	span.SetTag("dest", dest)
 	defer span.Finish()
 	sourceInfo, err := os.Stat(source)
+
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -84,11 +85,10 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) er
 		if sourceIsDir {
 			// Name of file in tar should be relative to source directory...
 			header.Name = strings.TrimPrefix(path, source)
-		}
-
-		if dest != "" {
-			// ...and live inside `dest` (if given)
+			// ...and live inside `dest`
 			header.Name = filepath.Join(dest, header.Name)
+		} else {
+			header.Name = dest
 		}
 
 		err = tarWriter.WriteHeader(header)
