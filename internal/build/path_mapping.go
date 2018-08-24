@@ -24,6 +24,11 @@ func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, e
 	for _, f := range files {
 		foundMount := false
 		for _, m := range mounts {
+			if !filepath.IsAbs(m.Repo.LocalPath) {
+				return nil, fmt.Errorf(
+					"[FilesToPathMappints] mount.Repo.LocalPath must be an absolute path (got: %s)",
+					m.Repo.LocalPath)
+			}
 			// Open Q: can you mount inside of mounts?! o_0
 			// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
 			// need ospath.RealChild -- but then can't deal with deleted local files.
