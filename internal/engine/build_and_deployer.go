@@ -83,9 +83,13 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 	} else {
+		cf, err := build.FilesToPathMappings(changedFiles, service.Mounts)
+		if err != nil {
+			return nil, err
+		}
+
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
-		// TODO(dmiller): in the future this shouldn't do a push, or a k8s apply, but for now it does
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, build.MountsToPathMappings(service.Mounts), service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, cf, service.Steps)
 		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
