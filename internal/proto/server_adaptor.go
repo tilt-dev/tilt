@@ -3,6 +3,7 @@ package proto
 import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/output"
 )
 
 type grpcServer struct {
@@ -21,7 +22,9 @@ func (s *grpcServer) CreateService(req *CreateServiceRequest, d Daemon_CreateSer
 	}
 	outputStream := MakeStdoutStderrWriter(sendOutput)
 
-	ctx := logger.WithLogger(d.Context(), logger.NewLogger(logger.Level(req.LogLevel), outputStream.stdout))
+	l := logger.NewLogger(logger.Level(req.LogLevel), outputStream.stdout)
+	ctx := logger.WithLogger(d.Context(), l)
+	ctx = output.WithOutputter(ctx, output.NewOutputter(l))
 
 	var svcArray []model.Service
 	for i := range req.Services {
