@@ -37,6 +37,7 @@ tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d']
 class K8sEnv(Enum):
     GKE = 1
     D4M = 2
+    MINIKUBE = 3
 
 
 class Case:
@@ -60,7 +61,7 @@ class Timer:
 
 
 def main():
-    print('NOTE: this script doesn\'t install `tilt` for you, and relies on you having the ' 
+    print('NOTE: this script doesn\'t install `tilt` for you, and relies on you having the '
           'blorgly-backend project in your $GOPATH (`github.com/windmilleng/blorgly-backend`)')
     print()
 
@@ -173,6 +174,8 @@ def get_k8s_env() -> K8sEnv:
         return K8sEnv.D4M
     elif 'gke' in outstr:
         return K8sEnv.GKE
+    elif outstr == 'minikube':
+        return K8sEnv.MINIKUBE
     else:
         raise Exception('Unable to find a matching k8s env for output "{}"'. format(outstr))
 
