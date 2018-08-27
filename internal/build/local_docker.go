@@ -25,9 +25,6 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT, " +
-	"which is not currently supported -- provide an entrypoint in your Tiltfile")
-
 type localDockerBuilder struct {
 	dcli DockerClient
 }
@@ -61,7 +58,7 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref ref
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
 
-	err := baseDockerfile.ForbidEntrypoint()
+	err := baseDockerfile.ValidateBaseDockerfile()
 	if err != nil {
 		return nil, err
 	}
