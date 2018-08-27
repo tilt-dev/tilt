@@ -58,6 +58,10 @@
   name = "github.com/prometheus/client_golang"
   branch = "master"
 
+[[override]]
+  name = "github.com/windmilleng/fsevents"
+  branch = "jazzdan/pull_in_test_fix"
+
 [prune]
   go-tests = true
   unused-packages = true
