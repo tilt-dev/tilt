@@ -16,8 +16,8 @@ func TrackServices(delegate model.ServiceCreator, manager Manager) trackingCreat
 	return trackingCreator{delegate: delegate, manager: manager}
 }
 
-func (c trackingCreator) CreateServices(ctx context.Context, svcs []model.Service, watch bool) error {
-	err := c.delegate.CreateServices(ctx, svcs, watch)
+func (c trackingCreator) CreateServices(ctx context.Context, svcs []model.Service, watch bool, dryrun bool) error {
+	err := c.delegate.CreateServices(ctx, svcs, watch, dryrun)
 	if err != nil {
 		return err
 	}

@@ -54,7 +54,7 @@ func (s Service) Validate() error {
 }
 
 type ServiceCreator interface {
-	CreateServices(ctx context.Context, svcs []Service, watch bool) error
+	CreateServices(ctx context.Context, svcs []Service, watch bool, dryrun bool) error
 }
 
 type Mount struct {

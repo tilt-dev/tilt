@@ -46,13 +46,14 @@ func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
 	return Upper{b, watcherMaker, time.After}, nil
 }
 
-func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
+func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool, dryrun bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
 	buildTokens := make(map[model.ServiceName]*buildToken)
 
 	var sw *serviceWatcher
+	var dr *serviceWatcher
 	var err error
 	if watchMounts {
 		sw, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
@@ -61,15 +62,23 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
-	for _, service := range services {
-		buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
+	if dryrun {
+		dr, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
 		if err != nil {
 			return err
 		}
-		buildTokens[service.Name] = buildToken
 	}
-	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
+	if !dryrun {
+		for _, service := range services {
+			buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
+			if err != nil {
+				return err
+			}
+			buildTokens[service.Name] = buildToken
+		}
+		logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
+	}
 	if watchMounts {
 		for {
 			select {
@@ -105,6 +114,41 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 			}
 		}
 	}
+
+	if dryrun {
+		logger.Get(ctx).Infof("Tilt is currently running in DRY RUN MODE. Files are watched but not rebuilt.")
+		for {
+			select {
+			case event := <-dr.events:
+				var changedPathsToPrint []string
+				if len(event.files) > maxChangedFilesToPrint {
+					changedPathsToPrint = append(event.files[:maxChangedFilesToPrint], "...")
+				} else {
+					changedPathsToPrint = event.files
+				}
+
+				// this won't ACTUALLY rebuild correct? it's just saying what would rebuild.
+				logger.Get(ctx).Infof("Files changed. \nTilt can rebuild %v. \nObserved changes: \n%v", event.service.Name, changedPathsToPrint)
+
+				// var err error
+				// _, err = u.b.BuildAndDeploy(
+				// 	ctx,
+				// 	event.service,
+				// 	buildTokens[event.service.Name],
+				// 	event.files)
+				// if err != nil {
+				// 	logger.Get(ctx).Infof("build failed: %v", err.Error())
+				// } else {
+				// 	// buildTokens[event.service.Name] = token
+				// }
+				// logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+			case err := <-dr.errs:
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

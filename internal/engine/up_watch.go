@@ -49,7 +49,7 @@ func makeServiceWatcher(
 	}
 
 	if len(sns) == 0 {
-		return nil, errors.New("--watch used when no services define mounts - nothing to watch")
+		return nil, errors.New("--watch or --dry-run used when no services define mounts - nothing to watch")
 	}
 
 	ret, err := snsToServiceWatcher(ctx, timerMaker, sns)
