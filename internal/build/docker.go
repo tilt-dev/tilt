@@ -217,6 +217,7 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 			Context:    archive,
 			Dockerfile: "Dockerfile",
 			Remove:     shouldRemoveImage(),
+			Version:    types.BuilderBuildKit,
 		})
 	spanBuild.Finish()
 	if err != nil {
@@ -315,7 +316,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			return nil, errors.New(message.Error.Message)
 		}
 
-		if message.Aux != nil {
+		if message.Aux != nil && message.ID != "moby.buildkit.trace" {
 			result = message.Aux
 		}
 	}
