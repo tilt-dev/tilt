@@ -8,7 +8,6 @@ import (
 	"k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
@@ -18,8 +17,7 @@ import (
 )
 
 type buildToken struct {
-	d digest.Digest
-	n reference.Named
+	n reference.NamedTagged
 }
 
 func (b *buildToken) isEmpty() bool {
@@ -60,16 +58,15 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	output.Get(ctx).StartPipeline(2)
 	defer output.Get(ctx).EndPipeline()
 
-	checkpoint := l.history.CheckpointNow()
+	//checkpoint := l.history.CheckpointNow()
 	err := service.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	var name reference.Named
-	var d digest.Digest
+	var n reference.NamedTagged
 	if token.isEmpty() {
-		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
+		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +76,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 			return nil, err
 		}
 		output.Get(ctx).EndPipelineStep()
-		d = newDigest
+		n = newDigest
 
 	} else {
 		cf, err := build.FilesToPathMappings(changedFiles, service.Mounts)
@@ -88,20 +85,19 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, cf, service.Steps)
+		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.n, cf, service.Steps)
 		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
-		d = newDigest
-		name = token.n
+		n = newDigest
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
-	if err != nil {
-		return nil, err
-	}
+	// err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	var refToInject reference.Named
 
@@ -111,12 +107,9 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	// in the local docker daemon.
 	canSkipPush := l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
 	if canSkipPush {
-		refToInject, err = l.b.TagDocker(ctx, name, d)
-		if err != nil {
-			return nil, err
-		}
+		refToInject = n
 	} else {
-		refToInject, err = l.b.PushDocker(ctx, name, d)
+		refToInject, err = l.b.PushDocker(ctx, n)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +155,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
 	}
 
-	newToken := &buildToken{d: d, n: name}
+	newToken := &buildToken{n}
 	err = k8s.Update(ctx, l.k8sClient, newK8sEntities)
 	return newToken, err
 }
