@@ -339,7 +339,8 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	defer f.teardown()
 
 	f.WriteFile("hi/hello", "hi hello")
-	f.WriteFile("sup", "yo dawg, i heard you like docker")
+	f.WriteFile("sup", "we should delete this file")
+	f.WriteFile("nested/sup", "we should delete this file (and the whole dir)")
 	f.WriteFile("unchanged", "should be unchanged")
 	mounts := []model.Mount{
 		model.Mount{
@@ -354,8 +355,9 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	}
 
 	f.WriteFile("hi/hello", "hello world") // change contents
-	f.Rm("sup")
-	files := []string{"hi/hello", "sup"}
+	f.Rm("sup")                            // delete a file
+	f.Rm("nested")                         // delete a directory
+	files := []string{"hi/hello", "sup", "nested"}
 	pms, err := FilesToPathMappings(f.JoinPaths(files), mounts)
 	if err != nil {
 		f.t.Fatal("FilesToPathMappings:", err)
@@ -368,7 +370,8 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 
 	pcs := []expectedFile{
 		expectedFile{path: "/src/hi/hello", contents: "hello world"},
-		expectedFile{path: "/src/sup", missing: true}, // TODO(maia): test deletion
+		expectedFile{path: "/src/sup", missing: true},
+		expectedFile{path: "/src/nested/sup", missing: true}, // should have deleted whole directory
 		expectedFile{path: "/src/unchanged", contents: "should be unchanged"},
 	}
 	f.assertFilesInImage(string(digest), pcs)

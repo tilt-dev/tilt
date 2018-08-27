@@ -36,9 +36,9 @@ func (d Dockerfile) Entrypoint(cmd model.Cmd) Dockerfile {
 func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
 	var newDf string
 	if len(pathsToRm) > 0 {
-		// Add 'rm' statements; if changed file was deleted locally, remove if from container
+		// Add 'rm' statements; if changed path was deleted locally, remove if from container
 		rmCmd := strings.Builder{}
-		rmCmd.WriteString("rm") // sh -c?
+		rmCmd.WriteString("rm -rf")
 		for _, p := range pathsToRm {
 			rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
 		}

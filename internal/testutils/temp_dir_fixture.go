@@ -76,14 +76,14 @@ func (f *TempDirFixture) TouchFiles(paths []string) {
 
 func (f *TempDirFixture) Rm(pathInRepo string) {
 	fullPath := filepath.Join(f.Path(), pathInRepo)
-	err := os.Remove(fullPath)
+	err := os.RemoveAll(fullPath)
 	if err != nil {
 		f.t.Fatal(err)
 	}
 }
 
-func (tempDir *TempDirFixture) NewFile(prefix string) (f *os.File, err error) {
-	return ioutil.TempFile(tempDir.dir.Path(), prefix)
+func (f *TempDirFixture) NewFile(prefix string) (*os.File, error) {
+	return ioutil.TempFile(f.dir.Path(), prefix)
 }
 
 func (f *TempDirFixture) TearDown() {
