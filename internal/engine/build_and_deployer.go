@@ -58,6 +58,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	output.Get(ctx).StartPipeline(2)
 	defer output.Get(ctx).EndPipeline()
 
+	// TODO(dmiller) add back history
 	//checkpoint := l.history.CheckpointNow()
 	err := service.Validate()
 	if err != nil {
@@ -94,6 +95,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
+	// TODO(dmiller) add back history
 	// err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
 	// if err != nil {
 	// 	return nil, err
