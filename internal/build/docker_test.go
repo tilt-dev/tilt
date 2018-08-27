@@ -504,7 +504,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 }
 
 func (f *dockerBuildFixture) teardown() {
-	if f.registry != nil {
+	if f.registry != nil && f.registry.Process != nil {
 		go func() {
 			err := f.registry.Process.Kill()
 			if err != nil {

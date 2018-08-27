@@ -33,17 +33,32 @@ func (k kubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
 	logger.Get(ctx).Infof("%sapplying via kubectl", logger.Tab)
-	return k.cli(ctx, "apply", entities)
+	stderrBuf, err := k.cli(ctx, "apply", entities)
+	if err != nil {
+		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderrBuf.String())
+	}
+	return nil
 }
 
 func (k kubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	return k.cli(ctx, "delete", entities)
+	_, err := k.cli(ctx, "delete", entities)
+	_, isExitErr := err.(*exec.ExitError)
+	if isExitErr {
+		// In general, an exit error is ok for our purposes.
+		// It just means that the job hasn't been created yet.
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("kubectl delete: %v", err)
+	}
+	return err
 }
 
-func (k kubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity) error {
+func (k kubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity) (*bytes.Buffer, error) {
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
-		return fmt.Errorf("kubectl %s: %v", cmd, err)
+		return nil, fmt.Errorf("kubectl %s: %v", cmd, err)
 	}
 
 	c := exec.CommandContext(ctx, "kubectl", cmd, "-f", "-")
@@ -58,9 +73,5 @@ func (k kubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity
 
 	c.Stderr = io.MultiWriter(stderrBuf, writer)
 
-	err = c.Run()
-	if err != nil {
-		return fmt.Errorf("kubectl %s: %v\nstderr: %s", cmd, err, stderrBuf.String())
-	}
-	return nil
+	return stderrBuf, c.Run()
 }

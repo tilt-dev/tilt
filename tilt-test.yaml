@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tilt-test
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: tilt-test
+    spec:
+      containers:
+      - name: tilt-test
+        image: gcr.io/blorg-dev/tilt-test
+        volumeMounts:
+        - name: dockersocker
+          mountPath: /var/run/docker.sock
+        securityContext:
+          privileged: true
+
+      # Some of our tests depend on having
+      # an available docker client.
+      volumes:
+        - name: dockersocker
+          hostPath:
+            path: /var/run/docker.sock
+            
+      restartPolicy: Never
