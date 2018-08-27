@@ -78,13 +78,14 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 			case event := <-sw.events:
 				var changedPathsToPrint []string
 				if len(event.files) > maxChangedFilesToPrint {
-					changedPathsToPrint = append(event.files[:maxChangedFilesToPrint], "...")
+					changedPathsToPrint = append(changedPathsToPrint, event.files[:maxChangedFilesToPrint]...)
+					changedPathsToPrint = append(changedPathsToPrint, "...")
 				} else {
 					changedPathsToPrint = event.files
 				}
 
-				logger.Get(ctx).Infof("files changed. rebuilding %v. observed changes: %v",
-					event.service.Name, ospath.TryAsCwdChildren(changedPathsToPrint))
+				logger.Get(ctx).Infof("files changed. rebuilding %v. observed %d changes: %v",
+					event.service.Name, len(event.files), ospath.TryAsCwdChildren(changedPathsToPrint))
 
 				var err error
 				token, err := u.b.BuildAndDeploy(

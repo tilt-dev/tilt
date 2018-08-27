@@ -84,7 +84,7 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Doc
 	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
 
 	df := baseDockerfile.AddAll()
-	toRemove, err := missingLocalPaths(paths)
+	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
 		return "", fmt.Errorf("buildDocker: %v", err)
 	}

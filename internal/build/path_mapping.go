@@ -1,10 +1,12 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
@@ -63,7 +65,9 @@ func MountsToPathMappings(mounts []model.Mount) []pathMapping {
 }
 
 // Return all the path mappings for local paths that do not exist.
-func missingLocalPaths(mappings []pathMapping) ([]pathMapping, error) {
+func missingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMapping, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-missingLocalPaths")
+	defer span.Finish()
 	result := make([]pathMapping, 0)
 	for _, mapping := range mappings {
 		_, err := os.Stat(mapping.LocalPath)
