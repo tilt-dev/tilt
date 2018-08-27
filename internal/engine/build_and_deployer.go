@@ -101,17 +101,13 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	// 	return nil, err
 	// }
 
-	var refToInject reference.Named
-
 	// If we're using docker-for-desktop as our k8s backend,
 	// we don't need to push to the central registry.
 	// The k8s will use the image already available
 	// in the local docker daemon.
 	canSkipPush := l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
-	if canSkipPush {
-		refToInject = n
-	} else {
-		refToInject, err = l.b.PushDocker(ctx, n)
+	if !canSkipPush {
+		n, err = l.b.PushDocker(ctx, n)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +139,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		if canSkipPush {
 			policy = v1.PullNever
 		}
-		e, replaced, err := k8s.InjectImageDigest(e, refToInject, policy)
+		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
 		if err != nil {
 			return nil, err
 		}
