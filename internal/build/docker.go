@@ -36,7 +36,7 @@ type localDockerBuilder struct {
 type Builder interface {
 	BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error)
 	BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error)
-	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
+	PushDocker(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
@@ -133,7 +133,7 @@ func (l *localDockerBuilder) TagDocker(ctx context.Context, ref reference.Named,
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
 	logger.Get(ctx).Infof("Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
@@ -169,15 +169,10 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
-	namedTagged, err := l.TagDocker(ctx, ref, dig)
-	if err != nil {
-		return nil, fmt.Errorf("PushDocker: %v", err)
-	}
-
 	logger.Get(ctx).Infof("%spushing the image", logger.Tab)
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
-		namedTagged.String(),
+		ref.String(),
 		options)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#ImagePush: %v", err)
@@ -194,7 +189,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
 
-	return namedTagged, nil
+	return ref, nil
 }
 
 func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, ref reference.Named) (reference.NamedTagged, error) {

@@ -164,60 +164,66 @@ func TestMountCollisions(t *testing.T) {
 	f.assertFilesInImage(digest, pcs)
 }
 
-// func TestPush(t *testing.T) {
-// 	f := newDockerBuildFixture(t)
-// 	defer f.teardown()
+func TestPush(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
 
-// 	f.startRegistry()
+	f.startRegistry()
 
-// 	// write some files in to it
-// 	f.WriteFile("hi/hello", "hi hello")
-// 	f.WriteFile("sup", "my name is dan")
+	// write some files in to it
+	f.WriteFile("hi/hello", "hi hello")
+	f.WriteFile("sup", "my name is dan")
 
-// 	m := model.Mount{
-// 		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-// 		ContainerPath: "/src",
-// 	}
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
 
-// 	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	name, err := reference.WithName("localhost:5005/myimage")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	name, _ := reference.ParseNormalizedNamed("localhost:5005/myimage")
-// 	namedTagged, err := f.b.PushDocker(f.ctx, name, digest)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, name, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	pcs := []expectedFile{
-// 		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
-// 		expectedFile{path: "/src/sup", contents: "my name is dan"},
-// 	}
+	namedTagged, err := f.b.PushDocker(f.ctx, digest)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	f.assertFilesInImage(namedTagged.String(), pcs)
-// }
+	pcs := []expectedFile{
+		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
+		expectedFile{path: "/src/sup", contents: "my name is dan"},
+	}
 
-// func TestPushInvalid(t *testing.T) {
-// 	f := newDockerBuildFixture(t)
-// 	defer f.teardown()
+	f.assertFilesInImage(namedTagged, pcs)
+}
 
-// 	m := model.Mount{
-// 		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-// 		ContainerPath: "/src",
-// 	}
+func TestPushInvalid(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
 
-// 	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+	name, err := reference.WithName("localhost:5005/myimage")
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, name, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	name, _ := reference.ParseNormalizedNamed("localhost:6666/myimage")
-// 	_, err = f.b.PushDocker(f.ctx, name, digest)
-// 	if err == nil || !strings.Contains(err.Error(), "PushDocker#getDigestFromPushOutput") {
-// 		t.Fatal(err)
-// 	}
-// }
+	_, err = f.b.PushDocker(f.ctx, digest)
+	if err == nil || !strings.Contains(err.Error(), "PushDocker#getDigestFromPushOutput") {
+		t.Fatal(err)
+	}
+}
 
 func TestBuildOneStep(t *testing.T) {
 	f := newDockerBuildFixture(t)
