@@ -73,6 +73,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	if watchMounts {
 		for {
 			select {
+			case <-ctx.Done():
+				return ctx.Err()
 			case event := <-sw.events:
 				var changedPathsToPrint []string
 				if len(event.files) > maxChangedFilesToPrint {

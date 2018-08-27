@@ -5,6 +5,9 @@ import (
 	"errors"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
@@ -35,11 +38,22 @@ func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
 	defer span.Finish()
 	l := logger.NewLogger(logLevel(), os.Stdout)
-	ctx := logger.WithLogger(
-		opentracing.ContextWithSpan(context.Background(), span),
-		l,
-	)
-	ctx = output.WithOutputter(ctx, output.NewOutputter(l))
+	ctx := output.WithOutputter(
+		logger.WithLogger(
+			opentracing.ContextWithSpan(context.Background(), span),
+			l),
+		output.NewOutputter(l))
+
+	// SIGNAL TRAPPING
+	ctx, cancel := context.WithCancel(ctx)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		_ = <-sigs
+		// Sleep briefly to let tracing flush
+		time.Sleep(250 * time.Millisecond)
+		cancel()
+	}()
 
 	logOutput("Starting Tilt…")
 
@@ -64,6 +78,10 @@ func (c *upCmd) run(args []string) error {
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
 	} else if err != nil {
+		if err == context.Canceled {
+			// Expected case, no need to be loud about it, just exit
+			return nil
+		}
 		return err
 	}
 
