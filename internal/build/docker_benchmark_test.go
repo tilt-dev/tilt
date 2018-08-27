@@ -28,7 +28,7 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 		expected := []expectedFile{
 			expectedFile{path: "hi", contents: "9"},
 		}
-		f.assertFilesInImage(string(digest), expected)
+		f.assertFilesInImage(digest, expected)
 	}
 	for i := 0; i < b.N; i++ {
 		run()
@@ -56,7 +56,7 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 		expected := []expectedFile{
 			expectedFile{path: "hi", contents: "9"},
 		}
-		f.assertFilesInImage(string(digest), expected)
+		f.assertFilesInImage(digest, expected)
 	}
 	for i := 0; i < b.N; i++ {
 		run()

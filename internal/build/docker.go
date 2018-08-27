@@ -34,8 +34,8 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
+	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
@@ -57,21 +57,21 @@ func NewLocalDockerBuilder(dcli DockerClient) *localDockerBuilder {
 }
 
 func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
-	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
 
 	err := baseDockerfile.ForbidEntrypoint()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return l.buildDocker(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint)
 }
 
-func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged,
+	paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
@@ -81,12 +81,12 @@ func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existi
 }
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Dockerfile,
-	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	df := baseDockerfile.AddAll()
 	toRemove, err := missingLocalPaths(paths)
 	if err != nil {
-		return "", fmt.Errorf("buildDocker: %v", err)
+		return nil, fmt.Errorf("buildDocker: %v", err)
 	}
 
 	df = df.RmPaths(toRemove)
@@ -102,7 +102,7 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Doc
 	// We have the Dockerfile! Kick off the docker build.
 	resultDigest, err := l.buildFromDf(ctx, df, paths)
 	if err != nil {
-		return "", fmt.Errorf("buildDocker#buildFromDf: %v", err)
+		return nil, fmt.Errorf("buildDocker#buildFromDf: %v", err)
 	}
 
 	return resultDigest, nil
@@ -197,7 +197,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return namedTagged, nil
 }
 
-func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
+func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -205,7 +205,7 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 
 	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	output.Get(ctx).StartBuildStep("building image")
@@ -221,7 +221,7 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 		})
 	spanBuild.Finish()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	defer func() {
@@ -232,10 +232,24 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	}()
 	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
 	if err != nil {
-		return "", fmt.Errorf("ImageBuild: %v", err)
+		return nil, fmt.Errorf("ImageBuild: %v", err)
 	}
 
-	return getDigestFromAux(*result)
+	digest, err := getDigestFromAux(*result)
+	if err != nil {
+		return nil, fmt.Errorf("getDigestFromAux: %v", err)
+	}
+
+	n, err := reference.WithName("tilt")
+	if err != nil {
+		return nil, fmt.Errorf("WithName: %v", err)
+	}
+	nt, err := l.PushDocker(ctx, n, digest)
+	if err != nil {
+		return nil, fmt.Errorf("PushDocker: %v", err)
+	}
+
+	return nt, nil
 }
 
 func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
