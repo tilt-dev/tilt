@@ -73,10 +73,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		newDigest, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
-		output.Get(ctx).EndPipelineStep()
 		n = newDigest
 
 	} else {
