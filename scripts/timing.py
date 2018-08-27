@@ -72,6 +72,7 @@ def main():
         Case('tilt up again, no change', test_tilt_up_again_no_change),
         Case('tilt up again, new file', test_tilt_up_again_new_file),
         Case('watch build from changed file', test_watch_build_from_changed_file),
+        Case('watch build from many changed files', test_watch_build_from_many_changed_files),
         Case('tilt up, big file (5MB)', test_tilt_up_big_file),
 
         # Leave this commented out unless you particularly want it, it's damn slow.
@@ -233,7 +234,22 @@ def test_watch_build_from_changed_file() -> float:
     tilt_proc = run_and_wait_for_stdout(tilt_up_watch_cmd, '[timing.py] finished initial build')
 
     # change a file
-    write_file(1000)  # 1KB
+    write_file(100 * KB)  # 100KB total
+
+    with Timer() as t:
+        wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
+                        kill_on_match=True)
+    return t.duration_secs
+
+
+def test_watch_build_from_many_changed_files() -> float:
+    # TODO: make sure `tilt up --watch` isn't already running?
+
+    # run `tilt up --watch` and wait for it to finish the initial build
+    tilt_proc = run_and_wait_for_stdout(tilt_up_watch_cmd, '[timing.py] finished initial build')
+
+    for _ in range(100):  # 100KB total
+        write_file(KB)
 
     with Timer() as t:
         wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
