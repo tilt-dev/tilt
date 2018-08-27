@@ -20,7 +20,7 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 			steps = append(steps, model.ToShellCmd(fmt.Sprintf("echo -n %d > hi", i)))
 		}
 
-		digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+		digest, err := f.b.BuildDockerFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -48,7 +48,7 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 		oneCmd := strings.Join(allCmds, " && ")
 
 		steps := []model.Cmd{model.ToShellCmd(oneCmd)}
-		digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+		digest, err := f.b.BuildDockerFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -67,7 +67,7 @@ func BenchmarkIterativeBuildTenTimes(b *testing.B) {
 	f := newDockerBuildFixture(b)
 	defer f.teardown()
 	steps := []model.Cmd{model.ToShellCmd("echo 1 >> hi")}
-	digest, err := f.b.BuildDockerFromScratch(f.ctx, simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	digest, err := f.b.BuildDockerFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if err != nil {
 		b.Fatal(err)
 	}

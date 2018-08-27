@@ -34,7 +34,7 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error)
 	BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error)
 	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
@@ -56,7 +56,7 @@ func NewLocalDockerBuilder(dcli DockerClient) *localDockerBuilder {
 	return &localDockerBuilder{dcli: dcli}
 }
 
-func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
+func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
@@ -67,7 +67,7 @@ func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDoc
 		return nil, err
 	}
 
-	return l.buildDocker(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint)
+	return l.buildDocker(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint, ref)
 }
 
 func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged,
@@ -77,11 +77,11 @@ func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existi
 	defer span.Finish()
 
 	dfForExisting := DockerfileFromExisting(existing)
-	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
+	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
 }
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Dockerfile,
-	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
+	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd, ref reference.Named) (reference.NamedTagged, error) {
 
 	df := baseDockerfile.AddAll()
 	toRemove, err := missingLocalPaths(paths)
@@ -100,7 +100,7 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Doc
 	}
 
 	// We have the Dockerfile! Kick off the docker build.
-	resultDigest, err := l.buildFromDf(ctx, df, paths)
+	resultDigest, err := l.buildFromDf(ctx, df, paths, ref)
 	if err != nil {
 		return nil, fmt.Errorf("buildDocker#buildFromDf: %v", err)
 	}
@@ -197,7 +197,7 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 	return namedTagged, nil
 }
 
-func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping) (reference.NamedTagged, error) {
+func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, ref reference.Named) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -240,11 +240,7 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 		return nil, fmt.Errorf("getDigestFromAux: %v", err)
 	}
 
-	n, err := reference.WithName("tilt")
-	if err != nil {
-		return nil, fmt.Errorf("WithName: %v", err)
-	}
-	nt, err := l.PushDocker(ctx, n, digest)
+	nt, err := l.TagDocker(ctx, ref, digest)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker: %v", err)
 	}

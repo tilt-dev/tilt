@@ -69,18 +69,17 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	var name reference.Named
 	var d digest.Digest
 	if token.isEmpty() {
+		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
+		if err != nil {
+			return nil, err
+		}
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
-		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		newDigest, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 		if err != nil {
 			return nil, err
 		}
 		output.Get(ctx).EndPipelineStep()
 		d = newDigest
-
-		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
-		if err != nil {
-			return nil, err
-		}
 
 	} else {
 		cf, err := build.FilesToPathMappings(changedFiles, service.Mounts)
