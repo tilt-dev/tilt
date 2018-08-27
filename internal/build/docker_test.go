@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -298,7 +299,11 @@ func TestBuildFailingStep(t *testing.T) {
 	_, err := f.b.BuildDockerFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
-		assert.Contains(t, err.Error(), "exit code 1")
+		if runtime.GOOS == "darwin" {
+			assert.Contains(t, err.Error(), "exit code 1")
+		} else {
+			assert.Contains(t, err.Error(), "returned a non-zero code: 1")
+		}
 	}
 }
 
