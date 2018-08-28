@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -208,12 +207,8 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		archive,
-		types.ImageBuildOptions{
-			Context:    archive,
-			Dockerfile: "Dockerfile",
-			Remove:     shouldRemoveImage(),
-			Version:    types.BuilderBuildKit,
-		})
+		Options(archive),
+	)
 	spanBuild.Finish()
 	if err != nil {
 		return nil, err
@@ -377,13 +372,6 @@ func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
 		return "", fmt.Errorf("getDigestFromAux: ID not found")
 	}
 	return digest.Digest(id), nil
-}
-
-func shouldRemoveImage() bool {
-	if flag.Lookup("test.v") == nil {
-		return false
-	}
-	return true
 }
 
 func digestAsTag(d digest.Digest) (string, error) {
