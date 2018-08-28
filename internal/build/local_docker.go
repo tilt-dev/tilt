@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/containerd/console"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/util/progress/progressui"
@@ -293,16 +294,13 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 
 	displayStatus := func(displayCh chan *client.SolveStatus) {
 		out := os.Stdout
-		// NOTE(dmiller): if we want this to display TTY output we just need to pass in an actual console, like below
-		// c, err := console.ConsoleFromFile(out)
-		// if err != nil {
-		// 	panic(err) // TODO not this
-		// 	return
-		// }
-		// not using shared context to not disrupt display but let is finish reporting errors
+		c, err := console.ConsoleFromFile(out)
+		if err != nil {
+			output.Get(ctx).Print("Error making console: %s", err)
+			return
+		}
 		go func() {
-			// NOTE(dmiller): if we want this to display TTY we need to change this nil to the console, like above
-			err := progressui.DisplaySolveStatus(context.TODO(), "", nil, out, displayCh)
+			err := progressui.DisplaySolveStatus(context.TODO(), "", c, out, displayCh)
 			if err != nil {
 				output.Get(ctx).Print("Error printing progressui: %s", err)
 			}
