@@ -298,7 +298,6 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 		c, err := console.ConsoleFromFile(out)
 		if err != nil {
 			output.Get(ctx).Print("Error making console: %s", err)
-			return
 		}
 		go func() {
 			err := progressui.DisplaySolveStatus(ctx, "", c, out, displayCh)
