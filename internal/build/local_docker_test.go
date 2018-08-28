@@ -25,7 +25,6 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -494,7 +493,7 @@ type dockerBuildFixture struct {
 	*testutils.TempDirFixture
 	t        testing.TB
 	ctx      context.Context
-	dcli     *client.Client
+	dcli     *DockerCli
 	b        *localDockerBuilder
 	registry *exec.Cmd
 }

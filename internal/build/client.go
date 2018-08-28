@@ -1,6 +1,7 @@
 package build
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Use client for docker 17
@@ -25,17 +27,18 @@ const minDockerVersion = "1.30"
 // Create an interface so this can be mocked out.
 type DockerClient interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
-	ContainerExecAttach(ctx context.Context, execID string, config types.ExecStartCheck) (types.HijackedResponse, error)
-	ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error)
-	ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error)
-	ContainerExecStart(ctx context.Context, execID string, config types.ExecStartCheck) error
 	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
+	ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 }
 
-func DefaultDockerClient(ctx context.Context, env k8s.Env) (*client.Client, error) {
+type DockerCli struct {
+	*client.Client
+}
+
+func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 	envFunc := os.Getenv
 	if env == k8s.EnvMinikube {
 		envMap, err := minikube.DockerEnv(ctx)
@@ -54,7 +57,7 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*client.Client, erro
 	if err != nil {
 		return nil, fmt.Errorf("newDockerClient: %v", err)
 	}
-	return d, nil
+	return &DockerCli{d}, nil
 }
 
 // Adapted from client.FromEnv
@@ -109,4 +112,54 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 	result = append(result, client.WithVersion(versionToSet.String()))
 
 	return result, nil
+}
+
+func (d *DockerCli) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+	cfg := types.ExecConfig{
+		Cmd:          cmd.Argv,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+	}
+
+	execId, err := d.ContainerExecCreate(ctx, cID.String(), cfg)
+	if err != nil {
+		return fmt.Errorf("ExecInContainer#create: %v", err)
+	}
+
+	hijack, err := d.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
+	if err != nil {
+		return fmt.Errorf("ExecInContainer#attach: %v", err)
+	}
+	defer hijack.Close()
+
+	err = d.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
+	if err != nil {
+		return fmt.Errorf("ExecInContainer#start: %v", err)
+	}
+
+	buf := bytes.NewBuffer(nil)
+	_, err = io.Copy(buf, hijack.Reader)
+	if err != nil {
+		return fmt.Errorf("ExecInContainer#copy: %v", err)
+	}
+
+	for true {
+		inspected, err := d.ContainerExecInspect(ctx, execId.ID)
+		if err != nil {
+			return fmt.Errorf("ExecInContainer#inspect: %v", err)
+		}
+
+		if inspected.Running {
+			continue
+		}
+
+		status := inspected.ExitCode
+		if status != 0 {
+			return fmt.Errorf("Failed with exit code %d. Output:\n%s", status, buf.String())
+		}
+		return nil
+	}
+
+	return nil
 }

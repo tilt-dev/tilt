@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/docker/docker/api/types"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 const ExampleBuildSHA1 = "sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab"
@@ -61,19 +62,7 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 	return nil, fmt.Errorf("TODO(maia): not implemented")
 }
 
-func (c *FakeDockerClient) ContainerExecAttach(ctx context.Context, execID string, config types.ExecStartCheck) (types.HijackedResponse, error) {
-	return types.HijackedResponse{}, fmt.Errorf("TODO(maia): not implemented")
-}
-
-func (c *FakeDockerClient) ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error) {
-	return types.IDResponse{}, fmt.Errorf("TODO(maia): not implemented")
-}
-
-func (c *FakeDockerClient) ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error) {
-	return types.ContainerExecInspect{}, fmt.Errorf("TODO(maia): not implemented")
-}
-
-func (c *FakeDockerClient) ContainerExecStart(ctx context.Context, execID string, config types.ExecStartCheck) error {
+func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
 	return fmt.Errorf("TODO(maia): not implemented")
 }
 

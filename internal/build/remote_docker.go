@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 
 	"github.com/docker/distribution/reference"
@@ -51,7 +50,7 @@ func TryIt() error {
 		},
 	}
 
-	_, err = r.BuildDockerFromExisting(ctx, "", paths, []model.Cmd{})
+	_, err = r.BuildDockerFromExisting(ctx, nil, paths, []model.Cmd{})
 	return err
 }
 
@@ -62,31 +61,31 @@ type remoteDockerBuilder struct {
 
 var _ Builder = &remoteDockerBuilder{}
 
-func (r *remoteDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
-	return "", fmt.Errorf("BuildDockerFromScratch definitely not implemented on remoteDockerBuilder")
+func (r *remoteDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
+	return nil, fmt.Errorf("BuildDockerFromScratch definitely not implemented on remoteDockerBuilder")
 }
 
-func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
+func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
 	cID, err := r.containerIdForPod(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// rm files from container
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
-		return "", fmt.Errorf("missingLocalPaths: %v", err)
+		return nil, fmt.Errorf("missingLocalPaths: %v", err)
 	}
 
 	err = r.RmPathsFromContainer(ctx, cID, toRemove)
 	if err != nil {
-		return "", fmt.Errorf("RmPathsFromContainer: %v", err)
+		return nil, fmt.Errorf("RmPathsFromContainer: %v", err)
 	}
 
 	// copy files to container
-	archive, err := ArchivePaths(ctx, paths)
+	archive, err := ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	log.Printf("Copying files to container: %s", cID.ShortStr())
 
@@ -95,14 +94,14 @@ func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, exist
 	err = r.dcli.CopyToContainer(ctx, cID.String(), "/", bytes.NewReader(archive.Bytes()),
 		types.CopyToContainerOptions{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return "", nil
+	return nil, nil
 }
 
 // TODO(maia): reorg tar funcs in a more logical way
-func ArchivePaths(ctx context.Context, paths []pathMapping) (*bytes.Buffer, error) {
+func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer func() {
@@ -111,14 +110,14 @@ func ArchivePaths(ctx context.Context, paths []pathMapping) (*bytes.Buffer, erro
 			log.Printf("Error closing tar writer: %s", err.Error())
 		}
 	}()
-	err := archivePaths(ctx, tw, paths)
+	err := archivePathsIfExist(ctx, tw, paths)
 	if err != nil {
 		return nil, fmt.Errorf("archivePaths: %v", err)
 	}
 	return buf, nil
 }
 
-func (r *remoteDockerBuilder) PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+func (r *remoteDockerBuilder) PushDocker(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error) {
 	return nil, fmt.Errorf("PushDocker definitely not implemented on remoteDockerBuilder")
 }
 func (r *remoteDockerBuilder) TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
@@ -171,55 +170,7 @@ func (r *remoteDockerBuilder) RmPathsFromContainer(ctx context.Context, cID cont
 
 	log.Printf("Deleting %d files from container: %s", len(paths), cID.ShortStr())
 
-	log.Println(makeRmCmd(paths))
-	cfg := types.ExecConfig{
-		Cmd:          makeRmCmd(paths),
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-	}
-
-	execId, err := r.dcli.ContainerExecCreate(ctx, cID.String(), cfg)
-	if err != nil {
-		return fmt.Errorf("creating exec: %v", err)
-	}
-
-	hijack, err := r.dcli.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
-	if err != nil {
-		return fmt.Errorf("attaching to exec: %v", err)
-	}
-	defer hijack.Close()
-
-	err = r.dcli.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
-	if err != nil {
-		return fmt.Errorf("exec start: %v", err)
-	}
-
-	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, hijack.Reader)
-	if err != nil {
-		return fmt.Errorf("RmPathsFromContainer#copy: %v", err)
-	}
-
-	// TODO(maia): split out ExecInContainer with good error logging?
-	for true {
-		inspected, err := r.dcli.ContainerExecInspect(ctx, execId.ID)
-		if err != nil {
-			return fmt.Errorf("RmPathsFromContainer#inspect: %v", err)
-		}
-
-		if inspected.Running {
-			continue
-		}
-
-		status := inspected.ExitCode
-		if status != 0 {
-			return fmt.Errorf("Failed with exit code %d. Output:\n%s", status, buf.String())
-		}
-		return nil
-	}
-
-	return nil
+	return r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)})
 }
 
 func makeRmCmd(paths []pathMapping) []string {
