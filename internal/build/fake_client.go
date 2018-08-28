@@ -36,13 +36,18 @@ var ExamplePushOutput1 = `{"status":"The push refers to repository [localhost:50
 	{"status":"tilt-11cd0b38bc3ceb95: digest: sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1 size: 735"}
 	{"progressDetail":{},"aux":{"Tag":"tilt-11cd0b38bc3ceb95","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
+const (
+	testPod       = "test_pod"
+	testContainer = "test_container"
+)
+
 var ContainersListByName = map[string][]types.Container{
-	"docker-for-mac": []types.Container{
-		types.Container{ID: "container-for-d4m", Command: "./stuff"},
+	testPod: []types.Container{
+		types.Container{ID: testContainer, Command: "./stuff"},
 	},
-	"gke": []types.Container{
+	"one-pause-cmd": []types.Container{
 		types.Container{ID: "not a match", Command: pauseCmd},
-		types.Container{ID: "container-for-gke", Command: "./stuff"},
+		types.Container{ID: "the right container", Command: "./stuff"},
 	},
 	"too-many": []types.Container{
 		types.Container{ID: "nope", Command: "./stuff"},
@@ -76,6 +81,10 @@ type FakeDockerClient struct {
 	CopyPath      string
 	CopyContent   io.Reader
 	CopyOptions   types.CopyToContainerOptions
+
+	ExecCount     int
+	ExecContainer string
+	ExecCmd       model.Cmd
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
@@ -96,7 +105,10 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 }
 
 func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
-	return fmt.Errorf("TODO(maia): not implemented")
+	c.ExecCount++
+	c.ExecContainer = cID.String()
+	c.ExecCmd = cmd
+	return nil
 }
 
 func (c *FakeDockerClient) CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error {

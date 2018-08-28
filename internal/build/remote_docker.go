@@ -12,47 +12,10 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/opencontainers/go-digest"
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
 const pauseCmd = "/pause"
-
-func TryIt() error {
-	ctx := context.Background()
-	env, err := k8s.DetectEnv()
-	if err != nil {
-		return err
-	}
-
-	dcli, err := DefaultDockerClient(ctx, env)
-	if err != nil {
-		return err
-	}
-
-	r := remoteDockerBuilder{
-		dcli: dcli,
-		pod:  "devel-maia-blorgly-be-8f54885df-9zchv",
-	}
-
-	paths := []pathMapping{
-		pathMapping{
-			LocalPath:     "/tmp/foo",
-			ContainerPath: "/testing/foo",
-		},
-		pathMapping{
-			LocalPath:     "/tmp/bar/baz",
-			ContainerPath: "/testing/bar/baz",
-		},
-		pathMapping{
-			LocalPath:     "/tmp/delete_me",
-			ContainerPath: "/testing/delete_me",
-		},
-	}
-
-	_, err = r.BuildDockerFromExisting(ctx, nil, paths, []model.Cmd{})
-	return err
-}
 
 type remoteDockerBuilder struct {
 	dcli DockerClient

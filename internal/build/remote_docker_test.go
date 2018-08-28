@@ -4,28 +4,30 @@ import (
 	"context"
 	"testing"
 
+	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func TestContainerIdForPodOneMatch(t *testing.T) {
-	f := newRemoteDockerFixtureForPod(t, "docker-for-mac")
+	f := newRemoteDockerFixtureForPod(t, testPod)
 	defer f.teardown()
 	cID, err := f.b.containerIdForPod(context.Background())
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	assert.Equal(f.t, cID.String(), "container-for-d4m")
+	assert.Equal(f.t, cID.String(), testContainer)
 }
 
 func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
-	f := newRemoteDockerFixtureForPod(t, "gke")
+	f := newRemoteDockerFixtureForPod(t, "one-pause-cmd")
 	defer f.teardown()
 	cID, err := f.b.containerIdForPod(context.Background())
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	assert.Equal(f.t, cID.String(), "container-for-gke")
+	assert.Equal(f.t, cID.String(), "the right container")
 }
 
 func TestContainerIdForPodTooManyMatches(t *testing.T) {
@@ -46,16 +48,56 @@ func TestContainerIdForPodNoNonPause(t *testing.T) {
 	}
 }
 
+func TestBuildDockerFromExistingCopiesAndRmsFiles(t *testing.T) {
+	f := newRemoteDockerFixture(t)
+	defer f.teardown()
+
+	// Write files so we know whether to cp to or rm from container
+	f.WriteFile("hi", "hello")
+	f.WriteFile("planets/earth", "world")
+
+	paths := []pathMapping{
+		pathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
+		pathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
+		pathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
+	}
+
+	// TODO(maia): Check that we got a ref back i guess?
+	_, err := f.b.BuildDockerFromExisting(f.ctx, nil, paths, []model.Cmd{})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	if assert.Equal(f.t, 1, f.dcli.ExecCount, "calls to ExecInContainer") {
+		assert.Equal(f.t, testContainer, f.dcli.ExecContainer)
+		expectedCmd := model.Cmd{Argv: []string{"rm", "-rf", "/src/does-not-exist"}}
+		assert.Equal(f.t, expectedCmd, f.dcli.ExecCmd)
+	}
+
+	if assert.Equal(f.t, 1, f.dcli.CopyCount, "calls to CopyToContainer") {
+		assert.Equal(f.t, testContainer, f.dcli.CopyContainer)
+		assert.Equal(f.t, "/", f.dcli.CopyPath)
+		assert.Equal(f.t, types.CopyToContainerOptions{}, f.dcli.CopyOptions)
+		// TODO(maia): assert that the right stuff made it into the archive (f.dcli.CopyContent)
+	}
+}
+
 type remoteDockerFixture struct {
 	*testutils.TempDirFixture
-	t   testing.TB
-	ctx context.Context
-	b   *remoteDockerBuilder
+	t    testing.TB
+	ctx  context.Context
+	dcli *FakeDockerClient
+	b    *remoteDockerBuilder
+}
+
+func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
+	return newRemoteDockerFixtureForPod(t, testPod)
 }
 
 func newRemoteDockerFixtureForPod(t testing.TB, podName string) *remoteDockerFixture {
+	fakeCli := NewFakeDockerClient()
 	builder := &remoteDockerBuilder{
-		dcli: NewFakeDockerClient(),
+		dcli: fakeCli,
 		pod:  podName,
 	}
 
@@ -63,6 +105,7 @@ func newRemoteDockerFixtureForPod(t testing.TB, podName string) *remoteDockerFix
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 		ctx:            testutils.CtxForTest(),
+		dcli:           fakeCli,
 		b:              builder,
 	}
 }
