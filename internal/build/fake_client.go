@@ -3,6 +3,7 @@ package build
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/docker/docker/api/types"
@@ -54,6 +55,30 @@ func NewFakeDockerClient() *FakeDockerClient {
 		PushOutput:  NewFakeDockerResponse(ExamplePushOutput1),
 		BuildOutput: NewFakeDockerResponse(ExampleBuildOutput1),
 	}
+}
+
+func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+	return nil, fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeDockerClient) ContainerExecAttach(ctx context.Context, execID string, config types.ExecStartCheck) (types.HijackedResponse, error) {
+	return types.HijackedResponse{}, fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeDockerClient) ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error) {
+	return types.IDResponse{}, fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeDockerClient) ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error) {
+	return types.ContainerExecInspect{}, fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeDockerClient) ContainerExecStart(ctx context.Context, execID string, config types.ExecStartCheck) error {
+	return fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeDockerClient) CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error {
+	return fmt.Errorf("TODO(maia): CopyToContainer not implemented")
 }
 
 func (c *FakeDockerClient) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {
