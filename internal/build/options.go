@@ -1,5 +1,3 @@
-// +build !buildkit
-
 package build
 
 import (
@@ -14,6 +12,7 @@ func Options(archive *bytes.Reader) types.ImageBuildOptions {
 		Context:    archive,
 		Dockerfile: "Dockerfile",
 		Remove:     shouldRemoveImage(),
+		Version:    types.BuilderBuildKit,
 	}
 }
 
