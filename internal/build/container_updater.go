@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/opencontainers/go-digest"
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -92,13 +90,6 @@ func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffe
 		return nil, fmt.Errorf("archivePathsIfExists: %v", err)
 	}
 	return buf, nil
-}
-
-func (r *containerUpdater) PushDocker(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error) {
-	return nil, fmt.Errorf("PushDocker definitely not implemented on containerUpdater")
-}
-func (r *containerUpdater) TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
-	return nil, fmt.Errorf("TagDocker definitely not implemented on containerUpdater")
 }
 
 // containerIdForPod looks for the container ID associated with the pod.

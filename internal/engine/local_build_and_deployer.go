@@ -18,13 +18,13 @@ import (
 var _ BuildAndDeployer = localBuildAndDeployer{}
 
 type localBuildAndDeployer struct {
-	b         build.Builder
+	b         build.ImageBuilder
 	history   image.ImageHistory
 	k8sClient k8s.Client
 	env       k8s.Env
 }
 
-func NewLocalBuildAndDeployer(b build.Builder, k8sClient k8s.Client, history image.ImageHistory, env k8s.Env) (BuildAndDeployer, error) {
+func NewLocalBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, history image.ImageHistory, env k8s.Env) (BuildAndDeployer, error) {
 	return localBuildAndDeployer{
 		b:         b,
 		history:   history,
@@ -72,7 +72,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		ref, err := l.b.BuildImageFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -88,7 +88,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := l.b.BuildDockerFromExisting(ctx, token.n, cf, service.Steps)
+		ref, err := l.b.BuildImageFromExisting(ctx, token.n, cf, service.Steps)
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +104,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 
 	if !l.canSkipPush() {
 		var err error
-		n, err = l.b.PushDocker(ctx, n)
+		n, err = l.b.PushImage(ctx, n)
 		if err != nil {
 			return nil, err
 		}
