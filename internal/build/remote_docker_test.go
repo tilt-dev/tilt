@@ -68,10 +68,10 @@ func TestBuildDockerFromExistingCopiesAndRmsFiles(t *testing.T) {
 		f.t.Fatal(err)
 	}
 
-	if assert.Equal(f.t, 1, f.dcli.ExecCount, "calls to ExecInContainer") {
-		assert.Equal(f.t, testContainer, f.dcli.ExecContainer)
+	if assert.Equal(f.t, 1, len(f.dcli.ExecCalls), "calls to ExecInContainer") {
+		assert.Equal(f.t, testContainer, f.dcli.ExecCalls[0].Container)
 		expectedCmd := model.Cmd{Argv: []string{"rm", "-rf", "/src/does-not-exist"}}
-		assert.Equal(f.t, expectedCmd, f.dcli.ExecCmd)
+		assert.Equal(f.t, expectedCmd, f.dcli.ExecCalls[0].Cmd)
 	}
 
 	if assert.Equal(f.t, 1, f.dcli.CopyCount, "calls to CopyToContainer") {
@@ -80,6 +80,26 @@ func TestBuildDockerFromExistingCopiesAndRmsFiles(t *testing.T) {
 		assert.Equal(f.t, types.CopyToContainerOptions{}, f.dcli.CopyOptions)
 		// TODO(maia): assert that the right stuff made it into the archive (f.dcli.CopyContent)
 	}
+}
+
+func TestBuildDockerFromExistingExecsSteps(t *testing.T) {
+	f := newRemoteDockerFixture(t)
+	defer f.teardown()
+
+	cmdA := model.Cmd{Argv: []string{"a"}}
+	cmdB := model.Cmd{Argv: []string{"b", "and b", "another b"}}
+
+	_, err := f.b.BuildDockerFromExisting(f.ctx, nil, []pathMapping{}, []model.Cmd{cmdA, cmdB})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	expectedExecs := []ExecCall{
+		ExecCall{Container: testContainer, Cmd: cmdA},
+		ExecCall{Container: testContainer, Cmd: cmdB},
+	}
+
+	assert.Equal(f.t, expectedExecs, f.dcli.ExecCalls)
 }
 
 type remoteDockerFixture struct {

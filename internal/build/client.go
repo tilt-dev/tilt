@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/model"
@@ -115,6 +117,10 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 }
 
 func (d *DockerCli) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon--ExecInContainer")
+	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
+	defer span.Finish()
+
 	cfg := types.ExecConfig{
 		Cmd:          cmd.Argv,
 		AttachStdout: true,

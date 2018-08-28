@@ -60,6 +60,11 @@ var ContainersListByName = map[string][]types.Container{
 	},
 }
 
+type ExecCall struct {
+	Container string
+	Cmd       model.Cmd
+}
+
 type FakeDockerClient struct {
 	PushCount   int
 	PushImage   string
@@ -82,9 +87,7 @@ type FakeDockerClient struct {
 	CopyContent   io.Reader
 	CopyOptions   types.CopyToContainerOptions
 
-	ExecCount     int
-	ExecContainer string
-	ExecCmd       model.Cmd
+	ExecCalls []ExecCall
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
@@ -105,9 +108,12 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 }
 
 func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
-	c.ExecCount++
-	c.ExecContainer = cID.String()
-	c.ExecCmd = cmd
+	execCall := ExecCall{
+		Container: cID.String(),
+		Cmd:       cmd,
+	}
+	c.ExecCalls = append(c.ExecCalls, execCall)
+
 	return nil
 }
 

@@ -32,6 +32,9 @@ func (r *remoteDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref re
 }
 
 func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon--remoteDockerBuilder-BuildDockerFromExisting")
+	defer span.Finish()
+
 	cID, err := r.containerIdForPod(ctx)
 	if err != nil {
 		return nil, err
@@ -64,7 +67,14 @@ func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, exist
 		return nil, err
 	}
 
-	// TODO(maia): exec steps on container(s)
+	// Exec steps on container
+	for _, s := range steps {
+		err = r.dcli.ExecInContainer(ctx, cID, s)
+		if err != nil {
+			return nil, fmt.Errorf("executing step %v on container %s: %v", s.Argv, cID.ShortStr(), err)
+		}
+	}
+
 	// TODO(maia): restart container(s)
 
 	return nil, nil
