@@ -147,7 +147,7 @@ func (r *remoteDockerBuilder) containerIdForPod(ctx context.Context) (containerI
 	if len(containers) > 2 {
 		var ids []string
 		for _, c := range containers {
-			ids = append(ids, c.ID[:10])
+			ids = append(ids, containerID(c.ID).ShortStr())
 		}
 		return "", fmt.Errorf("too many matching containers (%v)", ids)
 	}
@@ -160,7 +160,7 @@ func (r *remoteDockerBuilder) containerIdForPod(ctx context.Context) (containerI
 	}
 
 	// What?? No actual matches??!
-	return "", fmt.Errorf("no real containers -- all were '/pause' containers")
+	return "", fmt.Errorf("no matching non-'/pause' containers")
 }
 
 func (r *remoteDockerBuilder) RmPathsFromContainer(ctx context.Context, cID containerID, paths []pathMapping) error {

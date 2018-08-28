@@ -9,8 +9,13 @@ import (
 
 type containerID string
 
-func (cID containerID) String() string   { return string(cID) }
-func (cID containerID) ShortStr() string { return string(cID)[:10] }
+func (cID containerID) String() string { return string(cID) }
+func (cID containerID) ShortStr() string {
+	if len(string(cID)) > 10 {
+		return string(cID)[:10]
+	}
+	return string(cID)
+}
 
 // Get a container config to run a container with a given command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.

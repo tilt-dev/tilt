@@ -508,7 +508,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	return &dockerBuildFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
-		ctx:            testutils.CtxForTest(),
+		ctx:            ctx,
 		dcli:           dcli,
 		b:              NewLocalDockerBuilder(dcli),
 	}

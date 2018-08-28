@@ -36,6 +36,25 @@ var ExamplePushOutput1 = `{"status":"The push refers to repository [localhost:50
 	{"status":"tilt-11cd0b38bc3ceb95: digest: sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1 size: 735"}
 	{"progressDetail":{},"aux":{"Tag":"tilt-11cd0b38bc3ceb95","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
+var ContainersListByName = map[string][]types.Container{
+	"docker-for-mac": []types.Container{
+		types.Container{ID: "container-for-d4m", Command: "./stuff"},
+	},
+	"gke": []types.Container{
+		types.Container{ID: "not a match", Command: pauseCmd},
+		types.Container{ID: "container-for-gke", Command: "./stuff"},
+	},
+	"too-many": []types.Container{
+		types.Container{ID: "nope", Command: "./stuff"},
+		types.Container{ID: "nah", Command: "./things"},
+		types.Container{ID: "nuh-uh", Command: "./nonsense"},
+	},
+	"all-pause": []types.Container{
+		types.Container{ID: "pause container", Command: pauseCmd},
+		types.Container{ID: "also pause", Command: pauseCmd},
+	},
+}
+
 type FakeDockerClient struct {
 	PushCount   int
 	PushImage   string
@@ -49,17 +68,31 @@ type FakeDockerClient struct {
 	TagCount  int
 	TagSource string
 	TagTarget string
+
+	ContainerListOutput map[string][]types.Container
+
+	CopyCount     int
+	CopyContainer string
+	CopyPath      string
+	CopyContent   io.Reader
+	CopyOptions   types.CopyToContainerOptions
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
 	return &FakeDockerClient{
-		PushOutput:  NewFakeDockerResponse(ExamplePushOutput1),
-		BuildOutput: NewFakeDockerResponse(ExampleBuildOutput1),
+		PushOutput:          NewFakeDockerResponse(ExamplePushOutput1),
+		BuildOutput:         NewFakeDockerResponse(ExampleBuildOutput1),
+		ContainerListOutput: ContainersListByName,
 	}
 }
 
 func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
-	return nil, fmt.Errorf("TODO(maia): not implemented")
+	nameFilter := options.Filters.Get("name")
+	if len(nameFilter) != 1 {
+		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
+	}
+
+	return c.ContainerListOutput[nameFilter[0]], nil
 }
 
 func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
@@ -67,7 +100,12 @@ func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID,
 }
 
 func (c *FakeDockerClient) CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error {
-	return fmt.Errorf("TODO(maia): CopyToContainer not implemented")
+	c.CopyCount++
+	c.CopyContainer = container
+	c.CopyPath = path
+	c.CopyContent = content
+	c.CopyOptions = options
+	return nil
 }
 
 func (c *FakeDockerClient) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {
