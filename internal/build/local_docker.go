@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -34,9 +33,9 @@ type localDockerBuilder struct {
 }
 
 type Builder interface {
-	BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error)
-	BuildDockerFromExisting(ctx context.Context, existing digest.Digest, paths []pathMapping, steps []model.Cmd) (digest.Digest, error)
-	PushDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
+	BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error)
+	PushDocker(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
 	TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
@@ -56,37 +55,37 @@ func NewLocalDockerBuilder(dcli DockerClient) *localDockerBuilder {
 	return &localDockerBuilder{dcli: dcli}
 }
 
-func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, baseDockerfile Dockerfile,
-	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
+	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromScratch")
 	defer span.Finish()
 
 	err := baseDockerfile.ForbidEntrypoint()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return l.buildDocker(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint)
+	return l.buildDocker(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint, ref)
 }
 
-func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing digest.Digest,
-	paths []pathMapping, steps []model.Cmd) (digest.Digest, error) {
+func (l *localDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged,
+	paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildDockerFromExisting")
 	defer span.Finish()
 
 	dfForExisting := DockerfileFromExisting(existing)
-	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{})
+	return l.buildDocker(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
 }
 
 func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Dockerfile,
-	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd) (digest.Digest, error) {
+	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd, ref reference.Named) (reference.NamedTagged, error) {
 
 	df := baseDockerfile.AddAll()
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
-		return "", fmt.Errorf("buildDocker: %v", err)
+		return nil, fmt.Errorf("buildDocker: %v", err)
 	}
 
 	df = df.RmPaths(toRemove)
@@ -100,12 +99,12 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Doc
 	}
 
 	// We have the Dockerfile! Kick off the docker build.
-	resultDigest, err := l.buildFromDf(ctx, df, paths)
+	namedTagged, err := l.buildFromDf(ctx, df, paths, ref)
 	if err != nil {
-		return "", fmt.Errorf("buildDocker#buildFromDf: %v", err)
+		return nil, fmt.Errorf("buildDocker#buildFromDf: %v", err)
 	}
 
-	return resultDigest, nil
+	return namedTagged, nil
 }
 
 // Tag the digest with the given name and wm-tilt tag.
@@ -133,7 +132,7 @@ func (l *localDockerBuilder) TagDocker(ctx context.Context, ref reference.Named,
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
 	logger.Get(ctx).Infof("Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushDocker")
@@ -169,15 +168,10 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker: no domain in container name: %s", ref)
 	}
 
-	namedTagged, err := l.TagDocker(ctx, ref, dig)
-	if err != nil {
-		return nil, fmt.Errorf("PushDocker: %v", err)
-	}
-
 	logger.Get(ctx).Infof("%spushing the image", logger.Tab)
 	imagePushResponse, err := l.dcli.ImagePush(
 		ctx,
-		namedTagged.String(),
+		ref.String(),
 		options)
 	if err != nil {
 		return nil, fmt.Errorf("PushDocker#ImagePush: %v", err)
@@ -194,10 +188,10 @@ func (l *localDockerBuilder) PushDocker(ctx context.Context, ref reference.Named
 		return nil, fmt.Errorf("PushDocker#getDigestFromPushOutput: %v", err)
 	}
 
-	return namedTagged, nil
+	return ref, nil
 }
 
-func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping) (digest.Digest, error) {
+func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, ref reference.Named) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -205,7 +199,7 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 
 	archive, err := TarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	output.Get(ctx).StartBuildStep("building image")
@@ -213,14 +207,11 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	imageBuildResponse, err := l.dcli.ImageBuild(
 		ctx,
 		archive,
-		types.ImageBuildOptions{
-			Context:    archive,
-			Dockerfile: "Dockerfile",
-			Remove:     shouldRemoveImage(),
-		})
+		Options(archive),
+	)
 	spanBuild.Finish()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	defer func() {
@@ -231,10 +222,20 @@ func (l *localDockerBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	}()
 	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
 	if err != nil {
-		return "", fmt.Errorf("ImageBuild: %v", err)
+		return nil, fmt.Errorf("ImageBuild: %v", err)
 	}
 
-	return getDigestFromAux(*result)
+	digest, err := getDigestFromAux(*result)
+	if err != nil {
+		return nil, fmt.Errorf("getDigestFromAux: %v", err)
+	}
+
+	nt, err := l.TagDocker(ctx, ref, digest)
+	if err != nil {
+		return nil, fmt.Errorf("PushDocker: %v", err)
+	}
+
+	return nt, nil
 }
 
 func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
@@ -315,7 +316,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			return nil, errors.New(message.Error.Message)
 		}
 
-		if message.Aux != nil {
+		if message.Aux != nil && message.ID != "moby.buildkit.trace" {
 			result = message.Aux
 		}
 	}
@@ -371,13 +372,6 @@ func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
 		return "", fmt.Errorf("getDigestFromAux: ID not found")
 	}
 	return digest.Digest(id), nil
-}
-
-func shouldRemoveImage() bool {
-	if flag.Lookup("test.v") == nil {
-		return false
-	}
-	return true
 }
 
 func digestAsTag(d digest.Digest) (string, error) {

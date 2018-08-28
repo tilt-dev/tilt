@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opencontainers/go-digest"
+	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -29,7 +29,11 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-var dummyBuildToken = &buildToken{digest.Digest("foo"), nil}
+func dummyBuildToken() *buildToken {
+	n, _ := reference.WithName("windmill.build/dummy")
+	nt, _ := reference.WithTag(n, "tilt")
+	return &buildToken{nt}
+}
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
 	select {
@@ -37,7 +41,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
-	return dummyBuildToken, nil
+	return dummyBuildToken(), nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -133,7 +137,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
-		assert.Equal(t, dummyBuildToken, call.buildToken)
+		assert.Equal(t, dummyBuildToken(), call.buildToken)
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {
 			t.Errorf("error making abs path of %v: %v", fileRelPath, err)

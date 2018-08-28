@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	digest "github.com/opencontainers/go-digest"
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -13,8 +13,8 @@ type Dockerfile string
 // DockerfileFromExisting creates a new Dockerfile that uses the supplied image
 // as its base image with a FROM statement. This is necessary for iterative
 // Docker builds.
-func DockerfileFromExisting(existing digest.Digest) Dockerfile {
-	return Dockerfile(fmt.Sprintf("FROM %s", existing.Encoded()))
+func DockerfileFromExisting(existing reference.NamedTagged) Dockerfile {
+	return Dockerfile(fmt.Sprintf("FROM %s", existing.String()))
 }
 
 func (d Dockerfile) join(s string) Dockerfile {

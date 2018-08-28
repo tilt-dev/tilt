@@ -8,7 +8,6 @@ import (
 	"k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
@@ -18,8 +17,7 @@ import (
 )
 
 type buildToken struct {
-	d digest.Digest
-	n reference.Named
+	n reference.NamedTagged
 }
 
 func (b *buildToken) isEmpty() bool {
@@ -60,27 +58,26 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	output.Get(ctx).StartPipeline(2)
 	defer output.Get(ctx).EndPipeline()
 
-	checkpoint := l.history.CheckpointNow()
+	// TODO(dmiller) add back history
+	//checkpoint := l.history.CheckpointNow()
 	err := service.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	var name reference.Named
-	var d digest.Digest
+	var n reference.NamedTagged
 	if token.isEmpty() {
+		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
+		if err != nil {
+			return nil, err
+		}
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
-		newDigest, err := l.b.BuildDockerFromScratch(ctx, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
-		if err != nil {
-			return nil, err
-		}
+		ref, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 		output.Get(ctx).EndPipelineStep()
-		d = newDigest
-
-		name, err = reference.ParseNormalizedNamed(service.DockerfileTag)
 		if err != nil {
 			return nil, err
 		}
+		n = ref
 
 	} else {
 		cf, err := build.FilesToPathMappings(changedFiles, service.Mounts)
@@ -89,35 +86,28 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.d, cf, service.Steps)
+		ref, err := l.b.BuildDockerFromExisting(ctx, token.n, cf, service.Steps)
 		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
-		d = newDigest
-		name = token.n
+		n = ref
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
-	if err != nil {
-		return nil, err
-	}
-
-	var refToInject reference.Named
+	// TODO(dmiller) add back history
+	// err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// If we're using docker-for-desktop as our k8s backend,
 	// we don't need to push to the central registry.
 	// The k8s will use the image already available
 	// in the local docker daemon.
 	canSkipPush := l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
-	if canSkipPush {
-		refToInject, err = l.b.TagDocker(ctx, name, d)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		refToInject, err = l.b.PushDocker(ctx, name, d)
+	if !canSkipPush {
+		n, err = l.b.PushDocker(ctx, n)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +139,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		if canSkipPush {
 			policy = v1.PullNever
 		}
-		e, replaced, err := k8s.InjectImageDigest(e, refToInject, policy)
+		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +153,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
 	}
 
-	newToken := &buildToken{d: d, n: name}
+	newToken := &buildToken{n}
 	err = k8s.Update(ctx, l.k8sClient, newK8sEntities)
 	return newToken, err
 }

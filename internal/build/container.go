@@ -1,8 +1,8 @@
 package build
 
 import (
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types/container"
-	digest "github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -11,7 +11,7 @@ type execID string
 
 // Get a container config to run a container with a given command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.
-func containerConfigRunCmd(imgRef digest.Digest, cmd model.Cmd) *container.Config {
+func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *container.Config {
 	config := containerConfig(imgRef)
 
 	// In Docker, both the Entrypoint and the Cmd are used to determine what
@@ -32,6 +32,6 @@ func containerConfigRunCmd(imgRef digest.Digest, cmd model.Cmd) *container.Confi
 }
 
 // Get a container config to run a container as-is.
-func containerConfig(imgRef digest.Digest) *container.Config {
-	return &container.Config{Image: string(imgRef)}
+func containerConfig(imgRef reference.NamedTagged) *container.Config {
+	return &container.Config{Image: imgRef.String()}
 }
