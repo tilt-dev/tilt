@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	digest "github.com/opencontainers/go-digest"
+	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -16,7 +16,6 @@ const imagesPath = "tilt/images.json"
 
 type diskEntry struct {
 	Ref          refKey
-	Digest       digest.Digest
 	CheckpointID CheckpointID
 	HashedInputs model.HashedService
 }
@@ -44,8 +43,16 @@ func historyFromFS(ctx context.Context, dir *dirs.WindmillDir) (map[refKey][]his
 			return nil, fmt.Errorf("historyFromFS: %v", err)
 		}
 
+		name, err := reference.ParseNamed(string(entry.Ref))
+		if err != nil {
+			return nil, fmt.Errorf("reference.Parse: %v", err)
+		}
 		result[entry.Ref] = append(result[entry.Ref],
-			historyEntry{CheckpointID: entry.CheckpointID, Digest: entry.Digest, HashedService: entry.HashedInputs})
+			historyEntry{
+				Named:         name,
+				CheckpointID:  entry.CheckpointID,
+				HashedService: entry.HashedInputs,
+			})
 	}
 	return result, nil
 }
@@ -60,7 +67,8 @@ func addHistoryToFS(ctx context.Context, dir *dirs.WindmillDir, ref refKey, entr
 	}()
 
 	encoder := json.NewEncoder(file)
-	diskEntry := diskEntry{Ref: ref, Digest: entry.Digest, CheckpointID: entry.CheckpointID, HashedInputs: entry.HashedService}
+	diskEntry := diskEntry{Ref: ref, CheckpointID: entry.CheckpointID, HashedInputs: entry.HashedService}
+	fmt.Printf("diskEntry: %+v\n", diskEntry)
 	err = encoder.Encode(diskEntry)
 	if err != nil {
 		return fmt.Errorf("addHistoryToFS: %v", err)
