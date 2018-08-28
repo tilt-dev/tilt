@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -27,4 +28,48 @@ func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 		}
 	}
 	return result
+}
+
+type LoadBalancer struct {
+	Name  string
+	Ports []int32
+}
+
+func ToLoadBalancers(entities []K8sEntity) []LoadBalancer {
+	result := make([]LoadBalancer, 0)
+	for _, e := range entities {
+		lb, ok := ToLoadBalancer(e)
+		if ok {
+			result = append(result, lb)
+		}
+	}
+	return result
+}
+
+// Try to convert the current entity to a LoadBalancer service
+func ToLoadBalancer(entity K8sEntity) (LoadBalancer, bool) {
+	service, ok := entity.Obj.(*v1.Service)
+	if !ok {
+		return LoadBalancer{}, false
+	}
+
+	meta := service.ObjectMeta
+	name := meta.Name
+	spec := service.Spec
+	if spec.Type != v1.ServiceTypeLoadBalancer {
+		return LoadBalancer{}, false
+	}
+
+	result := LoadBalancer{Name: name}
+	for _, portSpec := range spec.Ports {
+		if portSpec.Port != 0 {
+			result.Ports = append(result.Ports, portSpec.Port)
+		}
+	}
+
+	if len(result.Ports) == 0 {
+		return LoadBalancer{}, false
+	}
+
+	return result, true
 }
