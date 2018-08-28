@@ -32,7 +32,7 @@ var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 func dummyBuildToken() *buildToken {
 	n, _ := reference.WithName("windmill.build/dummy")
 	nt, _ := reference.WithTag(n, "tilt")
-	return &buildToken{nt}
+	return &buildToken{n: nt}
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {

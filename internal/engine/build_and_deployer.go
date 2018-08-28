@@ -17,7 +17,8 @@ import (
 )
 
 type buildToken struct {
-	n reference.NamedTagged
+	n        reference.NamedTagged
+	entities []k8s.K8sEntity
 }
 
 func (b *buildToken) isEmpty() bool {
@@ -65,6 +66,21 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
+	ref, err := l.build(ctx, service, token, changedFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	k8sEntities, err := l.deploy(ctx, service, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	newToken := &buildToken{n: ref, entities: k8sEntities}
+	return newToken, err
+}
+
+func (l localBuildAndDeployer) build(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 	if token.isEmpty() {
 		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
@@ -72,8 +88,10 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 			return nil, err
 		}
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
+		defer output.Get(ctx).EndPipelineStep()
+
 		ref, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
-		output.Get(ctx).EndPipelineStep()
+
 		if err != nil {
 			return nil, err
 		}
@@ -86,8 +104,9 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
+		defer output.Get(ctx).EndPipelineStep()
+
 		ref, err := l.b.BuildDockerFromExisting(ctx, token.n, cf, service.Steps)
-		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
@@ -101,18 +120,18 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	// 	return nil, err
 	// }
 
-	// If we're using docker-for-desktop as our k8s backend,
-	// we don't need to push to the central registry.
-	// The k8s will use the image already available
-	// in the local docker daemon.
-	canSkipPush := l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
-	if !canSkipPush {
+	if !l.canSkipPush() {
+		var err error
 		n, err = l.b.PushDocker(ctx, n)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	return n, nil
+}
+
+func (l localBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 
@@ -136,7 +155,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if canSkipPush {
+		if l.canSkipPush() {
 			policy = v1.PullNever
 		}
 		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
@@ -153,7 +172,17 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
 	}
 
-	newToken := &buildToken{n}
 	err = k8s.Update(ctx, l.k8sClient, newK8sEntities)
-	return newToken, err
+	if err != nil {
+		return nil, err
+	}
+	return newK8sEntities, nil
+}
+
+// If we're using docker-for-desktop as our k8s backend,
+// we don't need to push to the central registry.
+// The k8s will use the image already available
+// in the local docker daemon.
+func (l localBuildAndDeployer) canSkipPush() bool {
+	return l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
 }
