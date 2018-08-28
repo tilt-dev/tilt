@@ -21,7 +21,6 @@ syntax = 'proto2';
 
 package k8s.io.api.core.v1;
 
-import "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1/generated.proto";
 import "k8s.io/apimachinery/pkg/api/resource/generated.proto";
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 import "k8s.io/apimachinery/pkg/runtime/generated.proto";
@@ -627,7 +626,7 @@ message Container {
 
   // Compute Resources required by this container.
   // Cannot be updated.
-  // More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+  // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   // +optional
   optional ResourceRequirements resources = 8;
 
@@ -750,7 +749,7 @@ message ContainerPort {
   // This must be a valid port number, 0 < x < 65536.
   optional int32 containerPort = 3;
 
-  // Protocol for port. Must be UDP or TCP.
+  // Protocol for port. Must be UDP, TCP, or SCTP.
   // Defaults to "TCP".
   // +optional
   optional string protocol = 4;
@@ -969,7 +968,7 @@ message EndpointPort {
   optional int32 port = 2;
 
   // The IP protocol for this port.
-  // Must be UDP or TCP.
+  // Must be UDP, TCP, or SCTP.
   // Default is TCP.
   // +optional
   optional string protocol = 3;
@@ -3103,6 +3102,15 @@ message PodSpec {
   // More info: https://github.com/kubernetes/community/blob/master/keps/sig-network/0007-pod-ready%2B%2B.md
   // +optional
   repeated PodReadinessGate readinessGates = 28;
+
+  // RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used
+  // to run this pod.  If no RuntimeClass resource matches the named class, the pod will not be run.
+  // If unset or empty, the "legacy" RuntimeClass will be used, which is an implicit class with an
+  // empty definition that uses the default runtime handler.
+  // More info: https://github.com/kubernetes/community/blob/master/keps/sig-node/0014-runtime-class.md
+  // This is an alpha feature and may change in the future.
+  // +optional
+  optional string runtimeClassName = 29;
 }
 
 // PodStatus represents information about the status of a pod. Status may trail the actual
@@ -4140,7 +4148,7 @@ message ServicePort {
   // +optional
   optional string name = 1;
 
-  // The IP protocol for this port. Supports "TCP" and "UDP".
+  // The IP protocol for this port. Supports "TCP", "UDP", and "SCTP".
   // Default is TCP.
   // +optional
   optional string protocol = 2;

@@ -395,10 +395,10 @@ CK_RV DecryptInit(struct ctx * c, CK_SESSION_HANDLE session,
 	return e;
 }
 
-CK_RV Decrypt(struct ctx * c, CK_SESSION_HANDLE session, CK_BYTE_PTR cypher,
+CK_RV Decrypt(struct ctx * c, CK_SESSION_HANDLE session, CK_BYTE_PTR cipher,
 	      CK_ULONG clen, CK_BYTE_PTR * plain, CK_ULONG_PTR plainlen)
 {
-	CK_RV e = c->sym->C_Decrypt(session, cypher, clen, NULL, plainlen);
+	CK_RV e = c->sym->C_Decrypt(session, cipher, clen, NULL, plainlen);
 	if (e != CKR_OK) {
 		return e;
 	}
@@ -406,7 +406,7 @@ CK_RV Decrypt(struct ctx * c, CK_SESSION_HANDLE session, CK_BYTE_PTR cypher,
 	if (*plain == NULL) {
 		return CKR_HOST_MEMORY;
 	}
-	e = c->sym->C_Decrypt(session, cypher, clen, *plain, plainlen);
+	e = c->sym->C_Decrypt(session, cipher, clen, *plain, plainlen);
 	return e;
 }
 
@@ -1164,8 +1164,10 @@ func (c *Ctx) FindObjectsInit(sh SessionHandle, temp []*Attribute) error {
 
 // FindObjects continues a search for token and session
 // objects that match a template, obtaining additional object
-// handles. The returned boolean indicates if the list would
-// have been larger than max.
+// handles. Calling the function repeatedly may yield additional results until
+// an empty slice is returned.
+//
+// The returned boolean value is deprecated and should be ignored.
 func (c *Ctx) FindObjects(sh SessionHandle, max int) ([]ObjectHandle, bool, error) {
 	var (
 		objectList C.CK_OBJECT_HANDLE_PTR
@@ -1253,12 +1255,12 @@ func (c *Ctx) DecryptInit(sh SessionHandle, m []*Mechanism, o ObjectHandle) erro
 }
 
 // Decrypt decrypts encrypted data in a single part.
-func (c *Ctx) Decrypt(sh SessionHandle, cypher []byte) ([]byte, error) {
+func (c *Ctx) Decrypt(sh SessionHandle, cipher []byte) ([]byte, error) {
 	var (
 		plain    C.CK_BYTE_PTR
 		plainlen C.CK_ULONG
 	)
-	e := C.Decrypt(c.ctx, C.CK_SESSION_HANDLE(sh), C.CK_BYTE_PTR(unsafe.Pointer(&cypher[0])), C.CK_ULONG(len(cypher)), &plain, &plainlen)
+	e := C.Decrypt(c.ctx, C.CK_SESSION_HANDLE(sh), C.CK_BYTE_PTR(unsafe.Pointer(&cipher[0])), C.CK_ULONG(len(cipher)), &plain, &plainlen)
 	if toError(e) != nil {
 		return nil, toError(e)
 	}

@@ -37,7 +37,7 @@ const quantileLabel = "quantile"
 // A typical use-case is the observation of request latencies. By default, a
 // Summary provides the median, the 90th and the 99th percentile of the latency
 // as rank estimations. However, the default behavior will change in the
-// upcoming v0.10 of the library. There will be no rank estiamtions at all by
+// upcoming v0.10 of the library. There will be no rank estimations at all by
 // default. For a sane transition, it is recommended to set the desired rank
 // estimations explicitly.
 //

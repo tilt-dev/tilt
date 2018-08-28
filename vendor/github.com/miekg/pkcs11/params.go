@@ -55,6 +55,7 @@ func cGCMParams(p *GCMParams) []byte {
 		iv, ivLen := arena.Allocate(p.iv)
 		params.pIv = C.CK_BYTE_PTR(iv)
 		params.ulIvLen = ivLen
+		params.ulIvBits = ivLen * 8
 	}
 	if len(p.aad) > 0 {
 		aad, aadLen := arena.Allocate(p.aad)

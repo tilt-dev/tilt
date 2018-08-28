@@ -102,14 +102,14 @@ func PruneFilters(dockerCli Cli, pruneFilters filters.Args) filters.Args {
 			// CLI label filter supersede config.json.
 			// If CLI label filter conflict with config.json,
 			// skip adding label! filter in config.json.
-			if pruneFilters.Include("label!") && pruneFilters.ExactMatch("label!", parts[1]) {
+			if pruneFilters.Contains("label!") && pruneFilters.ExactMatch("label!", parts[1]) {
 				continue
 			}
 		} else if parts[0] == "label!" {
 			// CLI label! filter supersede config.json.
 			// If CLI label! filter conflict with config.json,
 			// skip adding label filter in config.json.
-			if pruneFilters.Include("label") && pruneFilters.ExactMatch("label", parts[1]) {
+			if pruneFilters.Contains("label") && pruneFilters.ExactMatch("label", parts[1]) {
 				continue
 			}
 		}

@@ -25,7 +25,11 @@ if [[ "$GOOS" = "linux" ]] && [[ "$GOARCH" != "sparc64" ]]; then
 	fi
 fi
 
-CC=${CC:-cc}
+if [[ "$GOOS" = "aix" ]]; then
+	CC=${CC:-gcc}
+else
+	CC=${CC:-cc}
+fi
 
 if [[ "$GOOS" = "solaris" ]]; then
 	# Assumes GNU versions of utilities in PATH.
@@ -33,6 +37,20 @@ if [[ "$GOOS" = "solaris" ]]; then
 fi
 
 uname=$(uname)
+
+includes_AIX='
+#include <net/if.h>
+#include <net/netopt.h>
+#include <netinet/ip_mroute.h>
+#include <sys/protosw.h>
+#include <sys/stropts.h>
+#include <sys/mman.h>
+#include <sys/poll.h>
+#include <termios.h>
+#include <fcntl.h>
+
+#define AF_LOCAL AF_UNIX
+'
 
 includes_Darwin='
 #define _DARWIN_C_SOURCE
@@ -65,6 +83,7 @@ includes_DragonFly='
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -86,6 +105,7 @@ includes_FreeBSD='
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -191,10 +211,10 @@ struct ltchars {
 #include <linux/vm_sockets.h>
 #include <linux/taskstats.h>
 #include <linux/genetlink.h>
-#include <linux/stat.h>
 #include <linux/watchdog.h>
 #include <linux/hdreg.h>
 #include <linux/rtc.h>
+#include <mtd/ubi-user.h>
 #include <net/route.h>
 #include <asm/termbits.h>
 
@@ -230,6 +250,7 @@ includes_NetBSD='
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/event.h>
+#include <sys/extattr.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -258,6 +279,7 @@ includes_OpenBSD='
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/termios.h>
 #include <sys/ttycom.h>
@@ -293,6 +315,7 @@ includes_SunOS='
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
@@ -434,7 +457,8 @@ ccflags="$@"
 		$2 ~ /^SECCOMP_MODE_/ ||
 		$2 ~ /^SPLICE_/ ||
 		$2 !~ /^AUDIT_RECORD_MAGIC/ &&
-		$2 ~ /^[A-Z0-9_]+_MAGIC2?$/ ||
+		$2 !~ /IOC_MAGIC/ &&
+		$2 ~ /^[A-Z][A-Z0-9_]+_MAGIC2?$/ ||
 		$2 ~ /^(VM|VMADDR)_/ ||
 		$2 ~ /^IOCTL_VM_SOCKETS_/ ||
 		$2 ~ /^(TASKSTATS|TS)_/ ||
@@ -442,6 +466,7 @@ ccflags="$@"
 		$2 ~ /^GENL_/ ||
 		$2 ~ /^STATX_/ ||
 		$2 ~ /^RENAME/ ||
+		$2 ~ /^UBI_IOC[A-Z]/ ||
 		$2 ~ /^UTIME_/ ||
 		$2 ~ /^XATTR_(CREATE|REPLACE|NO(DEFAULT|FOLLOW|SECURITY)|SHOWCOMPRESSION)/ ||
 		$2 ~ /^ATTR_(BIT_MAP_COUNT|(CMN|VOL|FILE)_)/ ||
@@ -472,7 +497,7 @@ errors=$(
 signals=$(
 	echo '#include <signal.h>' | $CC -x c - -E -dM $ccflags |
 	awk '$1=="#define" && $2 ~ /^SIG[A-Z0-9]+$/ { print $2 }' |
-	egrep -v '(SIGSTKSIZE|SIGSTKSZ|SIGRT)' |
+	egrep -v '(SIGSTKSIZE|SIGSTKSZ|SIGRT|SIGMAX64)' |
 	sort
 )
 
@@ -482,7 +507,7 @@ echo '#include <errno.h>' | $CC -x c - -E -dM $ccflags |
 	sort >_error.grep
 echo '#include <signal.h>' | $CC -x c - -E -dM $ccflags |
 	awk '$1=="#define" && $2 ~ /^SIG[A-Z0-9]+$/ { print "^\t" $2 "[ \t]*=" }' |
-	egrep -v '(SIGSTKSIZE|SIGSTKSZ|SIGRT)' |
+	egrep -v '(SIGSTKSIZE|SIGSTKSZ|SIGRT|SIGMAX64)' |
 	sort >_signal.grep
 
 echo '// mkerrors.sh' "$@"

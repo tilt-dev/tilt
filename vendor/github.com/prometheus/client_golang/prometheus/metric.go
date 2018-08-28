@@ -15,6 +15,9 @@ package prometheus
 
 import (
 	"strings"
+	"time"
+
+	"github.com/gogo/protobuf/proto"
 
 	dto "github.com/prometheus/client_model/go"
 )
@@ -142,3 +145,31 @@ func NewInvalidMetric(desc *Desc, err error) Metric {
 func (m *invalidMetric) Desc() *Desc { return m.desc }
 
 func (m *invalidMetric) Write(*dto.Metric) error { return m.err }
+
+type timestampedMetric struct {
+	Metric
+	t time.Time
+}
+
+func (m timestampedMetric) Write(pb *dto.Metric) error {
+	e := m.Metric.Write(pb)
+	pb.TimestampMs = proto.Int64(m.t.Unix()*1000 + int64(m.t.Nanosecond()/1000000))
+	return e
+}
+
+// NewMetricWithTimestamp returns a new Metric wrapping the provided Metric in a
+// way that it has an explicit timestamp set to the provided Time. This is only
+// useful in rare cases as the timestamp of a Prometheus metric should usually
+// be set by the Prometheus server during scraping. Exceptions include mirroring
+// metrics with given timestamps from other metric
+// sources.
+//
+// NewMetricWithTimestamp works best with MustNewConstMetric,
+// MustNewConstHistogram, and MustNewConstSummary, see example.
+//
+// Currently, the exposition formats used by Prometheus are limited to
+// millisecond resolution. Thus, the provided time will be rounded down to the
+// next full millisecond value.
+func NewMetricWithTimestamp(t time.Time, m Metric) Metric {
+	return timestampedMetric{Metric: m, t: t}
+}
