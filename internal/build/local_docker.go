@@ -9,8 +9,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
+	controlapi "github.com/moby/buildkit/api/services/control"
+	"github.com/moby/buildkit/client"
+	"github.com/moby/buildkit/util/progress/progressui"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -284,6 +288,29 @@ func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
+
+	displayCh := make(chan *client.SolveStatus)
+
+	displayStatus := func(displayCh chan *client.SolveStatus) {
+		out := os.Stdout
+		// NOTE(dmiller): if we want this to display TTY output we just need to pass in an actual console, like below
+		// c, err := console.ConsoleFromFile(out)
+		// if err != nil {
+		// 	panic(err) // TODO not this
+		// 	return
+		// }
+		// not using shared context to not disrupt display but let is finish reporting errors
+		go func() {
+			// NOTE(dmiller): if we want this to display TTY we need to change this nil to the console, like above
+			err := progressui.DisplaySolveStatus(context.TODO(), "", nil, out, displayCh)
+			if err != nil {
+				output.Get(ctx).Print("Error printing progressui: %s", err)
+			}
+		}()
+	}
+
+	displayStatus(displayCh)
+
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
@@ -313,10 +340,58 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			return nil, errors.New(message.Error.Message)
 		}
 
+		if message.ID == "moby.buildkit.trace" {
+			var resp controlapi.StatusResponse
+			var dt []byte
+			// ignoring all messages that are not understood
+			if err := json.Unmarshal(*message.Aux, &dt); err != nil {
+				return nil, err
+			}
+			if err := (&resp).Unmarshal(dt); err != nil {
+				return nil, err
+			}
+
+			s := client.SolveStatus{}
+			for _, v := range resp.Vertexes {
+				s.Vertexes = append(s.Vertexes, &client.Vertex{
+					Digest:    v.Digest,
+					Inputs:    v.Inputs,
+					Name:      v.Name,
+					Started:   v.Started,
+					Completed: v.Completed,
+					Error:     v.Error,
+					Cached:    v.Cached,
+				})
+			}
+			for _, v := range resp.Statuses {
+				s.Statuses = append(s.Statuses, &client.VertexStatus{
+					ID:        v.ID,
+					Vertex:    v.Vertex,
+					Name:      v.Name,
+					Total:     v.Total,
+					Current:   v.Current,
+					Timestamp: v.Timestamp,
+					Started:   v.Started,
+					Completed: v.Completed,
+				})
+			}
+			for _, v := range resp.Logs {
+				s.Logs = append(s.Logs, &client.VertexLog{
+					Vertex:    v.Vertex,
+					Stream:    int(v.Stream),
+					Data:      v.Msg,
+					Timestamp: v.Timestamp,
+				})
+			}
+
+			displayCh <- &s
+		}
+
 		if message.Aux != nil && message.ID != "moby.buildkit.trace" {
 			result = message.Aux
 		}
 	}
+	close(displayCh)
 	if innerSpan != nil {
 		innerSpan.Finish()
 	}

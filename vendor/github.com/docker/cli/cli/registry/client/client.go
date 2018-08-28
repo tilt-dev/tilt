@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	manifesttypes "github.com/docker/cli/cli/manifest/types"
+	"github.com/docker/cli/cli/trust"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/reference"
 	distributionclient "github.com/docker/distribution/registry/client"
@@ -24,6 +25,7 @@ type RegistryClient interface {
 	GetManifestList(ctx context.Context, ref reference.Named) ([]manifesttypes.ImageManifest, error)
 	MountBlob(ctx context.Context, source reference.Canonical, target reference.Named) error
 	PutManifest(ctx context.Context, ref reference.Named, manifest distribution.Manifest) (digest.Digest, error)
+	GetTags(ctx context.Context, ref reference.Named) ([]string, error)
 }
 
 // NewRegistryClient returns a new RegistryClient with a resolver
@@ -122,6 +124,19 @@ func (c *client) PutManifest(ctx context.Context, ref reference.Named, manifest 
 	return dgst, errors.Wrapf(err, "failed to put manifest %s", ref)
 }
 
+func (c *client) GetTags(ctx context.Context, ref reference.Named) ([]string, error) {
+	repoEndpoint, err := newDefaultRepositoryEndpoint(ref, c.insecureRegistry)
+	if err != nil {
+		return nil, err
+	}
+
+	repo, err := c.getRepositoryForReference(ctx, ref, repoEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	return repo.Tags(ctx).All(ctx)
+}
+
 func (c *client) getRepositoryForReference(ctx context.Context, ref reference.Named, repoEndpoint repositoryEndpoint) (distribution.Repository, error) {
 	httpTransport, err := c.getHTTPTransportForRepoEndpoint(ctx, repoEndpoint)
 	if err != nil {
@@ -180,4 +195,17 @@ func getManifestOptionsFromReference(ref reference.Named) (digest.Digest, []dist
 		return digested.Digest(), []distribution.ManifestServiceOption{}, nil
 	}
 	return "", nil, errors.Errorf("%s no tag or digest", ref)
+}
+
+// GetRegistryAuth returns the auth config given an input image
+func GetRegistryAuth(ctx context.Context, resolver AuthConfigResolver, imageName string) (*types.AuthConfig, error) {
+	distributionRef, err := reference.ParseNormalizedNamed(imageName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse image name: %s: %s", imageName, err)
+	}
+	imgRefAndAuth, err := trust.GetImageReferencesAndAuth(ctx, nil, resolver, distributionRef.String())
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get imgRefAndAuth: %s", err)
+	}
+	return imgRefAndAuth.AuthConfig(), nil
 }

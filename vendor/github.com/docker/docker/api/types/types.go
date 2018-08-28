@@ -102,9 +102,10 @@ type ContainerStats struct {
 // Ping contains response of Engine API:
 // GET "/_ping"
 type Ping struct {
-	APIVersion   string
-	OSType       string
-	Experimental bool
+	APIVersion     string
+	OSType         string
+	Experimental   bool
+	BuilderVersion BuilderVersion
 }
 
 // ComponentVersion describes the version information for a specific component.
@@ -204,6 +205,8 @@ type Info struct {
 	RuncCommit         Commit
 	InitCommit         Commit
 	SecurityOptions    []string
+	ProductLicense     string `json:",omitempty"`
+	Warnings           []string
 }
 
 // KeyValue holds a key/value pair

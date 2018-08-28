@@ -19,10 +19,10 @@ produces:
 consumes:
   - "application/json"
   - "text/plain"
-basePath: "/v1.38"
+basePath: "/v1.39"
 info:
   title: "Docker Engine API"
-  version: "1.38"
+  version: "1.39"
   x-logo:
     url: "https://docs.docker.com/images/logo-docker-main.png"
   description: |
@@ -49,8 +49,8 @@ info:
     the URL is not supported by the daemon, a HTTP `400 Bad Request` error message
     is returned.
 
-    If you omit the version-prefix, the current version of the API (v1.38) is used.
-    For example, calling `/info` is the same as calling `/v1.38/info`. Using the
+    If you omit the version-prefix, the current version of the API (v1.39) is used.
+    For example, calling `/info` is the same as calling `/v1.39/info`. Using the
     API without a version-prefix is deprecated and will be removed in a future release.
 
     Engine releases in the near future should support this version of the API,
@@ -3896,6 +3896,27 @@ definitions:
           - "name=seccomp,profile=default"
           - "name=selinux"
           - "name=userns"
+      ProductLicense:
+        description: |
+          Reports a summary of the product license on the daemon.
+
+          If a commercial license has been applied to the daemon, information
+          such as number of nodes, and expiration are included.
+        type: "string"
+        example: "Community Engine"
+      Warnings:
+        description: |
+          List of warnings / informational messages about missing features, or
+          issues related to the daemon configuration.
+
+          These messages can be printed by the client as information to the user.
+        type: "array"
+        items:
+          type: "string"
+        example:
+          - "WARNING: No memory limit support"
+          - "WARNING: bridge-nf-call-iptables is disabled"
+          - "WARNING: bridge-nf-call-ip6tables is disabled"
 
 
   # PluginsInfo is a temp struct holding Plugins name
@@ -6972,6 +6993,9 @@ paths:
             API-Version:
               type: "string"
               description: "Max API Version the server supports"
+            BuildKit-Version:
+              type: "string"
+              description: "Default version of docker image builder"
             Docker-Experimental:
               type: "boolean"
               description: "If the server is running with experimental mode enabled"
@@ -8585,6 +8609,7 @@ paths:
             - `label=<engine label>`
             - `membership=`(`accepted`|`pending`)`
             - `name=<node name>`
+            - `node.label=<node label>`
             - `role=`(`manager`|`worker`)`
           type: "string"
       tags: ["Node"]
@@ -8757,14 +8782,28 @@ paths:
                   nodes in order to reach the containers running on this node. Using this parameter it is possible to
                   separate the container data traffic from the management traffic of the cluster.
                 type: "string"
+              DefaultAddrPool:
+                description: |
+                  Default Address Pool specifies default subnet pools for global scope networks.
+                type: "array"
+                items:
+                  type: "string"
+                  example: ["10.10.0.0/16", "20.20.0.0/16"]
               ForceNewCluster:
                 description: "Force creation of a new swarm."
                 type: "boolean"
+              SubnetSize:
+                description: |
+                  SubnetSize specifies the subnet size of the networks created from the default subnet pool
+                type: "integer"
+                format: "uint32"
               Spec:
                 $ref: "#/definitions/SwarmSpec"
             example:
               ListenAddr: "0.0.0.0:2377"
               AdvertiseAddr: "192.168.1.1:2377"
+              DefaultAddrPool: ["10.10.0.0/8", "20.20.0.0/8"]
+              SubnetSize: 24
               ForceNewCluster: false
               Spec:
                 Orchestration: {}

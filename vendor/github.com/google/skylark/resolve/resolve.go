@@ -30,8 +30,11 @@ package resolve
 //
 // Python-style resolution requires multiple passes because a name is
 // determined to be local to a function only if the function contains a
-// "binding" use of it, and this use may lexically follow a non-binding
-// use.  In the first pass, we inspect each function, recording in
+// "binding" use of it; similarly, a name is determined be global (as
+// opposed to predeclared) if the module contains a binding use at the
+// top level. For both locals and globals, a non-binding use may
+// lexically precede the binding to which it is resolved.
+// In the first pass, we inspect each function, recording in
 // 'uses' each identifier and the environment block in which it occurs.
 // If a use of a name is binding, such as a function parameter or
 // assignment, we add the name to the block's bindings mapping and add a
@@ -66,7 +69,8 @@ package resolve
 //
 // Skylark enforces that all global names are assigned at most once on
 // all control flow paths by forbidding if/else statements and loops at
-// top level.
+// top level. A global may be used before it is defined, leading to a
+// dynamic error.
 //
 // TODO(adonovan): opt: reuse local slots once locals go out of scope.
 
@@ -271,7 +275,7 @@ func (b *block) String() string {
 		return "function block at " + fmt.Sprint(b.function.Span())
 	}
 	if b.comp != nil {
-		return "comprehension block at " + fmt.Sprint(b.function.Span())
+		return "comprehension block at " + fmt.Sprint(b.comp.Span())
 	}
 	return "module block"
 }
@@ -332,12 +336,6 @@ func (r *resolver) bind(id *syntax.Ident, allowRebind bool) bool {
 }
 
 func (r *resolver) use(id *syntax.Ident) {
-	// Reference outside any local (comprehension/function) block?
-	if r.env.isModule() {
-		r.useGlobal(id)
-		return
-	}
-
 	b := r.container()
 	b.uses = append(b.uses, use{id, r.env})
 }
