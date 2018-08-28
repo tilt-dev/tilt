@@ -261,7 +261,7 @@ func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 	}()
 
 	// TODO: maybe write our own tarWriter struct with methods on it, so it's clearer that we're modifying the tar writer in place
-	err := archivePaths(ctx, tw, paths)
+	err := archivePathsIfExist(ctx, tw, paths)
 	if err != nil {
 		return nil, fmt.Errorf("archiveIfExists: %v", err)
 	}
