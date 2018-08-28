@@ -18,43 +18,40 @@ import (
 
 const pauseCmd = "/pause"
 
-type remoteDockerBuilder struct {
+type ContainerUpdater interface {
+	UpdateInContainer(ctx context.Context, paths []pathMapping, steps []model.Cmd) error
+}
+
+var _ ContainerUpdater = &containerUpdater{}
+
+type containerUpdater struct {
 	dcli DockerClient
-	pod  string // TODO(maia): support multiple pods -- for now, PoC with one
+
+	// TODO(maia): actually, maybe remove this and pass pod (or container) into UpdateInContainer
+	pod string // TODO(maia): support multiple pods -- for now, PoC with one
 }
 
-var _ Builder = &remoteDockerBuilder{}
-
-func (r *remoteDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
-	// NOTE(maia): doesn't make sense to use remote builder to build from scratch --
-	// either we rejigger the interfaces, or maybe call localDockerBuilder.FromScratch??!!
-	return nil, fmt.Errorf("BuildDockerFromScratch definitely not implemented on remoteDockerBuilder")
-}
-
-func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon--remoteDockerBuilder-BuildDockerFromExisting")
-	defer span.Finish()
-
+func (r *containerUpdater) UpdateInContainer(ctx context.Context, paths []pathMapping, steps []model.Cmd) error {
 	cID, err := r.containerIdForPod(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// rm files from container
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
-		return nil, fmt.Errorf("missingLocalPaths: %v", err)
+		return fmt.Errorf("missingLocalPaths: %v", err)
 	}
 
 	err = r.RmPathsFromContainer(ctx, cID, toRemove)
 	if err != nil {
-		return nil, fmt.Errorf("RmPathsFromContainer: %v", err)
+		return fmt.Errorf("RmPathsFromContainer: %v", err)
 	}
 
 	// copy files to container
 	archive, err := ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	logger.Get(ctx).Debugf("Copying files to container: %s", cID.ShortStr())
@@ -64,20 +61,20 @@ func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, exist
 	err = r.dcli.CopyToContainer(ctx, cID.String(), "/", bytes.NewReader(archive.Bytes()),
 		types.CopyToContainerOptions{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Exec steps on container
 	for _, s := range steps {
 		err = r.dcli.ExecInContainer(ctx, cID, s)
 		if err != nil {
-			return nil, fmt.Errorf("executing step %v on container %s: %v", s.Argv, cID.ShortStr(), err)
+			return fmt.Errorf("executing step %v on container %s: %v", s.Argv, cID.ShortStr(), err)
 		}
 	}
 
 	// TODO(maia): restart container(s)
 
-	return nil, nil
+	return nil
 }
 
 // TODO(maia): reorg tar funcs in a more logical way
@@ -97,17 +94,17 @@ func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffe
 	return buf, nil
 }
 
-func (r *remoteDockerBuilder) PushDocker(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error) {
-	return nil, fmt.Errorf("PushDocker definitely not implemented on remoteDockerBuilder")
+func (r *containerUpdater) PushDocker(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error) {
+	return nil, fmt.Errorf("PushDocker definitely not implemented on containerUpdater")
 }
-func (r *remoteDockerBuilder) TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
-	return nil, fmt.Errorf("TagDocker definitely not implemented on remoteDockerBuilder")
+func (r *containerUpdater) TagDocker(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+	return nil, fmt.Errorf("TagDocker definitely not implemented on containerUpdater")
 }
 
 // containerIdForPod looks for the container ID associated with the pod.
 // Expects to find exactly one matching container -- if not, return error.
 // TODO: support multiple matching container IDs, i.e. restarting multiple containers per pod
-func (r *remoteDockerBuilder) containerIdForPod(ctx context.Context) (containerID, error) {
+func (r *containerUpdater) containerIdForPod(ctx context.Context) (containerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerIdForPod")
 	defer span.Finish()
 
@@ -145,7 +142,7 @@ func (r *remoteDockerBuilder) containerIdForPod(ctx context.Context) (containerI
 	return "", fmt.Errorf("no matching non-'/pause' containers")
 }
 
-func (r *remoteDockerBuilder) RmPathsFromContainer(ctx context.Context, cID containerID, paths []pathMapping) error {
+func (r *containerUpdater) RmPathsFromContainer(ctx context.Context, cID containerID, paths []pathMapping) error {
 	if len(paths) == 0 {
 		return nil
 	}
