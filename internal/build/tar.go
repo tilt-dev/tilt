@@ -31,10 +31,10 @@ func archiveDf(ctx context.Context, tw *tar.Writer, df Dockerfile) error {
 	return nil
 }
 
-// archivePaths creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
+// archivePathsIfExist creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
 // NOTE: modifies tw in place.
-func archivePaths(ctx context.Context, tw *tar.Writer, paths []pathMapping) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archivePaths")
+func archivePathsIfExist(ctx context.Context, tw *tar.Writer, paths []pathMapping) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archivePathsIfExist")
 	defer span.Finish()
 	for _, p := range paths {
 		err := tarPath(ctx, tw, p.LocalPath, p.ContainerPath)
