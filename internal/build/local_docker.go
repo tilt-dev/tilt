@@ -291,6 +291,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 	defer span.Finish()
 
 	displayCh := make(chan *client.SolveStatus)
+	defer close(displayCh)
 
 	displayStatus := func(displayCh chan *client.SolveStatus) {
 		out := os.Stdout
@@ -300,7 +301,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			return
 		}
 		go func() {
-			err := progressui.DisplaySolveStatus(context.TODO(), "", c, out, displayCh)
+			err := progressui.DisplaySolveStatus(ctx, "", c, out, displayCh)
 			if err != nil {
 				output.Get(ctx).Print("Error printing progressui: %s", err)
 			}
@@ -338,7 +339,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			return nil, errors.New(message.Error.Message)
 		}
 
-		if message.ID == "moby.buildkit.trace" {
+		if messageIsFromBuildkit(message) {
 			var resp controlapi.StatusResponse
 			var dt []byte
 			// ignoring all messages that are not understood
@@ -385,15 +386,18 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 			displayCh <- &s
 		}
 
-		if message.Aux != nil && message.ID != "moby.buildkit.trace" {
+		if message.Aux != nil && !messageIsFromBuildkit(message) {
 			result = message.Aux
 		}
 	}
-	close(displayCh)
 	if innerSpan != nil {
 		innerSpan.Finish()
 	}
 	return result, nil
+}
+
+func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
+	return msg.ID == "moby.buildkit.trace"
 }
 
 func getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
