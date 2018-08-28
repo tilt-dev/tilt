@@ -3,9 +3,11 @@ package build
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/docker/docker/api/types"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 const ExampleBuildSHA1 = "sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab"
@@ -34,6 +36,30 @@ var ExamplePushOutput1 = `{"status":"The push refers to repository [localhost:50
 	{"status":"tilt-11cd0b38bc3ceb95: digest: sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1 size: 735"}
 	{"progressDetail":{},"aux":{"Tag":"tilt-11cd0b38bc3ceb95","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
+const (
+	testPod       = "test_pod"
+	testContainer = "test_container"
+)
+
+var ContainersListByName = map[string][]types.Container{
+	testPod: []types.Container{
+		types.Container{ID: testContainer, Command: "./stuff"},
+	},
+	"one-pause-cmd": []types.Container{
+		types.Container{ID: "not a match", Command: pauseCmd},
+		types.Container{ID: "the right container", Command: "./stuff"},
+	},
+	"too-many": []types.Container{
+		types.Container{ID: "nope", Command: "./stuff"},
+		types.Container{ID: "nah", Command: "./things"},
+		types.Container{ID: "nuh-uh", Command: "./nonsense"},
+	},
+	"all-pause": []types.Container{
+		types.Container{ID: "pause container", Command: pauseCmd},
+		types.Container{ID: "also pause", Command: pauseCmd},
+	},
+}
+
 type FakeDockerClient struct {
 	PushCount   int
 	PushImage   string
@@ -47,13 +73,51 @@ type FakeDockerClient struct {
 	TagCount  int
 	TagSource string
 	TagTarget string
+
+	ContainerListOutput map[string][]types.Container
+
+	CopyCount     int
+	CopyContainer string
+	CopyPath      string
+	CopyContent   io.Reader
+	CopyOptions   types.CopyToContainerOptions
+
+	ExecCount     int
+	ExecContainer string
+	ExecCmd       model.Cmd
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
 	return &FakeDockerClient{
-		PushOutput:  NewFakeDockerResponse(ExamplePushOutput1),
-		BuildOutput: NewFakeDockerResponse(ExampleBuildOutput1),
+		PushOutput:          NewFakeDockerResponse(ExamplePushOutput1),
+		BuildOutput:         NewFakeDockerResponse(ExampleBuildOutput1),
+		ContainerListOutput: ContainersListByName,
 	}
+}
+
+func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+	nameFilter := options.Filters.Get("name")
+	if len(nameFilter) != 1 {
+		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
+	}
+
+	return c.ContainerListOutput[nameFilter[0]], nil
+}
+
+func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+	c.ExecCount++
+	c.ExecContainer = cID.String()
+	c.ExecCmd = cmd
+	return nil
+}
+
+func (c *FakeDockerClient) CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error {
+	c.CopyCount++
+	c.CopyContainer = container
+	c.CopyPath = path
+	c.CopyContent = content
+	c.CopyOptions = options
+	return nil
 }
 
 func (c *FakeDockerClient) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {

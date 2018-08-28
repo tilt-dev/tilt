@@ -2,12 +2,20 @@ package build
 
 import (
 	"github.com/docker/distribution/reference"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
 type containerID string
-type execID string
+
+func (cID containerID) String() string { return string(cID) }
+func (cID containerID) ShortStr() string {
+	if len(string(cID)) > 10 {
+		return string(cID)[:10]
+	}
+	return string(cID)
+}
 
 // Get a container config to run a container with a given command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.
