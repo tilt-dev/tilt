@@ -50,6 +50,25 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 }
 
+func TestMinikubePortForwardToLB(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvMinikube)
+	defer f.TearDown()
+
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), BlorgBackendService, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(f.k8s.lbs) != 1 {
+		t.Fatalf("Expected 1 loadbalancer, actual %d: %+v", len(f.k8s.lbs), f.k8s.lbs)
+	}
+
+	lb := f.k8s.lbs[0]
+	if lb.Name != "devel-nick-lb-blorg-be" || lb.Ports[0] != 8080 {
+		t.Errorf("Unexpected loadbalancer: %+v", lb)
+	}
+}
+
 // The API boundaries between BuildAndDeployer and the Builder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake DockerClient and K8sClient
@@ -80,6 +99,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 
 type FakeK8sClient struct {
 	yaml string
+	lbs  []k8s.LoadBalancer
 }
 
 func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) error {
@@ -93,4 +113,12 @@ func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) err
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) error {
 	return nil
+}
+
+func (c *FakeK8sClient) PortForward(ctx context.Context, lb k8s.LoadBalancer) error {
+	c.lbs = append(c.lbs, lb)
+	return nil
+}
+
+func (c *FakeK8sClient) BlockOnBackgroundProcesses() {
 }
