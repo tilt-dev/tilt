@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/opencontainers/go-digest"
 	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -25,6 +26,8 @@ type remoteDockerBuilder struct {
 var _ Builder = &remoteDockerBuilder{}
 
 func (r *remoteDockerBuilder) BuildDockerFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
+	// NOTE(maia): doesn't make sense to use remote builder to build from scratch --
+	// either we rejigger the interfaces, or maybe call localDockerBuilder.FromScratch??!!
 	return nil, fmt.Errorf("BuildDockerFromScratch definitely not implemented on remoteDockerBuilder")
 }
 
@@ -50,7 +53,8 @@ func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, exist
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Copying files to container: %s", cID.ShortStr())
+
+	logger.Get(ctx).Debugf("Copying files to container: %s", cID.ShortStr())
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
@@ -59,6 +63,9 @@ func (r *remoteDockerBuilder) BuildDockerFromExisting(ctx context.Context, exist
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO(maia): exec steps on container(s)
+	// TODO(maia): restart container(s)
 
 	return nil, nil
 }
@@ -75,7 +82,7 @@ func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffe
 	}()
 	err := archivePathsIfExist(ctx, tw, paths)
 	if err != nil {
-		return nil, fmt.Errorf("archivePaths: %v", err)
+		return nil, fmt.Errorf("archivePathsIfExists: %v", err)
 	}
 	return buf, nil
 }
@@ -93,9 +100,11 @@ func (r *remoteDockerBuilder) TagDocker(ctx context.Context, name reference.Name
 func (r *remoteDockerBuilder) containerIdForPod(ctx context.Context) (containerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerIdForPod")
 	defer span.Finish()
+
 	a := filters.NewArgs()
 	a.Add("name", r.pod)
 	listOpts := types.ContainerListOptions{Filters: a}
+
 	containers, err := r.dcli.ContainerList(ctx, listOpts)
 	if err != nil {
 		return "", fmt.Errorf("getting containers: %v", err)
@@ -131,7 +140,7 @@ func (r *remoteDockerBuilder) RmPathsFromContainer(ctx context.Context, cID cont
 		return nil
 	}
 
-	log.Printf("Deleting %d files from container: %s", len(paths), cID.ShortStr())
+	logger.Get(ctx).Debugf("Deleting %d files from container: %s", len(paths), cID.ShortStr())
 
 	return r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)})
 }
