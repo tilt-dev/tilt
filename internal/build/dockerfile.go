@@ -1,12 +1,20 @@
 package build
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/windmilleng/tilt/internal/model"
 )
+
+var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT/CMD, " +
+	"which is not currently supported -- provide an entrypoint in your Tiltfile")
+var ErrAddInDockerfile = errors.New("base Dockerfile contains an ADD/COPY, " +
+	"which is not currently supported -- move this to an add() call in your Tiltfile")
 
 type Dockerfile string
 
@@ -47,15 +55,36 @@ func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
 	return d.join(newDf)
 }
 
-func (d Dockerfile) ForbidEntrypoint() error {
-	for _, line := range strings.Split(string(d), "\n") {
-		if strings.HasPrefix(line, "ENTRYPOINT") {
-			return ErrEntrypointInDockerfile
-		}
+func (d Dockerfile) ValidateBaseDockerfile() error {
+	result, err := parser.Parse(bytes.NewBufferString(string(d)))
+	if err != nil {
+		return fmt.Errorf("ValidateBaseDockerfile: %v", err)
 	}
-	return nil
+
+	err = traverse(result.AST, func(node *parser.Node) error {
+		switch strings.ToUpper(node.Value) {
+		case "ENTRYPOINT", "CMD":
+			return ErrEntrypointInDockerfile
+		case "ADD", "COPY":
+			return ErrAddInDockerfile
+		}
+		return nil
+	})
+	return err
 }
 
 func (d Dockerfile) String() string {
 	return string(d)
+}
+
+// Post-order traversal of the Dockerfile AST.
+// Halts immediately on error.
+func traverse(node *parser.Node, visit func(*parser.Node) error) error {
+	for _, c := range node.Children {
+		err := traverse(c, visit)
+		if err != nil {
+			return err
+		}
+	}
+	return visit(node)
 }
