@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -34,16 +35,22 @@ type Upper struct {
 	b            BuildAndDeployer
 	watcherMaker watcherMaker
 	timerMaker   timerMaker
+	k8s          k8s.Client
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client) (Upper, error) {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	return Upper{b, watcherMaker, time.After}, nil
+	return Upper{
+		b:            b,
+		watcherMaker: watcherMaker,
+		timerMaker:   time.After,
+		k8s:          k8s,
+	}, nil
 }
 
 func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
@@ -94,6 +101,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 					buildTokens[event.service.Name],
 					event.files)
 				if err != nil {
+					// TODO(nick): This isn't quite right.
+					// We need to keep track of the changedFiles for the next round.
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				} else {
 					buildTokens[event.service.Name] = token
@@ -105,6 +114,9 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 			}
 		}
 	}
+
+	// TODO(nick): Output if we're waiting?
+	u.k8s.BlockOnBackgroundProcesses()
 	return nil
 }
 

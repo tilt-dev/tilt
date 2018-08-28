@@ -16,9 +16,11 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+type shutdownFunc func()
+
 type buildToken struct {
-	n        reference.NamedTagged
-	entities []k8s.K8sEntity
+	n                    reference.NamedTagged
+	shutdownPortForwards shutdownFunc
 }
 
 func (b *buildToken) isEmpty() bool {
@@ -76,7 +78,18 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return nil, err
 	}
 
-	newToken := &buildToken{n: ref, entities: k8sEntities}
+	// Now that we deployed a new service, we need to shutdown the old port-forwarding
+	// and create new port-forwarding.
+	if !token.isEmpty() && token.shutdownPortForwards != nil {
+		token.shutdownPortForwards()
+	}
+
+	shutdown, err := l.exposeLoadBalancers(ctx, k8sEntities)
+	if err != nil {
+		return nil, err
+	}
+
+	newToken := &buildToken{n: ref, shutdownPortForwards: shutdown}
 	return newToken, err
 }
 
@@ -177,6 +190,29 @@ func (l localBuildAndDeployer) deploy(ctx context.Context, service model.Service
 		return nil, err
 	}
 	return newK8sEntities, nil
+}
+
+// By default, Docker-for-Desktop exposes all loadbalancer ports as ports on the local machine.
+// We want to do the same for GKE and minikube deploys.
+func (l localBuildAndDeployer) exposeLoadBalancers(ctx context.Context, entities []k8s.K8sEntity) (shutdownFunc, error) {
+	if l.env == k8s.EnvDockerDesktop {
+		return func() {}, nil
+	}
+
+	lbs := k8s.ToLoadBalancers(entities)
+	if len(lbs) == 0 {
+		return func() {}, nil
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	for _, lb := range lbs {
+		err := l.k8sClient.PortForward(ctx, lb)
+		if err != nil {
+			cancel()
+			return func() {}, err
+		}
+	}
+	return shutdownFunc(cancel), nil
 }
 
 // If we're using docker-for-desktop as our k8s backend,

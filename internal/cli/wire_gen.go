@@ -23,13 +23,13 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := build.DefaultDockerClient(ctx, env)
+	dockerCli, err := build.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
-	localDockerBuilder := build.NewLocalDockerBuilder(client)
+	localDockerBuilder := build.NewLocalDockerBuilder(dockerCli)
 	builder := build.DefaultBuilder(localDockerBuilder)
-	client2 := k8s.DefaultClient()
+	client := k8s.DefaultClient()
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return nil, err
@@ -38,11 +38,11 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
-	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(builder, client2, imageHistory, env)
+	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(builder, client, imageHistory, env)
 	if err != nil {
 		return nil, err
 	}
-	upper, err := engine.NewUpper(ctx, buildAndDeployer)
+	upper, err := engine.NewUpper(ctx, buildAndDeployer, client)
 	if err != nil {
 		return nil, err
 	}

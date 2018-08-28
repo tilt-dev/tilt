@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -15,6 +16,8 @@ import (
 type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
+	PortForward(ctx context.Context, lb LoadBalancer) error
+	BlockOnBackgroundProcesses()
 }
 
 func DefaultClient() Client {
@@ -22,10 +25,13 @@ func DefaultClient() Client {
 }
 
 type kubectlClient struct {
+	bgWaitGroup *sync.WaitGroup
 }
 
 func NewKubectlClient() kubectlClient {
-	return kubectlClient{}
+	return kubectlClient{
+		bgWaitGroup: &sync.WaitGroup{},
+	}
 }
 
 func (k kubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
@@ -55,6 +61,50 @@ func (k kubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	return err
 }
 
+func (k kubectlClient) PortForward(ctx context.Context, lb LoadBalancer) error {
+	args := []string{"port-forward", fmt.Sprintf("service/%s", lb.Name)}
+	for _, port := range lb.Ports {
+		args = append(args, fmt.Sprintf("%d:%d", port, port))
+	}
+
+	// we don't use CommandContext because we want to manage
+	// the completion ourselves.
+	c := exec.Command("kubectl", args...)
+	err := c.Start()
+	if err != nil {
+		return fmt.Errorf("PortForward: %v", err)
+	}
+
+	k.bgWaitGroup.Add(1)
+	mu := sync.Mutex{}
+	killed := false
+
+	go func() {
+		err := c.Wait()
+		mu.Lock()
+		wasKilled := killed
+		mu.Unlock()
+
+		if !wasKilled && err != nil {
+			logger.Get(ctx).Infof("PortForward exited abnormally: %v", err)
+		}
+		k.bgWaitGroup.Done()
+	}()
+
+	go func() {
+		<-ctx.Done()
+
+		mu.Lock()
+		killed = true
+		mu.Unlock()
+
+		if c.Process != nil {
+			_ = c.Process.Kill()
+		}
+	}()
+	return nil
+}
+
 func (k kubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity) (*bytes.Buffer, error) {
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
@@ -74,4 +124,8 @@ func (k kubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity
 	c.Stderr = io.MultiWriter(stderrBuf, writer)
 
 	return stderrBuf, c.Run()
+}
+
+func (k kubectlClient) BlockOnBackgroundProcesses() {
+	k.bgWaitGroup.Wait()
 }

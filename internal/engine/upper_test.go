@@ -291,7 +291,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	timerMaker := makeFakeTimerMaker(t)
 
-	upper := Upper{b, watcherMaker, timerMaker.maker()}
+	upper := Upper{b, watcherMaker, timerMaker.maker(), &FakeK8sClient{}}
 	ctx := testutils.CtxForTest()
 	return &testFixture{t, upper, b, watcher, ctx, &timerMaker}
 }
