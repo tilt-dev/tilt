@@ -72,12 +72,12 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 			return nil, err
 		}
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
-		newDigest, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		ref, err := l.b.BuildDockerFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
-		n = newDigest
+		n = ref
 
 	} else {
 		cf, err := build.FilesToPathMappings(changedFiles, service.Mounts)
@@ -86,12 +86,12 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		}
 
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
-		newDigest, err := l.b.BuildDockerFromExisting(ctx, token.n, cf, service.Steps)
+		ref, err := l.b.BuildDockerFromExisting(ctx, token.n, cf, service.Steps)
 		output.Get(ctx).EndPipelineStep()
 		if err != nil {
 			return nil, err
 		}
-		n = newDigest
+		n = ref
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")

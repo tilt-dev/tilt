@@ -99,12 +99,12 @@ func (l *localDockerBuilder) buildDocker(ctx context.Context, baseDockerfile Doc
 	}
 
 	// We have the Dockerfile! Kick off the docker build.
-	resultDigest, err := l.buildFromDf(ctx, df, paths, ref)
+	namedTagged, err := l.buildFromDf(ctx, df, paths, ref)
 	if err != nil {
 		return nil, fmt.Errorf("buildDocker#buildFromDf: %v", err)
 	}
 
-	return resultDigest, nil
+	return namedTagged, nil
 }
 
 // Tag the digest with the given name and wm-tilt tag.
