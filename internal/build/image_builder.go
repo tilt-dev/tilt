@@ -31,7 +31,9 @@ import (
 )
 
 type dockerImageBuilder struct {
-	dcli DockerClient
+	dcli    DockerClient
+	console console.Console
+	out     io.Writer
 }
 
 type ImageBuilder interface {
@@ -45,6 +47,17 @@ func DefaultBuilder(b *dockerImageBuilder) ImageBuilder {
 	return b
 }
 
+func DefaultConsole() console.Console {
+	out := os.Stdout
+	c, _ := console.ConsoleFromFile(out)
+
+	return c
+}
+
+func DefaultOut() io.Writer {
+	return os.Stdout
+}
+
 type pushOutput struct {
 	Tag    string
 	Digest string
@@ -53,8 +66,8 @@ type pushOutput struct {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewLocalDockerBuilder(dcli DockerClient) *dockerImageBuilder {
-	return &dockerImageBuilder{dcli: dcli}
+func NewLocalDockerBuilder(dcli DockerClient, console console.Console, out io.Writer) *dockerImageBuilder {
+	return &dockerImageBuilder{dcli: dcli, console: console, out: out}
 }
 
 func (l *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
@@ -185,7 +198,7 @@ func (l *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	_, err = getDigestFromPushOutput(ctx, imagePushResponse)
+	_, err = l.getDigestFromPushOutput(ctx, imagePushResponse)
 	if err != nil {
 		return nil, fmt.Errorf("PushImage#getDigestFromPushOutput: %v", err)
 	}
@@ -222,7 +235,7 @@ func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := readDockerOutput(ctx, imageBuildResponse.Body)
+	result, err := l.readDockerOutput(ctx, imageBuildResponse.Body)
 	if err != nil {
 		return nil, fmt.Errorf("ImageBuild: %v", err)
 	}
@@ -289,7 +302,7 @@ func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
+func (l *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
@@ -297,13 +310,8 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, 
 	defer close(displayCh)
 
 	displayStatus := func(displayCh chan *client.SolveStatus) {
-		out := os.Stdout
-		c, err := console.ConsoleFromFile(out)
-		if err != nil {
-			output.Get(ctx).Print("Error making console: %s", err)
-		}
 		go func() {
-			err := progressui.DisplaySolveStatus(ctx, "", c, out, displayCh)
+			err := progressui.DisplaySolveStatus(ctx, "", l.console, l.out, displayCh)
 			if err != nil {
 				output.Get(ctx).Print("Error printing progressui: %s", err)
 			}
@@ -402,8 +410,8 @@ func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 	return msg.ID == "moby.buildkit.trace"
 }
 
-func getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	aux, err := readDockerOutput(ctx, reader)
+func (l *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	aux, err := l.readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", err
 	}
@@ -413,8 +421,8 @@ func getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Dig
 	return getDigestFromAux(*aux)
 }
 
-func getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	aux, err := readDockerOutput(ctx, reader)
+func (l *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	aux, err := l.readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", err
 	}
