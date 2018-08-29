@@ -7,6 +7,7 @@ package engine
 
 import (
 	context "context"
+
 	build "github.com/windmilleng/tilt/internal/build"
 	image "github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
@@ -19,7 +20,7 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	dockerImageBuilder := build.NewLocalDockerBuilder(docker, console, writer)
-	imageBuilder := build.DefaultBuilder(dockerImageBuilder)
+	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageHistory, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err

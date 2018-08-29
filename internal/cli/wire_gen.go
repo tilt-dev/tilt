@@ -7,6 +7,7 @@ package cli
 
 import (
 	context "context"
+
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	image "github.com/windmilleng/tilt/internal/image"
@@ -30,7 +31,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	dockerImageBuilder := build.NewLocalDockerBuilder(dockerCli, console, writer)
-	imageBuilder := build.DefaultBuilder(dockerImageBuilder)
+	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	kubectlClient := k8s.NewKubectlClient(ctx, env)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {

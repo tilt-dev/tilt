@@ -25,7 +25,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 		image.NewImageHistory,
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
-		build.DefaultBuilder,
+		build.DefaultImageBuilder,
 		build.NewLocalDockerBuilder,
 		engine.NewUpper,
 		engine.NewLocalBuildAndDeployer,
