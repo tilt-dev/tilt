@@ -398,20 +398,20 @@ func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader
 	}
 
 	if aux == nil {
-		return "", fmt.Errorf("No digest found in push output")
+		return "", fmt.Errorf("no digest found in push output")
 	}
 
-	d := pushOutput{}
-	err = json.Unmarshal(*aux, &d)
+	dig := pushOutput{}
+	err = json.Unmarshal(*aux, &dig)
 	if err != nil {
 		return "", fmt.Errorf("getDigestFromPushOutput#Unmarshal: %v, json string: %+v", err, aux)
 	}
 
-	if d.Digest == "" {
+	if dig.Digest == "" {
 		return "", fmt.Errorf("getDigestFromPushOutput: Digest not found in %+v", aux)
 	}
 
-	return digest.Digest(d.Digest), nil
+	return digest.Digest(dig.Digest), nil
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
