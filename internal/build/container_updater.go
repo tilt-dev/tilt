@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -38,7 +37,12 @@ func (r *containerUpdater) UpdateInContainer(ctx context.Context, cID containerI
 	}
 
 	// copy files to container
-	archive, err := ArchivePathsIfExist(ctx, paths)
+	ab := newArchiveBuilder()
+	err = ab.archivePathsIfExist(ctx, paths)
+	if err != nil {
+		return fmt.Errorf("archivePathsIfExists: %v", err)
+	}
+	archive, err := ab.bytesBuffer()
 	if err != nil {
 		return err
 	}
@@ -67,21 +71,6 @@ func (r *containerUpdater) UpdateInContainer(ctx context.Context, cID containerI
 		return fmt.Errorf("ContainerRestart: %v", err)
 	}
 	return nil
-}
-
-func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffer, error) {
-	ab := newArchiveBuilder()
-	defer func() {
-		err := ab.close()
-		if err != nil {
-			log.Printf("Error closing tar writer: %s", err.Error())
-		}
-	}()
-	err := ab.archivePathsIfExist(ctx, paths)
-	if err != nil {
-		return nil, fmt.Errorf("archivePathsIfExists: %v", err)
-	}
-	return ab.buf, nil
 }
 
 // containerIdForPod looks for the container ID associated with the pod.
