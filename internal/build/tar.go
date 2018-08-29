@@ -148,6 +148,10 @@ func (a *archiveBuilder) tarPath(ctx context.Context, source, dest string) error
 	return err
 }
 
+func (a *archiveBuilder) len() int {
+	return a.buf.Len()
+}
+
 func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
