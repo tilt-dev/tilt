@@ -19,7 +19,7 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	dockerImageBuilder := build.NewLocalDockerBuilder(docker, console, writer)
-	imageBuilder := build.DefaultBuilder(dockerImageBuilder)
+	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageHistory, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err

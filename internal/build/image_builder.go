@@ -41,7 +41,7 @@ type ImageBuilder interface {
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
-func DefaultBuilder(b *dockerImageBuilder) ImageBuilder {
+func DefaultImageBuilder(b *dockerImageBuilder) ImageBuilder {
 	return b
 }
 
@@ -68,7 +68,7 @@ func NewLocalDockerBuilder(dcli DockerClient, console console.Console, out io.Wr
 	return &dockerImageBuilder{dcli: dcli, console: console, out: out}
 }
 
-func (l *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
+func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
 	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
@@ -79,20 +79,20 @@ func (l *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		return nil, err
 	}
 
-	return l.buildImage(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint, ref)
+	return d.buildImage(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint, ref)
 }
 
-func (l *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged,
+func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged,
 	paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
 
 	dfForExisting := DockerfileFromExisting(existing)
-	return l.buildImage(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
+	return d.buildImage(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
 }
 
-func (l *dockerImageBuilder) buildImage(ctx context.Context, baseDockerfile Dockerfile,
+func (d *dockerImageBuilder) buildImage(ctx context.Context, baseDockerfile Dockerfile,
 	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd, ref reference.Named) (reference.NamedTagged, error) {
 
 	df := baseDockerfile.AddAll()
@@ -112,7 +112,7 @@ func (l *dockerImageBuilder) buildImage(ctx context.Context, baseDockerfile Dock
 	}
 
 	// We have the Dockerfile! Kick off the docker build.
-	namedTagged, err := l.buildFromDf(ctx, df, paths, ref)
+	namedTagged, err := d.buildFromDf(ctx, df, paths, ref)
 	if err != nil {
 		return nil, fmt.Errorf("buildImage#buildFromDf: %v", err)
 	}
@@ -121,7 +121,7 @@ func (l *dockerImageBuilder) buildImage(ctx context.Context, baseDockerfile Dock
 }
 
 // Tag the digest with the given name and wm-tilt tag.
-func (l *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
 	tag, err := digestAsTag(dig)
 	if err != nil {
 		return nil, fmt.Errorf("TagImage: %v", err)
@@ -132,7 +132,7 @@ func (l *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 		return nil, fmt.Errorf("TagImage: %v", err)
 	}
 
-	err = l.dcli.ImageTag(ctx, dig.String(), namedTagged.String())
+	err = d.dcli.ImageTag(ctx, dig.String(), namedTagged.String())
 	if err != nil {
 		return nil, fmt.Errorf("TagImage#ImageTag: %v", err)
 	}
@@ -145,7 +145,7 @@ func (l *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (l *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
 	logger.Get(ctx).Infof("Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
@@ -182,7 +182,7 @@ func (l *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	}
 
 	logger.Get(ctx).Infof("%spushing the image", logger.Tab)
-	imagePushResponse, err := l.dcli.ImagePush(
+	imagePushResponse, err := d.dcli.ImagePush(
 		ctx,
 		ref.String(),
 		options)
@@ -196,7 +196,7 @@ func (l *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	_, err = l.getDigestFromPushOutput(ctx, imagePushResponse)
+	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse)
 	if err != nil {
 		return nil, fmt.Errorf("PushImage#getDigestFromPushOutput: %v", err)
 	}
@@ -204,7 +204,7 @@ func (l *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, ref reference.Named) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, ref reference.Named) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -217,7 +217,7 @@ func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 
 	output.Get(ctx).StartBuildStep("building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
-	imageBuildResponse, err := l.dcli.ImageBuild(
+	imageBuildResponse, err := d.dcli.ImageBuild(
 		ctx,
 		archive,
 		Options(archive),
@@ -233,7 +233,7 @@ func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := l.readDockerOutput(ctx, imageBuildResponse.Body)
+	result, err := d.readDockerOutput(ctx, imageBuildResponse.Body)
 	if err != nil {
 		return nil, fmt.Errorf("ImageBuild: %v", err)
 	}
@@ -246,7 +246,7 @@ func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 		return nil, fmt.Errorf("getDigestFromAux: %v", err)
 	}
 
-	nt, err := l.TagImage(ctx, ref, digest)
+	nt, err := d.TagImage(ctx, ref, digest)
 	if err != nil {
 		return nil, fmt.Errorf("PushImage: %v", err)
 	}
@@ -272,7 +272,7 @@ func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func (l *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
+func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
@@ -281,7 +281,7 @@ func (l *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 
 	displayStatus := func(displayCh chan *client.SolveStatus) {
 		go func() {
-			err := progressui.DisplaySolveStatus(ctx, "", l.console, l.out, displayCh)
+			err := progressui.DisplaySolveStatus(ctx, "", d.console, d.out, displayCh)
 			if err != nil {
 				output.Get(ctx).Printf("Error printing progressui: %s", err)
 			}
@@ -380,8 +380,8 @@ func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 	return msg.ID == "moby.buildkit.trace"
 }
 
-func (l *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	aux, err := l.readDockerOutput(ctx, reader)
+func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	aux, err := d.readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", err
 	}
@@ -391,27 +391,27 @@ func (l *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reade
 	return getDigestFromAux(*aux)
 }
 
-func (l *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	aux, err := l.readDockerOutput(ctx, reader)
+func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	aux, err := d.readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", err
 	}
 
 	if aux == nil {
-		return "", fmt.Errorf("No digest found in push output")
+		return "", fmt.Errorf("no digest found in push output")
 	}
 
-	d := pushOutput{}
-	err = json.Unmarshal(*aux, &d)
+	dig := pushOutput{}
+	err = json.Unmarshal(*aux, &dig)
 	if err != nil {
 		return "", fmt.Errorf("getDigestFromPushOutput#Unmarshal: %v, json string: %+v", err, aux)
 	}
 
-	if d.Digest == "" {
+	if dig.Digest == "" {
 		return "", fmt.Errorf("getDigestFromPushOutput: Digest not found in %+v", aux)
 	}
 
-	return digest.Digest(d.Digest), nil
+	return digest.Digest(dig.Digest), nil
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {

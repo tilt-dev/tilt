@@ -15,9 +15,9 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-var _ BuildAndDeployer = localBuildAndDeployer{}
+var _ BuildAndDeployer = imageBuildAndDeployer{}
 
-type localBuildAndDeployer struct {
+type imageBuildAndDeployer struct {
 	b         build.ImageBuilder
 	history   image.ImageHistory
 	k8sClient k8s.Client
@@ -25,7 +25,7 @@ type localBuildAndDeployer struct {
 }
 
 func NewLocalBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, history image.ImageHistory, env k8s.Env) (BuildAndDeployer, error) {
-	return localBuildAndDeployer{
+	return imageBuildAndDeployer{
 		b:         b,
 		history:   history,
 		k8sClient: k8sClient,
@@ -33,8 +33,8 @@ func NewLocalBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, histor
 	}, nil
 }
 
-func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-localBuildAndDeployer-BuildAndDeploy")
+func (ibd imageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-imageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
 	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
@@ -46,12 +46,12 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 		return BuildResult{}, err
 	}
 
-	ref, err := l.build(ctx, service, state)
+	ref, err := ibd.build(ctx, service, state)
 	if err != nil {
 		return BuildResult{}, err
 	}
 
-	k8sEntities, err := l.deploy(ctx, service, ref)
+	k8sEntities, err := ibd.deploy(ctx, service, ref)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -62,8 +62,8 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}, nil
 }
 
-func (l localBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
-	checkpoint := l.history.CheckpointNow()
+func (ibd imageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
+	checkpoint := ibd.history.CheckpointNow()
 	var n reference.NamedTagged
 	if state.IsEmpty() {
 		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
@@ -73,7 +73,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := l.b.BuildImageFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -89,7 +89,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := l.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, service.Steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, service.Steps)
 		if err != nil {
 			return nil, err
 		}
@@ -97,14 +97,14 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	err := l.history.AddAndPersist(ctx, n, checkpoint, service)
+	err := ibd.history.AddAndPersist(ctx, n, checkpoint, service)
 	if err != nil {
 		return nil, err
 	}
 
-	if !l.canSkipPush() {
+	if !ibd.canSkipPush() {
 		var err error
-		n, err = l.b.PushImage(ctx, n)
+		n, err = ibd.b.PushImage(ctx, n)
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +113,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 	return n, nil
 }
 
-func (l localBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
+func (ibd imageBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 
@@ -137,7 +137,7 @@ func (l localBuildAndDeployer) deploy(ctx context.Context, service model.Service
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if l.canSkipPush() {
+		if ibd.canSkipPush() {
 			policy = v1.PullNever
 		}
 		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
@@ -154,7 +154,7 @@ func (l localBuildAndDeployer) deploy(ctx context.Context, service model.Service
 		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
 	}
 
-	err = k8s.Update(ctx, l.k8sClient, newK8sEntities)
+	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +165,6 @@ func (l localBuildAndDeployer) deploy(ctx context.Context, service model.Service
 // we don't need to push to the central registry.
 // The k8s will use the image already available
 // in the local docker daemon.
-func (l localBuildAndDeployer) canSkipPush() bool {
-	return l.env == k8s.EnvDockerDesktop || l.env == k8s.EnvMinikube
+func (ibd imageBuildAndDeployer) canSkipPush() bool {
+	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
 }

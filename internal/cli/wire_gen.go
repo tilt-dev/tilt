@@ -30,7 +30,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	dockerImageBuilder := build.NewLocalDockerBuilder(dockerCli, console, writer)
-	imageBuilder := build.DefaultBuilder(dockerImageBuilder)
+	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	kubectlClient := k8s.NewKubectlClient(ctx, env)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
