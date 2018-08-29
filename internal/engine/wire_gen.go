@@ -16,13 +16,13 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env) (BuildAndDeployer, error) {
-	localDockerBuilder := build.NewLocalDockerBuilder(docker)
-	builder := build.DefaultBuilder(localDockerBuilder)
+	dockerImageBuilder := build.NewLocalDockerBuilder(docker)
+	imageBuilder := build.DefaultBuilder(dockerImageBuilder)
 	imageHistory, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
-	buildAndDeployer, err := NewLocalBuildAndDeployer(builder, k8s2, imageHistory, env)
+	buildAndDeployer, err := NewLocalBuildAndDeployer(imageBuilder, k8s2, imageHistory, env)
 	if err != nil {
 		return nil, err
 	}
