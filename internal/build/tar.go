@@ -2,9 +2,11 @@ package build
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,18 +14,34 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func archiveDf(ctx context.Context, tw *tar.Writer, df Dockerfile) error {
+type archiveBuilder struct {
+	tw  *tar.Writer
+	buf *bytes.Buffer
+}
+
+func newArchiveBuilder() *archiveBuilder {
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+
+	return &archiveBuilder{tw: tw, buf: buf}
+}
+
+func (a *archiveBuilder) close() error {
+	return a.tw.Close()
+}
+
+func (a *archiveBuilder) archiveDf(ctx context.Context, df Dockerfile) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
 	tarHeader := &tar.Header{
 		Name: "Dockerfile",
 		Size: int64(len(df)),
 	}
-	err := tw.WriteHeader(tarHeader)
+	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
 		return err
 	}
-	_, err = tw.Write([]byte(df))
+	_, err = a.tw.Write([]byte(df))
 	if err != nil {
 		return err
 	}
@@ -32,12 +50,11 @@ func archiveDf(ctx context.Context, tw *tar.Writer, df Dockerfile) error {
 }
 
 // archivePathsIfExist creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
-// NOTE: modifies tw in place.
-func archivePathsIfExist(ctx context.Context, tw *tar.Writer, paths []pathMapping) error {
+func (a *archiveBuilder) archivePathsIfExist(ctx context.Context, paths []pathMapping) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archivePathsIfExist")
 	defer span.Finish()
 	for _, p := range paths {
-		err := tarPath(ctx, tw, p.LocalPath, p.ContainerPath)
+		err := a.tarPath(ctx, p.LocalPath, p.ContainerPath)
 		if err != nil {
 			return fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
 		}
@@ -48,7 +65,7 @@ func archivePathsIfExist(ctx context.Context, tw *tar.Writer, paths []pathMappin
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 // If source path does not exist, quietly skips it and returns no err
-func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) error {
+func (a *archiveBuilder) tarPath(ctx context.Context, source, dest string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, fmt.Sprintf("daemon-tarPath-%s", source))
 	span.SetTag("source", source)
 	span.SetTag("dest", dest)
@@ -91,7 +108,7 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) er
 			header.Name = dest
 		}
 
-		err = tarWriter.WriteHeader(header)
+		err = a.tw.WriteHeader(header)
 		if err != nil {
 			return fmt.Errorf("%s: writing header: %v", path, err)
 		}
@@ -113,7 +130,7 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) er
 				_ = file.Close()
 			}()
 
-			_, err = io.CopyN(tarWriter, file, info.Size())
+			_, err = io.CopyN(a.tw, file, info.Size())
 			if err != nil && err != io.EOF {
 				return fmt.Errorf("%s: copying contents: %v", path, err)
 			}
@@ -121,4 +138,29 @@ func tarPath(ctx context.Context, tarWriter *tar.Writer, source, dest string) er
 		return nil
 	})
 	return err
+}
+
+func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
+	defer span.Finish()
+
+	ab := newArchiveBuilder()
+	defer func() {
+		err := ab.close()
+		if err != nil {
+			log.Printf("Error closing tar writer: %s", err.Error())
+		}
+	}()
+
+	err := ab.archivePathsIfExist(ctx, paths)
+	if err != nil {
+		return nil, fmt.Errorf("archivePaths: %v", err)
+	}
+
+	err = ab.archiveDf(ctx, df)
+	if err != nil {
+		return nil, fmt.Errorf("archiveDf: %v", err)
+	}
+
+	return ab.buf, nil
 }

@@ -1,14 +1,12 @@
 package build
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
@@ -257,40 +255,12 @@ func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 }
 
 func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-TarContextAndUpdateDf")
-	defer span.Finish()
 	buf, err := tarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return nil, err
 	}
 
 	return bytes.NewReader(buf.Bytes()), nil
-}
-
-func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
-	defer span.Finish()
-	buf := new(bytes.Buffer)
-	tw := tar.NewWriter(buf)
-	defer func() {
-		err := tw.Close()
-		if err != nil {
-			log.Printf("Error closing tar writer: %s", err.Error())
-		}
-	}()
-
-	// TODO: maybe write our own tarWriter struct with methods on it, so it's clearer that we're modifying the tar writer in place
-	err := archivePathsIfExist(ctx, tw, paths)
-	if err != nil {
-		return nil, fmt.Errorf("archivePaths: %v", err)
-	}
-
-	err = archiveDf(ctx, tw, df)
-	if err != nil {
-		return nil, fmt.Errorf("archiveDf: %v", err)
-	}
-
-	return buf, nil
 }
 
 // Docker API commands stream back a sequence of JSON messages.
