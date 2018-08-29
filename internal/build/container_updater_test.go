@@ -11,9 +11,9 @@ import (
 )
 
 func TestContainerIdForPodOneMatch(t *testing.T) {
-	f := newRemoteDockerFixtureForPod(t, testPod)
+	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cu.containerIdForPod(f.ctx)
+	cID, err := f.cu.containerIdForPod(f.ctx, testPod)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -21,9 +21,9 @@ func TestContainerIdForPodOneMatch(t *testing.T) {
 }
 
 func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
-	f := newRemoteDockerFixtureForPod(t, "one-pause-cmd")
+	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cu.containerIdForPod(f.ctx)
+	cID, err := f.cu.containerIdForPod(f.ctx, "one-pause-cmd")
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -31,18 +31,18 @@ func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
 }
 
 func TestContainerIdForPodTooManyMatches(t *testing.T) {
-	f := newRemoteDockerFixtureForPod(t, "too-many")
+	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	_, err := f.cu.containerIdForPod(f.ctx)
+	_, err := f.cu.containerIdForPod(f.ctx, "too-many")
 	if assert.NotNil(f.t, err) {
 		assert.Contains(f.t, err.Error(), "too many matching containers")
 	}
 }
 
 func TestContainerIdForPodNoNonPause(t *testing.T) {
-	f := newRemoteDockerFixtureForPod(t, "all-pause")
+	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	_, err := f.cu.containerIdForPod(f.ctx)
+	_, err := f.cu.containerIdForPod(f.ctx, "all-pause")
 	if assert.NotNil(f.t, err) {
 		assert.Contains(f.t, err.Error(), "no matching non-'/pause' containers")
 	}
@@ -62,7 +62,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 		pathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.cu.UpdateInContainer(f.ctx, paths, []model.Cmd{})
+	err := f.cu.UpdateInContainer(f.ctx, testContainer, paths, []model.Cmd{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestUpdateInContainerExecsSteps(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.cu.UpdateInContainer(f.ctx, []pathMapping{}, []model.Cmd{cmdA, cmdB})
+	err := f.cu.UpdateInContainer(f.ctx, testContainer, []pathMapping{}, []model.Cmd{cmdA, cmdB})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, []pathMapping{}, []model.Cmd{})
+	err := f.cu.UpdateInContainer(f.ctx, testContainer, []pathMapping{}, []model.Cmd{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -122,14 +122,9 @@ type remoteDockerFixture struct {
 }
 
 func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
-	return newRemoteDockerFixtureForPod(t, testPod)
-}
-
-func newRemoteDockerFixtureForPod(t testing.TB, podName string) *remoteDockerFixture {
 	fakeCli := NewFakeDockerClient()
 	cu := &containerUpdater{
 		dcli: fakeCli,
-		pod:  podName,
 	}
 
 	return &remoteDockerFixture{

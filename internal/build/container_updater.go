@@ -17,24 +17,16 @@ import (
 const pauseCmd = "/pause"
 
 type ContainerUpdater interface {
-	UpdateInContainer(ctx context.Context, paths []pathMapping, steps []model.Cmd) error
+	UpdateInContainer(ctx context.Context, cID containerID, paths []pathMapping, steps []model.Cmd) error
 }
 
 var _ ContainerUpdater = &containerUpdater{}
 
 type containerUpdater struct {
 	dcli DockerClient
-
-	// TODO(maia): actually, maybe remove this and pass pod (or container) into UpdateInContainer
-	pod string // TODO(maia): support multiple pods -- for now, PoC with one
 }
 
-func (r *containerUpdater) UpdateInContainer(ctx context.Context, paths []pathMapping, steps []model.Cmd) error {
-	cID, err := r.containerIdForPod(ctx)
-	if err != nil {
-		return err
-	}
-
+func (r *containerUpdater) UpdateInContainer(ctx context.Context, cID containerID, paths []pathMapping, steps []model.Cmd) error {
 	// rm files from container
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
@@ -98,12 +90,13 @@ func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffe
 // containerIdForPod looks for the container ID associated with the pod.
 // Expects to find exactly one matching container -- if not, return error.
 // TODO: support multiple matching container IDs, i.e. restarting multiple containers per pod
-func (r *containerUpdater) containerIdForPod(ctx context.Context) (containerID, error) {
+// TODO(maia): move func to somewhere more useful (will need this eventually, but not on ContainerUpdater)
+func (r *containerUpdater) containerIdForPod(ctx context.Context, podName string) (containerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerIdForPod")
 	defer span.Finish()
 
 	a := filters.NewArgs()
-	a.Add("name", r.pod)
+	a.Add("name", podName)
 	listOpts := types.ContainerListOptions{Filters: a}
 
 	containers, err := r.dcli.ContainerList(ctx, listOpts)
@@ -112,7 +105,7 @@ func (r *containerUpdater) containerIdForPod(ctx context.Context) (containerID, 
 	}
 
 	if len(containers) == 0 {
-		return "", fmt.Errorf("no containers found with name %s", r.pod)
+		return "", fmt.Errorf("no containers found with name %s", podName)
 	}
 
 	// On GKE, we expect there to be one real match and one spurious match -- a
