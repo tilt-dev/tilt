@@ -9,7 +9,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
@@ -109,7 +108,6 @@ func (h ImageHistory) addInMemoryFromEntry(ctx context.Context, name reference.N
 func (h ImageHistory) addInMemory(
 	ctx context.Context,
 	name reference.Named,
-	digest digest.Digest,
 	checkpoint CheckpointID,
 	service model.Service,
 ) (refKey, historyEntry, error) {
@@ -124,7 +122,7 @@ func (h ImageHistory) addInMemory(
 	}
 
 	entry := historyEntry{
-		Digest:        digest,
+		Named:         name,
 		CheckpointID:  checkpoint,
 		HashedService: hash,
 	}
@@ -140,11 +138,10 @@ func (h ImageHistory) addInMemory(
 func (h ImageHistory) AddAndPersist(
 	ctx context.Context,
 	name reference.Named,
-	digest digest.Digest,
 	checkpoint CheckpointID,
 	service model.Service,
 ) error {
-	key, entry, err := h.addInMemory(ctx, name, digest, checkpoint, service)
+	key, entry, err := h.addInMemory(ctx, name, checkpoint, service)
 	if err != nil {
 		return err
 	}
@@ -156,27 +153,28 @@ func (h ImageHistory) AddAndPersist(
 func (h ImageHistory) MostRecent(
 	name reference.Named,
 	service model.Service,
-) (digest.Digest, CheckpointID, bool) {
+) (reference.Named, CheckpointID, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	key := makeRefKey(name)
 	bucket, ok := h.byName[key]
 	if !ok {
-		return "", CheckpointID{}, false
+		return nil, CheckpointID{}, false
 	}
 
 	hash, err := service.Hash()
 	if err != nil {
 		// TODO(dmiller) return error here?
-		return "", CheckpointID{}, false
+		return nil, CheckpointID{}, false
 	}
 
 	mostRecent := bucket.mostRecent
 	if mostRecent.HashedService != hash {
-		return "", CheckpointID{}, false
+		return nil, CheckpointID{}, false
 	}
-	return mostRecent.Digest, mostRecent.CheckpointID, true
+
+	return mostRecent.Named, mostRecent.CheckpointID, true
 }
 
 type refKey string
@@ -193,7 +191,7 @@ type NamedImageHistory struct {
 }
 
 type historyEntry struct {
-	digest.Digest
+	reference.Named
 	CheckpointID
 	model.HashedService
 }

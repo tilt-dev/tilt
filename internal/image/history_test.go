@@ -3,6 +3,7 @@ package image
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 	_ "crypto/sha256"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -42,16 +42,18 @@ func TestCheckpointOne(t *testing.T) {
 	defer f.tearDown()
 	history := f.history
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
-	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.addInMemory(f.ctx, n1, d1, c1, service)
+	_, _, err := history.addInMemory(f.ctx, n1, c1, service)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
-	d, c, ok := history.MostRecent(n1, service)
-	if !ok || d != d1 || c != c1 {
-		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c1, d1, c, d)
+	n, c, ok := history.MostRecent(n1, service)
+	if !ok || n != n1 || c != c1 {
+		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c1, n1, c, n)
 	}
 }
 
@@ -61,22 +63,23 @@ func TestCheckpointAfter(t *testing.T) {
 	history := f.history
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 
-	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.addInMemory(f.ctx, n1, d1, c1, service)
+	_, _, err := history.addInMemory(f.ctx, n1, c1, service)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
 	time.Sleep(time.Millisecond)
 
-	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	history.addInMemory(f.ctx, n1, d2, c2, service)
+	history.addInMemory(f.ctx, n1, c2, service)
 
-	d, c, ok := history.MostRecent(n1, service)
-	if !ok || d != d2 || c != c2 {
-		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c2, d2, c, d)
+	n, c, ok := history.MostRecent(n1, service)
+	if !ok || c != c2 {
+		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c2, n1, c, n)
 	}
 }
 
@@ -86,44 +89,47 @@ func TestCheckpointBefore(t *testing.T) {
 	history := f.history
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 	c0 := history.CheckpointNow()
-	d0 := digest.FromString("digest0")
 	time.Sleep(time.Millisecond)
 
-	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.addInMemory(f.ctx, n1, d1, c1, service)
-	history.addInMemory(f.ctx, n1, d0, c0, service)
+	_, _, err := history.addInMemory(f.ctx, n1, c1, service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = history.addInMemory(f.ctx, n1, c0, service)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	d, c, ok := history.MostRecent(n1, service)
-	if !ok || d != d1 || c != c1 {
-		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c1, d1, c, d)
+	n, c, ok := history.MostRecent(n1, service)
+	if !ok || n != n1 || c != c1 {
+		t.Errorf("Expected most recent image (%v, %v). Actual: (%v, %v)", c1, n1, c, n)
 	}
 }
 
 func TestPersistence(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	fmt.Printf("temppath: %s\n", f.temp.Path())
+	//defer f.tearDown()
 	history := f.history
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 
-	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	err := history.AddAndPersist(f.ctx, n1, d1, c1, service)
+	err := history.AddAndPersist(f.ctx, n1, c1, service)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(time.Millisecond)
 
-	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	err = history.AddAndPersist(f.ctx, n1, d2, c2, service)
+	err = history.AddAndPersist(f.ctx, n1, c2, service)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,9 +142,9 @@ func TestPersistence(t *testing.T) {
 
 	newLen := f.getLengthOfFile()
 
-	d, _, ok := history2.MostRecent(n1, service)
-	if !ok || d != d2 {
-		t.Errorf("Expected most recent image (%v). Actual: (%v)", d2, d)
+	n, _, ok := history2.MostRecent(n1, service)
+	if !ok || n1 != n {
+		t.Errorf("Expected most recent image (%v). Actual: (%v)", n1, n)
 	}
 
 	if oldLen != newLen {
@@ -152,18 +158,16 @@ func TestCheckpointDoesntMatchHash(t *testing.T) {
 	history := f.history
 	n1, _ := reference.ParseNormalizedNamed("image-name-1")
 
-	d1 := digest.FromString("digest1")
 	c1 := history.CheckpointNow()
 	service := model.Service{
 		DockerfileText: "FROM alpine",
 	}
-	history.addInMemory(f.ctx, n1, d1, c1, service)
+	history.addInMemory(f.ctx, n1, c1, service)
 
 	time.Sleep(time.Millisecond)
 
-	d2 := digest.FromString("digest2")
 	c2 := history.CheckpointNow()
-	history.addInMemory(f.ctx, n1, d2, c2, service)
+	history.addInMemory(f.ctx, n1, c2, service)
 
 	service2 := model.Service{
 		DockerfileText: "FROM alpine",

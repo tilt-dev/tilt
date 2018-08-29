@@ -41,8 +41,6 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	output.Get(ctx).StartPipeline(2)
 	defer output.Get(ctx).EndPipeline()
 
-	// TODO(dmiller) add back history
-	//checkpoint := l.history.CheckpointNow()
 	err := service.Validate()
 	if err != nil {
 		return nil, err
@@ -63,6 +61,7 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 }
 
 func (l localBuildAndDeployer) build(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (reference.NamedTagged, error) {
+	checkpoint := l.history.CheckpointNow()
 	var n reference.NamedTagged
 	if token.isEmpty() {
 		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
@@ -96,11 +95,10 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 	}
 
 	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	// TODO(dmiller) add back history
-	// err = l.history.AddAndPersist(ctx, name, d, checkpoint, service)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := l.history.AddAndPersist(ctx, n, checkpoint, service)
+	if err != nil {
+		return nil, err
+	}
 
 	if !l.canSkipPush() {
 		var err error
