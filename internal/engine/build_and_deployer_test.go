@@ -16,7 +16,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, nil, nil)
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, nil, nil)
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
