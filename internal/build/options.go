@@ -12,7 +12,8 @@ func Options(archive *bytes.Reader) types.ImageBuildOptions {
 		Context:    archive,
 		Dockerfile: "Dockerfile",
 		Remove:     shouldRemoveImage(),
-		Version:    types.BuilderBuildKit,
+		// TODO(dmiller): parameterize this via a cli flag
+		//Version:    types.BuilderBuildKit,
 	}
 }
 
