@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -17,31 +18,43 @@ import (
 
 //represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
-	service    model.Service
-	files      []string
-	buildToken *buildToken
+	service model.Service
+	state   BuildState
 }
 
 type fakeBuildAndDeployer struct {
 	t     *testing.T
 	calls chan buildAndDeployCall
+
+	buildCount int
+
+	// Set this to simulate the build failing
+	nextBuildFailure error
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func dummyBuildToken() *buildToken {
+func (b *fakeBuildAndDeployer) nextBuildResult() BuildResult {
+	b.buildCount++
 	n, _ := reference.WithName("windmill.build/dummy")
-	nt, _ := reference.WithTag(n, "tilt")
-	return &buildToken{n: nt}
+	nt, _ := reference.WithTag(n, fmt.Sprintf("tilt-%d", b.buildCount))
+	return BuildResult{Image: nt}
 }
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
 	select {
-	case b.calls <- buildAndDeployCall{service, changedFiles, token}:
+	case b.calls <- buildAndDeployCall{service, state}:
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
-	return dummyBuildToken(), nil
+
+	err := b.nextBuildFailure
+	if err != nil {
+		b.nextBuildFailure = nil
+		return BuildResult{}, err
+	}
+
+	return b.nextBuildResult(), nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -132,17 +145,17 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.timerMaker.maxTimerLock.Lock()
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
-		assert.Equal(t, []string(nil), call.files)
+		assert.Equal(t, []string{}, call.state.FilesChanged())
 		fileRelPath := "fdas"
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
-		assert.Equal(t, dummyBuildToken(), call.buildToken)
+		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {
 			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
 		}
-		assert.Equal(t, []string{fileAbsPath}, call.files)
+		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
@@ -161,7 +174,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		f.timerMaker.maxTimerLock.Lock()
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
-		assert.Equal(t, []string(nil), call.files)
+		assert.Equal(t, []string{}, call.state.FilesChanged())
 
 		f.timerMaker.restTimerLock.Lock()
 		fileRelPaths := []string{"fdas", "giueheh"}
@@ -181,7 +194,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 			}
 			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
 		}
-		assert.Equal(t, fileAbsPaths, call.files)
+		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
@@ -199,7 +212,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	go func() {
 		call := <-f.b.calls
 		assert.Equal(t, service, call.service)
-		assert.Equal(t, []string(nil), call.files)
+		assert.Equal(t, []string{}, call.state.FilesChanged())
 
 		f.timerMaker.maxTimerLock.Lock()
 		f.timerMaker.restTimerLock.Lock()
@@ -220,7 +233,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 			}
 			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
 		}
-		assert.Equal(t, fileAbsPaths, call.files)
+		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
@@ -229,6 +242,38 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
+}
+
+func TestRebuildWithChangedFiles(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
+	endToken := errors.New("my-err-token")
+	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+
+		// Simulate a change to a.go that makes the build fail.
+		f.b.nextBuildFailure = errors.New("Build failed")
+		f.watcher.events <- watch.FileEvent{Path: "/a.go"}
+
+		call = <-f.b.calls
+		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
+		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+
+		// Simulate a change to b.go
+		f.watcher.events <- watch.FileEvent{Path: "/b.go"}
+
+		// The next build should treat both a.go and b.go as changed, and build
+		// on the last successful result, from before a.go changed.
+		call = <-f.b.calls
+		assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
+		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
+
+		f.watcher.errors <- endToken
+	}()
+	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	assert.Equal(t, endToken, err)
 }
 
 type fakeTimerMaker struct {

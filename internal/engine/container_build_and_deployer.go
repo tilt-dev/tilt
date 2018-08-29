@@ -25,9 +25,9 @@ func NewContainerBuildAndDeployer(cu build.ContainerUpdater, env k8s.Env) BuildA
 	}
 }
 
-func (cbd containerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+func (cbd containerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
-	return token, fmt.Errorf("not implemented o_0")
+	return BuildResult{}, fmt.Errorf("not implemented o_0")
 }

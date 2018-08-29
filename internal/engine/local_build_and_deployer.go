@@ -33,7 +33,7 @@ func NewLocalBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, histor
 	}, nil
 }
 
-func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (*buildToken, error) {
+func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-localBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
@@ -43,27 +43,29 @@ func (l localBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 
 	err := service.Validate()
 	if err != nil {
-		return nil, err
+		return BuildResult{}, err
 	}
 
-	ref, err := l.build(ctx, service, token, changedFiles)
+	ref, err := l.build(ctx, service, state)
 	if err != nil {
-		return nil, err
+		return BuildResult{}, err
 	}
 
 	k8sEntities, err := l.deploy(ctx, service, ref)
 	if err != nil {
-		return nil, err
+		return BuildResult{}, err
 	}
 
-	newToken := &buildToken{n: ref, entities: k8sEntities}
-	return newToken, err
+	return BuildResult{
+		Image:    ref,
+		Entities: k8sEntities,
+	}, nil
 }
 
-func (l localBuildAndDeployer) build(ctx context.Context, service model.Service, token *buildToken, changedFiles []string) (reference.NamedTagged, error) {
+func (l localBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
 	checkpoint := l.history.CheckpointNow()
 	var n reference.NamedTagged
-	if token.isEmpty() {
+	if state.IsEmpty() {
 		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
 		if err != nil {
 			return nil, err
@@ -79,7 +81,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 		n = ref
 
 	} else {
-		cf, err := build.FilesToPathMappings(changedFiles, service.Mounts)
+		cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +89,7 @@ func (l localBuildAndDeployer) build(ctx context.Context, service model.Service,
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := l.b.BuildImageFromExisting(ctx, token.n, cf, service.Steps)
+		ref, err := l.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, service.Steps)
 		if err != nil {
 			return nil, err
 		}

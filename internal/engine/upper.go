@@ -57,7 +57,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	buildTokens := make(map[model.ServiceName]*buildToken)
+	buildStates := make(map[model.ServiceName]BuildState)
 
 	var sw *serviceWatcher
 	var err error
@@ -70,12 +70,12 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
-		buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
+		buildResult, err := u.b.BuildAndDeploy(ctx, service, BuildStateClean)
 		if err != nil {
 			return err
 		}
-		buildTokens[service.Name] = buildToken
-		lbs = append(lbs, k8s.ToLoadBalancers(buildToken.entities)...)
+		buildStates[service.Name] = NewBuildState(buildResult)
+		lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
 	}
 
 	if len(lbs) > 0 {
@@ -96,29 +96,32 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 			case <-ctx.Done():
 				return ctx.Err()
 			case event := <-sw.events:
+				oldState := buildStates[event.service.Name]
+				buildState := oldState.NewStateWithFilesChanged(event.files)
+				buildStates[event.service.Name] = buildState
+
+				changedFiles := buildState.FilesChanged()
 				var changedPathsToPrint []string
-				if len(event.files) > maxChangedFilesToPrint {
-					changedPathsToPrint = append(changedPathsToPrint, event.files[:maxChangedFilesToPrint]...)
+				if len(changedFiles) > maxChangedFilesToPrint {
+					changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
 					changedPathsToPrint = append(changedPathsToPrint, "...")
 				} else {
-					changedPathsToPrint = event.files
+					changedPathsToPrint = changedFiles
 				}
 
 				logger.Get(ctx).Infof("files changed. rebuilding %v. observed %d changes: %v",
-					event.service.Name, len(event.files), ospath.TryAsCwdChildren(changedPathsToPrint))
+					event.service.Name, len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
 
-				var err error
-				token, err := u.b.BuildAndDeploy(
+				result, err := u.b.BuildAndDeploy(
 					ctx,
 					event.service,
-					buildTokens[event.service.Name],
-					event.files)
+					buildState)
 				if err != nil {
 					// TODO(nick): This isn't right. We need to keep track of the changed files
 					// for the next iteration of the build.
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				} else {
-					buildTokens[event.service.Name] = token
+					buildStates[event.service.Name] = NewBuildState(result)
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
