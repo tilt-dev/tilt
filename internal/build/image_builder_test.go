@@ -417,7 +417,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 	f.assertFilesInImage(ref, pcs)
 }
 
-func TestUpdateInContainerPreservesEntrypoint(t *testing.T) {
+func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
@@ -583,9 +583,9 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 }
 
 func (f *dockerBuildFixture) assertFilesInContainer(
-	ctx context.Context, containerID string, expectedFiles []expectedFile) {
+	ctx context.Context, cID containerID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
-		reader, _, err := f.dcli.CopyFromContainer(ctx, containerID, expectedFile.path)
+		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.path)
 		if expectedFile.missing {
 			if err == nil {
 				f.t.Errorf("Expected path %q to not exist", expectedFile.path)
@@ -630,19 +630,19 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 }
 
 // startContainer starts a container from the given config
-func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
+func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) containerID {
 	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
-	containerID := resp.ID
+	cID := resp.ID
 
-	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	err = f.dcli.ContainerStart(ctx, cID, types.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 
-	return containerID
+	return containerID(cID)
 }
 
 type threadSafeWriter struct {

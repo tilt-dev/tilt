@@ -113,7 +113,56 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	assert.Equal(f.t, f.dcli.RestartsByContainer[testContainer], 1)
 }
 
-type remoteDockerFixture struct {
+// Integration test using a real docker client!
+func TestUpdateInContainerE2E(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("delete_me", "will be deleted")
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+
+	// Allows us to track number of times the entrypoint has been called (i.e. how
+	// many times container has been (re)started -- also, sleep forever so container
+	// stays alive for us to manipulate.
+	initStartcount := model.ToShellCmd("echo -n 0 > /src/startcount")
+	entrypoint := model.ToShellCmd(
+		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 1000000")
+
+	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Cmd{initStartcount}, entrypoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cID := f.startContainer(f.ctx, containerConfig(imgRef))
+
+	f.Rm("delete_me") // expect to be delete from container on update
+	f.WriteFile("foo", "hello world")
+
+	paths := []pathMapping{
+		pathMapping{LocalPath: f.JoinPath("delete_me"), ContainerPath: "/src/delete_me"},
+		pathMapping{LocalPath: f.JoinPath("foo"), ContainerPath: "/src/foo"},
+	}
+	touchBar := model.ToShellCmd("touch /src/bar")
+
+	cUpdater := containerUpdater{dcli: f.dcli}
+	err = cUpdater.UpdateInContainer(f.ctx, cID, paths, []model.Cmd{touchBar})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{path: "/src/delete_me", missing: true},
+		expectedFile{path: "/src/foo", contents: "hello world"},
+		expectedFile{path: "/src/bar", contents: ""},         // from cmd
+		expectedFile{path: "/src/startcount", contents: "2"}, // from entrypoint (confirm container restarted)
+	}
+
+	f.assertFilesInContainer(f.ctx, cID, expected)
+}
+
+type mockContainerUpdaterFixture struct {
 	*testutils.TempDirFixture
 	t    testing.TB
 	ctx  context.Context
@@ -121,13 +170,13 @@ type remoteDockerFixture struct {
 	cu   *containerUpdater
 }
 
-func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
+func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 	fakeCli := NewFakeDockerClient()
 	cu := &containerUpdater{
 		dcli: fakeCli,
 	}
 
-	return &remoteDockerFixture{
+	return &mockContainerUpdaterFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 		ctx:            testutils.CtxForTest(),
@@ -136,6 +185,6 @@ func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
 	}
 }
 
-func (f *remoteDockerFixture) teardown() {
+func (f *mockContainerUpdaterFixture) teardown() {
 	f.TempDirFixture.TearDown()
 }
