@@ -1,6 +1,6 @@
-.PHONY: all proto install lint test
+.PHONY: all proto install lint test wire-check wire ensure
 
-all: lint errcheck test verify_gofmt
+all: lint errcheck test verify_gofmt wire-check
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
@@ -39,3 +39,11 @@ timing:
 wire:
 	wire ./internal/engine
 	wire ./internal/cli
+
+wire-check:
+	wire check ./internal/engine
+	wire check ./internal/cli
+
+ci-container:
+	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
+	docker push gcr.io/windmill-public-containers/tilt-ci

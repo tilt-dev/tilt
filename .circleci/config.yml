@@ -2,12 +2,11 @@ version: 2
 jobs:
   build-linux:
     docker:
-      - image: circleci/golang:1.10
+      - image: gcr.io/windmill-public-containers/tilt-ci
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - run: go get -u github.com/kisielk/errcheck
       - setup_remote_docker
       - run: make all
 
