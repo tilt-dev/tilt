@@ -16,7 +16,9 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env) (BuildAndDeployer, error) {
-	dockerImageBuilder := build.NewLocalDockerBuilder(docker)
+	console := build.DefaultConsole()
+	writer := build.DefaultOut()
+	dockerImageBuilder := build.NewLocalDockerBuilder(docker, console, writer)
 	imageBuilder := build.DefaultBuilder(dockerImageBuilder)
 	imageHistory, err := image.NewImageHistory(ctx, dir)
 	if err != nil {

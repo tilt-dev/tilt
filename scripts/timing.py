@@ -61,10 +61,6 @@ class Timer:
 
 
 def main():
-    print('NOTE: this script doesn\'t install `tilt` for you, and relies on you having the '
-          'blorgly-backend project in your $GOPATH (`github.com/windmilleng/blorgly-backend`)')
-    print()
-
     os.chdir(BLORGLY_BACKEND_DIR)
 
     cases = [

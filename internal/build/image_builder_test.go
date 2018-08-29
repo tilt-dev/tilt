@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 const simpleDockerfile = Dockerfile("FROM alpine")
@@ -34,10 +33,12 @@ func TestDigestAsTagToShort(t *testing.T) {
 }
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
-	input := ExampleBuildOutput1
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
 
+	input := ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := getDigestFromBuildOutput(testutils.CtxForTest(), bytes.NewBuffer([]byte(input)))
+	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,10 +48,12 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 }
 
 func TestDigestFromPushOutput(t *testing.T) {
-	input := ExamplePushOutput1
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
 
+	input := ExamplePushOutput1
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	actual, err := getDigestFromPushOutput(testutils.CtxForTest(), bytes.NewBuffer([]byte(input)))
+	actual, err := f.b.getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}

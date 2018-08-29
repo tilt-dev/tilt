@@ -29,6 +29,8 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 		engine.NewUpper,
 		engine.NewLocalBuildAndDeployer,
 		dirs.UseWindmillDir,
-		provideServiceCreator)
+		provideServiceCreator,
+		build.DefaultConsole,
+		build.DefaultOut)
 	return nil, nil
 }

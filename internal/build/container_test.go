@@ -450,11 +450,11 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	}
 
 	// Allows us to track number of times the entrypoint has been called (i.e. how
-	// many times container has been (re)started -- also, sleep forever so container
+	// many times container has been (re)started -- also, sleep 3 mins sso container
 	// stays alive for us to manipulate.
 	initStartcount := model.ToShellCmd("echo -n 0 > /src/startcount")
 	entrypoint := model.ToShellCmd(
-		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 1000000")
+		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 210")
 
 	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Cmd{initStartcount}, entrypoint)
 	if err != nil {
@@ -508,7 +508,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t:              t,
 		ctx:            ctx,
 		dcli:           dcli,
-		b:              NewLocalDockerBuilder(dcli),
+		b:              NewLocalDockerBuilder(dcli, DefaultConsole(), DefaultOut()),
 	}
 }
 
