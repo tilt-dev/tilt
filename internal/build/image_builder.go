@@ -64,7 +64,7 @@ type pushOutput struct {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewLocalDockerBuilder(dcli DockerClient, console console.Console, out io.Writer) *dockerImageBuilder {
+func NewDockerImageBuilder(dcli DockerClient, console console.Console, out io.Writer) *dockerImageBuilder {
 	return &dockerImageBuilder{dcli: dcli, console: console, out: out}
 }
 

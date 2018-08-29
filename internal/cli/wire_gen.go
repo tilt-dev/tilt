@@ -27,9 +27,10 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
+	containerUpdater := build.NewContainerUpdater(dockerCli)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
-	dockerImageBuilder := build.NewLocalDockerBuilder(dockerCli, console, writer)
+	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	kubectlClient := k8s.NewKubectlClient(ctx, env)
 	windmillDir, err := dirs.UseWindmillDir()
@@ -40,11 +41,12 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	if err != nil {
 		return nil, err
 	}
-	buildAndDeployer, err := engine.NewLocalBuildAndDeployer(imageBuilder, kubectlClient, imageHistory, env)
+	imageBuildAndDeployer, err := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, imageHistory, env)
 	if err != nil {
 		return nil, err
 	}
-	upper := engine.NewUpper(ctx, buildAndDeployer, kubectlClient)
+	containerBuildAndDeployer := engine.NewContainerBuildAndDeployer(containerUpdater, env, imageBuildAndDeployer)
+	upper := engine.NewUpper(ctx, containerBuildAndDeployer, kubectlClient)
 	manager := service.ProvideMemoryManager()
 	serviceCreator := provideServiceCreator(upper, manager)
 	return serviceCreator, nil

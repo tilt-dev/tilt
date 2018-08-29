@@ -21,10 +21,16 @@ func provideBuildAndDeployer(
 	env k8s.Env) (BuildAndDeployer, error) {
 	wire.Build(
 		image.NewImageHistory,
+
 		build.DefaultImageBuilder,
-		build.NewLocalDockerBuilder,
-		NewLocalBuildAndDeployer,
+		build.NewDockerImageBuilder,
+		NewImageBuildAndDeployer,
 		build.DefaultConsole,
-		build.DefaultOut)
+		build.DefaultOut,
+
+		wire.Bind(new(BuildAndDeployer), new(ContainerBuildAndDeployer)),
+		NewContainerBuildAndDeployer,
+		build.NewContainerUpdater,
+	)
 	return nil, nil
 }
