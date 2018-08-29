@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/windmilleng/tilt/internal/model"
@@ -88,6 +89,8 @@ type FakeDockerClient struct {
 	CopyOptions   types.CopyToContainerOptions
 
 	ExecCalls []ExecCall
+
+	RestartsByContainer map[string]int
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
@@ -95,6 +98,7 @@ func NewFakeDockerClient() *FakeDockerClient {
 		PushOutput:          NewFakeDockerResponse(ExamplePushOutput1),
 		BuildOutput:         NewFakeDockerResponse(ExampleBuildOutput1),
 		ContainerListOutput: ContainersListByName,
+		RestartsByContainer: make(map[string]int),
 	}
 }
 
@@ -105,6 +109,11 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 	}
 
 	return c.ContainerListOutput[nameFilter[0]], nil
+}
+
+func (c *FakeDockerClient) ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error {
+	c.RestartsByContainer[containerID]++
+	return nil
 }
 
 func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {

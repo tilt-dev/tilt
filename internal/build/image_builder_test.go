@@ -417,7 +417,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 	f.assertFilesInImage(ref, pcs)
 }
 
-func TestBuildDockerFromExistingPreservesEntrypoint(t *testing.T) {
+func TestUpdateInContainerPreservesEntrypoint(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 

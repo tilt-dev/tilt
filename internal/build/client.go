@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/docker/docker/api/types"
@@ -29,6 +30,7 @@ const minDockerVersion = "1.30"
 // Create an interface so this can be mocked out.
 type DockerClient interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
+	ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error
 	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
 	ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
