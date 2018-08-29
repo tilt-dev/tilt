@@ -1,7 +1,6 @@
 package build
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
@@ -70,21 +69,19 @@ func (r *containerUpdater) UpdateInContainer(ctx context.Context, cID containerI
 	return nil
 }
 
-// TODO(maia): reorg tar funcs in a more logical way
 func ArchivePathsIfExist(ctx context.Context, paths []pathMapping) (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
-	tw := tar.NewWriter(buf)
+	ab := newArchiveBuilder()
 	defer func() {
-		err := tw.Close()
+		err := ab.close()
 		if err != nil {
 			log.Printf("Error closing tar writer: %s", err.Error())
 		}
 	}()
-	err := archivePathsIfExist(ctx, tw, paths)
+	err := ab.archivePathsIfExist(ctx, paths)
 	if err != nil {
 		return nil, fmt.Errorf("archivePathsIfExists: %v", err)
 	}
-	return buf, nil
+	return ab.buf, nil
 }
 
 // containerIdForPod looks for the container ID associated with the pod.
