@@ -22,12 +22,15 @@ func provideBuildAndDeployer(
 	wire.Build(
 		image.NewImageHistory,
 
+		// dockerImageBuilder ( = ImageBuilder)
 		build.DefaultImageBuilder,
 		build.NewDockerImageBuilder,
-		NewImageBuildAndDeployer,
 		build.DefaultConsole,
 		build.DefaultOut,
 
+		NewImageBuildAndDeployer,
+
+		// ContainerBuildAndDeployer ( = BuildAndDeployer)
 		wire.Bind(new(BuildAndDeployer), new(ContainerBuildAndDeployer)),
 		NewContainerBuildAndDeployer,
 		build.NewContainerUpdater,
