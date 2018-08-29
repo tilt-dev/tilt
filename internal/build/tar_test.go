@@ -56,6 +56,24 @@ func TestArchivePathsIfExists(t *testing.T) {
 	f.assertFileNotInTar(actual, "b")
 }
 
+func TestLen(t *testing.T) {
+	ab := newArchiveBuilder()
+	dfText := "FROM alpine"
+	df := Dockerfile(dfText)
+	err := ab.archiveDf(context.Background(), df)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ab.close()
+	expected := 2048
+	actual := ab.len()
+
+	if actual != expected {
+		t.Errorf("Expected size to be %d, got %d", expected, actual)
+	}
+}
+
 type fixture struct {
 	*testutils.TempDirFixture
 	t   *testing.T
