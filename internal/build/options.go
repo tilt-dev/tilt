@@ -3,16 +3,23 @@ package build
 import (
 	"bytes"
 	"flag"
+	"os"
 
 	"github.com/docker/docker/api/types"
 )
 
 func Options(archive *bytes.Reader) types.ImageBuildOptions {
+	useBuildkit := os.Getenv("TILT_BUILDKIT")
+	version := types.BuilderV1
+	if useBuildkit == "1" {
+		version = types.BuilderBuildKit
+	}
+
 	return types.ImageBuildOptions{
 		Context:    archive,
 		Dockerfile: "Dockerfile",
 		Remove:     shouldRemoveImage(),
-		Version:    types.BuilderBuildKit,
+		Version:    version,
 	}
 }
 
