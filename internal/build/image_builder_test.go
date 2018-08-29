@@ -97,7 +97,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t:              t,
 		ctx:            ctx,
 		dcli:           dcli,
-		b:              NewLocalDockerBuilder(dcli, DefaultConsole(), DefaultOut()),
+		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut()),
 	}
 }
 

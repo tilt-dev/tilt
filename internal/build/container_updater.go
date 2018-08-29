@@ -14,17 +14,15 @@ import (
 
 const pauseCmd = "/pause"
 
-type ContainerUpdater interface {
-	UpdateInContainer(ctx context.Context, cID containerID, paths []pathMapping, steps []model.Cmd) error
-}
-
-var _ ContainerUpdater = &containerUpdater{}
-
-type containerUpdater struct {
+type ContainerUpdater struct {
 	dcli DockerClient
 }
 
-func (r *containerUpdater) UpdateInContainer(ctx context.Context, cID containerID, paths []pathMapping, steps []model.Cmd) error {
+func NewContainerUpdater(dcli DockerClient) *ContainerUpdater {
+	return &ContainerUpdater{dcli: dcli}
+}
+
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID containerID, paths []pathMapping, steps []model.Cmd) error {
 	// rm files from container
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
@@ -77,7 +75,7 @@ func (r *containerUpdater) UpdateInContainer(ctx context.Context, cID containerI
 // Expects to find exactly one matching container -- if not, return error.
 // TODO: support multiple matching container IDs, i.e. restarting multiple containers per pod
 // TODO(maia): move func to somewhere more useful (will need this eventually, but not on ContainerUpdater)
-func (r *containerUpdater) containerIdForPod(ctx context.Context, podName string) (containerID, error) {
+func (r *ContainerUpdater) containerIdForPod(ctx context.Context, podName string) (containerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerIdForPod")
 	defer span.Finish()
 
@@ -115,7 +113,7 @@ func (r *containerUpdater) containerIdForPod(ctx context.Context, podName string
 	return "", fmt.Errorf("no matching non-'/pause' containers")
 }
 
-func (r *containerUpdater) RmPathsFromContainer(ctx context.Context, cID containerID, paths []pathMapping) error {
+func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID containerID, paths []pathMapping) error {
 	if len(paths) == 0 {
 		return nil
 	}
