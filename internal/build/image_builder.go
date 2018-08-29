@@ -1,7 +1,6 @@
 package build
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -210,11 +209,10 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 
 	output.Get(ctx).StartBuildStep("tarring context")
 
-	tar, err := tarContextAndUpdateDf(ctx, df, paths)
+	archive, err := tarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return nil, err
 	}
-	archive := bytes.NewReader(tar.Bytes())
 
 	output.Get(ctx).StartBuildStep("building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")

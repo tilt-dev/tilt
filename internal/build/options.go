@@ -1,14 +1,14 @@
 package build
 
 import (
-	"bytes"
 	"flag"
+	"io"
 	"os"
 
 	"github.com/docker/docker/api/types"
 )
 
-func Options(archive *bytes.Reader) types.ImageBuildOptions {
+func Options(archive io.Reader) types.ImageBuildOptions {
 	useBuildkit := os.Getenv("TILT_BUILDKIT")
 	version := types.BuilderV1
 	if useBuildkit == "1" {
