@@ -88,9 +88,9 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.curBuildStep++
 }
 
-func (o *Outputter) Print(format string, a ...interface{}) {
+func (o *Outputter) Printf(format string, a ...interface{}) {
 	if o.curBuildStep == 0 {
-		o.logger.Infof(format, a)
+		o.logger.Infof(format, a...)
 	} else {
 		o.logger.Infof("%s%s", buildStepOutputPrefix, fmt.Sprintf(format, a...))
 	}
