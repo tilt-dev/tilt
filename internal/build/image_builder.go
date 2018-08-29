@@ -226,6 +226,9 @@ func (l *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	if err != nil {
 		return nil, fmt.Errorf("ImageBuild: %v", err)
 	}
+	if result == nil {
+		return nil, fmt.Errorf("Unable to read docker output: result is nil")
+	}
 
 	digest, err := getDigestFromAux(*result)
 	if err != nil {
