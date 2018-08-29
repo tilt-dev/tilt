@@ -48,7 +48,7 @@ func TestContainerIdForPodNoNonPause(t *testing.T) {
 	}
 }
 
-func TestBuildDockerFromExistingCopiesAndRmsFiles(t *testing.T) {
+func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
@@ -81,7 +81,7 @@ func TestBuildDockerFromExistingCopiesAndRmsFiles(t *testing.T) {
 	}
 }
 
-func TestBuildDockerFromExistingExecsSteps(t *testing.T) {
+func TestUpdateInContainerExecsSteps(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
@@ -99,6 +99,18 @@ func TestBuildDockerFromExistingExecsSteps(t *testing.T) {
 	}
 
 	assert.Equal(f.t, expectedExecs, f.dcli.ExecCalls)
+}
+
+func TestUpdateInContainerRestartsContainer(t *testing.T) {
+	f := newRemoteDockerFixture(t)
+	defer f.teardown()
+
+	err := f.cu.UpdateInContainer(f.ctx, []pathMapping{}, []model.Cmd{})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	assert.Equal(f.t, f.dcli.RestartsByContainer[testContainer], 1)
 }
 
 type remoteDockerFixture struct {

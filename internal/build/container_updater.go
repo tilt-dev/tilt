@@ -70,8 +70,11 @@ func (r *containerUpdater) UpdateInContainer(ctx context.Context, paths []pathMa
 		}
 	}
 
-	// TODO(maia): restart container(s)
-
+	// Restart container so that entrypoint restarts with the updated files etc.
+	err = r.dcli.ContainerRestart(ctx, cID.String(), nil)
+	if err != nil {
+		return fmt.Errorf("ContainerRestart: %v", err)
+	}
 	return nil
 }
 
