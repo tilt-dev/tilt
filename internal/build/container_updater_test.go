@@ -113,7 +113,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	assert.Equal(f.t, f.dcli.RestartsByContainer[testContainer], 1)
 }
 
-type remoteDockerFixture struct {
+type mockContainerUpdaterFixture struct {
 	*testutils.TempDirFixture
 	t    testing.TB
 	ctx  context.Context
@@ -121,13 +121,13 @@ type remoteDockerFixture struct {
 	cu   *containerUpdater
 }
 
-func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
+func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 	fakeCli := NewFakeDockerClient()
 	cu := &containerUpdater{
 		dcli: fakeCli,
 	}
 
-	return &remoteDockerFixture{
+	return &mockContainerUpdaterFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 		ctx:            testutils.CtxForTest(),
@@ -136,6 +136,6 @@ func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
 	}
 }
 
-func (f *remoteDockerFixture) teardown() {
+func (f *mockContainerUpdaterFixture) teardown() {
 	f.TempDirFixture.TearDown()
 }

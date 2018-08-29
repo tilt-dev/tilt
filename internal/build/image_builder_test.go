@@ -1,5 +1,3 @@
-//+build !skipcontainertests
-
 package build
 
 import (
@@ -10,22 +8,18 @@ import (
 	"io"
 	"log"
 	"os/exec"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 const simpleDockerfile = Dockerfile("FROM alpine")
@@ -54,8 +48,9 @@ func TestDigestAsTagToShort(t *testing.T) {
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	input := ExampleBuildOutput1
+	defer f.teardown()
 
+	input := ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
@@ -68,8 +63,9 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 func TestDigestFromPushOutput(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	input := ExamplePushOutput1
+	defer f.teardown()
 
+	input := ExamplePushOutput1
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
 	actual, err := f.b.getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
@@ -78,415 +74,6 @@ func TestDigestFromPushOutput(t *testing.T) {
 	if actual != expected {
 		t.Errorf("Expected %s, got %s", expected, actual)
 	}
-}
-
-func TestMount(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	// write some files in to it
-	f.WriteFile("hi/hello", "hi hello")
-	f.WriteFile("sup", "my name is dan")
-
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pcs := []expectedFile{
-		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
-		expectedFile{path: "/src/sup", contents: "my name is dan"},
-	}
-	f.assertFilesInImage(ref, pcs)
-}
-
-func TestMultipleMounts(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	// write some files in to it
-	f.WriteFile("hi/hello", "hi hello")
-	f.WriteFile("bye/ciao/goodbye", "bye laterz")
-
-	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
-		ContainerPath: "/hello_there",
-	}
-	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
-		ContainerPath: "goodbye_there",
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pcs := []expectedFile{
-		expectedFile{path: "/hello_there/hello", contents: "hi hello"},
-		expectedFile{path: "/goodbye_there/ciao/goodbye", contents: "bye laterz"},
-	}
-	f.assertFilesInImage(ref, pcs)
-}
-
-func TestMountCollisions(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	// write some files in to it
-	f.WriteFile("hi/hello", "hi hello")
-	f.WriteFile("bye/hello", "bye laterz")
-
-	// Mounting two files to the same place in the container -- expect the second mount
-	// to take precedence (file should contain "bye laterz")
-	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
-		ContainerPath: "/hello_there",
-	}
-	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
-		ContainerPath: "/hello_there",
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pcs := []expectedFile{
-		expectedFile{path: "/hello_there/hello", contents: "bye laterz"},
-	}
-	f.assertFilesInImage(ref, pcs)
-}
-
-func TestPush(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.startRegistry()
-
-	// write some files in to it
-	f.WriteFile("hi/hello", "hi hello")
-	f.WriteFile("sup", "my name is dan")
-
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
-	}
-
-	name, err := reference.WithName("localhost:5005/myimage")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, name, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	namedTagged, err := f.b.PushImage(f.ctx, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pcs := []expectedFile{
-		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
-		expectedFile{path: "/src/sup", contents: "my name is dan"},
-	}
-
-	f.assertFilesInImage(namedTagged, pcs)
-}
-
-func TestPushInvalid(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
-	}
-	name, err := reference.WithName("localhost:5005/myimage")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ref, err := f.b.BuildImageFromScratch(f.ctx, name, simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = f.b.PushImage(f.ctx, ref)
-	if err == nil || !strings.Contains(err.Error(), "PushImage#getDigestFromPushOutput") {
-		t.Fatal(err)
-	}
-}
-
-func TestBuildOneStep(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	steps := []model.Cmd{
-		model.ToShellCmd("echo -n hello >> hi"),
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{path: "hi", contents: "hello"},
-	}
-	f.assertFilesInImage(ref, expected)
-}
-
-func TestBuildMultipleSteps(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	steps := []model.Cmd{
-		model.ToShellCmd("echo -n hello >> hi"),
-		model.ToShellCmd("echo -n sup >> hi2"),
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{path: "hi", contents: "hello"},
-		expectedFile{path: "hi2", contents: "sup"},
-	}
-	f.assertFilesInImage(ref, expected)
-}
-
-func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	steps := []model.Cmd{
-		model.Cmd{Argv: []string{"sh", "-c", "echo -n hello >> hi"}},
-		model.Cmd{Argv: []string{"sh", "-c", "echo -n sup >> hi2"}},
-		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
-	}
-
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{path: "hi2", contents: "sup"},
-		expectedFile{path: "hi", missing: true},
-	}
-	f.assertFilesInImage(ref, expected)
-}
-
-func TestBuildFailingStep(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	steps := []model.Cmd{
-		model.ToShellCmd("echo hello && exit 1"),
-	}
-
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "hello")
-		if runtime.GOOS == "darwin" {
-			assert.Contains(t, err.Error(), "exit code 1")
-		} else {
-			assert.Contains(t, err.Error(), "returned a non-zero code: 1")
-		}
-	}
-}
-
-func TestEntrypoint(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	entrypoint := model.ToShellCmd("echo -n hello >> hi")
-	d, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, []model.Cmd{}, entrypoint)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{path: "hi", contents: "hello"},
-	}
-
-	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID := f.startContainer(f.ctx, containerConfig(d))
-	f.assertFilesInContainer(f.ctx, cID, expected)
-}
-
-func TestDockerfileWithEntrypointNotPermitted(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	df := Dockerfile(`FROM alpine
-ENTRYPOINT ["sleep", "100000"]`)
-
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), df, []model.Mount{}, []model.Cmd{}, model.Cmd{})
-	if err == nil {
-		t.Fatal("expected an err b/c dockerfile contains an ENTRYPOINT")
-	}
-	if !strings.Contains(err.Error(), ErrEntrypointInDockerfile.Error()) {
-		t.Fatalf("error '%v' did not contain expected string '%v'",
-			err.Error(), ErrEntrypointInDockerfile.Error())
-	}
-}
-
-// TODO(maia): test mount err cases
-// TODO(maia): tests for tar code
-
-func TestSelectiveAddFilesToExisting(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("hi/hello", "hi hello")
-	f.WriteFile("sup", "we should delete this file")
-	f.WriteFile("nested/sup", "we should delete this file (and the whole dir)")
-	f.WriteFile("unchanged", "should be unchanged")
-	mounts := []model.Mount{
-		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-			ContainerPath: "/src",
-		},
-	}
-
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, mounts, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f.WriteFile("hi/hello", "hello world") // change contents
-	f.Rm("sup")                            // delete a file
-	f.Rm("nested")                         // delete a directory
-	files := []string{"hi/hello", "sup", "nested"}
-	pms, err := FilesToPathMappings(f.JoinPaths(files), mounts)
-	if err != nil {
-		f.t.Fatal("FilesToPathMappings:", err)
-	}
-
-	ref, err := f.b.BuildImageFromExisting(f.ctx, existing, pms, []model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pcs := []expectedFile{
-		expectedFile{path: "/src/hi/hello", contents: "hello world"},
-		expectedFile{path: "/src/sup", missing: true},
-		expectedFile{path: "/src/nested/sup", missing: true}, // should have deleted whole directory
-		expectedFile{path: "/src/unchanged", contents: "should be unchanged"},
-	}
-	f.assertFilesInImage(ref, pcs)
-}
-
-func TestExecStepsOnExisting(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("foo", "hello world")
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
-	}
-
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
-
-	ref, err := f.b.BuildImageFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{step})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pcs := []expectedFile{
-		expectedFile{path: "/src/foo", contents: "hello world"},
-		expectedFile{path: "/src/bar", contents: "foo contains: hello world"},
-	}
-	f.assertFilesInImage(ref, pcs)
-}
-
-func TestUpdateInContainerPreservesEntrypoint(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("foo", "hello world")
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
-	}
-	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
-
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Cmd{}, entrypoint)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// change contents of `foo` so when entrypoint exec's the second time, it
-	// will change the contents of `bar`
-	f.WriteFile("foo", "a whole new world")
-
-	ref, err := f.b.BuildImageFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{path: "/src/foo", contents: "a whole new world"},
-		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
-	}
-
-	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID := f.startContainer(f.ctx, containerConfig(ref))
-	f.assertFilesInContainer(f.ctx, cID, expected)
-}
-
-func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("foo", "hello world")
-	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
-		ContainerPath: "/src",
-	}
-	step := model.ToShellCmd("echo -n hello >> /src/baz")
-	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
-
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Cmd{step}, entrypoint)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// change contents of `foo` so when entrypoint exec's the second time, it
-	// will change the contents of `bar`
-	f.WriteFile("foo", "a whole new world")
-
-	ref, err := f.b.BuildImageFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), []model.Cmd{step})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{path: "/src/foo", contents: "a whole new world"},
-		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
-		expectedFile{path: "/src/baz", contents: "hellohello"},
-	}
-
-	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID := f.startContainer(f.ctx, containerConfig(ref))
-	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
 type dockerBuildFixture struct {
@@ -583,9 +170,9 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 }
 
 func (f *dockerBuildFixture) assertFilesInContainer(
-	ctx context.Context, containerID string, expectedFiles []expectedFile) {
+	ctx context.Context, cID containerID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
-		reader, _, err := f.dcli.CopyFromContainer(ctx, containerID, expectedFile.path)
+		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.path)
 		if expectedFile.missing {
 			if err == nil {
 				f.t.Errorf("Expected path %q to not exist", expectedFile.path)
@@ -630,19 +217,19 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 }
 
 // startContainer starts a container from the given config
-func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) string {
+func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) containerID {
 	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
-	containerID := resp.ID
+	cID := resp.ID
 
-	err = f.dcli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	err = f.dcli.ContainerStart(ctx, cID, types.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 
-	return containerID
+	return containerID(cID)
 }
 
 type threadSafeWriter struct {
