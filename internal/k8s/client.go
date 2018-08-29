@@ -5,9 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os/exec"
+	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/browser"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/output"
 )
@@ -15,20 +18,53 @@ import (
 type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
+
+	// Waits for the LoadBalancer to get a publicly available URL,
+	// then opens that URL in a web browser.
+	OpenService(ctx context.Context, lb LoadBalancer) error
 }
 
-func DefaultClient() Client {
-	return NewKubectlClient()
+type KubectlClient struct {
+	env Env
 }
 
-type kubectlClient struct {
+func NewKubectlClient(ctx context.Context, env Env) KubectlClient {
+	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
+	writer := logger.Get(ctx).Writer(logger.DebugLvl)
+	browser.Stdout = writer
+	browser.Stderr = writer
+
+	return KubectlClient{
+		env: env,
+	}
 }
 
-func NewKubectlClient() kubectlClient {
-	return kubectlClient{}
+func (k KubectlClient) OpenService(ctx context.Context, lb LoadBalancer) error {
+	if k.env == EnvDockerDesktop && len(lb.Ports) > 0 {
+		url := fmt.Sprintf("http://localhost:%d/", lb.Ports[0])
+		logger.Get(ctx).Infof("Opening browser: %s", url)
+		return browser.OpenURL(url)
+	}
+
+	if k.env == EnvMinikube {
+		cmd := exec.CommandContext(ctx, "minikube", "service", lb.Name, "--url")
+		out, err := cmd.Output()
+		if err != nil {
+			return fmt.Errorf("OpenService: %v", err)
+		}
+		url, err := url.Parse(strings.TrimSpace(string(out)))
+		if err != nil {
+			return fmt.Errorf("OpenService: malformed url: %v", err)
+		}
+		logger.Get(ctx).Infof("Opening browser: %s", url)
+		return browser.OpenURL(url.String())
+	}
+
+	logger.Get(ctx).Infof("Could not determine URL of service: %s", lb.Name)
+	return nil
 }
 
-func (k kubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
+func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
@@ -40,7 +76,7 @@ func (k kubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	return nil
 }
 
-func (k kubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
+func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	_, err := k.cli(ctx, "delete", entities)
 	_, isExitErr := err.(*exec.ExitError)
 	if isExitErr {
@@ -55,7 +91,7 @@ func (k kubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	return err
 }
 
-func (k kubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity) (*bytes.Buffer, error) {
+func (k KubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity) (*bytes.Buffer, error) {
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
 		return nil, fmt.Errorf("kubectl %s: %v", cmd, err)

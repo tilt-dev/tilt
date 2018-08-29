@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -34,16 +35,22 @@ type Upper struct {
 	b            BuildAndDeployer
 	watcherMaker watcherMaker
 	timerMaker   timerMaker
+	k8s          k8s.Client
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer) (Upper, error) {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	return Upper{b, watcherMaker, time.After}, nil
+	return Upper{
+		b:            b,
+		watcherMaker: watcherMaker,
+		timerMaker:   time.After,
+		k8s:          k8s,
+	}
 }
 
 func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
@@ -61,13 +68,26 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
+	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
 		buildToken, err := u.b.BuildAndDeploy(ctx, service, nil, nil)
 		if err != nil {
 			return err
 		}
 		buildTokens[service.Name] = buildToken
+		lbs = append(lbs, k8s.ToLoadBalancers(buildToken.entities)...)
 	}
+
+	if len(lbs) > 0 {
+		// Open only the first load balancer in a browser.
+		// TODO(nick): We might need some hints on what load balancer to
+		// open if we have multiple, or what path to default to on the opened service.
+		err := u.k8s.OpenService(ctx, lbs[0])
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
@@ -94,6 +114,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 					buildTokens[event.service.Name],
 					event.files)
 				if err != nil {
+					// TODO(nick): This isn't right. We need to keep track of the changed files
+					// for the next iteration of the build.
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				} else {
 					buildTokens[event.service.Name] = token

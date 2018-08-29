@@ -80,6 +80,12 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 
 type FakeK8sClient struct {
 	yaml string
+	lb   k8s.LoadBalancer
+}
+
+func (c *FakeK8sClient) OpenService(ctx context.Context, lb k8s.LoadBalancer) error {
+	c.lb = lb
+	return nil
 }
 
 func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) error {

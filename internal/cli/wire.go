@@ -20,7 +20,8 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 	wire.Build(
 		service.ProvideMemoryManager,
 		k8s.DetectEnv,
-		k8s.DefaultClient,
+		k8s.NewKubectlClient,
+		wire.Bind(new(k8s.Client), k8s.KubectlClient{}),
 		image.NewImageHistory,
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
