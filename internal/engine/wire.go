@@ -23,6 +23,8 @@ func provideBuildAndDeployer(
 		image.NewImageHistory,
 		build.DefaultBuilder,
 		build.NewLocalDockerBuilder,
-		NewLocalBuildAndDeployer)
+		NewLocalBuildAndDeployer,
+		build.DefaultConsole,
+		build.DefaultOut)
 	return nil, nil
 }
