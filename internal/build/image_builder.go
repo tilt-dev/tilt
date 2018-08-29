@@ -1,7 +1,6 @@
 package build
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -210,7 +209,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 
 	output.Get(ctx).StartBuildStep("tarring context")
 
-	archive, err := TarContextAndUpdateDf(ctx, df, paths)
+	archive, err := tarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -252,15 +251,6 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	}
 
 	return nt, nil
-}
-
-func TarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Reader, error) {
-	buf, err := tarContextAndUpdateDf(ctx, df, paths)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewReader(buf.Bytes()), nil
 }
 
 // Docker API commands stream back a sequence of JSON messages.
