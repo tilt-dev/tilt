@@ -313,7 +313,7 @@ func (l *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 		go func() {
 			err := progressui.DisplaySolveStatus(ctx, "", l.console, l.out, displayCh)
 			if err != nil {
-				output.Get(ctx).Print("Error printing progressui: %s", err)
+				output.Get(ctx).Printf("Error printing progressui: %s", err)
 			}
 		}()
 	}
@@ -335,7 +335,7 @@ func (l *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 
 		if len(message.Stream) > 0 && message.Stream != "\n" {
 			msg := strings.TrimSuffix(message.Stream, "\n")
-			output.Get(ctx).Print("%+v", msg)
+			output.Get(ctx).Printf("%+v", msg)
 			if strings.HasPrefix(msg, "Step") || strings.HasPrefix(msg, "Running") {
 				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
 			}
