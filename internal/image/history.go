@@ -142,7 +142,6 @@ func (h ImageHistory) AddAndPersist(
 	service model.Service,
 ) error {
 	key, entry, err := h.addInMemory(ctx, name, checkpoint, service)
-	fmt.Printf("entry from memory: %+v\n", entry)
 	if err != nil {
 		return err
 	}
@@ -163,20 +162,18 @@ func (h ImageHistory) MostRecent(
 	if !ok {
 		return nil, CheckpointID{}, false
 	}
-	fmt.Printf("bucket: %+v\n", bucket)
 
 	hash, err := service.Hash()
 	if err != nil {
 		// TODO(dmiller) return error here?
 		return nil, CheckpointID{}, false
 	}
-	fmt.Printf("hash: %+v\n", hash)
 
 	mostRecent := bucket.mostRecent
 	if mostRecent.HashedService != hash {
 		return nil, CheckpointID{}, false
 	}
-	fmt.Printf("mostRecent: %+v\n", mostRecent)
+
 	return mostRecent.Named, mostRecent.CheckpointID, true
 }
 

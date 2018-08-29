@@ -68,7 +68,6 @@ func addHistoryToFS(ctx context.Context, dir *dirs.WindmillDir, ref refKey, entr
 
 	encoder := json.NewEncoder(file)
 	diskEntry := diskEntry{Ref: ref, CheckpointID: entry.CheckpointID, HashedInputs: entry.HashedService}
-	fmt.Printf("diskEntry: %+v\n", diskEntry)
 	err = encoder.Encode(diskEntry)
 	if err != nil {
 		return fmt.Errorf("addHistoryToFS: %v", err)
