@@ -65,11 +65,11 @@ def main():
 
     cases = [
         Case('tilt up 1x', test_tilt_up_once),
-        # Case('tilt up again, no change', test_tilt_up_again_no_change),
-        # Case('tilt up again, new file', test_tilt_up_again_new_file),
-        # Case('watch build from changed file', test_watch_build_from_changed_file),
-        # Case('watch build from many changed files', test_watch_build_from_many_changed_files),
-        # Case('tilt up, big file (5MB)', test_tilt_up_big_file),
+        Case('tilt up again, no change', test_tilt_up_again_no_change),
+        Case('tilt up again, new file', test_tilt_up_again_new_file),
+        Case('watch build from changed file', test_watch_build_from_changed_file),
+        Case('watch build from many changed files', test_watch_build_from_many_changed_files),
+        Case('tilt up, big file (5MB)', test_tilt_up_big_file),
 
         # Leave this commented out unless you particularly want it, it's damn slow.
         # Case('tilt up, REALLY big file (500MB)', test_tilt_up_really_big_file),
