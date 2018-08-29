@@ -50,7 +50,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 }
 
-// The API boundaries between BuildAndDeployer and the Builder aren't obvious and
+// The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake DockerClient and K8sClient
 type bdFixture struct {

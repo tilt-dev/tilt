@@ -117,7 +117,7 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 }
 
 func (d *DockerCli) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon--ExecInContainer")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ExecInContainer")
 	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
 	defer span.Finish()
 

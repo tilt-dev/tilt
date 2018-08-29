@@ -13,7 +13,7 @@ import (
 func TestContainerIdForPodOneMatch(t *testing.T) {
 	f := newRemoteDockerFixtureForPod(t, testPod)
 	defer f.teardown()
-	cID, err := f.b.containerIdForPod(context.Background())
+	cID, err := f.cu.containerIdForPod(f.ctx)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestContainerIdForPodOneMatch(t *testing.T) {
 func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
 	f := newRemoteDockerFixtureForPod(t, "one-pause-cmd")
 	defer f.teardown()
-	cID, err := f.b.containerIdForPod(context.Background())
+	cID, err := f.cu.containerIdForPod(f.ctx)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
 func TestContainerIdForPodTooManyMatches(t *testing.T) {
 	f := newRemoteDockerFixtureForPod(t, "too-many")
 	defer f.teardown()
-	_, err := f.b.containerIdForPod(context.Background())
+	_, err := f.cu.containerIdForPod(f.ctx)
 	if assert.NotNil(f.t, err) {
 		assert.Contains(f.t, err.Error(), "too many matching containers")
 	}
@@ -42,7 +42,7 @@ func TestContainerIdForPodTooManyMatches(t *testing.T) {
 func TestContainerIdForPodNoNonPause(t *testing.T) {
 	f := newRemoteDockerFixtureForPod(t, "all-pause")
 	defer f.teardown()
-	_, err := f.b.containerIdForPod(context.Background())
+	_, err := f.cu.containerIdForPod(f.ctx)
 	if assert.NotNil(f.t, err) {
 		assert.Contains(f.t, err.Error(), "no matching non-'/pause' containers")
 	}
@@ -62,8 +62,7 @@ func TestBuildDockerFromExistingCopiesAndRmsFiles(t *testing.T) {
 		pathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	// TODO(maia): Check that we got a ref back i guess?
-	_, err := f.b.BuildDockerFromExisting(f.ctx, nil, paths, []model.Cmd{})
+	err := f.cu.UpdateInContainer(f.ctx, paths, []model.Cmd{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -87,9 +86,9 @@ func TestBuildDockerFromExistingExecsSteps(t *testing.T) {
 	defer f.teardown()
 
 	cmdA := model.Cmd{Argv: []string{"a"}}
-	cmdB := model.Cmd{Argv: []string{"b", "and b", "another b"}}
+	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	_, err := f.b.BuildDockerFromExisting(f.ctx, nil, []pathMapping{}, []model.Cmd{cmdA, cmdB})
+	err := f.cu.UpdateInContainer(f.ctx, []pathMapping{}, []model.Cmd{cmdA, cmdB})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -107,7 +106,7 @@ type remoteDockerFixture struct {
 	t    testing.TB
 	ctx  context.Context
 	dcli *FakeDockerClient
-	b    *remoteDockerBuilder
+	cu   *containerUpdater
 }
 
 func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
@@ -116,7 +115,7 @@ func newRemoteDockerFixture(t testing.TB) *remoteDockerFixture {
 
 func newRemoteDockerFixtureForPod(t testing.TB, podName string) *remoteDockerFixture {
 	fakeCli := NewFakeDockerClient()
-	builder := &remoteDockerBuilder{
+	cu := &containerUpdater{
 		dcli: fakeCli,
 		pod:  podName,
 	}
@@ -126,7 +125,7 @@ func newRemoteDockerFixtureForPod(t testing.TB, podName string) *remoteDockerFix
 		t:              t,
 		ctx:            testutils.CtxForTest(),
 		dcli:           fakeCli,
-		b:              builder,
+		cu:             cu,
 	}
 }
 
