@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +59,15 @@ func (a *archiveBuilder) archivePathsIfExist(ctx context.Context, paths []pathMa
 		}
 	}
 	return nil
+}
+
+func (a *archiveBuilder) bytesBuffer() (*bytes.Buffer, error) {
+	err := a.close()
+	if err != nil {
+		return nil, err
+	}
+
+	return a.buf, nil
 }
 
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
@@ -145,13 +153,6 @@ func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 	defer span.Finish()
 
 	ab := newArchiveBuilder()
-	defer func() {
-		err := ab.close()
-		if err != nil {
-			log.Printf("Error closing tar writer: %s", err.Error())
-		}
-	}()
-
 	err := ab.archivePathsIfExist(ctx, paths)
 	if err != nil {
 		return nil, fmt.Errorf("archivePaths: %v", err)
@@ -162,5 +163,5 @@ func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMappi
 		return nil, fmt.Errorf("archiveDf: %v", err)
 	}
 
-	return ab.buf, nil
+	return ab.bytesBuffer()
 }
