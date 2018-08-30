@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -95,7 +96,7 @@ var _ watch.Notify = &fakeNotify{}
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.CreateServices(f.context, []model.Service{service}, false)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedServices []model.Service
@@ -108,7 +109,7 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	service := model.Service{Name: "foobar"}
-	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "nothing to watch")
 	}
@@ -121,7 +122,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -158,7 +159,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -197,7 +198,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -236,7 +237,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -272,7 +273,41 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateServices(f.context, []model.Service{service}, true)
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	assert.Equal(t, endToken, err)
+}
+
+func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
+	endToken := errors.New("my-err-token")
+	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+
+		// Simulate a change to .#a.go that's a broken symlink.
+		realPath := filepath.Join(f.Path(), "a.go")
+		tmpPath := filepath.Join(f.Path(), ".#a.go")
+		_ = os.Symlink(realPath, tmpPath)
+
+		f.watcher.events <- watch.FileEvent{Path: tmpPath}
+
+		select {
+		case <-f.b.calls:
+			t.Fatal("Expected to skip build")
+		case <-time.After(5 * time.Millisecond):
+		}
+
+		f.TouchFiles([]string{realPath})
+		f.watcher.events <- watch.FileEvent{Path: realPath}
+
+		call = <-f.b.calls
+		assert.Equal(t, []string{tmpPath, realPath}, call.state.FilesChanged())
+
+		f.watcher.errors <- endToken
+	}()
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -321,15 +356,15 @@ func makeFakeWatcherMaker(fn *fakeNotify) watcherMaker {
 }
 
 type testFixture struct {
-	t          *testing.T
+	*testutils.TempDirFixture
 	upper      Upper
 	b          *fakeBuildAndDeployer
 	watcher    *fakeNotify
-	context    context.Context
 	timerMaker *fakeTimerMaker
 }
 
 func newTestFixture(t *testing.T) *testFixture {
+	f := testutils.NewTempDirFixture(t)
 	watcher := newFakeNotify()
 	watcherMaker := makeFakeWatcherMaker(watcher)
 	b := newFakeBuildAndDeployer(t)
@@ -338,6 +373,5 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	k8s := &FakeK8sClient{}
 	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s}
-	ctx := testutils.CtxForTest()
-	return &testFixture{t, upper, b, watcher, ctx, &timerMaker}
+	return &testFixture{f, upper, b, watcher, &timerMaker}
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 // The results of a successful build.
@@ -61,6 +62,32 @@ func (b BuildState) NewStateWithFilesChanged(files []string) BuildState {
 		result.filesChangedSet[f] = true
 	}
 	return result
+}
+
+// Check if the filesChangedSet only contains spurious changes that
+// we don't want to rebuild on, like IDE temp/lock files.
+//
+// NOTE(nick): This isn't an ideal solution. In an ideal world, the user would
+// put everything to ignore in their gitignore/dockerignore files. This is a stop-gap
+// so they don't have a terrible experience if those files aren't there or
+// aren't in the right places.
+func (b BuildState) OnlySpuriousChanges() (bool, error) {
+	// If a lot of files have changed, don't treat this as spurious.
+	if len(b.filesChangedSet) > 3 {
+		return false, nil
+	}
+
+	for f := range b.filesChangedSet {
+		broken, err := ospath.IsBrokenSymlink(f)
+		if err != nil {
+			return false, err
+		}
+
+		if !broken {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // A build state is empty if there are no previous results.

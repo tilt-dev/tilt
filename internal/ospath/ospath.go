@@ -80,6 +80,29 @@ func IsDir(path string) bool {
 	return f.Mode().IsDir()
 }
 
+func IsBrokenSymlink(path string) (bool, error) {
+	// Stat resolves symlinks, lstat does not.
+	// So if Stat reports IsNotExist, but Lstat does not,
+	// then we have a broken symlink.
+	_, err := os.Stat(path)
+	if err == nil {
+		return false, nil
+	}
+
+	if !os.IsNotExist(err) {
+		return false, err
+	}
+
+	_, err = os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // TryAsCwdChildren converts the given absolute paths to children of the CWD,
 // if possible (otherwise, leaves them as absolute paths).
 func TryAsCwdChildren(absPaths []string) []string {
