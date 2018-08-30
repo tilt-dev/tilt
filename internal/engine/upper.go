@@ -100,25 +100,23 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				buildState := oldState.NewStateWithFilesChanged(event.files)
 				buildStates[event.service.Name] = buildState
 
-				changedFiles := buildState.FilesChanged()
-				var changedPathsToPrint []string
-				if len(changedFiles) > maxChangedFilesToPrint {
-					changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
-					changedPathsToPrint = append(changedPathsToPrint, "...")
-				} else {
-					changedPathsToPrint = changedFiles
+				spurious, err := buildState.OnlySpuriousChanges()
+				if err != nil {
+					logger.Get(ctx).Infof("build watch error: %v", err)
 				}
 
-				logger.Get(ctx).Infof("files changed. rebuilding %v. observed %d changes: %v",
-					event.service.Name, len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
+				if spurious {
+					// TODO(nick): I think we probably want to log when this happens?
+					continue
+				}
+
+				u.logBuildEvent(ctx, event.service, buildState)
 
 				result, err := u.b.BuildAndDeploy(
 					ctx,
 					event.service,
 					buildState)
 				if err != nil {
-					// TODO(nick): This isn't right. We need to keep track of the changed files
-					// for the next iteration of the build.
 					logger.Get(ctx).Infof("build failed: %v", err.Error())
 				} else {
 					buildStates[event.service.Name] = NewBuildState(result)
@@ -131,6 +129,20 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 	return nil
+}
+
+func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildState BuildState) {
+	changedFiles := buildState.FilesChanged()
+	var changedPathsToPrint []string
+	if len(changedFiles) > maxChangedFilesToPrint {
+		changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
+		changedPathsToPrint = append(changedPathsToPrint, "...")
+	} else {
+		changedPathsToPrint = changedFiles
+	}
+
+	logger.Get(ctx).Infof("files changed. rebuilding %v. observed %d changes: %v",
+		service.Name, len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
 }
 
 var _ model.ServiceCreator = Upper{}

@@ -1,6 +1,8 @@
 package ospath
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -25,6 +27,27 @@ func TestChild(t *testing.T) {
 	f.assertChild("parent", "parent/child/grandchild/fileC", "child/grandchild/fileC")
 
 	f.assertChild("parent/child", "parent/child/fileB", "fileB")
+}
+
+func TestIsBrokenSymlink(t *testing.T) {
+	f := NewOspathFixture(t)
+	defer f.TearDown()
+
+	f.TouchFiles([]string{
+		"fileA",
+		"child/fileB",
+		"child/grandchild/fileC",
+	})
+
+	f.symlink("fileA", "symlinkFileA")
+	f.symlink("fileB", "symlinkFileB")
+
+	f.assertBrokenSymlink("fileA", false)
+	f.assertBrokenSymlink("fileB", false)
+	f.assertBrokenSymlink("child/fileB", false)
+	f.assertBrokenSymlink("child/grandchild/fileC", false)
+	f.assertBrokenSymlink("symlinkFileA", false)
+	f.assertBrokenSymlink("symlinkFileB", true)
 }
 
 type OspathFixture struct {
@@ -55,5 +78,29 @@ func (f *OspathFixture) assertChild(dir, file, expectedRel string) {
 
 	if rel != expectedRel {
 		f.t.Fatalf("Expected relative path of '%s' to dir '%s' to be: '%s'. Actual: '%s'.", file, dir, expectedRel, rel)
+	}
+}
+
+func (f *OspathFixture) symlink(oldPath, newPath string) {
+	oldPath = path.Join(f.Path(), oldPath)
+	newPath = path.Join(f.Path(), newPath)
+	err := os.Symlink(oldPath, newPath)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func (f *OspathFixture) assertBrokenSymlink(file string, expected bool) {
+	broken, err := IsBrokenSymlink(path.Join(f.Path(), file))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	if broken != expected {
+		if broken {
+			f.t.Fatalf("Expected a regular file or working symlink: %s", file)
+		} else {
+			f.t.Fatalf("Expected a broken symlink: %s", file)
+		}
 	}
 }
