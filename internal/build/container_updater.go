@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -22,7 +23,7 @@ func NewContainerUpdater(dcli DockerClient) *ContainerUpdater {
 	return &ContainerUpdater{dcli: dcli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID containerID, paths []pathMapping, steps []model.Cmd) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping, steps []model.Cmd) error {
 	// rm files from container
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
@@ -75,7 +76,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID containerI
 // Expects to find exactly one matching container -- if not, return error.
 // TODO: support multiple matching container IDs, i.e. restarting multiple containers per pod
 // TODO(maia): move func to somewhere more useful (will need this eventually, but not on ContainerUpdater)
-func (r *ContainerUpdater) containerIdForPod(ctx context.Context, podName string) (containerID, error) {
+func (r *ContainerUpdater) containerIdForPod(ctx context.Context, podName string) (k8s.ContainerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerIdForPod")
 	defer span.Finish()
 
@@ -97,7 +98,7 @@ func (r *ContainerUpdater) containerIdForPod(ctx context.Context, podName string
 	if len(containers) > 2 {
 		var ids []string
 		for _, c := range containers {
-			ids = append(ids, containerID(c.ID).ShortStr())
+			ids = append(ids, k8s.ContainerID(c.ID).ShortStr())
 		}
 		return "", fmt.Errorf("too many matching containers (%v)", ids)
 	}
@@ -105,7 +106,7 @@ func (r *ContainerUpdater) containerIdForPod(ctx context.Context, podName string
 	for _, c := range containers {
 		// TODO(maia): more robust check here (what if user is running a container with "/pause" command?!)
 		if c.Command != pauseCmd {
-			return containerID(c.ID), nil
+			return k8s.ContainerID(c.ID), nil
 		}
 	}
 
@@ -113,7 +114,7 @@ func (r *ContainerUpdater) containerIdForPod(ctx context.Context, podName string
 	return "", fmt.Errorf("no matching non-'/pause' containers")
 }
 
-func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID containerID, paths []pathMapping) error {
+func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping) error {
 	if len(paths) == 0 {
 		return nil
 	}

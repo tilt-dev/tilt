@@ -1,11 +1,11 @@
 package engine
 
 import (
-	context "context"
+	"context"
 	"fmt"
 
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -13,9 +13,12 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
 	"k8s.io/api/core/v1"
+	v1beta13 "k8s.io/api/extensions/v1beta1"
 )
 
 var _ BuildAndDeployer = ImageBuildAndDeployer{}
+
+const servNameLabel = "tiltServiceName"
 
 type ImageBuildAndDeployer struct {
 	b         build.ImageBuilder
@@ -113,7 +116,7 @@ func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Servic
 	return n, nil
 }
 
-func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
+func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Service, img reference.NamedTagged) ([]k8s.K8sEntity, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 
@@ -123,13 +126,42 @@ func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Servi
 		return nil, err
 	}
 
-	didReplace := false
-	newK8sEntities := []k8s.K8sEntity{}
+	// update k8s entities with new image, labels, etc.
+	newK8sEntities, err := updateK8sEntities(entities, service, img, ibd.canSkipPush())
+	if err != nil {
+		return nil, err
+	}
+
+	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
+	if err != nil {
+		return nil, err
+	}
+	return newK8sEntities, nil
+}
+
+// updateK8sEntities updates the given entities for the given service: injecting
+// the newly built image, labeling pods with service name, etc.
+func updateK8sEntities(entities []k8s.K8sEntity, service model.Service, img reference.NamedTagged, canSkipPush bool) ([]k8s.K8sEntity, error) {
+	var newK8sEntities []k8s.K8sEntity
+
+	injectedImg := false
+	labeledWithName := false
+
 	for _, e := range entities {
+		// TODO(maia): we'll need to handle this case for any version of Deployment
+		if deployment, ok := e.Obj.(*v1beta13.Deployment); ok {
+			if deployment.Spec.Template.Labels == nil {
+				deployment.Spec.Template.Labels = make(map[string]string)
+			}
+
+			deployment.Spec.Template.Labels[servNameLabel] = service.Name.String()
+			labeledWithName = true
+		}
+
 		// For development, image pull policy should never be set to "Always",
 		// even if it might make sense to use "Always" in prod. People who
 		// set "Always" for development are shooting their own feet.
-		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+		e, err := k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 		if err != nil {
 			return nil, err
 		}
@@ -137,26 +169,24 @@ func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Servi
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if ibd.canSkipPush() {
+		if canSkipPush {
 			policy = v1.PullNever
 		}
-		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
+		e, replaced, err := k8s.InjectImageDigest(e, img, policy)
 		if err != nil {
 			return nil, err
 		}
 		if replaced {
-			didReplace = true
+			injectedImg = true
 		}
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
-	if !didReplace {
-		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
+	if !injectedImg {
+		return nil, fmt.Errorf("docker image missing from yaml: %s", service.DockerfileTag)
 	}
-
-	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
-	if err != nil {
-		return nil, err
+	if !labeledWithName {
+		return nil, fmt.Errorf("could not tag service with label 'tiltServiceName'")
 	}
 	return newK8sEntities, nil
 }

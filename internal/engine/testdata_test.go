@@ -3,7 +3,7 @@ package engine
 import "github.com/windmilleng/tilt/internal/model"
 
 const SanchoYAML = `
-apiVersion: apps/v1
+apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: sancho

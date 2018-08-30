@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/distribution/reference"
 	build "github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -99,4 +100,12 @@ func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) err
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) error {
 	return nil
+}
+
+func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.Named) (k8s.PodID, error) {
+	return "", fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeK8sClient) applyWasCalled() bool {
+	return c.yaml != ""
 }
