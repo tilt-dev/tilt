@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -116,7 +117,7 @@ func (c *FakeDockerClient) ContainerRestart(ctx context.Context, containerID str
 	return nil
 }
 
-func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error {
 	execCall := ExecCall{
 		Container: cID.String(),
 		Cmd:       cmd,
