@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 func TestPrefixedWriter(t *testing.T) {
@@ -31,6 +32,53 @@ func TestPrefixedWriterNewlineInMiddle(t *testing.T) {
 	tf.Write("hello\nworld")
 	tf.Write("foobar")
 	tf.AssertContentsEqual("XXXhello\nXXXworldfoobar")
+}
+
+func TestPipeline(t *testing.T) {
+	out := &bytes.Buffer{}
+	logger := logger.NewLogger(logger.InfoLvl, out)
+	o := NewOutputter(logger)
+	o.StartPipeline(1)
+	o.StartPipelineStep("%s %s", "hello", "world")
+	o.Printf("in ur step")
+	o.EndPipelineStep()
+	o.EndPipeline()
+
+	result := out.String()
+	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
+STEP 1/1 — hello world
+    ╎ in ur step
+    (Done 0.000s)
+
+  │ Step 1 - 0.000s
+──┤ ︎Pipeline Done in 0.000s ⚡ ︎├───────────────────────────────────
+`, result)
+}
+
+func TestMultilinePrintInPipeline(t *testing.T) {
+	out := &bytes.Buffer{}
+	logger := logger.NewLogger(logger.InfoLvl, out)
+	o := NewOutputter(logger)
+	o.StartPipeline(1)
+	o.StartPipelineStep("%s %s", "hello", "world")
+	o.Printf("line 1\nline 2\n")
+	o.EndPipelineStep()
+	o.EndPipeline()
+
+	result := out.String()
+	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
+STEP 1/1 — hello world
+    ╎ line 1
+    ╎ line 2
+    ╎`+
+		// The weird syntax here is so that formatters don't strip the trailing whitespace
+		" "+
+		`
+    (Done 0.000s)
+
+  │ Step 1 - 0.000s
+──┤ ︎Pipeline Done in 0.000s ⚡ ︎├───────────────────────────────────
+`, result)
 }
 
 type prefixedWriterTestFixture struct {
