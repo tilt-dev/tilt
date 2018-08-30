@@ -20,7 +20,6 @@ type ContainerBuildAndDeployer struct {
 	ibd ImageBuildAndDeployer
 }
 
-// TODO(maia): wire this up
 func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, ibd ImageBuildAndDeployer) *ContainerBuildAndDeployer {
 	return &ContainerBuildAndDeployer{
 		cu:  cu,
