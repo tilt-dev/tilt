@@ -31,7 +31,7 @@ type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	PodWithImage(ctx context.Context, image reference.Named) (PodID, error)
+	PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error)
 
 	// Waits for the LoadBalancer to get a publicly available URL,
 	// then opens that URL in a web browser.

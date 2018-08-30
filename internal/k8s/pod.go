@@ -13,12 +13,18 @@ import (
 // PodWithImage returns the ID of the pod running the given image. We expect exactly one
 // matching pod: if too many or too few matches, throw an error.
 func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
-	_, err := imagesToPods(ctx)
+	ip, err := imagesToPods(ctx)
 	if err != nil {
 		return PodID(""), err
 	}
-	// pods := imgPodMap[image.String()]
-	return PodID(""), nil
+	pods, ok := ip[image]
+	if !ok {
+		return PodID(""), fmt.Errorf("Unable to find pods for %s. Found: %+v", image, ip)
+	}
+	if len(pods) > 1 {
+		return PodID(""), fmt.Errorf("Too many pods found for %s: %d", image, len(pods))
+	}
+	return pods[0], nil
 }
 
 func imagesToPods(ctx context.Context) (map[reference.NamedTagged][]PodID, error) {
@@ -32,7 +38,6 @@ func imagesToPods(ctx context.Context) (map[reference.NamedTagged][]PodID, error
 		return nil, fmt.Errorf("imagesToPods: %v (stderr: %s)", err, stderrBuf.String())
 	}
 
-	fmt.Printf(stdoutBuf.String())
 	return imgPodMapFromOutput(stdoutBuf.String())
 }
 

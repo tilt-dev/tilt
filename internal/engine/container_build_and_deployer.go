@@ -2,11 +2,11 @@ package engine
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -51,16 +51,36 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	// Service has already been deployed; try to update in the running container
 
 	// If we don't know the pod that we just deployed to/container we just deployed, get it
+	var cID k8s.ContainerID
 	if state.LastResult.Container.String() == "" {
 		pID, err := cbd.k8sClient.PodWithImage(ctx, state.LastResult.Image)
 		if err != nil {
 			return BuildResult{}, err
 		}
-		fmt.Println("pod id:", pID)
+		logger.Get(ctx).Infof("Deploying to pod: %s", pID)
 		// get containerID from pID (see container_updater.go --> containerIdForPod)
-		// attach containerID to build result
+		cID, err = cbd.cu.ContainerIdForPod(ctx, string(pID))
+		if err != nil {
+			return BuildResult{}, err
+		}
+		logger.Get(ctx).Infof("Got container ID for pod: %s", cID)
 	}
 	// once have cID -- can call cbd.cu.UpdateContainer(...)
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
+	if err != nil {
+		return BuildResult{}, err
+	}
+	logger.Get(ctx).Infof("Updating container...")
+	err = cbd.cu.UpdateInContainer(ctx, cID, cf, service.Steps)
+	if err != nil {
+		return BuildResult{}, err
+	}
+	logger.Get(ctx).Infof("Container updated")
 
-	return BuildResult{}, fmt.Errorf("incremental build via containerBuildAndDeployer")
+	// everything stays the same, but filesChangedSet gets reset
+	return BuildResult{
+		Image:     state.LastImage(),
+		Entities:  state.LastResult.Entities,
+		Container: cID,
+	}, nil
 }

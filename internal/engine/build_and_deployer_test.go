@@ -125,7 +125,7 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) er
 	return nil
 }
 
-func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.Named) (k8s.PodID, error) {
+func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (k8s.PodID, error) {
 	return "", fmt.Errorf("TODO(maia): not implemented")
 }
 
