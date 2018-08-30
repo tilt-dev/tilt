@@ -9,22 +9,24 @@ import (
 	"os"
 	"strings"
 
-	"github.com/containerd/console"
-	controlapi "github.com/moby/buildkit/api/services/control"
-	"github.com/moby/buildkit/client"
-	"github.com/moby/buildkit/util/progress/progressui"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/dustin/go-humanize"
+
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
 
+	"github.com/containerd/console"
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/registry"
+	controlapi "github.com/moby/buildkit/api/services/control"
+	"github.com/moby/buildkit/client"
+	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/opencontainers/go-digest"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type dockerImageBuilder struct {
@@ -213,6 +215,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	if err != nil {
 		return nil, err
 	}
+	output.Get(ctx).Printf("Tar size: %s", humanize.Bytes(uint64(archive.Len())))
 
 	output.Get(ctx).StartBuildStep("building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
