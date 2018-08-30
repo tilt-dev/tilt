@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -56,7 +57,7 @@ func (c *upCmd) run(args []string) error {
 		cancel()
 	}()
 
-	logOutput("Starting Tilt…")
+	logOutput(fmt.Sprintf("Starting Tilt (built %s)…", buildDateStamp()))
 
 	tf, err := tiltfile.Load("Tiltfile")
 	if err != nil {
@@ -94,4 +95,23 @@ func (c *upCmd) run(args []string) error {
 func logOutput(s string) {
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	log.Printf(color.GreenString(s))
+}
+
+// Returns a build datestamp in the format 2018-08-30
+func buildDateStamp() string {
+	// TODO(nick): Add a mechanism to encode the datestamp in the binary with
+	// ldflags. This currently only works if you are building your own
+	// binaries. It won't work once we're distributing pre-built binaries.
+	path, err := os.Executable()
+	if err != nil {
+		return "[unknown]"
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return "[unknown]"
+	}
+
+	modTime := info.ModTime()
+	return modTime.Format("2006-01-02")
 }
