@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -70,12 +71,17 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
+		buildStates[service.Name] = BuildStateClean
+
 		buildResult, err := u.b.BuildAndDeploy(ctx, service, BuildStateClean)
-		if err != nil {
-			return err
+		if err == nil {
+			buildStates[service.Name] = NewBuildState(buildResult)
+			lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
+		} else if watchMounts {
+			logger.Get(ctx).Infof("build failed: %v", err)
+		} else {
+			return fmt.Errorf("build failed: %v", err)
 		}
-		buildStates[service.Name] = NewBuildState(buildResult)
-		lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
 	}
 
 	if len(lbs) > 0 {
@@ -117,7 +123,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 					event.service,
 					buildState)
 				if err != nil {
-					logger.Get(ctx).Infof("build failed: %v", err.Error())
+					logger.Get(ctx).Infof("build failed: %v", err)
 				} else {
 					buildStates[event.service.Name] = NewBuildState(result)
 				}

@@ -245,6 +245,40 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	}
 }
 
+func TestFirstBuildFailsWhileWatching(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
+	endToken := errors.New("my-err-token")
+	f.b.nextBuildFailure = errors.New("Build failed")
+	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+
+		f.watcher.events <- watch.FileEvent{Path: "/a.go"}
+
+		call = <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+
+		f.watcher.errors <- endToken
+	}()
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	assert.Equal(t, endToken, err)
+}
+
+func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
+	buildFailedToken := errors.New("doesn't compile")
+	f.b.nextBuildFailure = buildFailedToken
+
+	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, false)
+	expected := fmt.Errorf("build failed: %v", buildFailedToken)
+	assert.Equal(t, expected, err)
+}
+
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
