@@ -54,7 +54,6 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 }
 
-// TODO(maia): make this test go. (Expect it to call ContainerBuildAndDeployer stuff.)
 func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
@@ -64,14 +63,18 @@ func TestIncrementalBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// if f.docker.PushCount != 0 {
-	// 	t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	// }
-	//
-	// expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	// if !strings.Contains(f.k8s.yaml, expectedYaml) {
-	// 	t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
-	// }
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 1 {
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.PushCount)
+	}
+	if len(f.docker.ExecCalls) != 1 {
+		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
+	}
+	if len(f.docker.RestartsByContainer) != 1 {
+		t.Errorf("Expected 1 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
+	}
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
