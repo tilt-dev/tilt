@@ -81,9 +81,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	}
 	logger.Get(ctx).Infof("Container updated")
 
-	// everything stays the same, but filesChangedSet gets reset
 	return BuildResult{
-		Image:     state.LastImage(),
 		Entities:  state.LastResult.Entities,
 		Container: cID,
 	}, nil

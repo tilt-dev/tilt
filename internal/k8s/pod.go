@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -17,7 +16,7 @@ func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTa
 	if err != nil {
 		return PodID(""), err
 	}
-	pods, ok := ip[image]
+	pods, ok := ip[image.String()]
 	if !ok {
 		return PodID(""), fmt.Errorf("Unable to find pods for %s. Found: %+v", image, ip)
 	}
@@ -27,22 +26,23 @@ func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTa
 	return pods[0], nil
 }
 
-func imagesToPods(ctx context.Context) (map[reference.NamedTagged][]PodID, error) {
-	c := exec.CommandContext(ctx, "kubectl", "get", "pods", "-o=jsonpath={range .items[*]}{\"\\n\"}{.metadata.name}{\"\\t\"}{range .spec.containers[*]}{.image}")
-	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
-	c.Stdout = stdoutBuf
-	c.Stderr = stderrBuf
+func imagesToPods(ctx context.Context) (map[string][]PodID, error) {
+	c := exec.CommandContext(ctx, "kubectl", "get", "pods", `-o=jsonpath={range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}`)
 
-	err := c.Run()
+	out, err := c.Output()
 	if err != nil {
-		return nil, fmt.Errorf("imagesToPods: %v (stderr: %s)", err, stderrBuf.String())
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("imagesToPods: stderr: %s)", exitError.Stderr)
+		} else {
+			return nil, fmt.Errorf("imagesToPods: %v", err.Error())
+		}
 	}
 
-	return imgPodMapFromOutput(stdoutBuf.String())
+	return imgPodMapFromOutput(string(out))
 }
 
-func imgPodMapFromOutput(output string) (map[reference.NamedTagged][]PodID, error) {
-	imgsToPods := make(map[reference.NamedTagged][]PodID)
+func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
+	imgsToPods := make(map[string][]PodID)
 	lns := strings.Split(output, "\n")
 	for _, ln := range lns {
 		if strings.TrimSpace(ln) == "" {
@@ -54,11 +54,7 @@ func imgPodMapFromOutput(output string) (map[reference.NamedTagged][]PodID, erro
 			return nil, fmt.Errorf("could not split line in two on tab: %s", ln)
 		}
 
-		nt, err := ParseNamedTagged(pair[1])
-		if err != nil {
-			return nil, err
-		}
-
+		nt := pair[1]
 		imgsToPods[nt] = append(imgsToPods[nt], PodID(pair[0]))
 	}
 	return imgsToPods, nil
