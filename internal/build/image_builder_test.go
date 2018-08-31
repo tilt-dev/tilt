@@ -170,7 +170,7 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 }
 
 func (f *dockerBuildFixture) assertFilesInContainer(
-	ctx context.Context, cID containerID, expectedFiles []expectedFile) {
+	ctx context.Context, cID k8s.ContainerID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
 		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.path)
 		if expectedFile.missing {
@@ -217,7 +217,7 @@ func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFi
 }
 
 // startContainer starts a container from the given config
-func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) containerID {
+func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) k8s.ContainerID {
 	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
@@ -229,7 +229,7 @@ func (f *dockerBuildFixture) startContainer(ctx context.Context, config *contain
 		f.t.Fatalf("startContainer: %v", err)
 	}
 
-	return containerID(cID)
+	return k8s.ContainerID(cID)
 }
 
 type threadSafeWriter struct {

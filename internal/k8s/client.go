@@ -9,11 +9,22 @@ import (
 	"os/exec"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/output"
 )
+
+type PodID string
+type ContainerID string
+
+func (cID ContainerID) String() string { return string(cID) }
+func (cID ContainerID) ShortStr() string {
+	if len(string(cID)) > 10 {
+		return string(cID)[:10]
+	}
+	return string(cID)
+}
 
 type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
