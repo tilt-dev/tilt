@@ -29,6 +29,6 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	if err != nil {
 		return nil, err
 	}
-	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, imageBuildAndDeployer)
+	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, imageBuildAndDeployer)
 	return containerBuildAndDeployer, nil
 }

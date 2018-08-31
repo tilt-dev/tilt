@@ -125,3 +125,16 @@ func extractContainers(obj interface{}) ([]*v1.Container, error) {
 	}
 	return result, nil
 }
+
+func ParseNamedTagged(s string) (reference.NamedTagged, error) {
+	ref, err := reference.Parse(s)
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s: %v", s, err)
+	}
+
+	nt, ok := ref.(reference.NamedTagged)
+	if !ok {
+		return nil, fmt.Errorf("could not parse ref %s as NamedTagged", ref)
+	}
+	return nt, nil
+}
