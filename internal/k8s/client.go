@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -29,6 +30,8 @@ func (cID ContainerID) ShortStr() string {
 type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
+
+	PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error)
 
 	// Waits for the LoadBalancer to get a publicly available URL,
 	// then opens that URL in a web browser.

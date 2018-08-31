@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/distribution/reference"
 	build "github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -78,9 +79,14 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	}
 }
 
+func (f *bdFixture) setPodExists(val bool) {
+	f.k8s.podWithImageExists = val
+}
+
 type FakeK8sClient struct {
-	yaml string
-	lb   k8s.LoadBalancer
+	yaml               string
+	lb                 k8s.LoadBalancer
+	podWithImageExists bool
 }
 
 func (c *FakeK8sClient) OpenService(ctx context.Context, lb k8s.LoadBalancer) error {
@@ -99,4 +105,16 @@ func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) err
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) error {
 	return nil
+}
+
+func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (k8s.PodID, error) {
+	if !c.podWithImageExists {
+		return k8s.PodID(""), fmt.Errorf("Pod not found")
+	}
+
+	return k8s.PodID("pod"), nil
+}
+
+func (c *FakeK8sClient) applyWasCalled() bool {
+	return c.yaml != ""
 }
