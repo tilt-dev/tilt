@@ -32,7 +32,7 @@ type DockerClient interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error
 	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
-	ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error
+	ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
@@ -118,7 +118,7 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 	return result, nil
 }
 
-func (d *DockerCli) ExecInContainer(ctx context.Context, cID containerID, cmd model.Cmd) error {
+func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ExecInContainer")
 	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
 	defer span.Finish()

@@ -1,16 +1,20 @@
 package engine
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
-	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/testutils"
-	dirs "github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
+
+var cID = k8s.ContainerID("test_container")
+var alreadyBuilt = BuildResult{Container: cID}
 
 func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
@@ -48,6 +52,26 @@ func TestDockerForMacDeploy(t *testing.T) {
 	if !strings.Contains(f.k8s.yaml, expectedYaml) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
 	}
+}
+
+// TODO(maia): make this test go. (Expect it to call ContainerBuildAndDeployer stuff.)
+func TestIncrementalBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// if f.docker.PushCount != 0 {
+	// 	t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	// }
+	//
+	// expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	// if !strings.Contains(f.k8s.yaml, expectedYaml) {
+	// 	t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
+	// }
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
@@ -99,4 +123,12 @@ func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) err
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) error {
 	return nil
+}
+
+func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (k8s.PodID, error) {
+	return "", fmt.Errorf("TODO(maia): not implemented")
+}
+
+func (c *FakeK8sClient) applyWasCalled() bool {
+	return c.yaml != ""
 }

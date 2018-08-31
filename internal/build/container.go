@@ -7,16 +7,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-type containerID string
-
-func (cID containerID) String() string { return string(cID) }
-func (cID containerID) ShortStr() string {
-	if len(string(cID)) > 10 {
-		return string(cID)[:10]
-	}
-	return string(cID)
-}
-
 // Get a container config to run a container with a given command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.
 func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *container.Config {
