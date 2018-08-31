@@ -13,7 +13,7 @@ import (
 func TestContainerIdForPodOneMatch(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cu.ContainerIdForPod(f.ctx, testPod)
+	cID, err := f.cu.ContainerIDForPod(f.ctx, testPod)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestContainerIdForPodOneMatch(t *testing.T) {
 func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cu.ContainerIdForPod(f.ctx, "one-pause-cmd")
+	cID, err := f.cu.ContainerIDForPod(f.ctx, "one-pause-cmd")
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
 func TestContainerIdForPodTooManyMatches(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	_, err := f.cu.ContainerIdForPod(f.ctx, "too-many")
+	_, err := f.cu.ContainerIDForPod(f.ctx, "too-many")
 	if assert.NotNil(f.t, err) {
 		assert.Contains(f.t, err.Error(), "too many matching containers")
 	}
@@ -42,7 +42,7 @@ func TestContainerIdForPodTooManyMatches(t *testing.T) {
 func TestContainerIdForPodNoNonPause(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	_, err := f.cu.ContainerIdForPod(f.ctx, "all-pause")
+	_, err := f.cu.ContainerIDForPod(f.ctx, "all-pause")
 	if assert.NotNil(f.t, err) {
 		assert.Contains(f.t, err.Error(), "no matching non-'/pause' containers")
 	}

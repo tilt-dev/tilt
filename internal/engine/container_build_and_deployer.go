@@ -55,15 +55,19 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	if state.LastResult.Container.String() == "" {
 		pID, err := cbd.k8sClient.PodWithImage(ctx, state.LastResult.Image)
 		if err != nil {
-			return BuildResult{}, err
+			logger.Get(ctx).Infof("Unable to find pod, falling back to image deploy")
+			return cbd.ibd.BuildAndDeploy(ctx, service, state)
 		}
 		logger.Get(ctx).Infof("Deploying to pod: %s", pID)
 		// get containerID from pID (see container_updater.go --> containerIdForPod)
-		cID, err = cbd.cu.ContainerIdForPod(ctx, string(pID))
+		cID, err = cbd.cu.ContainerIDForPod(ctx, string(pID))
 		if err != nil {
-			return BuildResult{}, err
+			logger.Get(ctx).Infof("Unable to find container, falling back to image deploy")
+			return cbd.ibd.BuildAndDeploy(ctx, service, state)
 		}
 		logger.Get(ctx).Infof("Got container ID for pod: %s", cID)
+	} else {
+		cID = state.LastResult.Container
 	}
 	// once have cID -- can call cbd.cu.UpdateContainer(...)
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
