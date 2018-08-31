@@ -41,6 +41,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		wire.Bind(new(engine.BuildAndDeployer), new(engine.ContainerBuildAndDeployer)),
 		engine.NewContainerBuildAndDeployer,
 		build.NewContainerUpdater,
+		engine.DefaultSkipContainer,
 
 		engine.NewUpper,
 		provideServiceCreator,

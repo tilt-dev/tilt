@@ -20,20 +20,30 @@ type ContainerBuildAndDeployer struct {
 	// containerBD can't do initial build, so will call out to ibd for that.
 	// May also fall back to ibd for certain error cases.
 	ibd ImageBuildAndDeployer
+
+	skipContainer bool
 }
 
-func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, ibd ImageBuildAndDeployer) *ContainerBuildAndDeployer {
+func DefaultSkipContainer() bool {
+	return true
+}
+
+func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, ibd ImageBuildAndDeployer, skipContainer bool) *ContainerBuildAndDeployer {
 	return &ContainerBuildAndDeployer{
-		cu:        cu,
-		env:       env,
-		k8sClient: kCli,
-		ibd:       ibd,
+		cu:            cu,
+		env:           env,
+		k8sClient:     kCli,
+		ibd:           ibd,
+		skipContainer: skipContainer,
 	}
 }
 
 func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
+	if cbd.skipContainer {
+		return cbd.ibd.BuildAndDeploy(ctx, service, state)
+	}
 
 	// TODO(maia): proper output for this stuff
 

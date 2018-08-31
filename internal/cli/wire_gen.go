@@ -45,7 +45,8 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	if err != nil {
 		return nil, err
 	}
-	containerBuildAndDeployer := engine.NewContainerBuildAndDeployer(containerUpdater, env, kubectlClient, imageBuildAndDeployer)
+	bool2 := engine.DefaultSkipContainer()
+	containerBuildAndDeployer := engine.NewContainerBuildAndDeployer(containerUpdater, env, kubectlClient, imageBuildAndDeployer, bool2)
 	upper := engine.NewUpper(ctx, containerBuildAndDeployer, kubectlClient, browser)
 	manager := service.ProvideMemoryManager()
 	serviceCreator := provideServiceCreator(upper, manager)

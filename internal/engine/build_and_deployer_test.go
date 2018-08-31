@@ -159,7 +159,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env)
+	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, false)
 	if err != nil {
 		t.Fatal(err)
 	}
