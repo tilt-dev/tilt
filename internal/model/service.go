@@ -22,7 +22,7 @@ type Service struct {
 	Name           ServiceName `hash:"ignore"`
 }
 
-type HashedService = uint64
+type HashedService uint64
 
 func (s *Service) Hash() (HashedService, error) {
 	hash, err := hashstructure.Hash(s, nil)
@@ -78,12 +78,21 @@ type Cmd struct {
 	Argv []string
 }
 
-func (c Cmd) isShellStandardForm() bool {
+func (c Cmd) IsShellStandardForm() bool {
 	return len(c.Argv) == 3 && c.Argv[0] == "sh" && c.Argv[1] == "-c" && !strings.Contains(c.Argv[2], "\n")
 }
 
+// Get the script when the shell is in standard form.
+// Panics if the command is not in shell standard form.
+func (c Cmd) ShellStandardScript() string {
+	if !c.IsShellStandardForm() {
+		panic(fmt.Sprintf("Not in shell standard form: %+v", c))
+	}
+	return c.Argv[2]
+}
+
 func (c Cmd) EntrypointStr() string {
-	if c.isShellStandardForm() {
+	if c.IsShellStandardForm() {
 		return fmt.Sprintf("ENTRYPOINT %s", c.Argv[2])
 	}
 
@@ -95,7 +104,7 @@ func (c Cmd) EntrypointStr() string {
 }
 
 func (c Cmd) RunStr() string {
-	if c.isShellStandardForm() {
+	if c.IsShellStandardForm() {
 		return fmt.Sprintf("RUN %s", c.Argv[2])
 	}
 
