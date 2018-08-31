@@ -8,6 +8,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
+      - run: docker pull registry:2
       - run: make all
 
   build-macos:
