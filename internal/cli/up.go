@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -20,7 +21,8 @@ import (
 )
 
 type upCmd struct {
-	watch bool
+	watch       bool
+	browserMode engine.BrowserMode
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -31,6 +33,7 @@ func (c *upCmd) register() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically rebuilt and redeployed when files in their repos change")
+	cmd.Flags().Var(&c.browserMode, "browser", "open a browser when the service first starts")
 
 	return cmd
 }
@@ -69,7 +72,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	serviceCreator, err := wireServiceCreator(ctx)
+	serviceCreator, err := wireServiceCreator(ctx, c.browserMode)
 	if err != nil {
 		return err
 	}

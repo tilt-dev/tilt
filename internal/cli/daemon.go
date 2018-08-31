@@ -51,7 +51,7 @@ func (c *daemonCmd) run(args []string) error {
 	)
 
 	ctx := context.Background()
-	serviceCreator, err := wireServiceCreator(ctx)
+	serviceCreator, err := wireServiceCreator(ctx, engine.BrowserAuto)
 	if err != nil {
 		return fmt.Errorf("failed to build daemon: %v", err)
 	}

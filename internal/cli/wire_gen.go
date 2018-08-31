@@ -18,7 +18,7 @@ import (
 
 // Injectors from wire.go:
 
-func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
+func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
 	env, err := k8s.DetectEnv()
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
 		return nil, err
 	}
 	containerBuildAndDeployer := engine.NewContainerBuildAndDeployer(containerUpdater, env, imageBuildAndDeployer)
-	upper := engine.NewUpper(ctx, containerBuildAndDeployer, kubectlClient)
+	upper := engine.NewUpper(ctx, containerBuildAndDeployer, kubectlClient, browser)
 	manager := service.ProvideMemoryManager()
 	serviceCreator := provideServiceCreator(upper, manager)
 	return serviceCreator, nil
