@@ -52,6 +52,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		watcherMaker: watcherMaker,
 		timerMaker:   time.After,
 		k8s:          k8s,
+		browserMode:  browserMode,
 	}
 }
 
