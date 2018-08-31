@@ -55,13 +55,19 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 	}
 
 	for _, v := range vMap {
-		if v.vertex.error != "" {
-			msg := fmt.Sprintf("RUN: %s\n", strings.TrimPrefix(v.vertex.name, "/bin/sh -c "))
-			b.output.Write([]byte(msg))
+		cmdPrefix := "/bin/sh -c "
 
+		if !strings.HasPrefix(v.vertex.name, cmdPrefix) {
+			continue
+		}
+
+		msg := fmt.Sprintf("RUN: %s\n", strings.TrimPrefix(v.vertex.name, cmdPrefix))
+		b.output.Write([]byte(msg))
+
+		if v.vertex.error != "" {
 			for _, l := range v.logs {
 				if len(l.msg) > 0 {
-					msg := fmt.Sprintf("  → ERROR: %s", l.msg)
+					msg := fmt.Sprintf("  → ERROR: %s\n", l.msg)
 					b.output.Write([]byte(msg))
 				}
 			}

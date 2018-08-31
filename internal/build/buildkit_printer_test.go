@@ -45,7 +45,9 @@ func TestBuildkitPrinter(t *testing.T) {
 	p.parseAndPrint(vertexes, logs)
 
 	expected := `RUN: (>&2 echo "error"; exit 1)
-  → ERROR: error`
+  → ERROR: error
+RUN: echo hi
+`
 
 	if output.String() != expected {
 		t.Errorf("EXPECTED:\n%s\nGOT:\n%s\n", expected, output.String())
