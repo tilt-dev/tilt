@@ -28,8 +28,8 @@ TOUCHED_FILES = []
 OUTPUT_WAIT_TIMEOUT_SECS = 10  # max time we'll wait on a process for output
 
 tilt_up_called = False
-tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d']
-tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d']
+tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d', '--browser=off']
+tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d', '--browser=off']
 
 # TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
 

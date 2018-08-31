@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	engine "github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
@@ -27,7 +28,7 @@ func Execute() {
 		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
 	}
 
-	addCommand(rootCmd, &upCmd{})
+	addCommand(rootCmd, &upCmd{browserMode: engine.BrowserAuto})
 	addCommand(rootCmd, &daemonCmd{})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")

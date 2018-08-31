@@ -16,7 +16,7 @@ import (
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-func wireServiceCreator(ctx context.Context) (model.ServiceCreator, error) {
+func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
 	wire.Build(
 		service.ProvideMemoryManager,
 		k8s.DetectEnv,

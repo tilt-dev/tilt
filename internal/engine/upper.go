@@ -37,12 +37,13 @@ type Upper struct {
 	watcherMaker watcherMaker
 	timerMaker   timerMaker
 	k8s          k8s.Client
+	browserMode  BrowserMode
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -84,7 +85,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
-	if len(lbs) > 0 {
+	if len(lbs) > 0 && u.browserMode == BrowserAuto {
 		// Open only the first load balancer in a browser.
 		// TODO(nick): We might need some hints on what load balancer to
 		// open if we have multiple, or what path to default to on the opened service.
