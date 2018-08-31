@@ -27,7 +27,7 @@ func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTa
 }
 
 func imagesToPods(ctx context.Context) (map[string][]PodID, error) {
-	c := exec.CommandContext(ctx, "kubectl", "get", "pods", `-o=jsonpath={range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}`)
+	c := exec.CommandContext(ctx, "kubectl", "get", "pods", `-o=jsonpath={range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}`)
 
 	out, err := c.Output()
 	if err != nil {
@@ -49,13 +49,14 @@ func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
 			continue
 		}
 
-		pair := strings.Split(ln, "\t")
-		if len(pair) != 2 {
-			return nil, fmt.Errorf("could not split line in two on tab: %s", ln)
+		tuple := strings.Split(ln, "\t")
+		if len(tuple) == 0 {
+			return nil, fmt.Errorf("could not split line on tab: %s", ln)
 		}
 
-		nt := pair[1]
-		imgsToPods[nt] = append(imgsToPods[nt], PodID(pair[0]))
+		for _, nt := range tuple[1:] {
+			imgsToPods[nt] = append(imgsToPods[nt], PodID(tuple[0]))
+		}
 	}
 	return imgsToPods, nil
 }
