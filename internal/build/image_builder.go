@@ -91,6 +91,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existin
 	defer span.Finish()
 
 	dfForExisting := DockerfileFromExisting(existing)
+	steps = model.TrySquash(steps)
 	return d.buildImage(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
 }
 
