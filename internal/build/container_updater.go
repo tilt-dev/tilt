@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -65,7 +66,9 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	}
 
 	// Restart container so that entrypoint restarts with the updated files etc.
-	err = r.dcli.ContainerRestart(ctx, cID.String(), nil)
+	// Don't wait on the container to fully start.
+	dur := time.Duration(0)
+	err = r.dcli.ContainerRestart(ctx, cID.String(), &dur)
 	if err != nil {
 		return fmt.Errorf("ContainerRestart: %v", err)
 	}
