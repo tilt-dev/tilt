@@ -18,7 +18,8 @@ func provideBuildAndDeployer(
 	docker build.DockerClient,
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
-	env k8s.Env) (BuildAndDeployer, error) {
+	env k8s.Env,
+	skipContainer bool) (BuildAndDeployer, error) {
 	wire.Build(
 		image.NewImageHistory,
 

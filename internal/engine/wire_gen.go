@@ -15,7 +15,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, skipContainer bool) (BuildAndDeployer, error) {
 	containerUpdater := build.NewContainerUpdater(docker)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
@@ -29,6 +29,6 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	if err != nil {
 		return nil, err
 	}
-	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, imageBuildAndDeployer)
+	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, imageBuildAndDeployer, skipContainer)
 	return containerBuildAndDeployer, nil
 }
