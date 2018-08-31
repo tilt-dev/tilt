@@ -13,6 +13,22 @@ func TestBuildkitPrinter(t *testing.T) {
 		{
 			digest: "sha1234234234234",
 			name:   `/bin/sh -c (>&2 echo "error"; exit 1)`,
+			error:  "",
+		},
+		{
+			digest: "sha8234234546454",
+			name:   "/bin/sh -c echo hi",
+			error:  "",
+		},
+		{
+			digest: "sha82342xxxx454",
+			name:   "docker-image://docker.io/blah",
+			error:  "",
+		},
+		{
+			digest: "sha1234234234234",
+			name:   `/bin/sh -c (>&2 echo "error"; exit 1)`,
+			error:  `executor failed running [/bin/sh -c (>&2 echo "error"; exit 1)]: exit code 2`,
 		},
 	}
 	logs := []*vertexLog{
@@ -20,14 +36,18 @@ func TestBuildkitPrinter(t *testing.T) {
 			vertex: "sha1234234234234",
 			msg:    []byte("error"),
 		},
+		{
+			vertex: "sha8234234546454",
+			msg:    []byte(""),
+		},
 	}
 
 	p.parseAndPrint(vertexes, logs)
 
 	expected := `RUN: (>&2 echo "error"; exit 1)
-→ ERROR: error`
+  → ERROR: error`
 
 	if output.String() != expected {
-		t.Errorf("Expected %s. Got %s", expected, output.String())
+		t.Errorf("EXPECTED:\n%s\nGOT:\n%s\n", expected, output.String())
 	}
 }
