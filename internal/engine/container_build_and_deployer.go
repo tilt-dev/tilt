@@ -60,7 +60,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 		}
 		logger.Get(ctx).Infof("Deploying to pod: %s", pID)
 		// get containerID from pID (see container_updater.go --> containerIdForPod)
-		cID, err = cbd.cu.ContainerIDForPod(ctx, string(pID))
+		cID, err = cbd.cu.ContainerIDForPod(ctx, pID)
 		if err != nil {
 			logger.Get(ctx).Infof("Unable to find container, falling back to image deploy")
 			return cbd.ibd.BuildAndDeploy(ctx, service, state)
