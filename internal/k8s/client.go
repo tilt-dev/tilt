@@ -62,7 +62,10 @@ func (k KubectlClient) OpenService(ctx context.Context, lb LoadBalancer) error {
 
 	if k.env == EnvMinikube {
 		logger.Get(ctx).Infof("Waiting on minikube to load service: %s", lb.Name)
-		cmd := exec.CommandContext(ctx, "minikube", "service", lb.Name, "--url")
+
+		intervalSec := "1" // 1s is the smallest polling interval we can set :raised_eyebrow:
+		cmd := exec.CommandContext(ctx, "minikube", "service", lb.Name, "--url", "--interval", intervalSec)
+
 		cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 
 		out, err := cmd.Output()

@@ -228,7 +228,9 @@ def fe_url():
     if env == K8sEnv.MINIKUBE:
         me = os.getlogin()
         service = 'devel-{}-lb-blorg-fe'.format(me)
-        out = subprocess.check_output(['minikube', 'service', service, '--url'])
+        intervalSec = 1 # 1s is the smallest polling interval we can set :raised_eyebrow:
+        out = subprocess.check_output([
+            'minikube', 'service', service, '--url', '--interval', intervalSec])
         return out.decode('utf-8').strip()
 
     raise Exception('Unable to find blorg-fe url')
