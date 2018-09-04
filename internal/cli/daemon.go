@@ -32,7 +32,7 @@ func (c *daemonCmd) register() *cobra.Command {
 }
 
 func (c *daemonCmd) run(args []string) error {
-	err := tracer.Init()
+	_, err := tracer.Init()
 	if err != nil {
 		log.Printf("Warning: unable to initialize tracer: %s", err)
 	}

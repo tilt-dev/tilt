@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
@@ -23,6 +22,7 @@ import (
 type upCmd struct {
 	watch       bool
 	browserMode engine.BrowserMode
+	cleanUpFn   func() error
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -54,8 +54,15 @@ func (c *upCmd) run(args []string) error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		_ = <-sigs
-		// Sleep briefly to let tracing flush
-		time.Sleep(500 * time.Millisecond)
+
+		// Clean up anything that needs cleaning up
+		err := c.cleanUpFn()
+		if err != nil {
+			l.Infof("error cleaning up: %v", err)
+		}
+
+		// We rely on context cancellation being handled elsewhere --
+		// otherwise there's no way to SIGINT/SIGTERM this app o_0
 		cancel()
 	}()
 

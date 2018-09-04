@@ -22,13 +22,13 @@ func logLevel() logger.Level {
 	}
 }
 
-func Execute() {
+func Execute(cleanUpFn func() error) {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
 		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
 	}
 
-	addCommand(rootCmd, &upCmd{browserMode: engine.BrowserAuto})
+	addCommand(rootCmd, &upCmd{cleanUpFn: cleanUpFn, browserMode: engine.BrowserAuto})
 	addCommand(rootCmd, &daemonCmd{})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
