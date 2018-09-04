@@ -7,6 +7,7 @@ import random
 import signal
 import string
 import subprocess
+import time
 from typing import List, Callable
 
 
@@ -22,14 +23,19 @@ KB = 1000 * B
 MB = 1000 * KB
 
 GOPATH = os.environ['GOPATH'] if 'GOPATH' in os.environ else os.path.join(os.environ['HOME'], 'go')
+BLORG_FRONTEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorg-frontend')
+BLORG_FRONTEND_INDEX = os.path.join(BLORG_FRONTEND_DIR, 'index.html')
 BLORGLY_BACKEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorgly-backend')
 SERVICE_NAME = 'blorgly_backend_local'
+FE_SERVICE_NAME = 'blorg_frontend'
 TOUCHED_FILES = []
 OUTPUT_WAIT_TIMEOUT_SECS = 10  # max time we'll wait on a process for output
 
 tilt_up_called = False
 tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d', '--browser=off']
 tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d', '--browser=off']
+tilt_up_fe_cmd = ["tilt", "up", FE_SERVICE_NAME, '-d', '--browser=off']
+tilt_up_watch_fe_cmd = ["tilt", "up", FE_SERVICE_NAME, '--watch', '-d', '--browser=off']
 
 # TODO(maia): capture amount of tilt overhead (i.e. total time - local build time)
 
@@ -41,12 +47,14 @@ class K8sEnv(Enum):
 
 
 class Case:
-    def __init__(self, name: str, func: Callable[[], float]):
+    def __init__(self, name: str, func: Callable[[], float], wd=BLORGLY_BACKEND_DIR):
         self.name = name
         self.func = func
         self.time_seconds = None
+        self.wd = wd
 
     def run(self):
+        os.chdir(self.wd)
         print('~~ RUNNING CASE: {}'.format(self.name))
         self.time_seconds = self.func()
 
@@ -61,8 +69,6 @@ class Timer:
 
 
 def main():
-    os.chdir(BLORGLY_BACKEND_DIR)
-
     cases = [
         Case('tilt up 1x', test_tilt_up_once),
         Case('tilt up again, no change', test_tilt_up_again_no_change),
@@ -70,6 +76,8 @@ def main():
         Case('watch build from changed file', test_watch_build_from_changed_file),
         Case('watch build from many changed files', test_watch_build_from_many_changed_files),
         Case('tilt up, big file (5MB)', test_tilt_up_big_file),
+        Case('tilt up, new file, checking frontend', test_tilt_up_fe, wd=BLORG_FRONTEND_DIR),
+        Case('watch build, changed file, checking frontend', test_tilt_up_watch_fe, wd=BLORG_FRONTEND_DIR),
 
         # Leave this commented out unless you particularly want it, it's damn slow.
         # Case('tilt up, REALLY big file (500MB)', test_tilt_up_really_big_file),
@@ -176,6 +184,13 @@ def get_k8s_env() -> K8sEnv:
     else:
         raise Exception('Unable to find a matching k8s env for output "{}"'. format(outstr))
 
+def curl(url) -> str:
+    try:
+        out = subprocess.check_output(['curl', url], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        return "" # it's ok if the service isn't up yet
+
+    return out.decode('utf-8').strip()
 
 def write_file(n: int):
     """
@@ -189,6 +204,34 @@ def write_file(n: int):
     # TODO(maia): this should be stored on an object instead of in a global var :-/
     global TOUCHED_FILES
     TOUCHED_FILES.append(name)
+
+def write_fe_token() -> str:
+    now = str(datetime.datetime.now())
+    call_or_error(['sed', '-e', 's/^.*timing.py.*$/    timing.py {}/'.format(now), '-i', BLORG_FRONTEND_INDEX])
+    return now
+
+def wait_for_fe_token(token: str):
+    url = fe_url()
+    print('Waiting for token to appear: {}'.format(url))
+
+    found = False
+    while not found:
+        out = curl(url)
+        found = token in out
+        if not found:
+            time.sleep(0.1)
+
+def fe_url():
+    env = get_k8s_env()
+    if env == K8sEnv.D4M:
+        return 'localhost:8081'
+    if env == K8sEnv.MINIKUBE:
+        me = os.getlogin()
+        service = 'devel-{}-lb-blorg-fe'.format(me)
+        out = subprocess.check_output(['minikube', 'service', service, '--url'])
+        return out.decode('utf-8').strip()
+
+    raise Exception('Unable to find blorg-fe url')
 
 
 def clean_up():
@@ -222,6 +265,27 @@ def test_tilt_up_again_new_file() -> float:
 
     return time_call(tilt_up_cmd)
 
+def test_tilt_up_fe() -> float:
+    call_or_error(tilt_up_fe_cmd)
+    token = write_fe_token()
+    print('Wrote token "{}", waiting for it to appear in HTML'.format(token))
+
+    with Timer() as t:
+        call_or_error(tilt_up_fe_cmd)
+        wait_for_fe_token(token)
+
+    return t.duration_secs
+
+def test_tilt_up_watch_fe() -> float:
+    tilt_proc = run_and_wait_for_stdout(tilt_up_watch_fe_cmd, '[timing.py] finished initial build')
+    token = write_fe_token()
+    print('Wrote token "{}", waiting for it to appear in HTML'.format(token))
+
+    with Timer() as t:
+        wait_for_fe_token(token)
+
+    tilt_proc.terminate()
+    return t.duration_secs
 
 def test_watch_build_from_changed_file() -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
