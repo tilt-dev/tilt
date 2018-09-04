@@ -67,6 +67,24 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 	return entity, replaced, nil
 }
 
+// RemoveCommand removes the container command stanzas from a k8s entity
+func RemoveCommand(entity K8sEntity) (K8sEntity, bool, error) {
+	containers, err := extractContainers(&entity)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+
+	replaced := false
+	for _, container := range containers {
+		if len(container.Command) > 0 {
+			replaced = true
+			container.Command = nil
+		}
+	}
+
+	return entity, replaced, nil
+}
+
 // Get pointers to all the container specs in this object.
 func extractContainers(obj interface{}) ([]*v1.Container, error) {
 	cType := reflect.TypeOf(v1.Container{})

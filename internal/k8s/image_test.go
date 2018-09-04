@@ -141,6 +141,37 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 	}
 }
 
+func TestRemoveCommandBlorgBackendYAML(t *testing.T) {
+	entities, err := ParseYAMLFromString(BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entities) != 2 {
+		t.Fatalf("Unexpected entities: %+v", entities)
+	}
+
+	entity := entities[1]
+
+	newEntity, replaced, err := RemoveCommand(entity)
+	if err != nil {
+		t.Fatal(err)
+
+		if !replaced {
+			t.Errorf("Expected replaced: true. Actual: %v", replaced)
+		}
+	}
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(result, "command:") {
+		t.Errorf("image has command stanza: %s", result)
+	}
+}
+
 // Returns: the new entity, whether anything was replaced, and an error.
 func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	originalRef, err := reference.ParseNamed(original)
