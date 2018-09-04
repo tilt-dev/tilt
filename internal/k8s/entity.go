@@ -20,6 +20,16 @@ func (e K8sEntity) ImmutableOnceCreated() bool {
 	return false
 }
 
+func (e K8sEntity) DeepCopy() K8sEntity {
+	// GroupVersionKind is a struct of string values, so dereferencing the pointer
+	// is an adequate copy.
+	kind := *e.Kind
+	return K8sEntity{
+		Obj:  e.Obj.DeepCopyObject(),
+		Kind: &kind,
+	}
+}
+
 func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 	result := make([]K8sEntity, 0)
 	for _, e := range entities {

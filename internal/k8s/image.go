@@ -11,6 +11,7 @@ import (
 // Iterate through the fields of a k8s entity and
 // replace the image pull policy on all images.
 func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, error) {
+	entity = entity.DeepCopy()
 	containers, err := extractContainers(&entity)
 	if err != nil {
 		return K8sEntity{}, err
@@ -31,6 +32,8 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 //
 // Returns: the new entity, whether the image was replaced, and an error.
 func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
+	entity = entity.DeepCopy()
+
 	// NOTE(nick): For some reason, if you have a reference with a digest,
 	// kubernetes will never find it in the local registry and always tries to do a
 	// pull. It's not clear to me why it behaves this way.

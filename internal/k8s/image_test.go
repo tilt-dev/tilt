@@ -64,6 +64,38 @@ func TestInjectDigestSanchoYAML(t *testing.T) {
 	}
 }
 
+func TestInjectDigestDoesNotMutateOriginal(t *testing.T) {
+	entities, err := ParseYAMLFromString(SanchoYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entities) != 1 {
+		t.Fatalf("Unexpected entities: %+v", entities)
+	}
+
+	entity := entities[0]
+	name := "gcr.io/some-project-162817/sancho"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	_, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !replaced {
+		t.Errorf("Expected replaced: true. Actual: %v", replaced)
+	}
+
+	result, err := SerializeYAML([]K8sEntity{entity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(result, fmt.Sprintf("image: %s@%s", name, digest)) {
+		t.Errorf("oops! accidentally mutated original entity: %s", result)
+	}
+}
+
 func TestInjectImagePullPolicy(t *testing.T) {
 	entities, err := ParseYAMLFromString(BlorgBackendYAML)
 	if err != nil {
@@ -83,6 +115,37 @@ func TestInjectImagePullPolicy(t *testing.T) {
 
 	if !strings.Contains(result, "imagePullPolicy: Never") {
 		t.Errorf("image does not have correct pull policy: %s", result)
+	}
+
+	serializedOrigEntity, err := SerializeYAML([]K8sEntity{entity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(serializedOrigEntity, "imagePullPolicy: Never") {
+		t.Errorf("oops! accidentally mutated original entity: %+v", entity)
+	}
+}
+
+func TestInjectImagePullPolicyDoesNotMutateOriginal(t *testing.T) {
+	entities, err := ParseYAMLFromString(BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entity := entities[1]
+	_, err = InjectImagePullPolicy(entity, v1.PullNever)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := SerializeYAML([]K8sEntity{entity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(result, "imagePullPolicy: Never") {
+		t.Errorf("oops! accidentally mutated original entity: %+v", entity)
 	}
 }
 
