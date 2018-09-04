@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+
+	isatty "github.com/mattn/go-isatty"
 )
 
 type Logger interface {
@@ -16,6 +19,8 @@ type Logger interface {
 	Debugf(format string, a ...interface{})
 	// gets an io.Writer that filters to the specified level for, e.g., passing to a subprocess
 	Writer(level Level) io.Writer
+
+	SupportsColor() bool
 }
 
 var _ Logger = logger{}
@@ -43,7 +48,18 @@ func Get(ctx context.Context) Logger {
 }
 
 func NewLogger(level Level, writer io.Writer) Logger {
-	return logger{level, writer}
+	// adapted from fatih/color
+	supportsColor := true
+	if os.Getenv("TERM") == "dumb" {
+		supportsColor = false
+	} else {
+		file, isFile := writer.(*os.File)
+		if isFile {
+			fd := file.Fd()
+			supportsColor = isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
+		}
+	}
+	return logger{level, writer, supportsColor}
 }
 
 func WithLogger(ctx context.Context, logger Logger) context.Context {
@@ -51,8 +67,9 @@ func WithLogger(ctx context.Context, logger Logger) context.Context {
 }
 
 type logger struct {
-	level  Level
-	writer io.Writer
+	level         Level
+	writer        io.Writer
+	supportsColor bool
 }
 
 func (l logger) Infof(format string, a ...interface{}) {
@@ -98,4 +115,8 @@ func (lw levelWriter) Write(p []byte) (n int, err error) {
 
 func (l logger) Writer(level Level) io.Writer {
 	return levelWriter{l, level}
+}
+
+func (l logger) SupportsColor() bool {
+	return l.supportsColor
 }

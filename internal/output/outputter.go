@@ -17,7 +17,8 @@ const (
 )
 
 type Outputter struct {
-	logger                 logger.Logger
+	logger logger.Logger
+
 	indentation            int
 	curBuildStep           int
 	curPipelineStep        int
@@ -39,15 +40,29 @@ func Get(ctx context.Context) *Outputter {
 }
 
 func NewOutputter(logger logger.Logger) Outputter {
-	return Outputter{logger: logger}
+	return Outputter{
+		logger: logger,
+	}
 }
 
 func WithOutputter(ctx context.Context, outputter Outputter) context.Context {
 	return context.WithValue(ctx, outputterContextKey, &outputter)
 }
 
+func (o *Outputter) color(c color.Attribute) *color.Color {
+	color := color.New(c)
+	if !o.logger.SupportsColor() {
+		color.DisableColor()
+	}
+	return color
+}
+
+func (o *Outputter) blue() *color.Color   { return o.color(color.FgBlue) }
+func (o *Outputter) yellow() *color.Color { return o.color(color.FgYellow) }
+func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
+
 func (o *Outputter) StartPipeline(totalStepCount int) {
-	o.logger.Infof(color.BlueString("──┤ Pipeline Starting … ├────────────────────────────────────────"))
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting … ├────────────────────────────────────────"))
 	o.curPipelineStep = 1
 	o.totalPipelineStepCount = totalStepCount
 	o.pipelineStepDurations = nil
@@ -61,16 +76,17 @@ func (o *Outputter) EndPipeline() {
 
 	elapsed := time.Now().Sub(o.curPipelineStart)
 
-	line := color.BlueString("──┤ ︎Pipeline Done in ") +
-		color.GreenString("%.3fs", elapsed.Seconds()) +
-		color.YellowString(" ⚡") +
-		color.BlueString(" ︎├───────────────────────────────────")
-	o.logger.Infof(line)
+	line := o.blue().Sprint("──┤ ︎Pipeline Done in ") +
+		o.green().Sprintf("%.3fs", elapsed.Seconds()) +
+		o.yellow().Sprint(" ⚡") +
+		o.blue().Sprint(" ︎├───────────────────────────────────")
+	o.logger.Infof("%s", line)
 	o.curPipelineStep = 0
 }
 
 func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
-	o.logger.Infof(color.GreenString("STEP %d/%d — %s", o.curPipelineStep, o.totalPipelineStepCount, fmt.Sprintf(format, a...)))
+	line := o.green().Sprintf("STEP %d/%d — %s", o.curPipelineStep, o.totalPipelineStepCount, fmt.Sprintf(format, a...))
+	o.logger.Infof("%s", line)
 	o.curPipelineStep++
 	o.curBuildStep = 1
 	o.curPipelineStepStart = time.Now()
@@ -92,7 +108,9 @@ func (o *Outputter) Printf(format string, a ...interface{}) {
 	if o.curBuildStep == 0 {
 		o.logger.Infof(format, a...)
 	} else {
-		o.logger.Infof("%s%s", buildStepOutputPrefix, fmt.Sprintf(format, a...))
+		message := fmt.Sprintf(format, a...)
+		message = strings.Replace(message, "\n", "\n"+buildStepOutputPrefix, -1)
+		o.logger.Infof("%s%s", buildStepOutputPrefix, message)
 	}
 }
 
