@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 )
@@ -33,8 +34,11 @@ func (a *archiveBuilder) archiveDf(ctx context.Context, df Dockerfile) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
 	tarHeader := &tar.Header{
-		Name: "Dockerfile",
-		Size: int64(len(df)),
+		Name:       "Dockerfile",
+		Size:       int64(len(df)),
+		ModTime:    time.Now(),
+		AccessTime: time.Now(),
+		ChangeTime: time.Now(),
 	}
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
