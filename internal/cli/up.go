@@ -55,7 +55,7 @@ func (c *upCmd) run(args []string) error {
 	go func() {
 		_ = <-sigs
 		// Sleep briefly to let tracing flush
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		cancel()
 	}()
 
