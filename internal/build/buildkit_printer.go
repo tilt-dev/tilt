@@ -10,6 +10,7 @@ import (
 
 type buildkitPrinter struct {
 	output io.Writer
+	vMap   map[digest.Digest]*vertexAndLogs
 }
 
 type vertex struct {
@@ -28,49 +29,58 @@ type vertexAndLogs struct {
 	logs   []*vertexLog
 }
 
-func newBuildkitPrinter(output io.Writer) buildkitPrinter {
-	return buildkitPrinter{
+func newBuildkitPrinter(output io.Writer) *buildkitPrinter {
+	return &buildkitPrinter{
 		output: output,
+		vMap:   map[digest.Digest]*vertexAndLogs{},
 	}
 }
 
-func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) error {
-	vMap := map[digest.Digest]*vertexAndLogs{}
-
+func (b *buildkitPrinter) parse(vertexes []*vertex, logs []*vertexLog) {
 	for _, v := range vertexes {
-		vMap[v.digest] = &vertexAndLogs{
+		b.vMap[v.digest] = &vertexAndLogs{
 			vertex: v,
 		}
 	}
 
 	for _, l := range logs {
-		if val, ok := vMap[l.vertex]; ok {
+		if val, ok := b.vMap[l.vertex]; ok {
 			if len(l.msg) > 0 {
-				vMap[l.vertex] = &vertexAndLogs{
+				b.vMap[l.vertex] = &vertexAndLogs{
 					vertex: val.vertex,
 					logs:   append(val.logs, l),
 				}
 			}
 		}
 	}
+}
 
-	for _, v := range vMap {
+func (b *buildkitPrinter) print() error {
+	for _, v := range b.vMap {
+		buildPrefix := "    ╎ "
 		cmdPrefix := "/bin/sh -c "
+		name := strings.TrimPrefix(v.vertex.name, cmdPrefix)
 
 		if !strings.HasPrefix(v.vertex.name, cmdPrefix) {
 			continue
 		}
 
-		msg := fmt.Sprintf("RUN: %s\n", strings.TrimPrefix(v.vertex.name, cmdPrefix))
-		b.output.Write([]byte(msg))
-
 		if v.vertex.error != "" {
 			for _, l := range v.logs {
 				if len(l.msg) > 0 {
-					msg := fmt.Sprintf("  → ERROR: %s\n", l.msg)
-					b.output.Write([]byte(msg))
+					msg := fmt.Sprintf("%s  → ERROR: %s\n", buildPrefix, l.msg)
+					_, err := b.output.Write([]byte(msg))
+					if err != nil {
+						return err
+					}
 				}
 			}
+		}
+
+		msg := fmt.Sprintf("%sRUN: %s\n", buildPrefix, name)
+		_, err := b.output.Write([]byte(msg))
+		if err != nil {
+			return err
 		}
 	}
 

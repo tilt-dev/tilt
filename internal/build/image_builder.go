@@ -271,6 +271,9 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
+
+	b := newBuildkitPrinter(os.Stdout)
+
 	for decoder.More() {
 		if innerSpan != nil {
 			innerSpan.Finish()
@@ -290,15 +293,23 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 		}
 
 		if message.ErrorMessage != "" {
+			err := b.print()
+			if err != nil {
+				return nil, err
+			}
 			return nil, errors.New(message.ErrorMessage)
 		}
 
 		if message.Error != nil {
+			err := b.print()
+			if err != nil {
+				return nil, err
+			}
 			return nil, errors.New(message.Error.Message)
 		}
 
 		if messageIsFromBuildkit(message) {
-			err := toBuildkitStatus(message.Aux)
+			err := toBuildkitStatus(message.Aux, b)
 			if err != nil {
 				return nil, err
 			}
@@ -308,13 +319,19 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 			result = message.Aux
 		}
 	}
+
+	err := b.print()
+	if err != nil {
+		return nil, err
+	}
+
 	if innerSpan != nil {
 		innerSpan.Finish()
 	}
 	return result, nil
 }
 
-func toBuildkitStatus(aux *json.RawMessage) error {
+func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 	var resp controlapi.StatusResponse
 	var dt []byte
 	// ignoring all messages that are not understood
@@ -342,8 +359,8 @@ func toBuildkitStatus(aux *json.RawMessage) error {
 		})
 	}
 
-	b := newBuildkitPrinter(os.Stdout)
-	return b.parseAndPrint(vertexes, logs)
+	b.parse(vertexes, logs)
+	return nil
 }
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
