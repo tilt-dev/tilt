@@ -21,6 +21,7 @@ type ContainerBuildAndDeployer struct {
 	// May also fall back to ibd for certain error cases.
 	ibd ImageBuildAndDeployer
 
+	// skipContainer if true, we don't do a container build, and instead do an image build.
 	skipContainer bool
 }
 
@@ -65,17 +66,17 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	if state.LastResult.Container.String() == "" {
 		pID, err := cbd.k8sClient.PodWithImage(ctx, state.LastResult.Image)
 		if err != nil {
-			logger.Get(ctx).Infof("Unable to find pod, falling back to image deploy: %s", err.Error())
+			logger.Get(ctx).Infof("Unable to find pod, falling back to image deploy: %s", err)
 			return cbd.ibd.BuildAndDeploy(ctx, service, state)
 		}
 		logger.Get(ctx).Infof("Deploying to pod: %s", pID)
 		// get containerID from pID (see container_updater.go --> containerIdForPod)
 		cID, err = cbd.cu.ContainerIDForPod(ctx, pID)
 		if err != nil {
-			logger.Get(ctx).Infof("Unable to find container, falling back to image deploy: %s", err.Error())
+			logger.Get(ctx).Infof("Unable to find container, falling back to image deploy: %s", err)
 			return cbd.ibd.BuildAndDeploy(ctx, service, state)
 		}
-		logger.Get(ctx).Infof("Got container ID for pod: %s", cID)
+		logger.Get(ctx).Infof("Got container ID for pod: %s", cID.ShortStr())
 	} else {
 		cID = state.LastResult.Container
 	}
@@ -87,7 +88,8 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	logger.Get(ctx).Infof("Updating container...")
 	err = cbd.cu.UpdateInContainer(ctx, cID, cf, service.Steps)
 	if err != nil {
-		return BuildResult{}, err
+		logger.Get(ctx).Infof("Unable to update container, falling back to image deploy: %s", err)
+		return cbd.ibd.BuildAndDeploy(ctx, service, state)
 	}
 	logger.Get(ctx).Infof("Container updated")
 
