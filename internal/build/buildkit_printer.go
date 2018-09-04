@@ -35,10 +35,10 @@ func newBuildkitPrinter(output io.Writer) buildkitPrinter {
 }
 
 func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) error {
-	vMap := map[digest.Digest]vertexAndLogs{}
+	vMap := map[digest.Digest]*vertexAndLogs{}
 
 	for _, v := range vertexes {
-		vMap[v.digest] = vertexAndLogs{
+		vMap[v.digest] = &vertexAndLogs{
 			vertex: v,
 		}
 	}
@@ -46,7 +46,7 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 	for _, l := range logs {
 		if val, ok := vMap[l.vertex]; ok {
 			if len(l.msg) > 0 {
-				vMap[l.vertex] = vertexAndLogs{
+				vMap[l.vertex] = &vertexAndLogs{
 					vertex: val.vertex,
 					logs:   append(val.logs, l),
 				}
