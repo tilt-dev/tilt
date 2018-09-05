@@ -11,6 +11,9 @@ import (
 type buildkitPrinter struct {
 	output io.Writer
 	vMap   map[digest.Digest]*vertexAndLogs
+
+	// argh my kingdom for a linkedhashmap in Go
+	vMapKeyOrder []digest.Digest
 }
 
 type vertex struct {
@@ -33,8 +36,9 @@ var logDigest digest.Digest
 
 func newBuildkitPrinter(output io.Writer) *buildkitPrinter {
 	return &buildkitPrinter{
-		output: output,
-		vMap:   map[digest.Digest]*vertexAndLogs{},
+		output:       output,
+		vMap:         map[digest.Digest]*vertexAndLogs{},
+		vMapKeyOrder: []digest.Digest{},
 	}
 }
 
@@ -45,6 +49,7 @@ func (b *buildkitPrinter) parse(vertexes []*vertex, logs []*vertexLog) {
 			continue
 		}
 
+		b.vMapKeyOrder = append(b.vMapKeyOrder, v.digest)
 		b.vMap[v.digest] = &vertexAndLogs{
 			vertex: v,
 			logs:   []*vertexLog{},
@@ -63,7 +68,11 @@ func (b *buildkitPrinter) parse(vertexes []*vertex, logs []*vertexLog) {
 }
 
 func (b *buildkitPrinter) print() error {
-	for _, v := range b.vMap {
+	for _, key := range b.vMapKeyOrder {
+		v, hasVal := b.vMap[key]
+		if !hasVal {
+			return fmt.Errorf("buildkitPrinter is in an inconsistent state. No value for %s", key)
+		}
 		buildPrefix := "    ╎ "
 		cmdPrefix := "/bin/sh -c "
 		name := strings.TrimPrefix(v.vertex.name, cmdPrefix)
