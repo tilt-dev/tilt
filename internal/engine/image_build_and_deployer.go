@@ -147,7 +147,7 @@ func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Servi
 		if replaced {
 			didReplace = true
 		}
-		e, _, err = k8s.RemoveCommand(e)
+		e, _, err = k8s.RemoveCommand(e, n)
 		if err != nil {
 			return nil, err
 		}

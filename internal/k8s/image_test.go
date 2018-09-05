@@ -153,7 +153,12 @@ func TestRemoveCommandBlorgBackendYAML(t *testing.T) {
 
 	entity := entities[1]
 
-	newEntity, replaced, err := RemoveCommand(entity)
+	ref, err := reference.ParseNamed("gcr.io/blorg-dev/blorg-backend")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newEntity, replaced, err := RemoveCommand(entity, ref)
 	if err != nil {
 		t.Fatal(err)
 
@@ -170,6 +175,43 @@ func TestRemoveCommandBlorgBackendYAML(t *testing.T) {
 	if strings.Contains(result, "command:") {
 		t.Errorf("image has command stanza: %s", result)
 	}
+}
+
+func TestDontRemoveCommandIfContainerNameDoesntMatch(t *testing.T) {
+	entities, err := ParseYAMLFromString(MultipleContainersYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entities) != 1 {
+		t.Fatalf("Unexpected entities: %+v", entities)
+	}
+
+	entity := entities[0]
+
+	ref, err := reference.ParseNamed("gcr.io/blorg-dev/backend")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newEntity, replaced, err := RemoveCommand(entity, ref)
+	if err != nil {
+		t.Fatal(err)
+
+		if replaced {
+			t.Errorf("Expected replaced: false. Actual: %v", replaced)
+		}
+	}
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(result, "command:") {
+		t.Errorf("image does not has command stanza: %s", result)
+	}
+
 }
 
 // Returns: the new entity, whether anything was replaced, and an error.
