@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from collections import namedtuple
 from enum import Enum
 import datetime
 import os
@@ -29,7 +30,54 @@ BLORGLY_BACKEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorgly-b
 SERVICE_NAME = 'blorgly_backend_local'
 FE_SERVICE_NAME = 'blorg_frontend'
 TOUCHED_FILES = []
-OUTPUT_WAIT_TIMEOUT_SECS = 10  # max time we'll wait on a process for output
+OUTPUT_WAIT_TIMEOUT_SECS = 45  # max time we'll wait on a process for output
+
+
+class Service:
+    def __init__(self, name, work_dir, write_dir, main_go_path):
+        self.name = name  # name of service as passed to `tilt up <name>`
+        self.work_dir = work_dir  # set this as working dir when using this service (where Tiltfile lives)
+        self.write_dir = write_dir  # write temp files to here
+        self.main_go_path = main_go_path  # path to main.go
+
+        with open(main_go_path, 'r') as f:
+            # hold onto original contents of main.go so we can edit it/reset it
+            self.main_go_orig_contents = f.read()
+
+        self.touched_files = []
+        self.main_go_changed = False
+        self.up_called = False
+
+    def tilt_up_cmd(self):
+        return ["tilt", "up", self.name, '-d', '--browser=off']
+
+    def tilt_up_watch_cmd(self):
+        cmd = self.tilt_up_cmd()
+        cmd.append('--watch')
+        return cmd
+
+    def write_file(self, n: int):
+        """
+        Create a new file in the designated write directory containing the given
+        number of byes (randomly generated).
+        """
+        name = '{}-{}'.format('timing_script', randstr(10))
+        with open(os.path.join(self.write_dir, name), 'w+b') as f:
+            f.write(randbytes(n))
+
+        self.touched_files.append(name)
+
+    def change_main_go(self):
+        with open(self.main_go_path, 'a') as gofile:
+            gofile.write('\n// timing.py edit\n')
+        self.main_go_changed = True
+
+
+servantes_path = os.path.join(GOPATH, 'src/github.com/windmilleng/servantes')
+SERVANTES_FE = Service("fe", servantes_path, os.path.join(servantes_path, 'servantes'),
+                       os.path.join(servantes_path, 'servantes/main.go'))
+
+SERVICES = [SERVANTES_FE]
 
 tilt_up_called = False
 tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d', '--browser=off']
@@ -47,16 +95,18 @@ class K8sEnv(Enum):
 
 
 class Case:
-    def __init__(self, name: str, func: Callable[[], float], wd=BLORGLY_BACKEND_DIR):
+    def __init__(self, name: str, serv: Service, func: Callable[[Service], float], wd=BLORGLY_BACKEND_DIR):
         self.name = name
+        self.serv = serv
         self.func = func
         self.time_seconds = None
         self.wd = wd
 
     def run(self):
-        os.chdir(self.wd)
+        os.chdir(self.serv.work_dir)
+        print()
         print('~~ RUNNING CASE: {}'.format(self.name))
-        self.time_seconds = self.func()
+        self.time_seconds = self.func(self.serv)
 
 
 class Timer:
@@ -70,14 +120,16 @@ class Timer:
 
 def main():
     cases = [
-        Case('tilt up 1x', test_tilt_up_once),
-        Case('tilt up again, no change', test_tilt_up_again_no_change),
-        Case('tilt up again, new file', test_tilt_up_again_new_file),
-        Case('watch build from changed file', test_watch_build_from_changed_file),
-        Case('watch build from many changed files', test_watch_build_from_many_changed_files),
-        Case('tilt up, big file (5MB)', test_tilt_up_big_file),
-        Case('tilt up, new file, checking frontend', test_tilt_up_fe, wd=BLORG_FRONTEND_DIR),
-        Case('watch build, changed file, checking frontend', test_tilt_up_watch_fe, wd=BLORG_FRONTEND_DIR),
+        # TODO(maia): better solution to wd? (maybe pass in service to each case?)
+        # Case('tilt up 1x', test_tilt_up_once, wd=SERVANTES_FE.work_dir),
+        # Case('tilt up again, no change', test_tilt_up_again_no_change, wd=SERVANTES_FE.work_dir),
+        # Case('tilt up again, new file', test_tilt_up_again_new_file),
+        Case('watch build from new file', SERVANTES_FE, test_watch_build_from_new_file),
+        Case('watch build from many changed files', SERVANTES_FE, test_watch_build_from_many_changed_files),
+        Case('watch build from changed go file', SERVANTES_FE, test_watch_build_from_changed_go_file)
+        # Case('tilt up, big file (5MB)', test_tilt_up_big_file),
+        # Case('tilt up, new file, checking frontend', test_tilt_up_fe, wd=BLORG_FRONTEND_DIR),
+        # Case('watch build, changed file, checking frontend', test_tilt_up_watch_fe, wd=BLORG_FRONTEND_DIR),
 
         # Leave this commented out unless you particularly want it, it's damn slow.
         # Case('tilt up, REALLY big file (500MB)', test_tilt_up_really_big_file),
@@ -87,15 +139,21 @@ def main():
         for c in cases:
             c.run()
 
+    finally:
         print()
         print(RESULTS_BLOCKLTR)
         env = get_k8s_env()
         print('(Kubernetes environment: {})'.format(env.name))
         print()
 
+        have_results = False
         for c in cases:
-            print('\t{} --> {:.5f} seconds'.format(c.name, c.time_seconds))
-    finally:
+            if c.time_seconds:
+                have_results = True
+                print('\t{} --> {:.5f} seconds'.format(c.name, c.time_seconds))
+        if not have_results:
+            print('...nvm, no results :(')
+
         clean_up()
 
 
@@ -184,13 +242,15 @@ def get_k8s_env() -> K8sEnv:
     else:
         raise Exception('Unable to find a matching k8s env for output "{}"'. format(outstr))
 
+
 def curl(url) -> str:
     try:
         out = subprocess.check_output(['curl', url], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError:
-        return "" # it's ok if the service isn't up yet
+        return ""  # it's ok if the service isn't up yet
 
     return out.decode('utf-8').strip()
+
 
 def write_file(n: int):
     """
@@ -205,10 +265,12 @@ def write_file(n: int):
     global TOUCHED_FILES
     TOUCHED_FILES.append(name)
 
+
 def write_fe_token() -> str:
     now = str(datetime.datetime.now())
     call_or_error(['sed', '-e', 's/^.*timing.py.*$/    timing.py {}/'.format(now), '-i', BLORG_FRONTEND_INDEX])
     return now
+
 
 def wait_for_fe_token(token: str):
     url = fe_url()
@@ -221,6 +283,7 @@ def wait_for_fe_token(token: str):
         if not found:
             time.sleep(0.1)
 
+
 def fe_url():
     env = get_k8s_env()
     if env == K8sEnv.D4M:
@@ -228,7 +291,7 @@ def fe_url():
     if env == K8sEnv.MINIKUBE:
         me = os.getlogin()
         service = 'devel-{}-lb-blorg-fe'.format(me)
-        intervalSec = 1 # 1s is the smallest polling interval we can set :raised_eyebrow:
+        intervalSec = 1  # 1s is the smallest polling interval we can set :raised_eyebrow:
         out = subprocess.check_output([
             'minikube', 'service', service, '--url', '--interval', intervalSec])
         return out.decode('utf-8').strip()
@@ -239,33 +302,46 @@ def fe_url():
 def clean_up():
     # delete any files we touched
     # TODO(maia): this info should be stored better than in a global var :-/
+    # (on its way to deprecation, will store touched files on Service obj's instead)
     global TOUCHED_FILES
     for f in TOUCHED_FILES:
         if os.path.isfile(f):
             os.remove(f)
 
+    for s in SERVICES:
+        for f in s.touched_files:
+            path = os.path.join(s.write_dir, f)
+            if os.path.isfile(path):
+                os.remove(path)
+        if s.main_go_changed:
+            with open(s.main_go_path, 'w') as main_go:
+                main_go.write(s.main_go_orig_contents)
+
 
 ### THE TEST CASES
 def test_tilt_up_once() -> float:
-    # Set-up: note that tilt up has been called so we can skip setup for later tests
-    global tilt_up_called
-    tilt_up_called = True
+    # Set-up:
+    # mark that tilt up has been called so we can skip setup for later tests
+    SERVANTES_FE.up_called = True
+    # create a file so we're assured a non-cached image build
+    SERVANTES_FE.write_file(KB)
 
-    return time_call(tilt_up_cmd)
+    return time_call(SERVANTES_FE.tilt_up_cmd())
 
 
 def test_tilt_up_again_no_change() -> float:
-    tilt_up_if_not_called()
+    tilt_up_if_not_called(SERVANTES_FE)
 
-    return time_call(tilt_up_cmd)
+    return time_call(SERVANTES_FE.tilt_up_cmd())
 
 
 def test_tilt_up_again_new_file() -> float:
-    tilt_up_if_not_called()
+    tilt_up_if_not_called(SERVANTES_FE)
 
-    write_file(KB)
+    SERVANTES_FE.write_file(KB)
 
-    return time_call(tilt_up_cmd)
+    return time_call(SERVANTES_FE.tilt_up_cmd())
+
 
 def test_tilt_up_fe() -> float:
     call_or_error(tilt_up_fe_cmd)
@@ -278,6 +354,7 @@ def test_tilt_up_fe() -> float:
 
     return t.duration_secs
 
+
 def test_tilt_up_watch_fe() -> float:
     tilt_proc = run_and_wait_for_stdout(tilt_up_watch_fe_cmd, '[timing.py] finished initial build')
     token = write_fe_token()
@@ -289,14 +366,18 @@ def test_tilt_up_watch_fe() -> float:
     tilt_proc.terminate()
     return t.duration_secs
 
-def test_watch_build_from_changed_file() -> float:
+
+def test_watch_build_from_new_file(serv: Service) -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
 
     # run `tilt up --watch` and wait for it to finish the initial build
-    tilt_proc = run_and_wait_for_stdout(tilt_up_watch_cmd, '[timing.py] finished initial build')
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
-    # change a file
-    write_file(100 * KB)  # 100KB total
+    # wait a sec for the pod to come up
+    time.sleep(1)
+
+    # write a new file (does not affect go build)
+    serv.write_file(100 * KB)  # 100KB total
 
     with Timer() as t:
         wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
@@ -304,14 +385,35 @@ def test_watch_build_from_changed_file() -> float:
     return t.duration_secs
 
 
-def test_watch_build_from_many_changed_files() -> float:
+def test_watch_build_from_many_changed_files(serv: Service) -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
 
     # run `tilt up --watch` and wait for it to finish the initial build
-    tilt_proc = run_and_wait_for_stdout(tilt_up_watch_cmd, '[timing.py] finished initial build')
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
+
+    # wait a sec for the pod to come up
+    time.sleep(1)
 
     for _ in range(100):  # 100KB total
-        write_file(KB)
+        serv.write_file(KB)
+
+    with Timer() as t:
+        wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
+                        kill_on_match=True)
+    return t.duration_secs
+
+
+def test_watch_build_from_changed_go_file(serv: Service) -> float:
+    # TODO: make sure `tilt up --watch` isn't already running?
+
+    # run `tilt up --watch` and wait for it to finish the initial build
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
+
+    # wait a sec for the pod to come up
+    time.sleep(1)
+
+    # change a go file
+    serv.change_main_go()
 
     with Timer() as t:
         wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
@@ -331,14 +433,13 @@ def test_tilt_up_really_big_file() -> float:
     return time_call(tilt_up_cmd)
 
 
-def tilt_up_if_not_called():
-    global tilt_up_called
-    if tilt_up_called:
+def tilt_up_if_not_called(serv: Service):
+    if serv.up_called:
         print('Initial `tilt up` already called, no setup required')
     else:
         print('Initial call to `tilt up`')
-        call_or_error(tilt_up_cmd)
-        tilt_up_called = True
+        call_or_error(serv.tilt_up_cmd())
+        serv.up_called = True
 
 
 ### UTILS
