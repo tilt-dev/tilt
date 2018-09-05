@@ -102,7 +102,7 @@ class Case:
     def run(self):
         os.chdir(self.serv.work_dir)
         print()
-        print('~~ RUNNING CASE: {}'.format(self.name))
+        print(bold('~~ RUNNING CASE: {}'.format(self.name)))
         self.time_seconds = self.func(self.serv, self.name)
 
 
@@ -460,6 +460,10 @@ def tags_for_case_name(case: str) -> str:
     """Given name of test case, return str of tag(s) passable to `tilt up --traceTags`
     (of the form: `key1=val1,key2=val2`)."""
     return "case={}".format(case)
+
+
+def bold(s: str) -> str:
+    return "\033[1m{}\033[0m".format(s)
 
 
 if __name__ == "__main__":
