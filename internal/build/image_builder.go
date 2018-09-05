@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/dustin/go-humanize"
 
@@ -24,8 +23,6 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/registry"
 	controlapi "github.com/moby/buildkit/api/services/control"
-	"github.com/moby/buildkit/client"
-	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 )
@@ -271,22 +268,12 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
-	displayCh := make(chan *client.SolveStatus)
-	defer close(displayCh)
-
-	initDisplayStatusOnce := sync.Once{}
-	initDisplayStatus := func() {
-		go func() {
-			err := progressui.DisplaySolveStatus(ctx, "", d.console, d.out, displayCh)
-			if err != nil {
-				output.Get(ctx).Printf("Error printing progressui: %s", err)
-			}
-		}()
-	}
-
 	var result *json.RawMessage
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
+
+	b := newBuildkitPrinter(os.Stdout)
+
 	for decoder.More() {
 		if innerSpan != nil {
 			innerSpan.Finish()
@@ -306,76 +293,74 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 		}
 
 		if message.ErrorMessage != "" {
+			err := b.print()
+			if err != nil {
+				return nil, err
+			}
 			return nil, errors.New(message.ErrorMessage)
 		}
 
 		if message.Error != nil {
+			err := b.print()
+			if err != nil {
+				return nil, err
+			}
 			return nil, errors.New(message.Error.Message)
 		}
 
 		if messageIsFromBuildkit(message) {
-			initDisplayStatusOnce.Do(initDisplayStatus)
-			resp, err := toBuildkitStatus(message.Aux)
+			err := toBuildkitStatus(message.Aux, b)
 			if err != nil {
 				return nil, err
 			}
-			displayCh <- resp
 		}
 
 		if message.Aux != nil && !messageIsFromBuildkit(message) {
 			result = message.Aux
 		}
 	}
+
+	err := b.print()
+	if err != nil {
+		return nil, err
+	}
+
 	if innerSpan != nil {
 		innerSpan.Finish()
 	}
 	return result, nil
 }
 
-func toBuildkitStatus(aux *json.RawMessage) (*client.SolveStatus, error) {
+func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 	var resp controlapi.StatusResponse
 	var dt []byte
 	// ignoring all messages that are not understood
 	if err := json.Unmarshal(*aux, &dt); err != nil {
-		return nil, err
+		return err
 	}
 	if err := (&resp).Unmarshal(dt); err != nil {
-		return nil, err
+		return err
 	}
 
-	s := client.SolveStatus{}
+	vertexes := []*vertex{}
+	logs := []*vertexLog{}
+
 	for _, v := range resp.Vertexes {
-		s.Vertexes = append(s.Vertexes, &client.Vertex{
-			Digest:    v.Digest,
-			Inputs:    v.Inputs,
-			Name:      v.Name,
-			Started:   v.Started,
-			Completed: v.Completed,
-			Error:     v.Error,
-			Cached:    v.Cached,
-		})
-	}
-	for _, v := range resp.Statuses {
-		s.Statuses = append(s.Statuses, &client.VertexStatus{
-			ID:        v.ID,
-			Vertex:    v.Vertex,
-			Name:      v.Name,
-			Total:     v.Total,
-			Current:   v.Current,
-			Timestamp: v.Timestamp,
-			Started:   v.Started,
-			Completed: v.Completed,
+		vertexes = append(vertexes, &vertex{
+			digest: v.Digest,
+			name:   v.Name,
+			error:  v.Error,
 		})
 	}
 	for _, v := range resp.Logs {
-		s.Logs = append(s.Logs, &client.VertexLog{
-			Vertex:    v.Vertex,
-			Stream:    int(v.Stream),
-			Data:      v.Msg,
-			Timestamp: v.Timestamp,
+		logs = append(logs, &vertexLog{
+			vertex: v.Vertex,
+			msg:    v.Msg,
 		})
 	}
-	return &s, nil
+
+	b.parse(vertexes, logs)
+	return nil
 }
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
