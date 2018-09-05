@@ -22,7 +22,8 @@ ensure:
 	dep ensure
 
 verify_gofmt:
-	bash -c 'diff <(go fmt ./...) <(echo -n)'
+	scripts/verify_gofmt.sh ./internal
+	scripts/verify_gofmt.sh ./cmd
 
 benchmark:
 	go test -run=XXX -bench=. ./...
