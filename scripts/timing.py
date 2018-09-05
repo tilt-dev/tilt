@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import namedtuple
+import argparse
 from enum import Enum
 import datetime
 import os
@@ -30,6 +30,10 @@ FE_SERVICE_NAME = 'blorg_frontend'
 TOUCHED_FILES = []
 OUTPUT_WAIT_TIMEOUT_SECS = 45  # max time we'll wait on a process for output
 
+# Global trace tag for all traces coming from this script run (optionally set by user).
+# Traces will be tagged as: "timing-run: <TRACE_TAG>"
+TRACE_TAG = ""
+
 
 class Service:
     def __init__(self, name, work_dir, write_dir, main_go_path):
@@ -46,11 +50,11 @@ class Service:
         self.main_go_changed = False
         self.up_called = False
 
-    def tilt_up_cmd(self):
-        return ["tilt", "up", self.name, '-d', '--browser=off']
+    def tilt_up_cmd(self, case: str) -> List[str]:
+        return ["tilt", "up", self.name, '-d', '--browser=off', '--traceTags', tags_for_case_name(case)]
 
-    def tilt_up_watch_cmd(self):
-        cmd = self.tilt_up_cmd()
+    def tilt_up_watch_cmd(self, case: str) -> List[str]:
+        cmd = self.tilt_up_cmd(case)
         cmd.append('--watch')
         return cmd
 
@@ -93,7 +97,10 @@ class K8sEnv(Enum):
 
 
 class Case:
-    def __init__(self, name: str, serv: Service, func: Callable[[Service], float]):
+    def __init__(self, name: str, serv: Service, func: Callable[[Service, str], float]):
+        if ',' in name:
+            raise Exception('found comma in case name: "{}". Pls don\'t, it '
+                            'makes the trace tags sad.'.format(name))
         self.name = name
         self.serv = serv
         self.func = func
@@ -102,8 +109,8 @@ class Case:
     def run(self):
         os.chdir(self.serv.work_dir)
         print()
-        print('~~ RUNNING CASE: {}'.format(self.name))
-        self.time_seconds = self.func(self.serv)
+        print(bold('~~ RUNNING CASE: {}'.format(self.name)))
+        self.time_seconds = self.func(self.serv, self.name)
 
 
 class Timer:
@@ -115,15 +122,30 @@ class Timer:
         self.duration_secs = secs_since(self.start)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description='Run timing script.')
+    parser.add_argument('--tag', type=str,
+                        help='tag for all traces from this script run (key: "timing-run")')
+
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
+    global TRACE_TAG
+    TRACE_TAG = args.tag
+
     cases = [
         Case('tilt up 1x', DOGGOS, test_tilt_up_once),
-        Case('tilt up again, no change', DOGGOS, test_tilt_up_again_no_change),
-        Case('tilt up again, new file', DOGGOS, test_tilt_up_again_new_file),
+        Case('tilt up again no change', DOGGOS, test_tilt_up_again_no_change),
+        Case('tilt up again new file', DOGGOS, test_tilt_up_again_new_file),
         Case('watch build from new file', DOGGOS, test_watch_build_from_new_file),
         Case('watch build from many changed files', DOGGOS, test_watch_build_from_many_changed_files),
         Case('watch build from changed go file', DOGGOS, test_watch_build_from_changed_go_file),
-        Case('tilt up, big file (5MB)', DOGGOS, test_tilt_up_big_file),
+        Case('tilt up big file (5MB)', DOGGOS, test_tilt_up_big_file),
 
         # TODO(maia): refactor these with Service object/servantes
         # Case('tilt up, new file, checking frontend', test_tilt_up_fe, wd=BLORG_FRONTEND_DIR),
@@ -317,28 +339,28 @@ def clean_up():
 
 
 ### THE TEST CASES
-def test_tilt_up_once(serv: Service) -> float:
+def test_tilt_up_once(serv: Service, case: str) -> float:
     # Set-up:
     # mark that tilt up has been called so we can skip setup for later tests
     serv.up_called = True
     # create a file so we're assured a non-cached image build
     serv.write_file(KB)
 
-    return time_call(serv.tilt_up_cmd())
+    return time_call(serv.tilt_up_cmd(case))
 
 
-def test_tilt_up_again_no_change(serv: Service) -> float:
-    tilt_up_if_not_called(serv)
+def test_tilt_up_again_no_change(serv: Service, case: str) -> float:
+    tilt_up_if_not_called(serv, case)
 
-    return time_call(serv.tilt_up_cmd())
+    return time_call(serv.tilt_up_cmd(case))
 
 
-def test_tilt_up_again_new_file(serv: Service) -> float:
-    tilt_up_if_not_called(serv)
+def test_tilt_up_again_new_file(serv: Service, case: str) -> float:
+    tilt_up_if_not_called(serv, case)
 
     serv.write_file(KB)
 
-    return time_call(serv.tilt_up_cmd())
+    return time_call(serv.tilt_up_cmd(case))
 
 
 def test_tilt_up_fe() -> float:
@@ -365,11 +387,11 @@ def test_tilt_up_watch_fe() -> float:
     return t.duration_secs
 
 
-def test_watch_build_from_new_file(serv: Service) -> float:
+def test_watch_build_from_new_file(serv: Service, case: str) -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
 
     # run `tilt up --watch` and wait for it to finish the initial build
-    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(case), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up so we can do a container update
     time.sleep(1.5)
@@ -383,11 +405,11 @@ def test_watch_build_from_new_file(serv: Service) -> float:
     return t.duration_secs
 
 
-def test_watch_build_from_many_changed_files(serv: Service) -> float:
+def test_watch_build_from_many_changed_files(serv: Service, case: str) -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
 
     # run `tilt up --watch` and wait for it to finish the initial build
-    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(case), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up so we can do a container update
     time.sleep(1.5)
@@ -401,11 +423,11 @@ def test_watch_build_from_many_changed_files(serv: Service) -> float:
     return t.duration_secs
 
 
-def test_watch_build_from_changed_go_file(serv: Service) -> float:
+def test_watch_build_from_changed_go_file(serv: Service, case: str) -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
 
     # run `tilt up --watch` and wait for it to finish the initial build
-    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(case), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up so we can do a container update
     time.sleep(1.5)
@@ -420,25 +442,25 @@ def test_watch_build_from_changed_go_file(serv: Service) -> float:
 
 
 # idk if this is useful anymore, we probably care about `tilt up --watch` + big file?
-def test_tilt_up_big_file(serv: Service) -> float:
+def test_tilt_up_big_file(serv: Service, case: str) -> float:
     serv.write_file(5 * MB)
 
-    return time_call(serv.tilt_up_cmd())
+    return time_call(serv.tilt_up_cmd(case))
 
 
 # idk if this is useful anymore, we probably care about `tilt up --watch` + big file?
-def test_tilt_up_really_big_file(serv: Service) -> float:
+def test_tilt_up_really_big_file(serv: Service, case: str) -> float:
     serv.write_file(500 * MB)
 
-    return time_call(serv.tilt_up_cmd())
+    return time_call(serv.tilt_up_cmd(case))
 
 
-def tilt_up_if_not_called(serv: Service):
+def tilt_up_if_not_called(serv: Service, case: str):
     if serv.up_called:
         print('Initial `tilt up` already called, no setup required')
     else:
         print('Initial call to `tilt up`')
-        call_or_error(serv.tilt_up_cmd())
+        call_or_error(serv.tilt_up_cmd(case))
         serv.up_called = True
 
 
@@ -454,6 +476,23 @@ def randbytes(n: int) -> bytearray:
 
 def secs_since(t: datetime.datetime) -> float:
     return(datetime.datetime.now() - t).total_seconds()
+
+
+# TODO(maia): tag with service name also?
+def tags_for_case_name(case: str) -> str:
+    """Given name of test case, return str of tag(s) passable to `tilt up --traceTags`
+    (of the form: `key1=val1,key2=val2`)."""
+    s = "case={}".format(case)
+
+    global TRACE_TAG
+    if TRACE_TAG:
+        s += ",timing-run={}".format(TRACE_TAG)
+
+    return s
+
+
+def bold(s: str) -> str:
+    return "\033[1m{}\033[0m".format(s)
 
 
 if __name__ == "__main__":

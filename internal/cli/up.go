@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,6 +24,7 @@ type upCmd struct {
 	watch       bool
 	browserMode engine.BrowserMode
 	cleanUpFn   func() error
+	traceTags   string
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -34,19 +36,33 @@ func (c *upCmd) register() *cobra.Command {
 
 	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically rebuilt and redeployed when files in their repos change")
 	cmd.Flags().Var(&c.browserMode, "browser", "open a browser when the service first starts")
+	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 
 	return cmd
 }
 
 func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
-	defer span.Finish()
+	tags := tracer.TagStrToMap(c.traceTags)
+	for k, v := range tags {
+		span = span.SetTag(k, v)
+	}
+
 	l := logger.NewLogger(logLevel(), os.Stdout)
 	ctx := output.WithOutputter(
 		logger.WithLogger(
 			opentracing.ContextWithSpan(context.Background(), span),
 			l),
 		output.NewOutputter(l))
+
+	cleanUp := func() {
+		span.Finish()
+		err := c.cleanUpFn()
+		if err != nil {
+			l.Infof("error cleaning up: %v", err)
+		}
+	}
+	defer cleanUp()
 
 	// SIGNAL TRAPPING
 	ctx, cancel := context.WithCancel(ctx)
@@ -56,10 +72,7 @@ func (c *upCmd) run(args []string) error {
 		_ = <-sigs
 
 		// Clean up anything that needs cleaning up
-		err := c.cleanUpFn()
-		if err != nil {
-			l.Infof("error cleaning up: %v", err)
-		}
+		cleanUp()
 
 		// We rely on context cancellation being handled elsewhere --
 		// otherwise there's no way to SIGINT/SIGTERM this app o_0
