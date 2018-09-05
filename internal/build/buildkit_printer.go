@@ -68,16 +68,6 @@ func (b *buildkitPrinter) print() error {
 		cmdPrefix := "/bin/sh -c "
 		name := strings.TrimPrefix(v.vertex.name, cmdPrefix)
 
-		for _, l := range v.logs {
-			if len(l.msg) > 0 {
-				msg := fmt.Sprintf("%s  → ERROR: %s\n", buildPrefix, l.msg)
-				_, err := b.output.Write([]byte(msg))
-				if err != nil {
-					return err
-				}
-			}
-		}
-
 		if !strings.HasPrefix(v.vertex.name, cmdPrefix) {
 			continue
 		}
@@ -86,6 +76,16 @@ func (b *buildkitPrinter) print() error {
 		_, err := b.output.Write([]byte(msg))
 		if err != nil {
 			return err
+		}
+
+		for _, l := range v.logs {
+			if len(l.msg) > 0 {
+				msg := fmt.Sprintf("%s  → ERROR: %s\n", buildPrefix, l.msg)
+				_, err := b.output.Write([]byte(msg))
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 

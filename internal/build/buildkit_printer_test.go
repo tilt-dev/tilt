@@ -28,7 +28,7 @@ func TestBuildkitPrinter(t *testing.T) {
 		{
 			digest: "sha1234234234234",
 			name:   `/bin/sh -c (>&2 echo "error"; exit 1)`,
-			error:  `executor failed running [/bin/sh -c (>&2 echo "error"; exit 1)]: exit code 2`,
+			error:  "",
 		},
 	}
 	logs := []*vertexLog{
@@ -48,6 +48,11 @@ func TestBuildkitPrinter(t *testing.T) {
     ╎   → ERROR: error
     ╎ RUN: echo hi
 `
+
+	err := p.print()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if output.String() != expected {
 		t.Errorf("EXPECTED:\n%s\nGOT:\n%s\n", expected, output.String())
