@@ -26,8 +26,6 @@ MB = 1000 * KB
 GOPATH = os.environ['GOPATH'] if 'GOPATH' in os.environ else os.path.join(os.environ['HOME'], 'go')
 BLORG_FRONTEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorg-frontend')
 BLORG_FRONTEND_INDEX = os.path.join(BLORG_FRONTEND_DIR, 'index.html')
-BLORGLY_BACKEND_DIR = os.path.join(GOPATH, 'src/github.com/windmilleng/blorgly-backend')
-SERVICE_NAME = 'blorgly_backend_local'
 FE_SERVICE_NAME = 'blorg_frontend'
 TOUCHED_FILES = []
 OUTPUT_WAIT_TIMEOUT_SECS = 45  # max time we'll wait on a process for output
@@ -77,11 +75,11 @@ servantes_path = os.path.join(GOPATH, 'src/github.com/windmilleng/servantes')
 SERVANTES_FE = Service("fe", servantes_path, os.path.join(servantes_path, 'servantes'),
                        os.path.join(servantes_path, 'servantes/main.go'))
 
-SERVICES = [SERVANTES_FE]
+DOGGOS = Service("doggos", servantes_path, os.path.join(servantes_path, 'doggos'),
+                 os.path.join(servantes_path, 'doggos/main.go'))
 
-tilt_up_called = False
-tilt_up_cmd = ["tilt", "up", SERVICE_NAME, '-d', '--browser=off']
-tilt_up_watch_cmd = ["tilt", "up", SERVICE_NAME, '--watch', '-d', '--browser=off']
+SERVICES = [SERVANTES_FE, DOGGOS]
+
 tilt_up_fe_cmd = ["tilt", "up", FE_SERVICE_NAME, '-d', '--browser=off']
 tilt_up_watch_fe_cmd = ["tilt", "up", FE_SERVICE_NAME, '--watch', '-d', '--browser=off']
 
@@ -95,12 +93,11 @@ class K8sEnv(Enum):
 
 
 class Case:
-    def __init__(self, name: str, serv: Service, func: Callable[[Service], float], wd=BLORGLY_BACKEND_DIR):
+    def __init__(self, name: str, serv: Service, func: Callable[[Service], float]):
         self.name = name
         self.serv = serv
         self.func = func
         self.time_seconds = None
-        self.wd = wd
 
     def run(self):
         os.chdir(self.serv.work_dir)
@@ -120,14 +117,15 @@ class Timer:
 
 def main():
     cases = [
-        # TODO(maia): better solution to wd? (maybe pass in service to each case?)
-        # Case('tilt up 1x', test_tilt_up_once, wd=SERVANTES_FE.work_dir),
-        # Case('tilt up again, no change', test_tilt_up_again_no_change, wd=SERVANTES_FE.work_dir),
-        # Case('tilt up again, new file', test_tilt_up_again_new_file),
-        Case('watch build from new file', SERVANTES_FE, test_watch_build_from_new_file),
-        Case('watch build from many changed files', SERVANTES_FE, test_watch_build_from_many_changed_files),
-        Case('watch build from changed go file', SERVANTES_FE, test_watch_build_from_changed_go_file)
-        # Case('tilt up, big file (5MB)', test_tilt_up_big_file),
+        Case('tilt up 1x', DOGGOS, test_tilt_up_once),
+        Case('tilt up again, no change', DOGGOS, test_tilt_up_again_no_change),
+        Case('tilt up again, new file', DOGGOS, test_tilt_up_again_new_file),
+        Case('watch build from new file', DOGGOS, test_watch_build_from_new_file),
+        Case('watch build from many changed files', DOGGOS, test_watch_build_from_many_changed_files),
+        Case('watch build from changed go file', DOGGOS, test_watch_build_from_changed_go_file),
+        Case('tilt up, big file (5MB)', DOGGOS, test_tilt_up_big_file),
+
+        # TODO(maia): refactor these with Service object/servantes
         # Case('tilt up, new file, checking frontend', test_tilt_up_fe, wd=BLORG_FRONTEND_DIR),
         # Case('watch build, changed file, checking frontend', test_tilt_up_watch_fe, wd=BLORG_FRONTEND_DIR),
 
@@ -153,7 +151,7 @@ def main():
                 print('\t{} --> {:.5f} seconds'.format(c.name, c.time_seconds))
         if not have_results:
             print('...nvm, no results :(')
-
+        print()
         clean_up()
 
 
@@ -319,28 +317,28 @@ def clean_up():
 
 
 ### THE TEST CASES
-def test_tilt_up_once() -> float:
+def test_tilt_up_once(serv: Service) -> float:
     # Set-up:
     # mark that tilt up has been called so we can skip setup for later tests
-    SERVANTES_FE.up_called = True
+    serv.up_called = True
     # create a file so we're assured a non-cached image build
-    SERVANTES_FE.write_file(KB)
+    serv.write_file(KB)
 
-    return time_call(SERVANTES_FE.tilt_up_cmd())
-
-
-def test_tilt_up_again_no_change() -> float:
-    tilt_up_if_not_called(SERVANTES_FE)
-
-    return time_call(SERVANTES_FE.tilt_up_cmd())
+    return time_call(serv.tilt_up_cmd())
 
 
-def test_tilt_up_again_new_file() -> float:
-    tilt_up_if_not_called(SERVANTES_FE)
+def test_tilt_up_again_no_change(serv: Service) -> float:
+    tilt_up_if_not_called(serv)
 
-    SERVANTES_FE.write_file(KB)
+    return time_call(serv.tilt_up_cmd())
 
-    return time_call(SERVANTES_FE.tilt_up_cmd())
+
+def test_tilt_up_again_new_file(serv: Service) -> float:
+    tilt_up_if_not_called(serv)
+
+    serv.write_file(KB)
+
+    return time_call(serv.tilt_up_cmd())
 
 
 def test_tilt_up_fe() -> float:
@@ -374,7 +372,7 @@ def test_watch_build_from_new_file(serv: Service) -> float:
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up
-    time.sleep(1)
+    time.sleep(1.5)
 
     # write a new file (does not affect go build)
     serv.write_file(100 * KB)  # 100KB total
@@ -392,7 +390,7 @@ def test_watch_build_from_many_changed_files(serv: Service) -> float:
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up
-    time.sleep(1)
+    time.sleep(1.5)
 
     for _ in range(100):  # 100KB total
         serv.write_file(KB)
@@ -410,7 +408,7 @@ def test_watch_build_from_changed_go_file(serv: Service) -> float:
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up
-    time.sleep(1)
+    time.sleep(1.5)
 
     # change a go file
     serv.change_main_go()
@@ -421,16 +419,18 @@ def test_watch_build_from_changed_go_file(serv: Service) -> float:
     return t.duration_secs
 
 
-def test_tilt_up_big_file() -> float:
-    write_file(5 * MB)
+# idk if this is useful anymore, we probably care about `tilt up --watch` + big file?
+def test_tilt_up_big_file(serv: Service) -> float:
+    serv.write_file(5 * MB)
 
-    return time_call(tilt_up_cmd)
+    return time_call(serv.tilt_up_cmd())
 
 
-def test_tilt_up_really_big_file() -> float:
-    write_file(500 * MB)
+# idk if this is useful anymore, we probably care about `tilt up --watch` + big file?
+def test_tilt_up_really_big_file(serv: Service) -> float:
+    serv.write_file(500 * MB)
 
-    return time_call(tilt_up_cmd)
+    return time_call(serv.tilt_up_cmd())
 
 
 def tilt_up_if_not_called(serv: Service):
