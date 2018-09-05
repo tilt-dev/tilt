@@ -98,6 +98,9 @@ class K8sEnv(Enum):
 
 class Case:
     def __init__(self, name: str, serv: Service, func: Callable[[Service, str], float]):
+        if ',' in name:
+            raise Exception('found comma in case name: "{}". Pls don\'t, it '
+                            'makes the trace tags sad.'.format(name))
         self.name = name
         self.serv = serv
         self.func = func
@@ -137,12 +140,12 @@ def main():
 
     cases = [
         Case('tilt up 1x', DOGGOS, test_tilt_up_once),
-        Case('tilt up again, no change', DOGGOS, test_tilt_up_again_no_change),
-        Case('tilt up again, new file', DOGGOS, test_tilt_up_again_new_file),
+        Case('tilt up again no change', DOGGOS, test_tilt_up_again_no_change),
+        Case('tilt up again new file', DOGGOS, test_tilt_up_again_new_file),
         Case('watch build from new file', DOGGOS, test_watch_build_from_new_file),
         Case('watch build from many changed files', DOGGOS, test_watch_build_from_many_changed_files),
         Case('watch build from changed go file', DOGGOS, test_watch_build_from_changed_go_file),
-        Case('tilt up, big file (5MB)', DOGGOS, test_tilt_up_big_file),
+        Case('tilt up big file (5MB)', DOGGOS, test_tilt_up_big_file),
 
         # TODO(maia): refactor these with Service object/servantes
         # Case('tilt up, new file, checking frontend', test_tilt_up_fe, wd=BLORG_FRONTEND_DIR),
