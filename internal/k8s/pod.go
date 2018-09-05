@@ -22,7 +22,7 @@ func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTa
 	}
 	pods, ok := ip[image.String()]
 	if !ok {
-		return PodID(""), fmt.Errorf("tnable to find pods for %s. Found: %+v", image, ip)
+		return PodID(""), fmt.Errorf("unable to find pods for %s. Found: %+v", image, ip)
 	}
 	if len(pods) > 1 {
 		return PodID(""), fmt.Errorf("too many pods found for %s: %d", image, len(pods))
