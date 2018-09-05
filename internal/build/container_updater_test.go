@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -75,8 +74,6 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 
 	if assert.Equal(f.t, 1, f.dcli.CopyCount, "calls to CopyToContainer") {
 		assert.Equal(f.t, testContainer, f.dcli.CopyContainer)
-		assert.Equal(f.t, "/", f.dcli.CopyPath)
-		assert.Equal(f.t, types.CopyToContainerOptions{}, f.dcli.CopyOptions)
 		// TODO(maia): assert that the right stuff made it into the archive (f.dcli.CopyContent)
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -85,9 +84,7 @@ type FakeDockerClient struct {
 
 	CopyCount     int
 	CopyContainer string
-	CopyPath      string
 	CopyContent   io.Reader
-	CopyOptions   types.CopyToContainerOptions
 
 	ExecCalls []ExecCall
 
@@ -112,7 +109,7 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 	return c.ContainerListOutput[nameFilter[0]], nil
 }
 
-func (c *FakeDockerClient) ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error {
+func (c *FakeDockerClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 	c.RestartsByContainer[containerID]++
 	return nil
 }
@@ -127,12 +124,10 @@ func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID k8s.Containe
 	return nil
 }
 
-func (c *FakeDockerClient) CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error {
+func (c *FakeDockerClient) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
 	c.CopyCount++
 	c.CopyContainer = container
-	c.CopyPath = path
 	c.CopyContent = content
-	c.CopyOptions = options
 	return nil
 }
 

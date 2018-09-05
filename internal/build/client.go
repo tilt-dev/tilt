@@ -30,8 +30,8 @@ const minDockerVersion = "1.30"
 // Create an interface so this can be mocked out.
 type DockerClient interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
-	ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error
-	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
+	ContainerRestartNoWait(ctx context.Context, containerID string) error
+	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error
 	ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
@@ -116,6 +116,22 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 	result = append(result, client.WithVersion(versionToSet.String()))
 
 	return result, nil
+}
+
+func (d *DockerCli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-CopyToContainerRoot")
+	defer span.Finish()
+	return d.CopyToContainer(ctx, container, "/", content, types.CopyToContainerOptions{})
+}
+
+func (d *DockerCli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerRestartNoWait")
+	defer span.Finish()
+
+	// Don't wait on the container to fully start.
+	dur := time.Duration(0)
+
+	return d.ContainerRestart(ctx, containerID, &dur)
 }
 
 func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error {

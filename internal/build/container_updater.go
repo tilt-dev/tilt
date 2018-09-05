@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -51,8 +50,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
-	err = r.dcli.CopyToContainer(ctx, cID.String(), "/", bytes.NewReader(archive.Bytes()),
-		types.CopyToContainerOptions{})
+	err = r.dcli.CopyToContainerRoot(ctx, cID.String(), bytes.NewReader(archive.Bytes()))
 	if err != nil {
 		return err
 	}
@@ -66,9 +64,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	}
 
 	// Restart container so that entrypoint restarts with the updated files etc.
-	// Don't wait on the container to fully start.
-	dur := time.Duration(0)
-	err = r.dcli.ContainerRestart(ctx, cID.String(), &dur)
+	err = r.dcli.ContainerRestartNoWait(ctx, cID.String())
 	if err != nil {
 		return fmt.Errorf("ContainerRestart: %v", err)
 	}
