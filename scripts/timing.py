@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import namedtuple
+import argparse
 from enum import Enum
 import datetime
 import os
@@ -29,6 +29,10 @@ BLORG_FRONTEND_INDEX = os.path.join(BLORG_FRONTEND_DIR, 'index.html')
 FE_SERVICE_NAME = 'blorg_frontend'
 TOUCHED_FILES = []
 OUTPUT_WAIT_TIMEOUT_SECS = 45  # max time we'll wait on a process for output
+
+# Global trace tag for all traces coming from this script run (optionally set by user).
+# Traces will be tagged as: "timing-run: <TRACE_TAG>"
+TRACE_TAG = ""
 
 
 class Service:
@@ -115,7 +119,22 @@ class Timer:
         self.duration_secs = secs_since(self.start)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description='Run timing script.')
+    parser.add_argument('--tag', type=str,
+                        help='tag for all traces from this script run (key: "timing-run")')
+
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
+    global TRACE_TAG
+    TRACE_TAG = args.tag
+
     cases = [
         Case('tilt up 1x', DOGGOS, test_tilt_up_once),
         Case('tilt up again, no change', DOGGOS, test_tilt_up_again_no_change),
@@ -456,10 +475,17 @@ def secs_since(t: datetime.datetime) -> float:
     return(datetime.datetime.now() - t).total_seconds()
 
 
+# TODO(maia): tag with service name also?
 def tags_for_case_name(case: str) -> str:
     """Given name of test case, return str of tag(s) passable to `tilt up --traceTags`
     (of the form: `key1=val1,key2=val2`)."""
-    return "case={}".format(case)
+    s = "case={}".format(case)
+
+    global TRACE_TAG
+    if TRACE_TAG:
+        s += ",timing-run={}".format(TRACE_TAG)
+
+    return s
 
 
 def bold(s: str) -> str:
