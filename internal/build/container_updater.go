@@ -24,6 +24,9 @@ func NewContainerUpdater(dcli DockerClient) *ContainerUpdater {
 }
 
 func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping, steps []model.Cmd) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
+	defer span.Finish()
+
 	// rm files from container
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {

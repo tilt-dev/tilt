@@ -1,23 +1,26 @@
 package tracer
 
 import (
+	"io"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	config "github.com/uber/jaeger-client-go/config"
 )
 
-func Init() error {
+func Init() (io.Closer, error) {
 	cfg := &config.Configuration{
 		Sampler: &config.SamplerConfig{
 			Type:  "const",
 			Param: 1,
 		},
+		ServiceName: "tilt",
 	}
 	// TODO(dmiller) log output to a file?
-	tracer, _, err := cfg.New("tilt")
+	tracer, closer, err := cfg.NewTracer()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	opentracing.SetGlobalTracer(tracer)
 
-	return nil
+	return closer, nil
 }
