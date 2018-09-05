@@ -371,7 +371,7 @@ def test_watch_build_from_new_file(serv: Service) -> float:
     # run `tilt up --watch` and wait for it to finish the initial build
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
-    # wait a sec for the pod to come up
+    # wait a sec for the pod to come up so we can do a container update
     time.sleep(1.5)
 
     # write a new file (does not affect go build)
@@ -389,7 +389,7 @@ def test_watch_build_from_many_changed_files(serv: Service) -> float:
     # run `tilt up --watch` and wait for it to finish the initial build
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
-    # wait a sec for the pod to come up
+    # wait a sec for the pod to come up so we can do a container update
     time.sleep(1.5)
 
     for _ in range(100):  # 100KB total
@@ -407,7 +407,7 @@ def test_watch_build_from_changed_go_file(serv: Service) -> float:
     # run `tilt up --watch` and wait for it to finish the initial build
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(), '[timing.py] finished initial build')
 
-    # wait a sec for the pod to come up
+    # wait a sec for the pod to come up so we can do a container update
     time.sleep(1.5)
 
     # change a go file
