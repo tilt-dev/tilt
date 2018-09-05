@@ -77,7 +77,6 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 // containerIdForPod looks for the container ID associated with the pod.
 // Expects to find exactly one matching container -- if not, return error.
 // TODO: support multiple matching container IDs, i.e. restarting multiple containers per pod
-// TODO(maia): move func to somewhere more useful (will need this eventually, but not on ContainerUpdater)
 func (r *ContainerUpdater) ContainerIDForPod(ctx context.Context, podName k8s.PodID) (k8s.ContainerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-containerIdForPod")
 	defer span.Finish()
