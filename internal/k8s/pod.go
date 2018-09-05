@@ -7,21 +7,25 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // PodWithImage returns the ID of the pod running the given image. We expect exactly one
 // matching pod: if too many or too few matches, throw an error.
 func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "kubectlClient-PodWithImage")
+	defer span.Finish()
+
 	ip, err := imagesToPods(ctx)
 	if err != nil {
 		return PodID(""), err
 	}
 	pods, ok := ip[image.String()]
 	if !ok {
-		return PodID(""), fmt.Errorf("Unable to find pods for %s. Found: %+v", image, ip)
+		return PodID(""), fmt.Errorf("tnable to find pods for %s. Found: %+v", image, ip)
 	}
 	if len(pods) > 1 {
-		return PodID(""), fmt.Errorf("Too many pods found for %s: %d", image, len(pods))
+		return PodID(""), fmt.Errorf("too many pods found for %s: %d", image, len(pods))
 	}
 	return pods[0], nil
 }

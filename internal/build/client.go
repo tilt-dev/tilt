@@ -157,13 +157,17 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cm
 	}
 	defer hijack.Close()
 
+	esSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-ExecStart")
 	err = d.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
+	esSpan.Finish()
 	if err != nil {
 		return fmt.Errorf("ExecInContainer#start: %v", err)
 	}
 
+	bufSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-readOutput")
 	buf := bytes.NewBuffer(nil)
 	_, err = io.Copy(buf, hijack.Reader)
+	bufSpan.Finish()
 	if err != nil {
 		return fmt.Errorf("ExecInContainer#copy: %v", err)
 	}
