@@ -60,7 +60,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	buildStates := make(map[model.ServiceName]*BuildState)
+	buildStates := make(map[model.ServiceName]BuildState)
 
 	var sw *serviceWatcher
 	var err error
@@ -73,12 +73,11 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
-		buildStates[service.Name] = &BuildStateClean
+		buildStates[service.Name] = BuildStateClean
 
 		buildResult, err := u.b.BuildAndDeploy(ctx, service, BuildStateClean)
 		if err == nil {
-			newState := NewBuildState(buildResult)
-			buildStates[service.Name] = &newState
+			buildStates[service.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
 		} else if watchMounts {
 			logger.Get(ctx).Infof("build failed: %v", err)
@@ -100,11 +99,11 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
-		// Give the pods we just deployed a bit to come up
+		// Give the pod(s) we just deployed a bit to come up
 		time.Sleep(2 * time.Second)
 
 		// Need to know what container(s) we just pushed up so we can do updates live.
-		buildStates = u.getContainersForBuildStates(ctx, buildStates)
+		u.populateContainersForBuildStates(ctx, buildStates)
 
 		for {
 			select {
@@ -113,7 +112,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 			case event := <-sw.events:
 				oldState := buildStates[event.service.Name]
 				buildState := oldState.NewStateWithFilesChanged(event.files)
-				buildStates[event.service.Name] = &buildState
+				buildStates[event.service.Name] = buildState
 
 				spurious, err := buildState.OnlySpuriousChanges()
 				if err != nil {
@@ -134,8 +133,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				if err != nil {
 					logger.Get(ctx).Infof("build failed: %v", err)
 				} else {
-					newState := NewBuildState(result)
-					buildStates[event.service.Name] = &newState
+					buildStates[event.service.Name] = NewBuildState(result)
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
@@ -147,8 +145,9 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	return nil
 }
 
-func (u Upper) getContainersForBuildStates(ctx context.Context,
-	buildStates map[model.ServiceName]*BuildState) map[model.ServiceName]*BuildState {
+// populateContainersForBuildStates updates the given map of service --> build state in place;
+// populates each BuildState with its corresponding containerID
+func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ServiceName]BuildState) {
 	for serv, state := range buildStates {
 		if state.LastResult.NoContainer() {
 			cID, err := u.b.GetContainerForBuild(ctx, state.LastResult)
@@ -158,9 +157,9 @@ func (u Upper) getContainersForBuildStates(ctx context.Context,
 				continue
 			}
 			state.LastResult.Container = cID
+			buildStates[serv] = state
 		}
 	}
-	return buildStates
 }
 
 func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildState BuildState) {
