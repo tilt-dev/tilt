@@ -41,7 +41,9 @@ func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli 
 
 func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerBuildAndDeployer-BuildAndDeploy")
+	span.SetTag("service", service.Name.String())
 	defer span.Finish()
+
 	if cbd.skipContainer {
 		return cbd.ibd.BuildAndDeploy(ctx, service, state)
 	}

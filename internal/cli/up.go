@@ -46,7 +46,7 @@ func (c *upCmd) run(args []string) error {
 	span := opentracing.StartSpan("Up")
 	tags := tracer.TagStrToMap(c.traceTags)
 	for k, v := range tags {
-		span = span.SetTag(k, v)
+		span.SetTag(k, v)
 	}
 
 	l := logger.NewLogger(logLevel(), os.Stdout)
