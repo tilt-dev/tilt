@@ -109,34 +109,6 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	}
 }
 
-func TestGetPodIfMissing(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
-	defer f.TearDown()
-
-	f.setPodExists(true)
-
-	nt, err := k8s.ParseNamedTagged("gcr.io/some-project-162817/sancho:foo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	br := BuildResult{
-		Image: nt,
-	}
-
-	newBR, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(br))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	if newBR.Container != k8s.ContainerID("testcontainer") {
-		t.Errorf("Expected container ID to be %s, got %s", k8s.ContainerID("testcontainer"), newBR.Container)
-	}
-}
-
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake DockerClient and K8sClient
@@ -170,10 +142,6 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		k8s:            k8s,
 		bd:             bd,
 	}
-}
-
-func (f *bdFixture) setPodExists(val bool) {
-	f.k8s.podWithImageExists = val
 }
 
 type FakeK8sClient struct {

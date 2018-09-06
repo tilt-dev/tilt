@@ -99,6 +99,12 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
+		// Give the pod(s) we just deployed a bit to come up
+		time.Sleep(2 * time.Second)
+
+		// Need to know what container(s) we just pushed up so we can do updates live.
+		u.populateContainersForBuildStates(ctx, buildStates)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -137,6 +143,23 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 	return nil
+}
+
+// populateContainersForBuildStates updates the given map of service --> build state in place;
+// populates each BuildState with its corresponding containerID
+func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ServiceName]BuildState) {
+	for serv, state := range buildStates {
+		if !state.LastResult.HasContainer() {
+			cID, err := u.b.GetContainerForBuild(ctx, state.LastResult)
+			if err != nil {
+				logger.Get(ctx).Infof(
+					"couldn't get container for %s, but the pod's probably just not up yet: %v", serv, err)
+				continue
+			}
+			state.LastResult.Container = cID
+			buildStates[serv] = state
+		}
+	}
 }
 
 func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildState BuildState) {

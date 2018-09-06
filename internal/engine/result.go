@@ -19,6 +19,14 @@ func (b BuildResult) IsEmpty() bool {
 	return b.Image == nil && b.Container == ""
 }
 
+func (b BuildResult) HasImage() bool {
+	return b.Image != nil
+}
+
+func (b BuildResult) HasContainer() bool {
+	return b.Container != ""
+}
+
 // The state of the system since the last successful build.
 // This data structure should be considered immutable.
 // All methods that return a new BuildState should first clone the existing build state.
@@ -94,6 +102,10 @@ func (b BuildState) OnlySpuriousChanges() (bool, error) {
 // A build state is empty if there are no previous results.
 func (b BuildState) IsEmpty() bool {
 	return b.LastResult.IsEmpty()
+}
+
+func (b BuildState) HasImage() bool {
+	return b.LastResult.HasImage()
 }
 
 var BuildStateClean = BuildState{}

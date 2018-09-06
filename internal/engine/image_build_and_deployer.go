@@ -65,7 +65,8 @@ func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mod
 func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
 	checkpoint := ibd.history.CheckpointNow()
 	var n reference.NamedTagged
-	if state.IsEmpty() {
+	if !state.HasImage() {
+		// No existing image to build off of, need to build from scratch
 		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
 		if err != nil {
 			return nil, err
@@ -171,4 +172,9 @@ func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Servi
 // in the local docker daemon.
 func (ibd ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
+}
+
+func (ibd ImageBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	// NOTE(maia): no-op, as ibd has no knowledge of pods or containers.
+	return "", nil
 }
