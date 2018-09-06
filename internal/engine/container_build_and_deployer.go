@@ -26,7 +26,7 @@ type ContainerBuildAndDeployer struct {
 }
 
 func DefaultSkipContainer() bool {
-	return true
+	return false
 }
 
 func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, ibd ImageBuildAndDeployer, skipContainer bool) *ContainerBuildAndDeployer {
