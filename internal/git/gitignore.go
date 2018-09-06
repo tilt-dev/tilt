@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/monochromegane/go-gitignore"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
@@ -19,10 +20,6 @@ import (
 // 3. does not use .git/info/exclude
 // 4. does not take index into account
 
-type IgnoreTester interface {
-	IsIgnored(f string, isDir bool) (bool, error)
-}
-
 // an IgnoreTester that ignores nothing
 type falseIgnoreTester struct{}
 
@@ -30,7 +27,7 @@ func (falseIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	return false, nil
 }
 
-var _ IgnoreTester = falseIgnoreTester{}
+var _ ignore.Tester = falseIgnoreTester{}
 
 // ignores files specified in .gitignore
 type gitIgnoreTester struct {
@@ -38,7 +35,7 @@ type gitIgnoreTester struct {
 	ignoreMatcher gitignore.IgnoreMatcher
 }
 
-var _ IgnoreTester = gitIgnoreTester{}
+var _ ignore.Tester = gitIgnoreTester{}
 
 func (i gitIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	_, isChild := ospath.Child(i.repoRoot, f)
@@ -49,7 +46,7 @@ func (i gitIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	return i.ignoreMatcher.Match(f, isDir), nil
 }
 
-func NewGitIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, error) {
+func NewGitIgnoreTester(ctx context.Context, repoRoot string) (ignore.Tester, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
@@ -74,10 +71,10 @@ func NewGitIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, err
 // ignores files specified in .gitignore plus any files in $ROOT/.git/
 type repoIgnoreTester struct {
 	repoRoot        string
-	gitIgnoreTester IgnoreTester
+	gitIgnoreTester ignore.Tester
 }
 
-var _ IgnoreTester = repoIgnoreTester{}
+var _ ignore.Tester = repoIgnoreTester{}
 
 func (r repoIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	// TODO(matt) what do we want to do with symlinks?
@@ -93,7 +90,7 @@ func (r repoIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	return r.gitIgnoreTester.IsIgnored(f, isDir)
 }
 
-func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, error) {
+func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (ignore.Tester, error) {
 	g, err := NewGitIgnoreTester(ctx, repoRoot)
 	if err != nil {
 		return nil, err
@@ -102,7 +99,7 @@ func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (IgnoreTester, er
 }
 
 type compositeIgnoreTester struct {
-	testers []IgnoreTester
+	testers []ignore.Tester
 }
 
 func (c compositeIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
@@ -118,10 +115,10 @@ func (c compositeIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	return false, nil
 }
 
-var _ IgnoreTester = compositeIgnoreTester{}
+var _ ignore.Tester = compositeIgnoreTester{}
 
-func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (IgnoreTester, error) {
-	var testers []IgnoreTester
+func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (ignore.Tester, error) {
+	var testers []ignore.Tester
 	for _, repoRoot := range repoRoots {
 		t, err := NewRepoIgnoreTester(ctx, repoRoot)
 		if err != nil {
