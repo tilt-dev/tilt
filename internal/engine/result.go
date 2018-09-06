@@ -19,6 +19,10 @@ func (b BuildResult) IsEmpty() bool {
 	return b.Image == nil && b.Container == ""
 }
 
+func (b BuildResult) NoContainer() bool {
+	return b.Container == ""
+}
+
 // The state of the system since the last successful build.
 // This data structure should be considered immutable.
 // All methods that return a new BuildState should first clone the existing build state.

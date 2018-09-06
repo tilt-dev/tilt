@@ -172,3 +172,8 @@ func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Servi
 func (ibd ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
 }
+
+func (ibd ImageBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	// NOTE(maia): no-op, as ibd has no knowledge of pods or containers.
+	return "", nil
+}

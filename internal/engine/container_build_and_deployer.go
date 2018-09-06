@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
@@ -61,28 +62,16 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	if state.IsEmpty() {
 		return cbd.ibd.BuildAndDeploy(ctx, service, state)
 	}
-	// Service has already been deployed; try to update in the running container
 
-	// If we don't know the pod that we just deployed to/container we just deployed, get it
-	var cID k8s.ContainerID
-	if state.LastResult.Container.String() == "" {
-		pID, err := cbd.k8sClient.PodWithImage(ctx, state.LastResult.Image)
-		if err != nil {
-			logger.Get(ctx).Infof("Unable to find pod, falling back to image deploy: %s", err)
-			return cbd.ibd.BuildAndDeploy(ctx, service, state)
-		}
-		logger.Get(ctx).Infof("Deploying to pod: %s", pID)
-		// get containerID from pID (see container_updater.go --> containerIdForPod)
-		cID, err = cbd.cu.ContainerIDForPod(ctx, pID)
-		if err != nil {
-			logger.Get(ctx).Infof("Unable to find container, falling back to image deploy: %s", err)
-			return cbd.ibd.BuildAndDeploy(ctx, service, state)
-		}
-		logger.Get(ctx).Infof("Got container ID for pod: %s", cID.ShortStr())
-	} else {
-		cID = state.LastResult.Container
+	// Otherwise, service has already been deployed; try to update in the running container
+
+	// (Unless we don't know what container it's running in, in which case fall back to image deploy.)
+	if state.LastResult.NoContainer() {
+		logger.Get(ctx).Infof("Unknown container, falling back to image deploy")
+		return cbd.ibd.BuildAndDeploy(ctx, service, state)
 	}
-	// once have cID -- can call cbd.cu.UpdateContainer(...)
+
+	cID := state.LastResult.Container
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
 	if err != nil {
 		return BuildResult{}, err
@@ -99,4 +88,23 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 		Entities:  state.LastResult.Entities,
 		Container: cID,
 	}, nil
+}
+
+func (cbd *ContainerBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerBuildAndDeployer-GetContainerForBuild")
+	defer span.Finish()
+
+	// get pod running the image we just deployed
+	pID, err := cbd.k8sClient.PodWithImage(ctx, build.Image)
+	if err != nil {
+		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
+	}
+
+	// get container that's running the app for the pod we found
+	cID, err := cbd.cu.ContainerIDForPod(ctx, pID)
+	if err != nil {
+		return "", fmt.Errorf("ContainerIDForPod (pod = %s): %v", pID, err)
+	}
+
+	return cID, nil
 }
