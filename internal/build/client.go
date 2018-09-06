@@ -36,6 +36,9 @@ type DockerClient interface {
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
+	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
+	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
 }
 
 type DockerCli struct {

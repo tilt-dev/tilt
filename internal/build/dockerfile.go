@@ -29,6 +29,10 @@ func (d Dockerfile) join(s string) Dockerfile {
 	return Dockerfile(fmt.Sprintf("%s\n%s", d, s))
 }
 
+func (d Dockerfile) WithLabel(label Label, val LabelValue) Dockerfile {
+	return d.join(fmt.Sprintf("LABEL %q=%q", label, val))
+}
+
 func (d Dockerfile) AddAll() Dockerfile {
 	return d.join("ADD . /")
 }

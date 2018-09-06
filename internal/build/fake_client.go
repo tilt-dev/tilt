@@ -151,6 +151,18 @@ func (c *FakeDockerClient) ImageTag(ctx context.Context, source, target string) 
 	return nil
 }
 
+func (c *FakeDockerClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
+	return types.ImageInspect{}, nil, nil
+}
+
+func (c *FakeDockerClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+	return nil, nil
+}
+
+func (c *FakeDockerClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+	return nil, nil
+}
+
 var _ DockerClient = &FakeDockerClient{}
 
 type fakeDockerResponse struct {

@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
@@ -472,4 +473,36 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	}
 
 	f.assertFilesInContainer(f.ctx, cID, expected)
+}
+
+func TestReapOneImage(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+
+	df1 := simpleDockerfile
+	ref1, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), df1, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	label := Label("tilt.reaperTest")
+	f.b.extraLabels[label] = "1"
+	df2 := simpleDockerfile.Run(model.ToShellCmd("echo hi >> hi.txt"))
+	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), df2, []model.Mount{m}, []model.Cmd{}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = f.reaper.RemoveTiltImages(f.ctx, time.Now().Add(time.Second), FilterByLabel(label))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertImageExists(ref1)
+	f.assertImageNotExists(ref2)
 }

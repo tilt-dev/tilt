@@ -31,6 +31,12 @@ type dockerImageBuilder struct {
 	dcli    DockerClient
 	console console.Console
 	out     io.Writer
+
+	// A set of extra labels to attach to all builds
+	// created by this image builder.
+	//
+	// By default, all builds are labeled with a build mode.
+	extraLabels Labels
 }
 
 type ImageBuilder interface {
@@ -63,8 +69,13 @@ type pushOutput struct {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dcli DockerClient, console console.Console, out io.Writer) *dockerImageBuilder {
-	return &dockerImageBuilder{dcli: dcli, console: console, out: out}
+func NewDockerImageBuilder(dcli DockerClient, console console.Console, out io.Writer, extraLabels Labels) *dockerImageBuilder {
+	return &dockerImageBuilder{
+		dcli:        dcli,
+		console:     console,
+		out:         out,
+		extraLabels: extraLabels,
+	}
 }
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
@@ -78,7 +89,12 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		return nil, err
 	}
 
-	return d.buildImage(ctx, baseDockerfile, MountsToPathMappings(mounts), steps, entrypoint, ref)
+	df := baseDockerfile.WithLabel(BuildMode, BuildModeScratch)
+	for k, v := range d.extraLabels {
+		df = df.WithLabel(k, v)
+	}
+
+	return d.buildImage(ctx, df, MountsToPathMappings(mounts), steps, entrypoint, ref)
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged,
@@ -87,7 +103,11 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existin
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
 
-	dfForExisting := DockerfileFromExisting(existing)
+	dfForExisting := DockerfileFromExisting(existing).WithLabel(BuildMode, BuildModeExisting)
+	for k, v := range d.extraLabels {
+		dfForExisting = dfForExisting.WithLabel(k, v)
+	}
+
 	steps = model.TrySquash(steps)
 	return d.buildImage(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
 }
