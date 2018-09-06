@@ -65,7 +65,8 @@ func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mod
 func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
 	checkpoint := ibd.history.CheckpointNow()
 	var n reference.NamedTagged
-	if state.IsEmpty() {
+	if !state.HasImage() {
+		// No existing image to build off of, need to build from scratch
 		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
 		if err != nil {
 			return nil, err

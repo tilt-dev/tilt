@@ -66,7 +66,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	// Otherwise, service has already been deployed; try to update in the running container
 
 	// (Unless we don't know what container it's running in, in which case fall back to image deploy.)
-	if state.LastResult.NoContainer() {
+	if !state.LastResult.HasContainer() {
 		logger.Get(ctx).Infof("Unknown container, falling back to image deploy")
 		return cbd.ibd.BuildAndDeploy(ctx, service, state)
 	}
