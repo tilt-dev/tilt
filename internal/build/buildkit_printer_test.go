@@ -7,7 +7,9 @@ import (
 	"testing"
 )
 
-const writeGoldenMaster = false
+// NOTE(dmiller): set at runtime with:
+// go test -ldflags="-X github.com/windmilleng/tilt/internal/build.WriteGoldenMaster=1" github.com/windmilleng/tilt/internal/build -run ^TestBuildkitPrinter
+var WriteGoldenMaster = "0"
 
 func TestBuildkitPrinter(t *testing.T) {
 	output := &strings.Builder{}
@@ -87,7 +89,7 @@ func TestBuildkitPrinter(t *testing.T) {
 
 	d1 := []byte(output.String())
 	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
-	if writeGoldenMaster {
+	if WriteGoldenMaster == "1" {
 		err := ioutil.WriteFile(gmPath, d1, 0644)
 		if err != nil {
 			t.Fatal(err)
