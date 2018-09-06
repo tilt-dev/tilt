@@ -99,6 +99,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
+		logger.Get(ctx).Infof("Services Complete — WATCHING… -------------------------------------------------- ")
 		for {
 			select {
 			case <-ctx.Done():
@@ -135,6 +136,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				return err
 			}
 		}
+	} else {
+		logger.Get(ctx).Infof("Services Complete — SUMMARY -------------------------------------------------- ")
 	}
 	return nil
 }

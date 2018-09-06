@@ -110,8 +110,6 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	logOutput("Services created")
-
 	return nil
 }
 
