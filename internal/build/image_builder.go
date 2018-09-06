@@ -293,18 +293,10 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 		}
 
 		if message.ErrorMessage != "" {
-			err := b.print()
-			if err != nil {
-				return nil, err
-			}
 			return nil, errors.New(message.ErrorMessage)
 		}
 
 		if message.Error != nil {
-			err := b.print()
-			if err != nil {
-				return nil, err
-			}
 			return nil, errors.New(message.Error.Message)
 		}
 
@@ -318,11 +310,6 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 		if message.Aux != nil && !messageIsFromBuildkit(message) {
 			result = message.Aux
 		}
-	}
-
-	err := b.print()
-	if err != nil {
-		return nil, err
 	}
 
 	if innerSpan != nil {
@@ -347,9 +334,11 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 
 	for _, v := range resp.Vertexes {
 		vertexes = append(vertexes, &vertex{
-			digest: v.Digest,
-			name:   v.Name,
-			error:  v.Error,
+			digest:    v.Digest,
+			name:      v.Name,
+			error:     v.Error,
+			started:   v.Started != nil,
+			completed: v.Completed != nil,
 		})
 	}
 	for _, v := range resp.Logs {
@@ -359,8 +348,7 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 		})
 	}
 
-	b.parse(vertexes, logs)
-	return nil
+	return b.parseAndPrint(vertexes, logs)
 }
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {

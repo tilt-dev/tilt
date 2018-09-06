@@ -10,21 +10,30 @@ import (
 
 type buildkitPrinter struct {
 	output io.Writer
-	vMap   map[digest.Digest]*vertexAndLogs
-
-	// argh my kingdom for a linkedhashmap in Go
-	vMapKeyOrder []digest.Digest
+	vData  map[digest.Digest]*vertexAndLogs
+	vOrder []digest.Digest
 }
 
 type vertex struct {
-	digest digest.Digest
-	name   string
-	error  string
+	digest     digest.Digest
+	name       string
+	error      string
+	started    bool
+	completed  bool
+	cmdPrinted bool
 }
 
-type vertexLog struct {
-	vertex digest.Digest
-	msg    []byte
+// HACK: The prefix we assume here isn't valid for RUNS in exec format
+// Ex: RUN ["echo", "hello world"]
+const cmdPrefix = "/bin/sh -c "
+const buildPrefix = "    ╎ "
+
+func (v *vertex) isRun() bool {
+	return strings.HasPrefix(v.name, cmdPrefix)
+}
+
+func (v *vertex) isError() bool {
+	return len(v.error) > 0
 }
 
 type vertexAndLogs struct {
@@ -32,64 +41,72 @@ type vertexAndLogs struct {
 	logs   []*vertexLog
 }
 
-var logDigest digest.Digest
+type vertexLog struct {
+	vertex digest.Digest
+	msg    []byte
+}
 
 func newBuildkitPrinter(output io.Writer) *buildkitPrinter {
 	return &buildkitPrinter{
-		output:       output,
-		vMap:         map[digest.Digest]*vertexAndLogs{},
-		vMapKeyOrder: []digest.Digest{},
+		output: output,
+		vData:  map[digest.Digest]*vertexAndLogs{},
+		vOrder: []digest.Digest{},
 	}
 }
 
-func (b *buildkitPrinter) parse(vertexes []*vertex, logs []*vertexLog) {
-
+func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) error {
 	for _, v := range vertexes {
-		if _, ok := b.vMap[v.digest]; ok {
-			continue
-		}
+		if vl, ok := b.vData[v.digest]; ok {
+			vl.vertex.started = v.started
+			vl.vertex.completed = v.completed
 
-		b.vMapKeyOrder = append(b.vMapKeyOrder, v.digest)
-		b.vMap[v.digest] = &vertexAndLogs{
-			vertex: v,
-			logs:   []*vertexLog{},
+			if v.isError() {
+				vl.vertex.error = v.error
+			}
+		} else {
+			b.vData[v.digest] = &vertexAndLogs{
+				vertex: v,
+				logs:   []*vertexLog{},
+			}
+
+			b.vOrder = append(b.vOrder, v.digest)
 		}
 	}
 
 	for _, l := range logs {
-		if _, ok := b.vMap[l.vertex]; ok {
-			logDigest = l.vertex
-			if len(l.msg) > 0 {
-				vl := b.vMap[l.vertex]
-				vl.logs = append(vl.logs, l)
-			}
+		if vl, ok := b.vData[l.vertex]; ok {
+			vl.logs = append(vl.logs, l)
 		}
 	}
-}
 
-func (b *buildkitPrinter) print() error {
-	for _, key := range b.vMapKeyOrder {
-		v, hasVal := b.vMap[key]
-		if !hasVal {
-			return fmt.Errorf("buildkitPrinter is in an inconsistent state. No value for %s", key)
+	for _, d := range b.vOrder {
+		vl, ok := b.vData[d]
+		if !ok {
+			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
-		buildPrefix := "    ╎ "
-		cmdPrefix := "/bin/sh -c "
-		name := strings.TrimPrefix(v.vertex.name, cmdPrefix)
+		if vl.vertex.isRun() && vl.vertex.started && !vl.vertex.cmdPrinted {
+			msg := fmt.Sprintf("%sRUNNING: %s\n", buildPrefix, trimCmd(vl.vertex.name))
+			_, err := b.output.Write([]byte(msg))
+			if err != nil {
+				return err
+			}
 
-		if !strings.HasPrefix(v.vertex.name, cmdPrefix) {
-			continue
-		}
-
-		msg := fmt.Sprintf("%sRUN: %s\n", buildPrefix, name)
-		_, err := b.output.Write([]byte(msg))
-		if err != nil {
-			return err
+			vl.vertex.cmdPrinted = true
 		}
 
-		for _, l := range v.logs {
-			if len(l.msg) > 0 {
-				msg := fmt.Sprintf("%s  → ERROR: %s\n", buildPrefix, l.msg)
+		if vl.vertex.isError() {
+			msg := fmt.Sprintf("\n%sERROR IN: %s\n", buildPrefix, trimCmd(vl.vertex.name))
+			_, err := b.output.Write([]byte(msg))
+			if err != nil {
+				return err
+			}
+
+			for _, l := range vl.logs {
+				sl := strings.TrimSpace(string(l.msg))
+				if len(sl) == 0 {
+					continue
+				}
+				msg := fmt.Sprintf("%s  → %s\n", buildPrefix, sl)
 				_, err := b.output.Write([]byte(msg))
 				if err != nil {
 					return err
@@ -99,4 +116,8 @@ func (b *buildkitPrinter) print() error {
 	}
 
 	return nil
+}
+
+func trimCmd(cmd string) string {
+	return strings.TrimPrefix(cmd, cmdPrefix)
 }
