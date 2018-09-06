@@ -80,34 +80,36 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 	}
 
 	for _, d := range b.vOrder {
-		if vl, ok := b.vData[d]; ok {
-			if vl.vertex.isRun() && vl.vertex.started && !vl.vertex.cmdPrinted {
-				msg := fmt.Sprintf("%sRUNNING: %s\n", buildPrefix, trimCmd(vl.vertex.name))
-				_, err := b.output.Write([]byte(msg))
-				if err != nil {
-					return err
-				}
-
-				vl.vertex.cmdPrinted = true
+		vl, ok := b.vData[d]
+		if !ok {
+			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
+		}
+		if vl.vertex.isRun() && vl.vertex.started && !vl.vertex.cmdPrinted {
+			msg := fmt.Sprintf("%sRUNNING: %s\n", buildPrefix, trimCmd(vl.vertex.name))
+			_, err := b.output.Write([]byte(msg))
+			if err != nil {
+				return err
 			}
 
-			if vl.vertex.isError() {
-				msg := fmt.Sprintf("\n%sERROR IN: %s\n", buildPrefix, trimCmd(vl.vertex.name))
+			vl.vertex.cmdPrinted = true
+		}
+
+		if vl.vertex.isError() {
+			msg := fmt.Sprintf("\n%sERROR IN: %s\n", buildPrefix, trimCmd(vl.vertex.name))
+			_, err := b.output.Write([]byte(msg))
+			if err != nil {
+				return err
+			}
+
+			for _, l := range vl.logs {
+				sl := strings.TrimSpace(string(l.msg))
+				if len(sl) == 0 {
+					continue
+				}
+				msg := fmt.Sprintf("%s  → %s\n", buildPrefix, sl)
 				_, err := b.output.Write([]byte(msg))
 				if err != nil {
 					return err
-				}
-
-				for _, l := range vl.logs {
-					sl := strings.TrimSpace(string(l.msg))
-					if len(sl) == 0 {
-						continue
-					}
-					msg := fmt.Sprintf("%s  → %s\n", buildPrefix, sl)
-					_, err := b.output.Write([]byte(msg))
-					if err != nil {
-						return err
-					}
 				}
 			}
 		}
