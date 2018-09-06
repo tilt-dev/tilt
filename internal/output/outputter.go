@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -102,6 +103,20 @@ func (o *Outputter) EndPipelineStep() {
 func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.logger.Infof("  → %s", fmt.Sprintf(format, a...))
 	o.curBuildStep++
+}
+
+// TODO(Han) - do something better than this watching bool
+func (o *Outputter) PrintSummary(watching bool) {
+	if watching {
+		o.logger.Infof("WATCHING… --------------------------------------------------")
+	} else {
+		o.logger.Infof("SUMMARY --------------------------------------------------")
+	}
+
+	s := newSummary(os.Stdout)
+	s.parse()
+	s.print()
+	o.logger.Infof("--------------------------------------------------")
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {

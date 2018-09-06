@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/output"
+
 	"github.com/opentracing/opentracing-go"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -99,7 +101,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
 	if watchMounts {
-		logger.Get(ctx).Infof("Services Complete — WATCHING… -------------------------------------------------- ")
+		output.Get(ctx).PrintSummary(true)
 		for {
 			select {
 			case <-ctx.Done():
@@ -137,7 +139,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 			}
 		}
 	} else {
-		logger.Get(ctx).Infof("Services Complete — SUMMARY -------------------------------------------------- ")
+		output.Get(ctx).PrintSummary(false)
 	}
 	return nil
 }
