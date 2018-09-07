@@ -14,7 +14,8 @@ install:
 
 lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf ./...
-
+    ! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline(' # linting for improperly deferred EndPipeline calls; should be in closure, i.e. `defer func() { ...EndPipeline(err) }()`
+    
 test:
 	go test -timeout 60s ./...
 
