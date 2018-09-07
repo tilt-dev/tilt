@@ -11,33 +11,33 @@ import (
 
 func TestIsIgnored(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
-	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true, false)
-	tf.AssertResult(tf.JoinPath("foo", "bar"), false, false)
+	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
+	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 }
 
 func TestComment(t *testing.T) {
 	tf := newTestFixture(t, "# generated code")
-	tf.AssertResult(tf.JoinPath("node_modules", "foo"), false, false)
-	tf.AssertResult(tf.JoinPath("foo", "bar"), false, false)
+	tf.AssertResult(tf.JoinPath("node_modules", "foo"), false)
+	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 }
 
 func TestGlob(t *testing.T) {
 	tf := newTestFixture(t, "*/temp*")
-	tf.AssertResult(tf.JoinPath("somedir", "temporary.txt"), true, false)
-	tf.AssertResult(tf.JoinPath("somedir", "temp"), true, false)
+	tf.AssertResult(tf.JoinPath("somedir", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("somedir", "temp"), true)
 }
 
 func TestOneCharacterExtension(t *testing.T) {
 	tf := newTestFixture(t, "temp?")
-	tf.AssertResult(tf.JoinPath("tempa"), true, false)
-	tf.AssertResult(tf.JoinPath("tempeh"), false, false)
-	tf.AssertResult(tf.JoinPath("temp"), false, false)
+	tf.AssertResult(tf.JoinPath("tempa"), true)
+	tf.AssertResult(tf.JoinPath("tempeh"), false)
+	tf.AssertResult(tf.JoinPath("temp"), false)
 }
 
 func TestException(t *testing.T) {
 	tf := newTestFixture(t, "docs", "!docs/README.md")
-	tf.AssertResult(tf.JoinPath("docs/stuff.md"), true, false)
-	tf.AssertResult(tf.JoinPath("docs/README.md"), false, false)
+	tf.AssertResult(tf.JoinPath("docs/stuff.md"), true)
+	tf.AssertResult(tf.JoinPath("docs/README.md"), false)
 }
 
 type testFixture struct {
@@ -70,10 +70,10 @@ func (tf *testFixture) JoinPath(path ...string) string {
 	return tf.repoRoot.JoinPath(path...)
 }
 
-func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool, expectError bool) {
+func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool) {
 	isIgnored, err := tf.tester.IsIgnored(path, false)
-	if expectError {
-		assert.Error(tf.t, err)
+	if err != nil {
+		tf.t.Fatal(err)
 	} else {
 		if assert.NoError(tf.t, err) {
 			assert.Equalf(tf.t, expectedIsIgnored, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedIsIgnored, path, isIgnored)
