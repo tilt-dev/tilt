@@ -2,7 +2,6 @@ package dockerignore
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -33,30 +32,11 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 		return nil, err
 	}
 
-	p := path.Join(absRoot, ".dockerignore")
-	var patterns []string
-
-	f, err := os.Open(p)
-	defer func() { _ = f.Close() }()
-	switch {
-	case os.IsNotExist(err):
-		pm, err := fileutils.NewPatternMatcher(patterns)
-		if err != nil {
-			return nil, err
-		}
-
-		return dockerfileIgnoreTester{
-			repoRoot: absRoot,
-			matcher:  pm,
-		}, err
-	case err != nil:
-		return nil, err
-	}
-
-	patterns, err = dockerignore.ReadAll(f)
+	patterns, err := readDockerignorePatterns(absRoot)
 	if err != nil {
 		return nil, err
 	}
+
 	pm, err := fileutils.NewPatternMatcher(patterns)
 	if err != nil {
 		return nil, err
@@ -66,4 +46,19 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 		repoRoot: absRoot,
 		matcher:  pm,
 	}, nil
+}
+
+func readDockerignorePatterns(repoRoot string) ([]string, error) {
+	var excludes []string
+
+	f, err := os.Open(filepath.Join(repoRoot, ".dockerignore"))
+	switch {
+	case os.IsNotExist(err):
+		return excludes, nil
+	case err != nil:
+		return nil, err
+	}
+	defer f.Close()
+
+	return dockerignore.ReadAll(f)
 }
