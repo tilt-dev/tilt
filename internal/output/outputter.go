@@ -125,13 +125,13 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 }
 
 func (o *Outputter) PrintSummary(watchMounts bool, summary *summary) {
-	o.logger.Infof("\nServices ────────────────────────────────────────────")
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Services Built … ├────────────────────────────────────────"))
 	for _, svc := range summary.services {
 		o.logger.Infof("  • %s", svc)
 	}
 
 	if watchMounts {
-		o.logger.Infof("\n\nWatching for changes…")
+		o.logger.Infof("%s", o.green().Sprint("\nWatching for changes…"))
 	}
 }
 
