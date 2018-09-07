@@ -39,7 +39,7 @@ func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mod
 
 	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
 	output.Get(ctx).StartPipeline(2)
-	defer output.Get(ctx).EndPipeline(err)
+	defer func() { output.Get(ctx).EndPipeline(err) }()
 
 	err = service.Validate()
 	if err != nil {
