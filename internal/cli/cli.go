@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
+	model "github.com/windmilleng/tilt/internal/model"
+	service "github.com/windmilleng/tilt/internal/service"
 )
 
 var debug bool
@@ -29,7 +31,6 @@ func Execute(cleanUpFn func() error) {
 	}
 
 	addCommand(rootCmd, &upCmd{cleanUpFn: cleanUpFn, browserMode: engine.BrowserAuto})
-	addCommand(rootCmd, &daemonCmd{})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
@@ -59,4 +60,8 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	}
 
 	parent.AddCommand(cobraChild)
+}
+
+func provideServiceCreator(upper engine.Upper, sm service.Manager) model.ServiceCreator {
+	return service.TrackServices(upper, sm)
 }
