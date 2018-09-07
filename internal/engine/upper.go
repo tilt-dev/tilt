@@ -73,6 +73,9 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
+	s := output.NewSummary()
+	s.Gather(services)
+
 	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
 		buildStates[service.Name] = BuildStateClean
@@ -100,10 +103,10 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	if watchMounts {
-		output.Get(ctx).PrintSummary(true)
+	output.Get(ctx).PrintSummary(watchMounts, s)
 
-    // Give the pod(s) we just deployed a bit to come up
+	if watchMounts {
+		// Give the pod(s) we just deployed a bit to come up
 		time.Sleep(2 * time.Second)
 
 		// Need to know what container(s) we just pushed up so we can do updates live.
@@ -145,8 +148,6 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				return err
 			}
 		}
-	} else {
-		output.Get(ctx).PrintSummary(false)
 	}
 	return nil
 }

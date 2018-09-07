@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -105,18 +104,15 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.curBuildStep++
 }
 
-// TODO(Han) - do something better than this watching bool
-func (o *Outputter) PrintSummary(watching bool) {
-	if watching {
-		o.logger.Infof("WATCHING… --------------------------------------------------")
-	} else {
-		o.logger.Infof("SUMMARY --------------------------------------------------")
+func (o *Outputter) PrintSummary(watchMounts bool, summary *summary) {
+	o.logger.Infof("\nServices ────────────────────────────────────────────")
+	for _, svc := range summary.services {
+		o.logger.Infof("  • %s", svc)
 	}
 
-	s := newSummary(os.Stdout)
-	s.parse()
-	s.print()
-	o.logger.Infof("--------------------------------------------------")
+	if watchMounts {
+		o.logger.Infof("\n\nWatching for changes…")
+	}
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {

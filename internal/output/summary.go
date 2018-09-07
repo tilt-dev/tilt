@@ -1,37 +1,24 @@
 package output
 
 import (
-	"fmt"
-	"io"
-	"strconv"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
+// Summary contains data to be printed at the end of the build process
 type summary struct {
-	output      io.Writer
-	steps       string
-	directories []*directory
+	services []string
 }
 
-type directory struct {
-	name    string
-	updated bool
-}
-
-func newSummary(output io.Writer) *summary {
+// NewSummary returns summary state
+func NewSummary() *summary {
 	return &summary{
-		output:      output,
-		steps:       "",
-		directories: []*directory{},
+		services: []string{},
 	}
 }
 
-func (s *summary) parse() {
-	s.steps = strconv.Itoa(3)
-}
-
-func (s *summary) print() {
-	s.parse()
-
-	msg := fmt.Sprintf("Steps: %s\n", s.steps)
-	s.output.Write([]byte(msg))
+// Gather collates data into Summary
+func (s *summary) Gather(services []model.Service) {
+	for _, svc := range services {
+		s.services = append(s.services, string(svc.Name))
+	}
 }
