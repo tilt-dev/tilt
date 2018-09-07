@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/mitchellh/hashstructure"
 )
 
 type ServiceName string
@@ -13,24 +11,13 @@ type ServiceName string
 func (s ServiceName) String() string { return string(s) }
 
 type Service struct {
-	K8sYaml        string `hash:"ignore"`
+	K8sYaml        string
 	DockerfileText string
 	Mounts         []Mount
 	Steps          []Cmd
 	Entrypoint     Cmd
-	DockerfileTag  string      `hash:"ignore"`
-	Name           ServiceName `hash:"ignore"`
-}
-
-type HashedService uint64
-
-func (s *Service) Hash() (HashedService, error) {
-	hash, err := hashstructure.Hash(s, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	return HashedService(hash), nil
+	DockerfileTag  string
+	Name           ServiceName
 }
 
 func (s Service) Validate() error {
