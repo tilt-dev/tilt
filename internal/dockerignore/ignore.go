@@ -58,7 +58,7 @@ func readDockerignorePatterns(repoRoot string) ([]string, error) {
 	case err != nil:
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return dockerignore.ReadAll(f)
 }
