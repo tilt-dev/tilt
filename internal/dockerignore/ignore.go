@@ -37,7 +37,7 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 	p := path.Join(absRoot, ".dockerignore")
 	patterns, err := dockerignore.ReadIgnoreFile(p)
 	if err != nil {
-		return dockerfileIgnoreTester{}, err
+		return nil, err
 	}
 
 	return dockerfileIgnoreTester{
