@@ -34,6 +34,12 @@ func TestOneCharacterExtension(t *testing.T) {
 	tf.AssertResult(tf.JoinPath("temp"), false, false)
 }
 
+func TestException(t *testing.T) {
+	tf := newTestFixture(t, "docs", "!docs/README.md")
+	tf.AssertResult(tf.JoinPath("docs/stuff.md"), true, false)
+	tf.AssertResult(tf.JoinPath("docs/README.md"), false, false)
+}
+
 type testFixture struct {
 	repoRoot *testutils.TempDirFixture
 	t        *testing.T
@@ -70,7 +76,7 @@ func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool, expectE
 		assert.Error(tf.t, err)
 	} else {
 		if assert.NoError(tf.t, err) {
-			assert.Equal(tf.t, expectedIsIgnored, isIgnored)
+			assert.Equalf(tf.t, expectedIsIgnored, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedIsIgnored, path, isIgnored)
 		}
 	}
 }

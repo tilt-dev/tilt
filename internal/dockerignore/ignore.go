@@ -16,7 +16,11 @@ type dockerfileIgnoreTester struct {
 var _ ignore.Tester = dockerfileIgnoreTester{}
 
 func (i dockerfileIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
-	isSkip, err := dockerignore.Matches(f, i.patterns)
+	rp, err := filepath.Rel(i.repoRoot, f)
+	if err != nil {
+		return false, err
+	}
+	isSkip, err := dockerignore.Matches(rp, i.patterns)
 	if err != nil {
 		return false, err
 	}
@@ -36,13 +40,8 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 		return dockerfileIgnoreTester{}, err
 	}
 
-	rp := []string{}
-	for _, p := range patterns {
-		rp = append(rp, filepath.Join(absRoot, p))
-	}
-
 	return dockerfileIgnoreTester{
 		repoRoot: absRoot,
-		patterns: rp,
+		patterns: patterns,
 	}, nil
 }
