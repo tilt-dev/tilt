@@ -6,11 +6,11 @@ jobs:
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
+      - run: echo 'linting for improperly deferred EndPipeline calls; should be in closure, e.g. `defer func() { ...EndPipeline(err) }()`'; ! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline('
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make all
-      - run: echo 'linting for improperly deferred EndPipeline calls (should be in closure): `defer func() { ...EndPipeline(err) }()`'; ! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline('
 
   build-macos:
     macos:
