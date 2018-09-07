@@ -11,24 +11,28 @@ import (
 
 func TestIsIgnored(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
+	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 }
 
 func TestComment(t *testing.T) {
 	tf := newTestFixture(t, "# generated code")
+	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), false)
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 }
 
 func TestGlob(t *testing.T) {
 	tf := newTestFixture(t, "*/temp*")
+	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("somedir", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("somedir", "temp"), true)
 }
 
 func TestOneCharacterExtension(t *testing.T) {
 	tf := newTestFixture(t, "temp?")
+	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("tempa"), true)
 	tf.AssertResult(tf.JoinPath("tempeh"), false)
 	tf.AssertResult(tf.JoinPath("temp"), false)
@@ -36,12 +40,14 @@ func TestOneCharacterExtension(t *testing.T) {
 
 func TestException(t *testing.T) {
 	tf := newTestFixture(t, "docs", "!docs/README.md")
+	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("docs", "stuff.md"), true)
 	tf.AssertResult(tf.JoinPath("docs", "README.md"), false)
 }
 
 func TestNoDockerignoreFile(t *testing.T) {
 	tf := newTestFixture(t)
+	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("hi"), false)
 	tf.AssertResult(tf.JoinPath("hi", "hello"), false)
 }
@@ -87,4 +93,8 @@ func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool) {
 			assert.Equalf(tf.t, expectedIsIgnored, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedIsIgnored, path, isIgnored)
 		}
 	}
+}
+
+func (tf *testFixture) TearDown() {
+	tf.repoRoot.TearDown()
 }
