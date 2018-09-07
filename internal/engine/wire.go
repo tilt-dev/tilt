@@ -28,6 +28,7 @@ func provideBuildAndDeployer(
 		build.NewDockerImageBuilder,
 		build.DefaultConsole,
 		build.DefaultOut,
+		wire.Value(build.Labels{}),
 
 		NewImageBuildAndDeployer,
 

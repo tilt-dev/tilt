@@ -19,7 +19,8 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	containerUpdater := build.NewContainerUpdater(docker)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
-	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer)
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageHistory, err := image.NewImageHistory(ctx, dir)
 	if err != nil {
@@ -32,3 +33,7 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, imageBuildAndDeployer, skipContainer)
 	return containerBuildAndDeployer, nil
 }
+
+var (
+	_wireLabelsValue = build.Labels{}
+)

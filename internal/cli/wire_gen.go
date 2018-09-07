@@ -31,7 +31,8 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	kubectlClient := k8s.NewKubectlClient(ctx, env)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
-	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer)
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
@@ -52,3 +53,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	serviceCreator := provideServiceCreator(upper, manager)
 	return serviceCreator, nil
 }
+
+var (
+	_wireLabelsValue = build.Labels{}
+)

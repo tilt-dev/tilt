@@ -16,6 +16,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -83,6 +84,7 @@ type dockerBuildFixture struct {
 	dcli     *DockerCli
 	b        *dockerImageBuilder
 	registry *exec.Cmd
+	reaper   ImageReaper
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
@@ -92,12 +94,16 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t.Fatal(err)
 	}
 
+	labels := Labels(map[Label]LabelValue{
+		TestImage: "1",
+	})
 	return &dockerBuildFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
 		dcli:           dcli,
-		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut()),
+		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
+		reaper:         NewImageReaper(dcli),
 	}
 }
 
@@ -162,6 +168,20 @@ type expectedFile struct {
 
 	// If true, we will assert that the file is not in the container.
 	missing bool
+}
+
+func (f *dockerBuildFixture) assertImageExists(ref reference.NamedTagged) {
+	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
+	if err != nil {
+		f.t.Errorf("Expected image %q to exist, got: %v", ref, err)
+	}
+}
+
+func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
+	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
+	if err == nil || !client.IsErrNotFound(err) {
+		f.t.Errorf("Expected image %q to fail with ErrNotFound, got: %v", ref, err)
+	}
 }
 
 func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expectedFiles []expectedFile) {
