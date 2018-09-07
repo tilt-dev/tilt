@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,14 +36,15 @@ func TestPrefixedWriterNewlineInMiddle(t *testing.T) {
 }
 
 func TestPipeline(t *testing.T) {
+	var err error
 	out := &bytes.Buffer{}
-	logger := logger.NewLogger(logger.InfoLvl, out)
-	o := NewOutputter(logger)
+	l := logger.NewLogger(logger.InfoLvl, out)
+	o := NewOutputter(l)
 	o.StartPipeline(1)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("in ur step")
 	o.EndPipelineStep()
-	o.EndPipeline()
+	o.EndPipeline(err)
 
 	result := out.String()
 	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
@@ -55,15 +57,38 @@ STEP 1/1 — hello world
 `, result)
 }
 
-func TestMultilinePrintInPipeline(t *testing.T) {
+func TestErroredPipeline(t *testing.T) {
+	err := fmt.Errorf("oh noes")
 	out := &bytes.Buffer{}
-	logger := logger.NewLogger(logger.InfoLvl, out)
-	o := NewOutputter(logger)
+	l := logger.NewLogger(logger.InfoLvl, out)
+	o := NewOutputter(l)
+	o.StartPipeline(1)
+	o.StartPipelineStep("%s %s", "hello", "world")
+	o.Printf("in ur step")
+	o.EndPipelineStep()
+	o.EndPipeline(err)
+
+	result := out.String()
+	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
+STEP 1/1 — hello world
+    ╎ in ur step
+    (Done 0.000s)
+
+──┤ ︎Pipeline FAILED in 0.000s 😢 ︎├───────────────────────────────────
+  → ︎ERROR: oh noes
+`, result)
+}
+
+func TestMultilinePrintInPipeline(t *testing.T) {
+	var err error
+	out := &bytes.Buffer{}
+	l := logger.NewLogger(logger.InfoLvl, out)
+	o := NewOutputter(l)
 	o.StartPipeline(1)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("line 1\nline 2\n")
 	o.EndPipelineStep()
-	o.EndPipeline()
+	o.EndPipeline(err)
 
 	result := out.String()
 	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────

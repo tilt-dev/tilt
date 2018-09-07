@@ -33,15 +33,15 @@ func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, histor
 	}, nil
 }
 
-func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
+func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (br BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
 	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
 	output.Get(ctx).StartPipeline(2)
-	defer output.Get(ctx).EndPipeline()
+	defer func() { output.Get(ctx).EndPipeline(err) }()
 
-	err := service.Validate()
+	err = service.Validate()
 	if err != nil {
 		return BuildResult{}, err
 	}
