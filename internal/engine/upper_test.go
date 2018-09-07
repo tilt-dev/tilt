@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -56,6 +58,13 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	}
 
 	return b.nextBuildResult(), nil
+}
+
+func (b *fakeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	if build.Image == nil {
+		return "", fmt.Errorf("can't get container for BuildResult with no image")
+	}
+	return k8s.ContainerID("testcontainer"), nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -151,6 +160,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
+		assert.Equal(t, k8s.ContainerID("testcontainer"), call.state.LastResult.Container)
 		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {
@@ -258,6 +268,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: "/a.go"}
 
 		call = <-f.b.calls
+		spew.Dump(call.state)
 		assert.True(t, call.state.IsEmpty())
 		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
 
