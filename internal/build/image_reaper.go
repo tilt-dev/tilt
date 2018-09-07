@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -22,6 +23,10 @@ func FilterByLabel(label Label) filters.KeyValuePair {
 
 func FilterByLabelValue(label Label, val LabelValue) filters.KeyValuePair {
 	return filters.Arg("label", fmt.Sprintf("%s=%s", label, val))
+}
+
+func FilterByRefName(ref reference.Named) filters.KeyValuePair {
+	return filters.Arg("reference", fmt.Sprintf("%s:*", ref.Name()))
 }
 
 func NewImageReaper(docker DockerClient) ImageReaper {

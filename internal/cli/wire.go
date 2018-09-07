@@ -32,6 +32,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		build.NewDockerImageBuilder,
 		engine.NewImageBuildAndDeployer,
 		wire.Value(build.Labels{}),
+		build.NewImageReaper,
 
 		// ContainerBuildAndDeployer ( = BuildAndDeployer)
 		wire.Bind(new(engine.BuildAndDeployer), new(engine.ContainerBuildAndDeployer)),
