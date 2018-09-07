@@ -34,7 +34,7 @@ func NewImageReaper(docker DockerClient) ImageReaper {
 //
 // For safety reasons, we only delete images with the tilt.buildMode label,
 // but we let the caller set additional filters.
-func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Time, extraFilters ...filters.KeyValuePair) error {
+func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Time, force bool, extraFilters ...filters.KeyValuePair) error {
 	defaultFilter := FilterByLabel(BuildMode)
 	filterList := append([]filters.KeyValuePair{defaultFilter}, extraFilters...)
 	listOptions := types.ImageListOptions{
@@ -49,6 +49,7 @@ func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Ti
 	g, ctx := errgroup.WithContext(ctx)
 	rmOptions := types.ImageRemoveOptions{
 		PruneChildren: true,
+		Force:         force,
 	}
 	for _, summary := range summaries {
 		id := summary.ID

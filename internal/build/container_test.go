@@ -499,7 +499,7 @@ func TestReapOneImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = f.reaper.RemoveTiltImages(f.ctx, time.Now().Add(time.Second), FilterByLabel(label))
+	err = f.reaper.RemoveTiltImages(f.ctx, time.Now().Add(time.Second), false, FilterByLabel(label))
 	if err != nil {
 		t.Fatal(err)
 	}

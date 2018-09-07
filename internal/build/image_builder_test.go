@@ -79,12 +79,13 @@ func TestDigestFromPushOutput(t *testing.T) {
 
 type dockerBuildFixture struct {
 	*testutils.TempDirFixture
-	t        testing.TB
-	ctx      context.Context
-	dcli     *DockerCli
-	b        *dockerImageBuilder
-	registry *exec.Cmd
-	reaper   ImageReaper
+	t            testing.TB
+	ctx          context.Context
+	dcli         *DockerCli
+	b            *dockerImageBuilder
+	registry     *exec.Cmd
+	reaper       ImageReaper
+	containerIDs []k8s.ContainerID
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
@@ -108,6 +109,16 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 }
 
 func (f *dockerBuildFixture) teardown() {
+	for _, cID := range f.containerIDs {
+		// ignore failures
+		_ = f.dcli.ContainerRemove(f.ctx, string(cID), types.ContainerRemoveOptions{
+			Force: true,
+		})
+	}
+
+	// ignore failures
+	_ = f.reaper.RemoveTiltImages(f.ctx, time.Now(), true /*force*/, FilterByLabel(TestImage))
+
 	if f.registry != nil && f.registry.Process != nil {
 		go func() {
 			err := f.registry.Process.Kill()
@@ -249,7 +260,9 @@ func (f *dockerBuildFixture) startContainer(ctx context.Context, config *contain
 		f.t.Fatalf("startContainer: %v", err)
 	}
 
-	return k8s.ContainerID(cID)
+	result := k8s.ContainerID(cID)
+	f.containerIDs = append(f.containerIDs, result)
+	return result
 }
 
 type threadSafeWriter struct {
