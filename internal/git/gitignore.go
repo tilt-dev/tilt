@@ -98,25 +98,6 @@ func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (ignore.Tester, e
 	return &repoIgnoreTester{repoRoot, g}, nil
 }
 
-type compositeIgnoreTester struct {
-	testers []ignore.Tester
-}
-
-func (c compositeIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
-	for _, t := range c.testers {
-		ret, err := t.IsIgnored(f, isDir)
-		if err != nil {
-			return false, err
-		}
-		if ret {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-var _ ignore.Tester = compositeIgnoreTester{}
-
 func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (ignore.Tester, error) {
 	var testers []ignore.Tester
 	for _, repoRoot := range repoRoots {
@@ -128,5 +109,5 @@ func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (ignore.T
 		testers = append(testers, t)
 	}
 
-	return compositeIgnoreTester{testers}, nil
+	return ignore.CompositeIgnoreTester{testers}, nil
 }
