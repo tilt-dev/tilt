@@ -46,8 +46,6 @@ func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mod
 		return BuildResult{}, err
 	}
 
-	defer output.Get(ctx).EndPipeline(err)
-
 	ref, err := ibd.build(ctx, service, state)
 	if err != nil {
 		return BuildResult{}, err
