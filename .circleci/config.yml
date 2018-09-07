@@ -10,6 +10,7 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make all
+      - run: 'false'
 
   build-macos:
     macos:
