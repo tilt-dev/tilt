@@ -49,9 +49,10 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
 		err := child.run(args)
 		if err != nil {
-			_, err := fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			if err != nil {
-				panic(err)
+			// TODO(maia): this shouldn't print if we've already pretty-printed it
+			_, printErr := fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			if printErr != nil {
+				panic(printErr)
 			}
 			os.Exit(1)
 		}

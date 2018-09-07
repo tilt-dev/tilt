@@ -5,7 +5,9 @@ import (
 	"errors"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -141,19 +143,28 @@ type serviceNotifyPair struct {
 	notify  watch.Notify
 }
 
-func makeFilter(ctx context.Context, service model.Service) (git.IgnoreTester, error) {
+func makeFilter(ctx context.Context, service model.Service) (ignore.Tester, error) {
 	var repoRoots []string
 
 	for _, mount := range service.Mounts {
 		repoRoots = append(repoRoots, mount.Repo.LocalPath)
 	}
 
-	eventFilter, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
+	mrt, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
 	if err != nil {
 		return nil, err
 	}
 
-	return eventFilter, nil
+	dit, err := dockerignore.NewMultiRepoDockerfileIgnoreTester(repoRoots)
+
+	ci := ignore.CompositeIgnoreTester{
+		Testers: []ignore.Tester{
+			mrt,
+			dit,
+		},
+	}
+
+	return ci, nil
 }
 
 // turns a list of (service, chan fsevent) pairs into a single chan (service, fsevent)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
@@ -75,7 +76,7 @@ func TestRepoIgnoreTester_IsIgnoredRelativePath(t *testing.T) {
 
 type testFixture struct {
 	repoRoots []*testutils.TempDirFixture
-	tester    IgnoreTester
+	tester    ignore.Tester
 	ctx       context.Context
 	t         *testing.T
 }
