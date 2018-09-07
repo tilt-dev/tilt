@@ -208,15 +208,18 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
-	output.Get(ctx).StartBuildStep("tarring context")
+	// TODO(Han): Extend output to print without newline
+	fmt.Printf("  → Tarring context…")
 
 	archive, err := tarContextAndUpdateDf(ctx, df, paths)
 	if err != nil {
 		return nil, err
 	}
-	output.Get(ctx).Printf("Tar size: %s", humanize.Bytes(uint64(archive.Len())))
 
-	output.Get(ctx).StartBuildStep("building image")
+	// TODO(Han): Don't want automatic build step prefix here
+	fmt.Printf(" (size: %s)\n", humanize.Bytes(uint64(archive.Len())))
+
+	output.Get(ctx).StartBuildStep("Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := d.dcli.ImageBuild(
 		ctx,
