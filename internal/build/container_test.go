@@ -4,7 +4,6 @@
 package build
 
 import (
-	"runtime"
 	"strings"
 	"testing"
 
@@ -233,10 +232,12 @@ func TestBuildFailingStep(t *testing.T) {
 	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
-		if runtime.GOOS == "darwin" {
-			assert.Contains(t, err.Error(), "exit code 1")
-		} else {
-			assert.Contains(t, err.Error(), "returned a non-zero code: 1")
+
+		// Different versions of docker have3 a different error string
+		hasExitCode1 := strings.Contains(err.Error(), "exit code 1") ||
+			strings.Contains(err.Error(), "returned a non-zero code: 1")
+		if !hasExitCode1 {
+			t.Errorf("Expected failure with exit code 1, actual: %v", err)
 		}
 	}
 }
