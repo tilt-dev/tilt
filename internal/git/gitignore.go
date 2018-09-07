@@ -109,5 +109,5 @@ func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (ignore.T
 		testers = append(testers, t)
 	}
 
-	return ignore.CompositeIgnoreTester{testers}, nil
+	return ignore.CompositeIgnoreTester{Testers: testers}, nil
 }
