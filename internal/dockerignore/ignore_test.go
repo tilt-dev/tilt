@@ -36,8 +36,14 @@ func TestOneCharacterExtension(t *testing.T) {
 
 func TestException(t *testing.T) {
 	tf := newTestFixture(t, "docs", "!docs/README.md")
-	tf.AssertResult(tf.JoinPath("docs/stuff.md"), true)
-	tf.AssertResult(tf.JoinPath("docs/README.md"), false)
+	tf.AssertResult(tf.JoinPath("docs", "stuff.md"), true)
+	tf.AssertResult(tf.JoinPath("docs", "README.md"), false)
+}
+
+func TestNoDockerignoreFile(t *testing.T) {
+	tf := newTestFixture(t)
+	tf.AssertResult(tf.JoinPath("hi"), false)
+	tf.AssertResult(tf.JoinPath("hi", "hello"), false)
 }
 
 type testFixture struct {
@@ -54,7 +60,9 @@ func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
 	for _, rule := range dockerignores {
 		ignoreText.WriteString(rule + "\n")
 	}
-	tempDir.WriteFile(".dockerignore", ignoreText.String())
+	if ignoreText.Len() > 0 {
+		tempDir.WriteFile(".dockerignore", ignoreText.String())
+	}
 
 	tester, err := NewDockerfileIgnoreTester(tempDir.Path())
 	if err != nil {
