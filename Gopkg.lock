@@ -57,12 +57,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/codeskyblue/dockerignore"
-  packages = ["."]
-  revision = "de82dee623d9207f906d327172149cba50427a88"
-
-[[projects]]
-  branch = "master"
   name = "github.com/containerd/console"
   packages = ["."]
   revision = "c12b1e7919c14469339a5d38f2f8ed9b64a9de23"
@@ -217,8 +211,10 @@
     "api/types/time",
     "api/types/versions",
     "api/types/volume",
+    "builder/dockerignore",
     "client",
     "errdefs",
+    "pkg/fileutils",
     "pkg/homedir",
     "pkg/idtools",
     "pkg/ioutils",
@@ -846,6 +842,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "59eb69dd500609a4f47b43e46b46b983973d16daf40ab8eca85c8220b71a0b9e"
+  inputs-digest = "8bfbe18669c47a9405e11a0d2a4842a90e76192bb72e6537b22b0550257f49f6"
   solver-name = "gps-cdcl"
   solver-version = 1

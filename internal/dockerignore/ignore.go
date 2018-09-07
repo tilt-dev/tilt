@@ -1,16 +1,19 @@
 package dockerignore
 
 import (
+	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/codeskyblue/dockerignore"
 	"github.com/windmilleng/tilt/internal/ignore"
+
+	"github.com/docker/docker/builder/dockerignore"
+	"github.com/docker/docker/pkg/fileutils"
 )
 
 type dockerfileIgnoreTester struct {
 	repoRoot string
-	patterns []string
+	matcher  *fileutils.PatternMatcher
 }
 
 var _ ignore.Tester = dockerfileIgnoreTester{}
@@ -20,12 +23,8 @@ func (i dockerfileIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	isSkip, err := dockerignore.Matches(rp, i.patterns)
-	if err != nil {
-		return false, err
-	}
 
-	return isSkip, nil
+	return i.matcher.Matches(rp)
 }
 
 func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
@@ -35,13 +34,36 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 	}
 
 	p := path.Join(absRoot, ".dockerignore")
-	patterns, err := dockerignore.ReadIgnoreFile(p)
+	var patterns []string
+
+	f, err := os.Open(p)
+	defer f.Close()
+	switch {
+	case os.IsNotExist(err):
+		pm, err := fileutils.NewPatternMatcher(patterns)
+		if err != nil {
+			return nil, err
+		}
+
+		return dockerfileIgnoreTester{
+			repoRoot: absRoot,
+			matcher:  pm,
+		}, err
+	case err != nil:
+		return nil, err
+	}
+
+	patterns, err = dockerignore.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	pm, err := fileutils.NewPatternMatcher(patterns)
 	if err != nil {
 		return nil, err
 	}
 
 	return dockerfileIgnoreTester{
 		repoRoot: absRoot,
-		patterns: patterns,
+		matcher:  pm,
 	}, nil
 }
