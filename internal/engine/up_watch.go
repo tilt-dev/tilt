@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/git"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -141,7 +142,7 @@ type serviceNotifyPair struct {
 	notify  watch.Notify
 }
 
-func makeFilter(ctx context.Context, service model.Service) (git.IgnoreTester, error) {
+func makeFilter(ctx context.Context, service model.Service) (ignore.Tester, error) {
 	var repoRoots []string
 
 	for _, mount := range service.Mounts {
