@@ -37,7 +37,7 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 	var patterns []string
 
 	f, err := os.Open(p)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	switch {
 	case os.IsNotExist(err):
 		pm, err := fileutils.NewPatternMatcher(patterns)
