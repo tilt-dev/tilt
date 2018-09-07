@@ -60,6 +60,7 @@ func (o *Outputter) color(c color.Attribute) *color.Color {
 func (o *Outputter) blue() *color.Color   { return o.color(color.FgBlue) }
 func (o *Outputter) yellow() *color.Color { return o.color(color.FgYellow) }
 func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
+func (o *Outputter) red() *color.Color    { return o.color(color.FgRed) }
 
 func (o *Outputter) StartPipeline(totalStepCount int) {
 	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting … ├────────────────────────────────────────"))
@@ -69,12 +70,31 @@ func (o *Outputter) StartPipeline(totalStepCount int) {
 	o.curPipelineStart = time.Now()
 }
 
-func (o *Outputter) EndPipeline() {
+// NOTE(maia): this func should always be deferred in a closure, so that the `err` arg
+// is bound at the time of calling rather than at the time of deferring. I.e., do:
+//     defer func() { o.EndPipeline(err) }()
+// and NOT:
+//     defer o.EndPipeline(err)
+func (o *Outputter) EndPipeline(err error) {
+	elapsed := time.Now().Sub(o.curPipelineStart)
+
+	if err != nil {
+		// Error output
+		line := o.red().Sprint("──┤ ︎Pipeline FAILED in ") +
+			o.blue().Sprintf("%.3fs", elapsed.Seconds()) +
+			o.yellow().Sprint(" 😢") +
+			o.red().Sprint(" ︎├───────────────────────────────────")
+		o.logger.Infof("%s", line)
+		line = o.red().Sprint("  → ︎ERROR: ") +
+			o.yellow().Sprint(err.Error())
+		o.logger.Infof("%s", line)
+		o.curPipelineStep = 0
+		return
+	}
+
 	for i, duration := range o.pipelineStepDurations {
 		o.logger.Infof("  │ Step %d - %.3fs", i+1, duration.Seconds())
 	}
-
-	elapsed := time.Now().Sub(o.curPipelineStart)
 
 	line := o.blue().Sprint("──┤ ︎Pipeline Done in ") +
 		o.green().Sprintf("%.3fs", elapsed.Seconds()) +
