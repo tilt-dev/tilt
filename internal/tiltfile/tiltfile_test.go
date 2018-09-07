@@ -90,9 +90,8 @@ func TestOldMountSyntax(t *testing.T) {
 		t.Fatal("service config should have errored, but it didn't")
 	}
 
-	expected := "error running 'blorgly': add: for parameter 1: got string, want gitRepo"
-	if err.Error() != expected {
-		t.Errorf("Expected error message to be %s, got %v", expected, err)
+	if !strings.Contains(err.Error(), oldMountSyntaxError) {
+		t.Errorf("Expected error message to contain %s, got %v", oldMountSyntaxError, err)
 	}
 
 }
