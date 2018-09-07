@@ -76,13 +76,13 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	if err != nil {
 		return BuildResult{}, err
 	}
-	logger.Get(ctx).Infof("Updating container...")
+	logger.Get(ctx).Infof("  → Updating container…")
 	err = cbd.cu.UpdateInContainer(ctx, cID, cf, service.Steps)
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to update container, falling back to image deploy: %s", err)
 		return cbd.ibd.BuildAndDeploy(ctx, service, state)
 	}
-	logger.Get(ctx).Infof("Container updated")
+	logger.Get(ctx).Infof("  → Container updated!")
 
 	return BuildResult{
 		Entities:  state.LastResult.Entities,

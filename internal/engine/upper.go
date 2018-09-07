@@ -179,8 +179,8 @@ func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildSt
 		changedPathsToPrint = changedFiles
 	}
 
-	logger.Get(ctx).Infof("files changed. rebuilding %v. observed %d changes: %v",
-		service.Name, len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
+	logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
+	logger.Get(ctx).Infof("Rebuilding service: %s", service.Name)
 }
 
 var _ model.ServiceCreator = Upper{}
