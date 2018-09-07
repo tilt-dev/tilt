@@ -10,7 +10,7 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make all
-      - run: 'false'
+      - run: echo 'linting for improperly deferred EndPipeline calls (should be in closure)'; ! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline('
 
   build-macos:
     macos:
