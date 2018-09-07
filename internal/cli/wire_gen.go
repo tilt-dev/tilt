@@ -9,11 +9,9 @@ import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
-	image "github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
 	service "github.com/windmilleng/tilt/internal/service"
-	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
@@ -34,15 +32,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	windmillDir, err := dirs.UseWindmillDir()
-	if err != nil {
-		return nil, err
-	}
-	imageHistory, err := image.NewImageHistory(ctx, windmillDir)
-	if err != nil {
-		return nil, err
-	}
-	imageBuildAndDeployer, err := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, imageHistory, env)
+	imageBuildAndDeployer, err := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, env)
 	if err != nil {
 		return nil, err
 	}

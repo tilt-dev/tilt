@@ -8,7 +8,6 @@ package engine
 import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
-	image "github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
@@ -22,11 +21,7 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	imageHistory, err := image.NewImageHistory(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-	imageBuildAndDeployer, err := NewImageBuildAndDeployer(imageBuilder, k8s2, imageHistory, env)
+	imageBuildAndDeployer, err := NewImageBuildAndDeployer(imageBuilder, k8s2, env)
 	if err != nil {
 		return nil, err
 	}

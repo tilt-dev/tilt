@@ -7,9 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
 	"k8s.io/api/core/v1"
@@ -19,15 +17,13 @@ var _ BuildAndDeployer = ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
 	b         build.ImageBuilder
-	history   image.ImageHistory
 	k8sClient k8s.Client
 	env       k8s.Env
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, history image.ImageHistory, env k8s.Env) (ImageBuildAndDeployer, error) {
+func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) (ImageBuildAndDeployer, error) {
 	return ImageBuildAndDeployer{
 		b:         b,
-		history:   history,
 		k8sClient: k8sClient,
 		env:       env,
 	}, nil
@@ -63,7 +59,6 @@ func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mod
 }
 
 func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
-	checkpoint := ibd.history.CheckpointNow()
 	var n reference.NamedTagged
 	if !state.HasImage() {
 		// No existing image to build off of, need to build from scratch
@@ -95,12 +90,6 @@ func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Servic
 			return nil, err
 		}
 		n = ref
-	}
-
-	logger.Get(ctx).Verbosef("(Adding checkpoint to history)")
-	err := ibd.history.AddAndPersist(ctx, n, checkpoint, service)
-	if err != nil {
-		return nil, err
 	}
 
 	if !ibd.canSkipPush() {

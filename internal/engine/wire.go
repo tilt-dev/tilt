@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/go-cloud/wire"
 	build "github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/image"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
@@ -21,8 +20,6 @@ func provideBuildAndDeployer(
 	env k8s.Env,
 	skipContainer bool) (BuildAndDeployer, error) {
 	wire.Build(
-		image.NewImageHistory,
-
 		// dockerImageBuilder ( = ImageBuilder)
 		build.DefaultImageBuilder,
 		build.NewDockerImageBuilder,

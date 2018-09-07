@@ -9,11 +9,9 @@ import (
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/image"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/service"
-	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
@@ -23,9 +21,6 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 
 		k8s.NewKubectlClient,
 		wire.Bind(new(k8s.Client), k8s.KubectlClient{}),
-
-		dirs.UseWindmillDir,
-		image.NewImageHistory,
 
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
