@@ -82,7 +82,8 @@ var _ skylark.Value = &dockerImage{}
 
 func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var skylarkCmd skylark.String
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &skylarkCmd)
+	var trigger skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &skylarkCmd, "trigger?", &trigger)
 	if err != nil {
 		return nil, err
 	}

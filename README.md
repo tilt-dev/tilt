@@ -49,11 +49,13 @@ Adds the content from `repo` into the image at `path`.
   * `path`: **str**
 * Returns: nothing
 
-#### Image.run(cmd)
+#### Image.run(cmd, trigger?)
 Runs `cmd` as a build step in the image.
+If the `trigger` file is specified, the build step is only run if the file is changed.
 
 * Args:
   * `cmd`: **str**
+  * `trigger`: **str**
 * Returns: nothing
 
 #### k8s_service(yaml_text, img)
