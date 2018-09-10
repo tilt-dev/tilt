@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -89,6 +91,7 @@ type FakeDockerClient struct {
 	ExecCalls []ExecCall
 
 	RestartsByContainer map[string]int
+	RemovedImageIDs     []string
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
@@ -156,10 +159,19 @@ func (c *FakeDockerClient) ImageInspectWithRaw(ctx context.Context, imageID stri
 }
 
 func (c *FakeDockerClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
-	return nil, nil
+	summaries := make([]types.ImageSummary, c.BuildCount)
+	for i := range summaries {
+		summaries[i] = types.ImageSummary{
+			ID:      fmt.Sprintf("build-id-%d", i),
+			Created: time.Now().Add(-time.Second).Unix(),
+		}
+	}
+	return summaries, nil
 }
 
 func (c *FakeDockerClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
+	sort.Strings(c.RemovedImageIDs)
 	return nil, nil
 }
 

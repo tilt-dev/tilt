@@ -13,6 +13,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	build "github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -104,6 +105,7 @@ var _ watch.Notify = &fakeNotify{}
 
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	service := model.Service{Name: "foobar"}
 	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, false)
 	close(f.b.calls)
@@ -117,6 +119,7 @@ func TestUpper_Up(t *testing.T) {
 
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	service := model.Service{Name: "foobar"}
 	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	if assert.NotNil(t, err) {
@@ -126,6 +129,7 @@ func TestUpper_UpWatchZeroRepos(t *testing.T) {
 
 func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
@@ -149,6 +153,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 // we can't have a test for a file change w/o error because Up doesn't return unless there's an error
 func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
@@ -179,6 +184,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 
 func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
@@ -218,6 +224,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 
 func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	go func() {
@@ -257,6 +264,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	endToken := errors.New("my-err-token")
@@ -280,6 +288,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	buildFailedToken := errors.New("doesn't compile")
@@ -292,6 +301,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	endToken := errors.New("my-err-token")
@@ -324,6 +334,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
 	service := model.Service{Name: "foobar", Mounts: []model.Mount{mount}}
 	endToken := errors.New("my-err-token")
@@ -354,6 +365,20 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	}()
 	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	assert.Equal(t, endToken, err)
+}
+
+func TestReapOldBuilds(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	service := model.Service{Name: "foobar", DockerfileTag: "windmill.build/foobar", Mounts: []model.Mount{mount}}
+
+	f.docker.BuildCount++
+	err := f.upper.reapOldWatchBuilds(f.Ctx(), []model.Service{service}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, []string{"build-id-0"}, f.docker.RemovedImageIDs)
 }
 
 type fakeTimerMaker struct {
@@ -406,6 +431,7 @@ type testFixture struct {
 	b          *fakeBuildAndDeployer
 	watcher    *fakeNotify
 	timerMaker *fakeTimerMaker
+	docker     *build.FakeDockerClient
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -415,8 +441,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
+	docker := build.NewFakeDockerClient()
+	reaper := build.NewImageReaper(docker)
 
 	k8s := &FakeK8sClient{}
-	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto}
-	return &testFixture{f, upper, b, watcher, &timerMaker}
+	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper}
+	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }

@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/output"
-
+	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+	build "github.com/windmilleng/tilt/internal/build"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -40,12 +41,13 @@ type Upper struct {
 	timerMaker   timerMaker
 	k8s          k8s.Client
 	browserMode  BrowserMode
+	reaper       build.ImageReaper
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode, reaper build.ImageReaper) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -55,6 +57,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		timerMaker:   time.After,
 		k8s:          k8s,
 		browserMode:  browserMode,
+		reaper:       reaper,
 	}
 }
 
@@ -106,6 +109,13 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	output.Get(ctx).PrintSummary(watchMounts, s)
 
 	if watchMounts {
+		go func() {
+			err := u.reapOldWatchBuilds(ctx, services, time.Now())
+			if err != nil {
+				logger.Get(ctx).Infof("Error garbage collecting builds: %v", err)
+			}
+		}()
+
 		// Give the pod(s) we just deployed a bit to come up
 		time.Sleep(2 * time.Second)
 
@@ -181,6 +191,28 @@ func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildSt
 
 	logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
 	logger.Get(ctx).Infof("Rebuilding service: %s", service.Name)
+}
+
+func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service, createdBefore time.Time) error {
+	refs := make([]reference.Named, len(services))
+	for i, s := range services {
+		ref, err := reference.ParseNormalizedNamed(s.DockerfileTag)
+		if err != nil {
+			return fmt.Errorf("reapOldWatchBuilds: %v", err)
+		}
+		refs[i] = ref
+	}
+
+	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
+	for _, ref := range refs {
+		nameFilter := build.FilterByRefName(ref)
+		err := u.reaper.RemoveTiltImages(ctx, createdBefore, watchFilter, nameFilter)
+		if err != nil {
+			return fmt.Errorf("reapOldWatchBuilds: %v", err)
+		}
+	}
+
+	return nil
 }
 
 var _ model.ServiceCreator = Upper{}
