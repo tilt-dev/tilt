@@ -62,10 +62,7 @@ func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Servic
 	var n reference.NamedTagged
 	if !state.HasImage() {
 		// No existing image to build off of, need to build from scratch
-		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
-		if err != nil {
-			return nil, err
-		}
+		name := service.DockerfileTag
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
