@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -19,24 +20,26 @@ import (
 var cID = k8s.ContainerID("test_container")
 var alreadyBuilt = BuildResult{Container: cID}
 
-func TestShouldSkipImageBuild(t *testing.T) {
+var dontFallBackErrStr = "don't fall back"
+
+func TestShouldImageBuild(t *testing.T) {
 	m := model.Mount{
 		Repo:          model.LocalGithubRepo{LocalPath: "asdf"},
 		ContainerPath: "blah",
 	}
 	_, pathMapErr := build.FilesToPathMappings([]string{"a"}, []model.Mount{m})
 	if assert.Error(t, pathMapErr) {
-		assert.True(t, shouldSkipImageBuild(pathMapErr))
+		assert.False(t, shouldImageBuild(pathMapErr))
 	}
 
 	s := model.Service{Name: "many errors"}
 	validateErr := s.Validate()
 	if assert.Error(t, validateErr) {
-		assert.True(t, shouldSkipImageBuild(validateErr))
+		assert.False(t, shouldImageBuild(validateErr))
 	}
 
 	err := fmt.Errorf("hello world")
-	assert.False(t, shouldSkipImageBuild(err))
+	assert.True(t, shouldImageBuild(err))
 }
 
 func TestGKEDeploy(t *testing.T) {
@@ -115,48 +118,30 @@ func TestIncrementalBuild(t *testing.T) {
 func TestFallBackToImageDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
+	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	nt, err := k8s.ParseNamedTagged("gcr.io/some-project-162817/sancho:foo")
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Build result with no container -- this should make us do an image deploy instead
-	br := BuildResult{
-		Image: nt,
+	if len(f.docker.RestartsByContainer) != 0 {
+		t.Errorf("Expected no docker container restarts, actual: %d", len(f.docker.RestartsByContainer))
 	}
-
-	newBR, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(br))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
 
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
-	}
-
-	if newBR.Container != k8s.ContainerID("") {
-		t.Errorf("Expected container to be empty, got %s", newBR.Container)
-	}
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
+	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
 	// Malformed service (it's missing fields) will trip a validate error; we
 	// should NOT fall back to image build, but rather, return the error.
-	badService := model.Service{Name: "bad service"}
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), badService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
 	if err == nil {
 		t.Errorf("Expected bad service error to propogate back up")
 	}
@@ -180,6 +165,13 @@ type bdFixture struct {
 	bd     BuildAndDeployer
 }
 
+func shouldFallBack(err error) bool {
+	if strings.Contains(err.Error(), dontFallBackErrStr) {
+		return false
+	}
+	return true
+}
+
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	f := testutils.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
@@ -192,7 +184,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, false)
+	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, false, shouldFallBack)
 	if err != nil {
 		t.Fatal(err)
 	}

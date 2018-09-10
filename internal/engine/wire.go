@@ -18,7 +18,8 @@ func provideBuildAndDeployer(
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
-	skipContainer bool) (BuildAndDeployer, error) {
+	skipContainer bool,
+	shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	wire.Build(
 		// dockerImageBuilder ( = ImageBuilder)
 		build.DefaultImageBuilder,

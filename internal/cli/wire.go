@@ -44,6 +44,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		engine.DefaultSkipContainer,
 
 		wire.Bind(new(engine.BuildAndDeployer), new(engine.CompositeBuildAndDeployer)),
+		engine.DefaultShouldFallBack,
 		engine.NewCompositeBuildAndDeployer,
 
 		engine.NewUpper,

@@ -14,7 +14,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, skipContainer bool) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, skipContainer bool, shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	containerUpdater := build.NewContainerUpdater(docker)
 	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, skipContainer)
 	console := build.DefaultConsole()
@@ -23,7 +23,7 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env)
-	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(containerBuildAndDeployer, imageBuildAndDeployer)
+	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(containerBuildAndDeployer, imageBuildAndDeployer, shouldFallBackToImgBuild)
 	return compositeBuildAndDeployer, nil
 }
 

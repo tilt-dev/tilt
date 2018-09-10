@@ -27,42 +27,50 @@ type BuildAndDeployer interface {
 type FirstLineBuildAndDeployer BuildAndDeployer
 type FallbackBuildAndDeployer BuildAndDeployer
 
+// CompositeBuildAndDeployer first attempts to build and deploy with the FirstLineBuildAndDeployer.
+// If this fails, and the error returned isn't critical, we fall back to the FallbackBaD.
 type CompositeBuildAndDeployer struct {
-	containerBaD BuildAndDeployer
-	imageBaD     BuildAndDeployer
+	firstLine      FirstLineBuildAndDeployer
+	fallback       FallbackBuildAndDeployer
+	shouldFallBack func(error) bool
 }
 
-func NewCompositeBuildAndDeployer(firstLine FirstLineBuildAndDeployer, fallback FallbackBuildAndDeployer) *CompositeBuildAndDeployer {
+func DefaultShouldFallBack() func(error) bool {
+	return shouldImageBuild
+}
+func NewCompositeBuildAndDeployer(firstLine FirstLineBuildAndDeployer, fallback FallbackBuildAndDeployer,
+	shouldFallBack func(error) bool) *CompositeBuildAndDeployer {
 	return &CompositeBuildAndDeployer{
-		containerBaD: firstLine,
-		imageBaD:     fallback,
+		firstLine:      firstLine,
+		fallback:       fallback,
+		shouldFallBack: shouldFallBack,
 	}
 }
 
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, currentState BuildState) (BuildResult, error) {
-	br, err := composite.containerBaD.BuildAndDeploy(ctx, service, currentState)
+	br, err := composite.firstLine.BuildAndDeploy(ctx, service, currentState)
 	if err == nil {
 		return br, err
 	}
-	if shouldSkipImageBuild(err) {
-		return BuildResult{}, err
+	if composite.shouldFallBack(err) {
+		return composite.fallback.BuildAndDeploy(ctx, service, currentState)
 	}
-	return composite.imageBaD.BuildAndDeploy(ctx, service, currentState)
+	return BuildResult{}, err
 }
 
-// shouldSkipImageBuild determines whether the given error (from the containerBuildAndDeployer)
-// means that we should skip the image build.
-func shouldSkipImageBuild(err error) bool {
+// Given the error from our initial BuildAndDeploy attempt, shouldImageBuild determines
+// whether we should fall back to an ImageBuild.
+func shouldImageBuild(err error) bool {
 	if _, ok := err.(*build.PathMappingErr); ok {
-		return true
+		return false
 	}
 	if _, ok := err.(*model.ValidateErr); ok {
-		return true
+		return false
 	}
-	return false
+	return true
 }
 
 func (composite *CompositeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
 	// NOTE(maia): this will be relocated soon... for now, call out to the embedded BaD that has this implemented
-	return composite.containerBaD.GetContainerForBuild(ctx, build)
+	return composite.firstLine.GetContainerForBuild(ctx, build)
 }
