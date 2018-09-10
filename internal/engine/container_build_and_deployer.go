@@ -77,7 +77,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 		return BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	err = cbd.cu.UpdateInContainer(ctx, cID, cf, service.Steps)
+	err = cbd.cu.UpdateInContainer(ctx, cID, cf, model.BoilStepsTODO(service.Steps))
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to update container, falling back to image deploy: %s", err)
 		return cbd.ibd.BuildAndDeploy(ctx, service, state)

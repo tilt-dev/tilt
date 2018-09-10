@@ -195,7 +195,7 @@ func skylarkServiceToDomain(service k8sService) (model.Service, error) {
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
 		Mounts:         skylarkMountsToDomain(service.dockerImage.mounts),
-		Steps:          model.ToShellCmds(service.dockerImage.cmds),
+		Steps:          model.ToShellSteps(service.dockerImage.cmds),
 		Entrypoint:     model.ToShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
 		Name:           model.ServiceName(service.name),
