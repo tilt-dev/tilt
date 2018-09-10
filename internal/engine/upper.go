@@ -154,6 +154,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
+				output.Get(ctx).PrintSummary(watchMounts, s)
+
 			case err := <-sw.errs:
 				return err
 			}
