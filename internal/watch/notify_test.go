@@ -315,6 +315,7 @@ func newNotifyFixture(t *testing.T) *notifyFixture {
 }
 
 func (f *notifyFixture) assertEvents(expected ...string) {
+	f.t.Helper()
 	f.fsync()
 
 	if len(f.events) != len(expected) {

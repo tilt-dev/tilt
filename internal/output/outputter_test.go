@@ -127,5 +127,6 @@ func (p prefixedWriterTestFixture) Write(s string) {
 }
 
 func (p prefixedWriterTestFixture) AssertContentsEqual(expected string) {
+	p.t.Helper()
 	assert.Equal(p.t, expected, p.buf.String())
 }

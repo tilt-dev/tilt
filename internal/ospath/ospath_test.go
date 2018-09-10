@@ -64,6 +64,7 @@ func NewOspathFixture(t *testing.T) *OspathFixture {
 
 // pass `expectedRelative` = "" to indicate that `file` is NOT a child of `dir`
 func (f *OspathFixture) assertChild(dir, file, expectedRel string) {
+	f.t.Helper()
 	rel, isChild := Child(dir, file)
 	if expectedRel == "" {
 		if isChild {
@@ -91,6 +92,7 @@ func (f *OspathFixture) symlink(oldPath, newPath string) {
 }
 
 func (f *OspathFixture) assertBrokenSymlink(file string, expected bool) {
+	f.t.Helper()
 	broken, err := IsBrokenSymlink(path.Join(f.Path(), file))
 	if err != nil {
 		f.t.Fatal(err)
