@@ -26,18 +26,13 @@ func DefaultSkipContainer() bool {
 	return false
 }
 
-func newContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, skipContainer bool) *ContainerBuildAndDeployer {
+func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, skipContainer bool) *ContainerBuildAndDeployer {
 	return &ContainerBuildAndDeployer{
 		cu:            cu,
 		env:           env,
 		k8sClient:     kCli,
 		skipContainer: skipContainer,
 	}
-}
-
-func NewContainerBuildAndDeployerAsFirstLine(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client,
-	skipContainer bool) FirstLineBuildAndDeployer {
-	return newContainerBuildAndDeployer(cu, env, kCli, skipContainer)
 }
 
 func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {

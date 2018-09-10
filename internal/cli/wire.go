@@ -33,10 +33,13 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		wire.Value(build.Labels{}),
 		build.NewImageReaper,
 
-		engine.NewImageBuildAndDeployerAsFallback,
+		// ImageBuildAndDeployer (FallbackBuildAndDeployer)
+		wire.Bind(new(engine.FallbackBuildAndDeployer), new(engine.ImageBuildAndDeployer)),
+		engine.NewImageBuildAndDeployer,
 
-		// ContainerBuildAndDeployer
-		engine.NewContainerBuildAndDeployerAsFirstLine,
+		// ContainerBuildAndDeployer (FirstLineBuildAndDeployer)
+		wire.Bind(new(engine.FirstLineBuildAndDeployer), new(engine.ContainerBuildAndDeployer)),
+		engine.NewContainerBuildAndDeployer,
 		build.NewContainerUpdater,
 		engine.DefaultSkipContainer,
 

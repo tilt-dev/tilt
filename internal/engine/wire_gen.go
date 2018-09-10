@@ -16,14 +16,14 @@ import (
 
 func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, skipContainer bool) (BuildAndDeployer, error) {
 	containerUpdater := build.NewContainerUpdater(docker)
-	firstLineBuildAndDeployer := NewContainerBuildAndDeployerAsFirstLine(containerUpdater, env, k8s2, skipContainer)
+	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, skipContainer)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	fallbackBuildAndDeployer := NewImageBuildAndDeployerAsFallback(imageBuilder, k8s2, env)
-	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(firstLineBuildAndDeployer, fallbackBuildAndDeployer)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env)
+	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(containerBuildAndDeployer, imageBuildAndDeployer)
 	return compositeBuildAndDeployer, nil
 }
 
