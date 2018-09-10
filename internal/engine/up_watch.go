@@ -7,7 +7,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
-	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -143,7 +142,7 @@ type serviceNotifyPair struct {
 	notify  watch.Notify
 }
 
-func makeFilter(ctx context.Context, service model.Service) (ignore.Tester, error) {
+func makeFilter(ctx context.Context, service model.Service) (model.PathMatcher, error) {
 	var repoRoots []string
 
 	for _, mount := range service.Mounts {
@@ -155,10 +154,10 @@ func makeFilter(ctx context.Context, service model.Service) (ignore.Tester, erro
 		return nil, err
 	}
 
-	dit, err := dockerignore.NewMultiRepoDockerfileIgnoreTester(repoRoots)
+	dit, err := dockerignore.NewMultiRepoDockerIgnoreTester(repoRoots)
 
-	ci := ignore.CompositeIgnoreTester{
-		Testers: []ignore.Tester{
+	ci := model.CompositePathMatcher{
+		Matchers: []model.PathMatcher{
 			mrt,
 			dit,
 		},
@@ -201,7 +200,7 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 						if err != nil {
 							errs <- err
 						}
-						isIgnored, err := filter.IsIgnored(path, false)
+						isIgnored, err := filter.Matches(path, false)
 						if !isIgnored {
 							watchEvent.files = append(watchEvent.files, path)
 						}

@@ -67,11 +67,7 @@ type Step struct {
 
 	// Optional. If not specified, this step runs on every change.
 	// If specified, we only run the Cmd if the trigger matches the changed file.
-	Trigger FileMatcher
-}
-
-type FileMatcher interface {
-	Matches(f string, isDir bool) (bool, error)
+	Trigger PathMatcher
 }
 
 type Cmd struct {
