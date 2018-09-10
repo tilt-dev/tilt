@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/output"
+
 	"github.com/opentracing/opentracing-go"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -71,6 +73,9 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
+	s := output.NewSummary()
+	s.Gather(services)
+
 	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
 		buildStates[service.Name] = BuildStateClean
@@ -97,6 +102,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	}
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
+
+	output.Get(ctx).PrintSummary(watchMounts, s)
 
 	if watchMounts {
 		// Give the pod(s) we just deployed a bit to come up
@@ -172,8 +179,8 @@ func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildSt
 		changedPathsToPrint = changedFiles
 	}
 
-	logger.Get(ctx).Infof("files changed. rebuilding %v. observed %d changes: %v",
-		service.Name, len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
+	logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
+	logger.Get(ctx).Infof("Rebuilding service: %s", service.Name)
 }
 
 var _ model.ServiceCreator = Upper{}

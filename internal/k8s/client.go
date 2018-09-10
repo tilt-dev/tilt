@@ -88,7 +88,7 @@ func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
-	logger.Get(ctx).Infof("%sapplying via kubectl", logger.Tab)
+	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
 	stderrBuf, err := k.cli(ctx, "apply", entities)
 	if err != nil {
 		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderrBuf.String())
