@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package synclet;
+
+option go_package = "github.com/windmilleng/tilt/internal/synclet/proto;proto";
+
+service Synclet {
+    rpc Update (UpdateRequest) returns (UpdateReply) {}
+}
+
+message Cmd {
+    repeated string argv = 1;
+}
+
+message UpdateRequest {
+    string containerId = 1;
+    bytes tarArchive = 2;
+    repeated string filesToDelete = 3;
+    repeated Cmd commands = 4;
+}
+
+message UpdateReply {}
