@@ -156,12 +156,10 @@ func makeFilter(ctx context.Context, service model.Service) (model.PathMatcher, 
 
 	dit, err := dockerignore.NewMultiRepoDockerIgnoreTester(repoRoots)
 
-	ci := model.CompositePathMatcher{
-		Matchers: []model.PathMatcher{
-			mrt,
-			dit,
-		},
-	}
+	ci := model.NewCompositeMatcher([]model.PathMatcher{
+		mrt,
+		dit,
+	})
 
 	return ci, nil
 }
