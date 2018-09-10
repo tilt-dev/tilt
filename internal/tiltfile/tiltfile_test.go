@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 func tempFile(content string) string {
@@ -340,7 +341,7 @@ func TestRunTrigger(t *testing.T) {
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run('yarn install', trigger='package.json')
-  image.run('npm install', trigger=['package.json'])
+  image.run('npm install', trigger=['package.json', 'yarn.lock'])
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -351,10 +352,34 @@ func TestRunTrigger(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetServiceConfigs("yarnly")
+	services, err := tiltconfig.GetServiceConfigs("yarnly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
 
-	// TODO(dmiller): actually test that trigger makes it in to the service definition
+	assert.Equal(t, len(services), 1)
+	assert.Equal(
+		t,
+		services[0].Steps[0].Cmd,
+		model.Cmd{
+			Argv: []string{"sh", "-c", "yarn install"},
+		},
+	)
+	assert.Equal(
+		t,
+		len(services[0].Steps[0].Trigger),
+		1,
+	)
+	assert.Equal(
+		t,
+		services[0].Steps[1].Cmd,
+		model.Cmd{
+			Argv: []string{"sh", "-c", "npm install"},
+		},
+	)
+	assert.Equal(
+		t,
+		len(services[0].Steps[1].Trigger),
+		2,
+	)
 }
