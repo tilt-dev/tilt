@@ -17,6 +17,7 @@ type TempDirFixture struct {
 }
 
 func NewTempDirFixture(t testing.TB) *TempDirFixture {
+	t.Helper()
 	dir, err := temp.NewDir(t.Name())
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)

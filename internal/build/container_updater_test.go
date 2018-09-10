@@ -119,6 +119,7 @@ type mockContainerUpdaterFixture struct {
 }
 
 func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
+	t.Helper()
 	fakeCli := NewFakeDockerClient()
 	cu := &ContainerUpdater{
 		dcli: fakeCli,

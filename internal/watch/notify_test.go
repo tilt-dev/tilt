@@ -286,6 +286,7 @@ type notifyFixture struct {
 }
 
 func newNotifyFixture(t *testing.T) *notifyFixture {
+	t.Helper()
 	SetLimitChecksEnabled(false)
 	notify, err := NewWatcher()
 	if err != nil {
@@ -315,6 +316,7 @@ func newNotifyFixture(t *testing.T) *notifyFixture {
 }
 
 func (f *notifyFixture) assertEvents(expected ...string) {
+	f.t.Helper()
 	f.fsync()
 
 	if len(f.events) != len(expected) {

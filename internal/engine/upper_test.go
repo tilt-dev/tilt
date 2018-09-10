@@ -436,6 +436,7 @@ type testFixture struct {
 }
 
 func newTestFixture(t *testing.T) *testFixture {
+	t.Helper()
 	f := testutils.NewTempDirFixture(t)
 	watcher := newFakeNotify()
 	watcherMaker := makeFakeWatcherMaker(watcher)

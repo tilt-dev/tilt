@@ -60,6 +60,7 @@ type serviceWatcherTestFixture struct {
 }
 
 func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatcherTestFixture {
+	t.Helper()
 	var watchers []*fakeNotify
 	nextWatcher := 0
 	watcherMaker := func() (watch.Notify, error) {
@@ -142,10 +143,12 @@ func (s *serviceWatcherTestFixture) readEvents(numExpectedEvents int) []testServ
 }
 
 func (s *serviceWatcherTestFixture) AssertNextEvent(serviceNumber int, files []string) bool {
+	s.t.Helper()
 	return s.AssertNextEvents([]testServiceFilesChangedEvent{{serviceNumber, files}})
 }
 
 func (s *serviceWatcherTestFixture) AssertNextEvents(expectedEvents []testServiceFilesChangedEvent) bool {
+	s.t.Helper()
 	actualEvents := s.readEvents(len(expectedEvents))
 	return assert.ElementsMatch(s.t, expectedEvents, actualEvents)
 }

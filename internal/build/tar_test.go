@@ -81,6 +81,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	t.Helper()
 	ctx := testutils.CtxForTest()
 
 	return &fixture{
@@ -95,6 +96,7 @@ func (f *fixture) tearDown() {
 }
 
 func (f *fixture) assertFileInTarWithContents(buf *bytes.Buffer, path, expected string) {
+	f.t.Helper()
 	tr := tar.NewReader(buf)
 	found := false
 	for {
@@ -123,6 +125,7 @@ func (f *fixture) assertFileInTarWithContents(buf *bytes.Buffer, path, expected 
 }
 
 func (f *fixture) assertFileNotInTar(buf *bytes.Buffer, path string) {
+	f.t.Helper()
 	tr := tar.NewReader(buf)
 	found := false
 	for {

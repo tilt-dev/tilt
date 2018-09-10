@@ -83,6 +83,7 @@ type testFixture struct {
 
 // initializes `tf.repoRoots` to be an array with one dir per gitignore
 func newTestFixture(t *testing.T, gitignores ...string) *testFixture {
+	t.Helper()
 	tf := testFixture{}
 	for _, gitignore := range gitignores {
 		tempDir := testutils.NewTempDirFixture(t)
@@ -135,6 +136,7 @@ func (tf *testFixture) JoinPath(repoNum int, path ...string) string {
 }
 
 func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool, expectError bool) {
+	tf.t.Helper()
 	isIgnored, err := tf.tester.IsIgnored(path, false)
 	if expectError {
 		assert.Error(tf.t, err)

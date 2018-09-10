@@ -88,6 +88,7 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
+	t.Helper()
 	ctx := testutils.CtxForTest()
 	dcli, err := DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
@@ -171,6 +172,7 @@ type expectedFile struct {
 }
 
 func (f *dockerBuildFixture) assertImageExists(ref reference.NamedTagged) {
+	f.t.Helper()
 	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
 	if err != nil {
 		f.t.Errorf("Expected image %q to exist, got: %v", ref, err)
@@ -178,6 +180,7 @@ func (f *dockerBuildFixture) assertImageExists(ref reference.NamedTagged) {
 }
 
 func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
+	f.t.Helper()
 	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
 	if err == nil || !client.IsErrNotFound(err) {
 		f.t.Errorf("Expected image %q to fail with ErrNotFound, got: %v", ref, err)
@@ -185,12 +188,14 @@ func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
 }
 
 func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expectedFiles []expectedFile) {
+	f.t.Helper()
 	cID := f.startContainer(f.ctx, containerConfigRunCmd(ref, model.Cmd{}))
 	f.assertFilesInContainer(f.ctx, cID, expectedFiles)
 }
 
 func (f *dockerBuildFixture) assertFilesInContainer(
 	ctx context.Context, cID k8s.ContainerID, expectedFiles []expectedFile) {
+	f.t.Helper()
 	for _, expectedFile := range expectedFiles {
 		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.path)
 		if expectedFile.missing {
@@ -212,6 +217,7 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 }
 
 func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
+	f.t.Helper()
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {

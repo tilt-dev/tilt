@@ -59,6 +59,7 @@ type testFixture struct {
 }
 
 func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
+	t.Helper()
 	tf := testFixture{}
 	tempDir := testutils.NewTempDirFixture(t)
 	tf.repoRoot = tempDir
@@ -85,6 +86,7 @@ func (tf *testFixture) JoinPath(path ...string) string {
 }
 
 func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool) {
+	tf.t.Helper()
 	isIgnored, err := tf.tester.IsIgnored(path, false)
 	if err != nil {
 		tf.t.Fatal(err)

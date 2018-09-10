@@ -132,6 +132,7 @@ type serviceManagerFixture struct {
 }
 
 func newServiceManagerFixture(t *testing.T) *serviceManagerFixture {
+	t.Helper()
 	sm := service.NewMemoryManager()
 
 	return &serviceManagerFixture{
@@ -141,5 +142,6 @@ func newServiceManagerFixture(t *testing.T) *serviceManagerFixture {
 }
 
 func (f *serviceManagerFixture) AssertServiceList(s []model.Service) {
+	f.t.Helper()
 	assert.ElementsMatch(f.t, f.sm.List(), s)
 }
