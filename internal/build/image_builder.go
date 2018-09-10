@@ -40,8 +40,8 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
-	BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Step) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
@@ -79,7 +79,7 @@ func NewDockerImageBuilder(dcli DockerClient, console console.Console, out io.Wr
 }
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
-	mounts []model.Mount, steps []model.Cmd, entrypoint model.Cmd) (reference.NamedTagged, error) {
+	mounts []model.Mount, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
 	defer span.Finish()
@@ -89,55 +89,80 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		return nil, err
 	}
 
-	df := baseDockerfile.WithLabel(BuildMode, BuildModeScratch)
-	for k, v := range d.extraLabels {
-		df = df.WithLabel(k, v)
+	// TODO(nick): should there be an error if hasEntrypoint is false?
+	// right now, Service#Validate will fail on this case, but many of our
+	// test cases don't have entrypoints.
+	hasEntrypoint := !entrypoint.Empty()
+
+	paths := MountsToPathMappings(mounts)
+	df := d.applyLabels(baseDockerfile, BuildModeScratch)
+	df, steps = d.addConditionalSteps(df, steps)
+	df, err = d.addMounts(ctx, df, paths)
+	if err != nil {
+		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
 	}
 
-	return d.buildImage(ctx, df, MountsToPathMappings(mounts), steps, entrypoint, ref)
+	df = d.addRemainingSteps(df, steps)
+	if hasEntrypoint {
+		df = df.Entrypoint(entrypoint)
+	}
+
+	return d.buildFromDf(ctx, df, paths, ref)
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged,
-	paths []pathMapping, steps []model.Cmd) (reference.NamedTagged, error) {
+	paths []pathMapping, steps []model.Step) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
 
-	dfForExisting := DockerfileFromExisting(existing).WithLabel(BuildMode, BuildModeExisting)
-	for k, v := range d.extraLabels {
-		dfForExisting = dfForExisting.WithLabel(k, v)
+	df := d.applyLabels(DockerfileFromExisting(existing), BuildModeExisting)
+
+	// Don't worry about conditional steps on incremental builds, they've
+	// already handled by the watch loop.
+	df, err := d.addMounts(ctx, df, paths)
+	if err != nil {
+		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
 	}
 
-	steps = model.TrySquash(steps)
-	return d.buildImage(ctx, dfForExisting, paths, steps, model.Cmd{}, existing)
+	df = d.addRemainingSteps(df, steps)
+	return d.buildFromDf(ctx, df, paths, existing)
 }
 
-func (d *dockerImageBuilder) buildImage(ctx context.Context, baseDockerfile Dockerfile,
-	paths []pathMapping, steps []model.Cmd, entrypoint model.Cmd, ref reference.Named) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Dockerfile {
+	df = df.WithLabel(BuildMode, buildMode)
+	for k, v := range d.extraLabels {
+		df = df.WithLabel(k, v)
+	}
+	return df
+}
 
-	df := baseDockerfile.AddAll()
+// If the build starts with conditional steps, add the dependent files first,
+// then add the runs, before we add the majority of the source.
+func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.Step) (Dockerfile, []model.Step) {
+	remainingSteps := append([]model.Step{}, steps...)
+
+	// TODO(nick): Fill this in.
+
+	return df, remainingSteps
+}
+
+func (d *dockerImageBuilder) addMounts(ctx context.Context, df Dockerfile, paths []pathMapping) (Dockerfile, error) {
+	df = df.AddAll()
 	toRemove, err := missingLocalPaths(ctx, paths)
 	if err != nil {
-		return nil, fmt.Errorf("buildImage: %v", err)
+		return "", fmt.Errorf("addMounts: %v", err)
 	}
 
 	df = df.RmPaths(toRemove)
+	return df, nil
+}
 
-	for _, step := range steps {
-		df = df.Run(step)
+func (d *dockerImageBuilder) addRemainingSteps(df Dockerfile, remaining []model.Step) Dockerfile {
+	for _, step := range remaining {
+		df = df.Run(step.Cmd)
 	}
-
-	if !entrypoint.Empty() {
-		df = df.Entrypoint(entrypoint)
-	}
-
-	// We have the Dockerfile! Kick off the docker build.
-	namedTagged, err := d.buildFromDf(ctx, df, paths, ref)
-	if err != nil {
-		return nil, fmt.Errorf("buildImage#buildFromDf: %v", err)
-	}
-
-	return namedTagged, nil
+	return df
 }
 
 // Tag the digest with the given name and wm-tilt tag.
