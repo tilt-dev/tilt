@@ -340,6 +340,7 @@ func TestRunTrigger(t *testing.T) {
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run('yarn install', trigger='package.json')
+  image.run('npm install', trigger=['package.json'])
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)

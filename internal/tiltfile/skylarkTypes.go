@@ -82,7 +82,7 @@ var _ skylark.Value = &dockerImage{}
 
 func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var skylarkCmd skylark.String
-	var trigger skylark.String
+	var trigger skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &skylarkCmd, "trigger?", &trigger)
 	if err != nil {
 		return nil, err
@@ -96,6 +96,24 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 	if !ok {
 		return nil, errors.New("internal error: skylarkCmd was not a string")
 	}
+
+	var triggers []string
+	switch trigger := trigger.(type) {
+	case *skylark.List:
+		l := trigger.Len()
+		triggers = make([]string, l)
+		for i := 0; i < l; i++ {
+			t := trigger.Index(i)
+			tStr, isStr := t.(skylark.String)
+			if !isStr {
+				return nil, badTypeErr(fn, skylark.String(""), t)
+			}
+			triggers[i] = string(tStr)
+		}
+	case skylark.String:
+		triggers = []string{string(trigger)}
+	}
+
 	image.cmds = append(image.cmds, cmd)
 	return skylark.None, nil
 }
@@ -185,4 +203,8 @@ func (gitRepo) Truth() skylark.Bool {
 
 func (gitRepo) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: gitRepo")
+}
+
+func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
+	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
 }

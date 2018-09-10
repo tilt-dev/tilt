@@ -55,7 +55,7 @@ If the `trigger` file is specified, the build step is only run if the file is ch
 
 * Args:
   * `cmd`: **str**
-  * `trigger`: **str**
+  * `trigger`: **List[str] | str**
 * Returns: nothing
 
 #### k8s_service(yaml_text, img)
