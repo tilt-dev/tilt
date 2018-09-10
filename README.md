@@ -41,12 +41,12 @@ Builds a docker image.
   * `entrypoint`: **str**
 * Returns: **Image**
 
-#### Image.add(path, repo)
+#### Image.add(repo, path)
 Adds the content from `repo` into the image at `path`.
 
 * Args:
-  * `path`: **str**
   * `repo`: **Repo** (returned by `local_git_repo`)
+  * `path`: **str**
 * Returns: nothing
 
 #### Image.run(cmd)

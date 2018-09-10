@@ -3,9 +3,12 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/skylark"
 )
+
+const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `.add(dest, src)`. Now it is `.add(src, dest)`."
 
 type compService struct {
 	cService []k8sService
@@ -97,13 +100,16 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var mountPoint string
 	var gitRepo gitRepo
+	var mountPoint string
 	if len(fn.Receiver().(*dockerImage).cmds) > 0 {
 		return nil, errors.New("add mount before run command")
 	}
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "mount_point", &mountPoint, "local_git_repo", &gitRepo)
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &gitRepo, "dest", &mountPoint)
 	if err != nil {
+		if strings.Contains(err.Error(), "add: for parameter 1: got string, want gitRepo") {
+			return nil, fmt.Errorf(oldMountSyntaxError)
+		}
 		return nil, err
 	}
 

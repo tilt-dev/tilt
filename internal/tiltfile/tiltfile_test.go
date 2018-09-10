@@ -29,7 +29,7 @@ func TestGetServiceConfig(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
-  image.add('/mount_points/1', local_git_repo('.'))
+  image.add(local_git_repo('.'), '/mount_points/1')
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -64,6 +64,36 @@ func TestGetServiceConfig(t *testing.T) {
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv, "first step")
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv, "second step")
 	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
+}
+
+func TestOldMountSyntax(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image.add('/mount_points/1', local_git_repo('.'))
+  print(image.file_name)
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+
+	tiltconfig, err := Load(file)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	_, err = tiltconfig.GetServiceConfigs("blorgly")
+	if err == nil {
+		t.Fatal("service config should have errored, but it didn't")
+	}
+
+	if !strings.Contains(err.Error(), oldMountSyntaxError) {
+		t.Errorf("Expected error message to contain %s, got %v", oldMountSyntaxError, err)
+	}
+
 }
 
 func TestGetServiceConfigMissingDockerFile(t *testing.T) {
