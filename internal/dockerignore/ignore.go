@@ -4,20 +4,20 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/windmilleng/tilt/internal/ignore"
+	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/fileutils"
 )
 
-type dockerfileIgnoreTester struct {
+type dockerPathMatcher struct {
 	repoRoot string
 	matcher  *fileutils.PatternMatcher
 }
 
-var _ ignore.Tester = dockerfileIgnoreTester{}
+var _ model.PathMatcher = dockerPathMatcher{}
 
-func (i dockerfileIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
+func (i dockerPathMatcher) Matches(f string, isDir bool) (bool, error) {
 	rp, err := filepath.Rel(i.repoRoot, f)
 	if err != nil {
 		return false, err
@@ -26,7 +26,7 @@ func (i dockerfileIgnoreTester) IsIgnored(f string, isDir bool) (bool, error) {
 	return i.matcher.Matches(rp)
 }
 
-func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
+func NewDockerIgnoreTester(repoRoot string) (model.PathMatcher, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
@@ -37,12 +37,21 @@ func NewDockerfileIgnoreTester(repoRoot string) (ignore.Tester, error) {
 		return nil, err
 	}
 
+	return NewDockerPatternMatcher(absRoot, patterns)
+}
+
+func NewDockerPatternMatcher(repoRoot string, patterns []string) (model.PathMatcher, error) {
+	absRoot, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+
 	pm, err := fileutils.NewPatternMatcher(patterns)
 	if err != nil {
 		return nil, err
 	}
 
-	return dockerfileIgnoreTester{
+	return dockerPathMatcher{
 		repoRoot: absRoot,
 		matcher:  pm,
 	}, nil
@@ -63,15 +72,15 @@ func readDockerignorePatterns(repoRoot string) ([]string, error) {
 	return dockerignore.ReadAll(f)
 }
 
-func NewMultiRepoDockerfileIgnoreTester(repoRoots []string) (ignore.Tester, error) {
-	var testers []ignore.Tester
+func NewMultiRepoDockerIgnoreTester(repoRoots []string) (model.PathMatcher, error) {
+	var testers []model.PathMatcher
 	for _, repoRoot := range repoRoots {
-		t, err := NewDockerfileIgnoreTester(repoRoot)
+		t, err := NewDockerIgnoreTester(repoRoot)
 		if err != nil {
 			return nil, err
 		}
 		testers = append(testers, t)
 	}
 
-	return ignore.CompositeIgnoreTester{Testers: testers}, nil
+	return model.CompositePathMatcher{Matchers: testers}, nil
 }

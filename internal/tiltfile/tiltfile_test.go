@@ -61,8 +61,8 @@ func TestGetServiceConfig(t *testing.T) {
 	assert.Equal(t, "/mount_points/1", service.Mounts[0].ContainerPath)
 	assert.Equal(t, wd, service.Mounts[0].Repo.LocalPath, "repo path")
 	assert.Equal(t, 2, len(service.Steps), "number of steps")
-	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv, "first step")
-	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv, "second step")
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Cmd.Argv, "first step")
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Cmd.Argv, "second step")
 	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
 }
 
@@ -328,7 +328,33 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 	assert.Equal(t, "docker tag", service.DockerfileTag)
 	assert.Equal(t, "yaaaaaaaaml\n", service.K8sYaml)
 	assert.Equal(t, 2, len(service.Steps))
-	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Argv)
-	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Argv)
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Cmd.Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Cmd.Argv)
 	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
+}
+
+func TestRunTrigger(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def yarnly():
+  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image.add(local_git_repo('.'), '/mount_points/1')
+  image.run('yarn install', trigger='package.json')
+  image.run('npm install', trigger=['package.json'])
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+
+	tiltconfig, err := Load(file)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	_, err = tiltconfig.GetServiceConfigs("yarnly")
+	if err != nil {
+		t.Fatal("getting service config:", err)
+	}
+
+	// TODO(dmiller): actually test that trigger makes it in to the service definition
 }

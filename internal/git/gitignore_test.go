@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/ignore"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
@@ -29,11 +29,11 @@ func TestNewGitIgnoreTester_NoGitignore(t *testing.T) {
 	}
 
 	// we were really just looking for a lack of error on initialization
-	ret, err := g.IsIgnored(tempDir.JoinPath("a", "b", ".foo.swp"), false)
+	ret, err := g.Matches(tempDir.JoinPath("a", "b", ".foo.swp"), false)
 	assert.Nil(t, err)
 	assert.False(t, ret)
 
-	ret, err = g.IsIgnored(tempDir.JoinPath("foo.txt"), false)
+	ret, err = g.Matches(tempDir.JoinPath("foo.txt"), false)
 	if assert.NoError(t, err) {
 		assert.False(t, ret)
 	}
@@ -48,7 +48,7 @@ func TestGitIgnoreTester_FileOutsideOfRepo(t *testing.T) {
 	tf.AssertResult(filepath.Join("/tmp", ".foo.swp"), false, false)
 }
 
-func TestGitIgnoreTester_GitDirIsIgnored(t *testing.T) {
+func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 	tf := newTestFixture(t, ".*.swp")
 	defer tf.TearDown()
 
@@ -68,7 +68,7 @@ func TestNewMultiRepoIgnoreTester(t *testing.T) {
 	tf.AssertResult(tf.JoinPath(1, ".foo.swp"), false, false)
 }
 
-func TestRepoIgnoreTester_IsIgnoredRelativePath(t *testing.T) {
+func TestRepoIgnoreTester_MatchesRelativePath(t *testing.T) {
 	tf := newTestFixture(t, "")
 	defer tf.TearDown()
 
@@ -76,7 +76,7 @@ func TestRepoIgnoreTester_IsIgnoredRelativePath(t *testing.T) {
 
 type testFixture struct {
 	repoRoots []*testutils.TempDirFixture
-	tester    ignore.Tester
+	tester    model.PathMatcher
 	ctx       context.Context
 	t         *testing.T
 }
@@ -134,13 +134,13 @@ func (tf *testFixture) JoinPath(repoNum int, path ...string) string {
 	return tf.repoRoots[repoNum].JoinPath(path...)
 }
 
-func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool, expectError bool) {
-	isIgnored, err := tf.tester.IsIgnored(path, false)
+func (tf *testFixture) AssertResult(path string, expectedMatches bool, expectError bool) {
+	isIgnored, err := tf.tester.Matches(path, false)
 	if expectError {
 		assert.Error(tf.t, err)
 	} else {
 		if assert.NoError(tf.t, err) {
-			assert.Equal(tf.t, expectedIsIgnored, isIgnored)
+			assert.Equal(tf.t, expectedMatches, isIgnored)
 		}
 	}
 }

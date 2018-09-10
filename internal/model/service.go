@@ -14,7 +14,7 @@ type Service struct {
 	K8sYaml        string
 	DockerfileText string
 	Mounts         []Mount
-	Steps          []Cmd
+	Steps          []Step
 	Entrypoint     Cmd
 	DockerfileTag  string
 	Name           ServiceName
@@ -69,6 +69,15 @@ type LocalGithubRepo struct {
 
 func (LocalGithubRepo) IsRepo() {}
 
+type Step struct {
+	// Required. The command to run in this step.
+	Cmd Cmd
+
+	// Optional. If not specified, this step runs on every change.
+	// If specified, we only run the Cmd if the trigger matches the changed file.
+	Trigger PathMatcher
+}
+
 type Cmd struct {
 	Argv []string
 }
@@ -122,6 +131,32 @@ func ToShellCmds(cmds []string) []Cmd {
 	res := make([]Cmd, len(cmds))
 	for i, cmd := range cmds {
 		res[i] = ToShellCmd(cmd)
+	}
+	return res
+}
+
+func ToStep(cmd Cmd) Step {
+	return Step{Cmd: cmd}
+}
+
+func ToSteps(cmds []Cmd) []Step {
+	res := make([]Step, len(cmds))
+	for i, cmd := range cmds {
+		res[i] = ToStep(cmd)
+	}
+	return res
+}
+
+func ToShellSteps(cmds []string) []Step {
+	return ToSteps(ToShellCmds(cmds))
+}
+
+// TODO(nick): Figure out what the interface should be for
+// boiling down steps into cmds.
+func BoilStepsTODO(steps []Step) []Cmd {
+	res := make([]Cmd, len(steps))
+	for i, step := range steps {
+		res[i] = step.Cmd
 	}
 	return res
 }

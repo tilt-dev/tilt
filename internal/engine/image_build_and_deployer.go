@@ -69,7 +69,8 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, service.Steps, service.Entrypoint)
+		steps := model.BoilStepsTODO(service.Steps)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, steps, service.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -85,7 +86,8 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, service.Steps)
+		steps := model.BoilStepsTODO(service.Steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, steps)
 		if err != nil {
 			return nil, err
 		}

@@ -61,7 +61,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 		pathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.cu.UpdateInContainer(f.ctx, testContainer, paths, []model.Cmd{})
+	err := f.cu.UpdateInContainer(f.ctx, testContainer, paths, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, testContainer, []pathMapping{}, []model.Cmd{})
+	err := f.cu.UpdateInContainer(f.ctx, testContainer, []pathMapping{}, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}

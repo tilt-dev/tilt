@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/ignore"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
-func TestIsIgnored(t *testing.T) {
+func TestMatches(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
@@ -55,7 +55,7 @@ func TestNoDockerignoreFile(t *testing.T) {
 type testFixture struct {
 	repoRoot *testutils.TempDirFixture
 	t        *testing.T
-	tester   ignore.Tester
+	tester   model.PathMatcher
 }
 
 func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
@@ -70,7 +70,7 @@ func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
 		tempDir.WriteFile(".dockerignore", ignoreText.String())
 	}
 
-	tester, err := NewDockerfileIgnoreTester(tempDir.Path())
+	tester, err := NewDockerIgnoreTester(tempDir.Path())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,13 +84,13 @@ func (tf *testFixture) JoinPath(path ...string) string {
 	return tf.repoRoot.JoinPath(path...)
 }
 
-func (tf *testFixture) AssertResult(path string, expectedIsIgnored bool) {
-	isIgnored, err := tf.tester.IsIgnored(path, false)
+func (tf *testFixture) AssertResult(path string, expectedMatches bool) {
+	isIgnored, err := tf.tester.Matches(path, false)
 	if err != nil {
 		tf.t.Fatal(err)
 	} else {
 		if assert.NoError(tf.t, err) {
-			assert.Equalf(tf.t, expectedIsIgnored, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedIsIgnored, path, isIgnored)
+			assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
 		}
 	}
 }

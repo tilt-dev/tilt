@@ -71,7 +71,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 		return BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	err = cbd.cu.UpdateInContainer(ctx, cID, cf, service.Steps)
+	err = cbd.cu.UpdateInContainer(ctx, cID, cf, model.BoilStepsTODO(service.Steps))
 	if err != nil {
 		return BuildResult{}, err
 	}
