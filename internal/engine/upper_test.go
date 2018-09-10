@@ -29,8 +29,7 @@ type fakeBuildAndDeployer struct {
 	t     *testing.T
 	calls chan buildAndDeployCall
 
-	buildCount                int
-	getContainerForBuildCount int
+	buildCount int
 
 	// Set this to simulate the build failing
 	nextBuildFailure error
@@ -62,8 +61,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 }
 
 func (b *fakeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	b.getContainerForBuildCount++
 	if build.Image == nil {
+		b.t.Error("Tried to get container for BuildResult with no image")
 		return "", fmt.Errorf("can't get container for BuildResult with no image")
 	}
 	return k8s.ContainerID("testcontainer"), nil
@@ -278,7 +277,6 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	}()
 	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
 	assert.Equal(t, endToken, err)
-	assert.Equal(t, f.b.getContainerForBuildCount, 0)
 }
 
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
