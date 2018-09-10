@@ -1,0 +1,24 @@
+# iron/go:dev is the alpine image with the go tools added
+FROM iron/go:dev as builder
+
+WORKDIR /app
+
+ENV SRC_DIR=/go/src/github.com/windmilleng/tesseract
+
+# Add the source code
+# (from current dir, add all files to dockerspace: /go/src...)
+# (assumes that this is being run from $GOPATH/.../windmilleng/tesseract
+ADD . $SRC_DIR
+
+# Build it
+RUN cd $SRC_DIR; go build -o server ./cmd/synclet/main.go; mv server /app
+
+# Docker inside Docker! o_0
+FROM docker:latest as docker
+
+RUN apk add --no-cache curl  # just for easy testing of endpoints, can remove later
+
+WORKDIR /app
+COPY --from=builder /app/server .
+
+ENTRYPOINT ["./server"]
