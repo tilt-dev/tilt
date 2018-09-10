@@ -6,6 +6,7 @@ option go_package = "github.com/windmilleng/tilt/internal/synclet/proto;proto";
 
 service Synclet {
     rpc GetContainerIdForPod (GetContainerIdForPodRequest) returns (GetContainerIdForPodReply) {}
+
     // updates the specified container and then restarts it
     // (much functionality packed into one rpc to minimize latency)
     rpc UpdateContainer (UpdateContainerRequest) returns (UpdateContainerReply) {}
