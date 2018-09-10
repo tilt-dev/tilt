@@ -56,6 +56,7 @@ type OspathFixture struct {
 }
 
 func NewOspathFixture(t *testing.T) *OspathFixture {
+	t.Helper()
 	return &OspathFixture{
 		TempDirFixture: testutils.NewTempDirFixture(t),
 		t:              t,

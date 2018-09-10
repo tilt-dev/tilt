@@ -60,6 +60,7 @@ type serviceWatcherTestFixture struct {
 }
 
 func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatcherTestFixture {
+	t.Helper()
 	var watchers []*fakeNotify
 	nextWatcher := 0
 	watcherMaker := func() (watch.Notify, error) {

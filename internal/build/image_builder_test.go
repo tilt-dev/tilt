@@ -88,6 +88,7 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
+	t.Helper()
 	ctx := testutils.CtxForTest()
 	dcli, err := DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {

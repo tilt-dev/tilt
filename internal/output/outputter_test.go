@@ -113,6 +113,7 @@ type prefixedWriterTestFixture struct {
 }
 
 func newPrefixedWriterTestFixture(t *testing.T, prefix string) prefixedWriterTestFixture {
+	t.Helper()
 	buf := bytes.NewBuffer(make([]byte, 0))
 	return prefixedWriterTestFixture{writer: newPrefixedWriter(prefix, buf), buf: buf, t: t}
 }

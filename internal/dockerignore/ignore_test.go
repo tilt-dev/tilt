@@ -59,6 +59,7 @@ type testFixture struct {
 }
 
 func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
+	t.Helper()
 	tf := testFixture{}
 	tempDir := testutils.NewTempDirFixture(t)
 	tf.repoRoot = tempDir

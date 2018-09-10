@@ -286,6 +286,7 @@ type notifyFixture struct {
 }
 
 func newNotifyFixture(t *testing.T) *notifyFixture {
+	t.Helper()
 	SetLimitChecksEnabled(false)
 	notify, err := NewWatcher()
 	if err != nil {

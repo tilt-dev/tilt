@@ -83,6 +83,7 @@ type testFixture struct {
 
 // initializes `tf.repoRoots` to be an array with one dir per gitignore
 func newTestFixture(t *testing.T, gitignores ...string) *testFixture {
+	t.Helper()
 	tf := testFixture{}
 	for _, gitignore := range gitignores {
 		tempDir := testutils.NewTempDirFixture(t)

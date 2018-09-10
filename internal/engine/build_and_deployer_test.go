@@ -120,6 +120,7 @@ type bdFixture struct {
 }
 
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
+	t.Helper()
 	f := testutils.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := build.NewFakeDockerClient()

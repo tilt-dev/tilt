@@ -81,6 +81,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	t.Helper()
 	ctx := testutils.CtxForTest()
 
 	return &fixture{

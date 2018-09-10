@@ -132,6 +132,7 @@ type serviceManagerFixture struct {
 }
 
 func newServiceManagerFixture(t *testing.T) *serviceManagerFixture {
+	t.Helper()
 	sm := service.NewMemoryManager()
 
 	return &serviceManagerFixture{
