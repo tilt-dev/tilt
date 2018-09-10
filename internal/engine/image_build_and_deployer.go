@@ -21,12 +21,16 @@ type ImageBuildAndDeployer struct {
 	env       k8s.Env
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) (ImageBuildAndDeployer, error) {
+func newImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) ImageBuildAndDeployer {
 	return ImageBuildAndDeployer{
 		b:         b,
 		k8sClient: k8sClient,
 		env:       env,
-	}, nil
+	}
+}
+
+func NewImageBuildAndDeployerAsFallback(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) FallbackBuildAndDeployer {
+	return newImageBuildAndDeployer(b, k8sClient, env)
 }
 
 func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (br BuildResult, err error) {

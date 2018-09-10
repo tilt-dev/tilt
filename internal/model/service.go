@@ -21,20 +21,28 @@ type Service struct {
 }
 
 func (s Service) Validate() error {
+	err := s.validate()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s Service) validate() *ValidateErr {
 	if s.Name == "" {
-		return fmt.Errorf("Service missing name: %+v", s)
+		return validateErrf("[validate] service missing name: %+v", s)
 	}
 
 	if s.DockerfileTag == "" {
-		return fmt.Errorf("Service %q missing image tag", s.Name)
+		return validateErrf("[validate] service %q missing image tag", s.Name)
 	}
 
 	if s.K8sYaml == "" {
-		return fmt.Errorf("Service %q missing YAML file", s.Name)
+		return validateErrf("[validate] service %q missing YAML file", s.Name)
 	}
 
 	if s.Entrypoint.Empty() {
-		return fmt.Errorf("Service %q missing Entrypoint", s.Name)
+		return validateErrf("[validate] service %q missing Entrypoint", s.Name)
 	}
 
 	return nil
@@ -116,4 +124,16 @@ func ToShellCmds(cmds []string) []Cmd {
 		res[i] = ToShellCmd(cmd)
 	}
 	return res
+}
+
+type ValidateErr struct {
+	s string
+}
+
+func (e *ValidateErr) Error() string { return e.s }
+
+var _ error = &ValidateErr{}
+
+func validateErrf(format string, a ...interface{}) *ValidateErr {
+	return &ValidateErr{s: fmt.Sprintf(format, a...)}
 }

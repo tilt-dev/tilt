@@ -27,12 +27,14 @@ func provideBuildAndDeployer(
 		build.DefaultOut,
 		wire.Value(build.Labels{}),
 
-		NewImageBuildAndDeployer,
+		NewImageBuildAndDeployerAsFallback,
 
-		// ContainerBuildAndDeployer ( = BuildAndDeployer)
-		wire.Bind(new(BuildAndDeployer), new(ContainerBuildAndDeployer)),
-		NewContainerBuildAndDeployer,
+		// ContainerBuildAndDeployer
 		build.NewContainerUpdater,
+		NewContainerBuildAndDeployerAsFirstLine,
+
+		wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
+		NewCompositeBuildAndDeployer,
 	)
 	return nil, nil
 }

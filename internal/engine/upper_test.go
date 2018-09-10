@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	build "github.com/windmilleng/tilt/internal/build"
@@ -276,7 +275,6 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: "/a.go"}
 
 		call = <-f.b.calls
-		spew.Dump(call.state)
 		assert.True(t, call.state.IsEmpty())
 		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
 

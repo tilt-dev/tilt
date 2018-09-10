@@ -22,12 +22,20 @@ type pathMapping struct {
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
 // associates local filepaths with their mounts and destination paths).
 func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, error) {
+	pms, err := filesToPathMappings(files, mounts)
+	if err != nil {
+		return pms, err
+	}
+	return pms, nil
+}
+
+func filesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, *PathMappingErr) {
 	var pms []pathMapping
 	for _, f := range files {
 		foundMount := false
 		for _, m := range mounts {
 			if !filepath.IsAbs(m.Repo.LocalPath) {
-				return nil, fmt.Errorf(
+				return nil, pathMappingErrf(
 					"[FilesToPathMappings] mount.Repo.LocalPath must be an absolute path (got: %s)",
 					m.Repo.LocalPath)
 			}
@@ -45,7 +53,7 @@ func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, e
 			}
 		}
 		if !foundMount {
-			return nil, fmt.Errorf("file %s matches no mounts", f)
+			return nil, pathMappingErrf("[FilesToPathMappings] file %s matches no mounts", f)
 		}
 
 	}
@@ -82,4 +90,16 @@ func missingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMappi
 		}
 	}
 	return result, nil
+}
+
+type PathMappingErr struct {
+	s string
+}
+
+func (e *PathMappingErr) Error() string { return e.s }
+
+var _ error = &PathMappingErr{}
+
+func pathMappingErrf(format string, a ...interface{}) *PathMappingErr {
+	return &PathMappingErr{s: fmt.Sprintf(format, a...)}
 }

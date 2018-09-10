@@ -18,10 +18,6 @@ type ContainerBuildAndDeployer struct {
 	env       k8s.Env
 	k8sClient k8s.Client
 
-	// containerBD can't do initial build, so will call out to ibd for that.
-	// May also fall back to ibd for certain error cases.
-	ibd ImageBuildAndDeployer
-
 	// skipContainer if true, we don't do a container build, and instead do an image build.
 	skipContainer bool
 }
@@ -30,14 +26,18 @@ func DefaultSkipContainer() bool {
 	return false
 }
 
-func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, ibd ImageBuildAndDeployer, skipContainer bool) *ContainerBuildAndDeployer {
+func newContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, skipContainer bool) *ContainerBuildAndDeployer {
 	return &ContainerBuildAndDeployer{
 		cu:            cu,
 		env:           env,
 		k8sClient:     kCli,
-		ibd:           ibd,
 		skipContainer: skipContainer,
 	}
+}
+
+func NewContainerBuildAndDeployerAsFirstLine(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client,
+	skipContainer bool) FirstLineBuildAndDeployer {
+	return newContainerBuildAndDeployer(cu, env, kCli, skipContainer)
 }
 
 func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
@@ -46,7 +46,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	defer span.Finish()
 
 	if cbd.skipContainer {
-		return cbd.ibd.BuildAndDeploy(ctx, service, state)
+		return BuildResult{}, fmt.Errorf("skipContainer == true, won't container build")
 	}
 
 	// TODO(maia): proper output for this stuff
@@ -60,15 +60,14 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 
 	// ContainerBuildAndDeployer doesn't support initial build; call out to the ImageBuildAndDeployer
 	if state.IsEmpty() {
-		return cbd.ibd.BuildAndDeploy(ctx, service, state)
+		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}
 
 	// Otherwise, service has already been deployed; try to update in the running container
 
-	// (Unless we don't know what container it's running in, in which case fall back to image deploy.)
+	// (Unless we don't know what container it's running in, in which case we can't.)
 	if !state.LastResult.HasContainer() {
-		logger.Get(ctx).Infof("Unknown container, falling back to image deploy")
-		return cbd.ibd.BuildAndDeploy(ctx, service, state)
+		return BuildResult{}, fmt.Errorf("prev. build state has no container")
 	}
 
 	cID := state.LastResult.Container
@@ -79,8 +78,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	logger.Get(ctx).Infof("  → Updating container…")
 	err = cbd.cu.UpdateInContainer(ctx, cID, cf, service.Steps)
 	if err != nil {
-		logger.Get(ctx).Infof("Unable to update container, falling back to image deploy: %s", err)
-		return cbd.ibd.BuildAndDeploy(ctx, service, state)
+		return BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
