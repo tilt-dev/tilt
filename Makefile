@@ -6,7 +6,7 @@ proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
 	docker rm tilt-protogen || exit 0
 	docker run --name tilt-protogen tilt-protogen
-	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/synclet/proto/synclet.pb.go internal/synclet/
+	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/synclet/proto/synclet.pb.go internal/synclet/proto
 	docker rm tilt-protogen
 
 install:
