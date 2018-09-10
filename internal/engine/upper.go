@@ -156,7 +156,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 // populates each BuildState with its corresponding containerID
 func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ServiceName]BuildState) {
 	for serv, state := range buildStates {
-		if !state.LastResult.HasContainer() {
+		if !state.LastResult.HasContainer() && state.LastResult.HasImage() {
 			cID, err := u.b.GetContainerForBuild(ctx, state.LastResult)
 			if err != nil {
 				logger.Get(ctx).Infof(
