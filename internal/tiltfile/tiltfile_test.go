@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func tempFile(content string) string {
@@ -334,13 +336,24 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 }
 
 func TestRunTrigger(t *testing.T) {
+	td := testutils.NewTempDirFixture(t)
+	defer td.TearDown()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWD)
+	err = os.Chdir(td.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def yarnly():
   image = build_docker_image("%v", "docker tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run('yarn install', trigger='package.json')
-  image.run('npm install', trigger=['package.json'])
+  image.run('npm install', trigger=['package.json', 'yarn.lock'])
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -351,10 +364,38 @@ func TestRunTrigger(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetServiceConfigs("yarnly")
+	services, err := tiltconfig.GetServiceConfigs("yarnly")
 	if err != nil {
 		t.Fatal("getting service config:", err)
 	}
 
-	// TODO(dmiller): actually test that trigger makes it in to the service definition
+	assert.Equal(t, len(services), 1)
+	assert.Equal(
+		t,
+		services[0].Steps[0].Cmd,
+		model.Cmd{
+			Argv: []string{"sh", "-c", "yarn install"},
+		},
+	)
+	packagePath := td.JoinPath("package.json")
+	matches, err := services[0].Steps[0].Trigger.Matches(packagePath, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, matches)
+	assert.Equal(
+		t,
+		services[0].Steps[1].Cmd,
+		model.Cmd{
+			Argv: []string{"sh", "-c", "npm install"},
+		},
+	)
+	matches, err = services[0].Steps[1].Trigger.Matches(packagePath, false)
+	yarnLockPath := td.JoinPath("yarn.lock")
+	matches, err = services[0].Steps[1].Trigger.Matches(yarnLockPath, false)
+	assert.True(t, matches)
+
+	randomPath := td.JoinPath("foo")
+	matches, err = services[0].Steps[1].Trigger.Matches(randomPath, false)
+	assert.False(t, matches)
 }
