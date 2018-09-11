@@ -2,6 +2,7 @@ package proto
 
 import (
 	"context"
+
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
 )
@@ -29,7 +30,7 @@ func (s *GRPCServer) GetContainerIdForPod(ctx context.Context, req *GetContainer
 func (s *GRPCServer) UpdateContainer(ctx context.Context, req *UpdateContainerRequest) (*UpdateContainerReply, error) {
 	var commands []model.Cmd
 	for _, cmd := range req.Commands {
-		commands = append(commands, model.Cmd{cmd.Argv})
+		commands = append(commands, model.Cmd{Argv: cmd.Argv})
 	}
 	return &UpdateContainerReply{}, s.del.UpdateContainer(ctx, req.ContainerId, req.TarArchive, req.FilesToDelete, commands)
 }
