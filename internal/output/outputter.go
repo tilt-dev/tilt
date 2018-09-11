@@ -9,7 +9,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/summary"
 )
 
 const (
@@ -123,19 +122,6 @@ func (o *Outputter) EndPipelineStep() {
 func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.logger.Infof("  → %s", fmt.Sprintf(format, a...))
 	o.curBuildStep++
-}
-
-func (o *Outputter) Summary(watchMounts bool, summary *summary.Summary) {
-	o.logger.Infof("%s", o.blue().Sprint("\n──┤ Services Built … ├────────────────────────────────────────"))
-
-	for _, svc := range summary.Services {
-		o.logger.Infof("  • %s", svc.Name)
-		o.logger.Infof("    (%s)", svc.Path)
-	}
-
-	if watchMounts {
-		o.logger.Infof("%s", o.green().Sprint("\nWatching for changes…"))
-	}
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {

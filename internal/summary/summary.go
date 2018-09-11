@@ -1,6 +1,8 @@
 package summary
 
 import (
+	"fmt"
+
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -25,10 +27,27 @@ func NewSummary() *Summary {
 func (s *Summary) Gather(services []model.Service) {
 
 	for _, svc := range services {
+		var path string
+		// Assume that, in practice, there is only one mount
+		if len(svc.Mounts) > 0 {
+			path = svc.Mounts[0].Repo.LocalPath
+		} else {
+			path = ""
+		}
 		s.Services = append(s.Services, &Service{
 			Name: string(svc.Name),
-			// Assume that, in practice, there is only one mount
-			Path: string(svc.Mounts[0].Repo.LocalPath),
+			Path: path,
 		})
 	}
+}
+
+func (s *Summary) Output() string {
+	ret := "\n──┤ Services Built … ├────────────────────────────────────────\n"
+
+	for _, svc := range s.Services {
+		ret += fmt.Sprintf("  • %s\n", svc.Name)
+		ret += fmt.Sprintf("    (%s)\n", svc.Path)
+	}
+
+	return ret
 }
