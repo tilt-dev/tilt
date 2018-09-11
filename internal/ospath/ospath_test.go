@@ -5,7 +5,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestChild(t *testing.T) {
@@ -51,13 +51,13 @@ func TestIsBrokenSymlink(t *testing.T) {
 }
 
 type OspathFixture struct {
-	*testutils.TempDirFixture
+	*tempdir.TempDirFixture
 	t *testing.T
 }
 
 func NewOspathFixture(t *testing.T) *OspathFixture {
 	return &OspathFixture{
-		TempDirFixture: testutils.NewTempDirFixture(t),
+		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 	}
 }

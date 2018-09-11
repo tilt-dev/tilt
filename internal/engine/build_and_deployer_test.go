@@ -13,7 +13,8 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -46,7 +47,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +70,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +93,7 @@ func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +121,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +142,7 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 
 	// Malformed service (it's missing fields) will trip a validate error; we
 	// should NOT fall back to image build, but rather, return the error.
-	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, NewBuildState(alreadyBuilt))
 	if err == nil {
 		t.Errorf("Expected bad service error to propogate back up")
 	}
@@ -159,7 +160,7 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 // are likely to change in the future. So we test them together, using
 // a fake DockerClient and K8sClient
 type bdFixture struct {
-	*testutils.TempDirFixture
+	*tempdir.TempDirFixture
 	docker *build.FakeDockerClient
 	k8s    *FakeK8sClient
 	bd     BuildAndDeployer
@@ -173,7 +174,7 @@ func shouldFallBack(err error) bool {
 }
 
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
-	f := testutils.NewTempDirFixture(t)
+	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := build.NewFakeDockerClient()
 	docker.ContainerListOutput = map[string][]types.Container{
@@ -184,7 +185,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, shouldFallBack)
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, shouldFallBack)
 	if err != nil {
 		t.Fatal(err)
 	}

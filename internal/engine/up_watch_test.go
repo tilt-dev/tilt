@@ -9,7 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -51,7 +52,7 @@ type serviceWatcherTestFixture struct {
 	sw              *serviceWatcher
 	watcherMaker    watcherMaker
 	ctx             context.Context
-	tempDirs        []*testutils.TempDirFixture
+	tempDirs        []*tempdir.TempDirFixture
 	services        []model.Service
 	watchers        []*fakeNotify
 	timerMaker      fakeTimerMaker
@@ -72,9 +73,9 @@ func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatch
 	}
 
 	var services []model.Service
-	var tempDirs []*testutils.TempDirFixture
+	var tempDirs []*tempdir.TempDirFixture
 	for i := 0; i < serviceCount; i++ {
-		tempDir := testutils.NewTempDirFixture(t)
+		tempDir := tempdir.NewTempDirFixture(t)
 		services = append(services,
 			model.Service{
 				Name:   model.ServiceName(fmt.Sprintf("service%v", i)),
@@ -87,7 +88,7 @@ func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatch
 
 	timerMaker := makeFakeTimerMaker(t)
 
-	ctx := testutils.CtxForTest()
+	ctx := output.CtxForTest()
 
 	sw, err := makeServiceWatcher(ctx, watcherMaker, timerMaker.maker(), services)
 
