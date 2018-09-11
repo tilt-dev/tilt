@@ -84,12 +84,3 @@ func NewMultiRepoDockerIgnoreTester(repoRoots []string) (model.PathMatcher, erro
 
 	return model.CompositePathMatcher{Matchers: testers}, nil
 }
-
-func TriggersToPathMatcher(root string, triggers []string) (model.PathMatcher, error) {
-	pm, err := NewDockerPatternMatcher(root, triggers)
-	if err != nil {
-		return nil, err
-	}
-
-	return pm, nil
-}

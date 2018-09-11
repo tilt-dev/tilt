@@ -124,13 +124,13 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	pms, err := dockerignore.TriggersToPathMatcher(cwd, triggers)
+	pm, err := dockerignore.NewDockerPatternMatcher(cwd, triggers)
 	if err != nil {
 		return nil, err
 	}
 
 	step := model.ToStep(model.ToShellCmd(cmd))
-	step.Trigger = pms
+	step.Trigger = pm
 
 	image.steps = append(image.steps, step)
 	return skylark.None, nil
