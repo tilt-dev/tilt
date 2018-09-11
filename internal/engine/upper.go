@@ -106,7 +106,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).PrintSummary(watchMounts, s)
+	output.Get(ctx).Summary(watchMounts, s)
 
 	if watchMounts {
 		go func() {
@@ -154,7 +154,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-				output.Get(ctx).PrintSummary(watchMounts, s)
+				output.Get(ctx).Summary(watchMounts, s)
 
 			case err := <-sw.errs:
 				return err
