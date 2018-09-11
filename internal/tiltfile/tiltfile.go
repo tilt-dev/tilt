@@ -129,6 +129,21 @@ func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple
 	return skylark.String(out), nil
 }
 
+func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var path string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	dat, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return skylark.String(dat), nil
+}
+
 func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
@@ -142,6 +157,7 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		"local_git_repo":     skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
 		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
+		"read_file":          skylark.NewBuiltin("read_file", readFile),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)

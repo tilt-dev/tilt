@@ -505,3 +505,25 @@ func TestAddMissingDir(t *testing.T) {
 		t.Fatalf("expected error message %q, actual: %v", expected, err)
 	}
 }
+func TestReadFile(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	fileToRead := tempFile("hello world")
+	program := fmt.Sprintf(`def blorgly():
+	yaml = read_file(%q)
+	image = build_docker_image("%v", "docker-tag", "the entrypoint")
+	return k8s_service(yaml, image)
+`, fileToRead, dockerfile)
+	fmt.Println(program)
+	file := tempFile(program)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	s, err := tiltConfig.GetManifestConfigs("blorgly")
+
+	assert.NotNil(t, s[0])
+	assert.Equal(t, s[0].K8sYaml, "hello world")
+}
