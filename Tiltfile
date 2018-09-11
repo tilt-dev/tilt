@@ -6,6 +6,3 @@ def test():
   image.add(local_git_repo('.'), '/go/src/github.com/windmilleng/tilt')
   image.run('cd src/github.com/windmilleng/tilt && go build ./...')
   return k8s_service(read_file('tilt-test.yaml'), image)
-
-def read_file(filepath):
-  return local("cat " + filepath)
