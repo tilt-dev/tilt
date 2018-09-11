@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/windmilleng/tilt/internal/synclet"
+	syncletproto "github.com/windmilleng/tilt/internal/synclet/proto"
+	"google.golang.org/grpc"
 	"log"
 	"os"
 	"os/signal"
@@ -93,7 +96,16 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	serviceCreator, err := wireServiceCreator(ctx, c.browserMode)
+	// TODO: talk to tunneled port instead (https://app.clubhouse.io/windmill/story/193/synclet-s-port-forwarded)
+	conn, err := grpc.Dial(fmt.Sprintf("127.0.0.1:%d", synclet.Port), grpc.WithInsecure())
+	var syncletClient *syncletproto.Client
+	if err != nil {
+		logger.Get(ctx).Debugf("unable to connect to synclet (non-fatal): %v", err)
+		syncletClient = nil
+	}
+	syncletClient = syncletproto.NewGRPCClient(conn)
+
+	serviceCreator, err := wireServiceCreator(ctx, c.browserMode, syncletClient)
 	if err != nil {
 		return err
 	}

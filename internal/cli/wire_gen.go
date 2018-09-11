@@ -12,11 +12,12 @@ import (
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
 	service "github.com/windmilleng/tilt/internal/service"
+	proto "github.com/windmilleng/tilt/internal/synclet/proto"
 )
 
 // Injectors from wire.go:
 
-func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
+func wireServiceCreator(ctx context.Context, browser engine.BrowserMode, syncletClient *proto.Client) (model.ServiceCreator, error) {
 	env, err := k8s.DetectEnv()
 	if err != nil {
 		return nil, err
@@ -39,7 +40,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	bool2 := engine.DefaultSkipContainer()
 	containerBuildAndDeployer := engine.NewContainerBuildAndDeployer(containerUpdater, env, kubectlClient, imageBuildAndDeployer, bool2)
 	imageReaper := build.NewImageReaper(dockerCli)
-	upper := engine.NewUpper(ctx, containerBuildAndDeployer, kubectlClient, browser, imageReaper)
+	upper := engine.NewUpper(ctx, containerBuildAndDeployer, kubectlClient, browser, imageReaper, syncletClient)
 	manager := service.ProvideMemoryManager()
 	serviceCreator := provideServiceCreator(upper, manager)
 	return serviceCreator, nil
