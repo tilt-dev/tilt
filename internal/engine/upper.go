@@ -206,7 +206,7 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service,
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
 	for _, ref := range refs {
 		nameFilter := build.FilterByRefName(ref)
-		err := u.reaper.RemoveTiltImages(ctx, createdBefore, watchFilter, nameFilter)
+		err := u.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
 		if err != nil {
 			return fmt.Errorf("reapOldWatchBuilds: %v", err)
 		}
