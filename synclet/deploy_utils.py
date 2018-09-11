@@ -6,8 +6,8 @@ ENV_DEVEL = 'devel'
 ENV_PROD = 'prod'
 
 ENV_TO_PROJ = {
-    ENV_DEVEL: 'blorg-dev',
-    ENV_PROD: 'blorg-prod'  # probably? idk!
+    ENV_DEVEL: 'blorg-dev',  # TODO(maia): new cluster??
+    ENV_PROD: 'blorg-prod'   # probably? idk!
 }
 
 
@@ -17,7 +17,6 @@ def docker_tag(env, owner):
 
 def image_name(env, owner):
     """Generate the canonical name of the docker image for this server+env+user."""
-    # TODO: will need to templatize server name to use this script across repos.
     server = 'synclet'
     gcloud_proj = ENV_TO_PROJ[env]
     tag = docker_tag(env, owner)
