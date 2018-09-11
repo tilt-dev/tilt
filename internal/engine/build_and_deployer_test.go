@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
@@ -184,7 +185,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, shouldFallBack)
+	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), shouldFallBack)
 	if err != nil {
 		t.Fatal(err)
 	}
