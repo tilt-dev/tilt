@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func tempFile(content string) string {
@@ -336,7 +336,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 }
 
 func TestRunTrigger(t *testing.T) {
-	td := testutils.NewTempDirFixture(t)
+	td := tempdir.NewTempDirFixture(t)
 	defer td.TearDown()
 	oldWD, err := os.Getwd()
 	if err != nil {

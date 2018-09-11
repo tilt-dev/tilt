@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestMatches(t *testing.T) {
@@ -61,14 +61,14 @@ func TestNoDockerignoreFile(t *testing.T) {
 }
 
 type testFixture struct {
-	repoRoot *testutils.TempDirFixture
+	repoRoot *tempdir.TempDirFixture
 	t        *testing.T
 	tester   model.PathMatcher
 }
 
 func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
 	tf := testFixture{}
-	tempDir := testutils.NewTempDirFixture(t)
+	tempDir := tempdir.NewTempDirFixture(t)
 	tf.repoRoot = tempDir
 	ignoreText := strings.Builder{}
 	for _, rule := range dockerignores {

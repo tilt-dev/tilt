@@ -7,7 +7,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestArchiveDf(t *testing.T) {
@@ -78,16 +79,16 @@ func TestLen(t *testing.T) {
 }
 
 type fixture struct {
-	*testutils.TempDirFixture
+	*tempdir.TempDirFixture
 	t   *testing.T
 	ctx context.Context
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctx := testutils.CtxForTest()
+	ctx := output.CtxForTest()
 
 	return &fixture{
-		TempDirFixture: testutils.NewTempDirFixture(t),
+		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
 	}

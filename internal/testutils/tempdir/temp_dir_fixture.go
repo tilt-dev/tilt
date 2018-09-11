@@ -1,7 +1,6 @@
-package testutils
+package tempdir
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 
 type TempDirFixture struct {
 	t   testing.TB
-	ctx context.Context
 	dir *temp.TempDir
 }
 
@@ -24,17 +22,12 @@ func NewTempDirFixture(t testing.TB) *TempDirFixture {
 
 	return &TempDirFixture{
 		t:   t,
-		ctx: CtxForTest(),
 		dir: dir,
 	}
 }
 
 func (f *TempDirFixture) T() testing.TB {
 	return f.t
-}
-
-func (f *TempDirFixture) Ctx() context.Context {
-	return f.ctx
 }
 
 func (f *TempDirFixture) Path() string {
