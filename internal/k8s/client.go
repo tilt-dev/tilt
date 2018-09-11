@@ -19,6 +19,8 @@ import (
 type PodID string
 type ContainerID string
 
+func (pID PodID) String() string { return string(pID) }
+
 func (cID ContainerID) String() string { return string(cID) }
 func (cID ContainerID) ShortStr() string {
 	if len(string(cID)) > 10 {
