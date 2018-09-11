@@ -1,19 +1,32 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/synclet/proto"
+	"google.golang.org/grpc"
 	"log"
-	"net/http"
+	"net"
 )
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	_, err := fmt.Fprintf(w, "Hi there, I love %s!\n", r.URL.Path[1:])
-	if err != nil {
-		panic(err)
-	}
-}
+var port = flag.Int("port", synclet.Port, "The server port")
 
 func main() {
-	http.HandleFunc("/", handler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	flag.Parse()
+	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	log.Printf("Running synclet listening on %s", addr)
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+
+	proto.RegisterSyncletServer(s, proto.NewGRPCServer(&synclet.Synclet{}))
+
+	err = s.Serve(l)
+	if err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

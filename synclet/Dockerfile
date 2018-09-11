@@ -3,11 +3,11 @@ FROM iron/go:dev as builder
 
 WORKDIR /app
 
-ENV SRC_DIR=/go/src/github.com/windmilleng/tesseract
+ENV SRC_DIR=/go/src/github.com/windmilleng/tilt
 
 # Add the source code
 # (from current dir, add all files to dockerspace: /go/src...)
-# (assumes that this is being run from $GOPATH/.../windmilleng/tesseract
+# (assumes that this is being run from $GOPATH/.../windmilleng/tilt
 ADD . $SRC_DIR
 
 # Build it
