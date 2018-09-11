@@ -40,10 +40,12 @@ timing: install
 wire:
 	wire ./internal/engine
 	wire ./internal/cli
+	wire ./internal/synclet
 
 wire-check:
 	wire check ./internal/engine
 	wire check ./internal/cli
+	wire check ./internal/synclet
 
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
