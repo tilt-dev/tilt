@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	syncletproto "github.com/windmilleng/tilt/internal/synclet/proto"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -37,38 +36,28 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b             BuildAndDeployer
-	watcherMaker  watcherMaker
-	timerMaker    timerMaker
-	k8s           k8s.Client
-	browserMode   BrowserMode
-	reaper        build.ImageReaper
-
-	// will be nil if no synclet is available
-	syncletClient *syncletproto.Client
+	b            BuildAndDeployer
+	watcherMaker watcherMaker
+	timerMaker   timerMaker
+	k8s          k8s.Client
+	browserMode  BrowserMode
+	reaper       build.ImageReaper
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(
-	ctx context.Context,
-	b BuildAndDeployer,
-	k8s k8s.Client,
-	browserMode BrowserMode,
-	reaper build.ImageReaper,
-	syncletClient *syncletproto.Client) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode, reaper build.ImageReaper) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 	return Upper{
-		b:             b,
-		watcherMaker:  watcherMaker,
-		timerMaker:    time.After,
-		k8s:           k8s,
-		browserMode:   browserMode,
-		reaper:        reaper,
-		syncletClient: syncletClient,
+		b:            b,
+		watcherMaker: watcherMaker,
+		timerMaker:   time.After,
+		k8s:          k8s,
+		browserMode:  browserMode,
+		reaper:       reaper,
 	}
 }
 

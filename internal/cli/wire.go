@@ -5,7 +5,6 @@ package cli
 
 import (
 	"context"
-	syncletproto "github.com/windmilleng/tilt/internal/synclet/proto"
 
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
@@ -15,10 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/service"
 )
 
-func wireServiceCreator(
-	ctx context.Context,
-	browser engine.BrowserMode,
-	syncletClient *syncletproto.Client) (model.ServiceCreator, error) {
+func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
 	wire.Build(
 		service.ProvideMemoryManager,
 		k8s.DetectEnv,
