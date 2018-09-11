@@ -5,20 +5,30 @@ import (
 )
 
 // Summary contains data to be printed at the end of the build process
-type summary struct {
-	services []string
+type Summary struct {
+	services []*service
+}
+
+type service struct {
+	name string
+	path string
 }
 
 // NewSummary returns summary state
-func NewSummary() *summary {
-	return &summary{
-		services: []string{},
+func NewSummary() *Summary {
+	return &Summary{
+		services: []*service{},
 	}
 }
 
 // Gather collates data into Summary
-func (s *summary) Gather(services []model.Service) {
+func (s *Summary) Gather(services []model.Service) {
+
 	for _, svc := range services {
-		s.services = append(s.services, string(svc.Name))
+		s.services = append(s.services, &service{
+			name: string(svc.Name),
+			// Assume that, in practice, there is only one mount
+			path: string(svc.Mounts[0].Repo.LocalPath),
+		})
 	}
 }

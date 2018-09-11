@@ -124,10 +124,12 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.curBuildStep++
 }
 
-func (o *Outputter) PrintSummary(watchMounts bool, summary *summary) {
-	o.logger.Infof("%s", o.blue().Sprint("──┤ Services Built … ├────────────────────────────────────────"))
+func (o *Outputter) Summary(watchMounts bool, summary *Summary) {
+	o.logger.Infof("%s", o.blue().Sprint("\n──┤ Services Built … ├────────────────────────────────────────"))
+
 	for _, svc := range summary.services {
-		o.logger.Infof("  • %s", svc)
+		o.logger.Infof("  • %s", svc.name)
+		o.logger.Infof("    (%s)", svc.path)
 	}
 
 	if watchMounts {
