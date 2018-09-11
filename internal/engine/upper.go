@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -76,7 +77,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
-	s := output.NewSummary()
+	s := summary.NewSummary()
 	s.Gather(services)
 
 	lbs := make([]k8s.LoadBalancer, 0)
@@ -106,7 +107,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).PrintSummary(watchMounts, s)
+	output.Get(ctx).Printf("%s", s.Output())
 
 	if watchMounts {
 		go func() {
@@ -153,6 +154,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 					buildStates[event.service.Name] = NewBuildState(result)
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+				output.Get(ctx).Printf("%s", s.Output())
 
 			case err := <-sw.errs:
 				return err
