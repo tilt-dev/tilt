@@ -5,6 +5,10 @@
 *.so
 *.dylib
 
+# Py junk
+**__pycache__**
+*.pyc
+
 # Test binary, build with `go test -c`
 *.test
 
@@ -13,3 +17,6 @@
 
 # Text editor stuff
 .idea
+
+# Generated yaml (from synclet deploy)
+*.generated.yaml

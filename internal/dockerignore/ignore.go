@@ -26,6 +26,14 @@ func (i dockerPathMatcher) Matches(f string, isDir bool) (bool, error) {
 	return i.matcher.Matches(rp)
 }
 
+func (i dockerPathMatcher) AsMatchPatterns() []string {
+	result := []string{}
+	for _, p := range i.matcher.Patterns() {
+		result = append(result, p.String())
+	}
+	return result
+}
+
 func NewDockerIgnoreTester(repoRoot string) (model.PathMatcher, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
@@ -82,5 +90,5 @@ func NewMultiRepoDockerIgnoreTester(repoRoots []string) (model.PathMatcher, erro
 		testers = append(testers, t)
 	}
 
-	return model.CompositePathMatcher{Matchers: testers}, nil
+	return model.NewCompositeMatcher(testers), nil
 }

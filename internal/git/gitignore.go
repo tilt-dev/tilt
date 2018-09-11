@@ -109,5 +109,5 @@ func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (model.Pa
 		testers = append(testers, t)
 	}
 
-	return model.CompositePathMatcher{Matchers: testers}, nil
+	return model.NewCompositeMatcher(testers), nil
 }

@@ -3,9 +3,13 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/dockerignore"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `.add(dest, src)`. Now it is `.add(src, dest)`."
@@ -72,9 +76,9 @@ type mount struct {
 
 type dockerImage struct {
 	fileName   string
-	fileTag    string
+	fileTag    reference.Named
 	mounts     []mount
-	cmds       []string
+	steps      []model.Step
 	entrypoint string
 }
 
@@ -114,14 +118,29 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		triggers = []string{string(trigger)}
 	}
 
-	image.cmds = append(image.cmds, cmd)
+	// TODO(dmiller): we should replace with with a notion of a WORKDIR in the Tiltfile
+	// TODO(dmiller): memoize this?
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	pm, err := dockerignore.NewDockerPatternMatcher(cwd, triggers)
+	if err != nil {
+		return nil, err
+	}
+
+	step := model.ToStep(model.ToShellCmd(cmd))
+	step.Trigger = pm
+
+	image.steps = append(image.steps, step)
 	return skylark.None, nil
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var gitRepo gitRepo
 	var mountPoint string
-	if len(fn.Receiver().(*dockerImage).cmds) > 0 {
+	if len(fn.Receiver().(*dockerImage).steps) > 0 {
 		return nil, errors.New("add mount before run command")
 	}
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &gitRepo, "dest", &mountPoint)
@@ -143,7 +162,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 }
 
 func (d *dockerImage) String() string {
-	return fmt.Sprintf("fileName: %v, fileTag: %v, cmds: %v", d.fileName, d.fileTag, d.cmds)
+	return fmt.Sprintf("fileName: %v, fileTag: %v, cmds: %v", d.fileName, d.fileTag, d.steps)
 }
 
 func (d *dockerImage) Type() string {
@@ -166,7 +185,7 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	case "file_name":
 		return skylark.String(d.fileName), nil
 	case "file_tag":
-		return skylark.String(d.fileTag), nil
+		return skylark.String(d.fileTag.String()), nil
 	case "run":
 		return skylark.NewBuiltin(name, runDockerImageCmd).BindReceiver(d), nil
 	case "add":

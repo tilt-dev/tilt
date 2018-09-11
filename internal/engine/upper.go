@@ -196,17 +196,13 @@ func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildSt
 func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service, createdBefore time.Time) error {
 	refs := make([]reference.Named, len(services))
 	for i, s := range services {
-		ref, err := reference.ParseNormalizedNamed(s.DockerfileTag)
-		if err != nil {
-			return fmt.Errorf("reapOldWatchBuilds: %v", err)
-		}
-		refs[i] = ref
+		refs[i] = s.DockerfileTag
 	}
 
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
 	for _, ref := range refs {
 		nameFilter := build.FilterByRefName(ref)
-		err := u.reaper.RemoveTiltImages(ctx, createdBefore, watchFilter, nameFilter)
+		err := u.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
 		if err != nil {
 			return fmt.Errorf("reapOldWatchBuilds: %v", err)
 		}

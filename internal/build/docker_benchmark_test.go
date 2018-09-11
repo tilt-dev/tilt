@@ -15,10 +15,11 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 		f := newDockerBuildFixture(b)
 		defer f.teardown()
 
-		steps := []model.Cmd{}
+		cmds := []model.Cmd{}
 		for i := 0; i < 10; i++ {
-			steps = append(steps, model.ToShellCmd(fmt.Sprintf("echo -n %d > hi", i)))
+			cmds = append(cmds, model.ToShellCmd(fmt.Sprintf("echo -n %d > hi", i)))
 		}
+		steps := model.ToSteps(cmds)
 
 		ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
 		if err != nil {
@@ -47,8 +48,8 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 
 		oneCmd := strings.Join(allCmds, " && ")
 
-		steps := []model.Cmd{model.ToShellCmd(oneCmd)}
-		ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+		steps := model.ToSteps([]model.Cmd{model.ToShellCmd(oneCmd)})
+		ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, nil, steps, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -66,8 +67,8 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 func BenchmarkIterativeBuildTenTimes(b *testing.B) {
 	f := newDockerBuildFixture(b)
 	defer f.teardown()
-	steps := []model.Cmd{model.ToShellCmd("echo 1 >> hi")}
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, steps, model.Cmd{})
+	steps := model.ToSteps([]model.Cmd{model.ToShellCmd("echo 1 >> hi")})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, nil, steps, model.Cmd{})
 	if err != nil {
 		b.Fatal(err)
 	}

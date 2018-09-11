@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -29,7 +30,13 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 	if err != nil {
 		return nil, err
 	}
-	return &dockerImage{dockerfileName, dockerfileTag, []mount{}, []string{}, entrypoint}, nil
+
+	tag, err := reference.ParseNormalizedNamed(dockerfileTag)
+	if err != nil {
+		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
+	}
+
+	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint}, nil
 }
 
 func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -195,7 +202,7 @@ func skylarkServiceToDomain(service k8sService) (model.Service, error) {
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
 		Mounts:         skylarkMountsToDomain(service.dockerImage.mounts),
-		Steps:          model.ToShellSteps(service.dockerImage.cmds),
+		Steps:          service.dockerImage.steps,
 		Entrypoint:     model.ToShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
 		Name:           model.ServiceName(service.name),

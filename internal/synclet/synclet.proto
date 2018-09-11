@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package synclet;
+
+option go_package = "github.com/windmilleng/tilt/internal/synclet/proto;proto";
+
+service Synclet {
+    rpc GetContainerIdForPod (GetContainerIdForPodRequest) returns (GetContainerIdForPodReply) {}
+
+    // updates the specified container and then restarts it
+    // (much functionality packed into one rpc to minimize latency)
+    rpc UpdateContainer (UpdateContainerRequest) returns (UpdateContainerReply) {}
+}
+
+message GetContainerIdForPodRequest {
+    string podId = 1;
+}
+
+message GetContainerIdForPodReply {
+    string containerId = 1;
+}
+
+message Cmd {
+    repeated string argv = 1;
+}
+
+message UpdateContainerRequest {
+    string containerId = 1;
+    bytes tarArchive = 2;
+    repeated string filesToDelete = 3;
+    repeated Cmd commands = 4;
+}
+
+message UpdateContainerReply {}

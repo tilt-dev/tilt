@@ -62,15 +62,13 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 	var n reference.NamedTagged
 	if !state.HasImage() {
 		// No existing image to build off of, need to build from scratch
-		name, err := reference.ParseNormalizedNamed(service.DockerfileTag)
-		if err != nil {
-			return nil, err
-		}
+		name := service.DockerfileTag
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		steps := model.BoilStepsTODO(service.Steps)
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, build.Dockerfile(service.DockerfileText), service.Mounts, steps, service.Entrypoint)
+		df := build.Dockerfile(service.DockerfileText)
+		steps := service.Steps
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, service.Mounts, steps, service.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -86,7 +84,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		steps := model.BoilStepsTODO(service.Steps)
+		steps := service.Steps
 		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, steps)
 		if err != nil {
 			return nil, err
