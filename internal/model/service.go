@@ -153,12 +153,28 @@ func ToShellSteps(cmds []string) []Step {
 	return ToSteps(ToShellCmds(cmds))
 }
 
-// TODO(nick): Figure out what the interface should be for
-// boiling down steps into cmds.
-func BoilStepsTODO(steps []Step) []Cmd {
-	res := make([]Cmd, len(steps))
-	for i, step := range steps {
-		res[i] = step.Cmd
+func BoilSteps(steps []Step, filesChanged []string) []Cmd {
+	// TODO(dmiller): should it do this or the opposite?
+	if len(filesChanged) == 0 {
+		return []Cmd{}
+	}
+	res := []Cmd{}
+	for _, step := range steps {
+		if step.Trigger == nil {
+			res = append(res, step.Cmd)
+			continue
+		}
+		for _, f := range filesChanged {
+			matches, err := step.Trigger.Matches(f, false)
+			if err != nil {
+				// TODO(dmiller)
+				continue
+			}
+			if matches {
+				res = append(res, step.Cmd)
+				break
+			}
+		}
 	}
 	return res
 }
