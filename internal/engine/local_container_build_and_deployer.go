@@ -11,38 +11,26 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-var _ BuildAndDeployer = &ContainerBuildAndDeployer{}
+var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
-type ContainerBuildAndDeployer struct {
+type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	env       k8s.Env
 	k8sClient k8s.Client
-
-	// skipContainer if true, we don't do a container build, and instead do an image build.
-	skipContainer bool
 }
 
-func DefaultSkipContainer() bool {
-	return false
-}
-
-func NewContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, skipContainer bool) *ContainerBuildAndDeployer {
-	return &ContainerBuildAndDeployer{
-		cu:            cu,
-		env:           env,
-		k8sClient:     kCli,
-		skipContainer: skipContainer,
+func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client) *LocalContainerBuildAndDeployer {
+	return &LocalContainerBuildAndDeployer{
+		cu:        cu,
+		env:       env,
+		k8sClient: kCli,
 	}
 }
 
-func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerBuildAndDeployer-BuildAndDeploy")
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("service", service.Name.String())
 	defer span.Finish()
-
-	if cbd.skipContainer {
-		return BuildResult{}, fmt.Errorf("skipContainer == true, won't container build")
-	}
 
 	// TODO(maia): proper output for this stuff
 
@@ -53,7 +41,7 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 		return BuildResult{}, err
 	}
 
-	// ContainerBuildAndDeployer doesn't support initial build; call out to the ImageBuildAndDeployer
+	// LocalContainerBuildAndDeployer doesn't support initial build; call out to the ImageBuildAndDeployer
 	if state.IsEmpty() {
 		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}
@@ -83,8 +71,8 @@ func (cbd *ContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, servic
 	}, nil
 }
 
-func (cbd *ContainerBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerBuildAndDeployer-GetContainerForBuild")
+func (cbd *LocalContainerBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-GetContainerForBuild")
 	defer span.Finish()
 
 	// get pod running the image we just deployed

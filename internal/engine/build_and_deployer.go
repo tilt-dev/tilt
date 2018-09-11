@@ -5,6 +5,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -53,6 +54,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		return br, err
 	}
 	if composite.shouldFallBack(err) {
+		logger.Get(ctx).Verbosef("falling back to secondary build and deploy method after error: %v", err)
 		return composite.fallback.BuildAndDeploy(ctx, service, currentState)
 	}
 	return BuildResult{}, err
@@ -73,4 +75,11 @@ func shouldImageBuild(err error) bool {
 func (composite *CompositeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
 	// NOTE(maia): this will be relocated soon... for now, call out to the embedded BaD that has this implemented
 	return composite.firstLine.GetContainerForBuild(ctx, build)
+}
+
+func NewFirstLineBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client) FirstLineBuildAndDeployer {
+	if env == k8s.EnvGKE {
+		return NewSyncletBuildAndDeployer()
+	}
+	return NewLocalContainerBuildAndDeployer(cu, env, kCli)
 }

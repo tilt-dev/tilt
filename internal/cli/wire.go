@@ -37,11 +37,9 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		wire.Bind(new(engine.FallbackBuildAndDeployer), new(engine.ImageBuildAndDeployer)),
 		engine.NewImageBuildAndDeployer,
 
-		// ContainerBuildAndDeployer (FirstLineBuildAndDeployer)
-		wire.Bind(new(engine.FirstLineBuildAndDeployer), new(engine.ContainerBuildAndDeployer)),
-		engine.NewContainerBuildAndDeployer,
-		build.NewContainerUpdater,
-		engine.DefaultSkipContainer,
+		// FirstLineBuildAndDeployer (LocalContainerBaD OR SyncletBaD)
+		build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
+		engine.NewFirstLineBuildAndDeployer,
 
 		wire.Bind(new(engine.BuildAndDeployer), new(engine.CompositeBuildAndDeployer)),
 		engine.DefaultShouldFallBack,
