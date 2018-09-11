@@ -10,7 +10,9 @@ import (
 
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
-type SyncletBuildAndDeployer struct{}
+type SyncletBuildAndDeployer struct {
+	scli *Client
+}
 
 func NewSyncletBuildAndDeployer() *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{}

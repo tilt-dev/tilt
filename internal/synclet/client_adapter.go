@@ -1,21 +1,22 @@
-package proto
+package synclet
 
 import (
 	"context"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/synclet/proto"
 
 	"google.golang.org/grpc"
 )
 
 type Client struct {
-	del  SyncletClient
+	del  proto.SyncletClient
 	conn *grpc.ClientConn
 }
 
 func NewGRPCClient(conn *grpc.ClientConn) *Client {
-	return &Client{del: NewSyncletClient(conn), conn: conn}
+	return &Client{del: proto.NewSyncletClient(conn), conn: conn}
 }
 
 func (c *Client) UpdateContainer(
@@ -25,13 +26,13 @@ func (c *Client) UpdateContainer(
 	filesToDelete []string,
 	commands []model.Cmd) error {
 
-	var protoCmds []*Cmd
+	var protoCmds []*proto.Cmd
 
 	for _, cmd := range commands {
-		protoCmds = append(protoCmds, &Cmd{Argv: cmd.Argv})
+		protoCmds = append(protoCmds, &proto.Cmd{Argv: cmd.Argv})
 	}
 
-	_, err := c.del.UpdateContainer(ctx, &UpdateContainerRequest{
+	_, err := c.del.UpdateContainer(ctx, &proto.UpdateContainerRequest{
 		ContainerId:   containerId,
 		TarArchive:    tarArchive,
 		FilesToDelete: filesToDelete,
@@ -42,7 +43,7 @@ func (c *Client) UpdateContainer(
 }
 
 func (c *Client) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error) {
-	reply, err := c.del.GetContainerIdForPod(ctx, &GetContainerIdForPodRequest{PodId: podId.String()})
+	reply, err := c.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{PodId: podId.String()})
 	if err != nil {
 		return "", err
 	}
