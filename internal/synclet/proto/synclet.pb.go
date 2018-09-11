@@ -250,6 +250,7 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SyncletClient interface {
 	GetContainerIdForPod(ctx context.Context, in *GetContainerIdForPodRequest, opts ...grpc.CallOption) (*GetContainerIdForPodReply, error)
+
 	// updates the specified container and then restarts it
 	// (much functionality packed into one rpc to minimize latency)
 	UpdateContainer(ctx context.Context, in *UpdateContainerRequest, opts ...grpc.CallOption) (*UpdateContainerReply, error)

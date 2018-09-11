@@ -9,14 +9,15 @@ import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
+	synclet "github.com/windmilleng/tilt/internal/synclet"
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	containerUpdater := build.NewContainerUpdater(docker)
-	firstLineBuildAndDeployer := NewFirstLineBuildAndDeployer(containerUpdater, env, k8s2)
+	firstLineBuildAndDeployer := NewFirstLineBuildAndDeployer(sCli, containerUpdater, env, k8s2)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue

@@ -39,6 +39,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 
 		// FirstLineBuildAndDeployer (LocalContainerBaD OR SyncletBaD)
 		build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
+		engine.DefaultSyncletClient,
 		engine.NewFirstLineBuildAndDeployer,
 
 		wire.Bind(new(engine.BuildAndDeployer), new(engine.CompositeBuildAndDeployer)),
