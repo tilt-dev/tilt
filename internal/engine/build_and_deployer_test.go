@@ -2,20 +2,45 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 var cID = k8s.ContainerID("test_container")
 var alreadyBuilt = BuildResult{Container: cID}
+
+var dontFallBackErrStr = "don't fall back"
+
+func TestShouldImageBuild(t *testing.T) {
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: "asdf"},
+		ContainerPath: "blah",
+	}
+	_, pathMapErr := build.FilesToPathMappings([]string{"a"}, []model.Mount{m})
+	if assert.Error(t, pathMapErr) {
+		assert.False(t, shouldImageBuild(pathMapErr))
+	}
+
+	s := model.Service{Name: "many errors"}
+	validateErr := s.Validate()
+	if assert.Error(t, validateErr) {
+		assert.False(t, shouldImageBuild(validateErr))
+	}
+
+	err := fmt.Errorf("hello world")
+	assert.True(t, shouldImageBuild(err))
+}
 
 func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
@@ -24,6 +49,10 @@ func TestGKEDeploy(t *testing.T) {
 	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
 
 	if f.docker.PushCount != 1 {
@@ -45,6 +74,10 @@ func TestDockerForMacDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
 	if f.docker.PushCount != 0 {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
@@ -64,6 +97,10 @@ func TestIncrementalBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+
 	if f.docker.PushCount != 0 {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
@@ -81,31 +118,40 @@ func TestIncrementalBuild(t *testing.T) {
 func TestFallBackToImageDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
+	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	nt, err := k8s.ParseNamedTagged("gcr.io/some-project-162817/sancho:foo")
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
-	br := BuildResult{
-		Image: nt,
+
+	if len(f.docker.RestartsByContainer) != 0 {
+		t.Errorf("Expected no docker container restarts, actual: %d", len(f.docker.RestartsByContainer))
+	}
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
 
-	newBR, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(br))
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestNoFallbackForCertainErrors(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
+
+	// Malformed service (it's missing fields) will trip a validate error; we
+	// should NOT fall back to image build, but rather, return the error.
+	_, err := f.bd.BuildAndDeploy(f.Ctx(), SanchoService, NewBuildState(alreadyBuilt))
+	if err == nil {
+		t.Errorf("Expected bad service error to propogate back up")
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
 	}
 
 	if f.docker.PushCount != 0 {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
-	}
-
-	if newBR.Container != k8s.ContainerID("") {
-		t.Errorf("Expected container to be empty, got %s", newBR.Container)
 	}
 }
 
@@ -117,6 +163,13 @@ type bdFixture struct {
 	docker *build.FakeDockerClient
 	k8s    *FakeK8sClient
 	bd     BuildAndDeployer
+}
+
+func shouldFallBack(err error) bool {
+	if strings.Contains(err.Error(), dontFallBackErrStr) {
+		return false
+	}
+	return true
 }
 
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
@@ -131,7 +184,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, false)
+	bd, err := provideBuildAndDeployer(f.Ctx(), docker, k8s, dir, env, false, shouldFallBack)
 	if err != nil {
 		t.Fatal(err)
 	}

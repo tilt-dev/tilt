@@ -88,7 +88,8 @@ type FakeDockerClient struct {
 	CopyContainer string
 	CopyContent   io.Reader
 
-	ExecCalls []ExecCall
+	ExecCalls        []ExecCall
+	ExecErrorToThrow error // next call to Exec will throw this err (after which we clear the error)
 
 	RestartsByContainer map[string]int
 	RemovedImageIDs     []string
@@ -124,7 +125,10 @@ func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID k8s.Containe
 	}
 	c.ExecCalls = append(c.ExecCalls, execCall)
 
-	return nil
+	// If we're supposed to throw an error on this call, throw it (and reset ErrorToThrow)
+	err := c.ExecErrorToThrow
+	c.ExecErrorToThrow = nil
+	return err
 }
 
 func (c *FakeDockerClient) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {

@@ -13,7 +13,7 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-var _ BuildAndDeployer = ImageBuildAndDeployer{}
+var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
 	b         build.ImageBuilder
@@ -21,15 +21,15 @@ type ImageBuildAndDeployer struct {
 	env       k8s.Env
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) (ImageBuildAndDeployer, error) {
-	return ImageBuildAndDeployer{
+func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) *ImageBuildAndDeployer {
+	return &ImageBuildAndDeployer{
 		b:         b,
 		k8sClient: k8sClient,
 		env:       env,
-	}, nil
+	}
 }
 
-func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (br BuildResult, err error) {
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (br BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
@@ -58,7 +58,7 @@ func (ibd ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mod
 	}, nil
 }
 
-func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 	if !state.HasImage() {
 		// No existing image to build off of, need to build from scratch
@@ -103,7 +103,7 @@ func (ibd ImageBuildAndDeployer) build(ctx context.Context, service model.Servic
 	return n, nil
 }
 
-func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 
@@ -159,11 +159,11 @@ func (ibd ImageBuildAndDeployer) deploy(ctx context.Context, service model.Servi
 // we don't need to push to the central registry.
 // The k8s will use the image already available
 // in the local docker daemon.
-func (ibd ImageBuildAndDeployer) canSkipPush() bool {
+func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
 }
 
-func (ibd ImageBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+func (ibd *ImageBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
 	// NOTE(maia): no-op, as ibd has no knowledge of pods or containers.
 	return "", nil
 }

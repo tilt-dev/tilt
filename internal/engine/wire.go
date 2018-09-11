@@ -18,7 +18,8 @@ func provideBuildAndDeployer(
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
-	skipContainer bool) (BuildAndDeployer, error) {
+	skipContainer bool,
+	shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	wire.Build(
 		// dockerImageBuilder ( = ImageBuilder)
 		build.DefaultImageBuilder,
@@ -27,12 +28,18 @@ func provideBuildAndDeployer(
 		build.DefaultOut,
 		wire.Value(build.Labels{}),
 
+		// ImageBuildAndDeployer (FallbackBuildAndDeployer)
+		wire.Bind(new(FallbackBuildAndDeployer), new(ImageBuildAndDeployer)),
 		NewImageBuildAndDeployer,
 
-		// ContainerBuildAndDeployer ( = BuildAndDeployer)
-		wire.Bind(new(BuildAndDeployer), new(ContainerBuildAndDeployer)),
-		NewContainerBuildAndDeployer,
+		// ContainerBuildAndDeployer (FirstLineBuildAndDeployer)
+		wire.Bind(new(FirstLineBuildAndDeployer), new(ContainerBuildAndDeployer)),
 		build.NewContainerUpdater,
+		NewContainerBuildAndDeployer,
+
+		wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
+		NewCompositeBuildAndDeployer,
 	)
+
 	return nil, nil
 }

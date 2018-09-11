@@ -14,19 +14,17 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, skipContainer bool) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, skipContainer bool, shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	containerUpdater := build.NewContainerUpdater(docker)
+	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, skipContainer)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	imageBuildAndDeployer, err := NewImageBuildAndDeployer(imageBuilder, k8s2, env)
-	if err != nil {
-		return nil, err
-	}
-	containerBuildAndDeployer := NewContainerBuildAndDeployer(containerUpdater, env, k8s2, imageBuildAndDeployer, skipContainer)
-	return containerBuildAndDeployer, nil
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env)
+	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(containerBuildAndDeployer, imageBuildAndDeployer, shouldFallBackToImgBuild)
+	return compositeBuildAndDeployer, nil
 }
 
 var (

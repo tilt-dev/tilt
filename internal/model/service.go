@@ -23,20 +23,28 @@ type Service struct {
 }
 
 func (s Service) Validate() error {
+	err := s.validate()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s Service) validate() *ValidateErr {
 	if s.Name == "" {
-		return fmt.Errorf("Service missing name: %+v", s)
+		return validateErrf("[validate] service missing name: %+v", s)
 	}
 
 	if s.DockerfileTag == nil {
-		return fmt.Errorf("Service %q missing image tag", s.Name)
+		return validateErrf("[validate] service %q missing image tag", s.Name)
 	}
 
 	if s.K8sYaml == "" {
-		return fmt.Errorf("Service %q missing YAML file", s.Name)
+		return validateErrf("[validate] service %q missing YAML file", s.Name)
 	}
 
 	if s.Entrypoint.Empty() {
-		return fmt.Errorf("Service %q missing Entrypoint", s.Name)
+		return validateErrf("[validate] service %q missing Entrypoint", s.Name)
 	}
 
 	return nil
@@ -145,7 +153,7 @@ func ToShellSteps(cmds []string) []Step {
 	return ToSteps(ToShellCmds(cmds))
 }
 
-// TODO(nick): Figure out what the interface shoule be for
+// TODO(nick): Figure out what the interface should be for
 // boiling down steps into cmds.
 func BoilStepsTODO(steps []Step) []Cmd {
 	res := make([]Cmd, len(steps))
@@ -153,4 +161,16 @@ func BoilStepsTODO(steps []Step) []Cmd {
 		res[i] = step.Cmd
 	}
 	return res
+}
+
+type ValidateErr struct {
+	s string
+}
+
+func (e *ValidateErr) Error() string { return e.s }
+
+var _ error = &ValidateErr{}
+
+func validateErrf(format string, a ...interface{}) *ValidateErr {
+	return &ValidateErr{s: fmt.Sprintf(format, a...)}
 }
