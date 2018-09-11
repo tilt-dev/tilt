@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -218,32 +219,11 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 			f.t.Fatal(err)
 		}
 
-		f.assertFileInTar(tar.NewReader(reader), expectedFile)
-	}
-}
-
-func (f *dockerBuildFixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			f.t.Fatalf("File not found in container: %s", expected.path)
-		} else if err != nil {
-			f.t.Fatalf("Error reading tar file: %v", err)
-		}
-
-		if header.Typeflag == tar.TypeReg {
-			contents := bytes.NewBuffer(nil)
-			_, err = io.Copy(contents, tr)
-			if err != nil {
-				f.t.Fatalf("Error reading tar file: %v", err)
-			}
-
-			if contents.String() != expected.contents {
-				f.t.Errorf("Wrong contents in %q. Expected: %q. Actual: %q",
-					expected.path, expected.contents, contents.String())
-			}
-			return // we found it!
-		}
+		// When you copy a single file out of a container, you get
+		// back a tarball with 1 entry, the file basename.
+		adjustedFile := expectedFile
+		adjustedFile.path = filepath.Base(adjustedFile.path)
+		assertFileInTar(f.t, tar.NewReader(reader), adjustedFile)
 	}
 }
 

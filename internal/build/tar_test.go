@@ -23,9 +23,12 @@ func TestArchiveDf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	actual := ab.buf
+	actual := tar.NewReader(ab.buf)
 
-	f.assertFileInTarWithContents(actual, "Dockerfile", dfText)
+	f.assertFileInTar(actual, expectedFile{
+		path:     "Dockerfile",
+		contents: dfText,
+	})
 }
 
 func TestArchivePathsIfExists(t *testing.T) {
@@ -51,9 +54,9 @@ func TestArchivePathsIfExists(t *testing.T) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	actual := ab.buf
-	f.assertFileInTarWithContents(actual, "a", "a")
-	f.assertFileNotInTar(actual, "b")
+	actual := tar.NewReader(ab.buf)
+	f.assertFileInTar(actual, expectedFile{path: "a", contents: "a"})
+	f.assertFileInTar(actual, expectedFile{path: "b", missing: true})
 }
 
 func TestLen(t *testing.T) {
@@ -90,58 +93,48 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
+func (f *fixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
+	assertFileInTar(f.t, tr, expected)
+}
+
 func (f *fixture) tearDown() {
 	f.TempDirFixture.TearDown()
 }
 
-func (f *fixture) assertFileInTarWithContents(buf *bytes.Buffer, path, expected string) {
-	tr := tar.NewReader(buf)
-	found := false
+func assertFileInTar(t testing.TB, tr *tar.Reader, expected expectedFile) {
 	for {
-		hdr, err := tr.Next()
+		header, err := tr.Next()
 		if err == io.EOF {
-			break // End of archive
-		}
-
-		if err != nil {
-			f.t.Fatal(err)
-		}
-
-		if hdr.Name == path {
-			found = true
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(tr)
-			if buf.String() != expected {
-				f.t.Errorf("Expected %s to equal %s", buf.String(), expected)
+			if expected.missing {
+				return
 			}
-		}
-	}
-
-	if !found {
-		f.t.Errorf("Expected to find a file at %s, but no such file was found", path)
-	}
-}
-
-func (f *fixture) assertFileNotInTar(buf *bytes.Buffer, path string) {
-	tr := tar.NewReader(buf)
-	found := false
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break // End of archive
+			t.Fatalf("File not found in container: %s", expected.path)
+		} else if err != nil {
+			t.Fatalf("Error reading tar file: %v", err)
 		}
 
-		if err != nil {
-			f.t.Fatal(err)
-		}
+		if expected.path == header.Name {
+			if expected.missing {
+				t.Errorf("Path %q was not expected in the tarball", expected.path)
+				return
+			}
 
-		if hdr.Name == path {
-			found = true
-			break
-		}
-	}
+			if header.Typeflag != tar.TypeReg {
+				t.Errorf("Path %q exists but is not a regular file", expected.path)
+				return
+			}
 
-	if found {
-		f.t.Errorf("Expected not to find a file at %s, but file was found", path)
+			contents := bytes.NewBuffer(nil)
+			_, err = io.Copy(contents, tr)
+			if err != nil {
+				t.Fatalf("Error reading tar file: %v", err)
+			}
+
+			if contents.String() != expected.contents {
+				t.Errorf("Wrong contents in %q. Expected: %q. Actual: %q",
+					expected.path, expected.contents, contents.String())
+			}
+			return // we found it!
+		}
 	}
 }

@@ -35,6 +35,7 @@ func (a *archiveBuilder) archiveDf(ctx context.Context, df Dockerfile) error {
 	defer span.Finish()
 	tarHeader := &tar.Header{
 		Name:       "Dockerfile",
+		Typeflag:   tar.TypeReg,
 		Size:       int64(len(df)),
 		ModTime:    time.Now(),
 		AccessTime: time.Now(),
