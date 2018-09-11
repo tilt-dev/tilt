@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -76,7 +77,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		}
 	}
 
-	s := output.NewSummary()
+	s := summary.NewSummary()
 	s.Gather(services)
 
 	lbs := make([]k8s.LoadBalancer, 0)

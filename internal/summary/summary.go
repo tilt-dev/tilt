@@ -1,4 +1,4 @@
-package output
+package summary
 
 import (
 	"github.com/windmilleng/tilt/internal/model"
@@ -6,18 +6,18 @@ import (
 
 // Summary contains data to be printed at the end of the build process
 type Summary struct {
-	services []*service
+	Services []*Service
 }
 
-type service struct {
-	name string
-	path string
+type Service struct {
+	Name string
+	Path string
 }
 
 // NewSummary returns summary state
 func NewSummary() *Summary {
 	return &Summary{
-		services: []*service{},
+		Services: []*Service{},
 	}
 }
 
@@ -25,10 +25,10 @@ func NewSummary() *Summary {
 func (s *Summary) Gather(services []model.Service) {
 
 	for _, svc := range services {
-		s.services = append(s.services, &service{
-			name: string(svc.Name),
+		s.Services = append(s.Services, &Service{
+			Name: string(svc.Name),
 			// Assume that, in practice, there is only one mount
-			path: string(svc.Mounts[0].Repo.LocalPath),
+			Path: string(svc.Mounts[0].Repo.LocalPath),
 		})
 	}
 }
