@@ -67,7 +67,7 @@ type Step struct {
 
 	// Optional. If not specified, this step runs on every change.
 	// If specified, we only run the Cmd if the trigger matches the changed file.
-	Trigger []PathMatcher
+	Trigger PathMatcher
 }
 
 type Cmd struct {
@@ -151,26 +151,4 @@ func BoilStepsTODO(steps []Step) []Cmd {
 		res[i] = step.Cmd
 	}
 	return res
-}
-
-func ToPathMatcher(root string, trigger string) (PathMatcher, error) {
-	pm, err := NewPathMatcher(root, trigger)
-	if err != nil {
-		return nil, err
-	}
-
-	return pm, nil
-}
-
-func ToPathMatchers(root string, triggers []string) ([]PathMatcher, error) {
-	res := make([]PathMatcher, len(triggers))
-	for i, t := range triggers {
-		pm, err := ToPathMatcher(root, t)
-		if err != nil {
-			return nil, err
-		}
-		res[i] = pm
-	}
-
-	return res, nil
 }

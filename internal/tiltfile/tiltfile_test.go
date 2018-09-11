@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func tempFile(content string) string {
@@ -335,6 +336,17 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 }
 
 func TestRunTrigger(t *testing.T) {
+	td := testutils.NewTempDirFixture(t)
+	defer td.TearDown()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWD)
+	err = os.Chdir(td.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def yarnly():
@@ -365,10 +377,14 @@ func TestRunTrigger(t *testing.T) {
 			Argv: []string{"sh", "-c", "yarn install"},
 		},
 	)
-	assert.Equal(
+	packagePath := td.JoinPath("package.json")
+	matches, err := services[0].Steps[0].Trigger.Matches(packagePath, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(
 		t,
-		len(services[0].Steps[0].Trigger),
-		1,
+		matches,
 	)
 	assert.Equal(
 		t,
@@ -377,9 +393,18 @@ func TestRunTrigger(t *testing.T) {
 			Argv: []string{"sh", "-c", "npm install"},
 		},
 	)
-	assert.Equal(
+	matches, err = services[0].Steps[1].Trigger.Matches(packagePath, false)
+	yarnLockPath := td.JoinPath("yarn.lock")
+	matches, err = services[0].Steps[1].Trigger.Matches(yarnLockPath, false)
+	assert.True(
 		t,
-		len(services[0].Steps[1].Trigger),
-		2,
+		matches,
+	)
+
+	randomPath := td.JoinPath("foo")
+	matches, err = services[0].Steps[1].Trigger.Matches(randomPath, false)
+	assert.False(
+		t,
+		matches,
 	)
 }

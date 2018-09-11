@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -123,7 +124,7 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	pms, err := model.ToPathMatchers(cwd, triggers)
+	pms, err := dockerignore.TriggersToPathMatcher(cwd, triggers)
 	if err != nil {
 		return nil, err
 	}
