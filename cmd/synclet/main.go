@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("failed to wire synclet: %v", err)
 	}
 
-	proto.RegisterSyncletServer(serv, proto.NewGRPCServer(s))
+	proto.RegisterSyncletServer(serv, synclet.NewGRPCServer(s))
 
 	err = serv.Serve(l)
 	if err != nil {

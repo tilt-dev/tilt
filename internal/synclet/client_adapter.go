@@ -10,16 +10,24 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Client struct {
+type SyncletClient interface {
+	UpdateContainer(ctx context.Context, containerId string, tarArchive []byte,
+		filesToDelete []string, commands []model.Cmd) error
+	GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error)
+}
+
+var _ SyncletClient = &SyncletCli{}
+
+type SyncletCli struct {
 	del  proto.SyncletClient
 	conn *grpc.ClientConn
 }
 
-func NewGRPCClient(conn *grpc.ClientConn) *Client {
-	return &Client{del: proto.NewSyncletClient(conn), conn: conn}
+func NewGRPCClient(conn *grpc.ClientConn) *SyncletCli {
+	return &SyncletCli{del: proto.NewSyncletClient(conn), conn: conn}
 }
 
-func (c *Client) UpdateContainer(
+func (s *SyncletCli) UpdateContainer(
 	ctx context.Context,
 	containerId string,
 	tarArchive []byte,
@@ -32,7 +40,7 @@ func (c *Client) UpdateContainer(
 		protoCmds = append(protoCmds, &proto.Cmd{Argv: cmd.Argv})
 	}
 
-	_, err := c.del.UpdateContainer(ctx, &proto.UpdateContainerRequest{
+	_, err := s.del.UpdateContainer(ctx, &proto.UpdateContainerRequest{
 		ContainerId:   containerId,
 		TarArchive:    tarArchive,
 		FilesToDelete: filesToDelete,
@@ -42,8 +50,8 @@ func (c *Client) UpdateContainer(
 	return err
 }
 
-func (c *Client) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error) {
-	reply, err := c.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{PodId: podId.String()})
+func (s *SyncletCli) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error) {
+	reply, err := s.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{PodId: podId.String()})
 	if err != nil {
 		return "", err
 	}
@@ -51,6 +59,6 @@ func (c *Client) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s
 	return k8s.ContainerID(reply.ContainerId), nil
 }
 
-func (c *Client) Close() error {
-	return c.conn.Close()
+func (s *SyncletCli) Close() error {
+	return s.conn.Close()
 }

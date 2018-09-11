@@ -7,9 +7,10 @@ import (
 	"context"
 
 	"github.com/google/go-cloud/wire"
-	build "github.com/windmilleng/tilt/internal/build"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
-	dirs "github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 func provideBuildAndDeployer(
@@ -18,6 +19,7 @@ func provideBuildAndDeployer(
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
+	sCli synclet.SyncletClient,
 	shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	wire.Build(
 		// dockerImageBuilder ( = ImageBuilder)
