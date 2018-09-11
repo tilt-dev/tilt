@@ -382,10 +382,7 @@ func TestRunTrigger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.True(
-		t,
-		matches,
-	)
+	assert.True(t, matches)
 	assert.Equal(
 		t,
 		services[0].Steps[1].Cmd,
@@ -396,15 +393,9 @@ func TestRunTrigger(t *testing.T) {
 	matches, err = services[0].Steps[1].Trigger.Matches(packagePath, false)
 	yarnLockPath := td.JoinPath("yarn.lock")
 	matches, err = services[0].Steps[1].Trigger.Matches(yarnLockPath, false)
-	assert.True(
-		t,
-		matches,
-	)
+	assert.True(t, matches)
 
 	randomPath := td.JoinPath("foo")
 	matches, err = services[0].Steps[1].Trigger.Matches(randomPath, false)
-	assert.False(
-		t,
-		matches,
-	)
+	assert.False(t, matches)
 }
