@@ -3,12 +3,20 @@ package synclet
 import (
 	"context"
 	"errors"
+
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
 const Port = 23551
 
-type Synclet struct{}
+type Synclet struct {
+	dcli build.DockerClient
+}
+
+func NewSynclet(dcli build.DockerClient) *Synclet {
+	return &Synclet{dcli: dcli}
+}
 
 func (s Synclet) GetContainerIdForPod(podId string) (string, error) {
 	return "", errors.New("GetContainerIdForPod not implemented")
