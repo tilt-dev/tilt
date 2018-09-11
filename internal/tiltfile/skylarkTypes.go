@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
@@ -75,7 +76,7 @@ type mount struct {
 
 type dockerImage struct {
 	fileName   string
-	fileTag    string
+	fileTag    reference.Named
 	mounts     []mount
 	steps      []model.Step
 	entrypoint string
@@ -184,7 +185,7 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	case "file_name":
 		return skylark.String(d.fileName), nil
 	case "file_tag":
-		return skylark.String(d.fileTag), nil
+		return skylark.String(d.fileTag.String()), nil
 	case "run":
 		return skylark.NewBuiltin(name, runDockerImageCmd).BindReceiver(d), nil
 	case "add":

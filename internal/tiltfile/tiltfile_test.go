@@ -30,7 +30,7 @@ func TestGetServiceConfig(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
@@ -57,7 +57,7 @@ func TestGetServiceConfig(t *testing.T) {
 
 	service := serviceConfig[0]
 	assert.Equal(t, "docker text", service.DockerfileText)
-	assert.Equal(t, "docker tag", service.DockerfileTag)
+	assert.Equal(t, "docker.io/library/docker-tag", service.DockerfileTag.String())
 	assert.Equal(t, "yaaaaaaaaml", service.K8sYaml)
 	assert.Equal(t, 1, len(service.Mounts), "number of mounts")
 	assert.Equal(t, "/mount_points/1", service.Mounts[0].ContainerPath)
@@ -72,7 +72,7 @@ func TestOldMountSyntax(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
   image.add('/mount_points/1', local_git_repo('.'))
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
@@ -101,7 +101,7 @@ func TestOldMountSyntax(t *testing.T) {
 func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("asfaergiuhaeriguhaergiu", "docker tag", "the entrypoint")
+  image = build_docker_image("asfaergiuhaeriguhaergiu", "docker-tag", "the entrypoint")
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -153,14 +153,14 @@ func TestCompositeFunction(t *testing.T) {
   return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
-    image = build_docker_image("%v", "docker tag", "the entrypoint")
+    image = build_docker_image("%v", "docker-tag", "the entrypoint")
     print(image.file_name)
     image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
     image.run("echo hi")
     return k8s_service("yaml", image)
 
 def blorgly_frontend():
-  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -305,7 +305,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -327,7 +327,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 
 	service := serviceConfig[0]
 	assert.Equal(t, "docker text", service.DockerfileText)
-	assert.Equal(t, "docker tag", service.DockerfileTag)
+	assert.Equal(t, "docker.io/library/docker-tag", service.DockerfileTag.String())
 	assert.Equal(t, "yaaaaaaaaml\n", service.K8sYaml)
 	assert.Equal(t, 2, len(service.Steps))
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Cmd.Argv)
@@ -350,7 +350,7 @@ func TestRunTrigger(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def yarnly():
-  image = build_docker_image("%v", "docker tag", "the entrypoint")
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run('yarn install', trigger='package.json')
   image.run('npm install', trigger=['package.json', 'yarn.lock'])
@@ -398,4 +398,24 @@ func TestRunTrigger(t *testing.T) {
 	randomPath := td.JoinPath("foo")
 	matches, err = services[0].Steps[1].Trigger.Matches(randomPath, false)
 	assert.False(t, matches)
+}
+
+func TestInvalidDockerTag(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image(%q, "**invalid**", "the entrypoint")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	_, err = tiltconfig.GetServiceConfigs("blorgly")
+	msg := "invalid reference format"
+	if err == nil || !strings.Contains(err.Error(), msg) {
+		t.Errorf("Expected error message to contain %v, got %v", msg, err)
+	}
 }

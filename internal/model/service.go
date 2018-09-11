@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/docker/distribution/reference"
 )
 
 type ServiceName string
@@ -16,7 +18,7 @@ type Service struct {
 	Mounts         []Mount
 	Steps          []Step
 	Entrypoint     Cmd
-	DockerfileTag  string
+	DockerfileTag  reference.Named
 	Name           ServiceName
 }
 
@@ -25,7 +27,7 @@ func (s Service) Validate() error {
 		return fmt.Errorf("Service missing name: %+v", s)
 	}
 
-	if s.DockerfileTag == "" {
+	if s.DockerfileTag == nil {
 		return fmt.Errorf("Service %q missing image tag", s.Name)
 	}
 
