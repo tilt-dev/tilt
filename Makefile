@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test wire-check wire ensure
 
-all: lint errcheck test verify_gofmt wire-check
+all: lint errcheck verify_gofmt wire-check test
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
