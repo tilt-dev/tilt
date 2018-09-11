@@ -7,7 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestGitIgnoreTester_Simple(t *testing.T) {
@@ -20,10 +21,10 @@ func TestGitIgnoreTester_Simple(t *testing.T) {
 }
 
 func TestNewGitIgnoreTester_NoGitignore(t *testing.T) {
-	tempDir := testutils.NewTempDirFixture(t)
+	tempDir := tempdir.NewTempDirFixture(t)
 	defer tempDir.TearDown()
 
-	g, err := NewGitIgnoreTester(testutils.CtxForTest(), tempDir.Path())
+	g, err := NewGitIgnoreTester(output.CtxForTest(), tempDir.Path())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestRepoIgnoreTester_MatchesRelativePath(t *testing.T) {
 }
 
 type testFixture struct {
-	repoRoots []*testutils.TempDirFixture
+	repoRoots []*tempdir.TempDirFixture
 	tester    model.PathMatcher
 	ctx       context.Context
 	t         *testing.T
@@ -85,7 +86,7 @@ type testFixture struct {
 func newTestFixture(t *testing.T, gitignores ...string) *testFixture {
 	tf := testFixture{}
 	for _, gitignore := range gitignores {
-		tempDir := testutils.NewTempDirFixture(t)
+		tempDir := tempdir.NewTempDirFixture(t)
 		tempDir.WriteFile(".gitignore", gitignore)
 		tf.repoRoots = append(tf.repoRoots, tempDir)
 	}
@@ -96,7 +97,7 @@ func newTestFixture(t *testing.T, gitignores ...string) *testFixture {
 }
 
 func (tf *testFixture) UseGitIgnoreTester() {
-	tester, err := NewGitIgnoreTester(testutils.CtxForTest(), tf.repoRoots[0].Path())
+	tester, err := NewGitIgnoreTester(output.CtxForTest(), tf.repoRoots[0].Path())
 	if err != nil {
 		tf.t.Fatal(err)
 	}

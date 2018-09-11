@@ -15,7 +15,8 @@ import (
 	build "github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -107,7 +108,7 @@ func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	service := f.newService("foobar", nil)
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, false)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedServices []model.Service
@@ -121,7 +122,7 @@ func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	service := f.newService("foobar", nil)
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "nothing to watch")
 	}
@@ -135,7 +136,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -174,7 +175,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -214,7 +215,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -254,7 +255,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -281,7 +282,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -293,7 +294,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.b.nextBuildFailure = buildFailedToken
 
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, false)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, false)
 	expected := fmt.Errorf("build failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
@@ -327,7 +328,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -362,7 +363,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateServices(f.Ctx(), []model.Service{service}, true)
+	err := f.upper.CreateServices(output.CtxForTest(), []model.Service{service}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -373,7 +374,7 @@ func TestReapOldBuilds(t *testing.T) {
 	service := f.newService("foobar", []model.Mount{mount})
 
 	f.docker.BuildCount++
-	err := f.upper.reapOldWatchBuilds(f.Ctx(), []model.Service{service}, time.Now())
+	err := f.upper.reapOldWatchBuilds(output.CtxForTest(), []model.Service{service}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +426,7 @@ func makeFakeWatcherMaker(fn *fakeNotify) watcherMaker {
 }
 
 type testFixture struct {
-	*testutils.TempDirFixture
+	*tempdir.TempDirFixture
 	upper      Upper
 	b          *fakeBuildAndDeployer
 	watcher    *fakeNotify
@@ -434,7 +435,7 @@ type testFixture struct {
 }
 
 func newTestFixture(t *testing.T) *testFixture {
-	f := testutils.NewTempDirFixture(t)
+	f := tempdir.NewTempDirFixture(t)
 	watcher := newFakeNotify()
 	watcherMaker := makeFakeWatcherMaker(watcher)
 	b := newFakeBuildAndDeployer(t)

@@ -6,7 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestContainerIdForPodOneMatch(t *testing.T) {
@@ -111,7 +112,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 }
 
 type mockContainerUpdaterFixture struct {
-	*testutils.TempDirFixture
+	*tempdir.TempDirFixture
 	t    testing.TB
 	ctx  context.Context
 	dcli *FakeDockerClient
@@ -125,9 +126,9 @@ func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 	}
 
 	return &mockContainerUpdaterFixture{
-		TempDirFixture: testutils.NewTempDirFixture(t),
+		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
-		ctx:            testutils.CtxForTest(),
+		ctx:            output.CtxForTest(),
 		dcli:           fakeCli,
 		cu:             cu,
 	}

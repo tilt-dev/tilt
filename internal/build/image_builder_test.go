@@ -21,7 +21,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 const simpleDockerfile = Dockerfile("FROM alpine")
@@ -79,7 +80,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 }
 
 type dockerBuildFixture struct {
-	*testutils.TempDirFixture
+	*tempdir.TempDirFixture
 	t            testing.TB
 	ctx          context.Context
 	dcli         *DockerCli
@@ -90,7 +91,7 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	ctx := testutils.CtxForTest()
+	ctx := output.CtxForTest()
 	dcli, err := DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
 		t.Fatal(err)
@@ -100,7 +101,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		TestImage: "1",
 	})
 	return &dockerBuildFixture{
-		TempDirFixture: testutils.NewTempDirFixture(t),
+		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
 		dcli:           dcli,

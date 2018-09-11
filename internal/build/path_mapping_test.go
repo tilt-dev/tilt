@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestFilesToPathMappings(t *testing.T) {
-	f := testutils.NewTempDirFixture(t)
+	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
 	paths := []string{
@@ -81,7 +81,7 @@ func TestRelativeRepoPathsThrowError(t *testing.T) {
 }
 
 func TestFileNotInMountThrowsErr(t *testing.T) {
-	f := testutils.NewTempDirFixture(t)
+	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
 	files := []string{f.JoinPath("not/a/mount/fileA")}
