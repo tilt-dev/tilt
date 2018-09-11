@@ -8,7 +8,7 @@ import (
 
 const Port = 23551
 
-type Synclet struct {}
+type Synclet struct{}
 
 func (s Synclet) GetContainerIdForPod(podId string) (string, error) {
 	return "", errors.New("GetContainerIdForPod not implemented")
