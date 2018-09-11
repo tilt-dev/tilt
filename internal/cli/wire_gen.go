@@ -27,8 +27,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
 	kubectlClient := k8s.NewKubectlClient(ctx, env)
-	bool2 := engine.DefaultSkipContainer()
-	containerBuildAndDeployer := engine.NewContainerBuildAndDeployer(containerUpdater, env, kubectlClient, bool2)
+	firstLineBuildAndDeployer := engine.NewFirstLineBuildAndDeployer(containerUpdater, env, kubectlClient)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
@@ -36,7 +35,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, env)
 	v := engine.DefaultShouldFallBack()
-	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(containerBuildAndDeployer, imageBuildAndDeployer, v)
+	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(firstLineBuildAndDeployer, imageBuildAndDeployer, v)
 	imageReaper := build.NewImageReaper(dockerCli)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, kubectlClient, browser, imageReaper)
 	manager := service.ProvideMemoryManager()
