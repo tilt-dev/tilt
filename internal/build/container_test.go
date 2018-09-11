@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -509,4 +510,38 @@ func TestReapOneImage(t *testing.T) {
 
 	f.assertImageExists(ref1)
 	f.assertImageNotExists(ref2)
+}
+
+func TestConditionalRunInRealDocker(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
+
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
+	step1 := model.Step{
+		Cmd:     model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
+		Trigger: inputs,
+	}
+	step2 := model.Step{
+		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),
+	}
+
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Step{step1, step2}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []expectedFile{
+		expectedFile{path: "/src/a.txt", contents: "a"},
+		expectedFile{path: "/src/b.txt", contents: "b"},
+		expectedFile{path: "/src/c.txt", contents: "a"},
+		expectedFile{path: "/src/d.txt", contents: "b"},
+	}
+	f.assertFilesInImage(ref, pcs)
 }

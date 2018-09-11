@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -50,7 +51,7 @@ func TestDigestAsTagToShort(t *testing.T) {
 }
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
-	f := newDockerBuildFixture(t)
+	f := newFakeDockerBuildFixture(t)
 	defer f.teardown()
 
 	input := ExampleBuildOutput1
@@ -65,7 +66,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 }
 
 func TestDigestFromPushOutput(t *testing.T) {
-	f := newDockerBuildFixture(t)
+	f := newFakeDockerBuildFixture(t)
 	defer f.teardown()
 
 	input := ExamplePushOutput1
@@ -79,11 +80,50 @@ func TestDigestFromPushOutput(t *testing.T) {
 	}
 }
 
+func TestConditionalRunInFakeDocker(t *testing.T) {
+	f := newFakeDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
+
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
+	step1 := model.Step{
+		Cmd:     model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
+		Trigger: inputs,
+	}
+	step2 := model.Step{
+		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
+	}
+
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Step{step1, step2}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := expectedFile{
+		path: "Dockerfile",
+		contents: `FROM alpine
+LABEL "tilt.buildMode"="scratch"
+LABEL "tilt.test"="1"
+COPY /src/a.txt /src/a.txt
+RUN cat /src/a.txt > /src/c.txt
+ADD . /
+RUN cat /src/b.txt > /src/d.txt`,
+	}
+	assertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
+}
+
 type dockerBuildFixture struct {
 	*tempdir.TempDirFixture
 	t            testing.TB
 	ctx          context.Context
 	dcli         *DockerCli
+	fakeDocker   *FakeDockerClient
 	b            *dockerImageBuilder
 	registry     *exec.Cmd
 	reaper       ImageReaper
@@ -105,6 +145,22 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t:              t,
 		ctx:            ctx,
 		dcli:           dcli,
+		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
+		reaper:         NewImageReaper(dcli),
+	}
+}
+
+func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
+	ctx := output.CtxForTest()
+	dcli := NewFakeDockerClient()
+	labels := Labels(map[Label]LabelValue{
+		TestImage: "1",
+	})
+	return &dockerBuildFixture{
+		TempDirFixture: tempdir.NewTempDirFixture(t),
+		t:              t,
+		ctx:            ctx,
+		fakeDocker:     dcli,
 		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
 		reaper:         NewImageReaper(dcli),
 	}
