@@ -82,7 +82,7 @@ func (c *upCmd) run(args []string) error {
 
 	logOutput(fmt.Sprintf("Starting Tilt (built %s)…", buildDateStamp()))
 
-	tf, err := tiltfile.Load("Tiltfile")
+	tf, err := tiltfile.Load("Tiltfile", os.Stdout)
 	if err != nil {
 		return err
 	}

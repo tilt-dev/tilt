@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -26,6 +27,30 @@ func tempFile(content string) string {
 	return f.Name()
 }
 
+func TestSyntax(t *testing.T) {
+	file := tempFile(`
+def hello():
+  a = lambda: print("hello")
+  def b():
+    a()
+
+  b()
+
+hello()
+`)
+	defer os.Remove(file)
+
+	out := bytes.NewBuffer(nil)
+	_, err := Load(file, out)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	s := out.String()
+	expected := "hello\n"
+	assert.Equal(t, expected, s)
+}
+
 func TestGetServiceConfig(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
@@ -40,7 +65,7 @@ func TestGetServiceConfig(t *testing.T) {
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
-	tiltconfig, err := Load(file)
+	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -82,7 +107,7 @@ func TestOldMountSyntax(t *testing.T) {
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
-	tiltconfig, err := Load(file)
+	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -109,7 +134,7 @@ func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 `))
 	defer os.Remove(file)
 
-	tiltconfig, err := Load(file)
+	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -136,7 +161,7 @@ def blorgly_frontend():
 `)
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -169,7 +194,7 @@ def blorgly_frontend():
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -190,7 +215,7 @@ func TestGetServiceConfigUndefined(t *testing.T) {
 `)
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -209,7 +234,7 @@ func TestGetServiceConfigNonFunction(t *testing.T) {
 	file := tempFile("blorgly2 = 3")
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -229,7 +254,7 @@ func TestGetServiceConfigTakesArgs(t *testing.T) {
 `)
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -248,7 +273,7 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 			"foo"[10]`) // index out of range
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -267,7 +292,7 @@ func TestGetServiceConfigReturnsWrongType(t *testing.T) {
 			return "foo"`) // index out of range
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -286,7 +311,7 @@ func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
 			local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`) // index out of range
 	defer os.Remove(file)
 
-	tiltConfig, err := Load(file)
+	tiltConfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -315,7 +340,7 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
-	tiltconfig, err := Load(file)
+	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -360,7 +385,7 @@ func TestRunTrigger(t *testing.T) {
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
-	tiltconfig, err := Load(file)
+	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -425,7 +450,7 @@ func TestInvalidDockerTag(t *testing.T) {
 `, dockerfile))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
-	tiltconfig, err := Load(file)
+	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
