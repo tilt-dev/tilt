@@ -28,6 +28,8 @@ func main() {
 
 	serv := grpc.NewServer()
 
+	// TODO(Matt) fix this so either we don't need an k8s env to instantiate a synclet, or
+	// so that we can still detect env inside of containers w/o kubectl
 	s, err := synclet.WireSynclet(ctx, k8s.EnvUnknown)
 	if err != nil {
 		log.Fatalf("failed to wire synclet: %v", err)
