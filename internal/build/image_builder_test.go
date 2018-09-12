@@ -118,6 +118,40 @@ RUN cat /src/b.txt > /src/d.txt`,
 	assertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
 }
 
+func TestAllConditionalRunsInFakeDocker(t *testing.T) {
+	f := newFakeDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
+
+	m := model.Mount{
+		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		ContainerPath: "/src",
+	}
+	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
+	step1 := model.Step{
+		Cmd:     model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
+		Trigger: inputs,
+	}
+
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Step{step1}, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := expectedFile{
+		path: "Dockerfile",
+		contents: `FROM alpine
+LABEL "tilt.buildMode"="scratch"
+LABEL "tilt.test"="1"
+COPY /src/a.txt /src/a.txt
+RUN cat /src/a.txt > /src/c.txt
+ADD . /`,
+	}
+	assertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
+}
+
 type dockerBuildFixture struct {
 	*tempdir.TempDirFixture
 	t            testing.TB

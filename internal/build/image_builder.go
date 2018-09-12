@@ -144,10 +144,8 @@ func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Do
 // If the build starts with conditional steps, add the dependent files first,
 // then add the runs, before we add the majority of the source.
 func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.Step, paths []pathMapping) (Dockerfile, []model.Step, error) {
-	var i int
-	var step model.Step
-
-	for i, step = range steps {
+	consumed := 0
+	for _, step := range steps {
 		if step.Trigger == nil {
 			break
 		}
@@ -180,9 +178,10 @@ func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.St
 		// clever where we stash the outputs and restore them after the final "ADD . /".
 		// But let's see how this works for now.
 		df = df.Run(step.Cmd)
+		consumed++
 	}
 
-	remainingSteps := append([]model.Step{}, steps[i:]...)
+	remainingSteps := append([]model.Step{}, steps[consumed:]...)
 	return df, remainingSteps, nil
 }
 
