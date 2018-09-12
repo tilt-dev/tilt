@@ -122,8 +122,8 @@ func MountsToPathMappings(mounts []model.Mount) []pathMapping {
 }
 
 // Return all the path mappings for local paths that do not exist.
-func missingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMapping, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-missingLocalPaths")
+func MissingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMapping, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "MissingLocalPaths")
 	defer span.Finish()
 	result := make([]pathMapping, 0)
 	for _, mapping := range mappings {
@@ -135,10 +135,18 @@ func missingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMappi
 		if os.IsNotExist(err) {
 			result = append(result, mapping)
 		} else {
-			return nil, fmt.Errorf("missingLocalPaths: %v", err)
+			return nil, fmt.Errorf("MissingLocalPaths: %v", err)
 		}
 	}
 	return result, nil
+}
+
+func PathMappingsToContainerPaths(mappings []pathMapping) []string {
+	res := make([]string, len(mappings))
+	for i, m := range mappings {
+		res[i] = m.ContainerPath
+	}
+	return res
 }
 
 type PathMappingErr struct {

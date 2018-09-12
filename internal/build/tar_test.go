@@ -13,7 +13,7 @@ import (
 
 func TestArchiveDf(t *testing.T) {
 	f := newFixture(t)
-	ab := newArchiveBuilder()
+	ab := NewArchiveBuilder()
 	defer ab.close()
 	defer f.tearDown()
 
@@ -34,7 +34,7 @@ func TestArchiveDf(t *testing.T) {
 
 func TestArchivePathsIfExists(t *testing.T) {
 	f := newFixture(t)
-	ab := newArchiveBuilder()
+	ab := NewArchiveBuilder()
 	defer ab.close()
 	defer f.tearDown()
 
@@ -51,7 +51,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 		},
 	}
 
-	err := ab.archivePathsIfExist(f.ctx, paths)
+	err := ab.ArchivePathsIfExist(f.ctx, paths)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 }
 
 func TestLen(t *testing.T) {
-	ab := newArchiveBuilder()
+	ab := NewArchiveBuilder()
 	dfText := "FROM alpine"
 	df := Dockerfile(dfText)
 	err := ab.archiveDf(context.Background(), df)

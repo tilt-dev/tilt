@@ -3,6 +3,7 @@ package synclet
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
@@ -28,6 +29,11 @@ func (s Synclet) UpdateContainer(
 	tarArchive []byte,
 	filesToDelete []string,
 	commands []model.Cmd) error {
+
+	fmt.Println("container:", containerId)
+	fmt.Println("bytes in tar:", len(tarArchive))
+	fmt.Println("files to delete:", filesToDelete)
+	fmt.Println("cmds:", commands)
 
 	return errors.New("UpdateContainer not implemented")
 }
