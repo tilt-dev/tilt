@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 	"google.golang.org/grpc"
@@ -26,7 +28,9 @@ func main() {
 
 	serv := grpc.NewServer()
 
-	s, err := synclet.WireSynclet(ctx)
+	// TODO(Matt) fix this so either we don't need an k8s env to instantiate a synclet, or
+	// so that we can still detect env inside of containers w/o kubectl
+	s, err := synclet.WireSynclet(ctx, k8s.EnvUnknown)
 	if err != nil {
 		log.Fatalf("failed to wire synclet: %v", err)
 	}
