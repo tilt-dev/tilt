@@ -33,6 +33,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 
 		engine.NewUpper,
 		provideServiceCreator,
+		provideAnalytics,
 	)
 	return nil, nil
 }
