@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -18,7 +18,9 @@ type SyncletBuildAndDeployer struct {
 	// NOTE(maia): hacky intermediate SyncletBaD takes a single client,
 	// assumes port forwarding a single synclet on <port> -- later, will need
 	// a map of NodeID -> syncletClient
-	cli synclet.SyncletClient
+	sCli synclet.SyncletClient
+
+	kCli k8s.Client
 }
 
 func DefaultSyncletClient(env k8s.Env) (synclet.SyncletClient, error) {
@@ -34,9 +36,10 @@ func DefaultSyncletClient(env k8s.Env) (synclet.SyncletClient, error) {
 	return cli, nil
 }
 
-func NewSyncletBuildAndDeployer(cli synclet.SyncletClient) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(sCli synclet.SyncletClient, kCli k8s.Client) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		cli: cli,
+		sCli: sCli,
+		kCli: kCli,
 	}
 }
 
@@ -108,7 +111,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	cID := state.LastResult.Container
-	err = sbd.cli.UpdateContainer(ctx, cID, archive.Bytes(), containerPathsToRm, model.BoilStepsTODO(service.Steps))
+	err = sbd.sCli.UpdateContainer(ctx, cID, archive.Bytes(), containerPathsToRm, model.BoilStepsTODO(service.Steps))
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -120,5 +123,20 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 }
 
 func (sbd *SyncletBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	return "", nil
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-GetContainerForBuild")
+	defer span.Finish()
+
+	// get pod running the image we just deployed
+	pID, err := sbd.kCli.PodWithImage(ctx, build.Image)
+	if err != nil {
+		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
+	}
+
+	// get container that's running the app for the pod we found
+	cID, err := sbd.sCli.GetContainerIdForPod(ctx, pID)
+	if err != nil {
+		return "", fmt.Errorf("syncletClient.GetContainerIdForPod (pod = %s): %v", pID, err)
+	}
+
+	return cID, nil
 }

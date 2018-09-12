@@ -80,7 +80,7 @@ func (composite *CompositeBuildAndDeployer) GetContainerForBuild(ctx context.Con
 
 func NewFirstLineBuildAndDeployer(sCli synclet.SyncletClient, cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client) FirstLineBuildAndDeployer {
 	if env == k8s.EnvGKE {
-		return NewSyncletBuildAndDeployer(sCli)
+		return NewSyncletBuildAndDeployer(sCli, kCli)
 	}
 	return NewLocalContainerBuildAndDeployer(cu, env, kCli)
 }
