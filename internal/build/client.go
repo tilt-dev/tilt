@@ -41,6 +41,8 @@ type DockerClient interface {
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
 }
 
+var _ DockerClient = &DockerCli{}
+
 type DockerCli struct {
 	*client.Client
 }
