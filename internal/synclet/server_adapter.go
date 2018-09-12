@@ -18,7 +18,7 @@ func NewGRPCServer(del *Synclet) *GRPCServer {
 var _ proto.SyncletServer = &GRPCServer{}
 
 func (s *GRPCServer) GetContainerIdForPod(ctx context.Context, req *proto.GetContainerIdForPodRequest) (*proto.GetContainerIdForPodReply, error) {
-	containerId, err := s.del.GetContainerIdForPod(req.PodId)
+	containerId, err := s.del.GetContainerIdForPod(ctx, req.PodId)
 
 	if err != nil {
 		return nil, err
