@@ -3,12 +3,14 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/google/skylark/resolve"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -16,6 +18,11 @@ type Tiltfile struct {
 	globals  skylark.StringDict
 	filename string
 	thread   *skylark.Thread
+}
+
+func init() {
+	resolve.AllowLambda = true
+	resolve.AllowNestedDef = true
 }
 
 func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -118,9 +125,11 @@ func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple
 	return skylark.String(out), nil
 }
 
-func Load(filename string) (*Tiltfile, error) {
+func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	thread := &skylark.Thread{
-		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
+		Print: func(_ *skylark.Thread, msg string) {
+			_, _ = fmt.Fprintln(out, msg)
+		},
 	}
 
 	predeclared := skylark.StringDict{
