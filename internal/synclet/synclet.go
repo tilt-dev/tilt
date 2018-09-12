@@ -3,8 +3,9 @@ package synclet
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -78,6 +79,18 @@ func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, files
 	return s.dcli.ExecInContainer(ctx, containerId, cmd)
 }
 
+func (s Synclet) execCmds(ctx context.Context, containerId k8s.ContainerID, cmds []model.Cmd) error {
+	for i, c := range cmds {
+		// TODO: instrument this
+		log.Printf("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
+		err := s.dcli.ExecInContainer(ctx, containerId, c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s Synclet) restartContainer(ctx context.Context, containerId k8s.ContainerID) error {
 	return s.dcli.ContainerRestartNoWait(ctx, containerId.String())
 }
@@ -91,21 +104,26 @@ func (s Synclet) UpdateContainer(
 
 	err := s.rmFiles(ctx, containerId, filesToDelete)
 	if err != nil {
-		return fmt.Errorf("error removing files while updating container %s: %v", containerId, err)
+		return fmt.Errorf("error removing files while updating container %s: %v",
+			containerId.ShortStr(), err)
 	}
 
 	err = s.writeFiles(ctx, containerId, tarArchive)
 	if err != nil {
-		return fmt.Errorf("error writing files while updating container %s: %v", containerId, err)
+		return fmt.Errorf("error writing files while updating container %s: %v",
+			containerId.ShortStr(), err)
+	}
+
+	err = s.execCmds(ctx, containerId, commands)
+	if err != nil {
+		return fmt.Errorf("error exec'ing commands while updating container %s: %v",
+			containerId.ShortStr(), err)
 	}
 
 	err = s.restartContainer(ctx, containerId)
 	if err != nil {
-		return fmt.Errorf("error restarting container %s: %v", containerId, err)
-	}
-
-	if len(commands) != 0 {
-		return errors.New("build steps are not yet supported with synclet builds")
+		return fmt.Errorf("error restarting container %s: %v",
+			containerId.ShortStr(), err)
 	}
 
 	return nil
