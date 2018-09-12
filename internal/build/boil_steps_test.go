@@ -22,7 +22,7 @@ func TestBoilStepsNoTrigger(t *testing.T) {
 		},
 	}
 
-	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo hello")}}
+	expected := []model.Cmd{model.ToShellCmd("echo hello")}
 
 	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
@@ -41,7 +41,7 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 
 	pathMappings := []pathMapping{}
 
-	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo hello")}}
+	expected := []model.Cmd{model.ToShellCmd("echo hello")}
 
 	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
@@ -70,7 +70,7 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 		},
 	}
 
-	expected := []BoiledStep{}
+	expected := []model.Cmd{}
 
 	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
@@ -99,7 +99,7 @@ func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 		},
 	}
 
-	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo world"), pathMapping: pathMappings[0]}}
+	expected := []model.Cmd{model.ToShellCmd("echo world")}
 
 	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
@@ -140,7 +140,7 @@ func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
 		},
 	}
 
-	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo world"), pathMapping: pathMappings[1]}}
+	expected := []model.Cmd{model.ToShellCmd("echo world")}
 
 	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {

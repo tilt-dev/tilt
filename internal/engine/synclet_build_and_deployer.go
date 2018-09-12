@@ -108,7 +108,15 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	cID := state.LastResult.Container
-	err = sbd.cli.UpdateContainer(ctx, cID, archive.Bytes(), containerPathsToRm, model.BoilStepsTODO(service.Steps))
+
+	cmds := []model.Cmd{}
+
+	for _, s := range service.Steps {
+		cmds = append(cmds, s.Cmd)
+	}
+
+	// TODO(dmiller) boil steps here
+	err = sbd.cli.UpdateContainer(ctx, cID, archive.Bytes(), containerPathsToRm, cmds)
 	if err != nil {
 		return BuildResult{}, err
 	}
