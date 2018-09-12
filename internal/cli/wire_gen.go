@@ -25,13 +25,13 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	if err != nil {
 		return nil, err
 	}
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient)
+	kubectlClient := k8s.NewKubectlClient(ctx, env)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient, kubectlClient)
 	dockerCli, err := build.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
-	kubectlClient := k8s.NewKubectlClient(ctx, env)
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, kubectlClient)
 	firstLineBuildAndDeployer := engine.NewFirstLineBuildAndDeployer(syncletBuildAndDeployer, localContainerBuildAndDeployer, env)
 	console := build.DefaultConsole()
