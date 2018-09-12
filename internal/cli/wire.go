@@ -25,26 +25,11 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
 
-		// dockerImageBuilder ( = ImageBuilder)
-		build.DefaultConsole,
-		build.DefaultOut,
-		build.DefaultImageBuilder,
-		build.NewDockerImageBuilder,
-		wire.Value(build.Labels{}),
 		build.NewImageReaper,
 
-		// ImageBuildAndDeployer (FallbackBuildAndDeployer)
-		wire.Bind(new(engine.FallbackBuildAndDeployer), new(engine.ImageBuildAndDeployer)),
-		engine.NewImageBuildAndDeployer,
-
-		// FirstLineBuildAndDeployer (LocalContainerBaD OR SyncletBaD)
-		build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
 		engine.DefaultSyncletClient,
-		engine.NewFirstLineBuildAndDeployer,
-
-		wire.Bind(new(engine.BuildAndDeployer), new(engine.CompositeBuildAndDeployer)),
+		engine.DeployerWireSet,
 		engine.DefaultShouldFallBack,
-		engine.NewCompositeBuildAndDeployer,
 
 		engine.NewUpper,
 		provideServiceCreator,

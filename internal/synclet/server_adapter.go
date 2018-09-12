@@ -3,6 +3,8 @@ package synclet
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 )
@@ -18,7 +20,7 @@ func NewGRPCServer(del *Synclet) *GRPCServer {
 var _ proto.SyncletServer = &GRPCServer{}
 
 func (s *GRPCServer) GetContainerIdForPod(ctx context.Context, req *proto.GetContainerIdForPodRequest) (*proto.GetContainerIdForPodReply, error) {
-	containerId, err := s.del.GetContainerIdForPod(req.PodId)
+	containerId, err := s.del.GetContainerIdForPod(ctx, k8s.PodID(req.PodId))
 
 	if err != nil {
 		return nil, err
@@ -32,5 +34,5 @@ func (s *GRPCServer) UpdateContainer(ctx context.Context, req *proto.UpdateConta
 	for _, cmd := range req.Commands {
 		commands = append(commands, model.Cmd{Argv: cmd.Argv})
 	}
-	return &proto.UpdateContainerReply{}, s.del.UpdateContainer(ctx, req.ContainerId, req.TarArchive, req.FilesToDelete, commands)
+	return &proto.UpdateContainerReply{}, s.del.UpdateContainer(ctx, k8s.ContainerID(req.ContainerId), req.TarArchive, req.FilesToDelete, commands)
 }
