@@ -6,9 +6,21 @@ func boilSteps(steps []model.Step, filesChanged []string, pathMappings []pathMap
 	if len(filesChanged) == 0 {
 		return []model.Cmd{}, nil
 	}
-	res := make([]model.Cmd, len(steps))
-	for i, step := range steps {
-		res[i] = step.Cmd
+	res := []model.Cmd{}
+	for _, step := range steps {
+		if step.Trigger == nil {
+			res = append(res, step.Cmd)
+			continue
+		}
+		for _, f := range filesChanged {
+			matches, err := step.Trigger.Matches(f, false)
+			if err != nil {
+				return []model.Cmd{}, err
+			}
+			if matches {
+				res = append(res, step.Cmd)
+			}
+		}
 	}
 	return res, nil
 }
