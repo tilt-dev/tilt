@@ -96,11 +96,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 
 	paths := MountsToPathMappings(mounts)
 	df := d.applyLabels(baseDockerfile, BuildModeScratch)
-	df, steps, err = d.addConditionalSteps(df, steps, paths)
-	if err != nil {
-		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
-	}
-
+	df, steps = d.addConditionalSteps(df, steps)
 	df, err = d.addMounts(ctx, df, paths)
 	if err != nil {
 		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
@@ -143,47 +139,12 @@ func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Do
 
 // If the build starts with conditional steps, add the dependent files first,
 // then add the runs, before we add the majority of the source.
-func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.Step, paths []pathMapping) (Dockerfile, []model.Step, error) {
-	var i int
-	var step model.Step
+func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.Step) (Dockerfile, []model.Step) {
+	remainingSteps := append([]model.Step{}, steps...)
 
-	for i, step = range steps {
-		if step.Trigger == nil {
-			break
-		}
+	// TODO(nick): Fill this in.
 
-		pathsToAdd, err := FilterMappings(paths, step.Trigger)
-		if err != nil {
-			return "", nil, err
-		}
-
-		if len(pathsToAdd) == 0 {
-			// TODO(nick): If this happens, it means the input file has been deleted.
-			// This seems like a very late part of the pipeline to detect this
-			// error. It should have been caught way up when we were evaluating the
-			// tiltfile.
-			//
-			// For now, we're going to return an error to catch this case.
-			return "", nil, fmt.Errorf("No inputs for run: %s", step.Cmd)
-		}
-
-		for _, p := range pathsToAdd {
-			// The tarball root is the same as the container root, so the src and dest
-			// are the same.
-			df = df.join(fmt.Sprintf("COPY %s %s", p.ContainerPath, p.ContainerPath))
-		}
-
-		// After adding the inputs, run the step.
-		//
-		// TODO(nick): This assumes that the RUN step doesn't overwrite any input files
-		// that might be added later. In that case, we might need to do something
-		// clever where we stash the outputs and restore them after the final "ADD . /".
-		// But let's see how this works for now.
-		df = df.Run(step.Cmd)
-	}
-
-	remainingSteps := append([]model.Step{}, steps[i:]...)
-	return df, remainingSteps, nil
+	return df, remainingSteps
 }
 
 func (d *dockerImageBuilder) addMounts(ctx context.Context, df Dockerfile, paths []pathMapping) (Dockerfile, error) {

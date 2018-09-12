@@ -19,53 +19,6 @@ type pathMapping struct {
 	ContainerPath string
 }
 
-func (m pathMapping) Filter(matcher model.PathMatcher) ([]pathMapping, error) {
-	result := make([]pathMapping, 0)
-	err := filepath.Walk(m.LocalPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		match, err := matcher.Matches(path, info.IsDir())
-		if err != nil {
-			return err
-		}
-
-		if !match {
-			return nil
-		}
-
-		rp, err := filepath.Rel(m.LocalPath, path)
-		if err != nil {
-			return err
-		}
-
-		result = append(result, pathMapping{
-			LocalPath:     path,
-			ContainerPath: filepath.Join(m.ContainerPath, rp),
-		})
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func FilterMappings(mappings []pathMapping, matcher model.PathMatcher) ([]pathMapping, error) {
-	result := make([]pathMapping, 0)
-	for _, mapping := range mappings {
-		filtered, err := mapping.Filter(matcher)
-		if err != nil {
-			return nil, err
-		}
-
-		result = append(result, filtered...)
-	}
-	return result, nil
-}
-
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
 // associates local filepaths with their mounts and destination paths).
 func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, error) {
