@@ -13,6 +13,28 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
+var DeployerWireSet = wire.NewSet(
+	// dockerImageBuilder ( = ImageBuilder)
+	build.DefaultConsole,
+	build.DefaultOut,
+	wire.Value(build.Labels{}),
+
+	build.DefaultImageBuilder,
+	build.NewDockerImageBuilder,
+
+	// ImageBuildAndDeployer (FallbackBuildAndDeployer)
+	wire.Bind(new(FallbackBuildAndDeployer), new(ImageBuildAndDeployer)),
+	NewImageBuildAndDeployer,
+
+	// FirstLineBuildAndDeployer (LocalContainerBaD OR SyncletBaD)
+	build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
+	NewSyncletBuildAndDeployer,
+	NewLocalContainerBuildAndDeployer,
+	NewFirstLineBuildAndDeployer,
+
+	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
+	NewCompositeBuildAndDeployer)
+
 func provideBuildAndDeployer(
 	ctx context.Context,
 	docker build.DockerClient,
@@ -22,23 +44,7 @@ func provideBuildAndDeployer(
 	sCli synclet.SyncletClient,
 	shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
 	wire.Build(
-		// dockerImageBuilder ( = ImageBuilder)
-		build.DefaultImageBuilder,
-		build.NewDockerImageBuilder,
-		build.DefaultConsole,
-		build.DefaultOut,
-		wire.Value(build.Labels{}),
-
-		// ImageBuildAndDeployer (FallbackBuildAndDeployer)
-		wire.Bind(new(FallbackBuildAndDeployer), new(ImageBuildAndDeployer)),
-		NewImageBuildAndDeployer,
-
-		// FirstLineBuildAndDeployer (LocalContainerBaD OR SyncletBaD)
-		build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
-		NewFirstLineBuildAndDeployer,
-
-		wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
-		NewCompositeBuildAndDeployer,
+		DeployerWireSet,
 	)
 
 	return nil, nil

@@ -25,13 +25,15 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	if err != nil {
 		return nil, err
 	}
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient)
 	dockerCli, err := build.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
 	kubectlClient := k8s.NewKubectlClient(ctx, env)
-	firstLineBuildAndDeployer := engine.NewFirstLineBuildAndDeployer(syncletClient, containerUpdater, env, kubectlClient)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, kubectlClient)
+	firstLineBuildAndDeployer := engine.NewFirstLineBuildAndDeployer(syncletBuildAndDeployer, localContainerBuildAndDeployer, env)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
