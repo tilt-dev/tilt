@@ -82,6 +82,13 @@ Runs cmd, waits for it to finish, and returns its stdout.
   * `cmd`: **str**
 * Returns: **str**
 
+#### read_file(file_path)
+Reads file and returns its contents.
+
+* Args:
+  * `file_path`: **str**
+* Returns: **str**
+
 ## Developing
 See DEVELOPING.md
 
