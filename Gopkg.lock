@@ -389,12 +389,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:a88c5f70005e121cfe4eb9e1dd76065ab1c204de6e8e5b9b4fec41a83fe1338b"
+  branch = "master"
+  digest = "1:dcc626804fa1b81a7714906f44d4b6b21773f995d044f96030744e557348cbd2"
   name = "github.com/google/go-cloud"
   packages = ["wire"]
   pruneopts = "UT"
-  revision = "5fb966ac9a602519675a9fb8dae2f421001e1094"
-  version = "v0.1.1"
+  revision = "1e2867e5b7c01e3766e577e9ac9dae28769512c8"
 
 [[projects]]
   branch = "master"
@@ -432,14 +432,6 @@
   pruneopts = "UT"
   revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
   version = "v1.6.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:1a1206efd03a54d336dce7bb8719e74f2f8932f661cb9f57d5813a1d99c083d8"
-  name = "github.com/grpc-ecosystem/grpc-opentracing"
-  packages = ["go/otgrpc"]
-  pruneopts = "UT"
-  revision = "8e809c8a86450a29b90dcc9efbf062d0fe6d9746"
 
 [[projects]]
   digest = "1:77395dd3847dac9c45118c668f5dab85aedf0163dc3b38aea6578c5cf0d502f9"
@@ -1003,7 +995,6 @@
   input-imports = [
     "github.com/blang/semver",
     "github.com/containerd/console",
-    "github.com/davecgh/go-spew/spew",
     "github.com/docker/cli/cli/command",
     "github.com/docker/cli/cli/flags",
     "github.com/docker/distribution/reference",
@@ -1021,7 +1012,7 @@
     "github.com/golang/protobuf/proto",
     "github.com/google/go-cloud/wire",
     "github.com/google/skylark",
-    "github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc",
+    "github.com/google/skylark/resolve",
     "github.com/mattn/go-isatty",
     "github.com/moby/buildkit/api/services/control",
     "github.com/moby/buildkit/frontend/dockerfile/parser",
