@@ -74,7 +74,7 @@ func (s Synclet) rmFiles(ctx context.Context, containerId string, filesToDelete 
 	}
 
 	id := k8s.ContainerID(containerId)
-	cmd := model.Cmd{append([]string{"rm"}, filesToDelete...)}
+	cmd := model.Cmd{Argv: append([]string{"rm"}, filesToDelete...)}
 
 	err := s.dcli.ExecInContainer(ctx, id, cmd)
 	if err != nil {
