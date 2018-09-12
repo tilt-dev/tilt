@@ -46,17 +46,17 @@ func (d Dockerfile) Entrypoint(cmd model.Cmd) Dockerfile {
 }
 
 func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
-	var newDf string
-	if len(pathsToRm) > 0 {
-		// Add 'rm' statements; if changed path was deleted locally, remove if from container
-		rmCmd := strings.Builder{}
-		rmCmd.WriteString("rm -rf")
-		for _, p := range pathsToRm {
-			rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
-		}
-		newDf = fmt.Sprintf("%s\nRUN %s", newDf, rmCmd.String())
+	if len(pathsToRm) == 0 {
+		return d
 	}
-	return d.join(newDf)
+
+	// Add 'rm' statements; if changed path was deleted locally, remove if from container
+	rmCmd := strings.Builder{}
+	rmCmd.WriteString("rm -rf")
+	for _, p := range pathsToRm {
+		rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
+	}
+	return d.join(fmt.Sprintf("RUN %s", rmCmd.String()))
 }
 
 func (d Dockerfile) ValidateBaseDockerfile() error {
