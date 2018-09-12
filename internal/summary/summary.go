@@ -97,9 +97,9 @@ func (s *Summary) Output() string {
 					ret += fmt.Sprintf(" %s", lb.Name)
 
 					if len(lb.Ports) > 0 {
-						ret += fmt.Sprintf(" | PORT: ")
 						for _, p := range lb.Ports {
-							ret += fmt.Sprint(p)
+							ret += fmt.Sprintf(" | PORT: %d", p)
+							ret += fmt.Sprintf(" | URL: http://localhost:%d", p)
 						}
 						ret += fmt.Sprintf("\n")
 					}
