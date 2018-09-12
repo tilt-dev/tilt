@@ -32,33 +32,35 @@ func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, e
 func filesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, *PathMappingErr) {
 	var pms []pathMapping
 	for _, f := range files {
-		foundMount := false
-		for _, m := range mounts {
-			if !filepath.IsAbs(m.Repo.LocalPath) {
-				return nil, pathMappingErrf(
-					"[FilesToPathMappings] mount.Repo.LocalPath must be an absolute path (got: %s)",
-					m.Repo.LocalPath)
-			}
-			// Open Q: can you mount inside of mounts?! o_0
-			// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
-			// need ospath.RealChild -- but then can't deal with deleted local files.
-			relPath, isChild := ospath.Child(m.Repo.LocalPath, f)
-			if isChild {
-				foundMount = true
-				pms = append(pms, pathMapping{
-					LocalPath:     f,
-					ContainerPath: filepath.Join(m.ContainerPath, relPath),
-				})
-				break
-			}
+		pm, err := fileToPathMapping(f, mounts)
+		if err != nil {
+			return nil, err
 		}
-		if !foundMount {
-			return nil, pathMappingErrf("[FilesToPathMappings] file %s matches no mounts", f)
-		}
-
+		pms = append(pms, pm)
 	}
 
 	return pms, nil
+}
+
+func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMappingErr) {
+	for _, m := range mounts {
+		if !filepath.IsAbs(m.Repo.LocalPath) {
+			return pathMapping{}, pathMappingErrf(
+				"mount.Repo.LocalPath must be an absolute path (got: %s)",
+				m.Repo.LocalPath)
+		}
+		// Open Q: can you mount inside of mounts?! o_0
+		// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
+		// need ospath.RealChild -- but then can't deal with deleted local files.
+		relPath, isChild := ospath.Child(m.Repo.LocalPath, file)
+		if isChild {
+			return pathMapping{
+				LocalPath:     file,
+				ContainerPath: filepath.Join(m.ContainerPath, relPath),
+			}, nil
+		}
+	}
+	return pathMapping{}, pathMappingErrf("file %s matches no mounts", file)
 }
 
 func MountsToPathMappings(mounts []model.Mount) []pathMapping {
