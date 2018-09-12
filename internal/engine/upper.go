@@ -78,7 +78,10 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	}
 
 	s := summary.NewSummary()
-	s.Gather(services)
+	err = s.Gather(services)
+	if err != nil {
+		return err
+	}
 
 	lbs := make([]k8s.LoadBalancer, 0)
 	for _, service := range services {
