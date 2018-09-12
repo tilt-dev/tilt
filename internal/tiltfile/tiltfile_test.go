@@ -354,6 +354,7 @@ func TestRunTrigger(t *testing.T) {
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run('yarn install', trigger='package.json')
   image.run('npm install', trigger=['package.json', 'yarn.lock'])
+  image.run('echo hi')
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -370,34 +371,49 @@ func TestRunTrigger(t *testing.T) {
 	}
 
 	assert.Equal(t, len(services), 1)
+
+	step0 := services[0].Steps[0]
+	step1 := services[0].Steps[1]
+	step2 := services[0].Steps[2]
 	assert.Equal(
 		t,
-		services[0].Steps[0].Cmd,
+		step0.Cmd,
 		model.Cmd{
 			Argv: []string{"sh", "-c", "yarn install"},
 		},
 	)
 	packagePath := td.JoinPath("package.json")
-	matches, err := services[0].Steps[0].Trigger.Matches(packagePath, false)
+	matches, err := step0.Trigger.Matches(packagePath, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, matches)
+
 	assert.Equal(
 		t,
-		services[0].Steps[1].Cmd,
+		step1.Cmd,
 		model.Cmd{
 			Argv: []string{"sh", "-c", "npm install"},
 		},
 	)
-	matches, err = services[0].Steps[1].Trigger.Matches(packagePath, false)
+	matches, err = step1.Trigger.Matches(packagePath, false)
 	yarnLockPath := td.JoinPath("yarn.lock")
-	matches, err = services[0].Steps[1].Trigger.Matches(yarnLockPath, false)
+	matches, err = step1.Trigger.Matches(yarnLockPath, false)
 	assert.True(t, matches)
 
 	randomPath := td.JoinPath("foo")
-	matches, err = services[0].Steps[1].Trigger.Matches(randomPath, false)
+	matches, err = step1.Trigger.Matches(randomPath, false)
 	assert.False(t, matches)
+
+	assert.Equal(
+		t,
+		step2.Cmd,
+		model.Cmd{
+			Argv: []string{"sh", "-c", "echo hi"},
+		},
+	)
+
+	assert.Nil(t, step2.Trigger)
 }
 
 func TestInvalidDockerTag(t *testing.T) {
