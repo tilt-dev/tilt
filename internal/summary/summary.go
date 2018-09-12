@@ -15,14 +15,14 @@ type Summary struct {
 type Service struct {
 	Name    string
 	Path    string
-	k8sData []k8sDatum
+	k8sData k8sData
 }
 
-type k8sDatum struct {
-	LoadBalancer []k8s.LoadBalancer
-	Group        string
-	Kinds        []string
-	Version      string
+type k8sData struct {
+	LoadBalancers []k8s.LoadBalancer
+	Group         string
+	Kinds         []string
+	Version       string
 }
 
 // NewSummary returns summary state
@@ -43,31 +43,26 @@ func (s *Summary) Gather(services []model.Service) error {
 		}
 
 		svcSummary := &Service{
-			Name:    string(svc.Name),
-			Path:    path,
-			k8sData: []k8sDatum{},
+			Name: string(svc.Name),
+			Path: path,
 		}
-
-		kubeDatum := &k8sDatum{}
 
 		entities, err := k8s.ParseYAMLFromString(svc.K8sYaml)
 		if err != nil {
 			return err
 		}
 
-		lbs := k8s.ToLoadBalancers(entities)
-
-		for _, lb := range lbs {
-			kubeDatum.LoadBalancer = append(kubeDatum.LoadBalancer, lb)
+		kubeData := k8sData{
+			LoadBalancers: k8s.ToLoadBalancers(entities),
 		}
 
 		for _, e := range entities {
-			kubeDatum.Group = e.Kind.Group
-			kubeDatum.Version = e.Kind.Version
-			kubeDatum.Kinds = append(kubeDatum.Kinds, e.Kind.Kind)
+			kubeData.Group = e.Kind.Group
+			kubeData.Version = e.Kind.Version
+			kubeData.Kinds = append(kubeData.Kinds, e.Kind.Kind)
 		}
 
-		svcSummary.k8sData = append(svcSummary.k8sData, *kubeDatum)
+		svcSummary.k8sData = kubeData
 		s.Services = append(s.Services, svcSummary)
 	}
 
@@ -81,38 +76,39 @@ func (s *Summary) Output() string {
 		ret += fmt.Sprintf("    SERVICE NAME: %s\n", svc.Name)
 		ret += fmt.Sprintf("    WATCHING: %s\n", svc.Path)
 
-		for _, k := range svc.k8sData {
-			ret += fmt.Sprintln("    KUBERNETES INFO")
-			if len(k.Version) > 0 {
-				ret += fmt.Sprintf("      • Version: %s\n", k.Version)
-			}
+		k := svc.k8sData
 
-			if len(k.Group) > 0 {
-				ret += fmt.Sprintf("      • Group: %s\n", k.Group)
-			}
+		ret += fmt.Sprintln("    KUBERNETES INFO")
+		if len(k.Version) > 0 {
+			ret += fmt.Sprintf("      • Version: %s\n", k.Version)
+		}
 
-			if len(k.LoadBalancer) > 0 {
-				ret += fmt.Sprintf("    LOAD BALANCER:")
-				for _, lb := range k.LoadBalancer {
-					ret += fmt.Sprintf(" %s", lb.Name)
+		if len(k.Group) > 0 {
+			ret += fmt.Sprintf("      • Group: %s\n", k.Group)
+		}
 
-					if len(lb.Ports) > 0 {
-						for _, p := range lb.Ports {
-							ret += fmt.Sprintf(" | PORT: %d", p)
-							ret += fmt.Sprintf(" | URL: http://localhost:%d", p)
-						}
-						ret += fmt.Sprintf("\n")
+		if len(k.LoadBalancers) > 0 {
+			ret += fmt.Sprintf("    LOAD BALANCER:")
+			for _, lb := range k.LoadBalancers {
+				ret += fmt.Sprintf(" %s", lb.Name)
+
+				if len(lb.Ports) > 0 {
+					for _, p := range lb.Ports {
+						ret += fmt.Sprintf(" | PORT: %d", p)
+						ret += fmt.Sprintf(" | URL: http://localhost:%d", p)
 					}
-				}
-			}
-
-			if len(k.Kinds) > 0 {
-				ret += fmt.Sprintln("    OBJECTS:")
-				for _, kk := range k.Kinds {
-					ret += fmt.Sprintf("    • %s\n", kk)
+					ret += fmt.Sprintf("\n")
 				}
 			}
 		}
+
+		if len(k.Kinds) > 0 {
+			ret += fmt.Sprintln("    OBJECTS:")
+			for _, kk := range k.Kinds {
+				ret += fmt.Sprintf("    • %s\n", kk)
+			}
+		}
+
 		ret += fmt.Sprintf("\n")
 	}
 
