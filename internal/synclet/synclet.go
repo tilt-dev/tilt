@@ -25,9 +25,10 @@ func NewSynclet(dcli build.DockerClient) *Synclet {
 
 const pauseCmd = "/pause"
 
-func (s Synclet) GetContainerIdForPod(ctx context.Context, podId string) (string, error) {
+// TODO(matt) dedupe with ContainerUpdater - https://app.clubhouse.io/windmill/story/227/de-dupe-containeridforpod
+func (s Synclet) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (string, error) {
 	a := filters.NewArgs()
-	a.Add("name", podId)
+	a.Add("name", podId.String())
 	listOpts := types.ContainerListOptions{Filters: a}
 	containers, err := s.dcli.ContainerList(ctx, listOpts)
 	if err != nil {
@@ -59,56 +60,48 @@ func (s Synclet) GetContainerIdForPod(ctx context.Context, podId string) (string
 	return "", fmt.Errorf("no real containers -- all were '/pause' containers")
 }
 
-func (s Synclet) writeFiles(ctx context.Context, containerId string, tarArchive []byte) error {
+func (s Synclet) writeFiles(ctx context.Context, containerId k8s.ContainerID, tarArchive []byte) error {
 	if tarArchive == nil {
 		return nil
 	}
 
-	err := s.dcli.CopyToContainerRoot(ctx, containerId, bytes.NewBuffer(tarArchive))
-	return err
+	return s.dcli.CopyToContainerRoot(ctx, containerId.String(), bytes.NewBuffer(tarArchive))
 }
 
-func (s Synclet) rmFiles(ctx context.Context, containerId string, filesToDelete []string) error {
+func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, filesToDelete []string) error {
 	if len(filesToDelete) == 0 {
 		return nil
 	}
 
-	id := k8s.ContainerID(containerId)
 	cmd := model.Cmd{Argv: append([]string{"rm"}, filesToDelete...)}
 
-	err := s.dcli.ExecInContainer(ctx, id, cmd)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.dcli.ExecInContainer(ctx, containerId, cmd)
 }
 
-func (s Synclet) restartContainer(ctx context.Context, containerId string) error {
-	err := s.dcli.ContainerRestartNoWait(ctx, containerId)
-	return err
+func (s Synclet) restartContainer(ctx context.Context, containerId k8s.ContainerID) error {
+	return s.dcli.ContainerRestartNoWait(ctx, containerId.String())
 }
 
 func (s Synclet) UpdateContainer(
 	ctx context.Context,
-	containerId string,
+	containerId k8s.ContainerID,
 	tarArchive []byte,
 	filesToDelete []string,
 	commands []model.Cmd) error {
 
 	err := s.rmFiles(ctx, containerId, filesToDelete)
 	if err != nil {
-		return err
+		return fmt.Errorf("error removing files while updating container %s: %v", containerId, err)
 	}
 
 	err = s.writeFiles(ctx, containerId, tarArchive)
 	if err != nil {
-		return err
+		return fmt.Errorf("error writing files while updating container %s: %v", containerId, err)
 	}
 
 	err = s.restartContainer(ctx, containerId)
 	if err != nil {
-		return err
+		return fmt.Errorf("error restarting container %s: %v", containerId, err)
 	}
 
 	if len(commands) != 0 {
