@@ -41,7 +41,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return BuildResult{}, err
 	}
 
-	// LocalContainerBuildAndDeployer doesn't support initial build; call out to the ImageBuildAndDeployer
+	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
 		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}

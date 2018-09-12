@@ -16,8 +16,8 @@ var _ SyncletClient = &FakeSyncletClient{}
 func NewFakeSyncletClient() *FakeSyncletClient {
 	return &FakeSyncletClient{}
 }
-func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerId string, tarArchive []byte,
-	filesToDelete []string, commands []model.Cmd) error {
+func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerId k8s.ContainerID,
+	tarArchive []byte, filesToDelete []string, commands []model.Cmd) error {
 	return nil
 }
 
