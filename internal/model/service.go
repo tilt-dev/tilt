@@ -153,16 +153,6 @@ func ToShellSteps(cmds []string) []Step {
 	return ToSteps(ToShellCmds(cmds))
 }
 
-// TODO(nick): Figure out what the interface should be for
-// boiling down steps into cmds.
-func BoilStepsTODO(steps []Step) []Cmd {
-	res := make([]Cmd, len(steps))
-	for i, step := range steps {
-		res[i] = step.Cmd
-	}
-	return res
-}
-
 type ValidateErr struct {
 	s string
 }
