@@ -7,6 +7,7 @@ package engine
 
 import (
 	context "context"
+	wire "github.com/google/go-cloud/wire"
 	build "github.com/windmilleng/tilt/internal/build"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	synclet "github.com/windmilleng/tilt/internal/synclet"
@@ -16,8 +17,10 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
+	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(sCli)
 	containerUpdater := build.NewContainerUpdater(docker)
-	firstLineBuildAndDeployer := NewFirstLineBuildAndDeployer(sCli, containerUpdater, env, k8s2)
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, env, k8s2)
+	firstLineBuildAndDeployer := NewFirstLineBuildAndDeployer(syncletBuildAndDeployer, localContainerBuildAndDeployer, env)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
@@ -31,3 +34,9 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 var (
 	_wireLabelsValue = build.Labels{}
 )
+
+// wire.go:
+
+var DeployerWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(build.Labels{}), build.DefaultImageBuilder, build.NewDockerImageBuilder, wire.Bind(new(FallbackBuildAndDeployer), new(ImageBuildAndDeployer)), NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
+	NewLocalContainerBuildAndDeployer,
+	NewFirstLineBuildAndDeployer, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer)

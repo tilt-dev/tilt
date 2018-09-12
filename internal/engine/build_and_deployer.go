@@ -7,7 +7,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/synclet"
 )
 
 type BuildAndDeployer interface {
@@ -78,9 +77,9 @@ func (composite *CompositeBuildAndDeployer) GetContainerForBuild(ctx context.Con
 	return composite.firstLine.GetContainerForBuild(ctx, build)
 }
 
-func NewFirstLineBuildAndDeployer(sCli synclet.SyncletClient, cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client) FirstLineBuildAndDeployer {
+func NewFirstLineBuildAndDeployer(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, env k8s.Env) FirstLineBuildAndDeployer {
 	if env == k8s.EnvGKE {
-		return NewSyncletBuildAndDeployer(sCli)
+		return sbad
 	}
-	return NewLocalContainerBuildAndDeployer(cu, env, kCli)
+	return cbad
 }
