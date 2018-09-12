@@ -64,7 +64,6 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return BuildResult{}, err
 	}
 
-	fmt.Printf("Boiled steps: %+v \n", boiledSteps)
 	err = cbd.cu.UpdateInContainer(ctx, cID, cf, boiledSteps)
 	if err != nil {
 		return BuildResult{}, err

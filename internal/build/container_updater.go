@@ -60,7 +60,6 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 
 	// Exec steps on container
 	for _, s := range steps {
-		fmt.Printf("Executing step %v in container\n", s.Argv)
 		err = r.dcli.ExecInContainer(ctx, cID, s)
 		if err != nil {
 			return fmt.Errorf("executing step %v on container %s: %v", s.Argv, cID.ShortStr(), err)
