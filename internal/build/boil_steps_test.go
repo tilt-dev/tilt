@@ -15,17 +15,16 @@ func TestBoilStepsNoTrigger(t *testing.T) {
 		},
 	}
 
-	fc := []string{"/home/tilt/code/test/foo"}
 	pathMappings := []pathMapping{
 		pathMapping{
-			LocalPath:     "/home/tilt/code/test",
-			ContainerPath: "/src",
+			LocalPath:     "/home/tilt/code/test/foo",
+			ContainerPath: "/src/foo",
 		},
 	}
 
-	expected := []boiledStep{boiledStep{cmd: model.ToShellCmd("echo hello")}}
+	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo hello")}}
 
-	actual, err := boilSteps(steps, fc, pathMappings)
+	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,17 +39,11 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 		},
 	}
 
-	fc := []string{}
-	pathMappings := []pathMapping{
-		pathMapping{
-			LocalPath:     "/home/tilt/code/test",
-			ContainerPath: "/src",
-		},
-	}
+	pathMappings := []pathMapping{}
 
-	expected := []boiledStep{}
+	expected := []BoiledStep{}
 
-	actual, err := boilSteps(steps, fc, pathMappings)
+	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,17 +63,16 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 		},
 	}
 
-	fc := []string{"/home/tilt/code/test/foo"}
 	pathMappings := []pathMapping{
 		pathMapping{
-			LocalPath:     "/home/tilt/code/test",
-			ContainerPath: "/src",
+			LocalPath:     "/home/tilt/code/test/foo",
+			ContainerPath: "/src/foo",
 		},
 	}
 
-	expected := []boiledStep{}
+	expected := []BoiledStep{}
 
-	actual, err := boilSteps(steps, fc, pathMappings)
+	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +80,7 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestBoilStepsOneTriggerMatchigFile(t *testing.T) {
+func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 	trigger, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"bar"})
 	if err != nil {
 		t.Fatal(err)
@@ -100,17 +92,57 @@ func TestBoilStepsOneTriggerMatchigFile(t *testing.T) {
 		},
 	}
 
-	fc := []string{"/home/tilt/code/test/bar"}
 	pathMappings := []pathMapping{
 		pathMapping{
-			LocalPath:     "/home/tilt/code/test",
-			ContainerPath: "/src",
+			LocalPath:     "/home/tilt/code/test/bar",
+			ContainerPath: "/src/bar",
 		},
 	}
 
-	expected := []boiledStep{boiledStep{cmd: model.ToShellCmd("echo world")}}
+	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo world"), pathMapping: pathMappings[0]}}
 
-	actual, err := boilSteps(steps, fc, pathMappings)
+	actual, err := BoilSteps(steps, pathMappings)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
+	trigger1, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	trigger2, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"bar"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := []model.Step{
+		model.Step{
+			Cmd:     model.ToShellCmd("echo hello"),
+			Trigger: trigger1,
+		},
+		model.Step{
+			Cmd:     model.ToShellCmd("echo world"),
+			Trigger: trigger2,
+		},
+	}
+
+	pathMappings := []pathMapping{
+		pathMapping{
+			LocalPath:     "/home/tilt/code/test/baz",
+			ContainerPath: "/src/baz",
+		},
+		pathMapping{
+			LocalPath:     "/home/tilt/code/test/bar",
+			ContainerPath: "/src/bar",
+		},
+	}
+
+	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo world"), pathMapping: pathMappings[1]}}
+
+	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}

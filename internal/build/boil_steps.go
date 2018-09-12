@@ -1,29 +1,32 @@
 package build
 
-import "github.com/windmilleng/tilt/internal/model"
+import (
+	"github.com/windmilleng/tilt/internal/model"
+)
 
-type boiledStep struct {
+type BoiledStep struct {
 	cmd         model.Cmd
 	pathMapping pathMapping
 }
 
-func boilSteps(steps []model.Step, filesChanged []string, pathMappings []pathMapping) ([]boiledStep, error) {
-	if len(filesChanged) == 0 {
-		return []boiledStep{}, nil
+func BoilSteps(steps []model.Step, pathMappings []pathMapping) ([]BoiledStep, error) {
+	if len(pathMappings) == 0 {
+		return []BoiledStep{}, nil
 	}
-	res := []boiledStep{}
+	res := []BoiledStep{}
 	for _, step := range steps {
 		if step.Trigger == nil {
-			res = append(res, boiledStep{cmd: step.Cmd})
+			res = append(res, BoiledStep{cmd: step.Cmd})
 			continue
 		}
-		for _, f := range filesChanged {
-			matches, err := step.Trigger.Matches(f, false)
+		for _, pm := range pathMappings {
+			matches, err := step.Trigger.Matches(pm.LocalPath, false)
 			if err != nil {
-				return []boiledStep{}, err
+				return []BoiledStep{}, err
 			}
 			if matches {
-				res = append(res, boiledStep{cmd: step.Cmd})
+				res = append(res, BoiledStep{cmd: step.Cmd, pathMapping: pm})
+				break
 			}
 		}
 	}

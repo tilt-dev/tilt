@@ -86,7 +86,7 @@ func TestUpdateInContainerExecsSteps(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.cu.UpdateInContainer(f.ctx, testContainer, []pathMapping{}, []model.Cmd{cmdA, cmdB})
+	err := f.cu.UpdateInContainer(f.ctx, testContainer, []pathMapping{}, []BoiledStep{BoiledStep{cmd: cmdA}, BoiledStep{cmd: cmdB}})
 	if err != nil {
 		f.t.Fatal(err)
 	}

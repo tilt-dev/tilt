@@ -118,8 +118,8 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		triggers = []string{string(trigger)}
 	}
 
-	// TODO(dmiller): we should replace with with a notion of a WORKDIR in the Tiltfile
-	// TODO(dmiller): memoize this?
+	// TODO(dmiller): in practice, this is the directory that the Tiltfile exists in. It will error otherwise.
+	// We should formalize this.
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
