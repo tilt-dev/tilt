@@ -41,7 +41,7 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 
 	pathMappings := []pathMapping{}
 
-	expected := []BoiledStep{}
+	expected := []BoiledStep{BoiledStep{cmd: model.ToShellCmd("echo hello")}}
 
 	actual, err := BoilSteps(steps, pathMappings)
 	if err != nil {

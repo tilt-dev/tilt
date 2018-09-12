@@ -10,9 +10,6 @@ type BoiledStep struct {
 }
 
 func BoilSteps(steps []model.Step, pathMappings []pathMapping) ([]BoiledStep, error) {
-	if len(pathMappings) == 0 {
-		return []BoiledStep{}, nil
-	}
 	res := []BoiledStep{}
 	for _, step := range steps {
 		if step.Trigger == nil {
