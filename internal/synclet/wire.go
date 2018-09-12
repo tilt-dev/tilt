@@ -11,9 +11,8 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
-func WireSynclet(ctx context.Context) (*Synclet, error) {
+func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	wire.Build(
-		k8s.DetectEnv,
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
 

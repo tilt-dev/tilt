@@ -13,11 +13,7 @@ import (
 
 // Injectors from wire.go:
 
-func WireSynclet(ctx context.Context) (*Synclet, error) {
-	env, err := k8s.DetectEnv()
-	if err != nil {
-		return nil, err
-	}
+func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	dockerCli, err := build.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err

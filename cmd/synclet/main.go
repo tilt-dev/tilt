@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 	"google.golang.org/grpc"
@@ -26,7 +28,7 @@ func main() {
 
 	serv := grpc.NewServer()
 
-	s, err := synclet.WireSynclet(ctx)
+	s, err := synclet.WireSynclet(ctx, k8s.EnvUnknown)
 	if err != nil {
 		log.Fatalf("failed to wire synclet: %v", err)
 	}
