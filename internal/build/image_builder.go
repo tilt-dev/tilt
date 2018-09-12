@@ -188,7 +188,7 @@ func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.St
 
 func (d *dockerImageBuilder) addMounts(ctx context.Context, df Dockerfile, paths []pathMapping) (Dockerfile, error) {
 	df = df.AddAll()
-	toRemove, err := missingLocalPaths(ctx, paths)
+	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
 		return "", fmt.Errorf("addMounts: %v", err)
 	}

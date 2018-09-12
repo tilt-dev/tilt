@@ -28,9 +28,9 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	defer span.Finish()
 
 	// rm files from container
-	toRemove, err := missingLocalPaths(ctx, paths)
+	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return fmt.Errorf("missingLocalPaths: %v", err)
+		return fmt.Errorf("MissingLocalPaths: %v", err)
 	}
 
 	err = r.RmPathsFromContainer(ctx, cID, toRemove)
@@ -39,12 +39,12 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	}
 
 	// copy files to container
-	ab := newArchiveBuilder()
-	err = ab.archivePathsIfExist(ctx, paths)
+	ab := NewArchiveBuilder()
+	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return fmt.Errorf("archivePathsIfExists: %v", err)
 	}
-	archive, err := ab.bytesBuffer()
+	archive, err := ab.BytesBuffer()
 	if err != nil {
 		return err
 	}

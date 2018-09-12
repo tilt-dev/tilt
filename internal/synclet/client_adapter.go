@@ -11,7 +11,7 @@ import (
 )
 
 type SyncletClient interface {
-	UpdateContainer(ctx context.Context, containerId string, tarArchive []byte,
+	UpdateContainer(ctx context.Context, containerId k8s.ContainerID, tarArchive []byte,
 		filesToDelete []string, commands []model.Cmd) error
 	GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error)
 }
@@ -29,7 +29,7 @@ func NewGRPCClient(conn *grpc.ClientConn) *SyncletCli {
 
 func (s *SyncletCli) UpdateContainer(
 	ctx context.Context,
-	containerId string,
+	containerId k8s.ContainerID,
 	tarArchive []byte,
 	filesToDelete []string,
 	commands []model.Cmd) error {
@@ -41,7 +41,7 @@ func (s *SyncletCli) UpdateContainer(
 	}
 
 	_, err := s.del.UpdateContainer(ctx, &proto.UpdateContainerRequest{
-		ContainerId:   containerId,
+		ContainerId:   containerId.String(),
 		TarArchive:    tarArchive,
 		FilesToDelete: filesToDelete,
 		Commands:      protoCmds,
