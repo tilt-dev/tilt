@@ -1,9 +1,9 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"testing"
 )
@@ -21,7 +21,7 @@ type fakeKubectlRunner struct {
 	calls []call
 }
 
-func (f fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin *bytes.Reader) (stdout string, stderr string, err error) {
+func (f fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
 	b, err := ioutil.ReadAll(stdin)
 	if err != nil {
 		return "", "", fmt.Errorf("reading stdin: %v", err)
