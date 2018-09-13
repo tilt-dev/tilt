@@ -31,9 +31,9 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, 
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, state BuildState) (result BuildResult, err error) {
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (result BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("service", service.Name.String())
+	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
 	startTime := time.Now()
@@ -43,9 +43,9 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 
 	// TODO(maia): proper output for this stuff
 
-	// TODO(maia): put service.Validate() upstream if we're gonna want to call it regardless
+	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
-	err = service.Validate()
+	err = manifest.Validate()
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -55,7 +55,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	// Otherwise, service has already been deployed; try to update in the running container
+	// Otherwise, manifest has already been deployed; try to update in the running container
 
 	// (Unless we don't know what container it's running in, in which case we can't.)
 	if !state.LastResult.HasContainer() {
@@ -63,12 +63,12 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}
 
 	cID := state.LastResult.Container
-	cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	boiledSteps, err := build.BoilSteps(service.Steps, cf)
+	boiledSteps, err := build.BoilSteps(manifest.Steps, cf)
 	if err != nil {
 		return BuildResult{}, err
 	}

@@ -10,13 +10,13 @@ import (
 )
 
 type BuildAndDeployer interface {
-	// BuildAndDeploy builds and deployed the specified service.
+	// BuildAndDeploy builds and deployed the specified manifest.
 	//
 	// Returns a BuildResult that expresses the output of the build.
 	//
 	// BuildResult can be used to construct a BuildState, which contains
 	// the last successful build and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, service model.Manifest, currentState BuildState) (BuildResult, error)
+	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error)
 
 	// PostProcessBuilds modifies `states` map in place with any info we'll need for subsequent builds.
 	PostProcessBuilds(ctx context.Context, states BuildStatesByName)
@@ -45,10 +45,10 @@ func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTe
 	}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, currentState BuildState) (BuildResult, error) {
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
-		br, err := builder.BuildAndDeploy(ctx, service, currentState)
+		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
 			return br, err
 		}
