@@ -26,13 +26,11 @@ func init() {
 }
 
 func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	// TODO(maia): `entrypoint` should be an optional arg; user should be able to declare
-	// it in base Dockerfile and Tilt should be able to parse it out and apply it.
 	var dockerfileName, entrypoint, dockerfileTag string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"docker_file_name", &dockerfileName,
 		"docker_file_tag", &dockerfileTag,
-		"entrypoint", &entrypoint,
+		"entrypoint?", &entrypoint,
 	)
 	if err != nil {
 		return nil, err
@@ -46,7 +44,7 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint}, nil
 }
 
-func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var yaml skylark.String
 	var dockerImage *dockerImage
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml, "dockerImage", &dockerImage)
@@ -54,22 +52,22 @@ func makeSkylarkK8Service(thread *skylark.Thread, fn *skylark.Builtin, args skyl
 		return nil, err
 	}
 	// Name will be initialized later
-	return k8sService{yaml, *dockerImage, ""}, nil
+	return k8sManifest{yaml, *dockerImage, ""}, nil
 }
 
-func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 
-	var serviceFuncs skylark.Iterable
+	var manifestFuncs skylark.Iterable
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
-		"services", &serviceFuncs)
+		"services", &manifestFuncs)
 	if err != nil {
 		return nil, err
 	}
 
-	var services []k8sService
+	var manifests []k8sManifest
 
 	var v skylark.Value
-	i := serviceFuncs.Iterate()
+	i := manifestFuncs.Iterate()
 	defer i.Done()
 	for i.Next(&v) {
 		switch v := v.(type) {
@@ -78,17 +76,17 @@ func makeSkylarkCompositeService(thread *skylark.Thread, fn *skylark.Builtin, ar
 			if err != nil {
 				return nil, err
 			}
-			s, ok := r.(k8sService)
+			s, ok := r.(k8sManifest)
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
 			s.name = v.Name()
-			services = append(services, s)
+			manifests = append(manifests, s)
 		default:
 			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
 		}
 	}
-	return compService{services}, nil
+	return compManifest{manifests}, nil
 }
 
 func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -134,10 +132,10 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
-		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Service),
+		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
 		"local_git_repo":     skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeService),
+		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -148,34 +146,34 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	return &Tiltfile{globals, filename, thread}, nil
 }
 
-func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Service, error) {
-	f, ok := tiltfile.globals[serviceName]
+func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manifest, error) {
+	f, ok := tiltfile.globals[manifestName]
 
 	if !ok {
-		return nil, fmt.Errorf("%v does not define a global named '%v'", tiltfile.filename, serviceName)
+		return nil, fmt.Errorf("%v does not define a global named '%v'", tiltfile.filename, manifestName)
 	}
 
-	serviceFunction, ok := f.(*skylark.Function)
+	manifestFunction, ok := f.(*skylark.Function)
 
 	if !ok {
-		return nil, fmt.Errorf("'%v' is a '%v', not a function. service definitions must be functions", serviceName, f.Type())
+		return nil, fmt.Errorf("'%v' is a '%v', not a function. service definitions must be functions", manifestName, f.Type())
 	}
 
-	if serviceFunction.NumParams() != 0 {
-		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", serviceName)
+	if manifestFunction.NumParams() != 0 {
+		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", manifestName)
 	}
 
-	val, err := serviceFunction.Call(tiltfile.thread, nil, nil)
+	val, err := manifestFunction.Call(tiltfile.thread, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error running '%v': %v", serviceName, err.Error())
+		return nil, fmt.Errorf("error running '%v': %v", manifestName, err.Error())
 	}
 
-	switch service := val.(type) {
-	case compService:
-		var servs []model.Service
+	switch manifest := val.(type) {
+	case compManifest:
+		var servs []model.Manifest
 
-		for _, cServ := range service.cService {
-			s, err := skylarkServiceToDomain(cServ)
+		for _, cServ := range manifest.cManifest {
+			s, err := skylarkManifestToDomain(cServ)
 			if err != nil {
 				return nil, err
 			}
@@ -183,38 +181,38 @@ func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Service,
 			servs = append(servs, s)
 		}
 		return servs, nil
-	case k8sService:
-		s, err := skylarkServiceToDomain(service)
+	case k8sManifest:
+		s, err := skylarkManifestToDomain(manifest)
 		if err != nil {
 			return nil, err
 		}
-		s.Name = model.ServiceName(serviceName)
-		return []model.Service{s}, nil
+		s.Name = model.ManifestName(manifestName)
+		return []model.Manifest{s}, nil
 
 	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
 	}
 }
 
-func skylarkServiceToDomain(service k8sService) (model.Service, error) {
-	k8sYaml, ok := skylark.AsString(service.k8sYaml)
+func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
+	k8sYaml, ok := skylark.AsString(manifest.k8sYaml)
 	if !ok {
-		return model.Service{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
+		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
 	}
 
-	dockerFileBytes, err := ioutil.ReadFile(service.dockerImage.fileName)
+	dockerFileBytes, err := ioutil.ReadFile(manifest.dockerImage.fileName)
 	if err != nil {
-		return model.Service{}, fmt.Errorf("failed to open dockerfile '%v': %v", service.dockerImage.fileName, err)
+		return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", manifest.dockerImage.fileName, err)
 	}
 
-	return model.Service{
+	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
-		Mounts:         skylarkMountsToDomain(service.dockerImage.mounts),
-		Steps:          service.dockerImage.steps,
-		Entrypoint:     model.ToShellCmd(service.dockerImage.entrypoint),
-		DockerfileTag:  service.dockerImage.fileTag,
-		Name:           model.ServiceName(service.name),
+		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts),
+		Steps:          manifest.dockerImage.steps,
+		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
+		DockerfileTag:  manifest.dockerImage.fileTag,
+		Name:           model.ManifestName(manifest.name),
 	}, nil
 
 }

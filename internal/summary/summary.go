@@ -34,7 +34,7 @@ func NewSummary() *Summary {
 }
 
 // Gather collates data into Summary
-func (s *Summary) Gather(services []model.Service) error {
+func (s *Summary) Gather(services []model.Manifest) error {
 
 	for _, svc := range services {
 		// Assume that, in practice, there is only one mount

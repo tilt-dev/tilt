@@ -14,16 +14,16 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-func TestServiceWatcher(t *testing.T) {
-	tf := makeServiceWatcherTestFixture(t, 1)
+func TestManifestWatcher(t *testing.T) {
+	tf := makeManifestWatcherTestFixture(t, 1)
 
 	f1 := tf.WriteFile(0)
 
 	tf.AssertNextEvent(0, []string{f1})
 }
 
-func TestServiceWatcherTwoServices(t *testing.T) {
-	tf := makeServiceWatcherTestFixture(t, 2)
+func TestManifestWatcherTwoManifests(t *testing.T) {
+	tf := makeManifestWatcherTestFixture(t, 2)
 
 	f1 := tf.WriteFile(0)
 
@@ -35,32 +35,32 @@ func TestServiceWatcherTwoServices(t *testing.T) {
 	f4 := tf.WriteFile(1)
 	tf.UnfreezeTimer()
 
-	tf.AssertNextEvents([]testServiceFilesChangedEvent{
+	tf.AssertNextEvents([]testManifestFilesChangedEvent{
 		{1, []string{f2, f4}},
 		{0, []string{f3}}})
 }
 
-func TestServiceWatcherTwoServicesErr(t *testing.T) {
-	tf := makeServiceWatcherTestFixture(t, 2)
+func TestManifestWatcherTwoManifestsErr(t *testing.T) {
+	tf := makeManifestWatcherTestFixture(t, 2)
 
 	tf.WriteError(1)
 	err := tf.Error()
 	assert.Error(t, err)
 }
 
-type serviceWatcherTestFixture struct {
-	sw              *serviceWatcher
+type manifestWatcherTestFixture struct {
+	sw              *manifestWatcher
 	watcherMaker    watcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
-	services        []model.Service
+	manifests       []model.Manifest
 	watchers        []*fakeNotify
 	timerMaker      fakeTimerMaker
 	t               *testing.T
 	numFilesWritten int
 }
 
-func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatcherTestFixture {
+func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWatcherTestFixture {
 	var watchers []*fakeNotify
 	nextWatcher := 0
 	watcherMaker := func() (watch.Notify, error) {
@@ -72,13 +72,13 @@ func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatch
 		return ret, nil
 	}
 
-	var services []model.Service
+	var manifests []model.Manifest
 	var tempDirs []*tempdir.TempDirFixture
-	for i := 0; i < serviceCount; i++ {
+	for i := 0; i < manifestCount; i++ {
 		tempDir := tempdir.NewTempDirFixture(t)
-		services = append(services,
-			model.Service{
-				Name:   model.ServiceName(fmt.Sprintf("service%v", i)),
+		manifests = append(manifests,
+			model.Manifest{
+				Name:   model.ManifestName(fmt.Sprintf("manifest%v", i)),
 				Mounts: []model.Mount{{Repo: model.LocalGithubRepo{LocalPath: tempDir.Path()}, ContainerPath: ""}}})
 
 		tempDirs = append(tempDirs, tempDir)
@@ -90,7 +90,7 @@ func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatch
 
 	ctx := output.CtxForTest()
 
-	sw, err := makeServiceWatcher(ctx, watcherMaker, timerMaker.maker(), services)
+	sw, err := makeManifestWatcher(ctx, watcherMaker, timerMaker.maker(), manifests)
 
 	timerMaker.maxTimerLock.Lock()
 
@@ -98,76 +98,76 @@ func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatch
 		t.Fatal(err)
 	}
 
-	return &serviceWatcherTestFixture{sw, watcherMaker, ctx, tempDirs, services, watchers, timerMaker, t, 0}
+	return &manifestWatcherTestFixture{sw, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
 }
 
-func (s *serviceWatcherTestFixture) WriteFile(serviceNumber int) string {
+func (s *manifestWatcherTestFixture) WriteFile(manifestNumber int) string {
 	s.numFilesWritten++
-	f, err := s.tempDirs[serviceNumber].NewFile(fmt.Sprintf("f%v_", s.numFilesWritten))
+	f, err := s.tempDirs[manifestNumber].NewFile(fmt.Sprintf("f%v_", s.numFilesWritten))
 	if err != nil {
 		s.t.Fatal(err)
 	}
 
-	s.watchers[serviceNumber].Events() <- watch.FileEvent{Path: f.Name()}
+	s.watchers[manifestNumber].Events() <- watch.FileEvent{Path: f.Name()}
 
 	return filepath.Base(f.Name())
 }
 
-type testServiceFilesChangedEvent struct {
-	serviceNumber int
-	files         []string
+type testManifestFilesChangedEvent struct {
+	manifestNumber int
+	files          []string
 }
 
-func (s *serviceWatcherTestFixture) readEvents(numExpectedEvents int) []testServiceFilesChangedEvent {
-	var ret []testServiceFilesChangedEvent
+func (s *manifestWatcherTestFixture) readEvents(numExpectedEvents int) []testManifestFilesChangedEvent {
+	var ret []testManifestFilesChangedEvent
 	for i := 0; i < numExpectedEvents; i++ {
 		e := <-s.sw.events
-		serviceNumber := -1
-		for i := 0; i < len(s.services); i++ {
-			if s.services[i].Name == e.service.Name {
-				serviceNumber = i
+		manifestNumber := -1
+		for i := 0; i < len(s.manifests); i++ {
+			if s.manifests[i].Name == e.manifest.Name {
+				manifestNumber = i
 			}
 		}
-		if serviceNumber == -1 {
-			s.t.Fatalf("got event for unknown service %v", e.service)
+		if manifestNumber == -1 {
+			s.t.Fatalf("got event for unknown manifest %v", e.manifest)
 		}
 
 		var fileBaseNames []string
 		for _, f := range e.files {
 			fileBaseNames = append(fileBaseNames, filepath.Base(f))
 		}
-		ret = append(ret, testServiceFilesChangedEvent{serviceNumber, fileBaseNames})
+		ret = append(ret, testManifestFilesChangedEvent{manifestNumber, fileBaseNames})
 	}
 
 	return ret
 }
 
-func (s *serviceWatcherTestFixture) AssertNextEvent(serviceNumber int, files []string) bool {
-	return s.AssertNextEvents([]testServiceFilesChangedEvent{{serviceNumber, files}})
+func (s *manifestWatcherTestFixture) AssertNextEvent(manifestNumber int, files []string) bool {
+	return s.AssertNextEvents([]testManifestFilesChangedEvent{{manifestNumber, files}})
 }
 
-func (s *serviceWatcherTestFixture) AssertNextEvents(expectedEvents []testServiceFilesChangedEvent) bool {
+func (s *manifestWatcherTestFixture) AssertNextEvents(expectedEvents []testManifestFilesChangedEvent) bool {
 	actualEvents := s.readEvents(len(expectedEvents))
 	return assert.ElementsMatch(s.t, expectedEvents, actualEvents)
 }
 
-func (s *serviceWatcherTestFixture) WriteError(serviceNumber int) {
-	s.watchers[serviceNumber].errors <- errors.New("test error")
+func (s *manifestWatcherTestFixture) WriteError(manifestNumber int) {
+	s.watchers[manifestNumber].errors <- errors.New("test error")
 }
 
-func (s *serviceWatcherTestFixture) Error() error {
+func (s *manifestWatcherTestFixture) Error() error {
 	return <-s.sw.errs
 }
 
-func (s *serviceWatcherTestFixture) FreezeTimer() {
+func (s *manifestWatcherTestFixture) FreezeTimer() {
 	s.timerMaker.restTimerLock.Lock()
 }
 
-func (s *serviceWatcherTestFixture) UnfreezeTimer() {
+func (s *manifestWatcherTestFixture) UnfreezeTimer() {
 	s.timerMaker.restTimerLock.Unlock()
 }
 
-func (s *serviceWatcherTestFixture) TearDown() {
+func (s *manifestWatcherTestFixture) TearDown() {
 	for _, tempDir := range s.tempDirs {
 		tempDir.TearDown()
 	}

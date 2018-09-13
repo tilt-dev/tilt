@@ -11,49 +11,49 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-type serviceFilesChangedEvent struct {
-	service model.Service
-	files   []string
+type manifestFilesChangedEvent struct {
+	manifest model.Manifest
+	files    []string
 }
 
-type serviceWatcher struct {
-	events <-chan serviceFilesChangedEvent
+type manifestWatcher struct {
+	events <-chan manifestFilesChangedEvent
 	errs   <-chan error
 }
 
-// returns a serviceWatcher that tells its reader when a service's file dependencies have changed
-func makeServiceWatcher(
+// returns a manifestWatcher that tells its reader when a manifest's file dependencies have changed
+func makeManifestWatcher(
 	ctx context.Context,
 	watcherMaker watcherMaker,
 	timerMaker timerMaker,
-	services []model.Service) (*serviceWatcher, error) {
+	manifests []model.Manifest) (*manifestWatcher, error) {
 
-	var sns []serviceNotifyPair
-	for _, service := range services {
+	var sns []manifestNotifyPair
+	for _, manifest := range manifests {
 		watcher, err := watcherMaker()
 		if err != nil {
 			return nil, err
 		}
 
-		if len(service.Mounts) == 0 {
+		if len(manifest.Mounts) == 0 {
 			// no mounts -  nothing to watch
 			continue
 		}
 
-		for _, mount := range service.Mounts {
+		for _, mount := range manifest.Mounts {
 			err = watcher.Add(mount.Repo.LocalPath)
 			if err != nil {
 				return nil, err
 			}
 		}
-		sns = append(sns, serviceNotifyPair{service, watcher})
+		sns = append(sns, manifestNotifyPair{manifest, watcher})
 	}
 
 	if len(sns) == 0 {
-		return nil, errors.New("--watch used when no services define mounts - nothing to watch")
+		return nil, errors.New("--watch used when no manifests define mounts - nothing to watch")
 	}
 
-	ret, err := snsToServiceWatcher(ctx, timerMaker, sns)
+	ret, err := snsToManifestWatcher(ctx, timerMaker, sns)
 	if err != nil {
 		return nil, err
 	}
@@ -113,39 +113,39 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-c
 }
 
 func addEventsToLeftover(
-	leftover map[string]*serviceFilesChangedEvent,
-	leftoverServiceOrder *[]string,
-	events []serviceSingleFileChangeEvent) {
+	leftover map[string]*manifestFilesChangedEvent,
+	leftoverManifestOrder *[]string,
+	events []manifestSingleFileChangeEvent) {
 	for _, event := range events {
-		if _, exists := leftover[string(event.service.Name)]; !exists {
-			leftover[string(event.service.Name)] = &serviceFilesChangedEvent{event.service, []string{event.fileName}}
-			// if we weren't already tracking this service name, stick it at the end of the order
-			*leftoverServiceOrder = append(*leftoverServiceOrder, string(event.service.Name))
+		if _, exists := leftover[string(event.manifest.Name)]; !exists {
+			leftover[string(event.manifest.Name)] = &manifestFilesChangedEvent{event.manifest, []string{event.fileName}}
+			// if we weren't already tracking this manifest name, stick it at the end of the order
+			*leftoverManifestOrder = append(*leftoverManifestOrder, string(event.manifest.Name))
 		} else {
-			leftover[string(event.service.Name)].files = append(leftover[string(event.service.Name)].files, event.fileName)
+			leftover[string(event.manifest.Name)].files = append(leftover[string(event.manifest.Name)].files, event.fileName)
 		}
 	}
 }
 
 type watchEventsStream struct {
-	events <-chan serviceFilesChangedEvent
+	events <-chan manifestFilesChangedEvent
 	errs   <-chan error
 }
 
-type serviceSingleFileChangeEvent struct {
-	service  model.Service
+type manifestSingleFileChangeEvent struct {
+	manifest model.Manifest
 	fileName string
 }
 
-type serviceNotifyPair struct {
-	service model.Service
-	notify  watch.Notify
+type manifestNotifyPair struct {
+	manifest model.Manifest
+	notify   watch.Notify
 }
 
-func makeFilter(ctx context.Context, service model.Service) (model.PathMatcher, error) {
+func makeFilter(ctx context.Context, manifest model.Manifest) (model.PathMatcher, error) {
 	var repoRoots []string
 
-	for _, mount := range service.Mounts {
+	for _, mount := range manifest.Mounts {
 		repoRoots = append(repoRoots, mount.Repo.LocalPath)
 	}
 
@@ -164,19 +164,19 @@ func makeFilter(ctx context.Context, service model.Service) (model.PathMatcher, 
 	return ci, nil
 }
 
-// turns a list of (service, chan fsevent) pairs into a single chan (service, fsevent)
-func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []serviceNotifyPair) (*serviceWatcher, error) {
-	events := make(chan serviceFilesChangedEvent)
+// turns a list of (manifest, chan fsevent) pairs into a single chan (manifest, fsevent)
+func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []manifestNotifyPair) (*manifestWatcher, error) {
+	events := make(chan manifestFilesChangedEvent)
 	errs := make(chan error)
 
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
-		filter, err := makeFilter(ctx, sn.service)
+		filter, err := makeFilter(ctx, sn.manifest)
 		if err != nil {
 			return nil, err
 		}
 
-		go func(service model.Service, watcher watch.Notify) {
+		go func(manifest model.Manifest, watcher watch.Notify) {
 			// TODO(matt) this will panic if we actually close channels. look at "merge" in https://blog.golang.org/pipelines
 			//defer close(events)
 			//defer close(errs)
@@ -192,7 +192,7 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 					if !ok {
 						return
 					}
-					watchEvent := serviceFilesChangedEvent{service: service}
+					watchEvent := manifestFilesChangedEvent{manifest: manifest}
 					for _, fe := range fsEvents {
 						path, err := filepath.Abs(fe.Path)
 						if err != nil {
@@ -208,8 +208,8 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 					}
 				}
 			}
-		}(sn.service, sn.notify)
+		}(sn.manifest, sn.notify)
 	}
 
-	return &serviceWatcher{events, errs}, nil
+	return &manifestWatcher{events, errs}, nil
 }

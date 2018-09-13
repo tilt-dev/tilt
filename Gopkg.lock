@@ -763,9 +763,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f2d440935f7fa0483a0d30b49ce9c557a29e5079967a8127e61b9bef87e457d8"
+  digest = "1:e1b0b90aead4ca6f6388e07374dc83892149568d103aaa3476362d5221f3a936"
   name = "github.com/windmilleng/wmclient"
   packages = [
+    "pkg/analytics",
     "pkg/dirs",
     "pkg/env",
     "pkg/os/temp",
@@ -1025,6 +1026,7 @@
     "github.com/uber/jaeger-client-go/config",
     "github.com/windmilleng/fsevents",
     "github.com/windmilleng/fsnotify",
+    "github.com/windmilleng/wmclient/pkg/analytics",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",
     "golang.org/x/net/context",

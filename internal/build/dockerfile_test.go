@@ -2,11 +2,11 @@ package build
 
 import "testing"
 
-func TestForbidEntrypoint(t *testing.T) {
+func TestAllowEntrypoint(t *testing.T) {
 	df := Dockerfile(`ENTRYPOINT cat`)
 	err := df.ValidateBaseDockerfile()
-	if err != ErrEntrypointInDockerfile {
-		t.Errorf("Expected error %s, actual: %v", ErrEntrypointInDockerfile, err)
+	if err != nil {
+		t.Errorf("Unexpected error %s", err)
 	}
 }
 

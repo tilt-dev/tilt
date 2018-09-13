@@ -1,7 +1,10 @@
 package k8s
 
 import (
+	"reflect"
+
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -9,6 +12,41 @@ import (
 type K8sEntity struct {
 	Obj  runtime.Object
 	Kind *schema.GroupVersionKind
+}
+
+func (e K8sEntity) Name() string {
+	objVal := reflect.ValueOf(e.Obj)
+	if objVal.Kind() == reflect.Ptr {
+		if objVal.IsNil() {
+			return ""
+		}
+		objVal = objVal.Elem()
+	}
+
+	if objVal.Kind() != reflect.Struct {
+		return ""
+	}
+
+	// Find a field with type ObjectMeta
+	omType := reflect.TypeOf(metav1.ObjectMeta{})
+	for i := 0; i < objVal.NumField(); i++ {
+		fieldVal := objVal.Field(i)
+		if omType != fieldVal.Type() {
+			continue
+		}
+
+		if !fieldVal.CanInterface() {
+			continue
+		}
+
+		metadata, ok := fieldVal.Interface().(metav1.ObjectMeta)
+		if !ok {
+			continue
+		}
+
+		return metadata.Name
+	}
+	return ""
 }
 
 // Most entities can be updated once running, but a few cannot.

@@ -3,6 +3,7 @@ package engine
 import (
 	context "context"
 	"fmt"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -10,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	"k8s.io/api/core/v1"
 )
 
@@ -19,17 +21,19 @@ type ImageBuildAndDeployer struct {
 	b         build.ImageBuilder
 	k8sClient k8s.Client
 	env       k8s.Env
+	analytics analytics.Analytics
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env) *ImageBuildAndDeployer {
+func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		b:         b,
 		k8sClient: k8sClient,
 		env:       env,
+		analytics: analytics,
 	}
 }
 
-func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (br BuildResult, err error) {
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (br BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 	defer func() {
@@ -37,21 +41,31 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mo
 		output.Get(ctx).Printf("") // space between Pipelines
 	}()
 
+	startTime := time.Now()
+	defer func() {
+		incremental := "0"
+		if state.HasImage() {
+			incremental = "1"
+		}
+		tags := map[string]string{"incremental": incremental}
+		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
+	}()
+
 	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
 	output.Get(ctx).StartPipeline(2)
 	defer func() { output.Get(ctx).EndPipeline(err) }()
 
-	err = service.Validate()
+	err = manifest.Validate()
 	if err != nil {
 		return BuildResult{}, err
 	}
 
-	ref, err := ibd.build(ctx, service, state)
+	ref, err := ibd.build(ctx, manifest, state)
 	if err != nil {
 		return BuildResult{}, err
 	}
 
-	k8sEntities, err := ibd.deploy(ctx, service, ref)
+	k8sEntities, err := ibd.deploy(ctx, manifest, ref)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -62,17 +76,17 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mo
 	}, nil
 }
 
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state BuildState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 	if !state.HasImage() {
 		// No existing image to build off of, need to build from scratch
-		name := service.DockerfileTag
-		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", service.DockerfileTag)
+		name := manifest.DockerfileTag
+		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", manifest.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		df := build.Dockerfile(service.DockerfileText)
-		steps := service.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, service.Mounts, steps, service.Entrypoint)
+		df := build.Dockerfile(manifest.DockerfileText)
+		steps := manifest.Steps
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, steps, manifest.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -80,15 +94,15 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 		n = ref
 
 	} else {
-		cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
+		cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 		if err != nil {
 			return nil, err
 		}
 
-		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", service.DockerfileTag)
+		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", manifest.DockerfileTag)
 		defer output.Get(ctx).EndPipelineStep()
 
-		steps := service.Steps
+		steps := manifest.Steps
 		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, steps)
 		if err != nil {
 			return nil, err
@@ -107,12 +121,12 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 	return n, nil
 }
 
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 
 	output.Get(ctx).StartBuildStep("Parsing Kubernetes config YAML")
-	entities, err := k8s.ParseYAMLFromString(service.K8sYaml)
+	entities, err := k8s.ParseYAMLFromString(manifest.K8sYaml)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +163,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, service model.Serv
 	}
 
 	if !didReplace {
-		return nil, fmt.Errorf("Docker image missing from yaml: %s", service.DockerfileTag)
+		return nil, fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerfileTag)
 	}
 
 	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
@@ -167,7 +181,6 @@ func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
 }
 
-func (ibd *ImageBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	// NOTE(maia): no-op, as ibd has no knowledge of pods or containers.
-	return "", nil
+func (ibd *ImageBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	return
 }

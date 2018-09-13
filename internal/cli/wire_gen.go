@@ -7,16 +7,16 @@ package cli
 
 import (
 	context "context"
+
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
-	service "github.com/windmilleng/tilt/internal/service"
 )
 
 // Injectors from wire.go:
 
-func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
+func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
 	env, err := k8s.DetectEnv()
 	if err != nil {
 		return nil, err
@@ -32,21 +32,23 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, kubectlClient)
-	firstLineBuildAndDeployer := engine.NewFirstLineBuildAndDeployer(syncletBuildAndDeployer, localContainerBuildAndDeployer, env)
+	analytics, err := provideAnalytics()
+	if err != nil {
+		return nil, err
+	}
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, kubectlClient, analytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, env)
-	v := engine.DefaultShouldFallBack()
-	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(firstLineBuildAndDeployer, imageBuildAndDeployer, v)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, env, analytics)
+	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env)
+	fallbackTester := engine.DefaultShouldFallBack()
+	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, kubectlClient, browser, imageReaper)
-	manager := service.ProvideMemoryManager()
-	serviceCreator := provideServiceCreator(upper, manager)
-	return serviceCreator, nil
+	return upper, nil
 }
 
 var (

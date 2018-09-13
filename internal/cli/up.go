@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
@@ -30,19 +31,22 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up <servicename>",
-		Short: "stand up a service",
+		Use:   "up <name>",
+		Short: "stand up a manifest",
 		Args:  cobra.ExactArgs(1),
 	}
 
-	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started services will be automatically rebuilt and redeployed when files in their repos change")
-	cmd.Flags().Var(&c.browserMode, "browser", "open a browser when the service first starts")
+	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started manifests will be automatically rebuilt and redeployed when files in their repos change")
+	cmd.Flags().Var(&c.browserMode, "browser", "open a browser when the manifest first starts")
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 
 	return cmd
 }
 
 func (c *upCmd) run(args []string) error {
+	analyticsService.Incr("cmd.up", map[string]string{"watch": fmt.Sprintf("%v", c.watch)})
+	defer analyticsService.Flush(time.Second)
+
 	span := opentracing.StartSpan("Up")
 	tags := tracer.TagStrToMap(c.traceTags)
 	for k, v := range tags {
@@ -87,18 +91,18 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	serviceName := args[0]
-	services, err := tf.GetServiceConfigs(serviceName)
+	manifestName := args[0]
+	manifests, err := tf.GetManifestConfigs(manifestName)
 	if err != nil {
 		return err
 	}
 
-	serviceCreator, err := wireServiceCreator(ctx, c.browserMode)
+	manifestCreator, err := wireManifestCreator(ctx, c.browserMode)
 	if err != nil {
 		return err
 	}
 
-	err = serviceCreator.CreateServices(ctx, services, c.watch)
+	err = manifestCreator.CreateManifests(ctx, manifests, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())

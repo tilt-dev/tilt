@@ -3,12 +3,14 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
@@ -17,26 +19,33 @@ type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	env       k8s.Env
 	k8sClient k8s.Client
+	analytics analytics.Analytics
 }
 
-func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client) *LocalContainerBuildAndDeployer {
+func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,
 		env:       env,
 		k8sClient: kCli,
+		analytics: analytics,
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (result BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("service", service.Name.String())
+	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
+
+	startTime := time.Now()
+	defer func() {
+		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
+	}()
 
 	// TODO(maia): proper output for this stuff
 
-	// TODO(maia): put service.Validate() upstream if we're gonna want to call it regardless
+	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
-	err := service.Validate()
+	err = manifest.Validate()
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -46,7 +55,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	// Otherwise, service has already been deployed; try to update in the running container
+	// Otherwise, manifest has already been deployed; try to update in the running container
 
 	// (Unless we don't know what container it's running in, in which case we can't.)
 	if !state.LastResult.HasContainer() {
@@ -54,12 +63,12 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}
 
 	cID := state.LastResult.Container
-	cf, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	boiledSteps, err := build.BoilSteps(service.Steps, cf)
+	boiledSteps, err := build.BoilSteps(manifest.Steps, cf)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -76,8 +85,34 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}, nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-GetContainerForBuild")
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuilds")
+	defer span.Finish()
+
+	// HACK(maia): give the pod(s) we just deployed a bit to come up.
+	// TODO(maia): replace this with polling/smart waiting
+	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
+	time.Sleep(2 * time.Second)
+
+	for serv, state := range states {
+		if !state.LastResult.HasImage() {
+			logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", serv)
+			continue
+		}
+		if !state.LastResult.HasContainer() {
+			cID, err := cbd.getContainerForBuild(ctx, state.LastResult)
+			if err != nil {
+				logger.Get(ctx).Infof("couldn't get container for %s: %v", serv, err)
+				continue
+			}
+			state.LastResult.Container = cID
+			states[serv] = state
+		}
+	}
+}
+
+func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-getContainerForBuild")
 	defer span.Finish()
 
 	// get pod running the image we just deployed

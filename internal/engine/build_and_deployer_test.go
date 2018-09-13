@@ -34,7 +34,7 @@ func TestShouldImageBuild(t *testing.T) {
 		assert.False(t, shouldImageBuild(pathMapErr))
 	}
 
-	s := model.Service{Name: "many errors"}
+	s := model.Manifest{Name: "many errors"}
 	validateErr := s.Validate()
 	if assert.Error(t, validateErr) {
 		assert.False(t, shouldImageBuild(validateErr))
@@ -48,7 +48,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,11 +141,11 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
-	// Malformed service (it's missing fields) will trip a validate error; we
+	// Malformed manifest (it's missing fields) will trip a validate error; we
 	// should NOT fall back to image build, but rather, return the error.
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoService, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
 	if err == nil {
-		t.Errorf("Expected bad service error to propogate back up")
+		t.Errorf("Expected bad manifest error to propogate back up")
 	}
 
 	if f.docker.BuildCount != 0 {
@@ -233,4 +233,12 @@ func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedT
 
 func (c *FakeK8sClient) applyWasCalled() bool {
 	return c.yaml != ""
+}
+
+func (c *FakeK8sClient) FindAppByNode(ctx context.Context, appName string, nodeID k8s.NodeID) (k8s.PodID, error) {
+	return k8s.PodID("pod2"), nil
+}
+
+func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID k8s.PodID) (k8s.NodeID, error) {
+	return k8s.NodeID("node"), nil
 }

@@ -39,7 +39,7 @@ FROM go:1.10
 
 var SanchoTag, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
 
-var SanchoService = model.Service{
+var SanchoManifest = model.Manifest{
 	Name:           "sancho",
 	DockerfileTag:  SanchoTag,
 	K8sYaml:        SanchoYAML,

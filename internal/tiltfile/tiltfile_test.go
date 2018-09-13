@@ -51,7 +51,7 @@ hello()
 	assert.Equal(t, expected, s)
 }
 
-func TestGetServiceConfig(t *testing.T) {
+func TestGetManifestConfig(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -70,9 +70,9 @@ func TestGetServiceConfig(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltconfig.GetServiceConfigs("blorgly")
+	manifestConfig, err := tiltconfig.GetManifestConfigs("blorgly")
 	if err != nil {
-		t.Fatal("getting service config:", err)
+		t.Fatal("getting manifest config:", err)
 	}
 
 	wd, err := os.Getwd()
@@ -80,17 +80,17 @@ func TestGetServiceConfig(t *testing.T) {
 		t.Fatal("couldn't get working directory:", err)
 	}
 
-	service := serviceConfig[0]
-	assert.Equal(t, "docker text", service.DockerfileText)
-	assert.Equal(t, "docker.io/library/docker-tag", service.DockerfileTag.String())
-	assert.Equal(t, "yaaaaaaaaml", service.K8sYaml)
-	assert.Equal(t, 1, len(service.Mounts), "number of mounts")
-	assert.Equal(t, "/mount_points/1", service.Mounts[0].ContainerPath)
-	assert.Equal(t, wd, service.Mounts[0].Repo.LocalPath, "repo path")
-	assert.Equal(t, 2, len(service.Steps), "number of steps")
-	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Cmd.Argv, "first step")
-	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Cmd.Argv, "second step")
-	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
+	manifest := manifestConfig[0]
+	assert.Equal(t, "docker text", manifest.DockerfileText)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerfileTag.String())
+	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYaml)
+	assert.Equal(t, 1, len(manifest.Mounts), "number of mounts")
+	assert.Equal(t, "/mount_points/1", manifest.Mounts[0].ContainerPath)
+	assert.Equal(t, wd, manifest.Mounts[0].Repo.LocalPath, "repo path")
+	assert.Equal(t, 2, len(manifest.Steps), "number of steps")
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv, "first step")
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv, "second step")
+	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, manifest.Entrypoint.Argv)
 }
 
 func TestOldMountSyntax(t *testing.T) {
@@ -112,9 +112,9 @@ func TestOldMountSyntax(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetServiceConfigs("blorgly")
+	_, err = tiltconfig.GetManifestConfigs("blorgly")
 	if err == nil {
-		t.Fatal("service config should have errored, but it didn't")
+		t.Fatal("manifest config should have errored, but it didn't")
 	}
 
 	if !strings.Contains(err.Error(), oldMountSyntaxError) {
@@ -123,7 +123,7 @@ func TestOldMountSyntax(t *testing.T) {
 
 }
 
-func TestGetServiceConfigMissingDockerFile(t *testing.T) {
+func TestGetManifestConfigMissingDockerFile(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   image = build_docker_image("asfaergiuhaeriguhaergiu", "docker-tag", "the entrypoint")
@@ -139,7 +139,7 @@ func TestGetServiceConfigMissingDockerFile(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetServiceConfigs("blorgly")
+	_, err = tiltconfig.GetManifestConfigs("blorgly")
 	if assert.NotNil(t, err, "expected error from missing dockerfile") {
 		for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
 			assert.True(t, strings.Contains(err.Error(), s),
@@ -199,16 +199,16 @@ def blorgly_frontend():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltConfig.GetServiceConfigs("blorgly")
+	manifestConfig, err := tiltConfig.GetManifestConfigs("blorgly")
 	if err != nil {
-		t.Fatal("getting service config:", err)
+		t.Fatal("getting manifest config:", err)
 	}
 
-	assert.Equal(t, "blorgly_backend", serviceConfig[0].Name.String())
-	assert.Equal(t, "blorgly_frontend", serviceConfig[1].Name.String())
+	assert.Equal(t, "blorgly_backend", manifestConfig[0].Name.String())
+	assert.Equal(t, "blorgly_frontend", manifestConfig[1].Name.String())
 }
 
-func TestGetServiceConfigUndefined(t *testing.T) {
+func TestGetManifestConfigUndefined(t *testing.T) {
 	file := tempFile(
 		`def blorgly():
   return "yaaaaaaaml"
@@ -220,9 +220,9 @@ func TestGetServiceConfigUndefined(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfigs("blorgly2")
+	_, err = tiltConfig.GetManifestConfigs("blorgly2")
 	if err == nil {
-		t.Fatal("expected error b/c of undefined service config:")
+		t.Fatal("expected error b/c of undefined manifest config:")
 	}
 
 	for _, s := range []string{"does not define", "blorgly2"} {
@@ -230,7 +230,7 @@ func TestGetServiceConfigUndefined(t *testing.T) {
 	}
 }
 
-func TestGetServiceConfigNonFunction(t *testing.T) {
+func TestGetManifestConfigNonFunction(t *testing.T) {
 	file := tempFile("blorgly2 = 3")
 	defer os.Remove(file)
 
@@ -239,15 +239,15 @@ func TestGetServiceConfigNonFunction(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
+	_, err = tiltConfig.GetManifestConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "function", "int"} {
 			assert.True(t, strings.Contains(err.Error(), s))
 		}
 	}
 }
 
-func TestGetServiceConfigTakesArgs(t *testing.T) {
+func TestGetManifestConfigTakesArgs(t *testing.T) {
 	file := tempFile(
 		`def blorgly2(x):
 			return "foo"
@@ -259,15 +259,15 @@ func TestGetServiceConfigTakesArgs(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
+	_, err = tiltConfig.GetManifestConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "0 arguments"} {
 			assert.True(t, strings.Contains(err.Error(), s))
 		}
 	}
 }
 
-func TestGetServiceConfigRaisesError(t *testing.T) {
+func TestGetManifestConfigRaisesError(t *testing.T) {
 	file := tempFile(
 		`def blorgly2():
 			"foo"[10]`) // index out of range
@@ -278,15 +278,15 @@ func TestGetServiceConfigRaisesError(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
+	_, err = tiltConfig.GetManifestConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "string index", "out of range"} {
 			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 		}
 	}
 }
 
-func TestGetServiceConfigReturnsWrongType(t *testing.T) {
+func TestGetManifestConfigReturnsWrongType(t *testing.T) {
 	file := tempFile(
 		`def blorgly2():
 			return "foo"`) // index out of range
@@ -297,15 +297,15 @@ func TestGetServiceConfigReturnsWrongType(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
+	_, err = tiltConfig.GetManifestConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
 		for _, s := range []string{"blorgly2", "string", "k8s_service"} {
 			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 		}
 	}
 }
 
-func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
+func TestGetManifestConfigLocalReturnsNon0(t *testing.T) {
 	file := tempFile(
 		`def blorgly2():
 			local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`) // index out of range
@@ -316,8 +316,8 @@ func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltConfig.GetServiceConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetServiceConfigs did not return an error") {
+	_, err = tiltConfig.GetManifestConfigs("blorgly2")
+	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
 		// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
 		// not in the command
 		for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
@@ -326,7 +326,7 @@ func TestGetServiceConfigLocalReturnsNon0(t *testing.T) {
 	}
 }
 
-func TestGetServiceConfigWithLocalCmd(t *testing.T) {
+func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -345,19 +345,19 @@ func TestGetServiceConfigWithLocalCmd(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	serviceConfig, err := tiltconfig.GetServiceConfigs("blorgly")
+	manifestConfig, err := tiltconfig.GetManifestConfigs("blorgly")
 	if err != nil {
-		t.Fatal("getting service config:", err)
+		t.Fatal("getting manifest config:", err)
 	}
 
-	service := serviceConfig[0]
-	assert.Equal(t, "docker text", service.DockerfileText)
-	assert.Equal(t, "docker.io/library/docker-tag", service.DockerfileTag.String())
-	assert.Equal(t, "yaaaaaaaaml\n", service.K8sYaml)
-	assert.Equal(t, 2, len(service.Steps))
-	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, service.Steps[0].Cmd.Argv)
-	assert.Equal(t, []string{"sh", "-c", "echo hi"}, service.Steps[1].Cmd.Argv)
-	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, service.Entrypoint.Argv)
+	manifest := manifestConfig[0]
+	assert.Equal(t, "docker text", manifest.DockerfileText)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerfileTag.String())
+	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYaml)
+	assert.Equal(t, 2, len(manifest.Steps))
+	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv)
+	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, manifest.Entrypoint.Argv)
 }
 
 func TestRunTrigger(t *testing.T) {
@@ -390,16 +390,16 @@ func TestRunTrigger(t *testing.T) {
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	services, err := tiltconfig.GetServiceConfigs("yarnly")
+	manifests, err := tiltconfig.GetManifestConfigs("yarnly")
 	if err != nil {
-		t.Fatal("getting service config:", err)
+		t.Fatal("getting manifest config:", err)
 	}
 
-	assert.Equal(t, len(services), 1)
+	assert.Equal(t, len(manifests), 1)
 
-	step0 := services[0].Steps[0]
-	step1 := services[0].Steps[1]
-	step2 := services[0].Steps[2]
+	step0 := manifests[0].Steps[0]
+	step1 := manifests[0].Steps[1]
+	step2 := manifests[0].Steps[2]
 	assert.Equal(
 		t,
 		step0.Cmd,
@@ -454,9 +454,32 @@ func TestInvalidDockerTag(t *testing.T) {
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
-	_, err = tiltconfig.GetServiceConfigs("blorgly")
+	_, err = tiltconfig.GetManifestConfigs("blorgly")
 	msg := "invalid reference format"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Errorf("Expected error message to contain %v, got %v", msg, err)
 	}
+}
+
+func TestEntrypointIsOptional(t *testing.T) {
+	dockerfile := tempFile(`FROM alpine
+ENTRYPOINT echo hi`)
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image(%q, "docker-tag")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := manifests[0]
+	// TODO(dmiller) is this right?
+	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
 }

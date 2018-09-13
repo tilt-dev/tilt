@@ -10,54 +10,56 @@ import (
 )
 
 type BuildAndDeployer interface {
-	// Builds and deployed the specified service.
+	// BuildAndDeploy builds and deployed the specified manifest.
 	//
 	// Returns a BuildResult that expresses the output of the build.
 	//
 	// BuildResult can be used to construct a BuildState, which contains
 	// the last successful build and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, service model.Service, currentState BuildState) (BuildResult, error)
+	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error)
 
-	// BaD needs to be able to get the container that a given build affected, so that
-	// it can do incremental builds on that container if needed.
-	// NOTE(maia): this isn't quite relevant to ImageBuildAndDeployer,
-	// consider putting elsewhere or renaming (`Warm`?).
-	GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error)
+	// PostProcessBuilds modifies `states` map in place with any info we'll need for subsequent builds.
+	PostProcessBuilds(ctx context.Context, states BuildStatesByName)
 }
 
-type FirstLineBuildAndDeployer BuildAndDeployer
-type FallbackBuildAndDeployer BuildAndDeployer
+type BuildOrder []BuildAndDeployer
+type FallbackTester func(error) bool
 
-// CompositeBuildAndDeployer first attempts to build and deploy with the FirstLineBuildAndDeployer.
-// If this fails, and the error returned isn't critical, we fall back to the FallbackBaD.
+// CompositeBuildAndDeployer tries to run each builder in order.  If a builder
+// emits an error, it uses the FallbackTester to determine whether the error is
+// critical enough to stop the whole pipeline, or to fallback to the next
+// builder.
 type CompositeBuildAndDeployer struct {
-	firstLine      FirstLineBuildAndDeployer
-	fallback       FallbackBuildAndDeployer
-	shouldFallBack func(error) bool
+	builders       BuildOrder
+	shouldFallBack FallbackTester
 }
 
-func DefaultShouldFallBack() func(error) bool {
-	return shouldImageBuild
+func DefaultShouldFallBack() FallbackTester {
+	return FallbackTester(shouldImageBuild)
 }
-func NewCompositeBuildAndDeployer(firstLine FirstLineBuildAndDeployer, fallback FallbackBuildAndDeployer,
-	shouldFallBack func(error) bool) *CompositeBuildAndDeployer {
+
+func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTester) *CompositeBuildAndDeployer {
 	return &CompositeBuildAndDeployer{
-		firstLine:      firstLine,
-		fallback:       fallback,
+		builders:       builders,
 		shouldFallBack: shouldFallBack,
 	}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, currentState BuildState) (BuildResult, error) {
-	br, err := composite.firstLine.BuildAndDeploy(ctx, service, currentState)
-	if err == nil {
-		return br, err
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error) {
+	var lastErr error
+	for _, builder := range composite.builders {
+		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
+		if err == nil {
+			return br, err
+		}
+
+		if !composite.shouldFallBack(err) {
+			return BuildResult{}, err
+		}
+		logger.Get(ctx).Verbosef("falling back to next build and deploy method after error: %v", err)
+		lastErr = err
 	}
-	if composite.shouldFallBack(err) {
-		logger.Get(ctx).Verbosef("falling back to secondary build and deploy method after error: %v", err)
-		return composite.fallback.BuildAndDeploy(ctx, service, currentState)
-	}
-	return BuildResult{}, err
+	return BuildResult{}, lastErr
 }
 
 // Given the error from our initial BuildAndDeploy attempt, shouldImageBuild determines
@@ -72,14 +74,18 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	// NOTE(maia): this will be relocated soon... for now, call out to the embedded BaD that has this implemented
-	return composite.firstLine.GetContainerForBuild(ctx, build)
+func (composite *CompositeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	// HACK(maia): for now, we expect this func to live on the first BaD.
+	if len(composite.builders) != 0 {
+		composite.builders[0].PostProcessBuilds(ctx, states)
+	}
 }
 
-func NewFirstLineBuildAndDeployer(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, env k8s.Env) FirstLineBuildAndDeployer {
-	if env == k8s.EnvGKE {
-		return sbad
+func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, env k8s.Env) BuildOrder {
+	switch env {
+	case k8s.EnvMinikube, k8s.EnvDockerDesktop:
+		return BuildOrder{cbad, ibad}
+	default:
+		return BuildOrder{sbad, ibad}
 	}
-	return cbad
 }

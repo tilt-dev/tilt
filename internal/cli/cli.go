@@ -7,8 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
-	model "github.com/windmilleng/tilt/internal/model"
-	service "github.com/windmilleng/tilt/internal/service"
 )
 
 var debug bool
@@ -28,6 +26,12 @@ func Execute(cleanUpFn func() error) {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
 		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
+	}
+
+	err := initAnalytics(rootCmd)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	addCommand(rootCmd, &upCmd{cleanUpFn: cleanUpFn, browserMode: engine.BrowserAuto})
@@ -60,8 +64,4 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	}
 
 	parent.AddCommand(cobraChild)
-}
-
-func provideServiceCreator(upper engine.Upper, sm service.Manager) model.ServiceCreator {
-	return service.TrackServices(upper, sm)
 }

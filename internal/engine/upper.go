@@ -62,34 +62,34 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	}
 }
 
-func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
+func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	buildStates := make(map[model.ServiceName]BuildState)
+	buildStates := make(BuildStatesByName)
 
-	var sw *serviceWatcher
+	var sw *manifestWatcher
 	var err error
 	if watchMounts {
-		sw, err = makeServiceWatcher(ctx, u.watcherMaker, u.timerMaker, services)
+		sw, err = makeManifestWatcher(ctx, u.watcherMaker, u.timerMaker, manifests)
 		if err != nil {
 			return err
 		}
 	}
 
 	s := summary.NewSummary()
-	err = s.Gather(services)
+	err = s.Gather(manifests)
 	if err != nil {
 		return err
 	}
 
 	lbs := make([]k8s.LoadBalancer, 0)
-	for _, service := range services {
-		buildStates[service.Name] = BuildStateClean
+	for _, manifest := range manifests {
+		buildStates[manifest.Name] = BuildStateClean
 
-		buildResult, err := u.b.BuildAndDeploy(ctx, service, BuildStateClean)
+		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
 		if err == nil {
-			buildStates[service.Name] = NewBuildState(buildResult)
+			buildStates[manifest.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
 		} else if watchMounts {
 			logger.Get(ctx).Infof("build failed: %v", err)
@@ -101,7 +101,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	if len(lbs) > 0 && u.browserMode == BrowserAuto {
 		// Open only the first load balancer in a browser.
 		// TODO(nick): We might need some hints on what load balancer to
-		// open if we have multiple, or what path to default to on the opened service.
+		// open if we have multiple, or what path to default to on the opened manifest.
 		err := u.k8s.OpenService(ctx, lbs[0])
 		if err != nil {
 			return err
@@ -115,26 +115,24 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	if watchMounts {
 		output.Get(ctx).Printf("Waiting for changes…")
 		go func() {
-			err := u.reapOldWatchBuilds(ctx, services, time.Now())
+			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
 			if err != nil {
-				logger.Get(ctx).Infof("Error garbage collecting builds: %v", err)
+				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
 			}
 		}()
 
-		// Give the pod(s) we just deployed a bit to come up
-		time.Sleep(2 * time.Second)
+		// TODO(maia): move this call somewhere more logical (parallelize?)
+		u.b.PostProcessBuilds(ctx, buildStates)
 
-		// Need to know what container(s) we just pushed up so we can do updates live.
-		u.populateContainersForBuildStates(ctx, buildStates)
-
+		logger.Get(ctx).Infof("Awaiting edits...")
 		for {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			case event := <-sw.events:
-				oldState := buildStates[event.service.Name]
+				oldState := buildStates[event.manifest.Name]
 				buildState := oldState.NewStateWithFilesChanged(event.files)
-				buildStates[event.service.Name] = buildState
+				buildStates[event.manifest.Name] = buildState
 
 				spurious, err := buildState.OnlySpuriousChanges()
 				if err != nil {
@@ -146,16 +144,16 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 					continue
 				}
 
-				u.logBuildEvent(ctx, event.service, buildState)
+				u.logBuildEvent(ctx, event.manifest, buildState)
 
 				result, err := u.b.BuildAndDeploy(
 					ctx,
-					event.service,
+					event.manifest,
 					buildState)
 				if err != nil {
 					logger.Get(ctx).Infof("build failed: %v", err)
 				} else {
-					buildStates[event.service.Name] = NewBuildState(result)
+					buildStates[event.manifest.Name] = NewBuildState(result)
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
@@ -170,24 +168,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 	return nil
 }
 
-// populateContainersForBuildStates updates the given map of service --> build state in place;
-// populates each BuildState with its corresponding containerID
-func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ServiceName]BuildState) {
-	for serv, state := range buildStates {
-		if !state.LastResult.HasContainer() && state.LastResult.HasImage() {
-			cID, err := u.b.GetContainerForBuild(ctx, state.LastResult)
-			if err != nil {
-				logger.Get(ctx).Infof(
-					"couldn't get container for %s, but the pod's probably just not up yet: %v", serv, err)
-				continue
-			}
-			state.LastResult.Container = cID
-			buildStates[serv] = state
-		}
-	}
-}
-
-func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildState BuildState) {
+func (u Upper) logBuildEvent(ctx context.Context, manifest model.Manifest, buildState BuildState) {
 	changedFiles := buildState.FilesChanged()
 	var changedPathsToPrint []string
 	if len(changedFiles) > maxChangedFilesToPrint {
@@ -198,12 +179,12 @@ func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildSt
 	}
 
 	logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
-	logger.Get(ctx).Infof("Rebuilding service: %s", service.Name)
+	logger.Get(ctx).Infof("Rebuilding manifest: %s", manifest.Name)
 }
 
-func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service, createdBefore time.Time) error {
-	refs := make([]reference.Named, len(services))
-	for i, s := range services {
+func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
+	refs := make([]reference.Named, len(manifests))
+	for i, s := range manifests {
 		refs[i] = s.DockerfileTag
 	}
 
@@ -219,4 +200,4 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service,
 	return nil
 }
 
-var _ model.ServiceCreator = Upper{}
+var _ model.ManifestCreator = Upper{}

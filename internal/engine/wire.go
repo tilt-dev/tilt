@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -22,15 +23,12 @@ var DeployerWireSet = wire.NewSet(
 	build.DefaultImageBuilder,
 	build.NewDockerImageBuilder,
 
-	// ImageBuildAndDeployer (FallbackBuildAndDeployer)
-	wire.Bind(new(FallbackBuildAndDeployer), new(ImageBuildAndDeployer)),
+	// BuildOrder
 	NewImageBuildAndDeployer,
-
-	// FirstLineBuildAndDeployer (LocalContainerBaD OR SyncletBaD)
 	build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
-	NewFirstLineBuildAndDeployer,
+	DefaultBuildOrder,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer)
@@ -42,9 +40,11 @@ func provideBuildAndDeployer(
 	dir *dirs.WindmillDir,
 	env k8s.Env,
 	sCli synclet.SyncletClient,
-	shouldFallBackToImgBuild func(error) bool) (BuildAndDeployer, error) {
+	shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSet,
+		analytics.NewMemoryAnalytics,
+		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 	)
 
 	return nil, nil

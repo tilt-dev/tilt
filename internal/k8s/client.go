@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -13,11 +12,11 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/output"
 )
 
 type PodID string
 type ContainerID string
+type NodeID string
 
 func (pID PodID) String() string { return string(pID) }
 
@@ -29,11 +28,19 @@ func (cID ContainerID) ShortStr() string {
 	return string(cID)
 }
 
+func (nID NodeID) String() string { return string(nID) }
+
 type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
 
 	PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error)
+
+	// Gets the ID for the Node on which the specified Pod is running
+	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
+
+	// Finds the PodID for the instance of appName running on the same node as podID
+	FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error)
 
 	// Waits for the LoadBalancer to get a publicly available URL,
 	// then opens that URL in a web browser.
@@ -41,8 +48,11 @@ type Client interface {
 }
 
 type KubectlClient struct {
-	env Env
+	env           Env
+	kubectlRunner kubectlRunner
 }
+
+var _ Client = KubectlClient{}
 
 func NewKubectlClient(ctx context.Context, env Env) KubectlClient {
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
@@ -51,7 +61,8 @@ func NewKubectlClient(ctx context.Context, env Env) KubectlClient {
 	browser.Stderr = writer
 
 	return KubectlClient{
-		env: env,
+		env:           env,
+		kubectlRunner: realKubectlRunner{},
 	}
 }
 
@@ -91,15 +102,15 @@ func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
 	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
-	stderrBuf, err := k.cli(ctx, "apply", entities)
+	_, stderr, err := k.applyOrDeleteFromEntities(ctx, "apply", entities)
 	if err != nil {
-		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderrBuf.String())
+		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
 	}
 	return nil
 }
 
 func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, err := k.cli(ctx, "delete", entities)
+	_, _, err := k.applyOrDeleteFromEntities(ctx, "delete", entities)
 	_, isExitErr := err.(*exec.ExitError)
 	if isExitErr {
 		// In general, an exit error is ok for our purposes.
@@ -113,23 +124,14 @@ func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	return err
 }
 
-func (k KubectlClient) cli(ctx context.Context, cmd string, entities []K8sEntity) (*bytes.Buffer, error) {
+func (k KubectlClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, entities []K8sEntity) (stdout string, stderr string, err error) {
+	args := []string{cmd, "-f", "-"}
+
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
-		return nil, fmt.Errorf("kubectl %s: %v", cmd, err)
+		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmd, err)
 	}
+	stdin := bytes.NewReader([]byte(rawYAML))
 
-	c := exec.CommandContext(ctx, "kubectl", cmd, "-f", "-")
-	r := bytes.NewReader([]byte(rawYAML))
-	c.Stdin = r
-
-	writer := output.Get(ctx).Writer()
-
-	c.Stdout = writer
-
-	stderrBuf := &bytes.Buffer{}
-
-	c.Stderr = io.MultiWriter(stderrBuf, writer)
-
-	return stderrBuf, c.Run()
+	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
 }

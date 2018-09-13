@@ -11,12 +11,10 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/service"
 )
 
-func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
+func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
 	wire.Build(
-		service.ProvideMemoryManager,
 		k8s.DetectEnv,
 
 		k8s.NewKubectlClient,
@@ -32,7 +30,8 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 		engine.DefaultShouldFallBack,
 
 		engine.NewUpper,
-		provideServiceCreator,
+		wire.Bind(new(model.ManifestCreator), engine.Upper{}),
+		provideAnalytics,
 	)
 	return nil, nil
 }
