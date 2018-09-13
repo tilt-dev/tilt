@@ -8,16 +8,16 @@ import (
 
 // A creator that adds all new services to the manager.
 type trackingCreator struct {
-	delegate model.ServiceCreator
+	delegate model.ManifestCreator
 	manager  Manager
 }
 
-func TrackServices(delegate model.ServiceCreator, manager Manager) trackingCreator {
+func TrackServices(delegate model.ManifestCreator, manager Manager) trackingCreator {
 	return trackingCreator{delegate: delegate, manager: manager}
 }
 
-func (c trackingCreator) CreateServices(ctx context.Context, svcs []model.Service, watch bool) error {
-	err := c.delegate.CreateServices(ctx, svcs, watch)
+func (c trackingCreator) CreateManifests(ctx context.Context, svcs []model.Manifest, watch bool) error {
+	err := c.delegate.CreateManifests(ctx, svcs, watch)
 	if err != nil {
 		return err
 	}
@@ -32,4 +32,4 @@ func (c trackingCreator) CreateServices(ctx context.Context, svcs []model.Servic
 	return nil
 }
 
-var _ model.ServiceCreator = trackingCreator{}
+var _ model.ManifestCreator = trackingCreator{}

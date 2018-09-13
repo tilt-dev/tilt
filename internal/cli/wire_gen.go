@@ -7,6 +7,7 @@ package cli
 
 import (
 	context "context"
+
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
@@ -16,7 +17,7 @@ import (
 
 // Injectors from wire.go:
 
-func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ServiceCreator, error) {
+func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
 	env, err := k8s.DetectEnv()
 	if err != nil {
 		return nil, err

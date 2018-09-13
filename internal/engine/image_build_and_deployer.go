@@ -33,7 +33,7 @@ func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8
 	}
 }
 
-func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (br BuildResult, err error) {
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, state BuildState) (br BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
@@ -72,7 +72,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, service mo
 	}, nil
 }
 
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Service, state BuildState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Manifest, state BuildState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 	if !state.HasImage() {
 		// No existing image to build off of, need to build from scratch
@@ -117,7 +117,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, service model.Servi
 	return n, nil
 }
 
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, service model.Service, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, service model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 

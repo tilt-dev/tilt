@@ -8,16 +8,16 @@ import (
 )
 
 type Manager interface {
-	Add(s model.Service) error
-	Update(s model.Service) error
-	Remove(s model.ServiceName)
-	List() []model.Service
-	Get(n model.ServiceName) (model.Service, error)
+	Add(s model.Manifest) error
+	Update(s model.Manifest) error
+	Remove(s model.ManifestName)
+	List() []model.Manifest
+	Get(n model.ManifestName) (model.Manifest, error)
 }
 
 type memoryManager struct {
 	mu       *sync.Mutex
-	services map[model.ServiceName]model.Service
+	services map[model.ManifestName]model.Manifest
 }
 
 func ProvideMemoryManager() Manager {
@@ -25,11 +25,11 @@ func ProvideMemoryManager() Manager {
 }
 
 func NewMemoryManager() *memoryManager {
-	m := make(map[model.ServiceName]model.Service)
+	m := make(map[model.ManifestName]model.Manifest)
 	return &memoryManager{mu: &sync.Mutex{}, services: m}
 }
 
-func (m *memoryManager) Add(s model.Service) error {
+func (m *memoryManager) Add(s model.Manifest) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -42,7 +42,7 @@ func (m *memoryManager) Add(s model.Service) error {
 	return nil
 }
 
-func (m *memoryManager) Update(s model.Service) error {
+func (m *memoryManager) Update(s model.Manifest) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -55,16 +55,16 @@ func (m *memoryManager) Update(s model.Service) error {
 	return nil
 }
 
-func (m *memoryManager) serviceExists(n model.ServiceName) bool {
+func (m *memoryManager) serviceExists(n model.ManifestName) bool {
 	_, servicePresent := m.services[n]
 	return servicePresent
 }
 
-func (m *memoryManager) List() []model.Service {
+func (m *memoryManager) List() []model.Manifest {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	v := make([]model.Service, len(m.services))
+	v := make([]model.Manifest, len(m.services))
 
 	i := 0
 	for _, s := range m.services {
@@ -75,14 +75,14 @@ func (m *memoryManager) List() []model.Service {
 	return v
 }
 
-func (m *memoryManager) Remove(n model.ServiceName) {
+func (m *memoryManager) Remove(n model.ManifestName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	delete(m.services, n)
 }
 
-func (m *memoryManager) Get(n model.ServiceName) (model.Service, error) {
+func (m *memoryManager) Get(n model.ManifestName) (model.Manifest, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -90,5 +90,5 @@ func (m *memoryManager) Get(n model.ServiceName) (model.Service, error) {
 		return m.services[n], nil
 	}
 
-	return model.Service{}, fmt.Errorf("Unable to find service %s", n)
+	return model.Manifest{}, fmt.Errorf("Unable to find service %s", n)
 }

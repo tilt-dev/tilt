@@ -102,7 +102,7 @@ func (c *upCmd) run(args []string) error {
 		return err
 	}
 
-	err = serviceCreator.CreateServices(ctx, services, c.watch)
+	err = serviceCreator.CreateManifests(ctx, services, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())

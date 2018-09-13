@@ -62,11 +62,11 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	}
 }
 
-func (u Upper) CreateServices(ctx context.Context, services []model.Service, watchMounts bool) error {
+func (u Upper) CreateManifests(ctx context.Context, services []model.Manifest, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	buildStates := make(map[model.ServiceName]BuildState)
+	buildStates := make(map[model.ManifestName]BuildState)
 
 	var sw *serviceWatcher
 	var err error
@@ -170,7 +170,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 // populateContainersForBuildStates updates the given map of service --> build state in place;
 // populates each BuildState with its corresponding containerID
-func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ServiceName]BuildState) {
+func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ManifestName]BuildState) {
 	for serv, state := range buildStates {
 		if !state.LastResult.HasContainer() && state.LastResult.HasImage() {
 			cID, err := u.b.GetContainerForBuild(ctx, state.LastResult)
@@ -185,7 +185,7 @@ func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates
 	}
 }
 
-func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildState BuildState) {
+func (u Upper) logBuildEvent(ctx context.Context, service model.Manifest, buildState BuildState) {
 	changedFiles := buildState.FilesChanged()
 	var changedPathsToPrint []string
 	if len(changedFiles) > maxChangedFilesToPrint {
@@ -199,7 +199,7 @@ func (u Upper) logBuildEvent(ctx context.Context, service model.Service, buildSt
 	logger.Get(ctx).Infof("Rebuilding service: %s", service.Name)
 }
 
-func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service, createdBefore time.Time) error {
+func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Manifest, createdBefore time.Time) error {
 	refs := make([]reference.Named, len(services))
 	for i, s := range services {
 		refs[i] = s.DockerfileTag
@@ -217,4 +217,4 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, services []model.Service,
 	return nil
 }
 
-var _ model.ServiceCreator = Upper{}
+var _ model.ManifestCreator = Upper{}

@@ -148,7 +148,7 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	return &Tiltfile{globals, filename, thread}, nil
 }
 
-func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Service, error) {
+func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Manifest, error) {
 	f, ok := tiltfile.globals[serviceName]
 
 	if !ok {
@@ -172,7 +172,7 @@ func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Service,
 
 	switch service := val.(type) {
 	case compService:
-		var servs []model.Service
+		var servs []model.Manifest
 
 		for _, cServ := range service.cService {
 			s, err := skylarkServiceToDomain(cServ)
@@ -188,33 +188,33 @@ func (tiltfile Tiltfile) GetServiceConfigs(serviceName string) ([]model.Service,
 		if err != nil {
 			return nil, err
 		}
-		s.Name = model.ServiceName(serviceName)
-		return []model.Service{s}, nil
+		s.Name = model.ManifestName(serviceName)
+		return []model.Manifest{s}, nil
 
 	default:
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", serviceName, val.Type())
 	}
 }
 
-func skylarkServiceToDomain(service k8sService) (model.Service, error) {
+func skylarkServiceToDomain(service k8sService) (model.Manifest, error) {
 	k8sYaml, ok := skylark.AsString(service.k8sYaml)
 	if !ok {
-		return model.Service{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
+		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", service)
 	}
 
 	dockerFileBytes, err := ioutil.ReadFile(service.dockerImage.fileName)
 	if err != nil {
-		return model.Service{}, fmt.Errorf("failed to open dockerfile '%v': %v", service.dockerImage.fileName, err)
+		return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", service.dockerImage.fileName, err)
 	}
 
-	return model.Service{
+	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
 		Mounts:         skylarkMountsToDomain(service.dockerImage.mounts),
 		Steps:          service.dockerImage.steps,
 		Entrypoint:     model.ToShellCmd(service.dockerImage.entrypoint),
 		DockerfileTag:  service.dockerImage.fileTag,
-		Name:           model.ServiceName(service.name),
+		Name:           model.ManifestName(service.name),
 	}, nil
 
 }

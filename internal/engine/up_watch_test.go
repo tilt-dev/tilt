@@ -53,7 +53,7 @@ type serviceWatcherTestFixture struct {
 	watcherMaker    watcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
-	services        []model.Service
+	services        []model.Manifest
 	watchers        []*fakeNotify
 	timerMaker      fakeTimerMaker
 	t               *testing.T
@@ -72,13 +72,13 @@ func makeServiceWatcherTestFixture(t *testing.T, serviceCount int) *serviceWatch
 		return ret, nil
 	}
 
-	var services []model.Service
+	var services []model.Manifest
 	var tempDirs []*tempdir.TempDirFixture
 	for i := 0; i < serviceCount; i++ {
 		tempDir := tempdir.NewTempDirFixture(t)
 		services = append(services,
-			model.Service{
-				Name:   model.ServiceName(fmt.Sprintf("service%v", i)),
+			model.Manifest{
+				Name:   model.ManifestName(fmt.Sprintf("service%v", i)),
 				Mounts: []model.Mount{{Repo: model.LocalGithubRepo{LocalPath: tempDir.Path()}, ContainerPath: ""}}})
 
 		tempDirs = append(tempDirs, tempDir)
