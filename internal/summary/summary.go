@@ -2,6 +2,9 @@ package summary
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -23,6 +26,7 @@ type k8sData struct {
 	Group         string
 	Kinds         []string
 	Version       string
+	Name          string
 }
 
 // NewSummary returns summary state
@@ -60,6 +64,7 @@ func (s *Summary) Gather(services []model.Service) error {
 			kubeData.Group = e.Kind.Group
 			kubeData.Version = e.Kind.Version
 			kubeData.Kinds = append(kubeData.Kinds, e.Kind.Kind)
+			kubeData.Name = k8s.GetDeploymentName(e)
 		}
 
 		svcSummary.k8sData = kubeData
@@ -70,47 +75,38 @@ func (s *Summary) Gather(services []model.Service) error {
 }
 
 func (s *Summary) Output() string {
-	ret := "\n──┤ Services Built … ├────────────────────────────────────────\n"
-
+	ret := ""
 	for _, svc := range s.Services {
-		ret += fmt.Sprintf("    SERVICE NAME: %s\n", svc.Name)
-		ret += fmt.Sprintf("    WATCHING: %s\n", svc.Path)
+		indent := " "
+		ret += fmt.Sprintf("%s%s — ", indent, svc.Name)
 
+		// Relative Path
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Fatalf("Failed to get working directory: %s", err)
+		}
+		rel, err := filepath.Rel(wd, svc.Path)
+		if err != nil {
+			log.Fatalf("Failed to get relative path: %s", err)
+		}
+		ret += fmt.Sprintf("./%s ", rel)
+
+		// K8s info
 		k := svc.k8sData
-
-		ret += fmt.Sprintln("    KUBERNETES INFO")
-		if len(k.Version) > 0 {
-			ret += fmt.Sprintf("      • Version: %s\n", k.Version)
+		if len(k.Name) > 0 {
+			ret += fmt.Sprintf("→ `kubectl get deploy %s` ", k.Name)
 		}
-
-		if len(k.Group) > 0 {
-			ret += fmt.Sprintf("      • Group: %s\n", k.Group)
-		}
-
 		if len(k.LoadBalancers) > 0 {
-			ret += fmt.Sprintf("    LOAD BALANCER:")
 			for _, lb := range k.LoadBalancers {
-				ret += fmt.Sprintf(" %s", lb.Name)
-
+				ret += fmt.Sprintf("→ `kubectl get svc %s` ", lb.Name)
 				if len(lb.Ports) > 0 {
 					for _, p := range lb.Ports {
-						ret += fmt.Sprintf(" | PORT: %d", p)
-						ret += fmt.Sprintf(" | URL: http://localhost:%d", p)
+						ret += fmt.Sprintf("[http://localhost:%d]", p)
 					}
-					ret += fmt.Sprintf("\n")
 				}
 			}
 		}
-
-		if len(k.Kinds) > 0 {
-			ret += fmt.Sprintln("    OBJECTS:")
-			for _, kk := range k.Kinds {
-				ret += fmt.Sprintf("    • %s\n", kk)
-			}
-		}
-
-		ret += fmt.Sprintf("\n")
+		ret += fmt.Sprintf("\n") // newline after each service
 	}
-
 	return ret
 }
