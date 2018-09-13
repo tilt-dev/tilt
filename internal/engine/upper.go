@@ -116,7 +116,7 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 		go func() {
 			err := u.reapOldWatchBuilds(ctx, services, time.Now())
 			if err != nil {
-				logger.Get(ctx).Infof("Error garbage collecting builds: %v", err)
+				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
 			}
 		}()
 
