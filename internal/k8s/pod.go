@@ -68,7 +68,7 @@ func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
 
 func (k KubectlClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
 	jsonPath := "-o=jsonpath={.spec.nodeName}"
-	stdout, stderr, err := k.kubectlRunner.cli(ctx, fmt.Sprintf("get pods %s '%s'", podID.String(), jsonPath))
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", podID.String(), jsonPath})
 
 	if err != nil {
 		return NodeID(""), fmt.Errorf("error finding node for pod '%s': %v, stderr: '%s'", podID.String(), err.Error(), stderr)
@@ -87,7 +87,8 @@ func (k KubectlClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, 
 
 func (k KubectlClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
 	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
-	stdout, stderr, err := k.kubectlRunner.cli(ctx, fmt.Sprintf("get pods --namespace=kube-system -l=app=%s '%s'", appName, jsonPath))
+	stdout, stderr, err := k.kubectlRunner.exec(ctx,
+		[]string{"get", "pods", "--namespace=kube-system", fmt.Sprintf("-l=app=%s", appName), jsonPath})
 
 	if err != nil {
 		return PodID(""), fmt.Errorf("error finding app '%s' on node '%s': %v, stderr: '%s'", appName, nodeID.String(), err.Error(), stderr)
