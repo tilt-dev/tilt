@@ -299,7 +299,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 		return nil, err
 	}
 
-	// TODO(Han): Don't want automatic build step prefix here
+	// TODO(Han): Extend output to print without newline
 	fmt.Printf(" (size: %s)\n", humanize.Bytes(uint64(archive.Len())))
 
 	output.Get(ctx).StartBuildStep("Building image")

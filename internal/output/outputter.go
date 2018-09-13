@@ -20,8 +20,8 @@ type Outputter struct {
 	logger logger.Logger
 
 	indentation            int
-	curBuildStep           int
 	curPipelineStep        int
+	curBuildStep           int
 	totalPipelineStepCount int
 	pipelineStepDurations  []time.Duration
 	curPipelineStart       time.Time
@@ -89,6 +89,7 @@ func (o *Outputter) EndPipeline(err error) {
 			o.yellow().Sprint(err.Error())
 		o.logger.Infof("%s", line)
 		o.curPipelineStep = 0
+		o.curBuildStep = 0
 		return
 	}
 
@@ -102,6 +103,7 @@ func (o *Outputter) EndPipeline(err error) {
 		o.blue().Sprint(" ︎├───────────────────────────────────")
 	o.logger.Infof("%s", line)
 	o.curPipelineStep = 0
+	o.curBuildStep = 0
 }
 
 func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
