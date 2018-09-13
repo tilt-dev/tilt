@@ -22,8 +22,8 @@ import (
 
 //represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
-	service model.Manifest
-	state   BuildState
+	manifest model.Manifest
+	state    BuildState
 }
 
 type fakeBuildAndDeployer struct {
@@ -45,9 +45,9 @@ func (b *fakeBuildAndDeployer) nextBuildResult() BuildResult {
 	return BuildResult{Image: nt}
 }
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, state BuildState) (BuildResult, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
 	select {
-	case b.calls <- buildAndDeployCall{service, state}:
+	case b.calls <- buildAndDeployCall{manifest, state}:
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
@@ -108,22 +108,22 @@ var _ watch.Notify = &fakeNotify{}
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	service := f.newService("foobar", nil)
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, false)
+	manifest := f.newManifest("foobar", nil)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
-	var startedServices []model.Manifest
+	var startedManifests []model.Manifest
 	for call := range f.b.calls {
-		startedServices = append(startedServices, call.service)
+		startedManifests = append(startedManifests, call.manifest)
 	}
-	assert.Equal(t, []model.Manifest{service}, startedServices)
+	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
 }
 
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	service := f.newService("foobar", nil)
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	manifest := f.newManifest("foobar", nil)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "nothing to watch")
 	}
@@ -133,23 +133,23 @@ func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
 
-	var startedServices []model.Manifest
+	var startedManifests []model.Manifest
 	for call := range f.b.calls {
-		startedServices = append(startedServices, call.service)
+		startedManifests = append(startedManifests, call.manifest)
 	}
 
-	assert.Equal(t, []model.Manifest{service}, startedServices)
+	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
 }
 
 // we can't have a test for a file change w/o error because Up doesn't return unless there's an error
@@ -157,16 +157,16 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		f.timerMaker.maxTimerLock.Lock()
 		call := <-f.b.calls
-		assert.Equal(t, service, call.service)
+		assert.Equal(t, manifest, call.manifest)
 		assert.Equal(t, []string{}, call.state.FilesChanged())
 		fileRelPath := "fdas"
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
-		assert.Equal(t, service, call.service)
+		assert.Equal(t, manifest, call.manifest)
 		assert.Equal(t, k8s.ContainerID("testcontainer"), call.state.LastResult.Container)
 		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
@@ -176,7 +176,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -188,11 +188,11 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		f.timerMaker.maxTimerLock.Lock()
 		call := <-f.b.calls
-		assert.Equal(t, service, call.service)
+		assert.Equal(t, manifest, call.manifest)
 		assert.Equal(t, []string{}, call.state.FilesChanged())
 
 		f.timerMaker.restTimerLock.Lock()
@@ -203,7 +203,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		f.timerMaker.restTimerLock.Unlock()
 
 		call = <-f.b.calls
-		assert.Equal(t, service, call.service)
+		assert.Equal(t, manifest, call.manifest)
 
 		var fileAbsPaths []string
 		for _, fileRelPath := range fileRelPaths {
@@ -216,7 +216,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -228,10 +228,10 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		call := <-f.b.calls
-		assert.Equal(t, service, call.service)
+		assert.Equal(t, manifest, call.manifest)
 		assert.Equal(t, []string{}, call.state.FilesChanged())
 
 		f.timerMaker.maxTimerLock.Lock()
@@ -243,7 +243,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		f.timerMaker.maxTimerLock.Unlock()
 
 		call = <-f.b.calls
-		assert.Equal(t, service, call.service)
+		assert.Equal(t, manifest, call.manifest)
 
 		var fileAbsPaths []string
 		for _, fileRelPath := range fileRelPaths {
@@ -256,7 +256,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.watcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
@@ -268,7 +268,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
 	go func() {
@@ -283,7 +283,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -291,11 +291,11 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	buildFailedToken := errors.New("doesn't compile")
 	f.b.nextBuildFailure = buildFailedToken
 
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, false)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, false)
 	expected := fmt.Errorf("build failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
@@ -304,7 +304,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	go func() {
 		call := <-f.b.calls
@@ -329,7 +329,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -337,7 +337,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	go func() {
 		call := <-f.b.calls
@@ -364,7 +364,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 		f.watcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{service}, true)
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 }
 
@@ -372,10 +372,10 @@ func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
-	service := f.newService("foobar", []model.Mount{mount})
+	manifest := f.newManifest("foobar", []model.Mount{mount})
 
 	f.docker.BuildCount++
-	err := f.upper.reapOldWatchBuilds(output.CtxForTest(), []model.Manifest{service}, time.Now())
+	err := f.upper.reapOldWatchBuilds(output.CtxForTest(), []model.Manifest{manifest}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +450,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
 
-func (f *testFixture) newService(name string, mounts []model.Mount) model.Manifest {
+func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
 	tag, err := reference.ParseNormalizedNamed(name)
 	if err != nil {
 		f.T().Fatal(err)

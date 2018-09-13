@@ -45,27 +45,27 @@ func NewSyncletBuildAndDeployer(sCli synclet.SyncletClient, kCli k8s.Client) *Sy
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, state BuildState) (BuildResult, error) {
+func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("service", service.Name.String())
+	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
 	// TODO(maia): proper output for this stuff
 
-	if err := sbd.canSyncletBuild(ctx, service, state); err != nil {
+	if err := sbd.canSyncletBuild(ctx, manifest, state); err != nil {
 		return BuildResult{}, err
 	}
 
-	return sbd.updateViaSynclet(ctx, service, state)
+	return sbd.updateViaSynclet(ctx, manifest, state)
 }
 
-// canSyncletBuild returns an error if we CAN'T build this service via the synclet
+// canSyncletBuild returns an error if we CAN'T build this manifest via the synclet
 func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
-	service model.Manifest, state BuildState) error {
+	manifest model.Manifest, state BuildState) error {
 
-	// TODO(maia): put service.Validate() upstream if we're gonna want to call it regardless
+	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
-	err := service.Validate()
+	err := manifest.Validate()
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	// Can't do container update if we don't know what container service is running in.
+	// Can't do container update if we don't know what container manifest is running in.
 	if !state.LastResult.HasContainer() {
 		return fmt.Errorf("prev. build state has no container")
 	}
@@ -84,11 +84,11 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 }
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
-	service model.Manifest, state BuildState) (BuildResult, error) {
+	manifest model.Manifest, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 
-	paths, err := build.FilesToPathMappings(state.FilesChanged(), service.Mounts)
+	paths, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -114,7 +114,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 
 	cID := state.LastResult.Container
 
-	cmds, err := build.BoilSteps(service.Steps, paths)
+	cmds, err := build.BoilSteps(manifest.Steps, paths)
 	if err != nil {
 		return BuildResult{}, err
 	}
