@@ -60,7 +60,8 @@ func NewKubectlClient(ctx context.Context, env Env) KubectlClient {
 	browser.Stderr = writer
 
 	return KubectlClient{
-		env: env,
+		env:           env,
+		kubectlRunner: realKubectlRunner{},
 	}
 }
 
