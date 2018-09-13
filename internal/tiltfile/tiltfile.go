@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -99,6 +100,9 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("filepath.Abs: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
+		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
 	return gitRepo{absPath}, nil
