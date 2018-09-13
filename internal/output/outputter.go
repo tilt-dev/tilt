@@ -63,7 +63,7 @@ func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
 func (o *Outputter) red() *color.Color    { return o.color(color.FgRed) }
 
 func (o *Outputter) StartPipeline(totalStepCount int) {
-	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting … ├────────────────────────────────────────"))
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting… ├──────────────────────────────────────────────"))
 	o.curPipelineStep = 1
 	o.totalPipelineStepCount = totalStepCount
 	o.pipelineStepDurations = nil
@@ -94,14 +94,11 @@ func (o *Outputter) EndPipeline(err error) {
 	}
 
 	for i, duration := range o.pipelineStepDurations {
-		o.logger.Infof("  │ Step %d - %.3fs", i+1, duration.Seconds())
+		o.logger.Infof("  │ Step %d - %.3fs │", i+1, duration.Seconds())
 	}
 
-	line := o.blue().Sprint("──┤ ︎Pipeline Done in ") +
-		o.green().Sprintf("%.3fs", elapsed.Seconds()) +
-		o.yellow().Sprint(" ⚡") +
-		o.blue().Sprint(" ︎├───────────────────────────────────")
-	o.logger.Infof("%s", line)
+	time := o.green().Sprintf("%.3fs", elapsed.Seconds())
+	o.logger.Infof("──┤ Done in: %s ︎├──", time)
 	o.curPipelineStep = 0
 	o.curBuildStep = 0
 }
@@ -117,7 +114,7 @@ func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
 func (o *Outputter) EndPipelineStep() {
 	elapsed := time.Now().Sub(o.curPipelineStepStart)
 	o.logger.Infof("    (Done %.3fs)", elapsed.Seconds())
-	o.logger.Infof("")
+	o.logger.Infof("") // space between Pipeline Steps
 	o.pipelineStepDurations = append(o.pipelineStepDurations, elapsed)
 }
 
