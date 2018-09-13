@@ -14,6 +14,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const podPollTimeoutSynclet = time.Second * 30
+
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {

@@ -4,46 +4,59 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-// PodWithImage returns the ID of the pod running the given image. We expect exactly one
-// matching pod: if too many or too few matches, throw an error.
+func (k KubectlClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		pID, err := k.PodWithImage(ctx, image)
+		if err != nil {
+			return "", err
+		}
+		if !pID.Empty() {
+			return pID, nil
+		}
+	}
+
+	return "", fmt.Errorf("timed out polling for pod running image %s (after %s)",
+		image.String(), timeout)
+}
+
+// PodWithImage returns the ID of the pod running the given image. If too many matches, throw
+// an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
 func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "kubectlClient-PodWithImage")
 	defer span.Finish()
 
-	ip, err := imagesToPods(ctx)
+	ip, err := k.imagesToPods(ctx)
 	if err != nil {
-		return PodID(""), err
+		return "", err
 	}
 	pods, ok := ip[image.String()]
 	if !ok {
-		return PodID(""), fmt.Errorf("unable to find pods for %s. Found: %+v", image, ip)
+		// Nothing's wrong, we just didn't find a match.
+		return "", nil
 	}
 	if len(pods) > 1 {
-		return PodID(""), fmt.Errorf("too many pods found for %s: %d", image, len(pods))
+		return "", fmt.Errorf("too many pods found for %s: %d", image, len(pods))
 	}
 	return pods[0], nil
 }
 
-func imagesToPods(ctx context.Context) (map[string][]PodID, error) {
-	c := exec.CommandContext(ctx, "kubectl", "get", "pods", `-o=jsonpath={range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}`)
+func (k KubectlClient) imagesToPods(ctx context.Context) (map[string][]PodID, error) {
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"kubectl", "get", "pods", `-o=jsonpath={range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}`})
 
-	out, err := c.Output()
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("imagesToPods: stderr: %s)", exitError.Stderr)
-		} else {
-			return nil, fmt.Errorf("imagesToPods: %v", err.Error())
-		}
+		return nil, fmt.Errorf("imagesToPods %v (with stderr: %s)", err, stderr)
+
 	}
 
-	return imgPodMapFromOutput(string(out))
+	return imgPodMapFromOutput(stdout)
 }
 
 func imgPodMapFromOutput(output string) (map[string][]PodID, error) {

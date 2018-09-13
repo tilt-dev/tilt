@@ -15,6 +15,8 @@ import (
 
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
+const podPollTimeoutLocal = time.Second * 3
+
 type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	env       k8s.Env
@@ -92,7 +94,6 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context
 	// HACK(maia): give the pod(s) we just deployed a bit to come up.
 	// TODO(maia): replace this with polling/smart waiting
 	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
-	time.Sleep(2 * time.Second)
 
 	for serv, state := range states {
 		if !state.LastResult.HasImage() {
@@ -116,7 +117,7 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	defer span.Finish()
 
 	// get pod running the image we just deployed
-	pID, err := cbd.k8sClient.PodWithImage(ctx, build.Image)
+	pID, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, time.Second*3)
 	if err != nil {
 		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
 	}
