@@ -1,18 +1,18 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"testing"
 )
 
 type fakeKubectlRunner struct {
-	output *bytes.Buffer
+	stdout string
+	stderr string
 	err    error
 }
 
-func (f fakeKubectlRunner) cli(ctx context.Context, cmd string, entities ...K8sEntity) (*bytes.Buffer, error) {
-	return f.output, f.err
+func (f fakeKubectlRunner) cli(ctx context.Context, cmd string, entities ...K8sEntity) (stdout string, stderr string, err error) {
+	return f.stdout, f.stderr, f.err
 }
 
 var _ kubectlRunner = fakeKubectlRunner{}
@@ -32,7 +32,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 }
 
 func (c clientTestFixture) setOutput(s string) {
-	c.runner.output = bytes.NewBufferString(s)
+	c.runner.stdout = s
 }
 
 func (c clientTestFixture) setError(err error) {

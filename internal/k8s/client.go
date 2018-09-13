@@ -100,15 +100,15 @@ func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
 	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
-	stderrBuf, err := k.kubectlRunner.cli(ctx, "apply", entities...)
+	_, stderr, err := k.kubectlRunner.cli(ctx, "apply", entities...)
 	if err != nil {
-		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderrBuf.String())
+		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
 	}
 	return nil
 }
 
 func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, err := k.kubectlRunner.cli(ctx, "delete", entities...)
+	_, _, err := k.kubectlRunner.cli(ctx, "delete", entities...)
 	_, isExitErr := err.(*exec.ExitError)
 	if isExitErr {
 		// In general, an exit error is ok for our purposes.
