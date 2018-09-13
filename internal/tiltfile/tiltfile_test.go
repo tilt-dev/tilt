@@ -502,3 +502,43 @@ ENTRYPOINT echo hi`)
 	// TODO(dmiller) is this right?
 	assert.Equal(t, []string{"sh", "-c", ""}, service.Entrypoint.Argv)
 }
+
+func TestFailsIfNotGitRepo(t *testing.T) {
+	td := tempdir.NewTempDirFixture(t)
+	defer td.TearDown()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWD)
+	err = os.Chdir(td.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image.add(local_git_repo('.'), '/mount_points/1')
+  print(image.file_name)
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	_, err = tiltconfig.GetServiceConfigs("blorgly")
+	if err == nil {
+		t.Error("Expected error")
+	}
+
+	if !strings.Contains(err.Error(), "isn't a valid git repo") {
+		t.Errorf("Expected error to be an invalid git repo error, got %s", err.Error())
+	}
+}
