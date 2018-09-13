@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os/exec"
@@ -63,4 +64,55 @@ func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
 		}
 	}
 	return imgsToPods, nil
+}
+
+func (k KubectlClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
+	jsonPath := "-o=jsonpath={.spec.nodeName}"
+	stdout, stderr, err := k.kubectlRunner.cli(ctx, fmt.Sprintf("get pods %s '%s'", podID.String(), jsonPath))
+
+	if err != nil {
+		return NodeID(""), fmt.Errorf("error finding node for pod '%s': %v, stderr: '%s'", podID.String(), err.Error(), stderr)
+	}
+
+	lines := nonEmptyLines(stdout)
+
+	if len(lines) == 0 {
+		return NodeID(""), fmt.Errorf("kubectl output did not contain a node name for pod '%s': '%s'", podID, stdout)
+	} else if len(lines) > 1 {
+		return NodeID(""), fmt.Errorf("kubectl returned multiple nodes for pod '%s': '%s'", podID, stdout)
+	} else {
+		return NodeID(lines[0]), nil
+	}
+}
+
+func (k KubectlClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
+	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
+	stdout, stderr, err := k.kubectlRunner.cli(ctx, fmt.Sprintf("get pods --namespace=kube-system -l=app=%s '%s'", appName, jsonPath))
+
+	if err != nil {
+		return PodID(""), fmt.Errorf("error finding app '%s' on node '%s': %v, stderr: '%s'", appName, nodeID.String(), err.Error(), stderr)
+	}
+
+	lines := nonEmptyLines(stdout)
+
+	if len(lines) == 0 {
+		return PodID(""), fmt.Errorf("unable to find any apps named '%s' on node '%s'", appName, nodeID)
+	} else if len(lines) > 1 {
+		return PodID(""), fmt.Errorf("found multiple apps named '%s' on node '%s': '%s'", appName, nodeID, stdout)
+	} else {
+		return PodID(lines[0]), nil
+	}
+}
+
+func nonEmptyLines(s string) []string {
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	scanner.Split(bufio.ScanWords)
+
+	var ret []string
+
+	for scanner.Scan() {
+		ret = append(ret, scanner.Text())
+	}
+
+	return ret
 }

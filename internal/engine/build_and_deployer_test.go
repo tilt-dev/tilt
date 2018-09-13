@@ -234,3 +234,11 @@ func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedT
 func (c *FakeK8sClient) applyWasCalled() bool {
 	return c.yaml != ""
 }
+
+func (c *FakeK8sClient) FindAppByNode(ctx context.Context, appName string, nodeID k8s.NodeID) (k8s.PodID, error) {
+	return k8s.PodID("pod2"), nil
+}
+
+func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID k8s.PodID) (k8s.NodeID, error) {
+	return k8s.NodeID("node"), nil
+}
