@@ -7,12 +7,10 @@ package cli
 
 import (
 	context "context"
-
 	build "github.com/windmilleng/tilt/internal/build"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
-	service "github.com/windmilleng/tilt/internal/service"
 )
 
 // Injectors from wire.go:
@@ -49,9 +47,7 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, kubectlClient, browser, imageReaper)
-	manager := service.ProvideMemoryManager()
-	serviceCreator := provideServiceCreator(upper, manager)
-	return serviceCreator, nil
+	return upper, nil
 }
 
 var (
