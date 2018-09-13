@@ -32,13 +32,13 @@ Creates a `repo` with the content at `path`.
     * `path`: **str**
 * Returns: **Repo**
 
-#### build_docker_image(dockerfile_path, img_name, entrypoint)
+#### build_docker_image(dockerfile_path, img_name, entrypoint?)
 Builds a docker image.
 
 * Args:
   * `dockerfile_path`: **str**
   * `img_name`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
-  * `entrypoint`: **str**
+  * `entrypoint?`: **str**
 * Returns: **Image**
 
 #### Image.add(repo, path)
@@ -55,7 +55,7 @@ If the `trigger` file is specified, the build step is only run if the file is ch
 
 * Args:
   * `cmd`: **str**
-  * `trigger`: **List[str] | str**
+  * `trigger?`: **List[str] | str**
 * Returns: nothing
 
 #### k8s_service(yaml_text, img)
