@@ -117,6 +117,8 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	defer span.Finish()
 
 	// get pod running the image we just deployed
+	// TODO(maia): parallelize this polling (inefficient b/c first we deploy all manifests in series,
+	// then we poll for pods for all of them (again in series)
 	pID, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, time.Second*3)
 	if err != nil {
 		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)

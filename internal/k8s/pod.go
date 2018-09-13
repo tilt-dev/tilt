@@ -8,10 +8,14 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 )
 
 func (k KubectlClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "kubectlClient-PollForPodWithImage")
+	span.SetTag("img", image.String())
+	defer span.Finish()
+
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		pID, err := k.PodWithImage(ctx, image)
@@ -49,13 +53,12 @@ func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTa
 }
 
 func (k KubectlClient) imagesToPods(ctx context.Context) (map[string][]PodID, error) {
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"kubectl", "get", "pods", `-o=jsonpath={range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}`})
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", `-o=jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}'`})
 
 	if err != nil {
 		return nil, fmt.Errorf("imagesToPods %v (with stderr: %s)", err, stderr)
 
 	}
-
 	return imgPodMapFromOutput(stdout)
 }
 
