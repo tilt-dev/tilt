@@ -32,19 +32,19 @@ func (m Manifest) Validate() error {
 
 func (m Manifest) validate() *ValidateErr {
 	if m.Name == "" {
-		return validateErrf("[validate] service missing name: %+v", m)
+		return validateErrf("[validate] manifest missing name: %+v", m)
 	}
 
 	if m.DockerfileTag == nil {
-		return validateErrf("[validate] service %q missing image tag", m.Name)
+		return validateErrf("[validate] manifest %q missing image tag", m.Name)
 	}
 
 	if m.K8sYaml == "" {
-		return validateErrf("[validate] service %q missing YAML file", m.Name)
+		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
 	}
 
 	if m.Entrypoint.Empty() {
-		return validateErrf("[validate] service %q missing Entrypoint", m.Name)
+		return validateErrf("[validate] manifest %q missing Entrypoint", m.Name)
 	}
 
 	return nil

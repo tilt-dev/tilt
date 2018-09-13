@@ -14,59 +14,59 @@ import (
 
 const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `.add(dest, src)`. Now it is `.add(src, dest)`."
 
-type compService struct {
-	cService []k8sService
+type compManifest struct {
+	cManifest []k8sManifest
 }
 
-var _ skylark.Value = compService{}
+var _ skylark.Value = compManifest{}
 
-func (s compService) String() string {
-	return fmt.Sprintf("composite service: %+v", s.cService)
+func (s compManifest) String() string {
+	return fmt.Sprintf("composite manifest: %+v", s.cManifest)
 }
-func (s compService) Type() string {
-	return "compService"
+func (s compManifest) Type() string {
+	return "compManifest"
 }
-func (s compService) Freeze() {
+func (s compManifest) Freeze() {
 }
-func (compService) Truth() skylark.Bool {
+func (compManifest) Truth() skylark.Bool {
 	return true
 }
-func (compService) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: composite service")
+func (compManifest) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: composite manifest")
 }
 
-type k8sService struct {
+type k8sManifest struct {
 	k8sYaml     skylark.String
 	dockerImage dockerImage
 	name        string
 }
 
-var _ skylark.Value = k8sService{}
+var _ skylark.Value = k8sManifest{}
 
-func (s k8sService) String() string {
+func (s k8sManifest) String() string {
 	shortYaml := s.k8sYaml.String()
 	const maxYamlCharsToInclude = 40
 	if len(shortYaml) > maxYamlCharsToInclude {
 		shortYaml = shortYaml[:maxYamlCharsToInclude]
 	}
-	return fmt.Sprintf("[k8sService] yaml: '%v' dockerImage: '%v'", shortYaml, s.dockerImage)
+	return fmt.Sprintf("[k8sManifest] yaml: '%v' dockerImage: '%v'", shortYaml, s.dockerImage)
 }
 
-func (s k8sService) Type() string {
-	return "k8sService"
+func (s k8sManifest) Type() string {
+	return "k8sManifest"
 }
 
-func (s k8sService) Freeze() {
+func (s k8sManifest) Freeze() {
 	s.k8sYaml.Freeze()
 	s.dockerImage.Freeze()
 }
 
-func (k8sService) Truth() skylark.Bool {
+func (k8sManifest) Truth() skylark.Bool {
 	return true
 }
 
-func (k8sService) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: k8sService")
+func (k8sManifest) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: k8sManifest")
 }
 
 type mount struct {
