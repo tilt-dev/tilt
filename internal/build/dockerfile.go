@@ -11,8 +11,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-var ErrEntrypointInDockerfile = errors.New("base Dockerfile contains an ENTRYPOINT/CMD, " +
-	"which is not currently supported -- provide an entrypoint in your Tiltfile")
 var ErrAddInDockerfile = errors.New("base Dockerfile contains an ADD/COPY, " +
 	"which is not currently supported -- move this to an add() call in your Tiltfile")
 
@@ -67,8 +65,6 @@ func (d Dockerfile) ValidateBaseDockerfile() error {
 
 	err = traverse(result.AST, func(node *parser.Node) error {
 		switch strings.ToUpper(node.Value) {
-		case "ENTRYPOINT", "CMD":
-			return ErrEntrypointInDockerfile
 		case "ADD", "COPY":
 			return ErrAddInDockerfile
 		}
