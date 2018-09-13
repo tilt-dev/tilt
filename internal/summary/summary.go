@@ -22,11 +22,8 @@ type Service struct {
 }
 
 type k8sData struct {
-	LoadBalancers []k8s.LoadBalancer
-	Group         string
-	Kinds         []string
-	Version       string
 	Name          string
+	LoadBalancers []k8s.LoadBalancer
 }
 
 // NewSummary returns summary state
@@ -61,9 +58,6 @@ func (s *Summary) Gather(services []model.Service) error {
 		}
 
 		for _, e := range entities {
-			kubeData.Group = e.Kind.Group
-			kubeData.Version = e.Kind.Version
-			kubeData.Kinds = append(kubeData.Kinds, e.Kind.Kind)
 			kubeData.Name = k8s.GetDeploymentName(e)
 		}
 
