@@ -33,15 +33,15 @@ func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, kubectlClient)
-	firstLineBuildAndDeployer := engine.NewFirstLineBuildAndDeployer(syncletBuildAndDeployer, localContainerBuildAndDeployer, env)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, env)
-	v := engine.DefaultShouldFallBack()
-	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(firstLineBuildAndDeployer, imageBuildAndDeployer, v)
+	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env)
+	fallbackTester := engine.DefaultShouldFallBack()
+	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, kubectlClient, browser, imageReaper)
 	manager := service.ProvideMemoryManager()
