@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
@@ -70,7 +68,6 @@ func (b *fakeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states Bui
 			states[serv] = state
 		}
 	}
-	log.Printf("final result: %+v", states)
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -170,7 +167,6 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
-		spew.Dump(call.state.LastResult)
 		assert.Equal(t, k8s.ContainerID("testcontainer"), call.state.LastResult.Container)
 		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
