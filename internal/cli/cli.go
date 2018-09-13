@@ -7,8 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
-	model "github.com/windmilleng/tilt/internal/model"
-	service "github.com/windmilleng/tilt/internal/service"
 )
 
 var debug bool
@@ -66,8 +64,4 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	}
 
 	parent.AddCommand(cobraChild)
-}
-
-func provideServiceCreator(upper engine.Upper, sm service.Manager) model.ManifestCreator {
-	return service.TrackServices(upper, sm)
 }
