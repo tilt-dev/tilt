@@ -64,3 +64,66 @@ func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
 	}
 	return imgsToPods, nil
 }
+
+func (k KubectlClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
+	jsonPath := "-o=jsonpath={.spec.nodeName}"
+	b, err := k.kubectlRunner.cli(ctx, fmt.Sprintf("get pods %s '%s'", podID.String(), jsonPath))
+
+	out := b.String()
+
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return NodeID(""), fmt.Errorf("imagesToPods: stderr: %s)", exitError.Stderr)
+		} else {
+			return NodeID(""), fmt.Errorf("imagesToPods: %v", err.Error())
+		}
+	}
+
+	lines := nonEmptyLines(out)
+
+	if len(lines) == 0 {
+		return NodeID(""), fmt.Errorf("kubectl output did not contain a node name for pod '%s': '%s'", podID, out)
+	} else if len(lines) > 1 {
+		return NodeID(""), fmt.Errorf("kubectl returned multiple nodes for pod '%s': '%s'", podID, out)
+	} else {
+		return NodeID(lines[0]), nil
+	}
+}
+
+func (k KubectlClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
+	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
+	b, err := k.kubectlRunner.cli(ctx, fmt.Sprintf("get pods --namespace=kube-system -l=app=%s '%s'", appName, jsonPath))
+
+	out := b.String()
+
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return PodID(""), fmt.Errorf("imagesToPods: stderr: %s)", exitError.Stderr)
+		} else {
+			return PodID(""), fmt.Errorf("imagesToPods: %v", err.Error())
+		}
+	}
+
+	lines := nonEmptyLines(out)
+
+	if len(lines) == 0 {
+		return PodID(""), fmt.Errorf("unable to find any apps named '%s' on node '%s'", appName, nodeID)
+	} else if len(lines) > 1 {
+		return PodID(""), fmt.Errorf("found multiple apps named '%s' on node '%s': '%s'", appName, nodeID, out)
+	} else {
+		return PodID(lines[0]), nil
+	}
+}
+
+func nonEmptyLines(s string) []string {
+	lines := strings.Split(s, "\n")
+
+	var ret []string
+	for _, line := range lines {
+		if len(line) > 0 {
+			ret = append(ret, line)
+		}
+	}
+
+	return ret
+}
