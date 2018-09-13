@@ -10,7 +10,7 @@ import (
 )
 
 type BuildAndDeployer interface {
-	// Builds and deployed the specified service.
+	// BuildAndDeploy builds and deployed the specified service.
 	//
 	// Returns a BuildResult that expresses the output of the build.
 	//
@@ -18,11 +18,8 @@ type BuildAndDeployer interface {
 	// the last successful build and the files changed since that build.
 	BuildAndDeploy(ctx context.Context, service model.Manifest, currentState BuildState) (BuildResult, error)
 
-	// BaD needs to be able to get the container that a given build affected, so that
-	// it can do incremental builds on that container if needed.
-	// NOTE(maia): this isn't quite relevant to ImageBuildAndDeployer,
-	// consider putting elsewhere or renaming (`Warm`?).
-	GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error)
+	// PostProcessBuilds modifies `states` map in place with any info we'll need for subsequent builds.
+	PostProcessBuilds(ctx context.Context, states BuildStatesByName)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -77,22 +74,11 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	// NOTE(maia): this will be relocated soon... for now, call out to the embedded BaD that has this implemented
-	var lastErr error
-	for _, builder := range composite.builders {
-		cID, err := builder.GetContainerForBuild(ctx, build)
-		if err == nil {
-			return cID, err
-		}
-
-		if !composite.shouldFallBack(err) {
-			return "", err
-		}
-		logger.Get(ctx).Verbosef("falling back to next build and deploy method after error: %v", err)
-		lastErr = err
+func (composite *CompositeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	// HACK(maia): for now, we expect this func to live on the first BaD.
+	if len(composite.builders) != 0 {
+		composite.builders[0].PostProcessBuilds(ctx, states)
 	}
-	return "", lastErr
 }
 
 func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, env k8s.Env) BuildOrder {

@@ -3,10 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"google.golang.org/grpc"
@@ -127,8 +129,8 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	}, nil
 }
 
-func (sbd *SyncletBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-GetContainerForBuild")
+func (sbd *SyncletBuildAndDeployer) getContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-getContainerForBuild")
 	defer span.Finish()
 
 	// get pod running the image we just deployed
@@ -144,4 +146,39 @@ func (sbd *SyncletBuildAndDeployer) GetContainerForBuild(ctx context.Context, bu
 	}
 
 	return cID, nil
+}
+
+func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuilds")
+	defer span.Finish()
+
+	// HACK(maia): give the pod(s) we just deployed a bit to come up (takes longer on gke, sigh)
+	// TODO(maia): replace this with polling/smart waiting
+	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
+	fmt.Printf("SLEEPING")
+	for i := 0; i < 30; i++ {
+		if ctx.Err() != nil {
+			return
+		}
+		fmt.Printf(".")
+		time.Sleep(time.Second)
+	}
+
+	for serv, state := range states {
+		if !state.LastResult.HasImage() {
+			logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", serv)
+			continue
+		}
+		if !state.LastResult.HasContainer() {
+			cID, err := sbd.getContainerForBuild(ctx, state.LastResult)
+			if err != nil {
+				logger.Get(ctx).Infof("couldn't get container for %s: %v", serv, err)
+				continue
+			}
+			state.LastResult.Container = cID
+			states[serv] = state
+		}
+	}
+
+	return
 }

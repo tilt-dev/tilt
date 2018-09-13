@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
@@ -38,6 +39,8 @@ type BuildState struct {
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	filesChangedSet map[string]bool
 }
+
+type BuildStatesByName map[model.ManifestName]BuildState
 
 func NewBuildState(result BuildResult) BuildState {
 	return BuildState{

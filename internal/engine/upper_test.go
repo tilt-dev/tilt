@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -61,12 +63,14 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	return b.nextBuildResult(), nil
 }
 
-func (b *fakeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	if build.Image == nil {
-		b.t.Error("Tried to get container for BuildResult with no image")
-		return "", fmt.Errorf("can't get container for BuildResult with no image")
+func (b *fakeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	for serv, state := range states {
+		if state.LastResult.HasImage() && !state.LastResult.HasContainer() {
+			state.LastResult.Container = k8s.ContainerID("testcontainer")
+			states[serv] = state
+		}
 	}
-	return k8s.ContainerID("testcontainer"), nil
+	log.Printf("final result: %+v", states)
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -166,6 +170,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, service, call.service)
+		spew.Dump(call.state.LastResult)
 		assert.Equal(t, k8s.ContainerID("testcontainer"), call.state.LastResult.Container)
 		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
