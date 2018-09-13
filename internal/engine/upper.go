@@ -110,9 +110,10 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Printf("%s", s.Output())
+	output.Get(ctx).Summary("%s", s.Output())
 
 	if watchMounts {
+		output.Get(ctx).Printf("Waiting for changes…")
 		go func() {
 			err := u.reapOldWatchBuilds(ctx, services, time.Now())
 			if err != nil {
@@ -158,7 +159,8 @@ func (u Upper) CreateServices(ctx context.Context, services []model.Service, wat
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-				output.Get(ctx).Printf("%s", s.Output())
+				output.Get(ctx).Summary("%s", s.Output())
+				output.Get(ctx).Printf("Waiting for changes…")
 
 			case err := <-sw.errs:
 				return err

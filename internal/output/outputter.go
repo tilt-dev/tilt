@@ -123,6 +123,12 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.curBuildStep++
 }
 
+func (o *Outputter) Summary(format string, a ...interface{}) {
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Status ├──────────────────────────────────────────────────────────"))
+	o.logger.Infof(format, a...)
+	o.logger.Infof("%s", o.blue().Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
+}
+
 func (o *Outputter) Printf(format string, a ...interface{}) {
 	if o.curBuildStep == 0 {
 		o.logger.Infof(format, a...)
