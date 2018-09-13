@@ -460,3 +460,26 @@ func TestInvalidDockerTag(t *testing.T) {
 		t.Errorf("Expected error message to contain %v, got %v", msg, err)
 	}
 }
+
+func TestEntrypointIsOptional(t *testing.T) {
+	dockerfile := tempFile(`FROM alpine
+ENTRYPOINT echo hi`)
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image(%q, "docker-tag")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	services, err := tiltconfig.GetServiceConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := services[0]
+	// TODO(dmiller) is this right?
+	assert.Equal(t, []string{"sh", "-c", ""}, service.Entrypoint.Argv)
+}
