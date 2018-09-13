@@ -12,7 +12,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -61,12 +61,13 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model
 	return b.nextBuildResult(), nil
 }
 
-func (b *fakeBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	if build.Image == nil {
-		b.t.Error("Tried to get container for BuildResult with no image")
-		return "", fmt.Errorf("can't get container for BuildResult with no image")
+func (b *fakeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	for serv, state := range states {
+		if state.LastResult.HasImage() && !state.LastResult.HasContainer() {
+			state.LastResult.Container = k8s.ContainerID("testcontainer")
+			states[serv] = state
+		}
 	}
-	return k8s.ContainerID("testcontainer"), nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {

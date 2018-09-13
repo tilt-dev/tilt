@@ -85,8 +85,34 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}, nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) GetContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-GetContainerForBuild")
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuilds")
+	defer span.Finish()
+
+	// HACK(maia): give the pod(s) we just deployed a bit to come up.
+	// TODO(maia): replace this with polling/smart waiting
+	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
+	time.Sleep(2 * time.Second)
+
+	for serv, state := range states {
+		if !state.LastResult.HasImage() {
+			logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", serv)
+			continue
+		}
+		if !state.LastResult.HasContainer() {
+			cID, err := cbd.getContainerForBuild(ctx, state.LastResult)
+			if err != nil {
+				logger.Get(ctx).Infof("couldn't get container for %s: %v", serv, err)
+				continue
+			}
+			state.LastResult.Container = cID
+			states[serv] = state
+		}
+	}
+}
+
+func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-getContainerForBuild")
 	defer span.Finish()
 
 	// get pod running the image we just deployed

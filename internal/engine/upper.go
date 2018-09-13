@@ -66,7 +66,7 @@ func (u Upper) CreateManifests(ctx context.Context, services []model.Manifest, w
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	buildStates := make(map[model.ManifestName]BuildState)
+	buildStates := make(BuildStatesByName)
 
 	var sw *serviceWatcher
 	var err error
@@ -120,12 +120,10 @@ func (u Upper) CreateManifests(ctx context.Context, services []model.Manifest, w
 			}
 		}()
 
-		// Give the pod(s) we just deployed a bit to come up
-		time.Sleep(2 * time.Second)
+		// TODO(maia): move this call somewhere more logical (parallelize?)
+		u.b.PostProcessBuilds(ctx, buildStates)
 
-		// Need to know what container(s) we just pushed up so we can do updates live.
-		u.populateContainersForBuildStates(ctx, buildStates)
-
+		logger.Get(ctx).Infof("Awaiting edits...")
 		for {
 			select {
 			case <-ctx.Done():
@@ -166,23 +164,6 @@ func (u Upper) CreateManifests(ctx context.Context, services []model.Manifest, w
 		}
 	}
 	return nil
-}
-
-// populateContainersForBuildStates updates the given map of service --> build state in place;
-// populates each BuildState with its corresponding containerID
-func (u Upper) populateContainersForBuildStates(ctx context.Context, buildStates map[model.ManifestName]BuildState) {
-	for serv, state := range buildStates {
-		if !state.LastResult.HasContainer() && state.LastResult.HasImage() {
-			cID, err := u.b.GetContainerForBuild(ctx, state.LastResult)
-			if err != nil {
-				logger.Get(ctx).Infof(
-					"couldn't get container for %s, but the pod's probably just not up yet: %v", serv, err)
-				continue
-			}
-			state.LastResult.Container = cID
-			buildStates[serv] = state
-		}
-	}
 }
 
 func (u Upper) logBuildEvent(ctx context.Context, service model.Manifest, buildState BuildState) {
