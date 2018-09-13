@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -101,7 +102,7 @@ func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
 	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
-	_, stderr, err := k.kubectlRunner.cli(ctx, "apply", entities...)
+	_, stderr, err := k.applyOrDeleteFromEntities(ctx, "apply", entities)
 	if err != nil {
 		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
 	}
@@ -109,7 +110,7 @@ func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 }
 
 func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, _, err := k.kubectlRunner.cli(ctx, "delete", entities...)
+	_, _, err := k.applyOrDeleteFromEntities(ctx, "delete", entities)
 	_, isExitErr := err.(*exec.ExitError)
 	if isExitErr {
 		// In general, an exit error is ok for our purposes.
@@ -121,4 +122,16 @@ func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
 		return fmt.Errorf("kubectl delete: %v", err)
 	}
 	return err
+}
+
+func (k KubectlClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, entities []K8sEntity) (stdout string, stderr string, err error) {
+	args := []string{cmd, "-f", "-"}
+
+	rawYAML, err := SerializeYAML(entities)
+	if err != nil {
+		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmd, err)
+	}
+	stdin := bytes.NewReader([]byte(rawYAML))
+
+	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
 }

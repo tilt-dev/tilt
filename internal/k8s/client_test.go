@@ -2,16 +2,36 @@ package k8s
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"testing"
 )
+
+type call struct {
+	argv  []string
+	stdin string
+}
 
 type fakeKubectlRunner struct {
 	stdout string
 	stderr string
 	err    error
+
+	calls []call
 }
 
-func (f fakeKubectlRunner) cli(ctx context.Context, cmd string, entities ...K8sEntity) (stdout string, stderr string, err error) {
+func (f fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+	b, err := ioutil.ReadAll(stdin)
+	if err != nil {
+		return "", "", fmt.Errorf("reading stdin: %v", err)
+	}
+	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
+	return f.stdout, f.stderr, f.err
+}
+
+func (f fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
+	f.calls = append(f.calls, call{argv: args})
 	return f.stdout, f.stderr, f.err
 }
 

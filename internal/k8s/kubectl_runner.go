@@ -3,7 +3,6 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os/exec"
 
@@ -11,30 +10,31 @@ import (
 )
 
 type kubectlRunner interface {
-	cli(ctx context.Context, cmd string, entities ...K8sEntity) (stdout string, stderr string, err error)
+	exec(ctx context.Context, argv []string) (stdout string, stderr string, err error)
+	execWithStdin(ctx context.Context, argv []string, stdin io.Reader) (stdout string, stderr string, err error)
 }
 
 type realKubectlRunner struct{}
 
 var _ kubectlRunner = realKubectlRunner{}
 
-func (k realKubectlRunner) cli(ctx context.Context, cmd string, entities ...K8sEntity) (stdout string, stderr string, err error) {
-	args := []string{cmd}
-
-	if len(entities) > 0 {
-		args = append(args, "-f", "-")
-	}
-
+func (k realKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
 	c := exec.CommandContext(ctx, "kubectl", args...)
 
-	if len(entities) > 0 {
-		rawYAML, err := SerializeYAML(entities)
-		if err != nil {
-			return "", "", fmt.Errorf("kubectl %s: %v", cmd, err)
-		}
-		r := bytes.NewReader([]byte(rawYAML))
-		c.Stdin = r
-	}
+	writer := output.Get(ctx).Writer()
+
+	stdoutBuf := &bytes.Buffer{}
+	c.Stdout = io.MultiWriter(stdoutBuf, writer)
+
+	stderrBuf := &bytes.Buffer{}
+	c.Stderr = io.MultiWriter(stderrBuf, writer)
+
+	return stdoutBuf.String(), stderrBuf.String(), c.Run()
+}
+
+func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+	c := exec.CommandContext(ctx, "kubectl", args...)
+	c.Stdin = stdin
 
 	writer := output.Get(ctx).Writer()
 
