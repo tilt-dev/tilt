@@ -3,7 +3,20 @@ package k8s
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func TestName(t *testing.T) {
+	entities, err := ParseYAMLFromString(BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, len(entities))
+	assert.Equal(t, "devel-nick-lb-blorg-be", entities[0].Name())
+	assert.Equal(t, "devel-nick-blorg-be", entities[1].Name())
+}
 
 func TestImmutableFilter(t *testing.T) {
 	yaml := fmt.Sprintf("%s\n---\n%s", JobYAML, SanchoYAML)
