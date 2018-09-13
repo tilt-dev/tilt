@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -42,6 +43,8 @@ func provideBuildAndDeployer(
 	shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSet,
+		analytics.NewMemoryAnalytics,
+		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 	)
 
 	return nil, nil

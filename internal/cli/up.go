@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
@@ -43,6 +44,9 @@ func (c *upCmd) register() *cobra.Command {
 }
 
 func (c *upCmd) run(args []string) error {
+	analyticsService.Incr("cmd.up", map[string]string{"watch": fmt.Sprintf("%v", c.watch)})
+	defer analyticsService.Flush(time.Second)
+
 	span := opentracing.StartSpan("Up")
 	tags := tracer.TagStrToMap(c.traceTags)
 	for k, v := range tags {

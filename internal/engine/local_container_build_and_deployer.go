@@ -3,12 +3,14 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
@@ -17,26 +19,33 @@ type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	env       k8s.Env
 	k8sClient k8s.Client
+	analytics analytics.Analytics
 }
 
-func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client) *LocalContainerBuildAndDeployer {
+func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,
 		env:       env,
 		k8sClient: kCli,
+		analytics: analytics,
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (result BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("service", service.Name.String())
 	defer span.Finish()
+
+	startTime := time.Now()
+	defer func() {
+		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
+	}()
 
 	// TODO(maia): proper output for this stuff
 
 	// TODO(maia): put service.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
-	err := service.Validate()
+	err = service.Validate()
 	if err != nil {
 		return BuildResult{}, err
 	}

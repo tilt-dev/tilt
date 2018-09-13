@@ -30,6 +30,12 @@ func Execute(cleanUpFn func() error) {
 		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
 	}
 
+	err := initAnalytics(rootCmd)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	addCommand(rootCmd, &upCmd{cleanUpFn: cleanUpFn, browserMode: engine.BrowserAuto})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")

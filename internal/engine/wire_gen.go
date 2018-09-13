@@ -11,6 +11,7 @@ import (
 	build "github.com/windmilleng/tilt/internal/build"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	synclet "github.com/windmilleng/tilt/internal/synclet"
+	analytics "github.com/windmilleng/wmclient/pkg/analytics"
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
@@ -19,13 +20,14 @@ import (
 func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(sCli, k8s2)
 	containerUpdater := build.NewContainerUpdater(docker)
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, env, k8s2)
+	memoryAnalytics := analytics.NewMemoryAnalytics()
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, env, k8s2, memoryAnalytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env, memoryAnalytics)
 	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder, shouldFallBackToImgBuild)
 	return compositeBuildAndDeployer, nil
