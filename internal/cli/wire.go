@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func wireServiceCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
+func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
 	wire.Build(
 		k8s.DetectEnv,
 
