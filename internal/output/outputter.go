@@ -79,15 +79,8 @@ func (o *Outputter) EndPipeline(err error) {
 	elapsed := time.Now().Sub(o.curPipelineStart)
 
 	if err != nil {
-		// Error output
-		line := o.red().Sprint("──┤ ︎Pipeline FAILED in ") +
-			o.blue().Sprintf("%.3fs", elapsed.Seconds()) +
-			o.yellow().Sprint(" 😢") +
-			o.red().Sprint(" ︎├───────────────────────────────────")
-		o.logger.Infof("%s", line)
-		line = o.red().Sprint("  → ︎ERROR: ") +
-			o.yellow().Sprint(err.Error())
-		o.logger.Infof("%s", line)
+		prefix := o.red().Sprint(" ︎ERROR:")
+		o.logger.Infof("%s %s\n", prefix, err.Error())
 		o.curPipelineStep = 0
 		o.curBuildStep = 0
 		return
