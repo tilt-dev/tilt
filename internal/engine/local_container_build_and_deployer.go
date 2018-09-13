@@ -31,7 +31,7 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, 
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (result BuildResult, err error) {
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, state BuildState) (result BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("service", service.Name.String())
 	defer span.Finish()

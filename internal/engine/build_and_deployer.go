@@ -16,7 +16,7 @@ type BuildAndDeployer interface {
 	//
 	// BuildResult can be used to construct a BuildState, which contains
 	// the last successful build and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, service model.Service, currentState BuildState) (BuildResult, error)
+	BuildAndDeploy(ctx context.Context, service model.Manifest, currentState BuildState) (BuildResult, error)
 
 	// BaD needs to be able to get the container that a given build affected, so that
 	// it can do incremental builds on that container if needed.
@@ -48,7 +48,7 @@ func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTe
 	}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, currentState BuildState) (BuildResult, error) {
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, currentState BuildState) (BuildResult, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, service, currentState)

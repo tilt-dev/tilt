@@ -68,6 +68,6 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	parent.AddCommand(cobraChild)
 }
 
-func provideServiceCreator(upper engine.Upper, sm service.Manager) model.ServiceCreator {
+func provideServiceCreator(upper engine.Upper, sm service.Manager) model.ManifestCreator {
 	return service.TrackServices(upper, sm)
 }

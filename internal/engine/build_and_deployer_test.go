@@ -34,7 +34,7 @@ func TestShouldImageBuild(t *testing.T) {
 		assert.False(t, shouldImageBuild(pathMapErr))
 	}
 
-	s := model.Service{Name: "many errors"}
+	s := model.Manifest{Name: "many errors"}
 	validateErr := s.Validate()
 	if assert.Error(t, validateErr) {
 		assert.False(t, shouldImageBuild(validateErr))

@@ -12,7 +12,7 @@ import (
 )
 
 type serviceFilesChangedEvent struct {
-	service model.Service
+	service model.Manifest
 	files   []string
 }
 
@@ -26,7 +26,7 @@ func makeServiceWatcher(
 	ctx context.Context,
 	watcherMaker watcherMaker,
 	timerMaker timerMaker,
-	services []model.Service) (*serviceWatcher, error) {
+	services []model.Manifest) (*serviceWatcher, error) {
 
 	var sns []serviceNotifyPair
 	for _, service := range services {
@@ -133,16 +133,16 @@ type watchEventsStream struct {
 }
 
 type serviceSingleFileChangeEvent struct {
-	service  model.Service
+	service  model.Manifest
 	fileName string
 }
 
 type serviceNotifyPair struct {
-	service model.Service
+	service model.Manifest
 	notify  watch.Notify
 }
 
-func makeFilter(ctx context.Context, service model.Service) (model.PathMatcher, error) {
+func makeFilter(ctx context.Context, service model.Manifest) (model.PathMatcher, error) {
 	var repoRoots []string
 
 	for _, mount := range service.Mounts {
@@ -176,7 +176,7 @@ func snsToServiceWatcher(ctx context.Context, timerMaker timerMaker, sns []servi
 			return nil, err
 		}
 
-		go func(service model.Service, watcher watch.Notify) {
+		go func(service model.Manifest, watcher watch.Notify) {
 			// TODO(matt) this will panic if we actually close channels. look at "merge" in https://blog.golang.org/pipelines
 			//defer close(events)
 			//defer close(errs)

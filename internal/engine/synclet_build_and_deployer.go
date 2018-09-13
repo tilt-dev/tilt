@@ -43,7 +43,7 @@ func NewSyncletBuildAndDeployer(sCli synclet.SyncletClient, kCli k8s.Client) *Sy
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Service, state BuildState) (BuildResult, error) {
+func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, service model.Manifest, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("service", service.Name.String())
 	defer span.Finish()
@@ -59,7 +59,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, service 
 
 // canSyncletBuild returns an error if we CAN'T build this service via the synclet
 func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
-	service model.Service, state BuildState) error {
+	service model.Manifest, state BuildState) error {
 
 	// TODO(maia): put service.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
@@ -82,7 +82,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 }
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
-	service model.Service, state BuildState) (BuildResult, error) {
+	service model.Manifest, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 

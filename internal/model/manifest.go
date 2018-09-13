@@ -8,50 +8,50 @@ import (
 	"github.com/docker/distribution/reference"
 )
 
-type ServiceName string
+type ManifestName string
 
-func (s ServiceName) String() string { return string(s) }
+func (m ManifestName) String() string { return string(m) }
 
-type Service struct {
+type Manifest struct {
 	K8sYaml        string
 	DockerfileText string
 	Mounts         []Mount
 	Steps          []Step
 	Entrypoint     Cmd
 	DockerfileTag  reference.Named
-	Name           ServiceName
+	Name           ManifestName
 }
 
-func (s Service) Validate() error {
-	err := s.validate()
+func (m Manifest) Validate() error {
+	err := m.validate()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s Service) validate() *ValidateErr {
-	if s.Name == "" {
-		return validateErrf("[validate] service missing name: %+v", s)
+func (m Manifest) validate() *ValidateErr {
+	if m.Name == "" {
+		return validateErrf("[validate] service missing name: %+v", m)
 	}
 
-	if s.DockerfileTag == nil {
-		return validateErrf("[validate] service %q missing image tag", s.Name)
+	if m.DockerfileTag == nil {
+		return validateErrf("[validate] service %q missing image tag", m.Name)
 	}
 
-	if s.K8sYaml == "" {
-		return validateErrf("[validate] service %q missing YAML file", s.Name)
+	if m.K8sYaml == "" {
+		return validateErrf("[validate] service %q missing YAML file", m.Name)
 	}
 
-	if s.Entrypoint.Empty() {
-		return validateErrf("[validate] service %q missing Entrypoint", s.Name)
+	if m.Entrypoint.Empty() {
+		return validateErrf("[validate] service %q missing Entrypoint", m.Name)
 	}
 
 	return nil
 }
 
-type ServiceCreator interface {
-	CreateServices(ctx context.Context, svcs []Service, watch bool) error
+type ManifestCreator interface {
+	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
 
 type Mount struct {
