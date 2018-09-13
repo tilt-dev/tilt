@@ -6,6 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 	"testing"
+
+	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 type call struct {
@@ -39,6 +41,7 @@ var _ kubectlRunner = fakeKubectlRunner{}
 
 type clientTestFixture struct {
 	t      *testing.T
+	ctx    context.Context
 	client KubectlClient
 	runner *fakeKubectlRunner
 }
@@ -46,6 +49,7 @@ type clientTestFixture struct {
 func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret := &clientTestFixture{}
 	ret.t = t
+	ret.ctx = output.CtxForTest()
 	ret.runner = &fakeKubectlRunner{}
 	ret.client = KubectlClient{EnvUnknown, ret.runner}
 	return ret

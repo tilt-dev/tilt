@@ -2,25 +2,30 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const podsToImagesOut = `blorg-fe-6b4477ffcd-xf98f	blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f
+const expectedPod = "blorg-fe-6b4477ffcd-xf98f"
+const blorgDevImgStr = "blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f"
+
+var podsToImagesOut = fmt.Sprintf(`%s	%s
 cockroachdb-0	cockroachdb/cockroach:v2.0.5
 cockroachdb-1	cockroachdb/cockroach:v2.0.5
 cockroachdb-2	cockroachdb/cockroach:v2.0.5
-`
+`, expectedPod, blorgDevImgStr)
 
-const podsManyContainers = `blorg-fe-6b4477ffcd-xf98f	blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f
+var podsManyContainers = fmt.Sprintf(`%s	%s
 cockroachdb-0	cockroachdb/cockroach:v2.0.5
 cockroachdb-1	cockroachdb/cockroach:v2.0.5
 cockroachdb-2	cockroachdb/cockroach:v2.0.5
 two-containers	nginx	debian
-`
+`, expectedPod, blorgDevImgStr)
 
 func TestPodImgMapFromOutput(t *testing.T) {
 	podImgMap, err := imgPodMapFromOutput(podsToImagesOut)
@@ -56,6 +61,46 @@ func (c clientTestFixture) FindAppByNodeWithOutput(output string) (PodID, error)
 func (c clientTestFixture) FindAppByNodeWithError(err error) (PodID, error) {
 	c.setError(err)
 	return c.client.FindAppByNode(context.Background(), "synclet", NodeID("foo"))
+}
+
+func TestPodWithImage(t *testing.T) {
+	f := newClientTestFixture(t)
+	f.setOutput(podsToImagesOut)
+	nt := MustParseNamedTagged(blorgDevImgStr)
+	pID, err := f.client.PodWithImage(f.ctx, nt)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	assert.Equal(t, expectedPod, pID.String())
+}
+
+func TestPollForPodWithImage(t *testing.T) {
+	f := newClientTestFixture(t)
+	go func() {
+		time.Sleep(time.Second)
+		f.setOutput(podsToImagesOut)
+	}()
+
+	nt := MustParseNamedTagged(blorgDevImgStr)
+	pID, err := f.client.PollForPodWithImage(f.ctx, nt, 2*time.Second)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	assert.Equal(t, expectedPod, pID.String())
+}
+
+func TestPollForPodWithImageTimesOut(t *testing.T) {
+	f := newClientTestFixture(t)
+	go func() {
+		time.Sleep(time.Second)
+		f.setOutput(podsToImagesOut)
+	}()
+
+	nt := MustParseNamedTagged(blorgDevImgStr)
+	_, err := f.client.PollForPodWithImage(f.ctx, nt, 500*time.Millisecond)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "timed out polling for pod running image")
+	}
 }
 
 func TestFindAppByNode(t *testing.T) {

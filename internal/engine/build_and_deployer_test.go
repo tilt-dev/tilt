@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -229,6 +230,10 @@ func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedT
 	}
 
 	return k8s.PodID("pod"), nil
+}
+
+func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (k8s.PodID, error) {
+	return c.PodWithImage(ctx, image)
 }
 
 func (c *FakeK8sClient) applyWasCalled() bool {

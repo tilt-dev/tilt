@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
@@ -19,6 +20,7 @@ type ContainerID string
 type NodeID string
 
 func (pID PodID) String() string { return string(pID) }
+func (pID PodID) Empty() bool    { return pID.String() == "" }
 
 func (cID ContainerID) String() string { return string(cID) }
 func (cID ContainerID) ShortStr() string {
@@ -35,6 +37,7 @@ type Client interface {
 	Delete(ctx context.Context, entities []K8sEntity) error
 
 	PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error)
+	PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error)
 
 	// Gets the ID for the Node on which the specified Pod is running
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)

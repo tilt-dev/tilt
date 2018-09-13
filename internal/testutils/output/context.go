@@ -8,8 +8,8 @@ import (
 	"github.com/windmilleng/tilt/internal/output"
 )
 
-// CtxForTest returns a context.Context suitable for use in tests.
-// Currently, this means that it has a Logger attached.
+// CtxForTest returns a context.Context suitable for use in tests (i.e. with
+// logger, outputter, etc. attached).
 func CtxForTest() context.Context {
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx := logger.WithLogger(context.Background(), l)
