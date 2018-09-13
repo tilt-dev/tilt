@@ -16,8 +16,8 @@ func (k KubectlClient) PollForPodWithImage(ctx context.Context, image reference.
 	span.SetTag("img", image.String())
 	defer span.Finish()
 
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	start := time.Now()
+	for time.Since(start) < timeout {
 		pID, err := k.PodWithImage(ctx, image)
 		if err != nil {
 			return "", err
