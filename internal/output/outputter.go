@@ -116,9 +116,9 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 }
 
 func (o *Outputter) Summary(format string, a ...interface{}) {
-	o.blue().Println("──┤ Status ├──────────────────────────────────────────────────────────")
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Status ├──────────────────────────────────────────────────────────"))
 	o.logger.Infof(format, a...)
-	o.blue().Println("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴")
+	o.logger.Infof("%s", o.blue().Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {
