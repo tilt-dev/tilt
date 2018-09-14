@@ -205,7 +205,6 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", manifest.dockerImage.fileName, err)
 	}
 
-	db := manifest.dockerImage.baseMounts
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
