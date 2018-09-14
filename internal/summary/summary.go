@@ -53,15 +53,12 @@ func (s *Summary) Gather(services []model.Manifest) error {
 			return err
 		}
 
-		kubeData := k8sData{
+		svcSummary.k8sData = k8sData{
 			LoadBalancers: k8s.ToLoadBalancers(entities),
+			// Assume the name from the first K8s entity is correct
+			Name: entities[0].Name(),
 		}
 
-		for _, e := range entities {
-			kubeData.Name = k8s.GetDeploymentName(e)
-		}
-
-		svcSummary.k8sData = kubeData
 		s.Services = append(s.Services, svcSummary)
 	}
 

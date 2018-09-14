@@ -121,14 +121,3 @@ func ToLoadBalancer(entity K8sEntity) (LoadBalancer, bool) {
 
 	return result, true
 }
-
-// Get Deployment name
-func GetDeploymentName(entity K8sEntity) string {
-	service, ok := entity.Obj.(*v1.Service)
-	if !ok {
-		return ""
-	}
-
-	meta := service.ObjectMeta
-	return meta.Name
-}
