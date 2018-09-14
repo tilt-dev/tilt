@@ -30,11 +30,11 @@ func TestFilesToPathMappings(t *testing.T) {
 
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("mount1")},
+			Repo:          model.LocalGithubRepo{LocalPaths: []string{f.JoinPath("mount1")}},
 			ContainerPath: "/dest1",
 		},
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("mount2")},
+			Repo:          model.LocalGithubRepo{LocalPaths: []string{f.JoinPath("mount2")}},
 			ContainerPath: "/nested/dest2",
 		},
 	}
@@ -69,7 +69,7 @@ func TestRelativeRepoPathsThrowError(t *testing.T) {
 	files := []string{"/foo/bar.baz"}
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: "./hello"},
+			Repo:          model.LocalGithubRepo{LocalPaths: []string{"./hello"}},
 			ContainerPath: "/src",
 		},
 	}
@@ -88,7 +88,7 @@ func TestFileNotInMountThrowsErr(t *testing.T) {
 
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("mount1")},
+			Repo:          model.LocalGithubRepo{LocalPaths: []string{f.JoinPath("mount1")}},
 			ContainerPath: "/dest1",
 		},
 	}

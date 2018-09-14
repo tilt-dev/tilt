@@ -66,7 +66,7 @@ type Repo interface {
 }
 
 type LocalGithubRepo struct {
-	LocalPath string
+	LocalPaths []string
 }
 
 func (LocalGithubRepo) IsRepo() {}

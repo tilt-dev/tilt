@@ -14,7 +14,7 @@ type Summary struct {
 
 type Service struct {
 	Name    string
-	Path    string
+	Paths   []string
 	k8sData k8sData
 }
 
@@ -37,14 +37,16 @@ func (s *Summary) Gather(services []model.Manifest) error {
 
 	for _, svc := range services {
 		// Assume that, in practice, there is only one mount
-		path := ""
+		paths := []string{}
 		if len(svc.Mounts) > 0 {
-			path = svc.Mounts[0].Repo.LocalPath
+			for _, p := range svc.Mounts[0].Repo.LocalPaths {
+				paths = append(paths, p)
+			}
 		}
 
 		svcSummary := &Service{
-			Name: string(svc.Name),
-			Path: path,
+			Name:  string(svc.Name),
+			Paths: paths,
 		}
 
 		entities, err := k8s.ParseYAMLFromString(svc.K8sYaml)
@@ -74,7 +76,9 @@ func (s *Summary) Output() string {
 
 	for _, svc := range s.Services {
 		ret += fmt.Sprintf("    SERVICE NAME: %s\n", svc.Name)
-		ret += fmt.Sprintf("    WATCHING: %s\n", svc.Path)
+		for _, p := range svc.Paths {
+			ret += fmt.Sprintf("    WATCHING: %s\n", p)
+		}
 
 		k := svc.k8sData
 

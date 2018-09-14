@@ -70,8 +70,8 @@ func (k8sManifest) Hash() (uint32, error) {
 }
 
 type mount struct {
-	mountPoint string
-	repo       gitRepo
+	containerPath string
+	repoPaths     []string
 }
 
 type dockerImage struct {
@@ -158,7 +158,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
 	}
 
-	image.mounts = append(image.mounts, mount{mountPoint, gitRepo})
+	image.mounts = append(image.mounts, mount{mountPoint, []string{gitRepo.path}})
 
 	return skylark.None, nil
 }
