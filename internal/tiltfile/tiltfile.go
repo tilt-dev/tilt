@@ -205,10 +205,12 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", manifest.dockerImage.fileName, err)
 	}
 
+	db := manifest.dockerImage.baseMounts
+	fmt.Printf("%+v\n", db)
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
-		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts),
+		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts, manifest.dockerImage.baseMounts),
 		Steps:          manifest.dockerImage.steps,
 		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
 		DockerfileTag:  manifest.dockerImage.fileTag,
@@ -217,12 +219,20 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 
 }
 
-func skylarkMountsToDomain(sMounts []mount) []model.Mount {
-	dMounts := make([]model.Mount, len(sMounts))
-	for i, m := range sMounts {
-		dMounts[i] = model.Mount{
+func skylarkMountsToDomain(sMounts []mount, bMounts []*mountBase) []model.Mount {
+	dMounts := []model.Mount{}
+	for _, m := range sMounts {
+		dMounts = append(dMounts, model.Mount{
 			Repo:          model.LocalGithubRepo{LocalPath: m.repo.path},
 			ContainerPath: m.mountPoint,
+		})
+	}
+	for _, b := range bMounts {
+		for _, m := range b.mappings {
+			dMounts = append(dMounts, model.Mount{
+				Repo:          model.LocalGithubRepo{LocalPath: m.localPath},
+				ContainerPath: m.containerPath,
+			})
 		}
 	}
 	return dMounts
