@@ -111,7 +111,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Printf("%s", s.Output())
+	output.Get(ctx).Summary(s.Output())
 
 	if watchMounts {
 		go func() {
@@ -124,7 +124,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		// TODO(maia): move this call somewhere more logical (parallelize?)
 		u.b.PostProcessBuilds(ctx, buildStates)
 
-		logger.Get(ctx).Infof("Awaiting edits...")
+		output.Get(ctx).Printf("Awaiting changes…")
 		for {
 			select {
 			case <-ctx.Done():
@@ -158,7 +158,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-				output.Get(ctx).Printf("%s", s.Output())
+				output.Get(ctx).Summary(s.Output())
+				output.Get(ctx).Printf("Awaiting changes…")
 
 			case err := <-sw.errs:
 				return err

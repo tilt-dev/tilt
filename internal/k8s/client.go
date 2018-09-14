@@ -72,7 +72,7 @@ func NewKubectlClient(ctx context.Context, env Env) KubectlClient {
 func (k KubectlClient) OpenService(ctx context.Context, lb LoadBalancer) error {
 	if k.env == EnvDockerDesktop && len(lb.Ports) > 0 {
 		url := fmt.Sprintf("http://localhost:%d/", lb.Ports[0])
-		logger.Get(ctx).Infof("Opening browser: %s", url)
+		logger.Get(ctx).Infof("Opening browser: %s\n", url)
 		return browser.OpenURL(url)
 	}
 
@@ -92,7 +92,7 @@ func (k KubectlClient) OpenService(ctx context.Context, lb LoadBalancer) error {
 		if err != nil {
 			return fmt.Errorf("OpenService: malformed url: %v", err)
 		}
-		logger.Get(ctx).Infof("Opening browser: %s", url)
+		logger.Get(ctx).Infof("Opening browser: %s\n", url)
 		return browser.OpenURL(url.String())
 	}
 

@@ -158,7 +158,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, state
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuilds")
 	defer span.Finish()
 
-	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
+	logger.Get(ctx).Infof("Post-processing %d builds…", len(states))
 
 	for name, state := range states {
 		sbd.postProcessBuild(ctx, name, state)

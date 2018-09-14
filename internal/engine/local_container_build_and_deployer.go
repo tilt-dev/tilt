@@ -94,7 +94,7 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context
 
 	// HACK(maia): give the pod(s) we just deployed a bit to come up.
 	// TODO(maia): replace this with polling/smart waiting
-	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
+	logger.Get(ctx).Infof("Post-processing %d builds…", len(states))
 
 	for name, state := range states {
 		cbd.postProcessBuild(ctx, name, state)
