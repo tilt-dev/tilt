@@ -490,9 +490,10 @@ func TestNewMountSyntax(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
 		image = build_docker_image(%q, "docker-tag")
+		repo = local_git_repo('.')
 		mount = image.mount("/app/blorgly")
-		mount.add('package.json', '/app/blorgly/package.json')
-		mount.add('src', '/app/blorgly/src')
+		mount.add(repo.path('package.json'), '/app/blorgly/package.json')
+		mount.add(repo.path('src'), '/app/blorgly/src')
 		return k8s_service("yaaaaaaaaml", image)
 	`, dockerfile))
 	defer os.Remove(file)

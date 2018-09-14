@@ -41,7 +41,7 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint}, nil
+	return &dockerImage{dockerfileName, tag, []mount{}, []*mountBase{}, []model.Step{}, entrypoint}, nil
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
