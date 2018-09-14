@@ -151,7 +151,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, false)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
