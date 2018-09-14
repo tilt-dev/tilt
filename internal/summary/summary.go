@@ -95,7 +95,7 @@ func (s *Summary) Output() string {
 					ret += fmt.Sprintf("[http://localhost:%d] ", p)
 				}
 			}
-		} else {
+		} else if len(svc.K8sObjects) > 0 {
 			ret += fmt.Sprintf("→ `kubectl get %s %s` ", strings.ToLower(svc.K8sObjects[0].Kind), svc.K8sObjects[0].Name)
 		}
 
