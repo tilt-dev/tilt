@@ -77,12 +77,14 @@ func (s *Summary) Output() string {
 		ret += fmt.Sprintf("%s%s: ", indent, svc.Name)
 
 		// Relative Path
-		wd, _ := os.Getwd()
-		rel, err := filepath.Rel(wd, svc.Path)
-		if err != nil {
-			log.Fatalf("Failed to get relative path: %s", err)
+		if svc.Path != "" {
+			wd, _ := os.Getwd()
+			rel, err := filepath.Rel(wd, svc.Path)
+			if err != nil {
+				log.Fatalf("Failed to get relative path: %s", err)
+			}
+			ret += fmt.Sprintf("./%s ", rel)
 		}
-		ret += fmt.Sprintf("./%s ", rel)
 
 		// K8s — assume that the first name will work
 		// TODO(han) - get the LB kind dynamically
