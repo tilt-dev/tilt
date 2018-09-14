@@ -483,3 +483,29 @@ ENTRYPOINT echo hi`)
 	// TODO(dmiller) is this right?
 	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
 }
+
+func TestNewMountSyntax(t *testing.T) {
+	dockerfile := tempFile(`FROM alpine
+	ENTRYPOINT echo hi`)
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+		image = build_docker_image(%q, "docker-tag")
+		mount = image.mount("/app/blorgly")
+		mount.add('package.json', '/app/blorgly/package.json')
+		mount.add('src', '/app/blorgly/src')
+		return k8s_service("yaaaaaaaaml", image)
+	`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := manifests[0]
+	// TODO(dmiller) is this right?
+	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
+}

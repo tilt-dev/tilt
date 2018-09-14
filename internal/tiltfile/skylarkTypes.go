@@ -74,6 +74,25 @@ type mount struct {
 	repo       gitRepo
 }
 
+func (m mount) Freeze() {
+}
+
+func (m mount) Type() string {
+	return "mount"
+}
+
+func (m mount) Truth() skylark.Bool {
+	return len(m.mountPoint) > 0 && m.repo.Truth()
+}
+
+func (m mount) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: mount")
+}
+
+func (m mount) String() string {
+	return fmt.Sprintf("%s => %s", m.repo.String(), m.mountPoint)
+}
+
 type dockerImage struct {
 	fileName   string
 	fileTag    reference.Named
@@ -137,6 +156,24 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 
 	image.steps = append(image.steps, step)
 	return skylark.None, nil
+}
+
+func createMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var mountPoint string
+	image, ok := fn.Receiver().(*dockerImage)
+	if !ok {
+		return nil, errors.New("internal error: mount called on non-dockerImage")
+	}
+	if len(image.steps) > 0 {
+		return nil, errors.New("mount before run command")
+	}
+
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &mountPoint)
+	if err != nil {
+		return nil, err
+	}
+
+	return mount{mountPoint: mountPoint}, nil
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
