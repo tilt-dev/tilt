@@ -74,23 +74,46 @@ type mount struct {
 	repo       gitRepo
 }
 
-func (m mount) Freeze() {
+type mapping struct {
+	localPath     string
+	containerPath string
 }
 
-func (m mount) Type() string {
+type mountBase struct {
+	baseContainerPath string
+	mappings          []mapping
+}
+
+func (m mountBase) Freeze() {
+}
+
+func (m mountBase) Type() string {
 	return "mount"
 }
 
-func (m mount) Truth() skylark.Bool {
-	return len(m.mountPoint) > 0 && m.repo.Truth()
+func (m *mountBase) Truth() skylark.Bool {
+	return len(m.baseContainerPath) > 0
 }
 
-func (m mount) Hash() (uint32, error) {
+func (m *mountBase) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: mount")
 }
 
-func (m mount) String() string {
-	return fmt.Sprintf("%s => %s", m.repo.String(), m.mountPoint)
+func (m *mountBase) String() string {
+	return fmt.Sprintf("%v => %s", m.mappings, m.baseContainerPath)
+}
+
+func (m *mountBase) AttrNames() []string {
+	return []string{"add"}
+}
+
+func (m *mountBase) Attr(name string) (skylark.Value, error) {
+	switch name {
+	case "add":
+		return skylark.NewBuiltin(name, addPathToMount).BindReceiver(m), nil
+	default:
+		return nil, nil
+	}
 }
 
 type dockerImage struct {
@@ -173,7 +196,7 @@ func createMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple
 		return nil, err
 	}
 
-	return mount{mountPoint: mountPoint}, nil
+	return &mountBase{baseContainerPath: mountPoint, mappings: []mapping{}}, nil
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -196,6 +219,31 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	}
 
 	image.mounts = append(image.mounts, mount{mountPoint, gitRepo})
+
+	return skylark.None, nil
+}
+
+func addPathToMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var localPath string
+	var containerPath string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &localPath, "dest", &containerPath)
+	if err != nil {
+		if strings.Contains(err.Error(), "add: for parameter 1: got string, want gitRepo") {
+			return nil, fmt.Errorf(oldMountSyntaxError)
+		}
+		return nil, err
+	}
+
+	mb, ok := fn.Receiver().(*mountBase)
+	if !ok {
+		return nil, errors.New("internal error: add called on non-mount")
+	}
+
+	// TODO(dmiller) not this
+	mb.mappings = append(mb.mappings, mapping{
+		localPath:     localPath,
+		containerPath: containerPath,
+	})
 
 	return skylark.None, nil
 }
@@ -229,6 +277,8 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 		return skylark.NewBuiltin(name, runDockerImageCmd).BindReceiver(d), nil
 	case "add":
 		return skylark.NewBuiltin(name, addMount).BindReceiver(d), nil
+	case "mount":
+		return skylark.NewBuiltin(name, createMount).BindReceiver(d), nil
 	default:
 		return nil, nil
 	}
