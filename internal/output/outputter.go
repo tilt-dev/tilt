@@ -60,7 +60,7 @@ func (o *Outputter) color(c color.Attribute) *color.Color {
 func (o *Outputter) blue() *color.Color   { return o.color(color.FgBlue) }
 func (o *Outputter) yellow() *color.Color { return o.color(color.FgYellow) }
 func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
-func (o *Outputter) red() *color.Color    { return o.color(color.FgRed) }
+func (o *Outputter) Red() *color.Color    { return o.color(color.FgRed) }
 
 func (o *Outputter) StartPipeline(totalStepCount int) {
 	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting… ├──────────────────────────────────────────────"))
@@ -79,7 +79,7 @@ func (o *Outputter) EndPipeline(err error) {
 	elapsed := time.Now().Sub(o.curPipelineStart)
 
 	if err != nil {
-		prefix := o.red().Sprint(" ︎ERROR:")
+		prefix := o.Red().Sprint(" ︎ERROR:")
 		o.logger.Infof("%s %s\n", prefix, err.Error())
 		o.curPipelineStep = 0
 		o.curBuildStep = 0
@@ -121,6 +121,10 @@ func (o *Outputter) Summary(format string, a ...interface{}) {
 	o.logger.Infof("%s", o.blue().Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
 }
 
+func (o *Outputter) PrintColorf(color *color.Color, format string, a ...interface{}) {
+	o.Printf(color.Sprintf(format, a...))
+}
+
 func (o *Outputter) Printf(format string, a ...interface{}) {
 	if o.curBuildStep == 0 {
 		o.logger.Infof(format, a...)
@@ -154,7 +158,11 @@ func (i *prefixedWriter) Write(buf []byte) (n int, err error) {
 	output += string(buf)
 
 	// temporarily take off a trailing newline so that Replace doesn't add a prefix at the end
-	endsInNewline := output[len(output)-1] == '\n'
+	endsInNewline := false
+	if len(output) > 0 {
+		endsInNewline = output[len(output)-1] == '\n'
+	}
+
 	if endsInNewline {
 		output = output[:len(output)-1]
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/output"
 )
 
 const Port = 23551
@@ -76,15 +77,27 @@ func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, files
 
 	cmd := model.Cmd{Argv: append([]string{"rm", "-rf"}, filesToDelete...)}
 
-	return s.dcli.ExecInContainer(ctx, containerId, cmd)
+	out := bytes.NewBuffer(nil)
+	err := s.dcli.ExecInContainer(ctx, containerId, cmd, out)
+	if err != nil {
+		if build.IsExitError(err) {
+			return fmt.Errorf("Error deleting files: %s", out.String())
+		}
+		return fmt.Errorf("Error deleting files: %v", err)
+	}
+	return nil
 }
 
 func (s Synclet) execCmds(ctx context.Context, containerId k8s.ContainerID, cmds []model.Cmd) error {
 	for i, c := range cmds {
 		// TODO: instrument this
 		log.Printf("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
-		err := s.dcli.ExecInContainer(ctx, containerId, c)
+		err := s.dcli.ExecInContainer(ctx, containerId, c, output.Get(ctx).Writer())
 		if err != nil {
+			exitError, isExitError := err.(build.ExitError)
+			if isExitError {
+				return build.UserBuildFailure{ExitCode: exitError.ExitCode}
+			}
 			return err
 		}
 	}

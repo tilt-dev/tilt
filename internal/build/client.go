@@ -1,7 +1,6 @@
 package build
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -32,7 +31,11 @@ type DockerClient interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error
-	ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error
+
+	// Execute a command in a container, streaming the command output to `out`.
+	// Returns an ExitError if the command exits with a non-zero exit code.
+	ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd, out io.Writer) error
+
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
@@ -40,6 +43,21 @@ type DockerClient interface {
 	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
 }
+
+type ExitError struct {
+	ExitCode int
+}
+
+func (e ExitError) Error() string {
+	return fmt.Sprintf("Exec command exited with status code: %d", e.ExitCode)
+}
+
+func IsExitError(err error) bool {
+	_, ok := err.(ExitError)
+	return ok
+}
+
+var _ error = ExitError{}
 
 var _ DockerClient = &DockerCli{}
 
@@ -139,7 +157,7 @@ func (d *DockerCli) ContainerRestartNoWait(ctx context.Context, containerID stri
 	return d.ContainerRestart(ctx, containerID, &dur)
 }
 
-func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd) error {
+func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd, out io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ExecInContainer")
 	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
 	defer span.Finish()
@@ -156,11 +174,11 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cm
 		return fmt.Errorf("ExecInContainer#create: %v", err)
 	}
 
-	hijack, err := d.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
+	connection, err := d.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
 	if err != nil {
 		return fmt.Errorf("ExecInContainer#attach: %v", err)
 	}
-	defer hijack.Close()
+	defer connection.Close()
 
 	esSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-ExecStart")
 	err = d.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
@@ -169,9 +187,13 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cm
 		return fmt.Errorf("ExecInContainer#start: %v", err)
 	}
 
+	_, err = fmt.Fprintf(out, "RUNNING: %s\n", cmd)
+	if err != nil {
+		return fmt.Errorf("ExecInContainer#print: %v", err)
+	}
+
 	bufSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-readOutput")
-	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, hijack.Reader)
+	_, err = io.Copy(out, connection.Reader)
 	bufSpan.Finish()
 	if err != nil {
 		return fmt.Errorf("ExecInContainer#copy: %v", err)
@@ -189,7 +211,7 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cm
 
 		status := inspected.ExitCode
 		if status != 0 {
-			return fmt.Errorf("Failed with exit code %d. Output:\n%s", status, buf.String())
+			return ExitError{ExitCode: status}
 		}
 		return nil
 	}

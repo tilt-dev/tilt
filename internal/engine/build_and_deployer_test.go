@@ -20,8 +20,9 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-var cID = k8s.ContainerID("test_container")
-var alreadyBuilt = BuildResult{Container: cID}
+var sanchoImgStr = "gcr.io/some-project-162817/sancho:tilt-12345"
+var sanchoImg = k8s.MustParseNamedTagged(sanchoImgStr)
+var alreadyBuilt = BuildResult{Image: sanchoImg}
 
 var dontFallBackErrStr = "don't fall back"
 
@@ -94,8 +95,13 @@ func TestDockerForMacDeploy(t *testing.T) {
 func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
+	ctx := output.CtxForTest()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
+	// Make sure we have container info for this manifest
+	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
+	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,9 +124,49 @@ func TestIncrementalBuild(t *testing.T) {
 	}
 }
 
-func TestFallBackToImageDeploy(t *testing.T) {
+func TestIncrementalBuildFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
+
+	ctx := output.CtxForTest()
+	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
+	f.docker.ExecErrorToThrow = build.ExitError{ExitCode: 1}
+	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	msg := "Command failed with exit code: 1"
+	if err == nil || !strings.Contains(err.Error(), msg) {
+		t.Fatalf("Expected error message %q, actual: %v", msg, err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 1 {
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.PushCount)
+	}
+	if len(f.docker.ExecCalls) != 1 {
+		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
+	}
+	if len(f.docker.RestartsByContainer) != 0 {
+		t.Errorf("Expected 0 containers to be restarted, actual: %d", len(f.docker.RestartsByContainer))
+	}
+}
+
+func TestFallBackToImageDeploy(t *testing.T) {
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+	ctx := output.CtxForTest()
+
+	// Make sure we have container info for this manifest so we do the container
+	// deploy in the first place
+	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
 	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
@@ -138,15 +184,18 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
+	ctx := output.CtxForTest()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
-	// Malformed manifest (it's missing fields) will trip a validate error; we
-	// should NOT fall back to image build, but rather, return the error.
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
+	// Make sure we have container info for this manifest
+	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
+	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err == nil {
-		t.Errorf("Expected bad manifest error to propogate back up")
+		t.Errorf("Expected this error to fail fallback tester and propogate back up")
 	}
 
 	if f.docker.BuildCount != 0 {
@@ -175,7 +224,15 @@ func shouldFallBack(err error) bool {
 	return true
 }
 
+func newBDFallbackFixture(t *testing.T, env k8s.Env) *bdFixture {
+	return newBDFixtureHelper(t, env, shouldFallBack)
+}
+
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
+	return newBDFixtureHelper(t, env, shouldImageBuild)
+}
+
+func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := build.NewFakeDockerClient()
@@ -187,7 +244,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), shouldFallBack)
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), fallbackFn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,9 +258,8 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 }
 
 type FakeK8sClient struct {
-	yaml               string
-	lb                 k8s.LoadBalancer
-	podWithImageExists bool
+	yaml string
+	lb   k8s.LoadBalancer
 }
 
 func (c *FakeK8sClient) OpenService(ctx context.Context, lb k8s.LoadBalancer) error {
@@ -225,10 +281,6 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) er
 }
 
 func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (k8s.PodID, error) {
-	if !c.podWithImageExists {
-		return k8s.PodID(""), fmt.Errorf("Pod not found")
-	}
-
 	return k8s.PodID("pod"), nil
 }
 

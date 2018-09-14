@@ -120,6 +120,21 @@ func (c Cmd) RunStr() string {
 	}
 	return fmt.Sprintf("RUN [%s]", strings.Join(quoted, ", "))
 }
+func (c Cmd) String() string {
+	if c.IsShellStandardForm() {
+		return c.Argv[2]
+	}
+
+	quoted := make([]string, len(c.Argv))
+	for i, arg := range c.Argv {
+		if strings.Contains(arg, " ") {
+			quoted[i] = fmt.Sprintf("%q", arg)
+		} else {
+			quoted[i] = arg
+		}
+	}
+	return fmt.Sprintf("%s", strings.Join(quoted, " "))
+}
 
 func (c Cmd) Empty() bool {
 	return len(c.Argv) == 0

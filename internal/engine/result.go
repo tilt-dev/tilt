@@ -11,21 +11,16 @@ import (
 
 // The results of a successful build.
 type BuildResult struct {
-	Image     reference.NamedTagged
-	Entities  []k8s.K8sEntity
-	Container k8s.ContainerID
+	Image    reference.NamedTagged
+	Entities []k8s.K8sEntity
 }
 
 func (b BuildResult) IsEmpty() bool {
-	return b.Image == nil && b.Container == ""
+	return b.Image == nil
 }
 
 func (b BuildResult) HasImage() bool {
 	return b.Image != nil
-}
-
-func (b BuildResult) HasContainer() bool {
-	return b.Container != ""
 }
 
 // The state of the system since the last successful build.
