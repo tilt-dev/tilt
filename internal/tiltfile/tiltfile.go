@@ -59,7 +59,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 
 	var manifestFuncs skylark.Iterable
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
-		"services", &manifestFuncs)
+		"resource_fns", &manifestFuncs)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +78,12 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 			}
 			s, ok := r.(k8sManifest)
 			if !ok {
-				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
+				return nil, fmt.Errorf("function %v returned %v %T; expected k8s_resources", v.Name(), r, r)
 			}
 			s.name = v.Name()
 			manifests = append(manifests, s)
 		default:
-			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
+			return nil, fmt.Errorf("unexpected input %v %T", v, v)
 		}
 	}
 	return compManifest{manifests}, nil
@@ -132,10 +132,16 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 
 	predeclared := skylark.StringDict{
 		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
-		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
 		"local_git_repo":     skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
 		"local":              skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
+
+		// k8s_service is deprecated, long live k8s_resources!
+		"k8s_service":   skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
+		"k8s_resources": skylark.NewBuiltin("k8s_resources", makeSkylarkK8Manifest),
+
+		// composite_service is deprecated, long live composite_resources!
+		"composite_service":   skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
+		"composite_resources": skylark.NewBuiltin("composite_resources", makeSkylarkCompositeManifest),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -190,7 +196,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 		return []model.Manifest{s}, nil
 
 	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_resources or composite_resources", manifestName, val.Type())
 	}
 }
 

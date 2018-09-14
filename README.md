@@ -16,7 +16,7 @@ def backend():
   img = build_docker_image('Dockerfile', 'companyname/backend', '/go/bin/server')
   img.add('/go/src/github.com/companyname/backend', repo)
   img.run('go install github.com/companyname/backend/server')
-  return k8s_service(local_file('backend.yaml'), img)
+  return k8s_resources(local_file('backend.yaml'), img)
 ```
 
 ## Mill
@@ -58,22 +58,22 @@ If the `trigger` file is specified, the build step is only run if the file is ch
   * `trigger?`: **List[str] | str**
 * Returns: nothing
 
-#### k8s_service(yaml_text, img)
-Creates a kubernetes service that tilt can deploy using the yaml text and the image passed in.
+#### k8s_resources(yaml_text, img)
+Creates a kubernetes resource bundle that tilt can deploy using the yaml text and the image passed in.
 
 * Args:
   * `yaml_text`: **str** (text of yaml configuration)
   * `img`: **Image**
-* Returns: **Service**
+* Returns: **Resources**
 
-#### composite_service(service_fns)
-Creates a composite service; tilt will deploy (and watch) all services returned by the functions in `service_fns`.
+#### composite_resources(service_fns)
+Creates a composite resource bundle; tilt will deploy (and watch) all services returned by the functions in `resource_fns`.
 
-Returns: Service
+Returns: Resources
 =======
 * Args:
-  * `service_fns`: array of functions that each return **Service**
-* Returns: **Service**
+  * `resources_fns`: array of functions that each return **Resources**
+* Returns: **Resources**
 
 #### local(cmd)
 Runs cmd, waits for it to finish, and returns its stdout.
