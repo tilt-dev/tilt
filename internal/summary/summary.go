@@ -87,7 +87,7 @@ func (s *Summary) Output() string {
 		}
 
 		// K8s — assume that the first name will work
-		// TODO(han) - get the LB kind dynamically
+		// TODO(han) - get the LoadBalancer kind (ie: "service") dynamically
 		if len(svc.K8sLbs) > 0 {
 			ret += fmt.Sprintf("→ `kubectl get svc %s` ", svc.K8sObjects[0].Name)
 			if len(svc.K8sLbs[0].Ports) > 0 {
