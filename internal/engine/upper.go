@@ -110,7 +110,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Summary("%s", s.Output())
+	output.Get(ctx).Summary(s.Output())
 
 	if watchMounts {
 		go func() {
@@ -156,7 +156,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-				output.Get(ctx).Summary("%s", s.Output())
+				output.Get(ctx).Summary(s.Output())
 				output.Get(ctx).Printf("Awaiting changes…")
 
 			case err := <-sw.errs:

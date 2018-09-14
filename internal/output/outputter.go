@@ -91,7 +91,7 @@ func (o *Outputter) EndPipeline(err error) {
 	}
 
 	time := o.green().Sprintf("%.3fs", elapsed.Seconds())
-	o.logger.Infof("──┤ Done in: %s ︎├──", time)
+	o.logger.Infof("──┤ Done in: %s ︎├──\n", time)
 	o.curPipelineStep = 0
 	o.curBuildStep = 0
 }
@@ -106,8 +106,7 @@ func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
 
 func (o *Outputter) EndPipelineStep() {
 	elapsed := time.Now().Sub(o.curPipelineStepStart)
-	o.logger.Infof("    (Done %.3fs)", elapsed.Seconds())
-	o.logger.Infof("") // space between Pipeline Steps
+	o.logger.Infof("    (Done %.3fs)\n", elapsed.Seconds())
 	o.pipelineStepDurations = append(o.pipelineStepDurations, elapsed)
 }
 
@@ -117,9 +116,9 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 }
 
 func (o *Outputter) Summary(format string, a ...interface{}) {
-	o.logger.Infof("%s", o.blue().Sprint("──┤ Status ├──────────────────────────────────────────────────────────"))
+	o.blue().Println("──┤ Status ├──────────────────────────────────────────────────────────")
 	o.logger.Infof(format, a...)
-	o.logger.Infof("%s", o.blue().Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
+	o.blue().Println("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴")
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {

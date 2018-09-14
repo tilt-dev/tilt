@@ -36,10 +36,6 @@ func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (br BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
-	defer func() {
-		span.Finish()
-		output.Get(ctx).Printf("") // space between Pipelines
-	}()
 
 	startTime := time.Now()
 	defer func() {
