@@ -169,7 +169,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, state
 
 func (sbd *SyncletBuildAndDeployer) postProcessBuild(ctx context.Context, name model.ManifestName, state BuildState) {
 	if !state.LastResult.HasImage() {
-		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", name)
+		logger.Get(ctx).Infof("can't get container for %q: BuildResult has no image", name)
 		return
 	}
 	if _, ok := sbd.deployInfo[name]; !ok {
