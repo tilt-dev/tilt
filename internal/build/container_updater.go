@@ -11,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/output"
 )
 
 const pauseCmd = "/pause"
@@ -60,8 +61,12 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 
 	// Exec steps on container
 	for _, s := range steps {
-		err = r.dcli.ExecInContainer(ctx, cID, s)
+		err = r.dcli.ExecInContainer(ctx, cID, s, output.Get(ctx).Writer())
 		if err != nil {
+			exitErr, isExitErr := err.(ExitError)
+			if isExitErr {
+				return UserBuildFailure{ExitCode: exitErr.ExitCode}
+			}
 			return fmt.Errorf("executing step %v on container %s: %v", s.Argv, cID.ShortStr(), err)
 		}
 	}
@@ -122,7 +127,15 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID k8s.Con
 
 	logger.Get(ctx).Debugf("Deleting %d files from container: %s", len(paths), cID.ShortStr())
 
-	return r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)})
+	out := bytes.NewBuffer(nil)
+	err := r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
+	if err != nil {
+		if IsExitError(err) {
+			return fmt.Errorf("Error deleting files from container: %s", out.String())
+		}
+		return fmt.Errorf("Error deleting files from container: %v", err)
+	}
+	return nil
 }
 
 func makeRmCmd(paths []pathMapping) []string {
