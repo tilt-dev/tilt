@@ -17,8 +17,11 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	wire.Build(
 		k8s.DetectEnv,
 
-		k8s.NewKubectlClient,
-		wire.Bind(new(k8s.Client), k8s.KubectlClient{}),
+		k8s.ProvidePortForwarder,
+		k8s.ProvideRESTClient,
+		k8s.ProvideRESTConfig,
+		k8s.NewK8sClient,
+		wire.Bind(new(k8s.Client), k8s.K8sClient{}),
 
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),

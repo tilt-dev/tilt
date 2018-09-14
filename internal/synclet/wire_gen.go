@@ -6,9 +6,9 @@
 package synclet
 
 import (
-	context "context"
-	build "github.com/windmilleng/tilt/internal/build"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
+	"context"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 // Injectors from wire.go:
