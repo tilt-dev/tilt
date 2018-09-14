@@ -27,7 +27,7 @@ var dontFallBackErrStr = "don't fall back"
 
 func TestShouldImageBuild(t *testing.T) {
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: "asdf"},
+		Repo:          model.LocalGithubRepo{LocalPaths: []string{"asdf"}},
 		ContainerPath: "blah",
 	}
 	_, pathMapErr := build.FilesToPathMappings([]string{"a"}, []model.Mount{m})

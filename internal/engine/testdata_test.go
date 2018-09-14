@@ -46,7 +46,7 @@ var SanchoManifest = model.Manifest{
 	DockerfileText: SanchoDockerfile,
 	Mounts: []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: "sancho"},
+			Repo:          model.LocalGithubRepo{LocalPaths: []string{"sancho"}},
 			ContainerPath: "/go/src/github.com/windmilleng/sancho",
 		},
 	},

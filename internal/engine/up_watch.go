@@ -41,9 +41,11 @@ func makeManifestWatcher(
 		}
 
 		for _, mount := range manifest.Mounts {
-			err = watcher.Add(mount.Repo.LocalPath)
-			if err != nil {
-				return nil, err
+			for _, p := range mount.Repo.LocalPaths {
+				err = watcher.Add(p)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		sns = append(sns, manifestNotifyPair{manifest, watcher})
@@ -146,7 +148,9 @@ func makeFilter(ctx context.Context, manifest model.Manifest) (model.PathMatcher
 	var repoRoots []string
 
 	for _, mount := range manifest.Mounts {
-		repoRoots = append(repoRoots, mount.Repo.LocalPath)
+		for _, p := range mount.Repo.LocalPaths {
+			repoRoots = append(repoRoots, p)
+		}
 	}
 
 	mrt, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)

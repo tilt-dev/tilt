@@ -91,31 +91,34 @@ func filesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, *
 
 func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMappingErr) {
 	for _, m := range mounts {
-		if !filepath.IsAbs(m.Repo.LocalPath) {
-			return pathMapping{}, pathMappingErrf(
-				"mount.Repo.LocalPath must be an absolute path (got: %s)",
-				m.Repo.LocalPath)
-		}
-		// Open Q: can you mount inside of mounts?! o_0
-		// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
-		// need ospath.RealChild -- but then can't deal with deleted local files.
-		relPath, isChild := ospath.Child(m.Repo.LocalPath, file)
-		if isChild {
-			return pathMapping{
-				LocalPath:     file,
-				ContainerPath: filepath.Join(m.ContainerPath, relPath),
-			}, nil
+		for _, p := range m.Repo.LocalPaths {
+			if !filepath.IsAbs(p) {
+				return pathMapping{}, pathMappingErrf(
+					"mount.Repo.LocalPath must be an absolute path (got: %s)",
+					m.Repo.LocalPaths)
+			}
+			// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
+			// need ospath.RealChild -- but then can't deal with deleted local files.
+			relPath, isChild := ospath.Child(p, file)
+			if isChild {
+				return pathMapping{
+					LocalPath:     file,
+					ContainerPath: filepath.Join(m.ContainerPath, relPath),
+				}, nil
+			}
 		}
 	}
 	return pathMapping{}, pathMappingErrf("file %s matches no mounts", file)
 }
 
 func MountsToPathMappings(mounts []model.Mount) []pathMapping {
-	pms := make([]pathMapping, len(mounts))
-	for i, m := range mounts {
-		pms[i] = pathMapping{
-			LocalPath:     m.Repo.LocalPath,
-			ContainerPath: m.ContainerPath,
+	pms := []pathMapping{}
+	for _, m := range mounts {
+		for _, p := range m.Repo.LocalPaths {
+			pms = append(pms, pathMapping{
+				LocalPath:     p,
+				ContainerPath: m.ContainerPath,
+			})
 		}
 	}
 	return pms
