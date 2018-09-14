@@ -133,14 +133,31 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	}, nil
 }
 
+func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
+	span.SetTag("manifest", manifest.Name.String())
+	defer span.Finish()
+
+	if !result.HasImage() {
+		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
+		return
+	}
+	if _, ok := sbd.deployInfo[manifest.Name]; !ok {
+		cID, err := sbd.getContainerForBuild(ctx, result)
+		if err != nil {
+			logger.Get(ctx).Infof("couldn't get container for %s: %v", manifest.Name, err)
+			return
+		}
+		sbd.deployInfo[manifest.Name] = cID
+	}
+}
+
 func (sbd *SyncletBuildAndDeployer) getContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-getContainerForBuild")
 	defer span.Finish()
 
 	// get pod running the image we just deployed
-	// TODO(maia): parallelize this polling (inefficient b/c first we deploy all manifests in series,
-	// then we poll for pods for all of them (again in series)
-	pID, err := sbd.kCli.PollForPodWithImage(ctx, build.Image, time.Second*45)
+	pID, err := sbd.kCli.PollForPodWithImage(ctx, build.Image, podPollTimeoutSynclet)
 	if err != nil {
 		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
 	}
@@ -152,32 +169,4 @@ func (sbd *SyncletBuildAndDeployer) getContainerForBuild(ctx context.Context, bu
 	}
 
 	return cID, nil
-}
-
-func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuilds")
-	defer span.Finish()
-
-	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
-
-	for name, state := range states {
-		sbd.postProcessBuild(ctx, name, state)
-	}
-
-	return
-}
-
-func (sbd *SyncletBuildAndDeployer) postProcessBuild(ctx context.Context, name model.ManifestName, state BuildState) {
-	if !state.LastResult.HasImage() {
-		logger.Get(ctx).Infof("can't get container for %q: BuildResult has no image", name)
-		return
-	}
-	if _, ok := sbd.deployInfo[name]; !ok {
-		cID, err := sbd.getContainerForBuild(ctx, state.LastResult)
-		if err != nil {
-			logger.Get(ctx).Infof("couldn't get container for %s: %v", name, err)
-			return
-		}
-		sbd.deployInfo[name] = cID
-	}
 }

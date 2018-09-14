@@ -120,9 +120,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			}
 		}()
 
-		// TODO(maia): move this call somewhere more logical (parallelize?)
-		u.b.PostProcessBuilds(ctx, buildStates)
-
 		logger.Get(ctx).Infof("Awaiting edits...")
 		for {
 			select {

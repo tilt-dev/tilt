@@ -18,8 +18,9 @@ type BuildAndDeployer interface {
 	// the last successful build and the files changed since that build.
 	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error)
 
-	// PostProcessBuilds modifies `states` map in place with any info we'll need for subsequent builds.
-	PostProcessBuilds(ctx context.Context, states BuildStatesByName)
+	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
+	// In general, we'll store this info ON the BuildAndDeployer that needs it.
+	PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -50,6 +51,9 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
+			// TODO(maia): maybe this only needs to be called after certain builds?
+			// I.e. should be called after image build but not after a successful container build?
+			go composite.PostProcessBuild(ctx, manifest, br)
 			return br, err
 		}
 
@@ -74,10 +78,10 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
-	// HACK(maia): for now, we expect this func to live on the first BaD.
+func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+	// NOTE(maia): for now, expect the first BaD to be the one that needs additional info.
 	if len(composite.builders) != 0 {
-		composite.builders[0].PostProcessBuilds(ctx, states)
+		composite.builders[0].PostProcessBuild(ctx, manifest, result)
 	}
 }
 

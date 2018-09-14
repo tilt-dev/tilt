@@ -47,10 +47,10 @@ func TestShouldImageBuild(t *testing.T) {
 }
 
 func TestGKEDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, false)
+	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,10 +70,10 @@ func TestGKEDeploy(t *testing.T) {
 }
 
 func TestDockerForMacDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, false)
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,15 +93,10 @@ func TestDockerForMacDeploy(t *testing.T) {
 }
 
 func TestIncrementalBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 
-	// Make sure we have container info for this manifest
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,18 +120,12 @@ func TestIncrementalBuild(t *testing.T) {
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
-
-	// Make sure we have container info for this manifest so we do the container
-	// deploy in the first place
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,16 +140,11 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
-	// Make sure we have container info for this manifest
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propogate back up")
 	}
@@ -179,6 +163,7 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 // a fake DockerClient and K8sClient
 type bdFixture struct {
 	*tempdir.TempDirFixture
+	ctx    context.Context
 	docker *build.FakeDockerClient
 	k8s    *FakeK8sClient
 	bd     BuildAndDeployer
@@ -191,7 +176,7 @@ func shouldFallBack(err error) bool {
 	return true
 }
 
-func newBDFixture(t *testing.T, env k8s.Env, withPod bool) *bdFixture {
+func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := build.NewFakeDockerClient()
@@ -202,19 +187,27 @@ func newBDFixture(t *testing.T, env k8s.Env, withPod bool) *bdFixture {
 			},
 		},
 	}
+	ctx := output.CtxForTest()
 	k8s := &FakeK8sClient{}
-	k8s.podWithImageExists = withPod
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), shouldFallBack)
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, synclet.NewFakeSyncletClient(), shouldFallBack)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &bdFixture{
 		TempDirFixture: f,
+		ctx:            ctx,
 		docker:         docker,
 		k8s:            k8s,
 		bd:             bd,
 	}
+}
+
+// Ensure that the BuildAndDeployer has container information attached for the given manifest.
+func (f *bdFixture) withContainerForManifest(manifest model.Manifest, build BuildResult) *bdFixture {
+	f.k8s.podWithImageExists = true
+	f.bd.PostProcessBuild(f.ctx, SanchoManifest, alreadyBuilt)
+	return f
 }
 
 type FakeK8sClient struct {

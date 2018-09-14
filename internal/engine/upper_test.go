@@ -68,11 +68,9 @@ func (b *fakeBuildAndDeployer) haveContainerForManifest(name model.ManifestName)
 	_, ok := b.deployInfo[name]
 	return ok
 }
-func (b *fakeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
-	for name, state := range states {
-		if state.LastResult.HasImage() && !b.haveContainerForManifest(name) {
-			b.deployInfo[name] = k8s.ContainerID("testcontainer")
-		}
+func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+	if result.HasImage() && !b.haveContainerForManifest(manifest.Name) {
+		b.deployInfo[manifest.Name] = k8s.ContainerID("testcontainer")
 	}
 }
 
@@ -177,7 +175,6 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, k8s.ContainerID("testcontainer"), f.b.deployInfo[manifest.Name])
 		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {
