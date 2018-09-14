@@ -156,7 +156,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, state
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuilds")
 	defer span.Finish()
 
-	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
+	logger.Get(ctx).Infof("Post-processing %d builds…", len(states))
 
 	for serv, state := range states {
 		if !state.LastResult.HasImage() {
