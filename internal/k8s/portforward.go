@@ -93,7 +93,12 @@ func getAvailablePort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	defer func() {
+		e := l.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	_, p, err := net.SplitHostPort(l.Addr().String())
 	if err != nil {
