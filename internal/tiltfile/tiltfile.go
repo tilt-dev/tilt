@@ -206,7 +206,6 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 	}
 
 	db := manifest.dockerImage.baseMounts
-	fmt.Printf("%+v\n", db)
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
