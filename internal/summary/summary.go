@@ -33,7 +33,7 @@ func NewSummary() *Summary {
 	}
 }
 
-// Gather collates data into Summary
+// Gather collects summary data
 func (s *Summary) Gather(services []model.Manifest) error {
 
 	for _, svc := range services {
@@ -65,6 +65,7 @@ func (s *Summary) Gather(services []model.Manifest) error {
 	return nil
 }
 
+// Output prints the summary
 func (s *Summary) Output() string {
 	ret := ""
 	for _, svc := range s.Services {
