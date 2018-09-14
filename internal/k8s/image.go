@@ -163,3 +163,11 @@ func ParseNamedTagged(s string) (reference.NamedTagged, error) {
 	}
 	return nt, nil
 }
+
+func MustParseNamedTagged(s string) reference.NamedTagged {
+	nt, err := ParseNamedTagged(s)
+	if err != nil {
+		panic(err)
+	}
+	return nt
+}

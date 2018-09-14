@@ -14,6 +14,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const podPollTimeoutSynclet = time.Second * 30
+
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
@@ -134,7 +136,9 @@ func (sbd *SyncletBuildAndDeployer) getContainerForBuild(ctx context.Context, bu
 	defer span.Finish()
 
 	// get pod running the image we just deployed
-	pID, err := sbd.kCli.PodWithImage(ctx, build.Image)
+	// TODO(maia): parallelize this polling (inefficient b/c first we deploy all manifests in series,
+	// then we poll for pods for all of them (again in series)
+	pID, err := sbd.kCli.PollForPodWithImage(ctx, build.Image, time.Second*45)
 	if err != nil {
 		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
 	}
@@ -152,17 +156,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, state
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuilds")
 	defer span.Finish()
 
-	// HACK(maia): give the pod(s) we just deployed a bit to come up (takes longer on gke, sigh)
-	// TODO(maia): replace this with polling/smart waiting
 	logger.Get(ctx).Infof("Post-processing %d builds...", len(states))
-	fmt.Printf("SLEEPING")
-	for i := 0; i < 30; i++ {
-		if ctx.Err() != nil {
-			return
-		}
-		fmt.Printf(".")
-		time.Sleep(time.Second)
-	}
 
 	for serv, state := range states {
 		if !state.LastResult.HasImage() {

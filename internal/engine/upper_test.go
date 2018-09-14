@@ -20,7 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-//represents a single call to `BuildAndDeploy`
+// represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
 	manifest model.Manifest
 	state    BuildState
