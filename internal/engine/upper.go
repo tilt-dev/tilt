@@ -92,7 +92,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			buildStates[manifest.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
 		} else if watchMounts {
-			logger.Get(ctx).Infof("build failed: %v", err)
+			o := output.Get(ctx)
+			o.PrintColorf(o.Red(), "build failed: %v", err)
 		} else {
 			return fmt.Errorf("build failed: %v", err)
 		}
@@ -150,7 +151,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 					event.manifest,
 					buildState)
 				if err != nil {
-					logger.Get(ctx).Infof("build failed: %v", err)
+					o := output.Get(ctx)
+					o.PrintColorf(o.Red(), "build failed: %v", err)
 				} else {
 					buildStates[event.manifest.Name] = NewBuildState(result)
 				}

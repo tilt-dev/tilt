@@ -47,7 +47,7 @@ func TestShouldImageBuild(t *testing.T) {
 }
 
 func TestGKEDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, false)
+	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
@@ -70,7 +70,7 @@ func TestGKEDeploy(t *testing.T) {
 }
 
 func TestDockerForMacDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, false)
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
 	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
@@ -93,7 +93,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 }
 
 func TestIncrementalBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
@@ -124,8 +124,41 @@ func TestIncrementalBuild(t *testing.T) {
 	}
 }
 
+func TestIncrementalBuildFailure(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	ctx := output.CtxForTest()
+	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
+	f.docker.ExecErrorToThrow = build.ExitError{ExitCode: 1}
+	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	msg := "Command failed with exit code: 1"
+	if err == nil || !strings.Contains(err.Error(), msg) {
+		t.Fatalf("Expected error message %q, actual: %v", msg, err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 1 {
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.PushCount)
+	}
+	if len(f.docker.ExecCalls) != 1 {
+		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
+	}
+	if len(f.docker.RestartsByContainer) != 0 {
+		t.Errorf("Expected 0 containers to be restarted, actual: %d", len(f.docker.RestartsByContainer))
+	}
+}
+
 func TestFallBackToImageDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
@@ -151,7 +184,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, true)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
@@ -191,7 +224,15 @@ func shouldFallBack(err error) bool {
 	return true
 }
 
-func newBDFixture(t *testing.T, env k8s.Env, withPod bool) *bdFixture {
+func newBDFallbackFixture(t *testing.T, env k8s.Env) *bdFixture {
+	return newBDFixtureHelper(t, env, shouldFallBack)
+}
+
+func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
+	return newBDFixtureHelper(t, env, shouldImageBuild)
+}
+
+func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := build.NewFakeDockerClient()
@@ -203,8 +244,7 @@ func newBDFixture(t *testing.T, env k8s.Env, withPod bool) *bdFixture {
 		},
 	}
 	k8s := &FakeK8sClient{}
-	k8s.podWithImageExists = withPod
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), shouldFallBack)
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), fallbackFn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,9 +258,8 @@ func newBDFixture(t *testing.T, env k8s.Env, withPod bool) *bdFixture {
 }
 
 type FakeK8sClient struct {
-	yaml               string
-	lb                 k8s.LoadBalancer
-	podWithImageExists bool
+	yaml string
+	lb   k8s.LoadBalancer
 }
 
 func (c *FakeK8sClient) OpenService(ctx context.Context, lb k8s.LoadBalancer) error {
@@ -242,10 +281,6 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) er
 }
 
 func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (k8s.PodID, error) {
-	if !c.podWithImageExists {
-		return k8s.PodID(""), fmt.Errorf("Pod not found")
-	}
-
 	return k8s.PodID("pod"), nil
 }
 
