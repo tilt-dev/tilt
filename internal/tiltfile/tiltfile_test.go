@@ -483,3 +483,25 @@ ENTRYPOINT echo hi`)
 	// TODO(dmiller) is this right?
 	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
 }
+
+func TestAddMissingDir(t *testing.T) {
+	dockerfile := tempFile(`FROM alpine`)
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image(%q, "docker-tag")
+  image.add(local_git_repo('./garbage'), '/garbage')
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+
+	c, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	_, err = c.GetManifestConfigs("blorgly")
+	expected := "Reading path ./garbage"
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error message %q, actual: %v", expected, err)
+	}
+}

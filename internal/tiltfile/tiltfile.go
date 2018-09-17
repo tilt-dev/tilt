@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -99,6 +100,11 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("filepath.Abs: %v", err)
+	}
+
+	_, err = os.Stat(absPath)
+	if err != nil {
+		return nil, fmt.Errorf("Reading path %s: %v", path, err)
 	}
 
 	return gitRepo{absPath}, nil
