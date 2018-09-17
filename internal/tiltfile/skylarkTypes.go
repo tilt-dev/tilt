@@ -203,13 +203,13 @@ func (*dockerImage) AttrNames() []string {
 }
 
 type gitRepo struct {
-	path string
+	basePath string
 }
 
 var _ skylark.Value = gitRepo{}
 
 func (gr gitRepo) String() string {
-	return fmt.Sprintf("[gitRepo] '%v'", gr.path)
+	return fmt.Sprintf("[gitRepo] '%v'", gr.basePath)
 }
 
 func (gr gitRepo) Type() string {
@@ -234,7 +234,7 @@ func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
 func (gr gitRepo) Attr(name string) (skylark.Value, error) {
 	switch name {
 	case "path":
-		return skylark.NewBuiltin(name, fullRepoPath).BindReceiver(gr), nil
+		return skylark.NewBuiltin(name, gr.path), nil
 	default:
 		return nil, nil
 	}
@@ -245,17 +245,12 @@ func (gr gitRepo) AttrNames() []string {
 	return []string{"path"}
 }
 
-func fullRepoPath(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	r, ok := fn.Receiver().(gitRepo)
-	if !ok {
-		return nil, errors.New("internal error: path called on non-gitRepo")
-	}
-
-	var path skylark.String
+func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var path string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
 
-	return skylark.String(filepath.Join(r.path, string(path))), nil
+	return skylark.String(filepath.Join(gr.basePath, path)), nil
 }

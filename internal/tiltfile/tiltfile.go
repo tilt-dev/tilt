@@ -243,7 +243,7 @@ func skylarkMountsToDomain(sMounts []mount) []model.Mount {
 	dMounts := make([]model.Mount, len(sMounts))
 	for i, m := range sMounts {
 		dMounts[i] = model.Mount{
-			LocalPath:     m.repo.path,
+			LocalPath:     m.repo.basePath,
 			ContainerPath: m.mountPoint,
 		}
 	}
