@@ -25,8 +25,6 @@ type SyncletBuildAndDeployer struct {
 	sCli synclet.SyncletClient
 
 	kCli k8s.Client
-
-	deployInfo map[model.ManifestName]k8s.ContainerID
 }
 
 func DefaultSyncletClient(env k8s.Env) (synclet.SyncletClient, error) {
@@ -44,9 +42,8 @@ func DefaultSyncletClient(env k8s.Env) (synclet.SyncletClient, error) {
 
 func NewSyncletBuildAndDeployer(sCli synclet.SyncletClient, kCli k8s.Client) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		sCli:       sCli,
-		kCli:       kCli,
-		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
+		sCli: sCli,
+		kCli: kCli,
 	}
 }
 
@@ -81,8 +78,8 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	if _, ok := sbd.deployInfo[manifest.Name]; !ok {
-		return fmt.Errorf("no container info for this manifest")
+	if !state.LastResult.HasContainer() {
+		return fmt.Errorf("prev. build state has no container")
 	}
 
 	return nil
@@ -117,7 +114,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	cID := sbd.deployInfo[manifest.Name]
+	cID := state.LastResult.Container
 
 	cmds, err := build.BoilSteps(manifest.Steps, paths)
 	if err != nil {
@@ -129,7 +126,8 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	}
 
 	return BuildResult{
-		Entities: state.LastResult.Entities,
+		Entities:  state.LastResult.Entities,
+		Container: cID,
 	}, nil
 }
 
@@ -160,24 +158,21 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuilds(ctx context.Context, state
 
 	logger.Get(ctx).Infof("Post-processing %d builds…", len(states))
 
-	for name, state := range states {
-		sbd.postProcessBuild(ctx, name, state)
+	for serv, state := range states {
+		if !state.LastResult.HasImage() {
+			logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", serv)
+			continue
+		}
+		if !state.LastResult.HasContainer() {
+			cID, err := sbd.getContainerForBuild(ctx, state.LastResult)
+			if err != nil {
+				logger.Get(ctx).Infof("couldn't get container for %s: %v", serv, err)
+				continue
+			}
+			state.LastResult.Container = cID
+			states[serv] = state
+		}
 	}
 
 	return
-}
-
-func (sbd *SyncletBuildAndDeployer) postProcessBuild(ctx context.Context, name model.ManifestName, state BuildState) {
-	if !state.LastResult.HasImage() {
-		logger.Get(ctx).Infof("can't get container for %q: BuildResult has no image", name)
-		return
-	}
-	if _, ok := sbd.deployInfo[name]; !ok {
-		cID, err := sbd.getContainerForBuild(ctx, state.LastResult)
-		if err != nil {
-			logger.Get(ctx).Infof("couldn't get container for %s: %v", name, err)
-			return
-		}
-		sbd.deployInfo[name] = cID
-	}
 }
