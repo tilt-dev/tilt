@@ -125,10 +125,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return BuildResult{}, err
 	}
 
-	return BuildResult{
-		Entities:  state.LastResult.Entities,
-		Container: cID,
-	}, nil
+	return state.LastResult.ShallowCloneForContainerUpdate(cID, state.filesChangedSet), nil
 }
 
 func (sbd *SyncletBuildAndDeployer) getContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {

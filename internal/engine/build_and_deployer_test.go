@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -188,6 +191,64 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 
 	if f.docker.PushCount != 0 {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+}
+
+func TestIncrementalBuildTwice(t *testing.T) {
+	t.Skip()
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+	ctx := output.CtxForTest()
+
+	// Make sure we have container info for this manifest
+	manifest := SanchoManifest
+	manifest.Mounts[0].Repo.LocalPath = f.Path()
+	aPath := filepath.Join(f.Path(), "a.txt")
+	bPath := filepath.Join(f.Path(), "b.txt")
+	ioutil.WriteFile(aPath, []byte("a"), os.FileMode(0777))
+	ioutil.WriteFile(aPath, []byte("b"), os.FileMode(0777))
+
+	firstState := NewBuildState(alreadyBuilt)
+	statesByName := BuildStatesByName{SanchoManifest.Name: firstState}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
+	firstState.filesChangedSet[aPath] = true
+	firstResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, firstState)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rSet := firstResult.FilesReplacedSet
+	if len(rSet) != 1 || !rSet[aPath] {
+		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
+	}
+
+	secondState := NewBuildState(firstResult)
+	secondState.filesChangedSet[bPath] = true
+	secondResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, secondState)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rSet = secondResult.FilesReplacedSet
+	if len(rSet) != 2 || !rSet[aPath] || !rSet[bPath] {
+		t.Errorf("Expected replaced set with a.txt, b.txt, actual: %v", rSet)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 2 {
+		t.Errorf("Expected 2 copy to docker container call, actual: %d", f.docker.PushCount)
+	}
+	if len(f.docker.ExecCalls) != 2 {
+		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
+	}
+	if len(f.docker.RestartsByContainer) != 2 {
+		t.Errorf("Expected 2 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
 	}
 }
 

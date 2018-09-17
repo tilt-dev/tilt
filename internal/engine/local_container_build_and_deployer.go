@@ -81,10 +81,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
-	return BuildResult{
-		Entities:  state.LastResult.Entities,
-		Container: cID,
-	}, nil
+	return state.LastResult.ShallowCloneForContainerUpdate(cID, state.filesChangedSet), nil
 }
 
 func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
