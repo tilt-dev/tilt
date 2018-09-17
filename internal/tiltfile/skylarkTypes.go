@@ -216,8 +216,7 @@ func (gr gitRepo) Type() string {
 	return "gitRepo"
 }
 
-func (gr gitRepo) Freeze() {
-}
+func (gr gitRepo) Freeze() {}
 
 func (gitRepo) Truth() skylark.Bool {
 	return true
@@ -225,10 +224,6 @@ func (gitRepo) Truth() skylark.Bool {
 
 func (gitRepo) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: gitRepo")
-}
-
-func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
-	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
 }
 
 func (gr gitRepo) Attr(name string) (skylark.Value, error) {
@@ -252,5 +247,33 @@ func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	return skylark.String(filepath.Join(gr.basePath, path)), nil
+	return localPath{path: filepath.Join(gr.basePath, path)}, nil
+}
+
+type localPath struct {
+	path string
+}
+
+var _ skylark.Value = localPath{}
+
+func (l localPath) String() string {
+	return l.path
+}
+
+func (localPath) Type() string {
+	return "localPath"
+}
+
+func (localPath) Freeze() {}
+
+func (localPath) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: localPath")
+}
+
+func (localPath) Truth() skylark.Bool {
+	return true
+}
+
+func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
+	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
 }

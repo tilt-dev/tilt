@@ -535,7 +535,7 @@ func TestRepoPath(t *testing.T) {
 	repo = local_git_repo('.')
 	print(repo.path('subpath'))
 	yaml = read_file(%q)
-	image = build_docker_image("%v", "docker-tag", repo.path('subpath'))
+	image = build_docker_image("%v", "docker-tag", str(repo.path('subpath')))
 	return k8s_service(yaml, image)
 `, fileToRead, dockerfile)
 	file := tempFile(program)
