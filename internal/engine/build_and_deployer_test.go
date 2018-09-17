@@ -20,9 +20,8 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-var sanchoImgStr = "gcr.io/some-project-162817/sancho:tilt-12345"
-var sanchoImg = k8s.MustParseNamedTagged(sanchoImgStr)
-var alreadyBuilt = BuildResult{Image: sanchoImg}
+var cID = k8s.ContainerID("test_container")
+var alreadyBuilt = BuildResult{Container: cID}
 
 var dontFallBackErrStr = "don't fall back"
 
@@ -95,13 +94,8 @@ func TestDockerForMacDeploy(t *testing.T) {
 func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 
-	// Make sure we have container info for this manifest
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,13 +154,6 @@ func TestIncrementalBuildFailure(t *testing.T) {
 func TestFallBackToImageDeploy(t *testing.T) {
 	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
-
-	// Make sure we have container info for this manifest so we do the container
-	// deploy in the first place
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
 	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
@@ -186,16 +173,13 @@ func TestFallBackToImageDeploy(t *testing.T) {
 func TestNoFallbackForCertainErrors(t *testing.T) {
 	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
-	// Make sure we have container info for this manifest
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	// Malformed manifest (it's missing fields) will trip a validate error; we
+	// should NOT fall back to image build, but rather, return the error.
+	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
 	if err == nil {
-		t.Errorf("Expected this error to fail fallback tester and propogate back up")
+		t.Errorf("Expected bad manifest error to propogate back up")
 	}
 
 	if f.docker.BuildCount != 0 {
