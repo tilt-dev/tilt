@@ -32,6 +32,9 @@ type fakeBuildAndDeployer struct {
 
 	buildCount int
 
+	// where we store container info for each manifest
+	deployInfo map[model.ManifestName]k8s.ContainerID
+
 	// Set this to simulate the build failing
 	nextBuildFailure error
 }
@@ -61,17 +64,24 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	return b.nextBuildResult(), nil
 }
 
+func (b *fakeBuildAndDeployer) haveContainerForManifest(name model.ManifestName) bool {
+	_, ok := b.deployInfo[name]
+	return ok
+}
 func (b *fakeBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
-	for serv, state := range states {
-		if state.LastResult.HasImage() && !state.LastResult.HasContainer() {
-			state.LastResult.Container = k8s.ContainerID("testcontainer")
-			states[serv] = state
+	for name, state := range states {
+		if state.LastResult.HasImage() && !b.haveContainerForManifest(name) {
+			b.deployInfo[name] = k8s.ContainerID("testcontainer")
 		}
 	}
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
-	return &fakeBuildAndDeployer{t: t, calls: make(chan buildAndDeployCall, 5)}
+	return &fakeBuildAndDeployer{
+		t:          t,
+		calls:      make(chan buildAndDeployCall, 5),
+		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
+	}
 }
 
 type fakeNotify struct {
@@ -167,7 +177,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.watcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, k8s.ContainerID("testcontainer"), call.state.LastResult.Container)
+		assert.Equal(t, k8s.ContainerID("testcontainer"), f.b.deployInfo[manifest.Name])
 		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {

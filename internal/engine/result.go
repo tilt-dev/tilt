@@ -20,9 +20,6 @@ type BuildResult struct {
 	// The k8s entities deployed alongside the image.
 	Entities []k8s.K8sEntity
 
-	// The container ID for the deployed image.
-	Container k8s.ContainerID
-
 	// Some of our build engines replace the files in-place, rather
 	// than building a new image. This captures how much the code
 	// running on-pod has diverged from the original image.
@@ -30,24 +27,19 @@ type BuildResult struct {
 }
 
 func (b BuildResult) IsEmpty() bool {
-	return b.Image == nil && b.Container == ""
+	return b.Image == nil
 }
 
 func (b BuildResult) HasImage() bool {
 	return b.Image != nil
 }
 
-func (b BuildResult) HasContainer() bool {
-	return b.Container != ""
-}
-
 // Clone the build result and add new replaced files.
 // Does not do a deep clone of the underlying entities.
-func (b BuildResult) ShallowCloneForContainerUpdate(cID k8s.ContainerID, filesReplacedSet map[string]bool) BuildResult {
+func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
 	result := BuildResult{}
 	result.Image = b.Image
 	result.Entities = append([]k8s.K8sEntity{}, b.Entities...)
-	result.Container = cID
 
 	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))
 	for k, v := range b.FilesReplacedSet {

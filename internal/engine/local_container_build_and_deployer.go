@@ -22,14 +22,17 @@ type LocalContainerBuildAndDeployer struct {
 	env       k8s.Env
 	k8sClient k8s.Client
 	analytics analytics.Analytics
+
+	deployInfo map[model.ManifestName]k8s.ContainerID
 }
 
 func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
-		cu:        cu,
-		env:       env,
-		k8sClient: kCli,
-		analytics: analytics,
+		cu:         cu,
+		env:        env,
+		k8sClient:  kCli,
+		analytics:  analytics,
+		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
 	}
 }
 
@@ -59,14 +62,13 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
 
+	cID, ok := cbd.deployInfo[manifest.Name]
 	// (Unless we don't know what container it's running in, in which case we can't.)
-	if !state.LastResult.HasContainer() {
-		return BuildResult{}, fmt.Errorf("prev. build state has no container")
+	if !ok {
+		return BuildResult{}, fmt.Errorf("no container info for this manifest")
 	}
 
-	cID := state.LastResult.Container
-	cf, err := build.FilesToPathMappings(
-		state.FilesChanged(), manifest.Mounts)
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -82,7 +84,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
-	return state.LastResult.ShallowCloneForContainerUpdate(cID, state.filesChangedSet), nil
+	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
 func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context, states BuildStatesByName) {
@@ -93,20 +95,23 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuilds(ctx context.Context
 	// TODO(maia): replace this with polling/smart waiting
 	logger.Get(ctx).Infof("Post-processing %d builds…", len(states))
 
-	for serv, state := range states {
-		if !state.LastResult.HasImage() {
-			logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", serv)
-			continue
+	for name, state := range states {
+		cbd.postProcessBuild(ctx, name, state)
+	}
+}
+
+func (cbd *LocalContainerBuildAndDeployer) postProcessBuild(ctx context.Context, name model.ManifestName, state BuildState) {
+	if !state.LastResult.HasImage() {
+		logger.Get(ctx).Infof("can't get container for %q: BuildResult has no image", name)
+		return
+	}
+	if _, ok := cbd.deployInfo[name]; !ok {
+		cID, err := cbd.getContainerForBuild(ctx, state.LastResult)
+		if err != nil {
+			logger.Get(ctx).Infof("couldn't get container for %s: %v", name, err)
+			return
 		}
-		if !state.LastResult.HasContainer() {
-			cID, err := cbd.getContainerForBuild(ctx, state.LastResult)
-			if err != nil {
-				logger.Get(ctx).Infof("couldn't get container for %s: %v", serv, err)
-				continue
-			}
-			state.LastResult.Container = cID
-			states[serv] = state
-		}
+		cbd.deployInfo[name] = cID
 	}
 }
 
@@ -117,7 +122,7 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	// get pod running the image we just deployed
 	// TODO(maia): parallelize this polling (inefficient b/c first we deploy all manifests in series,
 	// then we poll for pods for all of them (again in series)
-	pID, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, time.Second*3)
+	pID, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, podPollTimeoutLocal)
 	if err != nil {
 		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
 	}
