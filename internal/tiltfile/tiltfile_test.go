@@ -514,7 +514,6 @@ func TestReadFile(t *testing.T) {
 	image = build_docker_image("%v", "docker-tag", "the entrypoint")
 	return k8s_service(yaml, image)
 `, fileToRead, dockerfile)
-	fmt.Println(program)
 	file := tempFile(program)
 	defer os.Remove(file)
 
@@ -539,7 +538,6 @@ func TestRepoPath(t *testing.T) {
 	image = build_docker_image("%v", "docker-tag", repo.path('subpath'))
 	return k8s_service(yaml, image)
 `, fileToRead, dockerfile)
-	fmt.Println(program)
 	file := tempFile(program)
 	defer os.Remove(file)
 
