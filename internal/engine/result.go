@@ -11,9 +11,21 @@ import (
 
 // The results of a successful build.
 type BuildResult struct {
-	Image     reference.NamedTagged
-	Entities  []k8s.K8sEntity
+	// The name+tag of the image that the pod is running.
+	//
+	// The tag is derived from a content-addressable digest.
+	Image reference.NamedTagged
+
+	// The k8s entities deployed alongside the image.
+	Entities []k8s.K8sEntity
+
+	// The container ID for the deployed image.
 	Container k8s.ContainerID
+
+	// Some of our build engines replace the files in-place, rather
+	// than building a new image. This captures how much the code
+	// running on-pod has diverged from the original image.
+	FilesReplacedSet map[string]bool
 }
 
 func (b BuildResult) IsEmpty() bool {
@@ -26,6 +38,25 @@ func (b BuildResult) HasImage() bool {
 
 func (b BuildResult) HasContainer() bool {
 	return b.Container != ""
+}
+
+// Clone the build result and add new replaced files.
+// Does not do a deep clone of the underlying entities.
+func (b BuildResult) ShallowCloneForContainerUpdate(cID k8s.ContainerID, filesReplacedSet map[string]bool) BuildResult {
+	result := BuildResult{}
+	result.Image = b.Image
+	result.Entities = append([]k8s.K8sEntity{}, b.Entities...)
+	result.Container = cID
+
+	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))
+	for k, v := range b.FilesReplacedSet {
+		newSet[k] = v
+	}
+	for k, v := range filesReplacedSet {
+		newSet[k] = v
+	}
+	result.FilesReplacedSet = newSet
+	return result
 }
 
 // The state of the system since the last successful build.
