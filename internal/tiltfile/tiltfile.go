@@ -41,7 +41,7 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint}, nil
+	return &dockerImage{dockerfileName, tag, []mount{}, []*mountBase{}, []model.Step{}, entrypoint}, nil
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -208,7 +208,7 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		DockerfileText: string(dockerFileBytes),
-		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts),
+		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts, manifest.dockerImage.baseMounts),
 		Steps:          manifest.dockerImage.steps,
 		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
 		DockerfileTag:  manifest.dockerImage.fileTag,
@@ -217,12 +217,20 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 
 }
 
-func skylarkMountsToDomain(sMounts []mount) []model.Mount {
-	dMounts := make([]model.Mount, len(sMounts))
-	for i, m := range sMounts {
-		dMounts[i] = model.Mount{
+func skylarkMountsToDomain(sMounts []mount, bMounts []*mountBase) []model.Mount {
+	dMounts := []model.Mount{}
+	for _, m := range sMounts {
+		dMounts = append(dMounts, model.Mount{
 			Repo:          model.LocalGithubRepo{LocalPath: m.repo.path},
 			ContainerPath: m.mountPoint,
+		})
+	}
+	for _, b := range bMounts {
+		for _, m := range b.mappings {
+			dMounts = append(dMounts, model.Mount{
+				Repo:          model.LocalGithubRepo{LocalPath: m.localPath},
+				ContainerPath: m.containerPath,
+			})
 		}
 	}
 	return dMounts
