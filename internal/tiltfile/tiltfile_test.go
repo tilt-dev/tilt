@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -526,4 +527,37 @@ func TestReadFile(t *testing.T) {
 
 	assert.NotNil(t, s[0])
 	assert.Equal(t, s[0].K8sYaml, "hello world")
+}
+
+func TestRepoPath(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	fileToRead := tempFile("hello world")
+	program := fmt.Sprintf(`def blorgly():
+	repo = local_git_repo('.')
+	print(repo.path('subpath'))
+	yaml = read_file(%q)
+	image = build_docker_image("%v", "docker-tag", repo.path('subpath'))
+	return k8s_service(yaml, image)
+`, fileToRead, dockerfile)
+	fmt.Println(program)
+	file := tempFile(program)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	manifestConfig, err := tiltConfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := manifestConfig[0]
+	assert.Equal(t, []string{"sh", "-c", filepath.Join(wd, "subpath")}, manifest.Entrypoint.Argv)
 }

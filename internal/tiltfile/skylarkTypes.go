@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -228,4 +229,33 @@ func (gitRepo) Hash() (uint32, error) {
 
 func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
 	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
+}
+
+func (gr gitRepo) Attr(name string) (skylark.Value, error) {
+	switch name {
+	case "path":
+		return skylark.NewBuiltin(name, fullRepoPath).BindReceiver(gr), nil
+	default:
+		return nil, nil
+	}
+
+}
+
+func (gr gitRepo) AttrNames() []string {
+	return []string{"path"}
+}
+
+func fullRepoPath(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	r, ok := fn.Receiver().(gitRepo)
+	if !ok {
+		return nil, errors.New("internal error: path called on non-gitRepo")
+	}
+
+	var path skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	return skylark.String(filepath.Join(r.path, string(path))), nil
 }
