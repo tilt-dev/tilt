@@ -27,7 +27,7 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 		}
 
 		expected := []expectedFile{
-			expectedFile{path: "hi", contents: "9"},
+			expectedFile{Path: "hi", Contents: "9"},
 		}
 		f.assertFilesInImage(ref, expected)
 	}
@@ -55,7 +55,7 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 		}
 
 		expected := []expectedFile{
-			expectedFile{path: "hi", contents: "9"},
+			expectedFile{Path: "hi", Contents: "9"},
 		}
 		f.assertFilesInImage(ref, expected)
 	}

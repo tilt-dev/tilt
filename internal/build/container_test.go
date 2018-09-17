@@ -35,8 +35,8 @@ func TestMount(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
-		expectedFile{path: "/src/sup", contents: "my name is dan"},
+		expectedFile{Path: "/src/hi/hello", Contents: "hi hello"},
+		expectedFile{Path: "/src/sup", Contents: "my name is dan"},
 	}
 	f.assertFilesInImage(ref, pcs)
 }
@@ -64,8 +64,8 @@ func TestMultipleMounts(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/hello_there/hello", contents: "hi hello"},
-		expectedFile{path: "/goodbye_there/ciao/goodbye", contents: "bye laterz"},
+		expectedFile{Path: "/hello_there/hello", Contents: "hi hello"},
+		expectedFile{Path: "/goodbye_there/ciao/goodbye", Contents: "bye laterz"},
 	}
 	f.assertFilesInImage(ref, pcs)
 }
@@ -95,7 +95,7 @@ func TestMountCollisions(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/hello_there/hello", contents: "bye laterz"},
+		expectedFile{Path: "/hello_there/hello", Contents: "bye laterz"},
 	}
 	f.assertFilesInImage(ref, pcs)
 }
@@ -131,8 +131,8 @@ func TestPush(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/src/hi/hello", contents: "hi hello"},
-		expectedFile{path: "/src/sup", contents: "my name is dan"},
+		expectedFile{Path: "/src/hi/hello", Contents: "hi hello"},
+		expectedFile{Path: "/src/sup", Contents: "my name is dan"},
 	}
 
 	f.assertFilesInImage(namedTagged, pcs)
@@ -175,7 +175,7 @@ func TestBuildOneStep(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "hi", contents: "hello"},
+		expectedFile{Path: "hi", Contents: "hello"},
 	}
 	f.assertFilesInImage(ref, expected)
 }
@@ -195,8 +195,8 @@ func TestBuildMultipleSteps(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "hi", contents: "hello"},
-		expectedFile{path: "hi2", contents: "sup"},
+		expectedFile{Path: "hi", Contents: "hello"},
+		expectedFile{Path: "hi2", Contents: "sup"},
 	}
 	f.assertFilesInImage(ref, expected)
 }
@@ -217,8 +217,8 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "hi2", contents: "sup"},
-		expectedFile{path: "hi", missing: true},
+		expectedFile{Path: "hi2", Contents: "sup"},
+		expectedFile{Path: "hi", Missing: true},
 	}
 	f.assertFilesInImage(ref, expected)
 }
@@ -255,7 +255,7 @@ func TestEntrypoint(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "hi", contents: "hello"},
+		expectedFile{Path: "hi", Contents: "hello"},
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
@@ -314,10 +314,10 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/src/hi/hello", contents: "hello world"},
-		expectedFile{path: "/src/sup", missing: true},
-		expectedFile{path: "/src/nested/sup", missing: true}, // should have deleted whole directory
-		expectedFile{path: "/src/unchanged", contents: "should be unchanged"},
+		expectedFile{Path: "/src/hi/hello", Contents: "hello world"},
+		expectedFile{Path: "/src/sup", Missing: true},
+		expectedFile{Path: "/src/nested/sup", Missing: true}, // should have deleted whole directory
+		expectedFile{Path: "/src/unchanged", Contents: "should be unchanged"},
 	}
 	f.assertFilesInImage(ref, pcs)
 }
@@ -346,8 +346,8 @@ func TestExecStepsOnExisting(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/src/foo", contents: "hello world"},
-		expectedFile{path: "/src/bar", contents: "foo contains: hello world"},
+		expectedFile{Path: "/src/foo", Contents: "hello world"},
+		expectedFile{Path: "/src/bar", Contents: "foo contains: hello world"},
 	}
 	f.assertFilesInImage(ref, pcs)
 }
@@ -378,8 +378,8 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "/src/foo", contents: "a whole new world"},
-		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
+		expectedFile{Path: "/src/foo", Contents: "a whole new world"},
+		expectedFile{Path: "/src/bar", Contents: "foo contains: a whole new world"},
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
@@ -415,9 +415,9 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "/src/foo", contents: "a whole new world"},
-		expectedFile{path: "/src/bar", contents: "foo contains: a whole new world"},
-		expectedFile{path: "/src/baz", contents: "hellohello"},
+		expectedFile{Path: "/src/foo", Contents: "a whole new world"},
+		expectedFile{Path: "/src/bar", Contents: "foo contains: a whole new world"},
+		expectedFile{Path: "/src/baz", Contents: "hellohello"},
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
@@ -467,10 +467,10 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	}
 
 	expected := []expectedFile{
-		expectedFile{path: "/src/delete_me", missing: true},
-		expectedFile{path: "/src/foo", contents: "hello world"},
-		expectedFile{path: "/src/bar", contents: ""},         // from cmd
-		expectedFile{path: "/src/startcount", contents: "2"}, // from entrypoint (confirm container restarted)
+		expectedFile{Path: "/src/delete_me", Missing: true},
+		expectedFile{Path: "/src/foo", Contents: "hello world"},
+		expectedFile{Path: "/src/bar", Contents: ""},         // from cmd
+		expectedFile{Path: "/src/startcount", Contents: "2"}, // from entrypoint (confirm container restarted)
 	}
 
 	f.assertFilesInContainer(f.ctx, cID, expected)
@@ -534,10 +534,10 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 	}
 
 	pcs := []expectedFile{
-		expectedFile{path: "/src/a.txt", contents: "a"},
-		expectedFile{path: "/src/b.txt", contents: "b"},
-		expectedFile{path: "/src/c.txt", contents: "a"},
-		expectedFile{path: "/src/d.txt", contents: "b"},
+		expectedFile{Path: "/src/a.txt", Contents: "a"},
+		expectedFile{Path: "/src/b.txt", Contents: "b"},
+		expectedFile{Path: "/src/c.txt", Contents: "a"},
+		expectedFile{Path: "/src/d.txt", Contents: "b"},
 	}
 	f.assertFilesInImage(ref, pcs)
 }

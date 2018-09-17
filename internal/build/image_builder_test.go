@@ -24,6 +24,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 const simpleDockerfile = Dockerfile("FROM alpine")
@@ -106,8 +107,8 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 	}
 
 	expected := expectedFile{
-		path: "Dockerfile",
-		contents: `FROM alpine
+		Path: "Dockerfile",
+		Contents: `FROM alpine
 LABEL "tilt.buildMode"="scratch"
 LABEL "tilt.test"="1"
 COPY /src/a.txt /src/a.txt
@@ -115,7 +116,7 @@ RUN cat /src/a.txt > /src/c.txt
 ADD . /
 RUN cat /src/b.txt > /src/d.txt`,
 	}
-	assertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
 }
 
 func TestAllConditionalRunsInFakeDocker(t *testing.T) {
@@ -141,15 +142,15 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 	}
 
 	expected := expectedFile{
-		path: "Dockerfile",
-		contents: `FROM alpine
+		Path: "Dockerfile",
+		Contents: `FROM alpine
 LABEL "tilt.buildMode"="scratch"
 LABEL "tilt.test"="1"
 COPY /src/a.txt /src/a.txt
 RUN cat /src/a.txt > /src/c.txt
 ADD . /`,
 	}
-	assertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
 }
 
 type dockerBuildFixture struct {
@@ -265,13 +266,7 @@ func (f *dockerBuildFixture) startRegistry() {
 	f.t.Fatalf("Timed out waiting for registry to start. Output:\n%s\n%s", stdout.String(), stderr.String())
 }
 
-type expectedFile struct {
-	path     string
-	contents string
-
-	// If true, we will assert that the file is not in the container.
-	missing bool
-}
+type expectedFile = testutils.ExpectedFile
 
 func (f *dockerBuildFixture) assertImageExists(ref reference.NamedTagged) {
 	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
@@ -295,12 +290,12 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 func (f *dockerBuildFixture) assertFilesInContainer(
 	ctx context.Context, cID k8s.ContainerID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
-		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.path)
-		if expectedFile.missing {
+		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.Path)
+		if expectedFile.Missing {
 			if err == nil {
-				f.t.Errorf("Expected path %q to not exist", expectedFile.path)
+				f.t.Errorf("Expected path %q to not exist", expectedFile.Path)
 			} else if !strings.Contains(err.Error(), "No such container:path") {
-				f.t.Errorf("Expected path %q to not exist, but got a different error: %v", expectedFile.path, err)
+				f.t.Errorf("Expected path %q to not exist, but got a different error: %v", expectedFile.Path, err)
 			}
 
 			continue
@@ -313,8 +308,8 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 		// When you copy a single file out of a container, you get
 		// back a tarball with 1 entry, the file basename.
 		adjustedFile := expectedFile
-		adjustedFile.path = filepath.Base(adjustedFile.path)
-		assertFileInTar(f.t, tar.NewReader(reader), adjustedFile)
+		adjustedFile.Path = filepath.Base(adjustedFile.Path)
+		testutils.AssertFileInTar(f.t, tar.NewReader(reader), adjustedFile)
 	}
 }
 
