@@ -9,10 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/windmilleng/tilt/internal/logger"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type PodID string
@@ -48,28 +52,45 @@ type Client interface {
 	// Waits for the LoadBalancer to get a publicly available URL,
 	// then opens that URL in a web browser.
 	OpenService(ctx context.Context, lb LoadBalancer) error
+
+	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
+	ForwardPort(ctx context.Context, namespace string, podID PodID, remotePort int) (localPort int, closer func(), err error)
 }
 
-type KubectlClient struct {
+type K8sClient struct {
 	env           Env
 	kubectlRunner kubectlRunner
+	restClient    k8sRestInterface
+	restConfig    *rest.Config
+	portForwarder PortForwarder
 }
 
-var _ Client = KubectlClient{}
+var _ Client = K8sClient{}
 
-func NewKubectlClient(ctx context.Context, env Env) KubectlClient {
+type PortForwarder func(ctx context.Context, restConfig *rest.Config, restClient rest.Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
+
+func NewK8sClient(
+	ctx context.Context,
+	env Env,
+	restClient k8sRestInterface,
+	restConfig *rest.Config,
+	pf PortForwarder) K8sClient {
+
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	browser.Stdout = writer
 	browser.Stderr = writer
 
-	return KubectlClient{
+	return K8sClient{
 		env:           env,
 		kubectlRunner: realKubectlRunner{},
+		restClient:    restClient,
+		restConfig:    restConfig,
+		portForwarder: pf,
 	}
 }
 
-func (k KubectlClient) OpenService(ctx context.Context, lb LoadBalancer) error {
+func (k K8sClient) OpenService(ctx context.Context, lb LoadBalancer) error {
 	if k.env == EnvDockerDesktop && len(lb.Ports) > 0 {
 		url := fmt.Sprintf("http://localhost:%d/", lb.Ports[0])
 		logger.Get(ctx).Infof("Opening browser: %s\n", url)
@@ -100,7 +121,7 @@ func (k KubectlClient) OpenService(ctx context.Context, lb LoadBalancer) error {
 	return nil
 }
 
-func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
+func (k K8sClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
 	defer span.Finish()
 	// TODO(dmiller) validate that the string is YAML and give a good error
@@ -112,7 +133,7 @@ func (k KubectlClient) Apply(ctx context.Context, entities []K8sEntity) error {
 	return nil
 }
 
-func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
+func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	_, _, err := k.applyOrDeleteFromEntities(ctx, "delete", entities)
 	_, isExitErr := err.(*exec.ExitError)
 	if isExitErr {
@@ -127,7 +148,7 @@ func (k KubectlClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	return err
 }
 
-func (k KubectlClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, entities []K8sEntity) (stdout string, stderr string, err error) {
+func (k K8sClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, entities []K8sEntity) (stdout string, stderr string, err error) {
 	args := []string{cmd, "-f", "-"}
 
 	rawYAML, err := SerializeYAML(entities)
@@ -137,4 +158,49 @@ func (k KubectlClient) applyOrDeleteFromEntities(ctx context.Context, cmd string
 	stdin := bytes.NewReader([]byte(rawYAML))
 
 	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+}
+
+// aliasing to work around https://github.com/google/go-cloud/issues/457
+type k8sRestInterface rest.Interface
+
+func ProvideRESTClient() (k8sRestInterface, error) {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+
+	clientLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		rules, &clientcmd.ConfigOverrides{})
+
+	cfg, err := clientLoader.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientSet.CoreV1().RESTClient(), nil
+}
+
+func ProvideRESTConfig() (*rest.Config, error) {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+
+	overrides := &clientcmd.ConfigOverrides{}
+
+	clientLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		rules,
+		overrides)
+	config, err := clientLoader.ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"could not get config for context (%q): %s", overrides.Context, err)
+	}
+
+	return config, nil
+}
+
+func ProvidePortForwarder() PortForwarder {
+	return portForwarder
 }

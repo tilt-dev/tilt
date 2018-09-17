@@ -11,8 +11,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-func (k KubectlClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "kubectlClient-PollForPodWithImage")
+func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodWithImage")
 	span.SetTag("img", image.String())
 	defer span.Finish()
 
@@ -33,8 +33,8 @@ func (k KubectlClient) PollForPodWithImage(ctx context.Context, image reference.
 
 // PodWithImage returns the ID of the pod running the given image. If too many matches, throw
 // an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "kubectlClient-PodWithImage")
+func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodWithImage")
 	defer span.Finish()
 
 	ip, err := k.imagesToPods(ctx)
@@ -52,7 +52,7 @@ func (k KubectlClient) PodWithImage(ctx context.Context, image reference.NamedTa
 	return pods[0], nil
 }
 
-func (k KubectlClient) imagesToPods(ctx context.Context) (map[string][]PodID, error) {
+func (k K8sClient) imagesToPods(ctx context.Context) (map[string][]PodID, error) {
 	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", `-o=jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}'`})
 
 	if err != nil {
@@ -82,7 +82,7 @@ func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
 	return imgsToPods, nil
 }
 
-func (k KubectlClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
+func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
 	jsonPath := "-o=jsonpath={.spec.nodeName}"
 	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", podID.String(), jsonPath})
 
@@ -101,7 +101,7 @@ func (k KubectlClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, 
 	}
 }
 
-func (k KubectlClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
+func (k K8sClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
 	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
 	stdout, stderr, err := k.kubectlRunner.exec(ctx,
 		[]string{"get", "pods", "--namespace=kube-system", fmt.Sprintf("-l=app=%s", appName), jsonPath})

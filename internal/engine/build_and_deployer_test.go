@@ -262,6 +262,8 @@ type FakeK8sClient struct {
 	lb   k8s.LoadBalancer
 }
 
+var _ k8s.Client = &FakeK8sClient{}
+
 func (c *FakeK8sClient) OpenService(ctx context.Context, lb k8s.LoadBalancer) error {
 	c.lb = lb
 	return nil
@@ -298,4 +300,8 @@ func (c *FakeK8sClient) FindAppByNode(ctx context.Context, appName string, nodeI
 
 func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID k8s.PodID) (k8s.NodeID, error) {
 	return k8s.NodeID("node"), nil
+}
+
+func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace string, podID k8s.PodID, remotePort int) (int, func(), error) {
+	return 0, nil, nil
 }

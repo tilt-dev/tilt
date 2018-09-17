@@ -6,12 +6,11 @@
 package cli
 
 import (
-	context "context"
-
-	build "github.com/windmilleng/tilt/internal/build"
-	engine "github.com/windmilleng/tilt/internal/engine"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
-	model "github.com/windmilleng/tilt/internal/model"
+	"context"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Injectors from wire.go:
@@ -25,8 +24,17 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	if err != nil {
 		return nil, err
 	}
-	kubectlClient := k8s.NewKubectlClient(ctx, env)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient, kubectlClient)
+	k8sRestInterface, err := k8s.ProvideRESTClient()
+	if err != nil {
+		return nil, err
+	}
+	config, err := k8s.ProvideRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	portForwarder := k8s.ProvidePortForwarder()
+	k8sClient := k8s.NewK8sClient(ctx, env, k8sRestInterface, config, portForwarder)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient, k8sClient)
 	dockerCli, err := build.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
@@ -36,18 +44,18 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	if err != nil {
 		return nil, err
 	}
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, kubectlClient, analytics)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, k8sClient, analytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, kubectlClient, env, analytics)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, k8sClient, env, analytics)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env)
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, kubectlClient, browser, imageReaper)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper)
 	return upper, nil
 }
 

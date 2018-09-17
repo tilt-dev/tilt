@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"k8s.io/client-go/rest"
+
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
@@ -42,7 +44,7 @@ var _ kubectlRunner = fakeKubectlRunner{}
 type clientTestFixture struct {
 	t      *testing.T
 	ctx    context.Context
-	client KubectlClient
+	client K8sClient
 	runner *fakeKubectlRunner
 }
 
@@ -51,7 +53,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.t = t
 	ret.ctx = output.CtxForTest()
 	ret.runner = &fakeKubectlRunner{}
-	ret.client = KubectlClient{EnvUnknown, ret.runner}
+	ret.client = K8sClient{EnvUnknown, ret.runner, nil, nil, fakePortForwarder}
 	return ret
 }
 
@@ -62,3 +64,9 @@ func (c clientTestFixture) setOutput(s string) {
 func (c clientTestFixture) setError(err error) {
 	c.runner.err = err
 }
+
+func fakePortForwarder(ctx context.Context, restConfig *rest.Config, restClient rest.Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+	return nil, nil
+}
+
+var _ PortForwarder = fakePortForwarder
