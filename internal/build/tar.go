@@ -145,7 +145,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 
 			_, err = io.CopyN(a.tw, file, info.Size())
 			if err != nil && err != io.EOF {
-				return fmt.Errorf("%s: copying contents: %v", path, err)
+				return fmt.Errorf("%s: copying Contents: %v", path, err)
 			}
 		}
 		return nil
