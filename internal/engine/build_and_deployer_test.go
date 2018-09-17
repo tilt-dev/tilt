@@ -30,7 +30,7 @@ var dontFallBackErrStr = "don't fall back"
 
 func TestShouldImageBuild(t *testing.T) {
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: "asdf"},
+		LocalPath:     "asdf",
 		ContainerPath: "blah",
 	}
 	_, pathMapErr := build.FilesToPathMappings([]string{"a"}, []model.Mount{m})
@@ -202,7 +202,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 
 	// Make sure we have container info for this manifest
 	manifest := SanchoManifest
-	manifest.Mounts[0].Repo.LocalPath = f.Path()
+	manifest.Mounts[0].LocalPath = f.Path()
 	aPath := filepath.Join(f.Path(), "a.txt")
 	bPath := filepath.Join(f.Path(), "b.txt")
 	ioutil.WriteFile(aPath, []byte("a"), os.FileMode(0777))

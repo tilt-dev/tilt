@@ -79,7 +79,7 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 		manifests = append(manifests,
 			model.Manifest{
 				Name:   model.ManifestName(fmt.Sprintf("manifest%v", i)),
-				Mounts: []model.Mount{{Repo: model.LocalGithubRepo{LocalPath: tempDir.Path()}, ContainerPath: ""}}})
+				Mounts: []model.Mount{{LocalPath: tempDir.Path(), ContainerPath: ""}}})
 
 		tempDirs = append(tempDirs, tempDir)
 		watcher := newFakeNotify()

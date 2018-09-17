@@ -86,7 +86,7 @@ func TestGetManifestConfig(t *testing.T) {
 	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYaml)
 	assert.Equal(t, 1, len(manifest.Mounts), "number of mounts")
 	assert.Equal(t, "/mount_points/1", manifest.Mounts[0].ContainerPath)
-	assert.Equal(t, wd, manifest.Mounts[0].Repo.LocalPath, "repo path")
+	assert.Equal(t, wd, manifest.Mounts[0].LocalPath, "mount path")
 	assert.Equal(t, 2, len(manifest.Steps), "number of steps")
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv, "first step")
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv, "second step")

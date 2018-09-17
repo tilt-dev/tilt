@@ -25,7 +25,7 @@ func TestMount(t *testing.T) {
 	f.WriteFile("sup", "my name is dan")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
@@ -50,11 +50,11 @@ func TestMultipleMounts(t *testing.T) {
 	f.WriteFile("bye/ciao/goodbye", "bye laterz")
 
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
+		LocalPath:     f.JoinPath("hi"),
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
+		LocalPath:     f.JoinPath("bye"),
 		ContainerPath: "goodbye_there",
 	}
 
@@ -81,11 +81,11 @@ func TestMountCollisions(t *testing.T) {
 	// Mounting two files to the same place in the container -- expect the second mount
 	// to take precedence (file should contain "bye laterz")
 	m1 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("hi")},
+		LocalPath:     f.JoinPath("hi"),
 		ContainerPath: "/hello_there",
 	}
 	m2 := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.JoinPath("bye")},
+		LocalPath:     f.JoinPath("bye"),
 		ContainerPath: "/hello_there",
 	}
 
@@ -111,7 +111,7 @@ func TestPush(t *testing.T) {
 	f.WriteFile("sup", "my name is dan")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
@@ -143,7 +143,7 @@ func TestPushInvalid(t *testing.T) {
 	defer f.teardown()
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	name, err := reference.WithName("localhost:5005/myimage")
@@ -289,7 +289,7 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f.WriteFile("unchanged", "should be unchanged")
 	mounts := []model.Mount{
 		model.Mount{
-			Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+			LocalPath:     f.Path(),
 			ContainerPath: "/src",
 		},
 	}
@@ -328,7 +328,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 
 	f.WriteFile("foo", "hello world")
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
@@ -358,7 +358,7 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 
 	f.WriteFile("foo", "hello world")
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
@@ -393,7 +393,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 
 	f.WriteFile("foo", "hello world")
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	step := model.ToShellCmd("echo -n hello >> /src/baz")
@@ -433,7 +433,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 
 	f.WriteFile("delete_me", "will be deleted")
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
@@ -481,7 +481,7 @@ func TestReapOneImage(t *testing.T) {
 	defer f.teardown()
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
@@ -516,7 +516,7 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 	f.WriteFile("b.txt", "b")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})

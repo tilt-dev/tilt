@@ -42,7 +42,7 @@ func (s *Summary) Gather(services []model.Manifest) error {
 		// Assume that, in practice, there is only one mount
 		path := ""
 		if len(svc.Mounts) > 0 {
-			path = svc.Mounts[0].Repo.LocalPath
+			path = svc.Mounts[0].LocalPath
 		}
 
 		entities, err := k8s.ParseYAMLFromString(svc.K8sYaml)

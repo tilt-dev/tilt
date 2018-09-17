@@ -88,7 +88,7 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 	f.WriteFile("b.txt", "b")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
@@ -126,7 +126,7 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 	f.WriteFile("b.txt", "b")
 
 	m := model.Mount{
-		Repo:          model.LocalGithubRepo{LocalPath: f.Path()},
+		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})

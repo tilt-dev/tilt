@@ -16,6 +16,7 @@ type Manifest struct {
 	K8sYaml        string
 	DockerfileText string
 	Mounts         []Mount
+	FileFilter     PathMatcher
 	Steps          []Step
 	Entrypoint     Cmd
 	DockerfileTag  reference.Named
@@ -55,9 +56,7 @@ type ManifestCreator interface {
 }
 
 type Mount struct {
-	// TODO(dmiller) make this more generic
-	// TODO(maia): or maybe don't make this a repo necessarily, just a path?
-	Repo          LocalGithubRepo
+	LocalPath     string
 	ContainerPath string
 }
 
