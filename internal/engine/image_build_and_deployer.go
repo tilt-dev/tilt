@@ -151,10 +151,6 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 		if replaced {
 			didReplace = true
 		}
-		e, _, err = k8s.RemoveCommand(e, n)
-		if err != nil {
-			return nil, err
-		}
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
