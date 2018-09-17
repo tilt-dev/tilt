@@ -523,6 +523,9 @@ func TestReadFile(t *testing.T) {
 	}
 
 	s, err := tiltConfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assert.NotNil(t, s[0])
 	assert.Equal(t, s[0].K8sYaml, "hello world")
