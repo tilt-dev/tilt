@@ -90,7 +90,12 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		n = ref
 
 	} else {
-		cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
+		changed, err := state.FilesChangedSinceLastResultImage()
+		if err != nil {
+			return nil, err
+		}
+
+		cf, err := build.FilesToPathMappings(changed, manifest.Mounts)
 		if err != nil {
 			return nil, err
 		}
