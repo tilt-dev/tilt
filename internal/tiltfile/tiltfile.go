@@ -46,7 +46,7 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, gitRepo{}}, nil
+	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}, nil
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -253,7 +253,7 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
 		DockerfileTag:  manifest.dockerImage.fileTag,
 		Name:           model.ManifestName(manifest.name),
-		FileFilter:     manifest.dockerImage.repo.pathMatcher,
+		FileFilter:     model.NewCompositeMatcher(manifest.dockerImage.pathMatchers),
 	}, nil
 
 }
