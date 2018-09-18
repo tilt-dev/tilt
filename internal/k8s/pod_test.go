@@ -141,7 +141,7 @@ func TestFindAppByNodeNotFound(t *testing.T) {
 
 func TestFindAppByNodeMultipleFound(t *testing.T) {
 	f := newClientTestFixture(t)
-	output := "foobar\nbazquu\n"
+	output := "foobar bazquu"
 	_, err := f.FindAppByNodeWithOutput(output)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "multiple")
