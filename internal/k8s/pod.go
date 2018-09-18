@@ -106,6 +106,15 @@ type FindAppByNodeOptions struct {
 	Owner     string
 }
 
+type MultipleAppsFoundError struct {
+	filterDesc string
+	pods       []string
+}
+
+func (m MultipleAppsFoundError) Error() string {
+	return fmt.Sprintf("found multiple apps matching %s: '%s'", m.filterDesc, m.pods)
+}
+
 func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error) {
 	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
 	args := append([]string{"get", "pods", fmt.Sprintf("-lapp=%s", appName)})
@@ -133,7 +142,7 @@ func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName str
 	if len(lines) == 0 {
 		return PodID(""), fmt.Errorf("unable to find any apps with %s", filterDesc)
 	} else if len(lines) > 1 {
-		return PodID(""), fmt.Errorf("found multiple apps matching %s: '%s'", filterDesc, stdout)
+		return PodID(""), MultipleAppsFoundError{filterDesc, lines}
 	} else {
 		return PodID(lines[0]), nil
 	}
