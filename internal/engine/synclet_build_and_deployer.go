@@ -191,7 +191,7 @@ func (sbd *SyncletBuildAndDeployer) getDeployInfo(ctx context.Context, image ref
 	}
 
 	// get container that's running the app for the pod we found
-	cID, err := sCli.GetContainerIdForPod(ctx, pID)
+	cID, err := sCli.ContainerIDForPod(ctx, pID, image)
 	if err != nil {
 		return DeployInfo{}, errors.Wrapf(err, "syncletClient.GetContainerIdForPod (pod = %s)", pID)
 	}

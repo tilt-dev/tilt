@@ -3,44 +3,30 @@ package build
 import (
 	"testing"
 
+	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
 )
 
-func TestContainerIdForPodOneMatch(t *testing.T) {
+var image, _ = reference.ParseNamed("windmill.build/image:tilt-11cd0b38bc3ce")
+var imageTagged = image.(reference.NamedTagged)
+
+func TestContainerIDForPodOneMatch(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cr.ContainerIDForPod(f.ctx, docker.TestPod)
+	cID, err := f.cr.ContainerIDForPod(f.ctx, docker.TestPod, imageTagged)
 	if err != nil {
 		f.t.Fatal(err)
 	}
 	assert.Equal(f.t, cID.String(), docker.TestContainer)
 }
 
-func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
+func TestContainerIDForPodTwoContainers(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cr.ContainerIDForPod(f.ctx, "one-pause-cmd")
+	cID, err := f.cr.ContainerIDForPod(f.ctx, "two-containers", imageTagged)
 	if err != nil {
 		f.t.Fatal(err)
 	}
 	assert.Equal(f.t, cID.String(), "the right container")
-}
-
-func TestContainerIdForPodTooManyMatches(t *testing.T) {
-	f := newRemoteDockerFixture(t)
-	defer f.teardown()
-	_, err := f.cr.ContainerIDForPod(f.ctx, "too-many")
-	if assert.NotNil(f.t, err) {
-		assert.Contains(f.t, err.Error(), "too many matching containers")
-	}
-}
-
-func TestContainerIdForPodNoNonPause(t *testing.T) {
-	f := newRemoteDockerFixture(t)
-	defer f.teardown()
-	_, err := f.cr.ContainerIDForPod(f.ctx, "all-pause")
-	if assert.NotNil(f.t, err) {
-		assert.Contains(f.t, err.Error(), "no matching non-'/pause' containers")
-	}
 }

@@ -13,11 +13,12 @@ service Synclet {
 }
 
 message GetContainerIdForPodRequest {
-    string podId = 1;
+    string pod_id = 1;
+    string image_id = 2;
 }
 
 message GetContainerIdForPodReply {
-    string containerId = 1;
+    string container_id = 1;
 }
 
 message Cmd {
@@ -25,9 +26,9 @@ message Cmd {
 }
 
 message UpdateContainerRequest {
-    string containerId = 1;
-    bytes tarArchive = 2;
-    repeated string filesToDelete = 3;
+    string container_id = 1;
+    bytes tar_archive = 2;
+    repeated string files_to_delete = 3;
     repeated Cmd commands = 4;
 }
 

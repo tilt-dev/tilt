@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -27,8 +28,8 @@ func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet 
 
 const pauseCmd = "/pause"
 
-func (s Synclet) ContainerIDForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error) {
-	return s.cr.ContainerIDForPod(ctx, podId)
+func (s Synclet) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
+	return s.cr.ContainerIDForPod(ctx, podID, imageID)
 }
 
 func (s Synclet) writeFiles(ctx context.Context, containerId k8s.ContainerID, tarArchive []byte) error {

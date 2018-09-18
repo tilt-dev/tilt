@@ -3,6 +3,7 @@ package synclet
 import (
 	"context"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
@@ -11,9 +12,9 @@ import (
 )
 
 type SyncletClient interface {
-	UpdateContainer(ctx context.Context, containerId k8s.ContainerID, tarArchive []byte,
+	UpdateContainer(ctx context.Context, containerID k8s.ContainerID, tarArchive []byte,
 		filesToDelete []string, commands []model.Cmd) error
-	GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error)
+	ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error)
 }
 
 var _ SyncletClient = &SyncletCli{}
@@ -50,8 +51,11 @@ func (s *SyncletCli) UpdateContainer(
 	return err
 }
 
-func (s *SyncletCli) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error) {
-	reply, err := s.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{PodId: podId.String()})
+func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
+	reply, err := s.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{
+		PodId:   podID.String(),
+		ImageId: imageID.String(),
+	})
 	if err != nil {
 		return "", err
 	}

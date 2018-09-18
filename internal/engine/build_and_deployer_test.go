@@ -363,7 +363,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 	docker.ContainerListOutput = map[string][]types.Container{
 		"pod": []types.Container{
 			types.Container{
-				ID: "testcontainer",
+				ID: build.MagicTestContainerID,
 			},
 		},
 	}

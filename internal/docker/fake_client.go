@@ -23,7 +23,7 @@ const ExampleBuildOutput1 = `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"Successfully tagged hi:latest\n"}
 `
 
-const ExmaplePushSHA1 = "sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1"
+const ExamplePushSHA1 = "sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1"
 
 var ExamplePushOutput1 = `{"status":"The push refers to repository [localhost:5005/myimage]"}
 	{"status":"Preparing","progressDetail":{},"id":"2a88b569da78"}
@@ -46,20 +46,11 @@ const (
 
 var ContainersListByName = map[string][]types.Container{
 	TestPod: []types.Container{
-		types.Container{ID: TestContainer, Command: "./stuff"},
+		types.Container{ID: TestContainer, ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
-	"one-pause-cmd": []types.Container{
-		types.Container{ID: "not a match", Command: k8s.PauseCmd},
-		types.Container{ID: "the right container", Command: "./stuff"},
-	},
-	"too-many": []types.Container{
-		types.Container{ID: "nope", Command: "./stuff"},
-		types.Container{ID: "nah", Command: "./things"},
-		types.Container{ID: "nuh-uh", Command: "./nonsense"},
-	},
-	"all-pause": []types.Container{
-		types.Container{ID: "pause container", Command: k8s.PauseCmd},
-		types.Container{ID: "also pause", Command: k8s.PauseCmd},
+	"two-containers": []types.Container{
+		types.Container{ID: "not a match", ImageID: ExamplePushSHA1, Command: k8s.PauseCmd},
+		types.Container{ID: "the right container", ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
 }
 
