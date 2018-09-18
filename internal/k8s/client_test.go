@@ -25,7 +25,7 @@ type fakeKubectlRunner struct {
 	calls []call
 }
 
-func (f fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
 	b, err := ioutil.ReadAll(stdin)
 	if err != nil {
 		return "", "", fmt.Errorf("reading stdin: %v", err)
@@ -34,12 +34,12 @@ func (f fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, std
 	return f.stdout, f.stderr, f.err
 }
 
-func (f fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
+func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
 	f.calls = append(f.calls, call{argv: args})
 	return f.stdout, f.stderr, f.err
 }
 
-var _ kubectlRunner = fakeKubectlRunner{}
+var _ kubectlRunner = &fakeKubectlRunner{}
 
 type clientTestFixture struct {
 	t      *testing.T
