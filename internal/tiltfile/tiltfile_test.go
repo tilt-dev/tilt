@@ -97,12 +97,12 @@ func TestOldMountSyntax(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-		image = build_docker_image("%v", "docker-tag", "the entrypoint")
-		image.add('/mount_points/1', local_git_repo('.'))
-		print(image.file_name)
-		image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
-		image.run("echo hi")
-		return k8s_service("yaaaaaaaaml", image)
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image.add('/mount_points/1', local_git_repo('.'))
+  print(image.file_name)
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
