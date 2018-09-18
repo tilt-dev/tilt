@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -23,7 +24,8 @@ type LocalContainerBuildAndDeployer struct {
 	k8sClient k8s.Client
 	analytics analytics.Analytics
 
-	deployInfo map[model.ManifestName]k8s.ContainerID
+	deployInfo   map[model.ManifestName]k8s.ContainerID
+	deployInfoMu sync.Mutex
 }
 
 func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
@@ -34,6 +36,19 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, 
 		analytics:  analytics,
 		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
 	}
+}
+
+func (cbd *LocalContainerBuildAndDeployer) getContainerIDForManifest(name model.ManifestName) (k8s.ContainerID, bool) {
+	cbd.deployInfoMu.Lock()
+	cID, ok := cbd.deployInfo[name]
+	cbd.deployInfoMu.Unlock()
+	return cID, ok
+}
+
+func (cbd *LocalContainerBuildAndDeployer) setContainerIDForManifest(name model.ManifestName, cID k8s.ContainerID) {
+	cbd.deployInfoMu.Lock()
+	cbd.deployInfo[name] = cID
+	cbd.deployInfoMu.Unlock()
 }
 
 func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (result BuildResult, err error) {
@@ -61,8 +76,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
+	cID, ok := cbd.getContainerIDForManifest(manifest.Name)
 
-	cID, ok := cbd.deployInfo[manifest.Name]
 	// (Unless we don't know what container it's running in, in which case we can't.)
 	if !ok {
 		return BuildResult{}, fmt.Errorf("no container info for this manifest")
@@ -96,13 +111,13 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context,
 		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
 		return
 	}
-	if _, ok := cbd.deployInfo[manifest.Name]; !ok {
+	if _, ok := cbd.getContainerIDForManifest(manifest.Name); !ok {
 		cID, err := cbd.getContainerForBuild(ctx, result)
 		if err != nil {
 			logger.Get(ctx).Infof("couldn't get container for %s: %v", manifest.Name, err)
 			return
 		}
-		cbd.deployInfo[manifest.Name] = cID
+		cbd.setContainerIDForManifest(manifest.Name, cID)
 	}
 }
 

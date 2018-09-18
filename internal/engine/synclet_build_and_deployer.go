@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -26,7 +27,8 @@ type SyncletBuildAndDeployer struct {
 
 	kCli k8s.Client
 
-	deployInfo map[model.ManifestName]k8s.ContainerID
+	deployInfo   map[model.ManifestName]k8s.ContainerID
+	deployInfoMu sync.Mutex
 }
 
 func DefaultSyncletClient(env k8s.Env) (synclet.SyncletClient, error) {
@@ -48,6 +50,19 @@ func NewSyncletBuildAndDeployer(sCli synclet.SyncletClient, kCli k8s.Client) *Sy
 		kCli:       kCli,
 		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
 	}
+}
+
+func (sbd *SyncletBuildAndDeployer) getContainerIDForManifest(name model.ManifestName) (k8s.ContainerID, bool) {
+	sbd.deployInfoMu.Lock()
+	cID, ok := sbd.deployInfo[name]
+	sbd.deployInfoMu.Unlock()
+	return cID, ok
+}
+
+func (sbd *SyncletBuildAndDeployer) setContainerIDForManifest(name model.ManifestName, cID k8s.ContainerID) {
+	sbd.deployInfoMu.Lock()
+	sbd.deployInfo[name] = cID
+	sbd.deployInfoMu.Unlock()
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
@@ -81,7 +96,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	if _, ok := sbd.deployInfo[manifest.Name]; !ok {
+	if _, ok := sbd.getContainerIDForManifest(manifest.Name); !ok {
 		return fmt.Errorf("no container info for this manifest")
 	}
 
@@ -118,7 +133,11 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	cID := sbd.deployInfo[manifest.Name]
+	cID, ok := sbd.getContainerIDForManifest(manifest.Name)
+	if !ok {
+		// We theoretically already checked this condition :(
+		return BuildResult{}, fmt.Errorf("no container ID found for %s", manifest.Name)
+	}
 
 	cmds, err := build.BoilSteps(manifest.Steps, paths)
 	if err != nil {
@@ -141,13 +160,13 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manife
 		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
 		return
 	}
-	if _, ok := sbd.deployInfo[manifest.Name]; !ok {
+	if _, ok := sbd.getContainerIDForManifest(manifest.Name); !ok {
 		cID, err := sbd.getContainerForBuild(ctx, result)
 		if err != nil {
 			logger.Get(ctx).Infof("couldn't get container for %s: %v", manifest.Name, err)
 			return
 		}
-		sbd.deployInfo[manifest.Name] = cID
+		sbd.setContainerIDForManifest(manifest.Name, cID)
 	}
 }
 
