@@ -49,7 +49,7 @@ type Client interface {
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
 
 	// Finds the PodID for the instance of appName running on the same node as podID
-	FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error)
+	FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error)
 
 	// Waits for the LoadBalancer to get a publicly available URL,
 	// then opens that URL in a web browser.

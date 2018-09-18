@@ -11,44 +11,6 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
-func TestContainerIdForPodOneMatch(t *testing.T) {
-	f := newRemoteDockerFixture(t)
-	defer f.teardown()
-	cID, err := f.cu.ContainerIDForPod(f.ctx, docker.TestPod)
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	assert.Equal(f.t, cID.String(), docker.TestContainer)
-}
-
-func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
-	f := newRemoteDockerFixture(t)
-	defer f.teardown()
-	cID, err := f.cu.ContainerIDForPod(f.ctx, "one-pause-cmd")
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	assert.Equal(f.t, cID.String(), "the right container")
-}
-
-func TestContainerIdForPodTooManyMatches(t *testing.T) {
-	f := newRemoteDockerFixture(t)
-	defer f.teardown()
-	_, err := f.cu.ContainerIDForPod(f.ctx, "too-many")
-	if assert.NotNil(f.t, err) {
-		assert.Contains(f.t, err.Error(), "too many matching containers")
-	}
-}
-
-func TestContainerIdForPodNoNonPause(t *testing.T) {
-	f := newRemoteDockerFixture(t)
-	defer f.teardown()
-	_, err := f.cu.ContainerIDForPod(f.ctx, "all-pause")
-	if assert.NotNil(f.t, err) {
-		assert.Contains(f.t, err.Error(), "no matching non-'/pause' containers")
-	}
-}
-
 func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
@@ -118,11 +80,15 @@ type mockContainerUpdaterFixture struct {
 	ctx  context.Context
 	dcli *docker.FakeDockerClient
 	cu   *ContainerUpdater
+	cr   *ContainerResolver
 }
 
 func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 	fakeCli := docker.NewFakeDockerClient()
 	cu := &ContainerUpdater{
+		dcli: fakeCli,
+	}
+	cr := &ContainerResolver{
 		dcli: fakeCli,
 	}
 
@@ -132,6 +98,7 @@ func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 		ctx:            output.CtxForTest(),
 		dcli:           fakeCli,
 		cu:             cu,
+		cr:             cr,
 	}
 }
 

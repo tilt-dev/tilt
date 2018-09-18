@@ -29,7 +29,6 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 
 		build.NewImageReaper,
 
-		engine.DefaultSyncletClient,
 		engine.DeployerWireSet,
 		engine.DefaultShouldFallBack,
 

@@ -101,21 +101,48 @@ func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, erro
 	}
 }
 
-func (k K8sClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
+type FindAppByNodeOptions struct {
+	Namespace string
+	Owner     string
+}
+
+type MultipleAppsFoundError struct {
+	filterDesc string
+	pods       []string
+}
+
+func (m MultipleAppsFoundError) Error() string {
+	return fmt.Sprintf("found multiple apps matching %s: '%s'", m.filterDesc, m.pods)
+}
+
+func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error) {
 	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
-	stdout, stderr, err := k.kubectlRunner.exec(ctx,
-		[]string{"get", "pods", "--namespace=kube-system", fmt.Sprintf("-l=app=%s", appName), jsonPath})
+	args := append([]string{"get", "pods", fmt.Sprintf("-lapp=%s", appName)})
+
+	filterDesc := fmt.Sprintf("name '%s', node '%s'", appName, nodeID.String())
+
+	if len(options.Namespace) > 0 {
+		args = append(args, fmt.Sprintf("--namespace=%s", options.Namespace))
+		filterDesc += fmt.Sprintf(", namespace '%s'", options.Namespace)
+	}
+	if len(options.Owner) > 0 {
+		args = append(args, fmt.Sprintf("-lowner=%s", options.Owner))
+		filterDesc += fmt.Sprintf(", owner '%s'", options.Owner)
+	}
+	args = append(args, jsonPath)
+
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, args)
 
 	if err != nil {
-		return PodID(""), fmt.Errorf("error finding app '%s' on node '%s': %v, stderr: '%s'", appName, nodeID.String(), err.Error(), stderr)
+		return PodID(""), fmt.Errorf("error finding app with %s: %v, stderr: '%s'", filterDesc, err.Error(), stderr)
 	}
 
 	lines := nonEmptyLines(stdout)
 
 	if len(lines) == 0 {
-		return PodID(""), fmt.Errorf("unable to find any apps named '%s' on node '%s'", appName, nodeID)
+		return PodID(""), fmt.Errorf("unable to find any apps with %s", filterDesc)
 	} else if len(lines) > 1 {
-		return PodID(""), fmt.Errorf("found multiple apps named '%s' on node '%s': '%s'", appName, nodeID, stdout)
+		return PodID(""), MultipleAppsFoundError{filterDesc, lines}
 	} else {
 		return PodID(lines[0]), nil
 	}

@@ -7,8 +7,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -20,47 +18,17 @@ const Port = 23551
 
 type Synclet struct {
 	dcli docker.DockerClient
+	cr   *build.ContainerResolver
 }
 
-func NewSynclet(dcli docker.DockerClient) *Synclet {
-	return &Synclet{dcli: dcli}
+func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet {
+	return &Synclet{dcli: dcli, cr: cr}
 }
 
 const pauseCmd = "/pause"
 
-// TODO(matt) dedupe with ContainerUpdater - https://app.clubhouse.io/windmill/story/227/de-dupe-containeridforpod
-func (s Synclet) GetContainerIdForPod(ctx context.Context, podId k8s.PodID) (string, error) {
-	a := filters.NewArgs()
-	a.Add("name", podId.String())
-	listOpts := types.ContainerListOptions{Filters: a}
-	containers, err := s.dcli.ContainerList(ctx, listOpts)
-	if err != nil {
-		return "", fmt.Errorf("getting containers: %v", err)
-	}
-
-	if len(containers) == 0 {
-		return "", fmt.Errorf("no containers found with name %s", podId)
-	}
-
-	// We expect there to be one real match and one spurious match -- a container running
-	// "/pause" (see: https://www.ianlewis.org/en/almighty-pause-container); filter it out
-	if len(containers) > 2 {
-		var ids []string
-		for _, c := range containers {
-			ids = append(ids, c.ID[:10])
-		}
-		return "", fmt.Errorf("too many matching containers (%v)", ids)
-	}
-
-	for _, c := range containers {
-		// TODO(maia): more robust check here (what if user is running a container with "/pause" command?!)
-		if c.Command != pauseCmd {
-			return c.ID, nil
-		}
-	}
-
-	// What?? No actual matches??!
-	return "", fmt.Errorf("no real containers -- all were '/pause' containers")
+func (s Synclet) ContainerIDForPod(ctx context.Context, podId k8s.PodID) (k8s.ContainerID, error) {
+	return s.cr.ContainerIDForPod(ctx, podId)
 }
 
 func (s Synclet) writeFiles(ctx context.Context, containerId k8s.ContainerID, tarArchive []byte) error {

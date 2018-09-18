@@ -7,9 +7,8 @@ package cli
 
 import (
 	context "context"
-
 	build "github.com/windmilleng/tilt/internal/build"
-	wmdocker "github.com/windmilleng/tilt/internal/docker"
+	docker "github.com/windmilleng/tilt/internal/docker"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
@@ -19,10 +18,6 @@ import (
 
 func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
 	env, err := k8s.DetectEnv()
-	if err != nil {
-		return nil, err
-	}
-	syncletClient, err := engine.DefaultSyncletClient(env)
 	if err != nil {
 		return nil, err
 	}
@@ -36,17 +31,19 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, k8sRestInterface, config, portForwarder)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient, k8sClient)
-	dockerCli, err := wmdocker.DefaultDockerClient(ctx, env)
+	syncletClientManager := engine.NewSyncletClientManager(k8sClient)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(k8sClient, syncletClientManager)
+	dockerCli, err := docker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
+	containerResolver := build.NewContainerResolver(dockerCli)
 	analytics, err := provideAnalytics()
 	if err != nil {
 		return nil, err
 	}
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, k8sClient, analytics)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, containerResolver, env, k8sClient, analytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue

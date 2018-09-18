@@ -24,9 +24,12 @@ var DeployerWireSet = wire.NewSet(
 	build.DefaultImageBuilder,
 	build.NewDockerImageBuilder,
 
+	NewSyncletClientManager,
+
 	// BuildOrder
 	NewImageBuildAndDeployer,
 	build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
+	build.NewContainerResolver,
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	DefaultBuildOrder,
