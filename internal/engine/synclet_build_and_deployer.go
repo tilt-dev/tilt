@@ -6,13 +6,14 @@ import (
 	"sync"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
+
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"google.golang.org/grpc"
 )
 
 const podPollTimeoutSynclet = time.Second * 30
@@ -20,48 +21,37 @@ const podPollTimeoutSynclet = time.Second * 30
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	// NOTE(maia): hacky intermediate SyncletBaD takes a single client,
-	// assumes port forwarding a single synclet on <port> -- later, will need
-	// a map of NodeID -> syncletClient
-	sCli synclet.SyncletClient
+	syncletClientManager SyncletClientManager
 
 	kCli k8s.Client
 
-	deployInfo   map[model.ManifestName]k8s.ContainerID
+	deployInfo   map[model.ManifestName]DeployInfo
 	deployInfoMu sync.Mutex
 }
 
-func DefaultSyncletClient(env k8s.Env) (synclet.SyncletClient, error) {
-	if env != k8s.EnvGKE {
-		return nil, nil
-	}
-
-	conn, err := grpc.Dial(fmt.Sprintf("127.0.0.1:%d", synclet.Port), grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("connecting to synclet: %v", err)
-	}
-	cli := synclet.NewGRPCClient(conn)
-	return cli, nil
+type DeployInfo struct {
+	containerID k8s.ContainerID
+	nodeID      k8s.NodeID
 }
 
-func NewSyncletBuildAndDeployer(sCli synclet.SyncletClient, kCli k8s.Client) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(kCli k8s.Client, scm SyncletClientManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		sCli:       sCli,
-		kCli:       kCli,
-		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
+		kCli:                 kCli,
+		deployInfo:           make(map[model.ManifestName]DeployInfo),
+		syncletClientManager: scm,
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) getContainerIDForManifest(name model.ManifestName) (k8s.ContainerID, bool) {
+func (sbd *SyncletBuildAndDeployer) getDeployInfoForManifest(name model.ManifestName) (DeployInfo, bool) {
 	sbd.deployInfoMu.Lock()
-	cID, ok := sbd.deployInfo[name]
+	deployInfo, ok := sbd.deployInfo[name]
 	sbd.deployInfoMu.Unlock()
-	return cID, ok
+	return deployInfo, ok
 }
 
-func (sbd *SyncletBuildAndDeployer) setContainerIDForManifest(name model.ManifestName, cID k8s.ContainerID) {
+func (sbd *SyncletBuildAndDeployer) setDeployInfoForManifest(name model.ManifestName, deployInfo DeployInfo) {
 	sbd.deployInfoMu.Lock()
-	sbd.deployInfo[name] = cID
+	sbd.deployInfo[name] = deployInfo
 	sbd.deployInfoMu.Unlock()
 }
 
@@ -96,7 +86,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	if _, ok := sbd.getContainerIDForManifest(manifest.Name); !ok {
+	if _, ok := sbd.getDeployInfoForManifest(manifest.Name); !ok {
 		return fmt.Errorf("no container info for this manifest")
 	}
 
@@ -133,7 +123,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	cID, ok := sbd.getContainerIDForManifest(manifest.Name)
+	deployInfo, ok := sbd.getDeployInfoForManifest(manifest.Name)
 	if !ok {
 		// We theoretically already checked this condition :(
 		return BuildResult{}, fmt.Errorf("no container ID found for %s", manifest.Name)
@@ -143,7 +133,13 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	if err != nil {
 		return BuildResult{}, err
 	}
-	err = sbd.sCli.UpdateContainer(ctx, cID, archive.Bytes(), containerPathsToRm, cmds)
+
+	sCli, err := sbd.syncletClientManager.ClientForNode(ctx, deployInfo.nodeID)
+	if err != nil {
+		return BuildResult{}, err
+	}
+
+	err = sCli.UpdateContainer(ctx, deployInfo.containerID, archive.Bytes(), containerPathsToRm, cmds)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -160,31 +156,61 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manife
 		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
 		return
 	}
-	if _, ok := sbd.getContainerIDForManifest(manifest.Name); !ok {
-		cID, err := sbd.getContainerForBuild(ctx, result)
+	if _, ok := sbd.getDeployInfoForManifest(manifest.Name); !ok {
+		deployInfo, err := sbd.getDeployInfo(ctx, result.Image)
 		if err != nil {
-			logger.Get(ctx).Infof("couldn't get container for %s: %v", manifest.Name, err)
+			logger.Get(ctx).Infof("failed to get deployInfo: %v", err)
 			return
 		}
-		sbd.setContainerIDForManifest(manifest.Name, cID)
+		sbd.setDeployInfoForManifest(manifest.Name, deployInfo)
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) getContainerForBuild(ctx context.Context, build BuildResult) (k8s.ContainerID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-getContainerForBuild")
+func (sbd *SyncletBuildAndDeployer) getDeployInfo(ctx context.Context, image reference.NamedTagged) (DeployInfo, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-getDeployInfo")
 	defer span.Finish()
 
 	// get pod running the image we just deployed
-	pID, err := sbd.kCli.PollForPodWithImage(ctx, build.Image, podPollTimeoutSynclet)
+	pID, err := sbd.kCli.PollForPodWithImage(ctx, image, podPollTimeoutSynclet)
 	if err != nil {
-		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
+		return DeployInfo{}, errors.Wrapf(err, "PodWithImage (img = %s)", image)
+	}
+
+	nodeID, err := getNodeID(ctx, sbd.kCli, image)
+	if err != nil {
+		return DeployInfo{}, errors.Wrapf(err, "error getting nodeID for image '%s'", image)
+	}
+
+	// note: this is here both to get sCli for the call to getContainerForBuild below
+	// *and* to preemptively set up the tunnel + client
+	// (i.e., we'd still want to call this to set up the client even if we were throwing away
+	// sCli)
+	sCli, err := sbd.syncletClientManager.ClientForNode(ctx, nodeID)
+	if err != nil {
+		return DeployInfo{}, errors.Wrapf(err, "error getting synclet client for node '%s'", nodeID)
 	}
 
 	// get container that's running the app for the pod we found
-	cID, err := sbd.sCli.GetContainerIdForPod(ctx, pID)
+	cID, err := sCli.GetContainerIdForPod(ctx, pID)
 	if err != nil {
-		return "", fmt.Errorf("syncletClient.GetContainerIdForPod (pod = %s): %v", pID, err)
+		return DeployInfo{}, errors.Wrapf(err, "syncletClient.GetContainerIdForPod (pod = %s)", pID)
 	}
 
-	return cID, nil
+	logger.Get(ctx).Verbosef("talking to synclet client for node %s", nodeID.String())
+
+	return DeployInfo{cID, nodeID}, nil
+}
+
+func getNodeID(ctx context.Context, kCli k8s.Client, image reference.NamedTagged) (k8s.NodeID, error) {
+	podID, err := kCli.PodWithImage(ctx, image)
+	if err != nil {
+		return "", errors.Wrapf(err, "couldn't get pod for image '%s'", image.String())
+	}
+
+	nodeID, err := kCli.GetNodeForPod(ctx, podID)
+	if err != nil {
+		return "", errors.Wrapf(err, "couldn't get node for pod '%s'", podID.String())
+	}
+
+	return nodeID, nil
 }
