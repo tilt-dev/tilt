@@ -176,9 +176,9 @@ func (sbd *SyncletBuildAndDeployer) getDeployInfo(ctx context.Context, image ref
 		return DeployInfo{}, errors.Wrapf(err, "PodWithImage (img = %s)", image)
 	}
 
-	nodeID, err := getNodeID(ctx, sbd.kCli, image)
+	nodeID, err := sbd.kCli.GetNodeForPod(ctx, pID)
 	if err != nil {
-		return DeployInfo{}, errors.Wrapf(err, "error getting nodeID for image '%s'", image)
+		return DeployInfo{}, errors.Wrapf(err, "couldn't get node for pod '%s'", pID.String())
 	}
 
 	// note: this is here both to get sCli for the call to getContainerForBuild below
@@ -199,18 +199,4 @@ func (sbd *SyncletBuildAndDeployer) getDeployInfo(ctx context.Context, image ref
 	logger.Get(ctx).Verbosef("talking to synclet client for node %s", nodeID.String())
 
 	return DeployInfo{cID, nodeID}, nil
-}
-
-func getNodeID(ctx context.Context, kCli k8s.Client, image reference.NamedTagged) (k8s.NodeID, error) {
-	podID, err := kCli.PodWithImage(ctx, image)
-	if err != nil {
-		return "", errors.Wrapf(err, "couldn't get pod for image '%s'", image.String())
-	}
-
-	nodeID, err := kCli.GetNodeForPod(ctx, podID)
-	if err != nil {
-		return "", errors.Wrapf(err, "couldn't get node for pod '%s'", podID.String())
-	}
-
-	return nodeID, nil
 }
