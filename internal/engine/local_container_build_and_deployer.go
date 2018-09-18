@@ -65,7 +65,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 
 	cID := state.LastResult.Container
-	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
+	cf, err := build.FilesToPathMappings(
+		state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}

@@ -90,7 +90,8 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 
-	paths, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
+	paths, err := build.FilesToPathMappings(
+		state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/docker/distribution/reference"
@@ -84,7 +85,7 @@ func (b BuildState) LastImage() reference.NamedTagged {
 	return b.LastResult.Image
 }
 
-// Return the files changed in sorted order.
+// Return the files changed since the last result in sorted order.
 // The sorting helps ensure that this is deterministic, both for testing
 // and for deterministic builds.
 func (b BuildState) FilesChanged() []string {
@@ -94,6 +95,33 @@ func (b BuildState) FilesChanged() []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+// Return the files changed since the last result's image in sorted order.
+// The sorting helps ensure that this is deterministic, both for testing
+// and for deterministic builds.
+// Errors if there was no last result image.
+func (b BuildState) FilesChangedSinceLastResultImage() ([]string, error) {
+	if !b.LastResult.HasImage() {
+		return nil, fmt.Errorf("No image in last result")
+	}
+
+	cSet := b.filesChangedSet
+	rSet := b.LastResult.FilesReplacedSet
+	sum := make(map[string]bool, len(cSet)+len(rSet))
+	for k, v := range cSet {
+		sum[k] = v
+	}
+	for k, v := range rSet {
+		sum[k] = v
+	}
+
+	result := make([]string, 0, len(sum))
+	for file, _ := range sum {
+		result = append(result, file)
+	}
+	sort.Strings(result)
+	return result, nil
 }
 
 func (b BuildState) NewStateWithFilesChanged(files []string) BuildState {

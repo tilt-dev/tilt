@@ -1,9 +1,12 @@
 package engine
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,13 +21,17 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 var cID = k8s.ContainerID("test_container")
-var alreadyBuilt = BuildResult{Container: cID}
+var imageID, _ = reference.ParseNamed("gcr.io/some-project-162817/sancho:deadbeef")
+var alreadyBuilt = BuildResult{Image: imageID.(reference.NamedTagged), Container: cID}
+
+type expectedFile = testutils.ExpectedFile
 
 var dontFallBackErrStr = "don't fall back"
 
@@ -111,7 +118,7 @@ func TestIncrementalBuild(t *testing.T) {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
 	if f.docker.CopyCount != 1 {
-		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.PushCount)
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
 	}
 	if len(f.docker.ExecCalls) != 1 {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
@@ -144,7 +151,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
 	if f.docker.CopyCount != 1 {
-		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.PushCount)
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
 	}
 	if len(f.docker.ExecCalls) != 1 {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
@@ -206,7 +213,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	aPath := filepath.Join(f.Path(), "a.txt")
 	bPath := filepath.Join(f.Path(), "b.txt")
 	ioutil.WriteFile(aPath, []byte("a"), os.FileMode(0777))
-	ioutil.WriteFile(aPath, []byte("b"), os.FileMode(0777))
+	ioutil.WriteFile(bPath, []byte("b"), os.FileMode(0777))
 
 	firstState := NewBuildState(alreadyBuilt)
 	statesByName := BuildStatesByName{SanchoManifest.Name: firstState}
@@ -242,7 +249,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
 	if f.docker.CopyCount != 2 {
-		t.Errorf("Expected 2 copy to docker container call, actual: %d", f.docker.PushCount)
+		t.Errorf("Expected 2 copy to docker container call, actual: %d", f.docker.CopyCount)
 	}
 	if len(f.docker.ExecCalls) != 2 {
 		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
@@ -250,6 +257,90 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	if len(f.docker.RestartsByContainer) != 2 {
 		t.Errorf("Expected 2 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
 	}
+}
+
+// Kill the pod after the first container update,
+// and make sure the next image build gets the right file updates.
+func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+	ctx := output.CtxForTest()
+
+	// Make sure we have container info for this manifest
+	manifest := SanchoManifest
+	manifest.Mounts[0].LocalPath = f.Path()
+	aPath := filepath.Join(f.Path(), "a.txt")
+	bPath := filepath.Join(f.Path(), "b.txt")
+	ioutil.WriteFile(aPath, []byte("a"), os.FileMode(0777))
+	ioutil.WriteFile(bPath, []byte("b"), os.FileMode(0777))
+
+	firstState := NewBuildState(alreadyBuilt)
+	statesByName := BuildStatesByName{SanchoManifest.Name: firstState}
+	f.bd.PostProcessBuilds(ctx, statesByName)
+
+	firstState.filesChangedSet[aPath] = true
+	firstResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, firstState)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rSet := firstResult.FilesReplacedSet
+	if len(rSet) != 1 || !rSet[aPath] {
+		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
+	}
+
+	// Kill the pod
+	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
+
+	secondState := NewBuildState(firstResult)
+	secondState.filesChangedSet[bPath] = true
+	secondResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, secondState)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rSet = secondResult.FilesReplacedSet
+	if len(rSet) != 0 {
+		t.Errorf("Expected empty replaced set, actual: %v", rSet)
+	}
+
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected 0 pushes to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 2 {
+		t.Errorf("Expected 2 copy to docker container call, actual: %d", f.docker.CopyCount)
+	}
+	if len(f.docker.ExecCalls) != 2 {
+		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
+	}
+	if len(f.docker.RestartsByContainer) != 1 {
+		t.Errorf("Expected 1 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
+	}
+
+	// Make sure the right files were pushed to docker.
+	tarBB := bytes.NewBuffer(nil)
+	io.Copy(tarBB, f.docker.BuildOptions.Context)
+	tarBytes := tarBB.Bytes()
+
+	// TODO(nick): This is super-janky. Add a function that can assert multiple files in a tarball
+	testutils.AssertFileInTar(t, tar.NewReader(bytes.NewBuffer(tarBytes)), testutils.ExpectedFile{
+		Path: "Dockerfile",
+		Contents: `FROM gcr.io/some-project-162817/sancho:deadbeef
+LABEL "tilt.buildMode"="existing"
+ADD . /
+RUN ["go", "install", "github.com/windmilleng/sancho"]`,
+	})
+	testutils.AssertFileInTar(t, tar.NewReader(bytes.NewBuffer(tarBytes)), testutils.ExpectedFile{
+		Path:     "go/src/github.com/windmilleng/sancho/a.txt",
+		Contents: "a",
+	})
+	testutils.AssertFileInTar(t, tar.NewReader(bytes.NewBuffer(tarBytes)), testutils.ExpectedFile{
+		Path:     "go/src/github.com/windmilleng/sancho/b.txt",
+		Contents: "b",
+	})
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
