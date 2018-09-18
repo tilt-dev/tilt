@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `.add(dest, src)`. Now it is `.add(src, dest)`."
+const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `.add(dest: string, src: string)`. Now it is `.add(src: localPath, dest: string)`."
 
 type compManifest struct {
 	cManifest []k8sManifest
@@ -71,8 +71,8 @@ func (k8sManifest) Hash() (uint32, error) {
 }
 
 type mount struct {
+	src        localPath
 	mountPoint string
-	repo       gitRepo
 }
 
 type dockerImage struct {
@@ -141,14 +141,14 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var gitRepo gitRepo
+	var src interface{}
 	var mountPoint string
 	if len(fn.Receiver().(*dockerImage).steps) > 0 {
 		return nil, errors.New("add mount before run command")
 	}
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &gitRepo, "dest", &mountPoint)
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint)
 	if err != nil {
-		if strings.Contains(err.Error(), "add: for parameter 1: got string, want gitRepo") {
+		if strings.Contains(err.Error(), "got gitRepo, want string") {
 			return nil, fmt.Errorf(oldMountSyntaxError)
 		}
 		return nil, err
@@ -159,7 +159,17 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
 	}
 
-	image.mounts = append(image.mounts, mount{mountPoint, gitRepo})
+	var lp localPath
+	switch p := src.(type) {
+	case localPath:
+		lp = p
+	case gitRepo:
+		lp = localPath{path: p.basePath}
+	default:
+		return nil, fmt.Errorf(oldMountSyntaxError)
+	}
+
+	image.mounts = append(image.mounts, mount{lp, mountPoint})
 
 	return skylark.None, nil
 }
