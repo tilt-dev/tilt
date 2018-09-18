@@ -141,14 +141,14 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var src localPath
+	var src interface{}
 	var mountPoint string
 	if len(fn.Receiver().(*dockerImage).steps) > 0 {
 		return nil, errors.New("add mount before run command")
 	}
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint)
 	if err != nil {
-		if strings.Contains(err.Error(), "add: for parameter 1: got string, want localPath") {
+		if strings.Contains(err.Error(), "got gitRepo, want string") {
 			return nil, fmt.Errorf(oldMountSyntaxError)
 		}
 		return nil, err
@@ -159,7 +159,17 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
 	}
 
-	image.mounts = append(image.mounts, mount{src, mountPoint})
+	gr, ok := src.(gitRepo)
+	if ok {
+		lp := localPath{path: gr.basePath}
+		image.mounts = append(image.mounts, mount{lp, mountPoint})
+	} else {
+		lp, ok := src.(localPath)
+		if !ok {
+			return nil, fmt.Errorf(oldMountSyntaxError)
+		}
+		image.mounts = append(image.mounts, mount{lp, mountPoint})
+	}
 
 	return skylark.None, nil
 }
