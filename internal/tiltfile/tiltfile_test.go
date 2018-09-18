@@ -73,6 +73,8 @@ hello()
 }
 
 func TestGetManifestConfig(t *testing.T) {
+	gitTeardown, _ := gitRepoFixture(t)
+	defer gitTeardown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -114,6 +116,8 @@ func TestGetManifestConfig(t *testing.T) {
 }
 
 func TestOldMountSyntax(t *testing.T) {
+	gitTeardown, _ := gitRepoFixture(t)
+	defer gitTeardown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -383,15 +387,7 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 func TestRunTrigger(t *testing.T) {
 	gitTeardown, td := gitRepoFixture(t)
 	defer gitTeardown()
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(oldWD)
-	err = os.Chdir(td.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
+
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def yarnly():
@@ -551,6 +547,8 @@ func TestReadFile(t *testing.T) {
 }
 
 func TestRepoPath(t *testing.T) {
+	gitTeardown, _ := gitRepoFixture(t)
+	defer gitTeardown()
 	dockerfile := tempFile("docker text")
 	fileToRead := tempFile("hello world")
 	program := fmt.Sprintf(`def blorgly():
@@ -583,6 +581,8 @@ func TestRepoPath(t *testing.T) {
 }
 
 func TestAddOneFileByPath(t *testing.T) {
+	gitTeardown, _ := gitRepoFixture(t)
+	defer gitTeardown()
 	dockerfile := tempFile("docker text")
 	fileToRead := tempFile("hello world")
 	program := fmt.Sprintf(`def blorgly():
@@ -649,4 +649,48 @@ func TestFailsIfNotGitRepo(t *testing.T) {
 	} else if !strings.Contains(err.Error(), "isn't a valid git repo") {
 		t.Errorf("Expected error to be an invalid git repo error, got %s", err.Error())
 	}
+}
+
+func TestReadsIgnoreFiles(t *testing.T) {
+	gitTeardown, td := gitRepoFixture(t)
+	defer gitTeardown()
+	td.WriteFile(".gitignore", "*.exe")
+	td.WriteFile(".dockerignore", "node_modules")
+
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image.add(local_git_repo('.'), '/mount_points/1')
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("Expected at least 1 manifest, got 0")
+	}
+
+	manifest := manifests[0]
+
+	matchesExe, err := manifest.FileFilter.Matches(td.JoinPath("cmd.exe"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, matchesExe)
+
+	matchesNodeModules, err := manifest.FileFilter.Matches(td.JoinPath("node_modules"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, matchesNodeModules)
 }
