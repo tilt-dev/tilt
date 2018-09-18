@@ -81,6 +81,7 @@ type dockerImage struct {
 	mounts     []mount
 	steps      []model.Step
 	entrypoint string
+	filters    []model.PathMatcher
 }
 
 var _ skylark.Value = &dockerImage{}
@@ -164,12 +165,13 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	case localPath:
 		lp = p
 	case gitRepo:
-		lp = localPath{path: p.basePath}
+		lp = localPath{p.basePath, p}
 	default:
 		return nil, fmt.Errorf(oldMountSyntaxError)
 	}
 
 	image.mounts = append(image.mounts, mount{lp, mountPoint})
+	image.filters = append(image.filters, lp.repo.pathMatcher)
 
 	return skylark.None, nil
 }
@@ -213,7 +215,8 @@ func (*dockerImage) AttrNames() []string {
 }
 
 type gitRepo struct {
-	basePath string
+	basePath    string
+	pathMatcher model.PathMatcher
 }
 
 var _ skylark.Value = gitRepo{}
@@ -257,11 +260,12 @@ func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	return localPath{path: filepath.Join(gr.basePath, path)}, nil
+	return localPath{filepath.Join(gr.basePath, path), gr}, nil
 }
 
 type localPath struct {
 	path string
+	repo gitRepo
 }
 
 var _ skylark.Value = localPath{}

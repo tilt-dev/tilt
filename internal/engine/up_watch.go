@@ -5,7 +5,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -142,28 +141,6 @@ type manifestNotifyPair struct {
 	notify   watch.Notify
 }
 
-func makeFilter(ctx context.Context, manifest model.Manifest) (model.PathMatcher, error) {
-	var repoRoots []string
-
-	for _, mount := range manifest.Mounts {
-		repoRoots = append(repoRoots, mount.LocalPath)
-	}
-
-	mrt, err := git.NewMultiRepoIgnoreTester(ctx, repoRoots)
-	if err != nil {
-		return nil, err
-	}
-
-	dit, err := dockerignore.NewMultiRepoDockerIgnoreTester(repoRoots)
-
-	ci := model.NewCompositeMatcher([]model.PathMatcher{
-		mrt,
-		dit,
-	})
-
-	return ci, nil
-}
-
 // turns a list of (manifest, chan fsevent) pairs into a single chan (manifest, fsevent)
 func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []manifestNotifyPair) (*manifestWatcher, error) {
 	events := make(chan manifestFilesChangedEvent)
@@ -171,9 +148,9 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
-		filter, err := makeFilter(ctx, sn.manifest)
-		if err != nil {
-			return nil, err
+		filter := sn.manifest.FileFilter
+		if filter == nil {
+			filter = git.FalseIgnoreTester{}
 		}
 
 		go func(manifest model.Manifest, watcher watch.Notify) {

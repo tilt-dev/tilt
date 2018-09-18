@@ -79,16 +79,3 @@ func readDockerignorePatterns(repoRoot string) ([]string, error) {
 
 	return dockerignore.ReadAll(f)
 }
-
-func NewMultiRepoDockerIgnoreTester(repoRoots []string) (model.PathMatcher, error) {
-	var testers []model.PathMatcher
-	for _, repoRoot := range repoRoots {
-		t, err := NewDockerIgnoreTester(repoRoot)
-		if err != nil {
-			return nil, err
-		}
-		testers = append(testers, t)
-	}
-
-	return model.NewCompositeMatcher(testers), nil
-}
