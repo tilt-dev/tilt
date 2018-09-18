@@ -10,19 +10,19 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 const Port = 23551
 
 type Synclet struct {
-	dcli wmdocker.DockerClient
+	dcli docker.DockerClient
 }
 
-func NewSynclet(dcli wmdocker.DockerClient) *Synclet {
+func NewSynclet(dcli docker.DockerClient) *Synclet {
 	return &Synclet{dcli: dcli}
 }
 
@@ -81,7 +81,7 @@ func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, files
 	out := bytes.NewBuffer(nil)
 	err := s.dcli.ExecInContainer(ctx, containerId, cmd, out)
 	if err != nil {
-		if wmdocker.IsExitError(err) {
+		if docker.IsExitError(err) {
 			return fmt.Errorf("Error deleting files: %s", out.String())
 		}
 		return fmt.Errorf("Error deleting files: %v", err)
@@ -95,7 +95,7 @@ func (s Synclet) execCmds(ctx context.Context, containerId k8s.ContainerID, cmds
 		log.Printf("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
 		err := s.dcli.ExecInContainer(ctx, containerId, c, output.Get(ctx).Writer())
 		if err != nil {
-			exitError, isExitError := err.(wmdocker.ExitError)
+			exitError, isExitError := err.(docker.ExitError)
 			if isExitError {
 				return build.UserBuildFailure{ExitCode: exitError.ExitCode}
 			}

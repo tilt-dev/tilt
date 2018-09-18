@@ -7,11 +7,12 @@ package engine
 
 import (
 	context "context"
+
 	wire "github.com/google/go-cloud/wire"
 	build "github.com/windmilleng/tilt/internal/build"
+	wmdocker "github.com/windmilleng/tilt/internal/docker"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	synclet "github.com/windmilleng/tilt/internal/synclet"
-	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
 	analytics "github.com/windmilleng/wmclient/pkg/analytics"
 	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )

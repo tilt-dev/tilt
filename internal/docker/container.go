@@ -1,4 +1,4 @@
-package wmdocker
+package docker
 
 import (
 	"github.com/docker/distribution/reference"

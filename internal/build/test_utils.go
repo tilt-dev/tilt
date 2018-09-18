@@ -18,20 +18,20 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 type dockerBuildFixture struct {
 	*tempdir.TempDirFixture
 	t            testing.TB
 	ctx          context.Context
-	dcli         *wmdocker.DockerCli
-	fakeDocker   *wmdocker.FakeDockerClient
+	dcli         *docker.DockerCli
+	fakeDocker   *docker.FakeDockerClient
 	b            *dockerImageBuilder
 	registry     *exec.Cmd
 	reaper       ImageReaper
@@ -40,7 +40,7 @@ type dockerBuildFixture struct {
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
-	dcli, err := wmdocker.DefaultDockerClient(ctx, k8s.EnvGKE)
+	dcli, err := docker.DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 
 func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
-	dcli := wmdocker.NewFakeDockerClient()
+	dcli := docker.NewFakeDockerClient()
 	labels := Labels(map[Label]LabelValue{
 		TestImage: "1",
 	})
@@ -156,7 +156,7 @@ func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
 }
 
 func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expectedFiles []expectedFile) {
-	cID := f.startContainer(f.ctx, wmdocker.ContainerConfigRunCmd(ref, model.Cmd{}))
+	cID := f.startContainer(f.ctx, docker.ContainerConfigRunCmd(ref, model.Cmd{}))
 	f.assertFilesInContainer(f.ctx, cID, expectedFiles)
 }
 

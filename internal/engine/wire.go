@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
@@ -36,7 +36,7 @@ var DeployerWireSet = wire.NewSet(
 
 func provideBuildAndDeployer(
 	ctx context.Context,
-	docker wmdocker.DockerClient,
+	docker docker.DockerClient,
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,

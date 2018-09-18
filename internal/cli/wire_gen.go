@@ -7,11 +7,12 @@ package cli
 
 import (
 	context "context"
+
 	build "github.com/windmilleng/tilt/internal/build"
+	wmdocker "github.com/windmilleng/tilt/internal/docker"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
-	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 // Injectors from wire.go:

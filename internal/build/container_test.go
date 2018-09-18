@@ -10,9 +10,9 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 // * * * IMAGE BUILDER * * *
@@ -260,7 +260,7 @@ func TestEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID := f.startContainer(f.ctx, wmdocker.ContainerConfig(d))
+	cID := f.startContainer(f.ctx, docker.ContainerConfig(d))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -384,7 +384,7 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID := f.startContainer(f.ctx, wmdocker.ContainerConfig(ref))
+	cID := f.startContainer(f.ctx, docker.ContainerConfig(ref))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -422,7 +422,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
-	cID := f.startContainer(f.ctx, wmdocker.ContainerConfig(ref))
+	cID := f.startContainer(f.ctx, docker.ContainerConfig(ref))
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
@@ -450,7 +450,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cID := f.startContainer(f.ctx, wmdocker.ContainerConfig(imgRef))
+	cID := f.startContainer(f.ctx, docker.ContainerConfig(imgRef))
 
 	f.Rm("delete_me") // expect to be deleted from container on update
 	f.WriteFile("foo", "hello world")

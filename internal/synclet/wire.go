@@ -7,14 +7,14 @@ import (
 	"context"
 
 	"github.com/google/go-cloud/wire"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	wire.Build(
-		wmdocker.DefaultDockerClient,
-		wire.Bind(new(wmdocker.DockerClient), new(wmdocker.DockerCli)),
+		docker.DefaultDockerClient,
+		wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
 
 		NewSynclet,
 	)

@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
@@ -24,8 +24,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		k8s.NewK8sClient,
 		wire.Bind(new(k8s.Client), k8s.K8sClient{}),
 
-		wmdocker.DefaultDockerClient,
-		wire.Bind(new(wmdocker.DockerClient), new(wmdocker.DockerCli)),
+		docker.DefaultDockerClient,
+		wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
 
 		build.NewImageReaper,
 

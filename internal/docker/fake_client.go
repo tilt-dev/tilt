@@ -1,4 +1,4 @@
-package wmdocker
+package docker
 
 import (
 	"bytes"

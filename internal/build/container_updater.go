@@ -8,18 +8,18 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
-	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 type ContainerUpdater struct {
-	dcli wmdocker.DockerClient
+	dcli docker.DockerClient
 }
 
-func NewContainerUpdater(dcli wmdocker.DockerClient) *ContainerUpdater {
+func NewContainerUpdater(dcli docker.DockerClient) *ContainerUpdater {
 	return &ContainerUpdater{dcli: dcli}
 }
 
@@ -62,7 +62,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	for _, s := range steps {
 		err = r.dcli.ExecInContainer(ctx, cID, s, output.Get(ctx).Writer())
 		if err != nil {
-			exitErr, isExitErr := err.(wmdocker.ExitError)
+			exitErr, isExitErr := err.(docker.ExitError)
 			if isExitErr {
 				return UserBuildFailure{ExitCode: exitErr.ExitCode}
 			}
@@ -129,7 +129,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID k8s.Con
 	out := bytes.NewBuffer(nil)
 	err := r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
 	if err != nil {
-		if wmdocker.IsExitError(err) {
+		if docker.IsExitError(err) {
 			return fmt.Errorf("Error deleting files from container: %s", out.String())
 		}
 		return fmt.Errorf("Error deleting files from container: %v", err)

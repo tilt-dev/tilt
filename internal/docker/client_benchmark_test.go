@@ -1,6 +1,6 @@
 //+build !skipcontainertests
 
-package wmdocker
+package docker
 
 // func BenchmarkExecInContainer(b *testing.B) {
 // 	f := newDockerBuildFixture(b)

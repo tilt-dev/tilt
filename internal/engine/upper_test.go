@@ -13,12 +13,12 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
+	wmdocker "github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
-	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 // represents a single call to `BuildAndDeploy`
