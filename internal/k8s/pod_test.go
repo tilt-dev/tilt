@@ -158,10 +158,10 @@ func TestFindAppByNodeKubectlError(t *testing.T) {
 	}
 }
 
-func TestFindAppByNodeWithUsername(t *testing.T) {
+func TestFindAppByNodeWithOwner(t *testing.T) {
 	f := newClientTestFixture(t)
-	_, _ = f.FindAppByNodeWithOptions(FindAppByNodeOptions{Username: "bob"})
-	f.AssertCallExistsWithArg("-luser=bob")
+	_, _ = f.FindAppByNodeWithOptions(FindAppByNodeOptions{Owner: "bob"})
+	f.AssertCallExistsWithArg("-lowner=bob")
 }
 
 func TestFindAppByNodeWithNamespace(t *testing.T) {
