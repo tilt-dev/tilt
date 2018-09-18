@@ -76,12 +76,12 @@ type mount struct {
 }
 
 type dockerImage struct {
-	fileName     string
-	fileTag      reference.Named
-	mounts       []mount
-	steps        []model.Step
-	entrypoint   string
-	pathMatchers []model.PathMatcher
+	fileName   string
+	fileTag    reference.Named
+	mounts     []mount
+	steps      []model.Step
+	entrypoint string
+	filters    []model.PathMatcher
 }
 
 var _ skylark.Value = &dockerImage{}
@@ -171,7 +171,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	}
 
 	image.mounts = append(image.mounts, mount{lp, mountPoint})
-	image.pathMatchers = append(image.pathMatchers, lp.repo.pathMatcher)
+	image.filters = append(image.filters, lp.repo.pathMatcher)
 
 	return skylark.None, nil
 }
