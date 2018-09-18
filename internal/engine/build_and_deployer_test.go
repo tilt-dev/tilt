@@ -58,7 +58,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,15 +101,10 @@ func TestDockerForMacDeploy(t *testing.T) {
 }
 
 func TestIncrementalBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 
-	// Make sure we have container info for this manifest
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,12 +128,10 @@ func TestIncrementalBuild(t *testing.T) {
 }
 
 func TestIncrementalBuildFailure(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
 
 	ctx := output.CtxForTest()
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
 
 	f.docker.ExecErrorToThrow = build.ExitError{ExitCode: 1}
 	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
@@ -166,18 +159,12 @@ func TestIncrementalBuildFailure(t *testing.T) {
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
-	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
-
-	// Make sure we have container info for this manifest so we do the container
-	// deploy in the first place
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	_, err := f.bd.BuildAndDeploy(output.CtxForTest(), SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,16 +179,11 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
-	// Make sure we have container info for this manifest
-	statesByName := BuildStatesByName{SanchoManifest.Name: NewBuildState(alreadyBuilt)}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propogate back up")
 	}
@@ -217,11 +199,10 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 
 func TestIncrementalBuildTwice(t *testing.T) {
 	t.Skip()
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	// Make sure we have container info for this manifest
 	manifest := SanchoManifest
 	manifest.Mounts[0].LocalPath = f.Path()
 	aPath := filepath.Join(f.Path(), "a.txt")
@@ -230,10 +211,8 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	ioutil.WriteFile(bPath, []byte("b"), os.FileMode(0777))
 
 	firstState := NewBuildState(alreadyBuilt)
-	statesByName := BuildStatesByName{SanchoManifest.Name: firstState}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
 	firstState.filesChangedSet[aPath] = true
+
 	firstResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, firstState)
 	if err != nil {
 		t.Fatal(err)
@@ -276,11 +255,10 @@ func TestIncrementalBuildTwice(t *testing.T) {
 // Kill the pod after the first container update,
 // and make sure the next image build gets the right file updates.
 func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	// Make sure we have container info for this manifest
 	manifest := SanchoManifest
 	manifest.Mounts[0].LocalPath = f.Path()
 	aPath := filepath.Join(f.Path(), "a.txt")
@@ -289,10 +267,8 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	ioutil.WriteFile(bPath, []byte("b"), os.FileMode(0777))
 
 	firstState := NewBuildState(alreadyBuilt)
-	statesByName := BuildStatesByName{SanchoManifest.Name: firstState}
-	f.bd.PostProcessBuilds(ctx, statesByName)
-
 	firstState.filesChangedSet[aPath] = true
+
 	firstResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, firstState)
 	if err != nil {
 		t.Fatal(err)
@@ -362,6 +338,7 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 // a fake DockerClient and K8sClient
 type bdFixture struct {
 	*tempdir.TempDirFixture
+	ctx    context.Context
 	docker *build.FakeDockerClient
 	k8s    *FakeK8sClient
 	bd     BuildAndDeployer
@@ -393,6 +370,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 			},
 		},
 	}
+	ctx := output.CtxForTest()
 	k8s := &FakeK8sClient{}
 	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), fallbackFn)
 	if err != nil {
@@ -401,10 +379,17 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 
 	return &bdFixture{
 		TempDirFixture: f,
+		ctx:            ctx,
 		docker:         docker,
 		k8s:            k8s,
 		bd:             bd,
 	}
+}
+
+// Ensure that the BuildAndDeployer has container information attached for the given manifest.
+func (f *bdFixture) withContainerForManifest(manifest model.Manifest, build BuildResult) *bdFixture {
+	f.bd.PostProcessBuild(f.ctx, manifest, build)
+	return f
 }
 
 type FakeK8sClient struct {
