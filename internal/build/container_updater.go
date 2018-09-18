@@ -12,15 +12,14 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
-const pauseCmd = "/pause"
-
 type ContainerUpdater struct {
-	dcli DockerClient
+	dcli wmdocker.DockerClient
 }
 
-func NewContainerUpdater(dcli DockerClient) *ContainerUpdater {
+func NewContainerUpdater(dcli wmdocker.DockerClient) *ContainerUpdater {
 	return &ContainerUpdater{dcli: dcli}
 }
 
@@ -63,7 +62,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	for _, s := range steps {
 		err = r.dcli.ExecInContainer(ctx, cID, s, output.Get(ctx).Writer())
 		if err != nil {
-			exitErr, isExitErr := err.(ExitError)
+			exitErr, isExitErr := err.(wmdocker.ExitError)
 			if isExitErr {
 				return UserBuildFailure{ExitCode: exitErr.ExitCode}
 			}
@@ -111,7 +110,7 @@ func (r *ContainerUpdater) ContainerIDForPod(ctx context.Context, podName k8s.Po
 
 	for _, c := range containers {
 		// TODO(maia): more robust check here (what if user is running a container with "/pause" command?!)
-		if c.Command != pauseCmd {
+		if c.Command != k8s.PauseCmd {
 			return k8s.ContainerID(c.ID), nil
 		}
 	}
@@ -130,7 +129,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID k8s.Con
 	out := bytes.NewBuffer(nil)
 	err := r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
 	if err != nil {
-		if IsExitError(err) {
+		if wmdocker.IsExitError(err) {
 			return fmt.Errorf("Error deleting files from container: %s", out.String())
 		}
 		return fmt.Errorf("Error deleting files from container: %v", err)

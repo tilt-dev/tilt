@@ -6,11 +6,12 @@
 package cli
 
 import (
-	"context"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
+	context "context"
+	build "github.com/windmilleng/tilt/internal/build"
+	engine "github.com/windmilleng/tilt/internal/engine"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	model "github.com/windmilleng/tilt/internal/model"
+	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 // Injectors from wire.go:
@@ -35,7 +36,7 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, k8sRestInterface, config, portForwarder)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletClient, k8sClient)
-	dockerCli, err := build.DefaultDockerClient(ctx, env)
+	dockerCli, err := wmdocker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}

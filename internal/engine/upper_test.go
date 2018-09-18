@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
+	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 // represents a single call to `BuildAndDeploy`
@@ -439,7 +440,7 @@ type testFixture struct {
 	b          *fakeBuildAndDeployer
 	watcher    *fakeNotify
 	timerMaker *fakeTimerMaker
-	docker     *build.FakeDockerClient
+	docker     *wmdocker.FakeDockerClient
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -449,7 +450,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
-	docker := build.NewFakeDockerClient()
+	docker := wmdocker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
 	k8s := &FakeK8sClient{}

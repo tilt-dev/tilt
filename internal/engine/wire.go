@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/wmdocker"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
@@ -35,7 +36,7 @@ var DeployerWireSet = wire.NewSet(
 
 func provideBuildAndDeployer(
 	ctx context.Context,
-	docker build.DockerClient,
+	docker wmdocker.DockerClient,
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,

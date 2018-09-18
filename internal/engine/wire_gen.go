@@ -6,18 +6,19 @@
 package engine
 
 import (
-	"context"
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	synclet "github.com/windmilleng/tilt/internal/synclet"
+	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
+	analytics "github.com/windmilleng/wmclient/pkg/analytics"
+	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker wmdocker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(sCli, k8s2)
 	containerUpdater := build.NewContainerUpdater(docker)
 	memoryAnalytics := analytics.NewMemoryAnalytics()

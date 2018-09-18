@@ -1,4 +1,4 @@
-package build
+package wmdocker
 
 import (
 	"github.com/docker/distribution/reference"
@@ -9,8 +9,8 @@ import (
 
 // Get a container config to run a container with a given command instead of
 // the existing entrypoint. If cmd is nil, we run nothing.
-func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *container.Config {
-	config := containerConfig(imgRef)
+func ContainerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *container.Config {
+	config := ContainerConfig(imgRef)
 
 	// In Docker, both the Entrypoint and the Cmd are used to determine what
 	// process the container runtime uses, where Entrypoint takes precedence over
@@ -30,6 +30,6 @@ func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *contain
 }
 
 // Get a container config to run a container as-is.
-func containerConfig(imgRef reference.NamedTagged) *container.Config {
+func ContainerConfig(imgRef reference.NamedTagged) *container.Config {
 	return &container.Config{Image: imgRef.String()}
 }

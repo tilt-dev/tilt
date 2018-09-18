@@ -11,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
@@ -23,8 +24,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		k8s.NewK8sClient,
 		wire.Bind(new(k8s.Client), k8s.K8sClient{}),
 
-		build.DefaultDockerClient,
-		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
+		wmdocker.DefaultDockerClient,
+		wire.Bind(new(wmdocker.DockerClient), new(wmdocker.DockerCli)),
 
 		build.NewImageReaper,
 

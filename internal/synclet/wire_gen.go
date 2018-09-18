@@ -6,15 +6,15 @@
 package synclet
 
 import (
-	"context"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/k8s"
+	context "context"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	wmdocker "github.com/windmilleng/tilt/internal/wmdocker"
 )
 
 // Injectors from wire.go:
 
 func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
-	dockerCli, err := build.DefaultDockerClient(ctx, env)
+	dockerCli, err := wmdocker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}

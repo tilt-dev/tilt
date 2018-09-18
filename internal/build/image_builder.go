@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/wmdocker"
 
 	"github.com/containerd/console"
 	"github.com/docker/cli/cli/command"
@@ -28,7 +29,7 @@ import (
 )
 
 type dockerImageBuilder struct {
-	dcli    DockerClient
+	dcli    wmdocker.DockerClient
 	console console.Console
 	out     io.Writer
 
@@ -69,7 +70,7 @@ type pushOutput struct {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dcli DockerClient, console console.Console, out io.Writer, extraLabels Labels) *dockerImageBuilder {
+func NewDockerImageBuilder(dcli wmdocker.DockerClient, console console.Console, out io.Writer, extraLabels Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{
 		dcli:        dcli,
 		console:     console,
