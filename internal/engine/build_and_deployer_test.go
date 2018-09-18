@@ -391,14 +391,14 @@ func (f *bdFixture) withContainerForManifest(manifest model.Manifest, build Buil
 
 type FakeK8sClient struct {
 	yaml string
-	lb   k8s.LoadBalancer
+	lb   k8s.LoadBalancerSpec
 }
 
 var _ k8s.Client = &FakeK8sClient{}
 
-func (c *FakeK8sClient) OpenService(ctx context.Context, lb k8s.LoadBalancer) error {
+func (c *FakeK8sClient) ResolveLoadBalancer(ctx context.Context, lb k8s.LoadBalancerSpec) (k8s.LoadBalancer, error) {
 	c.lb = lb
-	return nil
+	return k8s.LoadBalancer{}, nil
 }
 
 func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) error {
