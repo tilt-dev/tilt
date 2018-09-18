@@ -9,6 +9,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerignore"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
@@ -25,6 +26,27 @@ func TestDigestAsTag(t *testing.T) {
 	expected := "tilt-cc5f4c463f81c551"
 	if tag != expected {
 		t.Errorf("Expected %s, actual: %s", expected, tag)
+	}
+}
+
+func TestDigestMatchesRef(t *testing.T) {
+	dig := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
+	tag, err := digestAsTag(dig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ref, _ := k8s.ParseNamedTagged("windmill.build/image:" + tag)
+	if !digestMatchesRef(ref, dig) {
+		t.Errorf("Expected digest %s to match ref %s", dig, ref)
+	}
+}
+
+func TestDigestNotMatchesRef(t *testing.T) {
+	dig := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
+	ref, _ := k8s.ParseNamedTagged("windmill.build/image:tilt-deadbeef")
+	if digestMatchesRef(ref, dig) {
+		t.Errorf("Expected digest %s to not match ref %s", dig, ref)
 	}
 }
 

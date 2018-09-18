@@ -3,13 +3,23 @@ package build
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 )
+
+// A magic constant. If the docker client returns this constant, we always match
+// even if the container doesn't have the correct image name.
+const MagicTestContainerID = "tilt-testcontainer"
+
+const containerUpTimeout = time.Second
 
 type ContainerResolver struct {
 	dcli docker.DockerClient
@@ -19,12 +29,40 @@ func NewContainerResolver(dcli docker.DockerClient) *ContainerResolver {
 	return &ContainerResolver{dcli: dcli}
 }
 
-// containerIdForPod looks for the container ID associated with the pod.
-// Expects to find exactly one matching container -- if not, return error.
-// TODO: support multiple matching container IDs, i.e. restarting multiple containers per pod
-func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.PodID) (k8s.ContainerID, error) {
+// containerIdForPod looks for the container ID associated with the pod and image ID
+func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.PodID, image reference.NamedTagged) (k8s.ContainerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ContainerResolver-containerIdForPod")
 	defer span.Finish()
+
+	// Right now, we poll the pod until the container comes up. We give up after a timeout.
+	// In the future, we might want to be more clever about asking k8s if the container
+	// is in the process of coming up, or if we're waiting in vain.
+	ctx, cancel := context.WithTimeout(ctx, containerUpTimeout)
+	defer cancel()
+
+	var lastErr error
+	for ctx.Err() == nil {
+		id, err := r.containerIDForPodHelper(ctx, podName, image)
+		if err == nil {
+			return id, nil
+		}
+
+		_, isContainerNotFound := err.(containerNotFound)
+		if !isContainerNotFound {
+			return "", err
+		}
+
+		lastErr = err
+		time.Sleep(containerUpTimeout / 10)
+	}
+
+	if lastErr != nil {
+		return "", lastErr
+	}
+	return "", ctx.Err()
+}
+
+func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName k8s.PodID, image reference.NamedTagged) (k8s.ContainerID, error) {
 
 	a := filters.NewArgs()
 	a.Add("name", string(podName))
@@ -36,26 +74,37 @@ func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.P
 	}
 
 	if len(containers) == 0 {
-		return "", fmt.Errorf("no containers found with name %s", podName)
-	}
-
-	// On GKE, we expect there to be one real match and one spurious match -- a
-	// container running "/pause" (see: http://bit.ly/2BVtBXB); filter it out.
-	if len(containers) > 2 {
-		var ids []string
-		for _, c := range containers {
-			ids = append(ids, k8s.ContainerID(c.ID).ShortStr())
+		return "", containerNotFound{
+			Message: fmt.Sprintf("no matching containers found in pod: %s", podName),
 		}
-		return "", fmt.Errorf("too many matching containers (%v)", ids)
 	}
 
 	for _, c := range containers {
-		// TODO(maia): more robust check here (what if user is running a container with "/pause" command?!)
-		if c.Command != k8s.PauseCmd {
+		if c.ID == MagicTestContainerID {
+			return k8s.ContainerID(c.ID), nil
+		}
+
+		dig, err := digest.Parse(c.ImageID)
+		if err != nil {
+			logger.Get(ctx).Debugf("Skipping malformed digest %q: %v", c.ImageID, err)
+			continue
+		}
+		if digestMatchesRef(image, dig) {
 			return k8s.ContainerID(c.ID), nil
 		}
 	}
 
-	// What?? No actual matches??!
-	return "", fmt.Errorf("no matching non-'/pause' containers")
+	// TODO(nick): We should have a way to wait if the container
+	// simply hasn't materialized yet.
+	return "", containerNotFound{
+		Message: fmt.Sprintf("no containers matching: %s", image),
+	}
+}
+
+type containerNotFound struct {
+	Message string
+}
+
+func (e containerNotFound) Error() string {
+	return e.Message
 }

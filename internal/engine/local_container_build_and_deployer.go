@@ -114,6 +114,7 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context,
 		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
 		return
 	}
+
 	if _, ok := cbd.getContainerIDForManifest(manifest.Name); !ok {
 		cID, err := cbd.getContainerForBuild(ctx, result)
 		if err != nil {
@@ -135,7 +136,7 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	}
 
 	// get container that's running the app for the pod we found
-	cID, err := cbd.cr.ContainerIDForPod(ctx, pID)
+	cID, err := cbd.cr.ContainerIDForPod(ctx, pID, build.Image)
 	if err != nil {
 		return "", fmt.Errorf("ContainerIDForPod (pod = %s): %v", pID, err)
 	}
