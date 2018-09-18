@@ -21,13 +21,13 @@ import (
 // 4. does not take index into account
 
 // an IgnoreTester that ignores nothing
-type falseIgnoreTester struct{}
+type FalseIgnoreTester struct{}
 
-func (falseIgnoreTester) Matches(f string, isDir bool) (bool, error) {
+func (FalseIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 	return false, nil
 }
 
-var _ model.PathMatcher = falseIgnoreTester{}
+var _ model.PathMatcher = FalseIgnoreTester{}
 
 // ignores files specified in .gitignore
 type gitIgnoreTester struct {
@@ -59,11 +59,11 @@ func NewGitIgnoreTester(ctx context.Context, repoRoot string) (model.PathMatcher
 
 		pathError, ok := err.(*os.PathError)
 		//if the error is that file isn't there (ENOENT), then we don't need a warning, since that's a normal case
-		//if it's any other error, log a warning and pretend the file doesn't exist (matching git's behavior)
+		//if it's any other error, log and pretend the file doesn't exist (matching git's behavior)
 		if ok && pathError.Err != syscall.ENOENT {
-			logger.Get(ctx).Infof("warning: failed to open %v: %v", p, err)
+			logger.Get(ctx).Verbosef("failed to open gitignore %v: %v", p, err)
 		}
-		return &falseIgnoreTester{}, nil
+		return &FalseIgnoreTester{}, nil
 	}
 	return &gitIgnoreTester{absRoot, i}, nil
 }

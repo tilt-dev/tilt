@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -8,10 +9,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
+	"github.com/windmilleng/tilt/internal/dockerignore"
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -42,13 +46,14 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint}, nil
+	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, gitRepo{}}, nil
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var yaml skylark.String
 	var dockerImage *dockerImage
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml, "dockerImage", &dockerImage)
+	var repo gitRepo
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml, "dockerImage", &dockerImage, "repo?", &repo)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +112,20 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 		return nil, fmt.Errorf("Reading path %s: %v", path, err)
 	}
 
-	return gitRepo{absPath}, nil
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	t1, err := git.NewGitIgnoreTester(ctx, absPath)
+	if err != nil {
+		return nil, err
+	}
+	t2, err := dockerignore.NewDockerIgnoreTester(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ct := model.NewCompositeMatcher([]model.PathMatcher{t1, t2})
+
+	return gitRepo{absPath, ct}, nil
 }
 
 func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -235,6 +253,7 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
 		DockerfileTag:  manifest.dockerImage.fileTag,
 		Name:           model.ManifestName(manifest.name),
+		FileFilter:     manifest.dockerImage.repo.pathMatcher,
 	}, nil
 
 }
