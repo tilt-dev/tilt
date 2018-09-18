@@ -20,6 +20,7 @@ const podPollTimeoutLocal = time.Second * 3
 
 type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
+	cr        *build.ContainerResolver
 	env       k8s.Env
 	k8sClient k8s.Client
 	analytics analytics.Analytics
@@ -28,9 +29,11 @@ type LocalContainerBuildAndDeployer struct {
 	deployInfoMu sync.Mutex
 }
 
-func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, env k8s.Env, kCli k8s.Client, analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
+func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, cr *build.ContainerResolver,
+	env k8s.Env, kCli k8s.Client, analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:         cu,
+		cr:         cr,
 		env:        env,
 		k8sClient:  kCli,
 		analytics:  analytics,
@@ -132,7 +135,7 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	}
 
 	// get container that's running the app for the pod we found
-	cID, err := cbd.cu.ContainerIDForPod(ctx, pID)
+	cID, err := cbd.cr.ContainerIDForPod(ctx, pID)
 	if err != nil {
 		return "", fmt.Errorf("ContainerIDForPod (pod = %s): %v", pID, err)
 	}

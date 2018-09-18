@@ -15,6 +15,7 @@ func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	wire.Build(
 		build.DefaultDockerClient,
 		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
+		build.NewContainerResolver,
 
 		NewSynclet,
 	)

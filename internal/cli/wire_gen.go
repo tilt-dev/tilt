@@ -6,11 +6,11 @@
 package cli
 
 import (
-	"context"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
+	context "context"
+	build "github.com/windmilleng/tilt/internal/build"
+	engine "github.com/windmilleng/tilt/internal/engine"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	model "github.com/windmilleng/tilt/internal/model"
 )
 
 // Injectors from wire.go:
@@ -37,11 +37,12 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
+	containerResolver := build.NewContainerResolver(dockerCli)
 	analytics, err := provideAnalytics()
 	if err != nil {
 		return nil, err
 	}
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, env, k8sClient, analytics)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, containerResolver, env, k8sClient, analytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
