@@ -41,43 +41,49 @@ def main():
 
     # TODO(maia): stream output when shelling out
 
-    # 1. (re)build Docker image
-    print('+ (Re)building Docker image...')
-    out = subprocess.check_output(['docker', 'build', '-f', args.dockerfile, '-t', imgname, '.'])
-    print('~~~ Built Docker image "{}" with output:\n{}'.
-          format(imgname, utils.tab_lines(out.decode("utf-8"))))
+    try:
 
-    # 2. push docker image to gcr.io
-    print('+ Pushing Docker image...')
-    out = subprocess.check_output(['docker', 'push', imgname])
-    print('~~~ Pushed Docker image with output:\n{}'.
-          format(utils.tab_lines(out.decode("utf-8"))))
+        # 1. (re)build Docker image
+        print('+ (Re)building Docker image...')
+        out = subprocess.check_output(['docker', 'build', '-f', args.dockerfile, '-t', imgname, '.'])
+        print('~~~ Built Docker image "{}" with output:\n{}'.
+            format(imgname, utils.tab_lines(out.decode("utf-8"))))
 
-    # 3. generate k8s config file (by populating template)
-    print('+ Generating k8s file from template "{}"...'.format(args.config_template))
-    config = populate_config_template(args.config_template, utils.ENV_DEVEL, owner)
-    print('~~~ Generated config file: "{}"\n'.format(config))
+        # 2. push docker image to gcr.io
+        print('+ Pushing Docker image...')
+        out = subprocess.check_output(['docker', 'push', imgname])
+        print('~~~ Pushed Docker image with output:\n{}'.
+            format(utils.tab_lines(out.decode("utf-8"))))
 
-    # 4. create/update k8s from config file
-    print('+ Deleting existing pods for this app+owner+env...')
-    labels = {
-        'app': 'synclet',
-        'environment': utils.ENV_DEVEL,
-        'owner': owner,
-    }
-    selectors = []
-    for selector in ['{}={}'.format(k, v) for k, v in labels.items()]:
-        selectors.append(selector)
-    selectors_string = ",".join(selectors)
-    cmd = ['kubectl', 'delete', 'pods', '--namespace=kube-system', '-l', selectors_string]
-    out = subprocess.check_output(cmd)
-    print('~~~ Deleted existing pods (if any) with output:\n{}'.format(
-          utils.tab_lines(out.decode("utf-8"))))
+        # 3. generate k8s config file (by populating template)
+        print('+ Generating k8s file from template "{}"...'.format(args.config_template))
+        config = populate_config_template(args.config_template, utils.ENV_DEVEL, owner)
+        print('~~~ Generated config file: "{}"\n'.format(config))
 
-    print('+ Applying generated k8s config...')
-    out = subprocess.check_output(['kubectl', 'apply', '-f', config])
-    print('~~~ Successfully applied config with output:\n{}'.
-          format(utils.tab_lines(out.decode("utf-8"))))
+        # 4. create/update k8s from config file
+        print('+ Deleting existing pods for this app+owner+env...')
+        labels = {
+            'app': 'synclet',
+            'environment': utils.ENV_DEVEL,
+            'owner': owner,
+        }
+        selectors = []
+        for selector in ['{}={}'.format(k, v) for k, v in labels.items()]:
+            selectors.append(selector)
+        selectors_string = ",".join(selectors)
+        cmd = ['kubectl', 'delete', 'pods', '--namespace=kube-system', '-l', selectors_string]
+        out = subprocess.check_output(cmd)
+        print('~~~ Deleted existing pods (if any) with output:\n{}'.format(
+            utils.tab_lines(out.decode("utf-8"))))
+
+        print('+ Applying generated k8s config...')
+        out = subprocess.check_output(['kubectl', 'apply', '-f', config])
+        print('~~~ Successfully applied config with output:\n{}'.
+            format(utils.tab_lines(out.decode("utf-8"))))
+
+    except subprocess.CalledProcessError as e:
+        print("failed process output: '%s'" % e.output)
+        raise e
 
 
 if __name__ == '__main__':
