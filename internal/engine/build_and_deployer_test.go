@@ -2,11 +2,9 @@ package engine
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -311,25 +309,23 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	}
 
 	// Make sure the right files were pushed to docker.
-	tarBB := bytes.NewBuffer(nil)
-	io.Copy(tarBB, f.docker.BuildOptions.Context)
-	tarBytes := tarBB.Bytes()
-
-	// TODO(nick): This is super-janky. Add a function that can assert multiple files in a tarball
-	testutils.AssertFileInTar(t, tar.NewReader(bytes.NewBuffer(tarBytes)), testutils.ExpectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM gcr.io/some-project-162817/sancho:deadbeef
+	tr := tar.NewReader(f.docker.BuildOptions.Context)
+	testutils.AssertFilesInTar(t, tr, []expectedFile{
+		expectedFile{
+			Path: "Dockerfile",
+			Contents: `FROM gcr.io/some-project-162817/sancho:deadbeef
 LABEL "tilt.buildMode"="existing"
 ADD . /
 RUN ["go", "install", "github.com/windmilleng/sancho"]`,
-	})
-	testutils.AssertFileInTar(t, tar.NewReader(bytes.NewBuffer(tarBytes)), testutils.ExpectedFile{
-		Path:     "go/src/github.com/windmilleng/sancho/a.txt",
-		Contents: "a",
-	})
-	testutils.AssertFileInTar(t, tar.NewReader(bytes.NewBuffer(tarBytes)), testutils.ExpectedFile{
-		Path:     "go/src/github.com/windmilleng/sancho/b.txt",
-		Contents: "b",
+		},
+		expectedFile{
+			Path:     "go/src/github.com/windmilleng/sancho/a.txt",
+			Contents: "a",
+		},
+		expectedFile{
+			Path:     "go/src/github.com/windmilleng/sancho/b.txt",
+			Contents: "b",
+		},
 	})
 }
 
