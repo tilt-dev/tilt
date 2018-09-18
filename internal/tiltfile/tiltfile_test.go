@@ -56,12 +56,12 @@ func TestGetManifestConfig(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
-  image.add(local_git_repo('.'), '/mount_points/1')
-  print(image.file_name)
-  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.run("echo hi")
-  return k8s_service("yaaaaaaaaml", image)
+		image = build_docker_image("%v", "docker-tag", "the entrypoint")
+		repo = local_git_repo('.')
+		image.add(repo.path('.'), '/mount_points/1')
+		image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+		image.run("echo hi")
+		return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
@@ -98,12 +98,13 @@ func TestOldMountSyntax(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
-  image.add('/mount_points/1', local_git_repo('.'))
-  print(image.file_name)
-  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
-  image.run("echo hi")
-  return k8s_service("yaaaaaaaaml", image)
+		image = build_docker_image("%v", "docker-tag", "the entrypoint")
+		repo = local_git_repo('.')
+		image.add('/mount_points/1', repo.path('.'))
+		print(image.file_name)
+		image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+		image.run("echo hi")
+		return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
@@ -376,12 +377,13 @@ func TestRunTrigger(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def yarnly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
-  image.add(local_git_repo('.'), '/mount_points/1')
-  image.run('yarn install', trigger='package.json')
-  image.run('npm install', trigger=['package.json', 'yarn.lock'])
-  image.run('echo hi')
-  return k8s_service("yaaaaaaaaml", image)
+		image = build_docker_image("%v", "docker-tag", "the entrypoint")
+		repo = local_git_repo('.')
+		image.add(repo.path('.'), '/mount_points/1')
+		image.run('yarn install', trigger='package.json')
+		image.run('npm install', trigger=['package.json', 'yarn.lock'])
+		image.run('echo hi')
+		return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
@@ -561,4 +563,38 @@ func TestRepoPath(t *testing.T) {
 
 	manifest := manifestConfig[0]
 	assert.Equal(t, []string{"sh", "-c", filepath.Join(wd, "subpath")}, manifest.Entrypoint.Argv)
+}
+
+func TestAddOneFile(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	fileToRead := tempFile("hello world")
+	program := fmt.Sprintf(`def blorgly():
+	repo = local_git_repo('.')
+	print(repo.path('subpath'))
+	yaml = read_file(%q)
+	image = build_docker_image("%v", "docker-tag", str(repo.path('subpath')))
+	image.add(repo.path('package.json'), '/app/package.json')
+	return k8s_service(yaml, image)
+`, fileToRead, dockerfile)
+	file := tempFile(program)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	manifestConfig, err := tiltConfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := manifestConfig[0]
+	assert.Equal(t, manifest.Mounts[0].LocalPath, filepath.Join(wd, "package.json"))
+	assert.Equal(t, manifest.Mounts[0].ContainerPath, "/app/package.json")
 }
