@@ -53,14 +53,34 @@ func TestMultipleContainersOnePod(t *testing.T) {
 	assert.Equal(t, expected, podImgMap)
 }
 
+func (c clientTestFixture) FindAppByNodeWithOptions(options FindAppByNodeOptions) (PodID, error) {
+	c.setOutput("foo")
+	return c.client.FindAppByNode(context.Background(), NodeID("foo"), "synclet", options)
+}
+
 func (c clientTestFixture) FindAppByNodeWithOutput(output string) (PodID, error) {
 	c.setOutput(output)
-	return c.client.FindAppByNode(context.Background(), "synclet", NodeID("foo"))
+	return c.client.FindAppByNode(context.Background(), NodeID("foo"), "synclet", FindAppByNodeOptions{})
 }
 
 func (c clientTestFixture) FindAppByNodeWithError(err error) (PodID, error) {
 	c.setError(err)
-	return c.client.FindAppByNode(context.Background(), "synclet", NodeID("foo"))
+	return c.client.FindAppByNode(context.Background(), NodeID("foo"), "synclet", FindAppByNodeOptions{})
+}
+
+func (c clientTestFixture) AssertCallExistsWithArg(expectedArg string) {
+	foundMatchingCall := false
+	var errorOutput string
+	for _, call := range c.runner.calls {
+		for _, arg := range call.argv {
+			if expectedArg == arg {
+				foundMatchingCall = true
+			}
+		}
+		errorOutput += fmt.Sprintf("%v\n", call.argv)
+	}
+
+	assert.True(c.t, foundMatchingCall, "did not find arg '%s' in of the calls to kubectlRunner: %v", expectedArg, errorOutput)
 }
 
 func TestPodWithImage(t *testing.T) {
@@ -136,6 +156,18 @@ func TestFindAppByNodeKubectlError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), e.Error())
 	}
+}
+
+func TestFindAppByNodeWithUsername(t *testing.T) {
+	f := newClientTestFixture(t)
+	_, _ = f.FindAppByNodeWithOptions(FindAppByNodeOptions{Username: "bob"})
+	f.AssertCallExistsWithArg("-luser=bob")
+}
+
+func TestFindAppByNodeWithNamespace(t *testing.T) {
+	f := newClientTestFixture(t)
+	_, _ = f.FindAppByNodeWithOptions(FindAppByNodeOptions{Namespace: "kube-system"})
+	f.AssertCallExistsWithArg("--namespace=kube-system")
 }
 
 func (c clientTestFixture) GetNodeForPodWithOutput(output string) (NodeID, error) {

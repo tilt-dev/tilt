@@ -429,7 +429,7 @@ func (c *FakeK8sClient) applyWasCalled() bool {
 	return c.yaml != ""
 }
 
-func (c *FakeK8sClient) FindAppByNode(ctx context.Context, appName string, nodeID k8s.NodeID) (k8s.PodID, error) {
+func (c *FakeK8sClient) FindAppByNode(ctx context.Context, nodeID k8s.NodeID, appName string, options k8s.FindAppByNodeOptions) (k8s.PodID, error) {
 	return k8s.PodID("pod2"), nil
 }
 

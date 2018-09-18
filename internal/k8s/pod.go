@@ -101,10 +101,23 @@ func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, erro
 	}
 }
 
-func (k K8sClient) FindAppByNode(ctx context.Context, appName string, nodeID NodeID) (PodID, error) {
+type FindAppByNodeOptions struct {
+	Namespace string
+	Username  string
+}
+
+func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error) {
 	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
-	stdout, stderr, err := k.kubectlRunner.exec(ctx,
-		[]string{"get", "pods", "--namespace=kube-system", fmt.Sprintf("-l=app=%s", appName), jsonPath})
+	args := append([]string{"get", "pods", fmt.Sprintf("-lapp=%s", appName)})
+	if len(options.Namespace) > 0 {
+		args = append(args, fmt.Sprintf("--namespace=%s", options.Namespace))
+	}
+	if len(options.Username) > 0 {
+		args = append(args, fmt.Sprintf("-luser=%s", options.Username))
+	}
+	args = append(args, jsonPath)
+
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, args)
 
 	if err != nil {
 		return PodID(""), fmt.Errorf("error finding app '%s' on node '%s': %v, stderr: '%s'", appName, nodeID.String(), err.Error(), stderr)
