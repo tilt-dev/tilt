@@ -11,10 +11,11 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/windmilleng/tilt/internal/docker"
 )
 
 type ImageReaper struct {
-	docker DockerClient
+	docker docker.DockerClient
 }
 
 func FilterByLabel(label Label) filters.KeyValuePair {
@@ -29,7 +30,7 @@ func FilterByRefName(ref reference.Named) filters.KeyValuePair {
 	return filters.Arg("reference", fmt.Sprintf("%s:*", ref.Name()))
 }
 
-func NewImageReaper(docker DockerClient) ImageReaper {
+func NewImageReaper(docker docker.DockerClient) ImageReaper {
 	return ImageReaper{
 		docker: docker,
 	}

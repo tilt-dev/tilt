@@ -9,6 +9,7 @@ import (
 	context "context"
 	wire "github.com/google/go-cloud/wire"
 	build "github.com/windmilleng/tilt/internal/build"
+	docker "github.com/windmilleng/tilt/internal/docker"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	synclet "github.com/windmilleng/tilt/internal/synclet"
 	analytics "github.com/windmilleng/wmclient/pkg/analytics"
@@ -17,17 +18,17 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	syncletClientManager := NewSyncletClientManager(k8s2)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(k8s2, syncletClientManager)
-	containerUpdater := build.NewContainerUpdater(docker)
-	containerResolver := build.NewContainerResolver(docker)
+	containerUpdater := build.NewContainerUpdater(docker2)
+	containerResolver := build.NewContainerResolver(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, containerResolver, env, k8s2, memoryAnalytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(docker, console, writer, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env, memoryAnalytics)
 	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env)

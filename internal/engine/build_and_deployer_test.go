@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -131,7 +132,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 
 	ctx := output.CtxForTest()
 
-	f.docker.ExecErrorToThrow = build.ExitError{ExitCode: 1}
+	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
 	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	msg := "Command failed with exit code: 1"
 	if err == nil || !strings.Contains(err.Error(), msg) {
@@ -335,7 +336,7 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 type bdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
-	docker *build.FakeDockerClient
+	docker *docker.FakeDockerClient
 	k8s    *FakeK8sClient
 	bd     BuildAndDeployer
 }
@@ -358,7 +359,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
-	docker := build.NewFakeDockerClient()
+	docker := docker.NewFakeDockerClient()
 	docker.ContainerListOutput = map[string][]types.Container{
 		"pod": []types.Container{
 			types.Container{

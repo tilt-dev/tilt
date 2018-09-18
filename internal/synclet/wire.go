@@ -8,13 +8,14 @@ import (
 
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	wire.Build(
-		build.DefaultDockerClient,
-		wire.Bind(new(build.DockerClient), new(build.DockerCli)),
+		docker.DefaultDockerClient,
+		wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
 		build.NewContainerResolver,
 
 		NewSynclet,

@@ -13,6 +13,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
+	wmdocker "github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -439,7 +440,7 @@ type testFixture struct {
 	b          *fakeBuildAndDeployer
 	watcher    *fakeNotify
 	timerMaker *fakeTimerMaker
-	docker     *build.FakeDockerClient
+	docker     *wmdocker.FakeDockerClient
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -449,7 +450,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
-	docker := build.NewFakeDockerClient()
+	docker := wmdocker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
 	k8s := &FakeK8sClient{}

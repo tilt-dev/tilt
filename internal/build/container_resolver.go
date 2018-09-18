@@ -7,14 +7,15 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 type ContainerResolver struct {
-	dcli DockerClient
+	dcli docker.DockerClient
 }
 
-func NewContainerResolver(dcli DockerClient) *ContainerResolver {
+func NewContainerResolver(dcli docker.DockerClient) *ContainerResolver {
 	return &ContainerResolver{dcli: dcli}
 }
 
@@ -50,7 +51,7 @@ func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.P
 
 	for _, c := range containers {
 		// TODO(maia): more robust check here (what if user is running a container with "/pause" command?!)
-		if c.Command != pauseCmd {
+		if c.Command != k8s.PauseCmd {
 			return k8s.ContainerID(c.ID), nil
 		}
 	}

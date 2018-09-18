@@ -19,6 +19,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const PauseCmd = "/pause"
+
 type PodID string
 type ContainerID string
 type NodeID string

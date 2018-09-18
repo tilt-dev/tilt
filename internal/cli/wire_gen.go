@@ -8,6 +8,7 @@ package cli
 import (
 	context "context"
 	build "github.com/windmilleng/tilt/internal/build"
+	docker "github.com/windmilleng/tilt/internal/docker"
 	engine "github.com/windmilleng/tilt/internal/engine"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
@@ -32,7 +33,7 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	k8sClient := k8s.NewK8sClient(ctx, env, k8sRestInterface, config, portForwarder)
 	syncletClientManager := engine.NewSyncletClientManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(k8sClient, syncletClientManager)
-	dockerCli, err := build.DefaultDockerClient(ctx, env)
+	dockerCli, err := docker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}

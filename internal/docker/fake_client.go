@@ -1,4 +1,4 @@
-package build
+package docker
 
 import (
 	"bytes"
@@ -40,16 +40,16 @@ var ExamplePushOutput1 = `{"status":"The push refers to repository [localhost:50
 	{"progressDetail":{},"aux":{"Tag":"tilt-11cd0b38bc3ceb95","Digest":"sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1","Size":735}}`
 
 const (
-	testPod       = "test_pod"
-	testContainer = "test_container"
+	TestPod       = "test_pod"
+	TestContainer = "test_container"
 )
 
 var ContainersListByName = map[string][]types.Container{
-	testPod: []types.Container{
-		types.Container{ID: testContainer, Command: "./stuff"},
+	TestPod: []types.Container{
+		types.Container{ID: TestContainer, Command: "./stuff"},
 	},
 	"one-pause-cmd": []types.Container{
-		types.Container{ID: "not a match", Command: pauseCmd},
+		types.Container{ID: "not a match", Command: k8s.PauseCmd},
 		types.Container{ID: "the right container", Command: "./stuff"},
 	},
 	"too-many": []types.Container{
@@ -58,8 +58,8 @@ var ContainersListByName = map[string][]types.Container{
 		types.Container{ID: "nuh-uh", Command: "./nonsense"},
 	},
 	"all-pause": []types.Container{
-		types.Container{ID: "pause container", Command: pauseCmd},
-		types.Container{ID: "also pause", Command: pauseCmd},
+		types.Container{ID: "pause container", Command: k8s.PauseCmd},
+		types.Container{ID: "also pause", Command: k8s.PauseCmd},
 	},
 }
 

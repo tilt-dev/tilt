@@ -1,4 +1,4 @@
-package build
+package docker
 
 import (
 	"context"

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
@@ -28,7 +29,7 @@ import (
 )
 
 type dockerImageBuilder struct {
-	dcli    DockerClient
+	dcli    docker.DockerClient
 	console console.Console
 	out     io.Writer
 
@@ -69,7 +70,7 @@ type pushOutput struct {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dcli DockerClient, console console.Console, out io.Writer, extraLabels Labels) *dockerImageBuilder {
+func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, out io.Writer, extraLabels Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{
 		dcli:        dcli,
 		console:     console,

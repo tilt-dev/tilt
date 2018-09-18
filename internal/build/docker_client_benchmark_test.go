@@ -1,5 +1,7 @@
 //+build !skipcontainertests
 
+// NOTE(maia): this benchmark lives in `build` instead of `docker` for access to
+// dockerBuildFixture, which is too gnarly to unwire from the build pkg right now.
 package build
 
 import (

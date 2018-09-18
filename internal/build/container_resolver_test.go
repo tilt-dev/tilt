@@ -4,16 +4,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/docker"
 )
 
 func TestContainerIdForPodOneMatch(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
-	cID, err := f.cr.ContainerIDForPod(f.ctx, testPod)
+	cID, err := f.cr.ContainerIDForPod(f.ctx, docker.TestPod)
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	assert.Equal(f.t, cID.String(), testContainer)
+	assert.Equal(f.t, cID.String(), docker.TestContainer)
 }
 
 func TestContainerIdForPodFiltersOutPauseCmd(t *testing.T) {
