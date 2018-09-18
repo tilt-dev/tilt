@@ -159,17 +159,17 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
 	}
 
-	gr, ok := src.(gitRepo)
-	if ok {
-		lp := localPath{path: gr.basePath}
-		image.mounts = append(image.mounts, mount{lp, mountPoint})
-	} else {
-		lp, ok := src.(localPath)
-		if !ok {
-			return nil, fmt.Errorf(oldMountSyntaxError)
-		}
-		image.mounts = append(image.mounts, mount{lp, mountPoint})
+	var lp localPath
+	switch p := src.(type) {
+	case localPath:
+		lp = p
+	case gitRepo:
+		lp = localPath{path: p.basePath}
+	default:
+		return nil, fmt.Errorf(oldMountSyntaxError)
 	}
+
+	image.mounts = append(image.mounts, mount{lp, mountPoint})
 
 	return skylark.None, nil
 }
