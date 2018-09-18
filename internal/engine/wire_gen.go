@@ -6,13 +6,13 @@
 package engine
 
 import (
-	"context"
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	synclet "github.com/windmilleng/tilt/internal/synclet"
+	analytics "github.com/windmilleng/wmclient/pkg/analytics"
+	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
@@ -21,8 +21,9 @@ func provideBuildAndDeployer(ctx context.Context, docker build.DockerClient, k8s
 	syncletClientManager := NewSyncletClientManager(k8s2)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(k8s2, syncletClientManager)
 	containerUpdater := build.NewContainerUpdater(docker)
+	containerResolver := build.NewContainerResolver(docker)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, env, k8s2, memoryAnalytics)
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, containerResolver, env, k8s2, memoryAnalytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
@@ -42,6 +43,6 @@ var (
 
 var DeployerWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(build.Labels{}), build.DefaultImageBuilder, build.NewDockerImageBuilder, NewSyncletClientManager,
 
-	NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
+	NewImageBuildAndDeployer, build.NewContainerUpdater, build.NewContainerResolver, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer)
