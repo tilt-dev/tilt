@@ -67,6 +67,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	if !ok {
 		return BuildResult{}, fmt.Errorf("no container info for this manifest")
 	}
+
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
@@ -83,9 +84,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
-	return BuildResult{
-		Entities: state.LastResult.Entities,
-	}, nil
+	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
 func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {

@@ -2,6 +2,10 @@ package summary
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -13,16 +17,15 @@ type Summary struct {
 }
 
 type Service struct {
-	Name    string
-	Path    string
-	k8sData k8sData
+	Name       string
+	Path       string
+	K8sObjects []k8sObject
+	K8sLbs     []k8s.LoadBalancer
 }
 
-type k8sData struct {
-	LoadBalancers []k8s.LoadBalancer
-	Group         string
-	Kinds         []string
-	Version       string
+type k8sObject struct {
+	Kind string
+	Name string
 }
 
 // NewSummary returns summary state
@@ -32,19 +35,14 @@ func NewSummary() *Summary {
 	}
 }
 
-// Gather collates data into Summary
+// Gather collects summary data
 func (s *Summary) Gather(services []model.Manifest) error {
 
 	for _, svc := range services {
 		// Assume that, in practice, there is only one mount
 		path := ""
 		if len(svc.Mounts) > 0 {
-			path = svc.Mounts[0].Repo.LocalPath
-		}
-
-		svcSummary := &Service{
-			Name: string(svc.Name),
-			Path: path,
+			path = svc.Mounts[0].LocalPath
 		}
 
 		entities, err := k8s.ParseYAMLFromString(svc.K8sYaml)
@@ -52,65 +50,60 @@ func (s *Summary) Gather(services []model.Manifest) error {
 			return err
 		}
 
-		kubeData := k8sData{
-			LoadBalancers: k8s.ToLoadBalancers(entities),
+		svcSummary := &Service{
+			Name:   string(svc.Name),
+			Path:   path,
+			K8sLbs: k8s.ToLoadBalancers(entities),
 		}
 
 		for _, e := range entities {
-			kubeData.Group = e.Kind.Group
-			kubeData.Version = e.Kind.Version
-			kubeData.Kinds = append(kubeData.Kinds, e.Kind.Kind)
+			svcSummary.K8sObjects = append(svcSummary.K8sObjects, k8sObject{
+				Name: e.Name(),
+				Kind: e.Kind.Kind,
+			})
 		}
 
-		svcSummary.k8sData = kubeData
 		s.Services = append(s.Services, svcSummary)
 	}
 
 	return nil
 }
 
+// Output prints the summary
 func (s *Summary) Output() string {
-	ret := "\n──┤ Services Built … ├────────────────────────────────────────\n"
-
+	ret := ""
 	for _, svc := range s.Services {
-		ret += fmt.Sprintf("    SERVICE NAME: %s\n", svc.Name)
-		ret += fmt.Sprintf("    WATCHING: %s\n", svc.Path)
+		indent := " "
+		ret += fmt.Sprintf("%s%s: ", indent, svc.Name)
 
-		k := svc.k8sData
-
-		ret += fmt.Sprintln("    KUBERNETES INFO")
-		if len(k.Version) > 0 {
-			ret += fmt.Sprintf("      • Version: %s\n", k.Version)
+		// Relative Path
+		if svc.Path != "" {
+			wd, _ := os.Getwd()
+			rel, err := filepath.Rel(wd, svc.Path)
+			if err != nil {
+				log.Fatalf("Failed to get relative path: %s", err)
+			}
+			ret += fmt.Sprintf("./%s ", rel)
 		}
 
-		if len(k.Group) > 0 {
-			ret += fmt.Sprintf("      • Group: %s\n", k.Group)
-		}
-
-		if len(k.LoadBalancers) > 0 {
-			ret += fmt.Sprintf("    LOAD BALANCER:")
-			for _, lb := range k.LoadBalancers {
-				ret += fmt.Sprintf(" %s", lb.Name)
-
-				if len(lb.Ports) > 0 {
-					for _, p := range lb.Ports {
-						ret += fmt.Sprintf(" | PORT: %d", p)
-						ret += fmt.Sprintf(" | URL: http://localhost:%d", p)
-					}
-					ret += fmt.Sprintf("\n")
+		// K8s — assume that the first name will work
+		// TODO(han) - get the LoadBalancer kind (ie: "service") dynamically
+		if len(svc.K8sLbs) > 0 {
+			ret += fmt.Sprintf("→ `kubectl get svc %s` ", svc.K8sObjects[0].Name)
+			if len(svc.K8sLbs[0].Ports) > 0 {
+				for _, p := range svc.K8sLbs[0].Ports {
+					ret += fmt.Sprintf("[http://localhost:%d] ", p)
 				}
 			}
+		} else if len(svc.K8sObjects) > 0 {
+			ret += fmt.Sprintf("→ `kubectl get %s %s` ", strings.ToLower(svc.K8sObjects[0].Kind), svc.K8sObjects[0].Name)
 		}
 
-		if len(k.Kinds) > 0 {
-			ret += fmt.Sprintln("    OBJECTS:")
-			for _, kk := range k.Kinds {
-				ret += fmt.Sprintf("    • %s\n", kk)
-			}
+		// Space after each service, except the last
+		if svc != s.Services[len(s.Services)-1] {
+			ret += fmt.Sprintf("\n")
 		}
 
-		ret += fmt.Sprintf("\n")
 	}
-
 	return ret
 }

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -86,7 +87,7 @@ func TestGetManifestConfig(t *testing.T) {
 	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYaml)
 	assert.Equal(t, 1, len(manifest.Mounts), "number of mounts")
 	assert.Equal(t, "/mount_points/1", manifest.Mounts[0].ContainerPath)
-	assert.Equal(t, wd, manifest.Mounts[0].Repo.LocalPath, "repo path")
+	assert.Equal(t, wd, manifest.Mounts[0].LocalPath, "mount path")
 	assert.Equal(t, 2, len(manifest.Steps), "number of steps")
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv, "first step")
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv, "second step")
@@ -482,4 +483,82 @@ ENTRYPOINT echo hi`)
 	manifest := manifests[0]
 	// TODO(dmiller) is this right?
 	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
+}
+
+func TestAddMissingDir(t *testing.T) {
+	dockerfile := tempFile(`FROM alpine`)
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image(%q, "docker-tag")
+  image.add(local_git_repo('./garbage'), '/garbage')
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+
+	c, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	_, err = c.GetManifestConfigs("blorgly")
+	expected := "Reading path ./garbage"
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error message %q, actual: %v", expected, err)
+	}
+}
+func TestReadFile(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	fileToRead := tempFile("hello world")
+	program := fmt.Sprintf(`def blorgly():
+	yaml = read_file(%q)
+	image = build_docker_image("%v", "docker-tag", "the entrypoint")
+	return k8s_service(yaml, image)
+`, fileToRead, dockerfile)
+	file := tempFile(program)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	s, err := tiltConfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, s[0])
+	assert.Equal(t, s[0].K8sYaml, "hello world")
+}
+
+func TestRepoPath(t *testing.T) {
+	dockerfile := tempFile("docker text")
+	fileToRead := tempFile("hello world")
+	program := fmt.Sprintf(`def blorgly():
+	repo = local_git_repo('.')
+	print(repo.path('subpath'))
+	yaml = read_file(%q)
+	image = build_docker_image("%v", "docker-tag", str(repo.path('subpath')))
+	return k8s_service(yaml, image)
+`, fileToRead, dockerfile)
+	file := tempFile(program)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	manifestConfig, err := tiltConfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := manifestConfig[0]
+	assert.Equal(t, []string{"sh", "-c", filepath.Join(wd, "subpath")}, manifest.Entrypoint.Argv)
 }

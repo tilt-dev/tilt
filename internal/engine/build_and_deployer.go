@@ -75,6 +75,9 @@ func shouldImageBuild(err error) bool {
 	if _, ok := err.(*model.ValidateErr); ok {
 		return false
 	}
+	if build.IsUserBuildFailure(err) {
+		return false
+	}
 	return true
 }
 

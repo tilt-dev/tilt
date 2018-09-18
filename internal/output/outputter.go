@@ -20,8 +20,8 @@ type Outputter struct {
 	logger logger.Logger
 
 	indentation            int
-	curBuildStep           int
 	curPipelineStep        int
+	curBuildStep           int
 	totalPipelineStepCount int
 	pipelineStepDurations  []time.Duration
 	curPipelineStart       time.Time
@@ -60,10 +60,10 @@ func (o *Outputter) color(c color.Attribute) *color.Color {
 func (o *Outputter) blue() *color.Color   { return o.color(color.FgBlue) }
 func (o *Outputter) yellow() *color.Color { return o.color(color.FgYellow) }
 func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
-func (o *Outputter) red() *color.Color    { return o.color(color.FgRed) }
+func (o *Outputter) Red() *color.Color    { return o.color(color.FgRed) }
 
 func (o *Outputter) StartPipeline(totalStepCount int) {
-	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting … ├────────────────────────────────────────"))
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting… ├──────────────────────────────────────────────"))
 	o.curPipelineStep = 1
 	o.totalPipelineStepCount = totalStepCount
 	o.pipelineStepDurations = nil
@@ -79,29 +79,21 @@ func (o *Outputter) EndPipeline(err error) {
 	elapsed := time.Now().Sub(o.curPipelineStart)
 
 	if err != nil {
-		// Error output
-		line := o.red().Sprint("──┤ ︎Pipeline FAILED in ") +
-			o.blue().Sprintf("%.3fs", elapsed.Seconds()) +
-			o.yellow().Sprint(" 😢") +
-			o.red().Sprint(" ︎├───────────────────────────────────")
-		o.logger.Infof("%s", line)
-		line = o.red().Sprint("  → ︎ERROR: ") +
-			o.yellow().Sprint(err.Error())
-		o.logger.Infof("%s", line)
+		prefix := o.Red().Sprint(" ︎ERROR:")
+		o.logger.Infof("%s %s\n", prefix, err.Error())
 		o.curPipelineStep = 0
+		o.curBuildStep = 0
 		return
 	}
 
 	for i, duration := range o.pipelineStepDurations {
-		o.logger.Infof("  │ Step %d - %.3fs", i+1, duration.Seconds())
+		o.logger.Infof("  │ Step %d - %.3fs │", i+1, duration.Seconds())
 	}
 
-	line := o.blue().Sprint("──┤ ︎Pipeline Done in ") +
-		o.green().Sprintf("%.3fs", elapsed.Seconds()) +
-		o.yellow().Sprint(" ⚡") +
-		o.blue().Sprint(" ︎├───────────────────────────────────")
-	o.logger.Infof("%s", line)
+	time := o.green().Sprintf("%.3fs", elapsed.Seconds())
+	o.logger.Infof("──┤ Done in: %s ︎├──\n", time)
 	o.curPipelineStep = 0
+	o.curBuildStep = 0
 }
 
 func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
@@ -114,14 +106,23 @@ func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
 
 func (o *Outputter) EndPipelineStep() {
 	elapsed := time.Now().Sub(o.curPipelineStepStart)
-	o.logger.Infof("    (Done %.3fs)", elapsed.Seconds())
-	o.logger.Infof("")
+	o.logger.Infof("    (Done %.3fs)\n", elapsed.Seconds())
 	o.pipelineStepDurations = append(o.pipelineStepDurations, elapsed)
 }
 
 func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.logger.Infof("  → %s", fmt.Sprintf(format, a...))
 	o.curBuildStep++
+}
+
+func (o *Outputter) Summary(format string, a ...interface{}) {
+	o.logger.Infof("%s", o.blue().Sprint("──┤ Status ├──────────────────────────────────────────────────────────"))
+	o.logger.Infof(format, a...)
+	o.logger.Infof("%s", o.blue().Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
+}
+
+func (o *Outputter) PrintColorf(color *color.Color, format string, a ...interface{}) {
+	o.Printf(color.Sprintf(format, a...))
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {
@@ -157,7 +158,11 @@ func (i *prefixedWriter) Write(buf []byte) (n int, err error) {
 	output += string(buf)
 
 	// temporarily take off a trailing newline so that Replace doesn't add a prefix at the end
-	endsInNewline := output[len(output)-1] == '\n'
+	endsInNewline := false
+	if len(output) > 0 {
+		endsInNewline = output[len(output)-1] == '\n'
+	}
+
 	if endsInNewline {
 		output = output[:len(output)-1]
 	}

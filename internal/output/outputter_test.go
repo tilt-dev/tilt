@@ -3,11 +3,16 @@ package output
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/logger"
 )
+
+// NOTE(dmiller): set at runtime with:
+// go test -ldflags="-X github.com/windmilleng/tilt/internal/build.WriteGoldenMaster=1" github.com/windmilleng/tilt/internal/build -run ^TestBuildkitPrinter
+var WriteGoldenMaster = "0"
 
 func TestPrefixedWriter(t *testing.T) {
 	tf := newPrefixedWriterTestFixture(t, "XXX")
@@ -46,15 +51,7 @@ func TestPipeline(t *testing.T) {
 	o.EndPipelineStep()
 	o.EndPipeline(err)
 
-	result := out.String()
-	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
-STEP 1/1 — hello world
-    ╎ in ur step
-    (Done 0.000s)
-
-  │ Step 1 - 0.000s
-──┤ ︎Pipeline Done in 0.000s ⚡ ︎├───────────────────────────────────
-`, result)
+	assertSnapshot(t, out.String())
 }
 
 func TestErroredPipeline(t *testing.T) {
@@ -68,15 +65,7 @@ func TestErroredPipeline(t *testing.T) {
 	o.EndPipelineStep()
 	o.EndPipeline(err)
 
-	result := out.String()
-	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
-STEP 1/1 — hello world
-    ╎ in ur step
-    (Done 0.000s)
-
-──┤ ︎Pipeline FAILED in 0.000s 😢 ︎├───────────────────────────────────
-  → ︎ERROR: oh noes
-`, result)
+	assertSnapshot(t, out.String())
 }
 
 func TestMultilinePrintInPipeline(t *testing.T) {
@@ -90,20 +79,7 @@ func TestMultilinePrintInPipeline(t *testing.T) {
 	o.EndPipelineStep()
 	o.EndPipeline(err)
 
-	result := out.String()
-	assert.Equal(t, `──┤ Pipeline Starting … ├────────────────────────────────────────
-STEP 1/1 — hello world
-    ╎ line 1
-    ╎ line 2
-    ╎`+
-		// The weird syntax here is so that formatters don't strip the trailing whitespace
-		" "+
-		`
-    (Done 0.000s)
-
-  │ Step 1 - 0.000s
-──┤ ︎Pipeline Done in 0.000s ⚡ ︎├───────────────────────────────────
-`, result)
+	assertSnapshot(t, out.String())
 }
 
 type prefixedWriterTestFixture struct {
@@ -128,4 +104,23 @@ func (p prefixedWriterTestFixture) Write(s string) {
 
 func (p prefixedWriterTestFixture) AssertContentsEqual(expected string) {
 	assert.Equal(p.t, expected, p.buf.String())
+}
+
+func assertSnapshot(t *testing.T, output string) {
+	d1 := []byte(output)
+	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
+	if WriteGoldenMaster == "1" {
+		err := ioutil.WriteFile(gmPath, d1, 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	expected, err := ioutil.ReadFile(gmPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(expected) != output {
+		t.Errorf("Expected: %s != Output: %s", expected, output)
+	}
 }

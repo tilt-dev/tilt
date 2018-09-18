@@ -32,6 +32,13 @@ Creates a `repo` with the content at `path`.
     * `path`: **str**
 * Returns: **Repo**
 
+#### Repo.add(path)
+Gets the absolute to the file specified at `path` in the repo
+
+* Args:
+  * `path`: **str**
+* Returns:  **localPath**
+
 #### build_docker_image(dockerfile_path, img_name, entrypoint?)
 Builds a docker image.
 
@@ -80,6 +87,13 @@ Runs cmd, waits for it to finish, and returns its stdout.
 
 * Args:
   * `cmd`: **str**
+* Returns: **str**
+
+#### read_file(file_path)
+Reads file and returns its contents.
+
+* Args:
+  * `file_path`: **str**
 * Returns: **str**
 
 ## Developing

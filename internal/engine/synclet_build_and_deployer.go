@@ -93,7 +93,8 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 
-	paths, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
+	paths, err := build.FilesToPathMappings(
+		state.FilesChanged(), manifest.Mounts)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -128,9 +129,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return BuildResult{}, err
 	}
 
-	return BuildResult{
-		Entities: state.LastResult.Entities,
-	}, nil
+	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
 func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {

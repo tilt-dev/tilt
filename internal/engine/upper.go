@@ -92,7 +92,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			buildStates[manifest.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
 		} else if watchMounts {
-			logger.Get(ctx).Infof("build failed: %v", err)
+			o := output.Get(ctx)
+			o.PrintColorf(o.Red(), "build failed: %v", err)
 		} else {
 			return fmt.Errorf("build failed: %v", err)
 		}
@@ -110,7 +111,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Printf("%s", s.Output())
+	output.Get(ctx).Summary(s.Output())
 
 	if watchMounts {
 		go func() {
@@ -121,6 +122,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		}()
 
 		logger.Get(ctx).Infof("Awaiting edits...")
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -147,13 +149,15 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 					event.manifest,
 					buildState)
 				if err != nil {
-					logger.Get(ctx).Infof("build failed: %v", err)
+					o := output.Get(ctx)
+					o.PrintColorf(o.Red(), "build failed: %v", err)
 				} else {
 					buildStates[event.manifest.Name] = NewBuildState(result)
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-				output.Get(ctx).Printf("%s", s.Output())
+				output.Get(ctx).Summary(s.Output())
+				output.Get(ctx).Printf("Awaiting changes…")
 
 			case err := <-sw.errs:
 				return err

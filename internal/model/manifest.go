@@ -16,6 +16,7 @@ type Manifest struct {
 	K8sYaml        string
 	DockerfileText string
 	Mounts         []Mount
+	FileFilter     PathMatcher
 	Steps          []Step
 	Entrypoint     Cmd
 	DockerfileTag  reference.Named
@@ -55,9 +56,7 @@ type ManifestCreator interface {
 }
 
 type Mount struct {
-	// TODO(dmiller) make this more generic
-	// TODO(maia): or maybe don't make this a repo necessarily, just a path?
-	Repo          LocalGithubRepo
+	LocalPath     string
 	ContainerPath string
 }
 
@@ -119,6 +118,21 @@ func (c Cmd) RunStr() string {
 		quoted[i] = fmt.Sprintf("%q", arg)
 	}
 	return fmt.Sprintf("RUN [%s]", strings.Join(quoted, ", "))
+}
+func (c Cmd) String() string {
+	if c.IsShellStandardForm() {
+		return c.Argv[2]
+	}
+
+	quoted := make([]string, len(c.Argv))
+	for i, arg := range c.Argv {
+		if strings.Contains(arg, " ") {
+			quoted[i] = fmt.Sprintf("%q", arg)
+		} else {
+			quoted[i] = arg
+		}
+	}
+	return fmt.Sprintf("%s", strings.Join(quoted, " "))
 }
 
 func (c Cmd) Empty() bool {

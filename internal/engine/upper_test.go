@@ -140,7 +140,7 @@ func TestUpper_UpWatchZeroRepos(t *testing.T) {
 func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		f.watcher.errors <- errors.New("bazquu")
@@ -164,7 +164,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		f.timerMaker.maxTimerLock.Lock()
@@ -194,7 +194,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		f.timerMaker.maxTimerLock.Lock()
@@ -234,7 +234,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	go func() {
 		call := <-f.b.calls
@@ -274,7 +274,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
@@ -297,7 +297,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	buildFailedToken := errors.New("doesn't compile")
 	f.b.nextBuildFailure = buildFailedToken
@@ -310,7 +310,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	go func() {
@@ -343,7 +343,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	go func() {
@@ -378,7 +378,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{Repo: model.LocalGithubRepo{LocalPath: "/go"}, ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 
 	f.docker.BuildCount++
