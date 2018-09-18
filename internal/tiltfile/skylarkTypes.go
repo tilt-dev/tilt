@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -202,21 +203,20 @@ func (*dockerImage) AttrNames() []string {
 }
 
 type gitRepo struct {
-	path string
+	basePath string
 }
 
 var _ skylark.Value = gitRepo{}
 
 func (gr gitRepo) String() string {
-	return fmt.Sprintf("[gitRepo] '%v'", gr.path)
+	return fmt.Sprintf("[gitRepo] '%v'", gr.basePath)
 }
 
 func (gr gitRepo) Type() string {
 	return "gitRepo"
 }
 
-func (gr gitRepo) Freeze() {
-}
+func (gr gitRepo) Freeze() {}
 
 func (gitRepo) Truth() skylark.Bool {
 	return true
@@ -224,6 +224,54 @@ func (gitRepo) Truth() skylark.Bool {
 
 func (gitRepo) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: gitRepo")
+}
+
+func (gr gitRepo) Attr(name string) (skylark.Value, error) {
+	switch name {
+	case "path":
+		return skylark.NewBuiltin(name, gr.path), nil
+	default:
+		return nil, nil
+	}
+
+}
+
+func (gr gitRepo) AttrNames() []string {
+	return []string{"path"}
+}
+
+func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var path string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	return localPath{path: filepath.Join(gr.basePath, path)}, nil
+}
+
+type localPath struct {
+	path string
+}
+
+var _ skylark.Value = localPath{}
+
+func (l localPath) String() string {
+	return l.path
+}
+
+func (localPath) Type() string {
+	return "localPath"
+}
+
+func (localPath) Freeze() {}
+
+func (localPath) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: localPath")
+}
+
+func (localPath) Truth() skylark.Bool {
+	return true
 }
 
 func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
