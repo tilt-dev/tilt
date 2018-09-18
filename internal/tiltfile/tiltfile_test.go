@@ -28,6 +28,26 @@ func tempFile(content string) string {
 	return f.Name()
 }
 
+func gitRepoFixture(t *testing.T) (func() error, *tempdir.TempDirFixture) {
+	td := tempdir.NewTempDirFixture(t)
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.Chdir(td.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.Mkdir(".git", os.FileMode(0777))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return func() error {
+		td.TearDown()
+		return os.Chdir(oldWD)
+	}, td
+}
+
 func TestSyntax(t *testing.T) {
 	file := tempFile(`
 def hello():
@@ -361,8 +381,8 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 }
 
 func TestRunTrigger(t *testing.T) {
-	td := tempdir.NewTempDirFixture(t)
-	defer td.TearDown()
+	gitTeardown, td := gitRepoFixture(t)
+	defer gitTeardown()
 	oldWD, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -594,4 +614,39 @@ func TestAddOneFileByPath(t *testing.T) {
 	manifest := manifestConfig[0]
 	assert.Equal(t, manifest.Mounts[0].LocalPath, filepath.Join(wd, "package.json"))
 	assert.Equal(t, manifest.Mounts[0].ContainerPath, "/app/package.json")
+}
+
+func TestFailsIfNotGitRepo(t *testing.T) {
+	td := tempdir.NewTempDirFixture(t)
+	defer td.TearDown()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWD)
+	err = os.Chdir(td.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image.add(local_git_repo('.'), '/mount_points/1')
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	_, err = tiltconfig.GetManifestConfigs("blorgly")
+	if err == nil {
+		t.Error("Expected error")
+	} else if !strings.Contains(err.Error(), "isn't a valid git repo") {
+		t.Errorf("Expected error to be an invalid git repo error, got %s", err.Error())
+	}
 }
