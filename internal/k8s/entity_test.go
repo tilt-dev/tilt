@@ -35,13 +35,13 @@ func TestImmutableFilter(t *testing.T) {
 	}
 }
 
-func TestLoadBalancers(t *testing.T) {
+func TestLoadBalancerSpecs(t *testing.T) {
 	entities, err := ParseYAMLFromString(BlorgBackendYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	lbs := ToLoadBalancers(entities)
+	lbs := ToLoadBalancerSpecs(entities)
 	if len(lbs) != 1 {
 		t.Fatalf("Expected 1 loadbalancer, actual %d: %v", len(lbs), lbs)
 	}

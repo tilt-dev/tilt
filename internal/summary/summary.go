@@ -1,8 +1,10 @@
 package summary
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +22,7 @@ type Service struct {
 	Name       string
 	Path       string
 	K8sObjects []k8sObject
-	K8sLbs     []k8s.LoadBalancer
+	K8sLbs     []k8s.LoadBalancerSpec
 }
 
 type k8sObject struct {
@@ -53,7 +55,7 @@ func (s *Summary) Gather(services []model.Manifest) error {
 		svcSummary := &Service{
 			Name:   string(svc.Name),
 			Path:   path,
-			K8sLbs: k8s.ToLoadBalancers(entities),
+			K8sLbs: k8s.ToLoadBalancerSpecs(entities),
 		}
 
 		for _, e := range entities {
@@ -70,7 +72,7 @@ func (s *Summary) Gather(services []model.Manifest) error {
 }
 
 // Output prints the summary
-func (s *Summary) Output() string {
+func (s *Summary) Output(ctx context.Context, resolver LBResolver) string {
 	ret := ""
 	for _, svc := range s.Services {
 		indent := " "
@@ -87,13 +89,13 @@ func (s *Summary) Output() string {
 		}
 
 		// K8s — assume that the first name will work
-		// TODO(han) - get the LoadBalancer kind (ie: "service") dynamically
+		// TODO(han) - get the LoadBalancerSpec kind (ie: "service") dynamically
 		if len(svc.K8sLbs) > 0 {
-			ret += fmt.Sprintf("→ `kubectl get svc %s` ", svc.K8sObjects[0].Name)
-			if len(svc.K8sLbs[0].Ports) > 0 {
-				for _, p := range svc.K8sLbs[0].Ports {
-					ret += fmt.Sprintf("[http://localhost:%d] ", p)
-				}
+			ret += fmt.Sprintf("→ `kubectl get svc %s` ", svc.K8sLbs[0].Name)
+
+			url := resolver(ctx, svc.K8sLbs[0])
+			if url != nil {
+				ret += fmt.Sprintf("[%s] ", url.String())
 			}
 		} else if len(svc.K8sObjects) > 0 {
 			ret += fmt.Sprintf("→ `kubectl get %s %s` ", strings.ToLower(svc.K8sObjects[0].Kind), svc.K8sObjects[0].Name)
@@ -107,3 +109,5 @@ func (s *Summary) Output() string {
 	}
 	return ret
 }
+
+type LBResolver func(ctx context.Context, lb k8s.LoadBalancerSpec) *url.URL

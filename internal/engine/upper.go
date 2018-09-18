@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -83,14 +84,14 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		return err
 	}
 
-	lbs := make([]k8s.LoadBalancer, 0)
+	lbs := make([]k8s.LoadBalancerSpec, 0)
 	for _, manifest := range manifests {
 		buildStates[manifest.Name] = BuildStateClean
 
 		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
 		if err == nil {
 			buildStates[manifest.Name] = NewBuildState(buildResult)
-			lbs = append(lbs, k8s.ToLoadBalancers(buildResult.Entities)...)
+			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
 		} else if watchMounts {
 			o := output.Get(ctx)
 			o.PrintColorf(o.Red(), "build failed: %v", err)
@@ -103,7 +104,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		// Open only the first load balancer in a browser.
 		// TODO(nick): We might need some hints on what load balancer to
 		// open if we have multiple, or what path to default to on the opened manifest.
-		err := u.k8s.OpenService(ctx, lbs[0])
+		err := k8s.OpenService(ctx, u.k8s, lbs[0])
 		if err != nil {
 			return err
 		}
@@ -111,7 +112,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Summary(s.Output())
+	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 
 	if watchMounts {
 		go func() {
@@ -156,7 +157,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				}
 				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-				output.Get(ctx).Summary(s.Output())
+				output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 				output.Get(ctx).Printf("Awaiting changes…")
 
 			case err := <-sw.errs:
@@ -165,6 +166,11 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		}
 	}
 	return nil
+}
+
+func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
+	lb, _ := u.k8s.ResolveLoadBalancer(ctx, spec)
+	return lb.URL
 }
 
 func (u Upper) logBuildEvent(ctx context.Context, manifest model.Manifest, buildState BuildState) {

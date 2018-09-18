@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"net/url"
 	"reflect"
 
 	"k8s.io/api/core/v1"
@@ -78,15 +79,20 @@ func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 	return result
 }
 
-type LoadBalancer struct {
+type LoadBalancerSpec struct {
 	Name  string
 	Ports []int32
 }
 
-func ToLoadBalancers(entities []K8sEntity) []LoadBalancer {
-	result := make([]LoadBalancer, 0)
+type LoadBalancer struct {
+	Spec LoadBalancerSpec
+	URL  *url.URL
+}
+
+func ToLoadBalancerSpecs(entities []K8sEntity) []LoadBalancerSpec {
+	result := make([]LoadBalancerSpec, 0)
 	for _, e := range entities {
-		lb, ok := ToLoadBalancer(e)
+		lb, ok := ToLoadBalancerSpec(e)
 		if ok {
 			result = append(result, lb)
 		}
@@ -94,21 +100,21 @@ func ToLoadBalancers(entities []K8sEntity) []LoadBalancer {
 	return result
 }
 
-// Try to convert the current entity to a LoadBalancer service
-func ToLoadBalancer(entity K8sEntity) (LoadBalancer, bool) {
+// Try to convert the current entity to a LoadBalancerSpec service
+func ToLoadBalancerSpec(entity K8sEntity) (LoadBalancerSpec, bool) {
 	service, ok := entity.Obj.(*v1.Service)
 	if !ok {
-		return LoadBalancer{}, false
+		return LoadBalancerSpec{}, false
 	}
 
 	meta := service.ObjectMeta
 	name := meta.Name
 	spec := service.Spec
 	if spec.Type != v1.ServiceTypeLoadBalancer {
-		return LoadBalancer{}, false
+		return LoadBalancerSpec{}, false
 	}
 
-	result := LoadBalancer{Name: name}
+	result := LoadBalancerSpec{Name: name}
 	for _, portSpec := range spec.Ports {
 		if portSpec.Port != 0 {
 			result.Ports = append(result.Ports, portSpec.Port)
@@ -116,7 +122,7 @@ func ToLoadBalancer(entity K8sEntity) (LoadBalancer, bool) {
 	}
 
 	if len(result.Ports) == 0 {
-		return LoadBalancer{}, false
+		return LoadBalancerSpec{}, false
 	}
 
 	return result, true
