@@ -16,7 +16,7 @@ def backend():
   repo = local_git_repo('.')
   img.add(repo, '/go/src/github.com/companyname/backend')
   img.run('go install github.com/companyname/backend/server')
-  return k8s_service(local_file('backend.yaml'), img)
+  return k8s_service(read_file('backend.yaml'), img)
 ```
 
 ## Mill
