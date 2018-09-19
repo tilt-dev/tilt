@@ -56,7 +56,7 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 
 	replaced := false
 	for _, container := range containers {
-		existingRef, err := reference.ParseNamed(container.Image)
+		existingRef, err := reference.ParseNormalizedNamed(container.Image)
 		if err != nil {
 			return K8sEntity{}, false, err
 		}

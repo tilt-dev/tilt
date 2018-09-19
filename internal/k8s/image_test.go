@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
 
 	"k8s.io/api/core/v1"
 )
@@ -222,4 +223,31 @@ func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest s
 	}
 
 	return InjectImageDigest(entity, canonicalRef, policy)
+}
+
+func TestInjectSyncletImage(t *testing.T) {
+	entities, err := ParseYAMLFromString(SyncletYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(entities))
+	entity := entities[0]
+	name := "gcr.io/windmill-public-containers/synclet"
+	namedTagged, _ := ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
+	newEntity, replaced, err := InjectImageDigest(entity, namedTagged, v1.PullNever)
+	if err != nil {
+		t.Fatal(err)
+	} else if !replaced {
+		t.Errorf("Expected replacement in:\n%s", SyncletYAML)
+	}
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(result, namedTagged.String()) {
+		t.Errorf("could not find image in yaml (%s):\n%s", namedTagged, result)
+	}
 }

@@ -191,3 +191,55 @@ spec:
       restartPolicy: Never
   backoffLimit: 4
 `
+
+const SyncletYAML = `apiVersion: apps/v1beta2
+kind: DaemonSet
+metadata:
+  name: owner-synclet
+  namespace: kube-system
+  labels:
+    app: synclet
+    owner: owner
+    environment: dev
+spec:
+  selector:
+    matchLabels:
+      app: synclet
+      owner: owner
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: synclet
+        owner: owner
+        environment: dev
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: synclet
+        image: gcr.io/windmill-public-containers/synclet
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: dockersocker
+          mountPath: /var/run/docker.sock
+        securityContext:
+          privileged: true
+      - image: jaegertracing/jaeger-agent
+        name: jaeger-agent
+        ports:
+        - containerPort: 5775
+          protocol: UDP
+        - containerPort: 6831
+          protocol: UDP
+        - containerPort: 6832
+          protocol: UDP
+        - containerPort: 5778
+          protocol: TCP
+        args: ["--collector.host-port=jaeger-collector.default:14267"]
+      volumes:
+        - name: dockersocker
+          hostPath:
+            path: /var/run/docker.sock
+`
