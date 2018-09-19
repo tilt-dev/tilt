@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	isatty "github.com/mattn/go-isatty"
+	"github.com/mattn/go-isatty"
 )
 
 type Logger interface {
@@ -17,6 +17,9 @@ type Logger interface {
 	Verbosef(format string, a ...interface{})
 	// log information that is likely to only be of interest to tilt developers
 	Debugf(format string, a ...interface{})
+
+	Write(level Level, s string)
+
 	// gets an io.Writer that filters to the specified level for, e.g., passing to a subprocess
 	Writer(level Level) io.Writer
 
@@ -28,7 +31,7 @@ var _ Logger = logger{}
 type Level int
 
 const (
-	_ = iota
+	NoneLvl = iota
 	InfoLvl
 	VerboseLvl
 	DebugLvl
@@ -73,24 +76,35 @@ type logger struct {
 }
 
 func (l logger) Infof(format string, a ...interface{}) {
-	l.write(InfoLvl, format, a...)
+	l.writef(InfoLvl, format, a...)
 }
 
 func (l logger) Verbosef(format string, a ...interface{}) {
-	l.write(VerboseLvl, format, a...)
+	l.writef(VerboseLvl, format, a...)
 }
 
 func (l logger) Debugf(format string, a ...interface{}) {
-	l.write(DebugLvl, format, a...)
+	l.writef(DebugLvl, format, a...)
 }
 
-func (l logger) write(level Level, format string, a ...interface{}) {
+func (l logger) writef(level Level, format string, a ...interface{}) {
 	if l.level >= level {
 		// swallowing errors because:
 		// 1) if we can't write to the log, what else are we going to do?
 		// 2) a logger interface that returns error becomes really distracting at call sites,
 		//    increasing friction and reducing logging
 		_, _ = fmt.Fprintf(l.writer, format, a...)
+		_, _ = fmt.Fprintln(l.writer, "")
+	}
+}
+
+func (l logger) Write(level Level, s string) {
+	if l.level >= level {
+		// swallowing errors because:
+		// 1) if we can't write to the log, what else are we going to do?
+		// 2) a logger interface that returns error becomes really distracting at call sites,
+		//    increasing friction and reducing logging
+		_, _ = fmt.Fprintf(l.writer, s)
 		_, _ = fmt.Fprintln(l.writer, "")
 	}
 }

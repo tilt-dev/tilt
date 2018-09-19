@@ -5,20 +5,24 @@ package synclet;
 option go_package = "github.com/windmilleng/tilt/internal/synclet/proto;proto";
 
 service Synclet {
-    rpc GetContainerIdForPod (GetContainerIdForPodRequest) returns (GetContainerIdForPodReply) {}
+    rpc GetContainerIdForPod (GetContainerIdForPodRequest) returns (stream GetContainerIdForPodReply) {}
 
     // updates the specified container and then restarts it
     // (much functionality packed into one rpc to minimize latency)
-    rpc UpdateContainer (UpdateContainerRequest) returns (UpdateContainerReply) {}
+    rpc UpdateContainer (UpdateContainerRequest) returns (stream UpdateContainerReply) {}
 }
 
 message GetContainerIdForPodRequest {
     string pod_id = 1;
     string image_id = 2;
+    LogStyle log_style = 3;
 }
 
 message GetContainerIdForPodReply {
-    string container_id = 1;
+    oneof content {
+        string container_id = 1;
+        LogMessage message = 2;
+    }
 }
 
 message Cmd {
@@ -30,6 +34,24 @@ message UpdateContainerRequest {
     bytes tar_archive = 2;
     repeated string files_to_delete = 3;
     repeated Cmd commands = 4;
+    LogStyle log_style = 5;
 }
 
-message UpdateContainerReply {}
+enum LogLevel {
+    INFO = 0;
+    VERBOSE = 1;
+    DEBUG = 2;
+}
+
+message LogMessage {
+    LogLevel level = 1;
+    bytes message = 2;
+}
+
+message UpdateContainerReply {
+    LogMessage log_message = 1;
+}
+
+message LogStyle {
+    bool colors_enabled = 1;
+}
