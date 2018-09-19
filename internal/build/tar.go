@@ -103,6 +103,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 	dest = strings.TrimPrefix(dest, "/")
 
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+		// TODO(dmiller): filter out Tiltfile here
 		if err != nil {
 			return fmt.Errorf("error walking to %s: %v", path, err)
 		}
