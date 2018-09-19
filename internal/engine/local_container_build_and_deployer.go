@@ -111,14 +111,18 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context,
 	defer span.Finish()
 
 	if !result.HasImage() {
-		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
+		// This is normal condition if the previous build failed.
 		return
 	}
 
 	if _, ok := cbd.getContainerIDForManifest(manifest.Name); !ok {
 		cID, err := cbd.getContainerForBuild(ctx, result)
 		if err != nil {
-			logger.Get(ctx).Infof("couldn't get container for %s: %v", manifest.Name, err)
+			// There's a variety of reasons why we might not be able to get a
+			// container.  The cluster could be in a transient bad state, or the pod
+			// could be in a crash loop because the user wrote some code that
+			// segfaults. Don't worry too much about it, we'll fall back to an image build.
+			logger.Get(ctx).Debugf("couldn't get container for %s: %v", manifest.Name, err)
 			return
 		}
 		cbd.setContainerIDForManifest(manifest.Name, cID)
