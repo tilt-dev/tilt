@@ -282,7 +282,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	}()
 	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse)
 	if err != nil {
-		return nil, fmt.Errorf("PushImage#getDigestFromPushOutput: %v", err)
+		return nil, fmt.Errorf("Pushing image %q: %v", ref.Name(), err)
 	}
 
 	return ref, nil

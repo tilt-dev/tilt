@@ -156,8 +156,9 @@ func TestPushInvalid(t *testing.T) {
 	}
 
 	_, err = f.b.PushImage(f.ctx, ref)
-	if err == nil || !strings.Contains(err.Error(), "PushImage#getDigestFromPushOutput") {
-		t.Fatal(err)
+	msg := `Pushing image "localhost:5005/myimage"`
+	if err == nil || !strings.Contains(err.Error(), msg) {
+		t.Fatalf("Expected error %q, actual: %v", msg, err)
 	}
 }
 
