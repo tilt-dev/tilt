@@ -10,11 +10,11 @@ Run `go get -u github.com/windmilleng/tilt`
 `tilt up <service_name>` starts a service once; `tilt up --watch <service_name>` starts it and watches for changes.
 
 Tilt reads from a Tiltfile. A simple Tiltfile is below:
-```
+```python
 def backend():
-  repo = local_git_repo('../backend')
   img = build_docker_image('Dockerfile', 'companyname/backend', '/go/bin/server')
-  img.add('/go/src/github.com/companyname/backend', repo)
+  repo = local_git_repo('.')
+  img.add(repo, '/go/src/github.com/companyname/backend')
   img.run('go install github.com/companyname/backend/server')
   return k8s_service(local_file('backend.yaml'), img)
 ```
@@ -49,7 +49,7 @@ Builds a docker image.
 * Returns: **Image**
 
 #### Image.add(src, dest)
-Adds the content from `src` into the image at path `dest`..
+Adds the content from `src` into the image at path `dest`.
 
 * Args:
   * `src`: **localPath|gitRepo**
@@ -76,8 +76,6 @@ Creates a kubernetes service that tilt can deploy using the yaml text and the im
 #### composite_service(service_fns)
 Creates a composite service; tilt will deploy (and watch) all services returned by the functions in `service_fns`.
 
-Returns: Service
-=======
 * Args:
   * `service_fns`: array of functions that each return **Service**
 * Returns: **Service**
