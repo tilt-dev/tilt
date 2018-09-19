@@ -15,7 +15,7 @@ service Synclet {
 message GetContainerIdForPodRequest {
     string pod_id = 1;
     string image_id = 2;
-    Context context = 3;
+    LogStyle log_style = 3;
 }
 
 message GetContainerIdForPodReply {
@@ -34,7 +34,7 @@ message UpdateContainerRequest {
     bytes tar_archive = 2;
     repeated string files_to_delete = 3;
     repeated Cmd commands = 4;
-    Context context = 5;
+    LogStyle log_style = 5;
 }
 
 enum LogLevel {
@@ -49,9 +49,9 @@ message LogMessage {
 }
 
 message UpdateContainerReply {
-    LogMessage logMessage = 1;
+    LogMessage log_message = 1;
 }
 
-message Context {
-    bool logColorsEnabled = 1;
+message LogStyle {
+    bool colors_enabled = 1;
 }

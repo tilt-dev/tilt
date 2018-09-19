@@ -31,7 +31,7 @@ var _ Logger = logger{}
 type Level int
 
 const (
-	_ = iota
+	NoneLvl = iota
 	InfoLvl
 	VerboseLvl
 	DebugLvl

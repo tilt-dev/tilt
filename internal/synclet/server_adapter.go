@@ -3,6 +3,7 @@ package synclet
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -24,22 +25,19 @@ func NewGRPCServer(del *Synclet) *GRPCServer {
 var _ proto.SyncletServer = &GRPCServer{}
 
 func logLevelToProto(level logger.Level) (proto.LogLevel, error) {
-	var protoLevel proto.LogLevel
 	switch level {
 	case logger.InfoLvl:
-		protoLevel = proto.LogLevel_INFO
+		return proto.LogLevel_INFO, nil
 	case logger.VerboseLvl:
-		protoLevel = proto.LogLevel_VERBOSE
+		return proto.LogLevel_VERBOSE, nil
 	case logger.DebugLvl:
-		protoLevel = proto.LogLevel_DEBUG
+		return proto.LogLevel_DEBUG, nil
 	default:
 		return proto.LogLevel_INFO, fmt.Errorf("unknown log level '%v'", level)
 	}
-
-	return protoLevel, nil
 }
 
-func makeContext(ctx context.Context, pCtx *proto.Context, f func(m *proto.LogMessage) error) (context.Context, error) {
+func makeContext(ctx context.Context, logStyle *proto.LogStyle, f func(m *proto.LogMessage) error) (context.Context, error) {
 	writeLog := func(level logger.Level, bytes []byte) error {
 		protoLevel, err := logLevelToProto(level)
 		if err != nil {
@@ -50,21 +48,22 @@ func makeContext(ctx context.Context, pCtx *proto.Context, f func(m *proto.LogMe
 		return f(logMessage)
 	}
 
-	l := logger.NewFuncLogger(pCtx.LogColorsEnabled, writeLog)
+	l := logger.NewFuncLogger(logStyle.ColorsEnabled, writeLog)
 
 	// TODO(matt) making a new outputter here is hacky - since outputter is stateful, someone might make
 	// rely on state persisting across service boundaries
-	ret := output.WithOutputter(logger.WithLogger(ctx, l), output.NewOutputter(l))
-	return ret, nil
+	return output.WithOutputter(logger.WithLogger(ctx, l), output.NewOutputter(l)), nil
 }
 
 func (s *GRPCServer) GetContainerIdForPod(req *proto.GetContainerIdForPodRequest, server proto.Synclet_GetContainerIdForPodServer) error {
-
+	sendMutex := new(sync.Mutex)
 	send := func(m *proto.LogMessage) error {
+		sendMutex.Lock()
+		defer sendMutex.Unlock()
 		return server.Send(&proto.GetContainerIdForPodReply{Content: &proto.GetContainerIdForPodReply_Message{Message: m}})
 	}
 
-	ctx, err := makeContext(server.Context(), req.Context, send)
+	ctx, err := makeContext(server.Context(), req.LogStyle, send)
 	if err != nil {
 		return err
 	}
@@ -93,11 +92,14 @@ func (s *GRPCServer) UpdateContainer(req *proto.UpdateContainerRequest, server p
 		commands = append(commands, model.Cmd{Argv: cmd.Argv})
 	}
 
+	sendMutex := new(sync.Mutex)
 	send := func(m *proto.LogMessage) error {
+		sendMutex.Lock()
+		defer sendMutex.Unlock()
 		return server.Send(&proto.UpdateContainerReply{LogMessage: m})
 	}
 
-	ctx, err := makeContext(server.Context(), req.Context, send)
+	ctx, err := makeContext(server.Context(), req.LogStyle, send)
 	if err != nil {
 		return err
 	}

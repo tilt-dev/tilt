@@ -2,9 +2,9 @@ package synclet
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -33,24 +33,23 @@ func NewGRPCClient(conn *grpc.ClientConn) *SyncletCli {
 	return &SyncletCli{del: proto.NewSyncletClient(conn), conn: conn}
 }
 
-func protoLogLevelToLevel(protoLevel proto.LogLevel) (logger.Level, error) {
-	var level logger.Level
+func protoLogLevelToLevel(protoLevel proto.LogLevel) logger.Level {
 	switch protoLevel {
 	case proto.LogLevel_INFO:
-		level = logger.InfoLvl
+		return logger.InfoLvl
 	case proto.LogLevel_VERBOSE:
-		level = logger.VerboseLvl
+		return logger.VerboseLvl
 	case proto.LogLevel_DEBUG:
-		level = logger.DebugLvl
+		return logger.DebugLvl
 	default:
-		return logger.InfoLvl, fmt.Errorf("unknown log level '%v'", protoLevel)
+		// the server returned a log level that we don't recognize - err on the side of caution and return
+		// the minimum log level to ensure that all output is printed
+		return logger.NoneLvl
 	}
-
-	return level, nil
 }
 
-func newProtoContext(ctx context.Context) *proto.Context {
-	return &proto.Context{LogColorsEnabled: logger.Get(ctx).SupportsColor()}
+func newLogStyle(ctx context.Context) *proto.LogStyle {
+	return &proto.LogStyle{ColorsEnabled: logger.Get(ctx).SupportsColor()}
 }
 
 func (s *SyncletCli) UpdateContainer(
@@ -67,7 +66,7 @@ func (s *SyncletCli) UpdateContainer(
 	}
 
 	stream, err := s.del.UpdateContainer(ctx, &proto.UpdateContainerRequest{
-		Context:       newProtoContext(ctx),
+		LogStyle:      newLogStyle(ctx),
 		ContainerId:   containerId.String(),
 		TarArchive:    tarArchive,
 		FilesToDelete: filesToDelete,
@@ -75,7 +74,7 @@ func (s *SyncletCli) UpdateContainer(
 	})
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed invoking synclet.UpdateContainer")
 	}
 
 	for {
@@ -84,13 +83,10 @@ func (s *SyncletCli) UpdateContainer(
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
-			return err
+			return errors.Wrap(err, "error from synclet.UpdateContainer")
 		}
 
-		level, err := protoLogLevelToLevel(reply.LogMessage.Level)
-		if err != nil {
-			return err
-		}
+		level := protoLogLevelToLevel(reply.LogMessage.Level)
 
 		logger.Get(ctx).Write(level, string(reply.LogMessage.Message))
 	}
@@ -100,9 +96,9 @@ func (s *SyncletCli) UpdateContainer(
 
 func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
 	stream, err := s.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{
-		Context: newProtoContext(ctx),
-		PodId:   podID.String(),
-		ImageId: imageID.String(),
+		LogStyle: newLogStyle(ctx),
+		PodId:    podID.String(),
+		ImageId:  imageID.String(),
 	})
 	if err != nil {
 		return "", err
@@ -114,17 +110,14 @@ func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, ima
 		if err == io.EOF {
 			return k8s.ContainerID(""), errors.New("internal error: GetContainerIdForPod reached eof without returning either an error or a container id")
 		} else if err != nil {
-			return k8s.ContainerID(""), err
+			return k8s.ContainerID(""), errors.Wrap(err, "error returned from synclet.GetContainerIdForPod")
 		}
 
 		switch x := reply.Content.(type) {
 		case *proto.GetContainerIdForPodReply_ContainerId:
 			return k8s.ContainerID(x.ContainerId), nil
 		case *proto.GetContainerIdForPodReply_Message:
-			level, err := protoLogLevelToLevel(x.Message.Level)
-			if err != nil {
-				return k8s.ContainerID(""), err
-			}
+			level := protoLogLevelToLevel(x.Message.Level)
 
 			logger.Get(ctx).Write(level, string(x.Message.Message))
 		}
