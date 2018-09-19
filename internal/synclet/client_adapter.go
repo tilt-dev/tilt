@@ -90,8 +90,6 @@ func (s *SyncletCli) UpdateContainer(
 
 		logger.Get(ctx).Write(level, string(reply.LogMessage.Message))
 	}
-
-	return err
 }
 
 func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
