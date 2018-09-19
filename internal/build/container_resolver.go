@@ -19,7 +19,7 @@ import (
 // even if the container doesn't have the correct image name.
 const MagicTestContainerID = "tilt-testcontainer"
 
-const containerUpTimeout = time.Second
+const containerUpTimeout = 3 * time.Second
 
 type ContainerResolver struct {
 	dcli docker.DockerClient

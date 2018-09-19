@@ -153,13 +153,18 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manife
 	defer span.Finish()
 
 	if !result.HasImage() {
-		logger.Get(ctx).Infof("can't get container for for '%s': BuildResult has no image", manifest.Name)
+		// This is normal if the previous build failed.
 		return
 	}
+
 	if _, ok := sbd.getDeployInfoForManifest(manifest.Name); !ok {
 		deployInfo, err := sbd.getDeployInfo(ctx, result.Image)
 		if err != nil {
-			logger.Get(ctx).Infof("failed to get deployInfo: %v", err)
+			// There's a variety of reasons why we might not be able to get the deploy info.
+			// The cluster could be in a transient bad state, or the pod
+			// could be in a crash loop because the user wrote some code that
+			// segfaults. Don't worry too much about it, we'll fall back to an image build.
+			logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
 			return
 		}
 		sbd.setDeployInfoForManifest(manifest.Name, deployInfo)
