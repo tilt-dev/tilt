@@ -34,7 +34,7 @@ spec:
           mountPath: /var/run/docker.sock
         securityContext:
           privileged: true
-      - image: jaegertracing/jaeger-agent
+      - image: docker.io/jaegertracing/jaeger-agent
         name: jaeger-agent
         ports:
         - containerPort: 5775
