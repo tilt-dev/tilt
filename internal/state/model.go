@@ -1,5 +1,9 @@
 package state
 
+import (
+	"time"
+)
+
 type Resources struct {
 	Resources []K8sResource
 }
@@ -8,14 +12,14 @@ type K8sResource struct {
 	Name string
 	Yaml string
 
-	Watched  []WatchedPaths
+	Watched  []WatchedPath
 	Commands []Cmd
 
 	K8sStatus string // a description of the K8s status (TODO(dbentley): use real structs from k8s client)
 	Addr      string // address to connect to the running instance
 
 	Last    SpanID   // the last completed trace
-	Running TraceID  // any currently running trace
+	Running SpanID   // any currently running trace
 	Queued  []string // files that have been modified but not yet running
 }
 

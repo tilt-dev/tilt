@@ -1,9 +1,5 @@
 package state
 
-import (
-	"context"
-)
-
 type Event interface {
 	event()
 }
