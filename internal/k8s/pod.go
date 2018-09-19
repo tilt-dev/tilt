@@ -117,17 +117,20 @@ func (m MultipleAppsFoundError) Error() string {
 
 func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error) {
 	jsonPath := fmt.Sprintf(`-o=jsonpath={range .items[?(@.spec.nodeName=="%s")]}{.metadata.name}{"\n"}`, nodeID)
-	args := append([]string{"get", "pods", fmt.Sprintf("-lapp=%s", appName)})
 
 	filterDesc := fmt.Sprintf("name '%s', node '%s'", appName, nodeID.String())
+
+	labelArg := fmt.Sprintf("-lapp=%s", appName)
+	if len(options.Owner) > 0 {
+		labelArg += fmt.Sprintf(",owner=%s", options.Owner)
+		filterDesc += fmt.Sprintf(", owner '%s'", options.Owner)
+	}
+
+	args := append([]string{"get", "pods", labelArg})
 
 	if len(options.Namespace) > 0 {
 		args = append(args, fmt.Sprintf("--namespace=%s", options.Namespace))
 		filterDesc += fmt.Sprintf(", namespace '%s'", options.Namespace)
-	}
-	if len(options.Owner) > 0 {
-		args = append(args, fmt.Sprintf("-lowner=%s", options.Owner))
-		filterDesc += fmt.Sprintf(", owner '%s'", options.Owner)
 	}
 	args = append(args, jsonPath)
 
