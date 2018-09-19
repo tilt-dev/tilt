@@ -19,6 +19,8 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+const FileName = "Tiltfile"
+
 type Tiltfile struct {
 	globals  skylark.StringDict
 	filename string
