@@ -8,7 +8,7 @@ import (
 // A logger that writes all of its messages to `write`
 type funcLogger struct {
 	supportsColor bool
-	write func(level Level, b []byte) error
+	write         func(level Level, b []byte) error
 }
 
 func NewFuncLogger(supportsColor bool, write func(level Level, b []byte) error) Logger {
@@ -35,6 +35,7 @@ type FuncLoggerWriter struct {
 	l     funcLogger
 	level Level
 }
+
 var _ io.Writer = FuncLoggerWriter{}
 
 func (fw FuncLoggerWriter) Write(b []byte) (int, error) {
