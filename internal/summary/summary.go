@@ -26,8 +26,9 @@ type Service struct {
 }
 
 type k8sObject struct {
-	Kind string
-	Name string
+	Kind      string
+	Name      string
+	Namespace string
 }
 
 // NewSummary returns summary state
@@ -60,8 +61,9 @@ func (s *Summary) Gather(services []model.Manifest) error {
 
 		for _, e := range entities {
 			svcSummary.K8sObjects = append(svcSummary.K8sObjects, k8sObject{
-				Name: e.Name(),
-				Kind: e.Kind.Kind,
+				Name:      e.Name(),
+				Kind:      e.Kind.Kind,
+				Namespace: e.Namespace(),
 			})
 		}
 
@@ -91,14 +93,25 @@ func (s *Summary) Output(ctx context.Context, resolver LBResolver) string {
 		// K8s — assume that the first name will work
 		// TODO(han) - get the LoadBalancerSpec kind (ie: "service") dynamically
 		if len(svc.K8sLbs) > 0 {
-			ret += fmt.Sprintf("→ `kubectl get svc %s` ", svc.K8sLbs[0].Name)
+			lb := svc.K8sLbs[0]
+			namespaceFlag := ""
+			if lb.Namespace != "" {
+				namespaceFlag = fmt.Sprintf(" -n %s", lb.Namespace)
+			}
+
+			ret += fmt.Sprintf("→ `kubectl get svc %s%s` ", lb.Name, namespaceFlag)
 
 			url := resolver(ctx, svc.K8sLbs[0])
 			if url != nil {
 				ret += fmt.Sprintf("[%s] ", url.String())
 			}
 		} else if len(svc.K8sObjects) > 0 {
-			ret += fmt.Sprintf("→ `kubectl get %s %s` ", strings.ToLower(svc.K8sObjects[0].Kind), svc.K8sObjects[0].Name)
+			obj := svc.K8sObjects[0]
+			namespaceFlag := ""
+			if obj.Namespace != "" {
+				namespaceFlag = fmt.Sprintf(" -n %s", obj.Namespace)
+			}
+			ret += fmt.Sprintf("→ `kubectl get %s %s%s` ", strings.ToLower(obj.Kind), obj.Name, namespaceFlag)
 		}
 
 		// Space after each service, except the last
