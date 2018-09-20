@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -65,7 +66,7 @@ func (c clientTestFixture) setError(err error) {
 	c.runner.err = err
 }
 
-func fakePortForwarder(ctx context.Context, restConfig *rest.Config, restClient rest.Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+func fakePortForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
 	return nil, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"k8s.io/client-go/kubernetes/typed/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // registers gcp auth provider
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -29,18 +30,18 @@ func (k K8sClient) ForwardPort(ctx context.Context, namespace string, podID PodI
 		return 0, nil, errors.Wrap(err, "failed to find an available local port")
 	}
 
-	closer, err = k.portForwarder(ctx, k.restConfig, k.restClient, namespace, podID, localPort, remotePort)
+	closer, err = k.portForwarder(ctx, k.restConfig, k.core, namespace, podID, localPort, remotePort)
 
 	return localPort, closer, nil
 }
 
-func portForwarder(ctx context.Context, restConfig *rest.Config, restClient rest.Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+func portForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
 	transport, upgrader, err := spdy.RoundTripperFor(restConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting roundtripper")
 	}
 
-	req := restClient.Post().
+	req := core.RESTClient().Post().
 		Resource("pods").
 		Namespace(namespace).
 		Name(podID.String()).

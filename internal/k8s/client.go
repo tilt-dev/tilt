@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/docker/distribution/reference"
@@ -61,19 +63,19 @@ type Client interface {
 type K8sClient struct {
 	env           Env
 	kubectlRunner kubectlRunner
-	restClient    k8sRestInterface
+	core          v1.CoreV1Interface
 	restConfig    *rest.Config
 	portForwarder PortForwarder
 }
 
 var _ Client = K8sClient{}
 
-type PortForwarder func(ctx context.Context, restConfig *rest.Config, restClient rest.Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
+type PortForwarder func(ctx context.Context, restConfig *rest.Config, core v1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
 func NewK8sClient(
 	ctx context.Context,
 	env Env,
-	restClient k8sRestInterface,
+	core v1.CoreV1Interface,
 	restConfig *rest.Config,
 	pf PortForwarder) K8sClient {
 
@@ -85,16 +87,12 @@ func NewK8sClient(
 	return K8sClient{
 		env:           env,
 		kubectlRunner: realKubectlRunner{},
-		restClient:    restClient,
+		core:          core,
 		restConfig:    restConfig,
 		portForwarder: pf,
 	}
 }
 
-// TODO(nick): Rewrite this function to use k8s client to wait for the load
-// balancer to successfully connect to the pod. This should be more robust and
-// apply to all environments (rather than using different strategies for
-// minikube vs d4m vs gke)
 func (k K8sClient) ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
 	if k.env == EnvDockerDesktop && len(lb.Ports) > 0 {
 		url, err := url.Parse(fmt.Sprintf("http://localhost:%d/", lb.Ports[0]))
@@ -108,18 +106,69 @@ func (k K8sClient) ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec)
 	}
 
 	if k.env == EnvMinikube {
-		logger.Get(ctx).Infof("Waiting on minikube to resolve service: %s", lb.Name)
+		return k.resolveLoadBalancerFromMinikube(ctx, lb)
+	}
 
-		intervalSec := "1" // 1s is the smallest polling interval we can set :raised_eyebrow:
-		cmd := exec.CommandContext(ctx, "minikube", "service", lb.Name, "--url", "--interval", intervalSec)
+	return k.resolveLoadBalancerFromK8sAPI(ctx, lb)
+}
 
-		cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
+func (k K8sClient) resolveLoadBalancerFromMinikube(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
+	logger.Get(ctx).Infof("Waiting on minikube to resolve service: %s", lb.Name)
 
-		out, err := cmd.Output()
-		if err != nil {
-			return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: %v", err)
+	intervalSec := "1" // 1s is the smallest polling interval we can set :raised_eyebrow:
+	cmd := exec.CommandContext(ctx, "minikube", "service", lb.Name, "--url", "--interval", intervalSec)
+
+	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: %v", err)
+	}
+	url, err := url.Parse(strings.TrimSpace(string(out)))
+	if err != nil {
+		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
+	}
+	return LoadBalancer{
+		URL:  url,
+		Spec: lb,
+	}, nil
+}
+
+func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
+	if len(lb.Ports) == 0 {
+		return LoadBalancer{}, nil
+	}
+
+	port := lb.Ports[0]
+
+	// TODO(nick): Use lb.Namespace when it's committed.
+	svc, err := k.core.Services("default").Get(lb.Name, metav1.GetOptions{})
+	if err != nil {
+		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
+	}
+
+	status := svc.Status
+	lbStatus := status.LoadBalancer
+
+	// Documentation here is helpful:
+	// https://godoc.org/k8s.io/api/core/v1#LoadBalancerIngress
+	// GKE and OpenStack typically use IP-based load balancers.
+	// AWS typically uses DNS-based load balancers.
+	for _, ingress := range lbStatus.Ingress {
+		urlString := ""
+		if ingress.IP != "" {
+			urlString = fmt.Sprintf("http://%s:%d/", ingress.IP, port)
 		}
-		url, err := url.Parse(strings.TrimSpace(string(out)))
+
+		if ingress.Hostname != "" {
+			urlString = fmt.Sprintf("http://%s:%d/", ingress.Hostname, port)
+		}
+
+		if urlString == "" {
+			continue
+		}
+
+		url, err := url.Parse(urlString)
 		if err != nil {
 			return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
 		}
@@ -171,27 +220,22 @@ func (k K8sClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, en
 	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
 }
 
-// aliasing to work around https://github.com/google/go-cloud/issues/457
-type k8sRestInterface rest.Interface
-
-func ProvideRESTClient() (k8sRestInterface, error) {
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
-
-	clientLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		rules, &clientcmd.ConfigOverrides{})
-
-	cfg, err := clientLoader.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
+func ProvideCoreInterface(cfg *rest.Config) (v1.CoreV1Interface, error) {
 	clientSet, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return clientSet.CoreV1().RESTClient(), nil
+	return clientSet.CoreV1(), nil
+}
+
+func ProvideRESTClient(cfg *rest.Config) (v1.CoreV1Interface, error) {
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientSet.CoreV1(), nil
 }
 
 func ProvideRESTConfig() (*rest.Config, error) {
