@@ -1,30 +1,33 @@
 package tracer
 
 import (
-	"io"
+	"fmt"
 	"log"
+	"os"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	config "github.com/uber/jaeger-client-go/config"
+	"github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 )
 
-func Init() (io.Closer, error) {
-	cfg := &config.Configuration{
-		Sampler: &config.SamplerConfig{
-			Type:  "const",
-			Param: 1,
-		},
-		ServiceName: "tilt",
-	}
-	// TODO(dmiller) log output to a file?
-	tracer, closer, err := cfg.NewTracer()
+func Init() error {
+
+	zipkinHTTPEndpoint := "http://localhost:9411"
+	collector, err := zipkin.NewHTTPCollector(zipkinHTTPEndpoint)
 	if err != nil {
-		return nil, err
+		fmt.Printf("unable to create Zipkin HTTP collector: %+v\n", err)
+		os.Exit(-1)
+	}
+
+	recorder := zipkin.NewRecorder(collector, true, "0.0.0.0:0", "myGreatService")
+	tracer, err := zipkin.NewTracer(recorder)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
 	opentracing.SetGlobalTracer(tracer)
 
-	return closer, nil
+	return nil
 }
 
 // TagStrToMap converts a user-passed string of tags of the form `key1=val1,key2=val2` to a map.

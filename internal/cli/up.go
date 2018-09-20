@@ -48,6 +48,7 @@ func (c *upCmd) run(args []string) error {
 	defer analyticsService.Flush(time.Second)
 
 	span := opentracing.StartSpan("Up")
+	testSpan := opentracing.StartSpan("hello")
 	tags := tracer.TagStrToMap(c.traceTags)
 	for k, v := range tags {
 		span.SetTag(k, v)
@@ -59,6 +60,12 @@ func (c *upCmd) run(args []string) error {
 			opentracing.ContextWithSpan(context.Background(), span),
 			l),
 		output.NewOutputter(l))
+
+	time.Sleep(2 * time.Second)
+	log.Printf("helloooo!")
+	testSpan.Finish()
+	time.Sleep(1 * time.Second)
+	return nil
 
 	cleanUp := func() {
 		span.Finish()
