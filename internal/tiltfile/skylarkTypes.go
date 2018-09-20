@@ -263,9 +263,9 @@ func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	// NOTE(dmiller): this won't work on Windows
-	if strings.HasPrefix(path, "./") {
-		return localPath{}, fmt.Errorf("localPaths cannot start with './' (got %s)", path)
+	cleanPath := filepath.Clean(path)
+	if cleanPath != path {
+		return localPath{}, fmt.Errorf("localPaths should not contain '.' or '..' (got %s)", path)
 	} else if filepath.IsAbs(path) {
 		return localPath{}, fmt.Errorf("localPaths cannot be absolute (got %s)", path)
 	}
