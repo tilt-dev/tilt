@@ -8,9 +8,10 @@ import (
 )
 
 func main() {
-	traceCloser, err := tracer.Init()
+	err := tracer.Init()
+	dummy := func() error { return nil }
 	if err != nil {
 		log.Printf("Warning: unable to initialize tracer: %s", err)
 	}
-	cli.Execute(traceCloser.Close)
+	cli.Execute(dummy)
 }
