@@ -788,3 +788,51 @@ func TestBuildContextStartTwice(t *testing.T) {
 		t.Errorf("Expected %s to equal %s", err.Error(), expected)
 	}
 }
+
+func TestBadRepoPath(t *testing.T) {
+	gitTeardown, td := gitRepoFixture(t)
+	defer gitTeardown()
+	td.WriteFile(".gitignore", "*.exe")
+	td.WriteFile(".dockerignore", "node_modules")
+
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+	image = build_docker_image("%v", "docker-tag", "the entrypoint")
+	repo = local_git_repo('.')
+  image.add(repo.path('./1'), '/mount_points/1')
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	_, err := Load(file, os.Stdout)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+}
+
+func TestAbsRepoPath(t *testing.T) {
+	gitTeardown, td := gitRepoFixture(t)
+	defer gitTeardown()
+	td.WriteFile(".gitignore", "*.exe")
+	td.WriteFile(".dockerignore", "node_modules")
+
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+	image = build_docker_image("%v", "docker-tag", "the entrypoint")
+	repo = local_git_repo('.')
+  image.add(repo.path('/1'), '/mount_points/1')
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	_, err := Load(file, os.Stdout)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+}

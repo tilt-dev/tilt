@@ -172,7 +172,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	case localPath:
 		lp = p
 	case gitRepo:
-		lp = localPath{p.basePath, p}
+		lp = newLocalPath(p.basePath, p)
 	default:
 		return nil, fmt.Errorf(oldMountSyntaxError)
 	}
@@ -263,7 +263,21 @@ func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	return localPath{filepath.Join(gr.basePath, path), gr}, nil
+	// NOTE(dmiller): this won't work on Windows
+	if strings.HasPrefix(path, "./") {
+		return localPath{}, fmt.Errorf("localPaths cannot start with './' (got %s)", path)
+	} else if filepath.IsAbs(path) {
+		return localPath{}, fmt.Errorf("localPaths cannot be absolute (got %s)", path)
+	}
+
+	return newLocalPath(filepath.Join(gr.basePath, path), gr), nil
+}
+
+func newLocalPath(path string, repo gitRepo) localPath {
+	return localPath{
+		path: path,
+		repo: repo,
+	}
 }
 
 type localPath struct {
