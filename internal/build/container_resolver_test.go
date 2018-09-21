@@ -13,7 +13,9 @@ var imageTagged = image.(reference.NamedTagged)
 
 func TestContainerIDForPodOneMatch(t *testing.T) {
 	f := newRemoteDockerFixture(t)
+	f.dcli.SetDefaultContainerListOutput()
 	defer f.teardown()
+
 	cID, err := f.cr.ContainerIDForPod(f.ctx, docker.TestPod, imageTagged)
 	if err != nil {
 		f.t.Fatal(err)
@@ -23,7 +25,9 @@ func TestContainerIDForPodOneMatch(t *testing.T) {
 
 func TestContainerIDForPodTwoContainers(t *testing.T) {
 	f := newRemoteDockerFixture(t)
+	f.dcli.SetDefaultContainerListOutput()
 	defer f.teardown()
+
 	cID, err := f.cr.ContainerIDForPod(f.ctx, "two-containers", imageTagged)
 	if err != nil {
 		f.t.Fatal(err)
