@@ -15,17 +15,17 @@ type K8sEntity struct {
 	Kind *schema.GroupVersionKind
 }
 
-func (e K8sEntity) Name() string {
+func (e K8sEntity) Meta() metav1.ObjectMeta {
 	objVal := reflect.ValueOf(e.Obj)
 	if objVal.Kind() == reflect.Ptr {
 		if objVal.IsNil() {
-			return ""
+			return metav1.ObjectMeta{}
 		}
 		objVal = objVal.Elem()
 	}
 
 	if objVal.Kind() != reflect.Struct {
-		return ""
+		return metav1.ObjectMeta{}
 	}
 
 	// Find a field with type ObjectMeta
@@ -45,9 +45,17 @@ func (e K8sEntity) Name() string {
 			continue
 		}
 
-		return metadata.Name
+		return metadata
 	}
-	return ""
+	return metav1.ObjectMeta{}
+}
+
+func (e K8sEntity) Name() string {
+	return e.Meta().Name
+}
+
+func (e K8sEntity) Namespace() string {
+	return e.Meta().Namespace
 }
 
 // Most entities can be updated once running, but a few cannot.
@@ -80,8 +88,9 @@ func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 }
 
 type LoadBalancerSpec struct {
-	Name  string
-	Ports []int32
+	Name      string
+	Namespace string
+	Ports     []int32
 }
 
 type LoadBalancer struct {
@@ -114,7 +123,10 @@ func ToLoadBalancerSpec(entity K8sEntity) (LoadBalancerSpec, bool) {
 		return LoadBalancerSpec{}, false
 	}
 
-	result := LoadBalancerSpec{Name: name}
+	result := LoadBalancerSpec{
+		Name:      name,
+		Namespace: meta.Namespace,
+	}
 	for _, portSpec := range spec.Ports {
 		if portSpec.Port != 0 {
 			result.Ports = append(result.Ports, portSpec.Port)

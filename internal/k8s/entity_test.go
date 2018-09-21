@@ -18,6 +18,16 @@ func TestName(t *testing.T) {
 	assert.Equal(t, "devel-nick-blorg-be", entities[1].Name())
 }
 
+func TestNamespace(t *testing.T) {
+	entities, err := ParseYAMLFromString(SyncletYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(entities))
+	assert.Equal(t, "kube-system", entities[0].Namespace())
+}
+
 func TestImmutableFilter(t *testing.T) {
 	yaml := fmt.Sprintf("%s\n---\n%s", JobYAML, SanchoYAML)
 	entities, err := ParseYAMLFromString(yaml)
