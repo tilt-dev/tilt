@@ -93,8 +93,12 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 	if err != nil {
 		return nil, err
 	}
+	buildContext, ok := thread.Local("buildContext").(*dockerImage)
 	if buildContext == nil {
 		return nil, errors.New("run called without a build context")
+	}
+	if !ok {
+		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
 	}
 
 	cmd, ok := skylark.AsString(skylarkCmd)
@@ -144,8 +148,12 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	var src interface{}
 	var mountPoint string
 
+	buildContext, ok := thread.Local("buildContext").(*dockerImage)
 	if buildContext == nil {
 		return nil, errors.New("add called without a build context")
+	}
+	if !ok {
+		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
 	}
 
 	if len(buildContext.steps) > 0 {

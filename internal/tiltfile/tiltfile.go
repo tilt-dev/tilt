@@ -27,8 +27,6 @@ type Tiltfile struct {
 	thread   *skylark.Thread
 }
 
-var buildContext *dockerImage
-
 func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
@@ -50,8 +48,9 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	buildContext = &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
-	return buildContext, nil
+	buildContext := &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
+	thread.SetLocal("buildContext", buildContext)
+	return skylark.None, nil
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -171,10 +170,13 @@ func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 }
 
 func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	r := buildContext
-	defer func() { buildContext = nil }()
+	buildContext, ok := thread.Local("buildContext").(*dockerImage)
+	if !ok {
+		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
+	}
+	thread.SetLocal("buildContext", nil)
 
-	return r, nil
+	return buildContext, nil
 }
 
 func Load(filename string, out io.Writer) (*Tiltfile, error) {

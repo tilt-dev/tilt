@@ -707,11 +707,8 @@ func TestReadsIgnoreFiles(t *testing.T) {
 }
 
 func TestBuildContextAddError(t *testing.T) {
-	gitTeardown, td := gitRepoFixture(t)
+	gitTeardown, _ := gitRepoFixture(t)
 	defer gitTeardown()
-	td.WriteFile(".gitignore", "*.exe")
-	td.WriteFile(".dockerignore", "node_modules")
-
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -723,8 +720,6 @@ func TestBuildContextAddError(t *testing.T) {
   add(local_git_repo('.'), '/mount_points/2')
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
-	defer os.Remove(file)
-	defer os.Remove(dockerfile)
 	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
@@ -740,11 +735,8 @@ func TestBuildContextAddError(t *testing.T) {
 }
 
 func TestBuildContextRunError(t *testing.T) {
-	gitTeardown, td := gitRepoFixture(t)
+	gitTeardown, _ := gitRepoFixture(t)
 	defer gitTeardown()
-	td.WriteFile(".gitignore", "*.exe")
-	td.WriteFile(".dockerignore", "node_modules")
-
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -756,8 +748,6 @@ func TestBuildContextRunError(t *testing.T) {
   run("echo hi2")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
-	defer os.Remove(file)
-	defer os.Remove(dockerfile)
 	tiltconfig, err := Load(file, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
