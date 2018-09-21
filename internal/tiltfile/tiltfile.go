@@ -20,6 +20,7 @@ import (
 )
 
 const FileName = "Tiltfile"
+const buildContextKey = "buildContext"
 
 type Tiltfile struct {
 	globals  skylark.StringDict
@@ -48,14 +49,14 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	existingBC := thread.Local("buildContext")
+	existingBC := thread.Local(buildContextKey)
 
 	if existingBC != nil {
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
 	buildContext := &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
-	thread.SetLocal("buildContext", buildContext)
+	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
 }
 
@@ -176,11 +177,11 @@ func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 }
 
 func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	buildContext, ok := thread.Local("buildContext").(*dockerImage)
+	buildContext, ok := thread.Local(buildContextKey).(*dockerImage)
 	if !ok {
 		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
 	}
-	thread.SetLocal("buildContext", nil)
+	thread.SetLocal(buildContextKey, nil)
 
 	return buildContext, nil
 }
