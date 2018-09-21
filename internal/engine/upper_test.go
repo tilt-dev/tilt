@@ -34,7 +34,7 @@ type fakeBuildAndDeployer struct {
 	buildCount int
 
 	// where we store container info for each manifest
-	deployInfo map[model.ManifestName]k8s.ContainerID
+	deployInfo map[reference.NamedTagged]k8s.ContainerID
 
 	// Set this to simulate the build failing
 	nextBuildFailure error
@@ -65,13 +65,14 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	return b.nextBuildResult(), nil
 }
 
-func (b *fakeBuildAndDeployer) haveContainerForManifest(name model.ManifestName) bool {
-	_, ok := b.deployInfo[name]
+func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) bool {
+	_, ok := b.deployInfo[img]
 	return ok
 }
-func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
-	if result.HasImage() && !b.haveContainerForManifest(manifest.Name) {
-		b.deployInfo[manifest.Name] = k8s.ContainerID("testcontainer")
+
+func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+	if result.HasImage() && !b.haveContainerForImage(result.Image) {
+		b.deployInfo[result.Image] = k8s.ContainerID("testcontainer")
 	}
 }
 
@@ -79,7 +80,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:          t,
 		calls:      make(chan buildAndDeployCall, 5),
-		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
+		deployInfo: make(map[reference.NamedTagged]k8s.ContainerID),
 	}
 }
 

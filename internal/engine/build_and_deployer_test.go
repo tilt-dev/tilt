@@ -26,8 +26,9 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-var imageID, _ = reference.ParseNamed("gcr.io/some-project-162817/sancho:deadbeef")
-var alreadyBuilt = BuildResult{Image: imageID.(reference.NamedTagged)}
+var imageID = k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
+var alreadyBuilt = BuildResult{Image: imageID}
+var newImageId = k8s.MustParseNamedTagged("gcr.io/a-different-project/something:different")
 
 type expectedFile = testutils.ExpectedFile
 
@@ -100,7 +101,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 }
 
 func TestIncrementalBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
@@ -127,7 +128,7 @@ func TestIncrementalBuild(t *testing.T) {
 }
 
 func TestIncrementalBuildFailure(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 
 	ctx := output.CtxForTest()
@@ -158,7 +159,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
-	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
@@ -178,7 +179,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
+	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
@@ -198,7 +199,7 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 
 func TestIncrementalBuildTwice(t *testing.T) {
 	t.Skip()
-	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
@@ -254,7 +255,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 // Kill the pod after the first container update,
 // and make sure the next image build gets the right file updates.
 func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForManifest(SanchoManifest, alreadyBuilt)
+	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
@@ -384,8 +385,8 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 }
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
-func (f *bdFixture) withContainerForManifest(manifest model.Manifest, build BuildResult) *bdFixture {
-	f.bd.PostProcessBuild(f.ctx, manifest, build)
+func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
+	f.bd.PostProcessBuild(f.ctx, build)
 	return f
 }
 

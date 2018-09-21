@@ -178,7 +178,7 @@ func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
 }
 
-func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
 	// No-op: ImageBuildAndDeployer doesn't currently need any extra info for a given build result.
 	return
 }

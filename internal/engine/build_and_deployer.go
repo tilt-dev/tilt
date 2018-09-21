@@ -20,7 +20,7 @@ type BuildAndDeployer interface {
 
 	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
 	// In general, we'll store this info ON the BuildAndDeployer that needs it.
-	PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult)
+	PostProcessBuild(ctx context.Context, result BuildResult)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -53,7 +53,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if err == nil {
 			// TODO(maia): maybe this only needs to be called after certain builds?
 			// I.e. should be called after image build but not after a successful container build?
-			go composite.PostProcessBuild(ctx, manifest, br)
+			go composite.PostProcessBuild(ctx, br)
 			return br, err
 		}
 
@@ -81,10 +81,10 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
 	// NOTE(maia): for now, expect the first BaD to be the one that needs additional info.
 	if len(composite.builders) != 0 {
-		composite.builders[0].PostProcessBuild(ctx, manifest, result)
+		composite.builders[0].PostProcessBuild(ctx, result)
 	}
 }
 

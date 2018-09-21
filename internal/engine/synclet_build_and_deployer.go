@@ -25,7 +25,7 @@ type SyncletBuildAndDeployer struct {
 
 	kCli k8s.Client
 
-	deployInfo   map[model.ManifestName]DeployInfo
+	deployInfo   map[reference.NamedTagged]DeployInfo
 	deployInfoMu sync.Mutex
 }
 
@@ -37,21 +37,21 @@ type DeployInfo struct {
 func NewSyncletBuildAndDeployer(kCli k8s.Client, scm SyncletClientManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
 		kCli:                 kCli,
-		deployInfo:           make(map[model.ManifestName]DeployInfo),
+		deployInfo:           make(map[reference.NamedTagged]DeployInfo),
 		syncletClientManager: scm,
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) getDeployInfoForManifest(name model.ManifestName) (DeployInfo, bool) {
+func (sbd *SyncletBuildAndDeployer) getDeployInfoForImage(img reference.NamedTagged) (DeployInfo, bool) {
 	sbd.deployInfoMu.Lock()
-	deployInfo, ok := sbd.deployInfo[name]
+	deployInfo, ok := sbd.deployInfo[img]
 	sbd.deployInfoMu.Unlock()
 	return deployInfo, ok
 }
 
-func (sbd *SyncletBuildAndDeployer) setDeployInfoForManifest(name model.ManifestName, deployInfo DeployInfo) {
+func (sbd *SyncletBuildAndDeployer) setDeployInfoForImage(img reference.NamedTagged, deployInfo DeployInfo) {
 	sbd.deployInfoMu.Lock()
-	sbd.deployInfo[name] = deployInfo
+	sbd.deployInfo[img] = deployInfo
 	sbd.deployInfoMu.Unlock()
 }
 
@@ -86,7 +86,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	if _, ok := sbd.getDeployInfoForManifest(manifest.Name); !ok {
+	if _, ok := sbd.getDeployInfoForImage(state.LastResult.Image); !ok {
 		return fmt.Errorf("no container info for this manifest")
 	}
 
@@ -123,10 +123,11 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	deployInfo, ok := sbd.getDeployInfoForManifest(manifest.Name)
+	deployInfo, ok := sbd.getDeployInfoForImage(state.LastResult.Image)
 	if !ok {
 		// We theoretically already checked this condition :(
-		return BuildResult{}, fmt.Errorf("no container ID found for %s", manifest.Name)
+		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s)",
+			manifest.Name, state.LastResult.Image.String())
 	}
 
 	cmds, err := build.BoilSteps(manifest.Steps, paths)
@@ -147,9 +148,9 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
-	span.SetTag("manifest", manifest.Name.String())
+	span.SetTag("image", result.Image.String())
 	defer span.Finish()
 
 	if !result.HasImage() {
@@ -157,7 +158,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manife
 		return
 	}
 
-	if _, ok := sbd.getDeployInfoForManifest(manifest.Name); !ok {
+	if _, ok := sbd.getDeployInfoForImage(result.Image); !ok {
 		deployInfo, err := sbd.getDeployInfo(ctx, result.Image)
 		if err != nil {
 			// There's a variety of reasons why we might not be able to get the deploy info.
@@ -167,7 +168,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, manife
 			logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
 			return
 		}
-		sbd.setDeployInfoForManifest(manifest.Name, deployInfo)
+		sbd.setDeployInfoForImage(result.Image, deployInfo)
 	}
 }
 
