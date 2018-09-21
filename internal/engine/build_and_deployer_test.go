@@ -10,9 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
@@ -71,8 +69,8 @@ func TestGKEDeploy(t *testing.T) {
 	}
 
 	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
+	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
+		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
 }
 
@@ -94,8 +92,8 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 
 	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.yaml)
+	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
+		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
 }
 
@@ -337,7 +335,7 @@ type bdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
 	docker *docker.FakeDockerClient
-	k8s    *FakeK8sClient
+	k8s    *k8s.FakeK8sClient
 	bd     BuildAndDeployer
 }
 
@@ -368,7 +366,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 		},
 	}
 	ctx := output.CtxForTest()
-	k8s := &FakeK8sClient{}
+	k8s := k8s.NewFakeK8sClient()
 	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), fallbackFn)
 	if err != nil {
 		t.Fatal(err)
@@ -387,53 +385,4 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
 	f.bd.PostProcessBuild(f.ctx, build)
 	return f
-}
-
-type FakeK8sClient struct {
-	yaml string
-	lb   k8s.LoadBalancerSpec
-}
-
-var _ k8s.Client = &FakeK8sClient{}
-
-func (c *FakeK8sClient) ResolveLoadBalancer(ctx context.Context, lb k8s.LoadBalancerSpec) (k8s.LoadBalancer, error) {
-	c.lb = lb
-	return k8s.LoadBalancer{}, nil
-}
-
-func (c *FakeK8sClient) Apply(ctx context.Context, entities []k8s.K8sEntity) error {
-	yaml, err := k8s.SerializeYAML(entities)
-	if err != nil {
-		return fmt.Errorf("kubectl apply: %v", err)
-	}
-	c.yaml = yaml
-	return nil
-}
-
-func (c *FakeK8sClient) Delete(ctx context.Context, entities []k8s.K8sEntity) error {
-	return nil
-}
-
-func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (k8s.PodID, error) {
-	return k8s.PodID("pod"), nil
-}
-
-func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (k8s.PodID, error) {
-	return c.PodWithImage(ctx, image)
-}
-
-func (c *FakeK8sClient) applyWasCalled() bool {
-	return c.yaml != ""
-}
-
-func (c *FakeK8sClient) FindAppByNode(ctx context.Context, nodeID k8s.NodeID, appName string, options k8s.FindAppByNodeOptions) (k8s.PodID, error) {
-	return k8s.PodID("pod2"), nil
-}
-
-func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID k8s.PodID) (k8s.NodeID, error) {
-	return k8s.NodeID("node"), nil
-}
-
-func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace string, podID k8s.PodID, remotePort int) (int, func(), error) {
-	return 0, nil, nil
 }

@@ -454,7 +454,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	docker := docker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
-	k8s := &FakeK8sClient{}
+	k8s := k8s.NewFakeK8sClient()
 	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper}
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
