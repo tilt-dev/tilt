@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/tiltfile"
 
 	opentracing "github.com/opentracing/opentracing-go"
 )
@@ -75,6 +78,11 @@ func (a *ArchiveBuilder) BytesBuffer() (*bytes.Buffer, error) {
 	return a.buf, nil
 }
 
+func pathIsTiltfile(p string) bool {
+	_, f := path.Split(p)
+	return f == tiltfile.FileName
+}
+
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 // If source path does not exist, quietly skips it and returns no err
@@ -105,6 +113,10 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking to %s: %v", path, err)
+		}
+
+		if pathIsTiltfile(path) {
+			return nil
 		}
 
 		header, err := tar.FileInfoHeader(info, path)
