@@ -9,6 +9,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -26,7 +27,7 @@ type LocalContainerBuildAndDeployer struct {
 	k8sClient k8s.Client
 	analytics analytics.Analytics
 
-	deployInfo   map[reference.NamedTagged]k8s.ContainerID
+	deployInfo   map[docker.ImgNameAndTag]k8s.ContainerID
 	deployInfoMu sync.Mutex
 }
 
@@ -38,20 +39,21 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, cr *build.Con
 		env:        env,
 		k8sClient:  kCli,
 		analytics:  analytics,
-		deployInfo: make(map[reference.NamedTagged]k8s.ContainerID),
+		deployInfo: make(map[docker.ImgNameAndTag]k8s.ContainerID),
 	}
 }
 
 func (cbd *LocalContainerBuildAndDeployer) getContainerIDForImage(img reference.NamedTagged) (k8s.ContainerID, bool) {
 	cbd.deployInfoMu.Lock()
-	cID, ok := cbd.deployInfo[img]
+	cID, ok := cbd.deployInfo[docker.ToImgNameAndTag(img)]
 	cbd.deployInfoMu.Unlock()
 	return cID, ok
 }
 
 func (cbd *LocalContainerBuildAndDeployer) setContainerIDForImage(img reference.NamedTagged, cID k8s.ContainerID) {
 	cbd.deployInfoMu.Lock()
-	cbd.deployInfo[img] = cID
+	key := docker.ToImgNameAndTag(img)
+	cbd.deployInfo[key] = cID
 	cbd.deployInfoMu.Unlock()
 }
 

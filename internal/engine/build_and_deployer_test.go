@@ -28,7 +28,6 @@ import (
 
 var imageID = k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
 var alreadyBuilt = BuildResult{Image: imageID}
-var newImageId = k8s.MustParseNamedTagged("gcr.io/a-different-project/something:different")
 
 type expectedFile = testutils.ExpectedFile
 

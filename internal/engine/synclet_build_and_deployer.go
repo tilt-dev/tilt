@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/docker"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
@@ -25,7 +26,7 @@ type SyncletBuildAndDeployer struct {
 
 	kCli k8s.Client
 
-	deployInfo   map[reference.NamedTagged]DeployInfo
+	deployInfo   map[docker.ImgNameAndTag]DeployInfo
 	deployInfoMu sync.Mutex
 }
 
@@ -37,21 +38,22 @@ type DeployInfo struct {
 func NewSyncletBuildAndDeployer(kCli k8s.Client, scm SyncletClientManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
 		kCli:                 kCli,
-		deployInfo:           make(map[reference.NamedTagged]DeployInfo),
+		deployInfo:           make(map[docker.ImgNameAndTag]DeployInfo),
 		syncletClientManager: scm,
 	}
 }
 
 func (sbd *SyncletBuildAndDeployer) getDeployInfoForImage(img reference.NamedTagged) (DeployInfo, bool) {
 	sbd.deployInfoMu.Lock()
-	deployInfo, ok := sbd.deployInfo[img]
+	deployInfo, ok := sbd.deployInfo[docker.ToImgNameAndTag(img)]
 	sbd.deployInfoMu.Unlock()
 	return deployInfo, ok
 }
 
 func (sbd *SyncletBuildAndDeployer) setDeployInfoForImage(img reference.NamedTagged, deployInfo DeployInfo) {
 	sbd.deployInfoMu.Lock()
-	sbd.deployInfo[img] = deployInfo
+	key := docker.ToImgNameAndTag(img)
+	sbd.deployInfo[key] = deployInfo
 	sbd.deployInfoMu.Unlock()
 }
 
