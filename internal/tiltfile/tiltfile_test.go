@@ -788,3 +788,33 @@ func TestBuildContextStartTwice(t *testing.T) {
 		t.Errorf("Expected %s to equal %s", err.Error(), expected)
 	}
 }
+
+func TestSlowBuildIsNotImplemented(t *testing.T) {
+	gitTeardown, td := gitRepoFixture(t)
+	defer gitTeardown()
+	td.WriteFile(".gitignore", "*.exe")
+	td.WriteFile(".dockerignore", "node_modules")
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  image = start_slow_build("%v", "docker-tag", "the entrypoint")
+  image.add(local_git_repo('.'), '/mount_points/1')
+  image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image.run("echo hi")
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	_, err = tiltconfig.GetManifestConfigs("blorgly")
+	if err == nil {
+		t.Fatal("Expected GetManifestConfigs to error")
+	}
+	expected := "error running 'blorgly': start_slow_build not implemented"
+	if err.Error() != expected {
+		t.Errorf("Expected %s to equal %s", err.Error(), expected)
+	}
+}
