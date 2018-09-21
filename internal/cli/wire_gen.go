@@ -31,8 +31,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
-	syncletClientManager := engine.NewSyncletClientManager(k8sClient)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(k8sClient, syncletClientManager)
+	sidecarSyncletManager := engine.NewSidecarSyncletManager(k8sClient)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(k8sClient, sidecarSyncletManager)
 	dockerCli, err := docker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err

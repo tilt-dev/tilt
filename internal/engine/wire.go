@@ -24,7 +24,7 @@ var DeployerWireSet = wire.NewSet(
 	build.DefaultImageBuilder,
 	build.NewDockerImageBuilder,
 
-	NewSyncletClientManager,
+	NewSidecarSyncletManager,
 
 	// BuildOrder
 	NewImageBuildAndDeployer,

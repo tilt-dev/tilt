@@ -13,10 +13,8 @@ ADD . $SRC_DIR
 # Build it
 RUN cd $SRC_DIR; go build -o server ./cmd/synclet/main.go; mv server /app
 
-# Docker inside Docker! o_0
-FROM docker:latest as docker
-
-RUN apk add --no-cache curl  # just for easy testing of endpoints, can remove later
+# Create a minimal image with just the binary.
+FROM alpine:latest
 
 WORKDIR /app
 COPY --from=builder /app/server .

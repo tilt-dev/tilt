@@ -4,4 +4,4 @@
 
 set -euo pipefail
 
-($*) 2> >(egrep -v "^ld: warning: text-based stub file.*are out of sync|^# \S+$")
+("$@") 2> >(egrep -v "^ld: warning: text-based stub file.*are out of sync|^# \S+$")
