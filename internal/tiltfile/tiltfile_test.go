@@ -78,7 +78,7 @@ func TestGetManifestConfig(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -121,7 +121,7 @@ func TestOldMountSyntax(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   image.add('/mount_points/1', local_git_repo('.'))
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
@@ -150,7 +150,7 @@ func TestOldMountSyntax(t *testing.T) {
 func TestGetManifestConfigMissingDockerFile(t *testing.T) {
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("asfaergiuhaeriguhaergiu", "docker-tag", "the entrypoint")
+  image = start_fast_build("asfaergiuhaeriguhaergiu", "docker-tag", "the entrypoint")
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -202,14 +202,14 @@ func TestCompositeFunction(t *testing.T) {
   return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
-    image = build_docker_image("%v", "docker-tag", "the entrypoint")
+    image = start_fast_build("%v", "docker-tag", "the entrypoint")
     print(image.file_name)
     image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
     image.run("echo hi")
     return k8s_service("yaml", image)
 
 def blorgly_frontend():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -354,7 +354,7 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   print(image.file_name)
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -391,7 +391,7 @@ func TestRunTrigger(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def yarnly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run('yarn install', trigger='package.json')
   image.run('npm install', trigger=['package.json', 'yarn.lock'])
@@ -461,7 +461,7 @@ func TestInvalidDockerTag(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image(%q, "**invalid**", "the entrypoint")
+  image = start_fast_build(%q, "**invalid**", "the entrypoint")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -482,7 +482,7 @@ func TestEntrypointIsOptional(t *testing.T) {
 ENTRYPOINT echo hi`)
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image(%q, "docker-tag")
+  image = start_fast_build(%q, "docker-tag")
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
 	defer os.Remove(file)
@@ -504,7 +504,7 @@ func TestAddMissingDir(t *testing.T) {
 	dockerfile := tempFile(`FROM alpine`)
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image(%q, "docker-tag")
+  image = start_fast_build(%q, "docker-tag")
   image.add(local_git_repo('./garbage'), '/garbage')
   return k8s_service("yaaaaaaaaml", image)
 `, dockerfile))
@@ -526,7 +526,7 @@ func TestReadFile(t *testing.T) {
 	fileToRead := tempFile("hello world")
 	program := fmt.Sprintf(`def blorgly():
 	yaml = read_file(%q)
-	image = build_docker_image("%v", "docker-tag", "the entrypoint")
+	image = start_fast_build("%v", "docker-tag", "the entrypoint")
 	return k8s_service(yaml, image)
 `, fileToRead, dockerfile)
 	file := tempFile(program)
@@ -555,7 +555,7 @@ func TestRepoPath(t *testing.T) {
 	repo = local_git_repo('.')
 	print(repo.path('subpath'))
 	yaml = read_file(%q)
-	image = build_docker_image("%v", "docker-tag", str(repo.path('subpath')))
+	image = start_fast_build("%v", "docker-tag", str(repo.path('subpath')))
 	return k8s_service(yaml, image)
 `, fileToRead, dockerfile)
 	file := tempFile(program)
@@ -589,7 +589,7 @@ func TestAddOneFileByPath(t *testing.T) {
 	repo = local_git_repo('.')
 	print(repo.path('subpath'))
 	yaml = read_file(%q)
-	image = build_docker_image("%v", "docker-tag", str(repo.path('subpath')))
+	image = start_fast_build("%v", "docker-tag", str(repo.path('subpath')))
 	image.add(repo.path('package.json'), '/app/package.json')
 	return k8s_service(yaml, image)
 `, fileToRead, dockerfile)
@@ -631,7 +631,7 @@ func TestFailsIfNotGitRepo(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
@@ -660,7 +660,7 @@ func TestReadsIgnoreFiles(t *testing.T) {
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
-  image = build_docker_image("%v", "docker-tag", "the entrypoint")
+  image = start_fast_build("%v", "docker-tag", "the entrypoint")
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")

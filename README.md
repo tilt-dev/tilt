@@ -12,7 +12,7 @@ Run `go get -u github.com/windmilleng/tilt`
 Tilt reads from a Tiltfile. A simple Tiltfile is below:
 ```python
 def backend():
-  img = build_docker_image('Dockerfile', 'companyname/backend', '/go/bin/server')
+  img = start_fast_build('Dockerfile', 'companyname/backend', '/go/bin/server')
   repo = local_git_repo('.')
   img.add(repo, '/go/src/github.com/companyname/backend')
   img.run('go install github.com/companyname/backend/server')
@@ -39,7 +39,7 @@ Gets the absolute to the file specified at `path` in the repo
   * `path`: **str**
 * Returns:  **localPath**
 
-#### build_docker_image(dockerfile_path, img_name, entrypoint?)
+#### start_fast_build(dockerfile_path, img_name, entrypoint?)
 Builds a docker image.
 
 * Args:

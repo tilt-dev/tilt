@@ -175,12 +175,12 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	}
 
 	predeclared := skylark.StringDict{
-		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
-		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
-		"local_git_repo":     skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
-		"local":              skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
-		"read_file":          skylark.NewBuiltin("read_file", readFile),
+		"start_fast_build":  skylark.NewBuiltin("start_fast_build", makeSkylarkDockerImage),
+		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
+		"local_git_repo":    skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
+		"local":             skylark.NewBuiltin("local", runLocalCmd),
+		"composite_service": skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
+		"read_file":         skylark.NewBuiltin("read_file", readFile),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
