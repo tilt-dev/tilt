@@ -27,6 +27,8 @@ type Tiltfile struct {
 	thread   *skylark.Thread
 }
 
+var buildContext *dockerImage
+
 func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
@@ -48,7 +50,8 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}, nil
+	buildContext = &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
+	return buildContext, nil
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -167,6 +170,13 @@ func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	return skylark.String(dat), nil
 }
 
+func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	r := buildContext
+	defer func() { buildContext = nil }()
+
+	return r, nil
+}
+
 func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
@@ -181,6 +191,9 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		"local":             skylark.NewBuiltin("local", runLocalCmd),
 		"composite_service": skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
 		"read_file":         skylark.NewBuiltin("read_file", readFile),
+		"stop_build":        skylark.NewBuiltin("stop_build", stopBuild),
+		"add":               skylark.NewBuiltin("add", addMount),
+		"run":               skylark.NewBuiltin("run", runDockerImageCmd),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
