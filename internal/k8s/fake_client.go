@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ Client = &FakeK8sClient{}
@@ -43,16 +45,20 @@ func (c *FakeK8sClient) SetPodWithImageResp(pID PodID) {
 	c.PodWithImageResp = pID
 }
 
-func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
+func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (*v1.Pod, error) {
 	if !c.PodWithImageResp.Empty() {
 		res := c.PodWithImageResp
 		c.PodWithImageResp = ""
-		return res, nil
+		return &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: string(res)},
+		}, nil
 	}
-	return PodID("pod"), nil
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+	}, nil
 }
 
-func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error) {
+func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error) {
 	return c.PodWithImage(ctx, image)
 }
 
