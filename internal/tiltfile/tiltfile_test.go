@@ -761,3 +761,30 @@ func TestBuildContextRunError(t *testing.T) {
 		t.Errorf("Expected %s to equal %s", err.Error(), expected)
 	}
 }
+
+func TestBuildContextStartTwice(t *testing.T) {
+	gitTeardown, _ := gitRepoFixture(t)
+	defer gitTeardown()
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  start_fast_build("%v", "docker-tag", "the entrypoint")
+  start_fast_build("%v", "docker-tag2", "new entrypoint")
+  add(local_git_repo('.'), '/mount_points/1')
+  run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile, dockerfile))
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	_, err = tiltconfig.GetManifestConfigs("blorgly")
+	if err == nil {
+		t.Fatal("Expected GetManifestConfigs to error, but it didn't")
+	}
+	expected := "error running 'blorgly': tried to start a build context while another build context was already open"
+	if err.Error() != expected {
+		t.Errorf("Expected %s to equal %s", err.Error(), expected)
+	}
+}
