@@ -16,6 +16,9 @@ lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
 	! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline(' # linting for improperly deferred EndPipeline calls; should be in closure, i.e. `defer func() { ...EndPipeline(err) }()`
 
+build:
+	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
+
 test:
 	./hide_tbd_warning go test -timeout 60s ./...
 
