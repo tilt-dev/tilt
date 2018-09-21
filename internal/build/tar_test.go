@@ -77,6 +77,48 @@ func TestLen(t *testing.T) {
 	}
 }
 
+func TestDontArchiveTiltfile(t *testing.T) {
+	f := newFixture(t)
+	ab := NewArchiveBuilder()
+	defer ab.close()
+	defer f.tearDown()
+
+	f.WriteFile("a", "a")
+	f.WriteFile("Tiltfile", "Tiltfile")
+
+	paths := []pathMapping{
+		pathMapping{
+			LocalPath:     f.JoinPath("a"),
+			ContainerPath: "/a",
+		},
+		pathMapping{
+			LocalPath:     f.JoinPath("Tiltfile"),
+			ContainerPath: "/Tiltfile",
+		},
+	}
+
+	err := ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	actual := tar.NewReader(ab.buf)
+
+	testutils.AssertFilesInTar(
+		t,
+		actual,
+		[]testutils.ExpectedFile{
+			testutils.ExpectedFile{
+				Path:     "a",
+				Contents: "a",
+			},
+			testutils.ExpectedFile{
+				Path:    "Tiltfile",
+				Missing: true,
+			},
+		},
+	)
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	t   *testing.T
