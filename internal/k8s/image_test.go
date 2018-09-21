@@ -12,27 +12,6 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-func TestExtractSanchoYAML(t *testing.T) {
-	entities, err := ParseYAMLFromString(SanchoYAML)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(entities) != 1 {
-		t.Fatalf("Unexpected entities: %+v", entities)
-	}
-
-	entity := entities[0]
-	containers, err := extractContainers(&entity)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(containers) != 1 || containers[0].Image != "gcr.io/some-project-162817/sancho" {
-		t.Errorf("Unexpected containers: %v", containers)
-	}
-}
-
 func TestInjectDigestSanchoYAML(t *testing.T) {
 	entities, err := ParseYAMLFromString(SanchoYAML)
 	if err != nil {
