@@ -6,16 +6,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"google.golang.org/grpc/codes"
@@ -25,7 +21,6 @@ import (
 type upCmd struct {
 	watch       bool
 	browserMode engine.BrowserMode
-	cleanUpFn   func() error
 	traceTags   string
 }
 
@@ -43,46 +38,18 @@ func (c *upCmd) register() *cobra.Command {
 	return cmd
 }
 
-func (c *upCmd) run(args []string) error {
+func (c *upCmd) run(ctx context.Context, args []string) error {
 	analyticsService.Incr("cmd.up", map[string]string{"watch": fmt.Sprintf("%v", c.watch)})
 	defer analyticsService.Flush(time.Second)
 
-	span := opentracing.StartSpan("Up")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
+	defer span.Finish()
+
 	tags := tracer.TagStrToMap(c.traceTags)
+
 	for k, v := range tags {
 		span.SetTag(k, v)
 	}
-
-	l := logger.NewLogger(logLevel(), os.Stdout)
-	ctx := output.WithOutputter(
-		logger.WithLogger(
-			opentracing.ContextWithSpan(context.Background(), span),
-			l),
-		output.NewOutputter(l))
-
-	cleanUp := func() {
-		span.Finish()
-		err := c.cleanUpFn()
-		if err != nil {
-			l.Infof("error cleaning up: %v", err)
-		}
-	}
-	defer cleanUp()
-
-	// SIGNAL TRAPPING
-	ctx, cancel := context.WithCancel(ctx)
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		_ = <-sigs
-
-		// Clean up anything that needs cleaning up
-		cleanUp()
-
-		// We rely on context cancellation being handled elsewhere --
-		// otherwise there's no way to SIGINT/SIGTERM this app o_0
-		cancel()
-	}()
 
 	logOutput(fmt.Sprintf("Starting Tilt (built %s)…\n", buildDateStamp()))
 
