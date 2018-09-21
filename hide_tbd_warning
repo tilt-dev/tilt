@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# really stupid workaround for https://github.com/golang/go/issues/26073
+
+set -euo pipefail
+
+($*) 2> >(egrep -v "^ld: warning: text-based stub file.*are out of sync|^# \S+$")
