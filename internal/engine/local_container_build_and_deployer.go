@@ -6,8 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -25,7 +27,7 @@ type LocalContainerBuildAndDeployer struct {
 	k8sClient k8s.Client
 	analytics analytics.Analytics
 
-	deployInfo   map[model.ManifestName]k8s.ContainerID
+	deployInfo   map[docker.ImgNameAndTag]k8s.ContainerID
 	deployInfoMu sync.Mutex
 }
 
@@ -37,20 +39,21 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater, cr *build.Con
 		env:        env,
 		k8sClient:  kCli,
 		analytics:  analytics,
-		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
+		deployInfo: make(map[docker.ImgNameAndTag]k8s.ContainerID),
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) getContainerIDForManifest(name model.ManifestName) (k8s.ContainerID, bool) {
+func (cbd *LocalContainerBuildAndDeployer) getContainerIDForImage(img reference.NamedTagged) (k8s.ContainerID, bool) {
 	cbd.deployInfoMu.Lock()
-	cID, ok := cbd.deployInfo[name]
+	cID, ok := cbd.deployInfo[docker.ToImgNameAndTag(img)]
 	cbd.deployInfoMu.Unlock()
 	return cID, ok
 }
 
-func (cbd *LocalContainerBuildAndDeployer) setContainerIDForManifest(name model.ManifestName, cID k8s.ContainerID) {
+func (cbd *LocalContainerBuildAndDeployer) setContainerIDForImage(img reference.NamedTagged, cID k8s.ContainerID) {
 	cbd.deployInfoMu.Lock()
-	cbd.deployInfo[name] = cID
+	key := docker.ToImgNameAndTag(img)
+	cbd.deployInfo[key] = cID
 	cbd.deployInfoMu.Unlock()
 }
 
@@ -79,7 +82,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
-	cID, ok := cbd.getContainerIDForManifest(manifest.Name)
+	cID, ok := cbd.getContainerIDForImage(state.LastResult.Image)
 
 	// (Unless we don't know what container it's running in, in which case we can't.)
 	if !ok {
@@ -105,9 +108,9 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuild")
-	span.SetTag("manifest", manifest.Name.String())
+	span.SetTag("image", result.Image.String())
 	defer span.Finish()
 
 	if !result.HasImage() {
@@ -115,17 +118,17 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context,
 		return
 	}
 
-	if _, ok := cbd.getContainerIDForManifest(manifest.Name); !ok {
+	if _, ok := cbd.getContainerIDForImage(result.Image); !ok {
 		cID, err := cbd.getContainerForBuild(ctx, result)
 		if err != nil {
 			// There's a variety of reasons why we might not be able to get a
 			// container.  The cluster could be in a transient bad state, or the pod
 			// could be in a crash loop because the user wrote some code that
 			// segfaults. Don't worry too much about it, we'll fall back to an image build.
-			logger.Get(ctx).Debugf("couldn't get container for %s: %v", manifest.Name, err)
+			logger.Get(ctx).Debugf("couldn't get container for img %s: %v", result.Image.String(), err)
 			return
 		}
-		cbd.setContainerIDForManifest(manifest.Name, cID)
+		cbd.setContainerIDForImage(result.Image, cID)
 	}
 }
 
