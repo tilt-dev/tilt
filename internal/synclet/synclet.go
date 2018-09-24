@@ -7,6 +7,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -29,10 +31,16 @@ func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet 
 const pauseCmd = "/pause"
 
 func (s Synclet) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-ContainerIDForPod")
+	defer span.Finish()
+
 	return s.cr.ContainerIDForPod(ctx, podID, imageID)
 }
 
 func (s Synclet) writeFiles(ctx context.Context, containerId k8s.ContainerID, tarArchive []byte) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-writeFiles")
+	defer span.Finish()
+
 	if tarArchive == nil {
 		return nil
 	}
@@ -41,6 +49,9 @@ func (s Synclet) writeFiles(ctx context.Context, containerId k8s.ContainerID, ta
 }
 
 func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, filesToDelete []string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-rmFiles")
+	defer span.Finish()
+
 	if len(filesToDelete) == 0 {
 		return nil
 	}
@@ -59,6 +70,9 @@ func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, files
 }
 
 func (s Synclet) execCmds(ctx context.Context, containerId k8s.ContainerID, cmds []model.Cmd) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-execCommands")
+	defer span.Finish()
+
 	for i, c := range cmds {
 		// TODO: instrument this
 		log.Printf("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
@@ -75,6 +89,9 @@ func (s Synclet) execCmds(ctx context.Context, containerId k8s.ContainerID, cmds
 }
 
 func (s Synclet) restartContainer(ctx context.Context, containerId k8s.ContainerID) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-restartContainer")
+	defer span.Finish()
+
 	return s.dcli.ContainerRestartNoWait(ctx, containerId.String())
 }
 
@@ -84,6 +101,9 @@ func (s Synclet) UpdateContainer(
 	tarArchive []byte,
 	filesToDelete []string,
 	commands []model.Cmd) error {
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-UpdateContainer")
+	defer span.Finish()
 
 	err := s.rmFiles(ctx, containerId, filesToDelete)
 	if err != nil {
