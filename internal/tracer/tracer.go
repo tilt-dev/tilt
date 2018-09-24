@@ -1,30 +1,50 @@
 package tracer
 
 import (
-	"io"
+	"context"
+	"fmt"
 	"log"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	config "github.com/uber/jaeger-client-go/config"
+	"github.com/windmilleng/tilt/internal/logger"
+
+	"github.com/pkg/errors"
+
+	"github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 )
 
-func Init() (io.Closer, error) {
-	cfg := &config.Configuration{
-		Sampler: &config.SamplerConfig{
-			Type:  "const",
-			Param: 1,
-		},
-		ServiceName: "tilt",
-	}
-	// TODO(dmiller) log output to a file?
-	tracer, closer, err := cfg.NewTracer()
+const windmillTracerHostPort = "opentracing.windmill.build:9411"
+
+type zipkinLogger struct {
+	ctx context.Context
+}
+
+func (zl zipkinLogger) Log(keyvals ...interface{}) error {
+	logger.Get(zl.ctx).Debugf("%v", keyvals)
+	return nil
+}
+
+var _ zipkin.Logger = zipkinLogger{}
+
+func Init(ctx context.Context) (func() error, error) {
+	collector, err := zipkin.NewHTTPCollector(fmt.Sprintf("http://%s/api/v1/spans", windmillTracerHostPort), zipkin.HTTPLogger(zipkinLogger{ctx}))
+
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to create zipkin collector")
 	}
+
+	recorder := zipkin.NewRecorder(collector, true, "0.0.0.0:0", "tilt")
+	tracer, err := zipkin.NewTracer(recorder)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create tracer")
+	}
+
 	opentracing.SetGlobalTracer(tracer)
 
-	return closer, nil
+	return collector.Close, nil
+
 }
 
 // TagStrToMap converts a user-passed string of tags of the form `key1=val1,key2=val2` to a map.

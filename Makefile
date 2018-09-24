@@ -10,14 +10,17 @@ proto:
 	docker rm tilt-protogen
 
 install:
-	go install ./...
+	./hide_tbd_warning go install ./...
 
 lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
 	! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline(' # linting for improperly deferred EndPipeline calls; should be in closure, i.e. `defer func() { ...EndPipeline(err) }()`
 
+build:
+	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
+
 test:
-	go test -timeout 60s ./...
+	./hide_tbd_warning go test -timeout 60s ./...
 
 ensure:
 	dep ensure
@@ -30,9 +33,6 @@ benchmark:
 
 errcheck:
 	errcheck -ignoretests -ignoregenerated ./...
-
-start_tracer:
-	docker run -d -p5775:5775/udp -p6831:6831/udp -p6832:6832/udp -p5778:5778 -p16686:16686 -p14268:14268 -p9411:9411 jaegertracing/all-in-one:0.8.0
 
 timing: install
 	./scripts/timing.py
@@ -50,3 +50,6 @@ wire-check:
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
 	docker push gcr.io/windmill-public-containers/tilt-ci
+
+clean:
+	go clean -cache -testcache -r -i ./...

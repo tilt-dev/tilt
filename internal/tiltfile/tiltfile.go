@@ -20,6 +20,7 @@ import (
 )
 
 const FileName = "Tiltfile"
+const buildContextKey = "buildContext"
 
 type Tiltfile struct {
 	globals  skylark.StringDict
@@ -48,7 +49,19 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
 	}
 
-	return &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}, nil
+	existingBC := thread.Local(buildContextKey)
+
+	if existingBC != nil {
+		return skylark.None, errors.New("tried to start a build context while another build context was already open")
+	}
+
+	buildContext := &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
+	thread.SetLocal(buildContextKey, buildContext)
+	return skylark.None, nil
+}
+
+func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	return skylark.None, errors.New(fmt.Sprintf("%s not implemented", fn.Name()))
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -167,6 +180,16 @@ func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	return skylark.String(dat), nil
 }
 
+func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	buildContext, ok := thread.Local(buildContextKey).(*dockerImage)
+	if !ok {
+		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
+	}
+	thread.SetLocal(buildContextKey, nil)
+
+	return buildContext, nil
+}
+
 func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
@@ -175,12 +198,16 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	}
 
 	predeclared := skylark.StringDict{
-		"build_docker_image": skylark.NewBuiltin("build_docker_image", makeSkylarkDockerImage),
-		"k8s_service":        skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
-		"local_git_repo":     skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
-		"local":              skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service":  skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
-		"read_file":          skylark.NewBuiltin("read_file", readFile),
+		"start_fast_build":  skylark.NewBuiltin("start_fast_build", makeSkylarkDockerImage),
+		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
+		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
+		"local_git_repo":    skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
+		"local":             skylark.NewBuiltin("local", runLocalCmd),
+		"composite_service": skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
+		"read_file":         skylark.NewBuiltin("read_file", readFile),
+		"stop_build":        skylark.NewBuiltin("stop_build", stopBuild),
+		"add":               skylark.NewBuiltin("add", addMount),
+		"run":               skylark.NewBuiltin("run", runDockerImageCmd),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)

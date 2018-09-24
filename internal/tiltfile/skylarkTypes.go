@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `.add(dest: string, src: string)`. Now it is `.add(src: localPath, dest: string)`."
+const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `add(dest: string, src: string)`. Now it is `add(src: localPath, dest: string)`."
 
 type compManifest struct {
 	cManifest []k8sManifest
@@ -93,9 +93,12 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 	if err != nil {
 		return nil, err
 	}
-	image, ok := fn.Receiver().(*dockerImage)
+	buildContext, ok := thread.Local("buildContext").(*dockerImage)
+	if buildContext == nil {
+		return nil, errors.New("run called without a build context")
+	}
 	if !ok {
-		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
+		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
 	}
 
 	cmd, ok := skylark.AsString(skylarkCmd)
@@ -137,14 +140,23 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		step.Trigger = pm
 	}
 
-	image.steps = append(image.steps, step)
+	buildContext.steps = append(buildContext.steps, step)
 	return skylark.None, nil
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var src interface{}
 	var mountPoint string
-	if len(fn.Receiver().(*dockerImage).steps) > 0 {
+
+	buildContext, ok := thread.Local("buildContext").(*dockerImage)
+	if buildContext == nil {
+		return nil, errors.New("add called without a build context")
+	}
+	if !ok {
+		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
+	}
+
+	if len(buildContext.steps) > 0 {
 		return nil, errors.New("add mount before run command")
 	}
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint)
@@ -153,11 +165,6 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 			return nil, fmt.Errorf(oldMountSyntaxError)
 		}
 		return nil, err
-	}
-
-	image, ok := fn.Receiver().(*dockerImage)
-	if !ok {
-		return nil, errors.New("internal error: add_docker_image_cmd called on non-dockerImage")
 	}
 
 	var lp localPath
@@ -170,8 +177,8 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, fmt.Errorf(oldMountSyntaxError)
 	}
 
-	image.mounts = append(image.mounts, mount{lp, mountPoint})
-	image.filters = append(image.filters, lp.repo.pathMatcher)
+	buildContext.mounts = append(buildContext.mounts, mount{lp, mountPoint})
+	buildContext.filters = append(buildContext.filters, lp.repo.pathMatcher)
 
 	return skylark.None, nil
 }
@@ -201,10 +208,6 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 		return skylark.String(d.fileName), nil
 	case "file_tag":
 		return skylark.String(d.fileTag.String()), nil
-	case "run":
-		return skylark.NewBuiltin(name, runDockerImageCmd).BindReceiver(d), nil
-	case "add":
-		return skylark.NewBuiltin(name, addMount).BindReceiver(d), nil
 	default:
 		return nil, nil
 	}

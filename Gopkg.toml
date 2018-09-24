@@ -55,7 +55,7 @@
 
 [[constraint]]
   name = "k8s.io/client-go"
-  branch = "release-8.0"
+  version = "kubernetes-1.11.3"
 
 # these need to be here. https://github.com/golang/dep/issues/1415
 [[override]]

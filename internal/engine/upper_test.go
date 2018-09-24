@@ -13,7 +13,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
-	wmdocker "github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -34,7 +34,7 @@ type fakeBuildAndDeployer struct {
 	buildCount int
 
 	// where we store container info for each manifest
-	deployInfo map[model.ManifestName]k8s.ContainerID
+	deployInfo map[docker.ImgNameAndTag]k8s.ContainerID
 
 	// Set this to simulate the build failing
 	nextBuildFailure error
@@ -65,13 +65,14 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	return b.nextBuildResult(), nil
 }
 
-func (b *fakeBuildAndDeployer) haveContainerForManifest(name model.ManifestName) bool {
-	_, ok := b.deployInfo[name]
+func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) bool {
+	_, ok := b.deployInfo[docker.ToImgNameAndTag(img)]
 	return ok
 }
-func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, manifest model.Manifest, result BuildResult) {
-	if result.HasImage() && !b.haveContainerForManifest(manifest.Name) {
-		b.deployInfo[manifest.Name] = k8s.ContainerID("testcontainer")
+
+func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+	if result.HasImage() && !b.haveContainerForImage(result.Image) {
+		b.deployInfo[docker.ToImgNameAndTag(result.Image)] = k8s.ContainerID("testcontainer")
 	}
 }
 
@@ -79,7 +80,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:          t,
 		calls:      make(chan buildAndDeployCall, 5),
-		deployInfo: make(map[model.ManifestName]k8s.ContainerID),
+		deployInfo: make(map[docker.ImgNameAndTag]k8s.ContainerID),
 	}
 }
 
@@ -440,7 +441,7 @@ type testFixture struct {
 	b          *fakeBuildAndDeployer
 	watcher    *fakeNotify
 	timerMaker *fakeTimerMaker
-	docker     *wmdocker.FakeDockerClient
+	docker     *docker.FakeDockerClient
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -450,10 +451,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
-	docker := wmdocker.NewFakeDockerClient()
+	docker := docker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
-	k8s := &FakeK8sClient{}
+	k8s := k8s.NewFakeK8sClient()
 	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper}
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
