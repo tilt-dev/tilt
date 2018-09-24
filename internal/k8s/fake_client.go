@@ -64,7 +64,7 @@ func (c *FakeK8sClient) SetPollForPodWithImageDelay(dur time.Duration) {
 }
 
 func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error) {
-	defer func() { c.PollForPodWithImageDelay = 0 }()
+	defer c.SetPollForPodWithImageDelay(0)
 
 	if c.PollForPodWithImageDelay > timeout {
 		return nil, fmt.Errorf("timeout polling for pod (delay %s > timeout %s)",
