@@ -28,7 +28,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("error initializing tracer: %v", err)
 	}
-	defer closer()
+	defer func() {
+		err := closer()
+		if err != nil {
+			log.Fatalf("error closing tracer: %v", err)
+		}
+	}()
 
 	flag.Parse()
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
