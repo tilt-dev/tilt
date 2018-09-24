@@ -9,77 +9,73 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error) {
+func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodWithImage")
 	span.SetTag("img", image.String())
 	defer span.Finish()
 
 	start := time.Now()
 	for time.Since(start) < timeout {
-		pID, err := k.PodWithImage(ctx, image)
+		pod, err := k.PodWithImage(ctx, image)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		if !pID.Empty() {
-			return pID, nil
+
+		if pod != nil {
+			return pod, nil
 		}
 	}
 
-	return "", fmt.Errorf("timed out polling for pod running image %s (after %s)",
+	return nil, fmt.Errorf("timed out polling for pod running image %s (after %s)",
 		image.String(), timeout)
 }
 
 // PodWithImage returns the ID of the pod running the given image. If too many matches, throw
 // an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
+func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (*v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodWithImage")
 	defer span.Finish()
 
-	ip, err := k.imagesToPods(ctx)
+	// TODO(nick): This should take a Namespace, and maybe some label selectors?
+	podList, err := k.core.Pods("default").List(metav1.ListOptions{})
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("PodWithImage: %v", err)
 	}
+
+	ip := podMap(podList)
 	pods, ok := ip[image.String()]
 	if !ok {
 		// Nothing's wrong, we just didn't find a match.
-		return "", nil
+		return nil, nil
 	}
 	if len(pods) > 1 {
-		return "", fmt.Errorf("too many pods found for %s: %d", image, len(pods))
+		return nil, fmt.Errorf("too many pods found for %s: %d", image, len(pods))
 	}
-	return pods[0], nil
+
+	pod := pods[0]
+	return &pod, nil
 }
 
-func (k K8sClient) imagesToPods(ctx context.Context) (map[string][]PodID, error) {
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", `-o=jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\t"}'`})
-
-	if err != nil {
-		return nil, fmt.Errorf("imagesToPods %v (with stderr: %s)", err, stderr)
-
+func podMap(podList *v1.PodList) map[string][]v1.Pod {
+	ip := make(map[string][]v1.Pod, 0)
+	for _, p := range podList.Items {
+		for _, c := range p.Spec.Containers {
+			ip[c.Image] = append(ip[c.Image], p)
+		}
 	}
-	return imgPodMapFromOutput(stdout)
+	return ip
 }
 
-func imgPodMapFromOutput(output string) (map[string][]PodID, error) {
-	imgsToPods := make(map[string][]PodID)
-	lns := strings.Split(output, "\n")
-	for _, ln := range lns {
-		if strings.TrimSpace(ln) == "" {
-			continue
-		}
+func PodIDFromPod(pod *v1.Pod) PodID {
+	return PodID(pod.ObjectMeta.Name)
+}
 
-		tuple := strings.Split(ln, "\t")
-		if len(tuple) == 0 {
-			return nil, fmt.Errorf("could not split line on tab: %s", ln)
-		}
-
-		for _, nt := range tuple[1:] {
-			imgsToPods[nt] = append(imgsToPods[nt], PodID(tuple[0]))
-		}
-	}
-	return imgsToPods, nil
+func NodeIDFromPod(pod *v1.Pod) NodeID {
+	return NodeID(pod.Spec.NodeName)
 }
 
 func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
