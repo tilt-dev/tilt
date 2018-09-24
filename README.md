@@ -12,10 +12,12 @@ Run `go get -u github.com/windmilleng/tilt`
 Tilt reads from a Tiltfile. A simple Tiltfile is below:
 ```python
 def backend():
-  img = start_fast_build('Dockerfile', 'companyname/backend', '/go/bin/server')
+  start_fast_build('Dockerfile', 'companyname/backend', '/go/bin/server')
   repo = local_git_repo('.')
-  img.add(repo, '/go/src/github.com/companyname/backend')
-  img.run('go install github.com/companyname/backend/server')
+  add(repo, '/go/src/github.com/companyname/backend')
+  run('go install github.com/companyname/backend/server')
+  img = stop_build()
+
   return k8s_service(read_file('backend.yaml'), img)
 ```
 
@@ -32,8 +34,8 @@ Creates a `repo` with the content at `path`.
     * `path`: **str**
 * Returns: **Repo**
 
-#### Repo.add(path)
-Gets the absolute to the file specified at `path` in the repo
+#### Repo.path(path)
+Gets the absolute to the file specified at `path` in the repo. Must be a relative path.
 
 * Args:
   * `path`: **str**
@@ -48,17 +50,17 @@ Builds a docker image.
   * `entrypoint?`: **str**
 * Returns: **Image**
 
-#### Image.add(src, dest)
-Adds the content from `src` into the image at path `dest`.
+#### add(src, dest)
+Adds the content from `src` into the image at path `dest`. Paths must be relative.
 
 * Args:
   * `src`: **localPath|gitRepo**
   * `dest`: **str**
 * Returns: nothing
 
-#### Image.run(cmd, trigger?)
+#### run(cmd, trigger?)
 Runs `cmd` as a build step in the image.
-If the `trigger` file is specified, the build step is only run if the file is changed.
+If the `trigger` file is specified, the build step is only run if the file is changed. Path must be relative.
 
 * Args:
   * `cmd`: **str**
@@ -93,6 +95,11 @@ Reads file and returns its contents.
 * Args:
   * `file_path`: **str**
 * Returns: **str**
+
+#### stop_build(file_path)
+Closes the currently active build and returns a container Image that has all of the adds and runs applied.
+
+* Returns: **Image**
 
 ## Developing
 See DEVELOPING.md
