@@ -27,9 +27,10 @@ type PodID string
 type ContainerID string
 type NodeID string
 
-func (pID PodID) String() string { return string(pID) }
 func (pID PodID) Empty() bool    { return pID.String() == "" }
+func (pID PodID) String() string { return string(pID) }
 
+func (cID ContainerID) Empty() bool    { return cID.String() == "" }
 func (cID ContainerID) String() string { return string(cID) }
 func (cID ContainerID) ShortStr() string {
 	if len(string(cID)) > 10 {
@@ -38,6 +39,7 @@ func (cID ContainerID) ShortStr() string {
 	return string(cID)
 }
 
+func (nID NodeID) Empty() bool    { return nID.String() == "" }
 func (nID NodeID) String() string { return string(nID) }
 
 type Client interface {
