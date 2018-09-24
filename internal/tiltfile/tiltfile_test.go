@@ -588,6 +588,37 @@ func TestRepoPath(t *testing.T) {
 	assert.Equal(t, []string{"sh", "-c", filepath.Join(wd, "subpath")}, manifest.Entrypoint.Argv)
 }
 
+func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
+	gitTeardown, _ := gitRepoFixture(t)
+	defer gitTeardown()
+	dockerfile := tempFile("docker text")
+	fileToRead := tempFile("hello world")
+	program := fmt.Sprintf(`def blorgly():
+  repo = local_git_repo('.')
+  yaml = read_file(%q)
+  start_fast_build("%v", "docker-tag", str(repo.path('subpath')))
+  add("package.json", "/app/package.json")
+  image = stop_build()
+  return k8s_service(yaml, image)
+`, fileToRead, dockerfile)
+	file := tempFile(program)
+	defer os.Remove(file)
+
+	tiltConfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	_, err = tiltConfig.GetManifestConfigs("blorgly")
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	expected := "invalid type for src. Got string want gitRepo OR localPath"
+	if !strings.Contains(err.Error(), expected) {
+		t.Errorf("Expected %s to contain %s", err.Error(), expected)
+	}
+}
+
 func TestAddOneFileByPath(t *testing.T) {
 	gitTeardown, _ := gitRepoFixture(t)
 	defer gitTeardown()
