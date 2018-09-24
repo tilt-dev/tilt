@@ -44,7 +44,7 @@ const (
 	TestContainer = "test_container"
 )
 
-var ContainersListByName = map[string][]types.Container{
+var DefaultContainerListOutput = map[string][]types.Container{
 	TestPod: []types.Container{
 		types.Container{ID: TestContainer, ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
@@ -90,9 +90,17 @@ func NewFakeDockerClient() *FakeDockerClient {
 	return &FakeDockerClient{
 		PushOutput:          NewFakeDockerResponse(ExamplePushOutput1),
 		BuildOutput:         NewFakeDockerResponse(ExampleBuildOutput1),
-		ContainerListOutput: ContainersListByName,
+		ContainerListOutput: make(map[string][]types.Container),
 		RestartsByContainer: make(map[string]int),
 	}
+}
+
+func (c *FakeDockerClient) SetContainerListOutput(output map[string][]types.Container) {
+	c.ContainerListOutput = output
+}
+
+func (c *FakeDockerClient) SetDefaultContainerListOutput() {
+	c.SetContainerListOutput(DefaultContainerListOutput)
 }
 
 func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
@@ -101,7 +109,15 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
 	}
 
-	return c.ContainerListOutput[nameFilter[0]], nil
+	if len(c.ContainerListOutput) == 0 {
+		return nil, fmt.Errorf("FakeDockerClient ContainerListOutput not set (use `SetContainerListOutput`)")
+	}
+	res := c.ContainerListOutput[nameFilter[0]]
+
+	// unset containerListOutput
+	c.ContainerListOutput = nil
+
+	return res, nil
 }
 
 func (c *FakeDockerClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {

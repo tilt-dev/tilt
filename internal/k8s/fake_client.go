@@ -13,6 +13,8 @@ var _ Client = &FakeK8sClient{}
 type FakeK8sClient struct {
 	Yaml string
 	Lb   LoadBalancerSpec
+
+	PodWithImageResp PodID
 }
 
 func NewFakeK8sClient() *FakeK8sClient {
@@ -37,7 +39,16 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
+func (c *FakeK8sClient) SetPodWithImageResp(pID PodID) {
+	c.PodWithImageResp = pID
+}
+
 func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error) {
+	if !c.PodWithImageResp.Empty() {
+		res := c.PodWithImageResp
+		c.PodWithImageResp = ""
+		return res, nil
+	}
 	return PodID("pod"), nil
 }
 
