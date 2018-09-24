@@ -7,9 +7,12 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	ktesting "k8s.io/client-go/testing"
 
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
@@ -44,10 +47,11 @@ func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout str
 var _ kubectlRunner = &fakeKubectlRunner{}
 
 type clientTestFixture struct {
-	t      *testing.T
-	ctx    context.Context
-	client K8sClient
-	runner *fakeKubectlRunner
+	t       *testing.T
+	ctx     context.Context
+	client  K8sClient
+	runner  *fakeKubectlRunner
+	tracker ktesting.ObjectTracker
 }
 
 func newClientTestFixture(t *testing.T) *clientTestFixture {
@@ -56,10 +60,22 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.ctx = output.CtxForTest()
 	ret.runner = &fakeKubectlRunner{}
 
-	clientset := fake.NewSimpleClientset()
-	core := clientset.CoreV1()
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+
+	cs := &fake.Clientset{}
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	ret.tracker = tracker
+
+	core := cs.CoreV1()
 	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder}
 	return ret
+}
+
+func (c clientTestFixture) addObject(obj runtime.Object) {
+	err := c.tracker.Add(obj)
+	if err != nil {
+		c.t.Fatal(err)
+	}
 }
 
 func (c clientTestFixture) setOutput(s string) {

@@ -243,15 +243,13 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	}
 
 	// get pod running the image we just deployed
-	pID, err := sbd.kCli.PollForPodWithImage(ctx, image, podPollTimeoutSynclet)
+	pod, err := sbd.kCli.PollForPodWithImage(ctx, image, podPollTimeoutSynclet)
 	if err != nil {
 		return errors.Wrapf(err, "PodWithImage (img = %s)", image)
 	}
 
-	nodeID, err := sbd.kCli.GetNodeForPod(ctx, pID)
-	if err != nil {
-		return errors.Wrapf(err, "couldn't get node for pod '%s'", pID.String())
-	}
+	pID := k8s.PodIDFromPod(pod)
+	nodeID := k8s.NodeIDFromPod(pod)
 
 	// note: this is here both to get sCli for the call to getContainerForBuild below
 	// *and* to preemptively set up the tunnel + client

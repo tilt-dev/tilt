@@ -7,51 +7,43 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const expectedPod = "blorg-fe-6b4477ffcd-xf98f"
+const expectedPod = PodID("blorg-fe-6b4477ffcd-xf98f")
 const blorgDevImgStr = "blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f"
 
-var podsToImagesOut = fmt.Sprintf(`%s	%s
-cockroachdb-0	cockroachdb/cockroach:v2.0.5
-cockroachdb-1	cockroachdb/cockroach:v2.0.5
-cockroachdb-2	cockroachdb/cockroach:v2.0.5
-`, expectedPod, blorgDevImgStr)
-
-var podsManyContainers = fmt.Sprintf(`%s	%s
-cockroachdb-0	cockroachdb/cockroach:v2.0.5
-cockroachdb-1	cockroachdb/cockroach:v2.0.5
-cockroachdb-2	cockroachdb/cockroach:v2.0.5
-two-containers	nginx	debian
-`, expectedPod, blorgDevImgStr)
-
-func TestPodImgMapFromOutput(t *testing.T) {
-	podImgMap, err := imgPodMapFromOutput(podsToImagesOut)
-	if err != nil {
-		t.Fatal(err)
+func fakePod(podID PodID, imageID string) v1.Pod {
+	return v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      string(podID),
+			Namespace: "default",
+		},
+		Spec: v1.PodSpec{
+			NodeName: "node1",
+			Containers: []v1.Container{
+				v1.Container{
+					Image: imageID,
+				},
+			},
+		},
 	}
-	expected := map[string][]PodID{
-		"blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f": []PodID{PodID("blorg-fe-6b4477ffcd-xf98f")},
-		"cockroachdb/cockroach:v2.0.5":                           []PodID{PodID("cockroachdb-0"), PodID("cockroachdb-1"), PodID("cockroachdb-2")},
-	}
-	assert.Equal(t, expected, podImgMap)
 }
 
-func TestMultipleContainersOnePod(t *testing.T) {
-	podImgMap, err := imgPodMapFromOutput(podsManyContainers)
-	if err != nil {
-		t.Fatal(err)
+func podList(pods ...v1.Pod) v1.PodList {
+	return v1.PodList{
+		Items: pods,
 	}
-	expected := map[string][]PodID{
-		"blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f": []PodID{PodID("blorg-fe-6b4477ffcd-xf98f")},
-		"cockroachdb/cockroach:v2.0.5":                           []PodID{PodID("cockroachdb-0"), PodID("cockroachdb-1"), PodID("cockroachdb-2")},
-		"nginx":  []PodID{PodID("two-containers")},
-		"debian": []PodID{PodID("two-containers")},
-	}
-	assert.Equal(t, expected, podImgMap)
 }
+
+var fakePodList = podList(
+	fakePod("cockroachdb-0", "cockroachdb/cockroach:v2.0.5"),
+	fakePod("cockroachdb-1", "cockroachdb/cockroach:v2.0.5"),
+	fakePod("cockroachdb-2", "cockroachdb/cockroach:v2.0.5"),
+	fakePod(expectedPod, blorgDevImgStr))
 
 func (c clientTestFixture) FindAppByNodeWithOptions(options FindAppByNodeOptions) (PodID, error) {
 	c.setOutput("foo")
@@ -85,35 +77,35 @@ func (c clientTestFixture) AssertCallExistsWithArg(expectedArg string) {
 
 func TestPodWithImage(t *testing.T) {
 	f := newClientTestFixture(t)
-	f.setOutput(podsToImagesOut)
+	f.addObject(&fakePodList)
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pID, err := f.client.PodWithImage(f.ctx, nt)
+	pod, err := f.client.PodWithImage(f.ctx, nt)
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	assert.Equal(t, expectedPod, pID.String())
+	assert.Equal(t, expectedPod, PodIDFromPod(pod))
 }
 
 func TestPollForPodWithImage(t *testing.T) {
 	f := newClientTestFixture(t)
 	go func() {
 		time.Sleep(time.Second)
-		f.setOutput(podsToImagesOut)
+		f.addObject(&fakePodList)
 	}()
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pID, err := f.client.PollForPodWithImage(f.ctx, nt, 2*time.Second)
+	pod, err := f.client.PollForPodWithImage(f.ctx, nt, 2*time.Second)
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	assert.Equal(t, expectedPod, pID.String())
+	assert.Equal(t, expectedPod, PodIDFromPod(pod))
 }
 
 func TestPollForPodWithImageTimesOut(t *testing.T) {
 	f := newClientTestFixture(t)
 	go func() {
 		time.Sleep(time.Second)
-		f.setOutput(podsToImagesOut)
+		f.addObject(&fakePodList)
 	}()
 
 	nt := MustParseNamedTagged(blorgDevImgStr)

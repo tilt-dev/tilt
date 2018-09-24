@@ -9,8 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/typed/core/v1"
+	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/docker/distribution/reference"
@@ -46,8 +47,8 @@ type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	PodWithImage(ctx context.Context, image reference.NamedTagged) (PodID, error)
-	PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (PodID, error)
+	PodWithImage(ctx context.Context, image reference.NamedTagged) (*v1.Pod, error)
+	PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error)
 
 	// Gets the ID for the Node on which the specified Pod is running
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
@@ -65,19 +66,19 @@ type Client interface {
 type K8sClient struct {
 	env           Env
 	kubectlRunner kubectlRunner
-	core          v1.CoreV1Interface
+	core          apiv1.CoreV1Interface
 	restConfig    *rest.Config
 	portForwarder PortForwarder
 }
 
 var _ Client = K8sClient{}
 
-type PortForwarder func(ctx context.Context, restConfig *rest.Config, core v1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
+type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
 func NewK8sClient(
 	ctx context.Context,
 	env Env,
-	core v1.CoreV1Interface,
+	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
 	pf PortForwarder) K8sClient {
 
@@ -222,7 +223,7 @@ func (k K8sClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, en
 	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
 }
 
-func ProvideCoreInterface(cfg *rest.Config) (v1.CoreV1Interface, error) {
+func ProvideCoreInterface(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
 	clientSet, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -231,7 +232,7 @@ func ProvideCoreInterface(cfg *rest.Config) (v1.CoreV1Interface, error) {
 	return clientSet.CoreV1(), nil
 }
 
-func ProvideRESTClient(cfg *rest.Config) (v1.CoreV1Interface, error) {
+func ProvideRESTClient(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
 	clientSet, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
