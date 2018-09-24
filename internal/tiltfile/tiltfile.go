@@ -60,6 +60,10 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 	return skylark.None, nil
 }
 
+func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	return skylark.None, errors.New(fmt.Sprintf("%s not implemented", fn.Name()))
+}
+
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var yaml skylark.String
 	var dockerImage *dockerImage
@@ -195,6 +199,7 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 
 	predeclared := skylark.StringDict{
 		"start_fast_build":  skylark.NewBuiltin("start_fast_build", makeSkylarkDockerImage),
+		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
 		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
 		"local_git_repo":    skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
 		"local":             skylark.NewBuiltin("local", runLocalCmd),
