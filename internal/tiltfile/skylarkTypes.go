@@ -145,7 +145,7 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 }
 
 func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var src interface{}
+	var src skylark.Value
 	var mountPoint string
 
 	buildContext, ok := thread.Local("buildContext").(*dockerImage)
@@ -174,7 +174,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	case gitRepo:
 		lp = localPath{p.basePath, p}
 	default:
-		return nil, fmt.Errorf(oldMountSyntaxError)
+		return nil, fmt.Errorf("invalid type for src. Got %s want gitRepo OR localPath", src.Type())
 	}
 
 	buildContext.mounts = append(buildContext.mounts, mount{lp, mountPoint})
