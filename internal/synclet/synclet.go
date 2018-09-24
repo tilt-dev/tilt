@@ -28,8 +28,6 @@ func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet 
 	return &Synclet{dcli: dcli, cr: cr}
 }
 
-const pauseCmd = "/pause"
-
 func (s Synclet) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-ContainerIDForPod")
 	defer span.Finish()
