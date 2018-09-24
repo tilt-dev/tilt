@@ -19,7 +19,6 @@ const (
 type Outputter struct {
 	logger logger.Logger
 
-	indentation            int
 	curPipelineStep        int
 	curBuildStep           int
 	totalPipelineStepCount int

@@ -30,6 +30,9 @@ func (k K8sClient) ForwardPort(ctx context.Context, namespace string, podID PodI
 	}
 
 	closer, err = k.portForwarder(ctx, k.restConfig, k.restClient, namespace, podID, localPort, remotePort)
+	if err != nil {
+		return 0, nil, err
+	}
 
 	return localPort, closer, nil
 }

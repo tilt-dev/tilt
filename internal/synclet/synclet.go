@@ -26,8 +26,6 @@ func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet 
 	return &Synclet{dcli: dcli, cr: cr}
 }
 
-const pauseCmd = "/pause"
-
 func (s Synclet) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
 	return s.cr.ContainerIDForPod(ctx, podID, imageID)
 }

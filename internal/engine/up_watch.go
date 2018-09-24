@@ -111,31 +111,6 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-c
 	return ret
 }
 
-func addEventsToLeftover(
-	leftover map[string]*manifestFilesChangedEvent,
-	leftoverManifestOrder *[]string,
-	events []manifestSingleFileChangeEvent) {
-	for _, event := range events {
-		if _, exists := leftover[string(event.manifest.Name)]; !exists {
-			leftover[string(event.manifest.Name)] = &manifestFilesChangedEvent{event.manifest, []string{event.fileName}}
-			// if we weren't already tracking this manifest name, stick it at the end of the order
-			*leftoverManifestOrder = append(*leftoverManifestOrder, string(event.manifest.Name))
-		} else {
-			leftover[string(event.manifest.Name)].files = append(leftover[string(event.manifest.Name)].files, event.fileName)
-		}
-	}
-}
-
-type watchEventsStream struct {
-	events <-chan manifestFilesChangedEvent
-	errs   <-chan error
-}
-
-type manifestSingleFileChangeEvent struct {
-	manifest model.Manifest
-	fileName string
-}
-
 type manifestNotifyPair struct {
 	manifest model.Manifest
 	notify   watch.Notify
@@ -176,6 +151,10 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 							errs <- err
 						}
 						isIgnored, err := filter.Matches(path, false)
+						if err != nil {
+							errs <- err
+						}
+
 						if !isIgnored {
 							watchEvent.files = append(watchEvent.files, path)
 						}
