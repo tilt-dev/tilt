@@ -26,35 +26,58 @@ type SyncletBuildAndDeployer struct {
 
 	kCli k8s.Client
 
-	deployInfo   map[docker.ImgNameAndTag]DeployInfo
+	deployInfo   map[docker.ImgNameAndTag]*DeployInfo
 	deployInfoMu sync.Mutex
 }
 
 type DeployInfo struct {
 	containerID k8s.ContainerID
 	nodeID      k8s.NodeID
+
+	ready chan struct{} // Close this channel when the DeployInfo is populated
+}
+
+// ~~~ should these verify that the channel is non-nil?
+func (di *DeployInfo) waitUntilReady() { <-di.ready }
+func (di *DeployInfo) markReady()      { close(di.ready) }
+
+func newEmptyDeployInfo() *DeployInfo {
+	return &DeployInfo{ready: make(chan struct{})}
 }
 
 func NewSyncletBuildAndDeployer(kCli k8s.Client, scm SyncletClientManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
 		kCli:                 kCli,
-		deployInfo:           make(map[docker.ImgNameAndTag]DeployInfo),
+		deployInfo:           make(map[docker.ImgNameAndTag]*DeployInfo),
 		syncletClientManager: scm,
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) getDeployInfoForImage(img reference.NamedTagged) (DeployInfo, bool) {
+func (sbd *SyncletBuildAndDeployer) deployInfoForImage(img reference.NamedTagged) (*DeployInfo, bool) {
 	sbd.deployInfoMu.Lock()
+	defer sbd.deployInfoMu.Unlock()
 	deployInfo, ok := sbd.deployInfo[docker.ToImgNameAndTag(img)]
-	sbd.deployInfoMu.Unlock()
 	return deployInfo, ok
 }
 
-func (sbd *SyncletBuildAndDeployer) setDeployInfoForImage(img reference.NamedTagged, deployInfo DeployInfo) {
-	sbd.deployInfoMu.Lock()
-	key := docker.ToImgNameAndTag(img)
-	sbd.deployInfo[key] = deployInfo
-	sbd.deployInfoMu.Unlock()
+func (sbd *SyncletBuildAndDeployer) deployInfoForImageOrNew(img reference.NamedTagged) (*DeployInfo, bool) {
+	deployInfo, ok := sbd.deployInfoForImage(img)
+	if !ok {
+		sbd.deployInfoMu.Lock()
+		defer sbd.deployInfoMu.Unlock()
+
+		deployInfo = newEmptyDeployInfo()
+		sbd.deployInfo[docker.ToImgNameAndTag(img)] = deployInfo
+	}
+	return deployInfo, ok
+}
+
+func (sbd *SyncletBuildAndDeployer) deployInfoForImageBlocking(img reference.NamedTagged) (*DeployInfo, bool) {
+	deployInfo, ok := sbd.deployInfoForImage(img)
+	if deployInfo != nil {
+		deployInfo.waitUntilReady()
+	}
+	return deployInfo, ok
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
@@ -88,8 +111,9 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	if _, ok := sbd.getDeployInfoForImage(state.LastResult.Image); !ok {
-		return fmt.Errorf("no container info for this manifest")
+	info, ok := sbd.deployInfoForImageBlocking(state.LastResult.Image)
+	if !ok || info == nil {
+		return fmt.Errorf("have not populated container info for this manifest")
 	}
 
 	return nil
@@ -125,10 +149,11 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	deployInfo, ok := sbd.getDeployInfoForImage(state.LastResult.Image)
-	if !ok {
+	deployInfo, ok := sbd.deployInfoForImageBlocking(state.LastResult.Image)
+	if !ok || deployInfo == nil {
 		// We theoretically already checked this condition :(
-		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s)",
+		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
+			"(should have checked this upstream, something is wrong)",
 			manifest.Name, state.LastResult.Image.String())
 	}
 
@@ -160,28 +185,37 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 		return
 	}
 
-	if _, ok := sbd.getDeployInfoForImage(result.Image); !ok {
-		deployInfo, err := sbd.getDeployInfo(ctx, result.Image)
-		if err != nil {
-			// There's a variety of reasons why we might not be able to get the deploy info.
-			// The cluster could be in a transient bad state, or the pod
-			// could be in a crash loop because the user wrote some code that
-			// segfaults. Don't worry too much about it, we'll fall back to an image build.
-			logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
-			return
-		}
-		sbd.setDeployInfoForImage(result.Image, deployInfo)
+	info, ok := sbd.deployInfoForImageOrNew(result.Image)
+	if ok {
+		// This info was already in the map, nothing to do.
+		return
+	}
+
+	// We just made this info, so populate it.
+	err := sbd.populateDeployInfo(ctx, result.Image, info)
+	if err != nil {
+		// There's a variety of reasons why we might not be able to get the deploy info.
+		// The cluster could be in a transient bad state, or the pod
+		// could be in a crash loop because the user wrote some code that
+		// segfaults. Don't worry too much about it, we'll fall back to an image build.
+		logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
+		return
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) getDeployInfo(ctx context.Context, image reference.NamedTagged) (DeployInfo, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-getDeployInfo")
+func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, info *DeployInfo) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-populateDeployInfo")
 	defer span.Finish()
+
+	if info == nil {
+		info = newEmptyDeployInfo()
+	}
+	defer info.markReady()
 
 	// get pod running the image we just deployed
 	pod, err := sbd.kCli.PollForPodWithImage(ctx, image, podPollTimeoutSynclet)
 	if err != nil {
-		return DeployInfo{}, errors.Wrapf(err, "PodWithImage (img = %s)", image)
+		return errors.Wrapf(err, "PodWithImage (img = %s)", image)
 	}
 
 	pID := k8s.PodIDFromPod(pod)
@@ -193,16 +227,19 @@ func (sbd *SyncletBuildAndDeployer) getDeployInfo(ctx context.Context, image ref
 	// sCli)
 	sCli, err := sbd.syncletClientManager.ClientForNode(ctx, nodeID)
 	if err != nil {
-		return DeployInfo{}, errors.Wrapf(err, "error getting synclet client for node '%s'", nodeID)
+		return errors.Wrapf(err, "error getting synclet client for node '%s'", nodeID)
 	}
 
 	// get container that's running the app for the pod we found
 	cID, err := sCli.ContainerIDForPod(ctx, pID, image)
 	if err != nil {
-		return DeployInfo{}, errors.Wrapf(err, "syncletClient.GetContainerIdForPod (pod = %s)", pID)
+		return errors.Wrapf(err, "syncletClient.GetContainerIdForPod (pod = %s)", pID)
 	}
 
 	logger.Get(ctx).Verbosef("talking to synclet client for node %s", nodeID.String())
 
-	return DeployInfo{cID, nodeID}, nil
+	info.nodeID = nodeID
+	info.containerID = cID
+
+	return nil
 }
