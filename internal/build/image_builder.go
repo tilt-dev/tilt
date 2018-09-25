@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +25,7 @@ import (
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 )
 
 type dockerImageBuilder struct {
@@ -323,7 +323,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	}()
 	result, err := d.readDockerOutput(ctx, imageBuildResponse.Body)
 	if err != nil {
-		return nil, fmt.Errorf("ImageBuild: %v", err)
+		return nil, errors.Wrap(err, "ImageBuild")
 	}
 	if result == nil {
 		return nil, fmt.Errorf("Unable to read docker output: result is nil")
@@ -401,6 +401,9 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 
 	if innerSpan != nil {
 		innerSpan.Finish()
+	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 	return result, nil
 }

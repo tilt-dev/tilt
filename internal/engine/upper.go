@@ -92,6 +92,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		if err == nil {
 			buildStates[manifest.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
+		} else if isPermanentError(err) {
+			return err
 		} else if watchMounts {
 			o := output.Get(ctx)
 			o.PrintColorf(o.Red(), "build failed: %v", err)
@@ -150,6 +152,9 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 					event.manifest,
 					buildState)
 				if err != nil {
+					if isPermanentError(err) {
+						return err
+					}
 					o := output.Get(ctx)
 					o.PrintColorf(o.Red(), "build failed: %v", err)
 				} else {

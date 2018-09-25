@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -66,15 +67,30 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return BuildResult{}, lastErr
 }
 
+// A permanent error indicates that the whole build pipeline needs to stop.
+// It will never recover, even on subsequent rebuilds.
+func isPermanentError(err error) bool {
+	if _, ok := err.(*model.ValidateErr); ok {
+		return true
+	}
+
+	cause := errors.Cause(err)
+	if cause == context.Canceled {
+		return true
+	}
+	return false
+}
+
 // Given the error from our initial BuildAndDeploy attempt, shouldImageBuild determines
 // whether we should fall back to an ImageBuild.
 func shouldImageBuild(err error) bool {
 	if _, ok := err.(*build.PathMappingErr); ok {
 		return false
 	}
-	if _, ok := err.(*model.ValidateErr); ok {
+	if isPermanentError(err) {
 		return false
 	}
+
 	if build.IsUserBuildFailure(err) {
 		return false
 	}
