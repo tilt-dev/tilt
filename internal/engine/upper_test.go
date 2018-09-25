@@ -296,6 +296,20 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	assert.Equal(t, endToken, err)
 }
 
+func TestFirstBuildCancelsWhileWatching(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	f.b.nextBuildFailure = context.Canceled
+	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+	}()
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	assert.Equal(t, context.Canceled, err)
+}
+
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
