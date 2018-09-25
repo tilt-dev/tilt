@@ -119,8 +119,9 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 
 	// Can't do container update if we don't know what container manifest is running in.
 	info, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
-	if !ok || info == nil {
-		return fmt.Errorf("have not yet fetched deploy for this manifest")
+	if !ok {
+		// TODO(maia): or we could, yknow, actually fetch the deploy info here.
+		return fmt.Errorf("have not yet fetched deploy info for this manifest")
 	}
 
 	if info.err != nil {
