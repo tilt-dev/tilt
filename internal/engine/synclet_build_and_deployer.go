@@ -36,11 +36,16 @@ type DeployInfo struct {
 	nodeID      k8s.NodeID
 
 	ready chan struct{} // Close this channel when the DeployInfo is populated
+	err   error         // error encountered when populating (if any)
 }
 
-// ~~~ should these verify that the channel is non-nil?
-func (di *DeployInfo) waitUntilReady() { <-di.ready }
-func (di *DeployInfo) markReady()      { close(di.ready) }
+func (di *DeployInfo) markReady() { close(di.ready) }
+func (di *DeployInfo) waitUntilReady(ctx context.Context) {
+	select {
+	case <-di.ready:
+	case <-ctx.Done():
+	}
+}
 
 func newEmptyDeployInfo() *DeployInfo {
 	return &DeployInfo{ready: make(chan struct{})}
@@ -62,21 +67,22 @@ func (sbd *SyncletBuildAndDeployer) deployInfoForImage(img reference.NamedTagged
 }
 
 func (sbd *SyncletBuildAndDeployer) deployInfoForImageOrNew(img reference.NamedTagged) (*DeployInfo, bool) {
-	deployInfo, ok := sbd.deployInfoForImage(img)
-	if !ok {
-		sbd.deployInfoMu.Lock()
-		defer sbd.deployInfoMu.Unlock()
+	sbd.deployInfoMu.Lock()
+	defer sbd.deployInfoMu.Unlock()
 
+	deployInfo, ok := sbd.deployInfo[docker.ToImgNameAndTag(img)]
+
+	if !ok {
 		deployInfo = newEmptyDeployInfo()
 		sbd.deployInfo[docker.ToImgNameAndTag(img)] = deployInfo
 	}
 	return deployInfo, ok
 }
 
-func (sbd *SyncletBuildAndDeployer) deployInfoForImageBlocking(img reference.NamedTagged) (*DeployInfo, bool) {
+func (sbd *SyncletBuildAndDeployer) deployInfoForImageBlocking(ctx context.Context, img reference.NamedTagged) (*DeployInfo, bool) {
 	deployInfo, ok := sbd.deployInfoForImage(img)
 	if deployInfo != nil {
-		deployInfo.waitUntilReady()
+		deployInfo.waitUntilReady(ctx)
 	}
 	return deployInfo, ok
 }
@@ -112,9 +118,13 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	info, ok := sbd.deployInfoForImageBlocking(state.LastResult.Image)
+	info, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok || info == nil {
-		return fmt.Errorf("have not populated container info for this manifest")
+		return fmt.Errorf("have not yet fetched deploy for this manifest")
+	}
+
+	if info.err != nil {
+		return fmt.Errorf("no deploy info for this manifest (failed to fetch with error: %v)", info.err)
 	}
 
 	return nil
@@ -150,7 +160,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	deployInfo, ok := sbd.deployInfoForImageBlocking(state.LastResult.Image)
+	deployInfo, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok || deployInfo == nil {
 		// We theoretically already checked this condition :(
 		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
@@ -204,14 +214,14 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, info *DeployInfo) error {
+func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, info *DeployInfo) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-populateDeployInfo")
 	defer span.Finish()
 
-	if info == nil {
-		info = newEmptyDeployInfo()
-	}
-	defer info.markReady()
+	defer func() {
+		info.err = err
+		info.markReady()
+	}()
 
 	// get pod running the image we just deployed
 	pod, err := sbd.kCli.PollForPodWithImage(ctx, image, podPollTimeoutSynclet)
