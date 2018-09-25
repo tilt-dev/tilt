@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/output"
 
@@ -83,9 +84,13 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	go func() {
 		_ = <-sigs
 
-		// We rely on context cancellation being handled elsewhere --
-		// otherwise there's no way to SIGINT/SIGTERM this app o_0
 		cancel()
+
+		// Ideally, cancelling the context should stop the app, but in case we failed
+		// to handle it somewhere, wait a bit, then forcibly exit.
+		time.Sleep(time.Second * 2)
+		l.Debugf("Context canceled but app still running; forcibly exiting.")
+		os.Exit(1)
 	}()
 
 	return ctx, cleanup
