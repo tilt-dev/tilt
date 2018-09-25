@@ -3,6 +3,8 @@ package sidecar
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"k8s.io/api/core/v1"
 )
 
@@ -20,6 +22,7 @@ var SyncletContainer = v1.Container{
 	Name:            "tilt-synclet",
 	Image:           fmt.Sprintf("%s:%s", SyncletImageName, SyncletTag),
 	ImagePullPolicy: v1.PullIfNotPresent,
+	Resources:       v1.ResourceRequirements{Requests: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0Mi")}},
 	VolumeMounts: []v1.VolumeMount{
 		v1.VolumeMount{
 			Name:      "tilt-dockersock",
