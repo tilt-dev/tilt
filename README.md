@@ -4,12 +4,14 @@
 [![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
 
 ## Installing
+
 Run `go get -u github.com/windmilleng/tilt`
 
 ## Using Tilt
 `tilt up <service_name>` starts a service once; `tilt up --watch <service_name>` starts it and watches for changes.
 
 Tilt reads from a Tiltfile. A simple Tiltfile is below:
+
 ```python
 def backend():
   img = static_build('Dockerfile', 'gcr.io/companyname/backend')
@@ -39,9 +41,11 @@ def backend():
 ```
 
 ## Mill
+
 written in a Mill, a dialect of python. It's based on [starlark](https://github.com/bazelbuild/starlark), using the implementation in [go](https://github.com/google/skylark).
 
 ### Mill Builtins
+
 Mill comes with built-in functions.
 
 #### static_build(dockerfile, ref, context?)
@@ -54,83 +58,115 @@ Builds a docker image.
                 Defaults to the Dockerfile directory.
 * Returns: **Image**
 
-#### local_git_repo(path)
-Creates a `repo` with the content at `path`.
+#### local_git_repo
+Creates a `repo` from the git repo at `path`.
 
-* Args:
-    * `path`: **str**
-* Returns: **Repo**
+```python
+def local_git_repo(path: str) -> Repo
+```
 
-#### Repo.path(path)
-Gets the absolute to the file specified at `path` in the repo. Must be a relative path.
+#### Repo
+Represents a local code repository
 
-* Args:
-  * `path`: **str**
-* Returns:  **localPath**
+```python
+class Repo:
+  def path(path: str) -> localPath:
+    """Returns the absolute path to the file specified at `path` in the repo.
+    path must be a relative path.
 
-#### start_fast_build(dockerfile_path, ref, entrypoint?)
-Starts building a docker image on the current thread.
+    Args:
+      path: relative path in repository
+    Returns:
+      A localPath resource, representing a local path on disk.
+    """
+```
 
-* Args:
-  * `dockerfile_path`: **str**
-  * `ref`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
-  * `entrypoint?`: **str**
-* Returns: **None**
+#### start_fast_build
 
-#### add(src, dest)
-Adds the content from `src` into the image at path `dest`. Paths must be relative.
+Initiates a docker image build that supports `add`s and `run`s, and that uses a cache for subsequent builds.
 
-* Args:
-  * `src`: **localPath|gitRepo**
-  * `dest`: **str**
-* Returns: nothing
+TODO(dmiller): explain how this is fast, and image vs container builds?
+TODO(dmiller): explain the concept of the active build
 
-#### run(cmd, trigger?)
+```python
+def start_fast_build(dockerfile_path: str, img_name: str, entrypoint: str = "") -> None
+```
+
+#### add
+
+Adds the content from `src` into the image at path `dest`.
+
+```python
+def add(src: Union[localPath, Repo], dest: str) -> None
+```
+
+#### run
+
 Runs `cmd` as a build step in the image.
-If the `trigger` file is specified, the build step is only run if the file is changed. Path must be relative.
+If the `trigger` argument is specified, the build step is only run on changes to the given file(s).
 
-* Args:
-  * `cmd`: **str**
-  * `trigger?`: **List[str] | str**
-* Returns: nothing
+```python
+def run(cmd: str, trigger: Union[List[str], str] = []) -> None
+```
 
-#### k8s_service(yaml_text, img)
+#### Service
+
+Represents a Kubernetes service that Tilt can deploy and monitor.
+
+```python
+class Service
+```
+
+#### k8s_service
+
 Creates a kubernetes service that tilt can deploy using the yaml text and the image passed in.
 
-* Args:
-  * `yaml_text`: **str** (text of yaml configuration)
-  * `img`: **Image**
-* Returns: **Service**
+```python
+def k8s_service(yaml_text: str, img: Image) -> Service
+```
 
-#### composite_service(service_fns)
+#### Image
+
+Represents a built Docker image
+
+```python
+class Image
+```
+
+#### composite_service
+
 Creates a composite service; tilt will deploy (and watch) all services returned by the functions in `service_fns`.
 
-* Args:
-  * `service_fns`: array of functions that each return **Service**
-* Returns: **Service**
+```python
+def composite_service(List[Callable[[], Service]]) -> Service
+```
 
-#### local(cmd)
+#### local
+
 Runs cmd, waits for it to finish, and returns its stdout.
 
-* Args:
-  * `cmd`: **str**
-* Returns: **str**
+```python
+def local(cmd: str) -> str
+```
 
-#### read_file(file_path)
+#### read_file
+
 Reads file and returns its contents.
 
-* Args:
-  * `file_path`: **str**
-* Returns: **str**
+```python
+def read_file(file_path: str) -> str
+```
 
-#### stop_build(file_path)
+#### stop_build()
+
 Closes the currently active build and returns a container Image that has all of the adds and runs applied.
 
-* Returns: **Image**
+```python
+def stop_build() -> Image
+```
 
 ## Developing
 See [DEVELOPING.md](DEVELOPING.md)
-
 
 ## Privacy
 
@@ -150,10 +186,11 @@ We do not report any personally identifiable information. We do not report any
 identifiable data about your code.
 
 We do not share this data with anyone who is not an employee of Windmill
-Engineering.  Data may be sent to third-party service providers like Datadog,
+Engineering. Data may be sent to third-party service providers like Datadog,
 but only to help us analyze the data.
 
 ## License
+
 Copyright 2018 Windmill Engineering
 
 Licensed under [the Apache License, Version 2.0](LICENSE)
