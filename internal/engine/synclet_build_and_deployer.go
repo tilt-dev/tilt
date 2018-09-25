@@ -22,7 +22,7 @@ const podPollTimeoutSynclet = time.Second * 30
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	syncletClientManager SyncletClientManager
+	ssm SidecarSyncletManager
 
 	kCli k8s.Client
 
@@ -31,6 +31,7 @@ type SyncletBuildAndDeployer struct {
 }
 
 type DeployInfo struct {
+	podID       k8s.PodID
 	containerID k8s.ContainerID
 	nodeID      k8s.NodeID
 
@@ -45,11 +46,11 @@ func newEmptyDeployInfo() *DeployInfo {
 	return &DeployInfo{ready: make(chan struct{})}
 }
 
-func NewSyncletBuildAndDeployer(kCli k8s.Client, scm SyncletClientManager) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(kCli k8s.Client, ssm SidecarSyncletManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		kCli:                 kCli,
-		deployInfo:           make(map[docker.ImgNameAndTag]*DeployInfo),
-		syncletClientManager: scm,
+		kCli:       kCli,
+		deployInfo: make(map[docker.ImgNameAndTag]*DeployInfo),
+		ssm:        ssm,
 	}
 }
 
@@ -162,7 +163,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return BuildResult{}, err
 	}
 
-	sCli, err := sbd.syncletClientManager.ClientForNode(ctx, deployInfo.nodeID)
+	sCli, err := sbd.ssm.ClientForPod(ctx, deployInfo.podID)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -225,7 +226,7 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	// *and* to preemptively set up the tunnel + client
 	// (i.e., we'd still want to call this to set up the client even if we were throwing away
 	// sCli)
-	sCli, err := sbd.syncletClientManager.ClientForNode(ctx, nodeID)
+	sCli, err := sbd.ssm.ClientForPod(ctx, pID)
 	if err != nil {
 		return errors.Wrapf(err, "error getting synclet client for node '%s'", nodeID)
 	}
@@ -238,8 +239,9 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 
 	logger.Get(ctx).Verbosef("talking to synclet client for node %s", nodeID.String())
 
-	info.nodeID = nodeID
+	info.podID = pID
 	info.containerID = cID
+	info.nodeID = nodeID
 
 	return nil
 }

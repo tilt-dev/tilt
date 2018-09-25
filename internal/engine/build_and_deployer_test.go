@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -72,6 +73,10 @@ func TestGKEDeploy(t *testing.T) {
 	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
+
+	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
+	}
 }
 
 func TestDockerForMacDeploy(t *testing.T) {
@@ -94,6 +99,10 @@ func TestDockerForMacDeploy(t *testing.T) {
 	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
+	}
+
+	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should not deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
 	}
 }
 

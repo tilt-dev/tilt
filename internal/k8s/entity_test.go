@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
 
 func TestName(t *testing.T) {
-	entities, err := ParseYAMLFromString(BlorgBackendYAML)
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +20,7 @@ func TestName(t *testing.T) {
 }
 
 func TestNamespace(t *testing.T) {
-	entities, err := ParseYAMLFromString(SyncletYAML)
+	entities, err := ParseYAMLFromString(testyaml.SyncletYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +30,7 @@ func TestNamespace(t *testing.T) {
 }
 
 func TestImmutableFilter(t *testing.T) {
-	yaml := fmt.Sprintf("%s\n---\n%s", JobYAML, SanchoYAML)
+	yaml := fmt.Sprintf("%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML)
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +47,7 @@ func TestImmutableFilter(t *testing.T) {
 }
 
 func TestLoadBalancerSpecs(t *testing.T) {
-	entities, err := ParseYAMLFromString(BlorgBackendYAML)
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
 	if err != nil {
 		t.Fatal(err)
 	}

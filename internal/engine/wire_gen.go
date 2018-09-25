@@ -19,8 +19,8 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
-	syncletClientManager := NewSyncletClientManager(k8s2)
-	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(k8s2, syncletClientManager)
+	sidecarSyncletManager := NewSidecarSyncletManager(k8s2)
+	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(k8s2, sidecarSyncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	containerResolver := build.NewContainerResolver(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
@@ -42,7 +42,7 @@ var (
 
 // wire.go:
 
-var DeployerWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(build.Labels{}), build.DefaultImageBuilder, build.NewDockerImageBuilder, NewSyncletClientManager,
+var DeployerWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(build.Labels{}), build.DefaultImageBuilder, build.NewDockerImageBuilder, NewSidecarSyncletManager,
 
 	NewImageBuildAndDeployer, build.NewContainerUpdater, build.NewContainerResolver, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,

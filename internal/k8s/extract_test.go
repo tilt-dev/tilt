@@ -1,9 +1,13 @@
 package k8s
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+)
 
 func TestExtractSanchoContainers(t *testing.T) {
-	entities, err := ParseYAMLFromString(SanchoYAML)
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +28,7 @@ func TestExtractSanchoContainers(t *testing.T) {
 }
 
 func TestExtractSanchoPods(t *testing.T) {
-	entities, err := ParseYAMLFromString(SanchoYAML)
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +38,7 @@ func TestExtractSanchoPods(t *testing.T) {
 	}
 
 	entity := entities[0]
-	pods, err := extractPods(&entity)
+	pods, err := ExtractPods(&entity)
 	if err != nil {
 		t.Fatal(err)
 	}

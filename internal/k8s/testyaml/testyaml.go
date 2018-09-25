@@ -1,4 +1,4 @@
-package k8s
+package testyaml
 
 const BlorgBackendYAML = `
 # Template should be populated using populate_config_template.py

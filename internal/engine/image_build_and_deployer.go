@@ -11,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"k8s.io/api/core/v1"
 )
@@ -18,10 +19,11 @@ import (
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
-	b         build.ImageBuilder
-	k8sClient k8s.Client
-	env       k8s.Env
-	analytics analytics.Analytics
+	b             build.ImageBuilder
+	k8sClient     k8s.Client
+	env           k8s.Env
+	analytics     analytics.Analytics
+	injectSynclet bool
 }
 
 func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics) *ImageBuildAndDeployer {
@@ -31,6 +33,11 @@ func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8
 		env:       env,
 		analytics: analytics,
 	}
+}
+
+// Turn on synclet injection. Should be called before any builds.
+func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
+	ibd.injectSynclet = inject
 }
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (br BuildResult, err error) {
@@ -155,7 +162,17 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 		}
 		if replaced {
 			didReplace = true
+
+			if ibd.injectSynclet {
+				e, replaced, err = sidecar.InjectSyncletSidecar(e, n)
+				if err != nil {
+					return nil, err
+				} else if !replaced {
+					return nil, fmt.Errorf("Could not inject synclet: %v", e)
+				}
+			}
 		}
+
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
