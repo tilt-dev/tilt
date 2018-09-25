@@ -86,11 +86,16 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 
 		cancel()
 
-		// Ideally, cancelling the context should stop the app, but in case we failed
-		// to handle it somewhere, wait a bit, then forcibly exit.
-		time.Sleep(time.Second * 2)
-		l.Debugf("Context canceled but app still running; forcibly exiting.")
-		os.Exit(1)
+		// If we get another SIGINT/SIGTERM, OR it takes too long for tilt to
+		// exit after cancelling context, just exit
+		select {
+		case <-sigs:
+			l.Debugf("force quitting...")
+			os.Exit(1)
+		case <-time.After(2 * time.Second):
+			l.Debugf("Context canceled but app still running; forcibly exiting.")
+			os.Exit(1)
+		}
 	}()
 
 	return ctx, cleanup
