@@ -7,7 +7,7 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-func extractPods(obj interface{}) ([]*v1.PodSpec, error) {
+func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
 	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.PodSpec{}))
 	if err != nil {
 		return nil, err

@@ -3,10 +3,12 @@ package k8s
 import (
 	"strings"
 	"testing"
+
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
 
 func TestTracerYAML(t *testing.T) {
-	entities, err := ParseYAMLFromString(TracerYAML)
+	entities, err := ParseYAMLFromString(testyaml.TracerYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func TestTracerYAML(t *testing.T) {
 }
 
 func TestSanchoYAML(t *testing.T) {
-	entities, err := ParseYAMLFromString(SanchoYAML)
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
