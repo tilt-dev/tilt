@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
@@ -118,7 +119,6 @@ func TestIncrementalBuild(t *testing.T) {
 	if f.docker.BuildCount != 0 {
 		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
 	}
-
 	if f.docker.PushCount != 0 {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
@@ -130,6 +130,32 @@ func TestIncrementalBuild(t *testing.T) {
 	}
 	if len(f.docker.RestartsByContainer) != 1 {
 		t.Errorf("Expected 1 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
+	}
+}
+
+func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	f.k8s.SetPollForPodWithImageDelay(time.Second)
+	go f.bd.PostProcessBuild(f.ctx, alreadyBuilt) // will take 1s
+	time.Sleep(time.Millisecond * 100)            // let the PostProcessBuild call actually start
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Rather than falling back to image build b/c of lack of deploy info, we should
+	// wait for the concurrent call to PostProcessBuild to finish and do a container build.
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.sCli.UpdateContainerCount != 1 {
+		t.Errorf("Expected 1 UpdateContaine count via synclet, actual: %d", f.sCli.UpdateContainerCount)
 	}
 }
 
@@ -345,6 +371,7 @@ type bdFixture struct {
 	ctx    context.Context
 	docker *docker.FakeDockerClient
 	k8s    *k8s.FakeK8sClient
+	sCli   *synclet.FakeSyncletClient
 	bd     BuildAndDeployer
 }
 
@@ -376,7 +403,8 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 	}
 	ctx := output.CtxForTest()
 	k8s := k8s.NewFakeK8sClient()
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, synclet.NewFakeSyncletClient(), fallbackFn)
+	sCli := synclet.NewFakeSyncletClient()
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, sCli, fallbackFn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,6 +414,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 		ctx:            ctx,
 		docker:         docker,
 		k8s:            k8s,
+		sCli:           sCli,
 		bd:             bd,
 	}
 }
