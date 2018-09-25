@@ -28,7 +28,12 @@ func tempFile(content string) string {
 	return f.Name()
 }
 
-func gitRepoFixture(t *testing.T) (func() error, *tempdir.TempDirFixture) {
+type gitRepoFixture struct {
+	*tempdir.TempDirFixture
+	oldWD string
+}
+
+func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	td := tempdir.NewTempDirFixture(t)
 	oldWD, err := os.Getwd()
 	if err != nil {
@@ -42,10 +47,23 @@ func gitRepoFixture(t *testing.T) (func() error, *tempdir.TempDirFixture) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return func() error {
-		td.TearDown()
-		return os.Chdir(oldWD)
-	}, td
+	return &gitRepoFixture{
+		TempDirFixture: td,
+		oldWD:          oldWD,
+	}
+}
+
+func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
+	matches, err := manifest.FileFilter.Matches(f.JoinPath(path), isDir)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+	return matches
+}
+
+func (f *gitRepoFixture) TearDown() {
+	f.TempDirFixture.TearDown()
+	_ = os.Chdir(f.oldWD)
 }
 
 func TestSyntax(t *testing.T) {
@@ -73,8 +91,8 @@ hello()
 }
 
 func TestGetManifestConfig(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -117,8 +135,8 @@ func TestGetManifestConfig(t *testing.T) {
 }
 
 func TestOldMountSyntax(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -387,8 +405,8 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 }
 
 func TestRunTrigger(t *testing.T) {
-	gitTeardown, td := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
 	dockerfile := tempFile("docker text")
 	file := tempFile(
@@ -426,7 +444,7 @@ func TestRunTrigger(t *testing.T) {
 			Argv: []string{"sh", "-c", "yarn install"},
 		},
 	)
-	packagePath := td.JoinPath("package.json")
+	packagePath := f.JoinPath("package.json")
 	matches, err := step0.Trigger.Matches(packagePath, false)
 	if err != nil {
 		t.Fatal(err)
@@ -441,11 +459,11 @@ func TestRunTrigger(t *testing.T) {
 		},
 	)
 	matches, err = step1.Trigger.Matches(packagePath, false)
-	yarnLockPath := td.JoinPath("yarn.lock")
+	yarnLockPath := f.JoinPath("yarn.lock")
 	matches, err = step1.Trigger.Matches(yarnLockPath, false)
 	assert.True(t, matches)
 
-	randomPath := td.JoinPath("foo")
+	randomPath := f.JoinPath("foo")
 	matches, err = step1.Trigger.Matches(randomPath, false)
 	assert.False(t, matches)
 
@@ -554,8 +572,9 @@ func TestReadFile(t *testing.T) {
 }
 
 func TestRepoPath(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
 	dockerfile := tempFile("docker text")
 	fileToRead := tempFile("hello world")
 	program := fmt.Sprintf(`def blorgly():
@@ -589,8 +608,9 @@ func TestRepoPath(t *testing.T) {
 }
 
 func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
 	dockerfile := tempFile("docker text")
 	fileToRead := tempFile("hello world")
 	program := fmt.Sprintf(`def blorgly():
@@ -620,8 +640,9 @@ func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
 }
 
 func TestAddOneFileByPath(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
 	dockerfile := tempFile("docker text")
 	fileToRead := tempFile("hello world")
 	program := fmt.Sprintf(`def blorgly():
@@ -693,10 +714,10 @@ func TestFailsIfNotGitRepo(t *testing.T) {
 }
 
 func TestReadsIgnoreFiles(t *testing.T) {
-	gitTeardown, td := gitRepoFixture(t)
-	defer gitTeardown()
-	td.WriteFile(".gitignore", "*.exe")
-	td.WriteFile(".dockerignore", "node_modules")
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	f.WriteFile(".gitignore", "*.exe")
+	f.WriteFile(".dockerignore", "node_modules")
 
 	dockerfile := tempFile("docker text")
 	file := tempFile(
@@ -724,22 +745,63 @@ func TestReadsIgnoreFiles(t *testing.T) {
 
 	manifest := manifests[0]
 
-	matchesExe, err := manifest.FileFilter.Matches(td.JoinPath("cmd.exe"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.True(t, matchesExe)
+	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false))
+	assert.True(t, f.FiltersPath(manifest, "node_modules", true))
+	assert.True(t, f.FiltersPath(manifest, ".git", true))
+	assert.False(t, f.FiltersPath(manifest, "a.txt", false))
+}
 
-	matchesNodeModules, err := manifest.FileFilter.Matches(td.JoinPath("node_modules"), true)
+func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
+	f1 := newGitRepoFixture(t)
+	defer f1.TearDown()
+
+	f2 := newGitRepoFixture(t)
+	defer f2.TearDown()
+
+	f1.WriteFile(".gitignore", "*.exe")
+	f1.WriteFile(".dockerignore", "node_modules")
+	f2.WriteFile(".dockerignore", "*.txt")
+
+	dockerfile := tempFile("docker text")
+	file := tempFile(
+		fmt.Sprintf(`def blorgly():
+  start_fast_build("%v", "docker-tag", "the entrypoint")
+  add(local_git_repo('%s'), '/mount_points/1')
+  add(local_git_repo('%s'), '/mount_points/2')
+  run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  run("echo hi")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+`, dockerfile, f1.Path(), f2.Path()))
+	defer os.Remove(file)
+	defer os.Remove(dockerfile)
+	tiltconfig, err := Load(file, os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.True(t, matchesNodeModules)
+	if len(manifests) == 0 {
+		t.Fatal("Expected at least 1 manifest, got 0")
+	}
+
+	manifest := manifests[0]
+
+	assert.True(t, f1.FiltersPath(manifest, "cmd.exe", false))
+	assert.True(t, f1.FiltersPath(manifest, "node_modules", true))
+	assert.True(t, f1.FiltersPath(manifest, ".git", true))
+	assert.False(t, f1.FiltersPath(manifest, "a.txt", false))
+	assert.False(t, f2.FiltersPath(manifest, "cmd.exe", false))
+	assert.False(t, f2.FiltersPath(manifest, "node_modules", true))
+	assert.True(t, f2.FiltersPath(manifest, ".git", true))
+	assert.True(t, f2.FiltersPath(manifest, "a.txt", false))
 }
 
 func TestBuildContextAddError(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -766,8 +828,8 @@ func TestBuildContextAddError(t *testing.T) {
 }
 
 func TestBuildContextRunError(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -794,8 +856,8 @@ func TestBuildContextRunError(t *testing.T) {
 }
 
 func TestBuildContextStartTwice(t *testing.T) {
-	gitTeardown, _ := gitRepoFixture(t)
-	defer gitTeardown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -821,10 +883,10 @@ func TestBuildContextStartTwice(t *testing.T) {
 }
 
 func TestSlowBuildIsNotImplemented(t *testing.T) {
-	gitTeardown, td := gitRepoFixture(t)
-	defer gitTeardown()
-	td.WriteFile(".gitignore", "*.exe")
-	td.WriteFile(".dockerignore", "node_modules")
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	f.WriteFile(".gitignore", "*.exe")
+	f.WriteFile(".dockerignore", "node_modules")
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():

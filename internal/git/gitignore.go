@@ -97,17 +97,3 @@ func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (model.PathMatche
 	}
 	return &repoIgnoreTester{repoRoot, g}, nil
 }
-
-func NewMultiRepoIgnoreTester(ctx context.Context, repoRoots []string) (model.PathMatcher, error) {
-	var testers []model.PathMatcher
-	for _, repoRoot := range repoRoots {
-		t, err := NewRepoIgnoreTester(ctx, repoRoot)
-		if err != nil {
-			return nil, err
-		}
-
-		testers = append(testers, t)
-	}
-
-	return model.NewCompositeMatcher(testers), nil
-}

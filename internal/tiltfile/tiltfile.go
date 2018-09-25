@@ -132,7 +132,7 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	t1, err := git.NewGitIgnoreTester(ctx, absPath)
+	t1, err := git.NewRepoIgnoreTester(ctx, absPath)
 	if err != nil {
 		return nil, err
 	}
