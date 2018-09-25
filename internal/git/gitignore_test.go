@@ -57,18 +57,6 @@ func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
 }
 
-func TestNewMultiRepoIgnoreTester(t *testing.T) {
-	tf := newTestFixture(t, ".*.swp", "a.out")
-	defer tf.TearDown()
-
-	tf.UseMultiRepoTester()
-
-	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
-	tf.AssertResult(tf.JoinPath(0, ".foo.swp"), true, false)
-	tf.AssertResult(tf.JoinPath(1, "a.out"), true, false)
-	tf.AssertResult(tf.JoinPath(1, ".foo.swp"), false, false)
-}
-
 func TestRepoIgnoreTester_MatchesRelativePath(t *testing.T) {
 	tf := newTestFixture(t, "")
 	defer tf.TearDown()
@@ -114,20 +102,6 @@ func (tf *testFixture) UseSingleRepoTesterWithPath(path string) {
 	if err != nil {
 		tf.t.Fatal(err)
 	}
-	tf.tester = tester
-}
-
-func (tf *testFixture) UseMultiRepoTester() {
-	var rootDirs []string
-	for _, dir := range tf.repoRoots {
-		rootDirs = append(rootDirs, dir.Path())
-	}
-
-	tester, err := NewMultiRepoIgnoreTester(tf.ctx, rootDirs)
-	if err != nil {
-		tf.t.Fatal(err)
-	}
-
 	tf.tester = tester
 }
 
