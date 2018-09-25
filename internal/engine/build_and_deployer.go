@@ -93,6 +93,7 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 	case k8s.EnvMinikube, k8s.EnvDockerDesktop:
 		return BuildOrder{cbad, ibad}
 	default:
+		ibad.SetInjectSynclet(true)
 		return BuildOrder{sbad, ibad}
 	}
 }
