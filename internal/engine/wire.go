@@ -15,7 +15,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-var DeployerWireSet = wire.NewSet(
+var DeployerBaseWireSet = wire.NewSet(
 	// dockerImageBuilder ( = ImageBuilder)
 	build.DefaultConsole,
 	build.DefaultOut,
@@ -23,8 +23,6 @@ var DeployerWireSet = wire.NewSet(
 
 	build.DefaultImageBuilder,
 	build.NewDockerImageBuilder,
-
-	NewSidecarSyncletManager,
 
 	// BuildOrder
 	NewImageBuildAndDeployer,
@@ -35,7 +33,18 @@ var DeployerWireSet = wire.NewSet(
 	DefaultBuildOrder,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
-	NewCompositeBuildAndDeployer)
+	NewCompositeBuildAndDeployer,
+)
+
+var DeployerWireSetTest = wire.NewSet(
+	DeployerBaseWireSet,
+	NewSidecarSyncletManagerForTests,
+)
+
+var DeployerWireSet = wire.NewSet(
+	DeployerBaseWireSet,
+	NewSidecarSyncletManager,
+)
 
 func provideBuildAndDeployer(
 	ctx context.Context,
@@ -46,7 +55,7 @@ func provideBuildAndDeployer(
 	sCli synclet.SyncletClient,
 	shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	wire.Build(
-		DeployerWireSet,
+		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 	)

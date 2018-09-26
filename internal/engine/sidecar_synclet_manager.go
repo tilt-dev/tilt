@@ -15,17 +15,33 @@ import (
 	"google.golang.org/grpc"
 )
 
+type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error)
 type SidecarSyncletManager struct {
-	kCli    k8s.Client
-	mutex   *sync.Mutex
-	clients map[k8s.PodID]synclet.SyncletClient
+	kCli      k8s.Client
+	mutex     *sync.Mutex
+	clients   map[k8s.PodID]synclet.SyncletClient
+	newClient newCliFn
 }
 
 func NewSidecarSyncletManager(kCli k8s.Client) SidecarSyncletManager {
 	return SidecarSyncletManager{
-		kCli:    kCli,
-		mutex:   new(sync.Mutex),
-		clients: make(map[k8s.PodID]synclet.SyncletClient),
+		kCli:      kCli,
+		mutex:     new(sync.Mutex),
+		clients:   make(map[k8s.PodID]synclet.SyncletClient),
+		newClient: newSidecarSyncletClient,
+	}
+}
+
+func NewSidecarSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) SidecarSyncletManager {
+	newClientFn := func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
+		return fakeCli, nil
+	}
+
+	return SidecarSyncletManager{
+		kCli:      kCli,
+		mutex:     new(sync.Mutex),
+		clients:   make(map[k8s.PodID]synclet.SyncletClient),
+		newClient: newClientFn,
 	}
 }
 
@@ -38,7 +54,7 @@ func (ssm SidecarSyncletManager) ClientForPod(ctx context.Context, podID k8s.Pod
 		return client, nil
 	}
 
-	client, err := newSidecarSyncletClient(ctx, ssm.kCli, podID)
+	client, err := ssm.newClient(ctx, ssm.kCli, podID)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating synclet client")
 	}
@@ -54,7 +70,7 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
 	}
 
-	logger.Get(ctx).Verbosef("tunneling to synclet client at %s (local port %d)", podID.String(), tunneledPort)
+	logger.Get(ctx).Verbosef("i'm a sidecar - tunneling to synclet client at %s (local port %d)", podID.String(), tunneledPort)
 
 	t := opentracing.GlobalTracer()
 
