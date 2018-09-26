@@ -8,11 +8,16 @@ import (
 // A logger that writes all of its messages to `write`
 type funcLogger struct {
 	supportsColor bool
+	level         Level
 	write         func(level Level, b []byte) error
 }
 
-func NewFuncLogger(supportsColor bool, write func(level Level, b []byte) error) Logger {
-	return funcLogger{supportsColor, write}
+func NewFuncLogger(supportsColor bool, level Level, write func(level Level, b []byte) error) Logger {
+	return funcLogger{supportsColor, level, write}
+}
+
+func (l funcLogger) Level() Level {
+	return l.level
 }
 
 func (l funcLogger) Infof(format string, a ...interface{}) {

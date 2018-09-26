@@ -54,4 +54,5 @@ message UpdateContainerReply {
 
 message LogStyle {
     bool colors_enabled = 1;
+    LogLevel level = 2;
 }
