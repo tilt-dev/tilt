@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
@@ -52,6 +54,14 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	logOutput(fmt.Sprintf("Starting Tilt (built %s)…\n", buildDateStamp()))
+
+	if trace {
+		traceID, err := tracer.TraceID(ctx)
+		if err != nil {
+			return err
+		}
+		logger.Get(ctx).Infof("TraceID: %s", traceID)
+	}
 
 	tf, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
 	if err != nil {
