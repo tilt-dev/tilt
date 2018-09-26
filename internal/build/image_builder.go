@@ -128,7 +128,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existin
 	// already handled by the watch loop.
 	df, err := d.addMounts(ctx, df, paths)
 	if err != nil {
-		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
+		return nil, fmt.Errorf("BuildImageFromExisting: %v", err)
 	}
 
 	df = d.addRemainingSteps(df, steps)

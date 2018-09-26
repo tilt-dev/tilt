@@ -63,11 +63,11 @@ type FakeDockerClient struct {
 	PushCount   int
 	PushImage   string
 	PushOptions types.ImagePushOptions
-	PushOutput  io.ReadCloser
+	PushOutput  string
 
 	BuildCount   int
 	BuildOptions types.ImageBuildOptions
-	BuildOutput  io.ReadCloser
+	BuildOutput  string
 
 	TagCount  int
 	TagSource string
@@ -88,8 +88,8 @@ type FakeDockerClient struct {
 
 func NewFakeDockerClient() *FakeDockerClient {
 	return &FakeDockerClient{
-		PushOutput:          NewFakeDockerResponse(ExamplePushOutput1),
-		BuildOutput:         NewFakeDockerResponse(ExampleBuildOutput1),
+		PushOutput:          ExamplePushOutput1,
+		BuildOutput:         ExampleBuildOutput1,
 		ContainerListOutput: make(map[string][]types.Container),
 		RestartsByContainer: make(map[string]int),
 	}
@@ -149,13 +149,13 @@ func (c *FakeDockerClient) ImagePush(ctx context.Context, image string, options 
 	c.PushCount++
 	c.PushImage = image
 	c.PushOptions = options
-	return c.PushOutput, nil
+	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
 func (c *FakeDockerClient) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
 	c.BuildCount++
 	c.BuildOptions = options
-	return types.ImageBuildResponse{Body: c.BuildOutput}, nil
+	return types.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
 }
 
 func (c *FakeDockerClient) ImageTag(ctx context.Context, source, target string) error {
