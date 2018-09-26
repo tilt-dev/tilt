@@ -21,6 +21,7 @@ type BuildAndDeployer interface {
 
 	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
 	// In general, we'll store this info ON the BuildAndDeployer that needs it.
+	// Each implementation of PostProcessBuild is responsible for executing long-running steps async.
 	PostProcessBuild(ctx context.Context, result BuildResult)
 }
 
@@ -35,6 +36,8 @@ type CompositeBuildAndDeployer struct {
 	builders       BuildOrder
 	shouldFallBack FallbackTester
 }
+
+var _ BuildAndDeployer = &CompositeBuildAndDeployer{}
 
 func DefaultShouldFallBack() FallbackTester {
 	return FallbackTester(shouldImageBuild)
@@ -54,7 +57,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if err == nil {
 			// TODO(maia): maybe this only needs to be called after certain builds?
 			// I.e. should be called after image build but not after a successful container build?
-			go composite.PostProcessBuild(ctx, br)
+			composite.PostProcessBuild(ctx, br)
 			return br, err
 		}
 

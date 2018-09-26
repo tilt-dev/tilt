@@ -134,25 +134,33 @@ func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	f.k8s.SetPollForPodWithImageDelay(time.Second)
-	go f.bd.PostProcessBuild(f.ctx, alreadyBuilt) // will take 1s
-	time.Sleep(time.Millisecond * 100)            // let the PostProcessBuild call actually start
+	f.k8s.SetPollForPodWithImageDelay(time.Second * 1)
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	res, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Rather than falling back to image build b/c of lack of deploy info, we should
-	// wait for the concurrent call to PostProcessBuild to finish and do a container build.
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	// HACK: if we fail to container build here, the test has already failed. However,
+	// this test setup doesn't support incremental image build, and we'll get misleading
+	// errors, so just don't fall back.
+	dontFallBack := func(err error) bool { return false }
+	f.setBDFallbackTester(dontFallBack)
+
+	// Expected behavior: this build call waits on the PostProcess initiated at the end
+	// of the previous build, and when that info is available, does a container build
+	_, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(res))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	if f.docker.BuildCount != 1 { // initial build
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
-	if f.sCli.UpdateContainerCount != 1 {
-		t.Errorf("Expected 1 UpdateContaine count via synclet, actual: %d", f.sCli.UpdateContainerCount)
+	if f.docker.PushCount != 1 { // initial build
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.sCli.UpdateContainerCount != 1 { // second build via synclet
+		t.Errorf("Expected 1 UpdateContainer count via synclet, actual: %d", f.sCli.UpdateContainerCount)
 	}
 }
 
@@ -443,6 +451,14 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 		sCli:           sCli,
 		bd:             bd,
 	}
+}
+
+func (f *bdFixture) setBDFallbackTester(tester FallbackTester) {
+	composite, ok := f.bd.(*CompositeBuildAndDeployer)
+	if !ok {
+		f.T().Fatal("bdFixture.bd is not a *CompositeBuildAndDeployer?? This should never happen.")
+	}
+	composite.shouldFallBack = tester
 }
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
