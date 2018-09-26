@@ -23,6 +23,8 @@ type SyncletClient interface {
 	UpdateContainer(ctx context.Context, containerID k8s.ContainerID, tarArchive []byte,
 		filesToDelete []string, commands []model.Cmd) error
 	ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error)
+
+	Close() error
 }
 
 var _ SyncletClient = &SyncletCli{}

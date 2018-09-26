@@ -26,6 +26,24 @@ type SidecarSyncletManager struct {
 	newClient newCliFn
 }
 
+type tunneledSyncletClient struct {
+	synclet.SyncletClient
+	tunnelCloser func()
+}
+
+var _ synclet.SyncletClient = tunneledSyncletClient{}
+
+func (t tunneledSyncletClient) Close() error {
+	err := t.SyncletClient.Close()
+	if err != nil {
+		return err
+	}
+
+	t.tunnelCloser()
+
+	return nil
+}
+
 func NewSidecarSyncletManager(kCli k8s.Client) SidecarSyncletManager {
 	return SidecarSyncletManager{
 		kCli:      kCli,
@@ -66,6 +84,21 @@ func (ssm SidecarSyncletManager) ClientForPod(ctx context.Context, podID k8s.Pod
 	return client, nil
 }
 
+func (ssm SidecarSyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID) error {
+	ssm.mutex.Lock()
+	defer ssm.mutex.Unlock()
+
+	client, ok := ssm.clients[podID]
+	if !ok {
+		// if we don't know about the pod, it's already forgotten - noop
+		return nil
+	}
+
+	delete(ssm.clients, podID)
+
+	return client.Close()
+}
+
 func (ssm SidecarSyncletManager) pollForNewClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, timeout time.Duration) (cli synclet.SyncletClient, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-pollForNewClient")
 	defer span.Finish()
@@ -86,8 +119,7 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-newSidecarSyncletClient")
 	defer span.Finish()
 
-	// TODO(nick): We need a better way to kill the client when the pod dies.
-	tunneledPort, _, err := kCli.ForwardPort(ctx, "default", podID, synclet.Port)
+	tunneledPort, tunnelCloser, err := kCli.ForwardPort(ctx, "default", podID, synclet.Port)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
 	}
@@ -103,5 +135,5 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 		return nil, errors.Wrap(err, "connecting to synclet")
 	}
 
-	return synclet.NewGRPCClient(conn), nil
+	return tunneledSyncletClient{synclet.NewGRPCClient(conn), tunnelCloser}, nil
 }

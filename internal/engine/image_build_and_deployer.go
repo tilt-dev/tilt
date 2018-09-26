@@ -35,6 +35,10 @@ func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8
 	}
 }
 
+func (ibd *ImageBuildAndDeployer) forgetImage(ctx context.Context, image reference.NamedTagged) error {
+	return nil
+}
+
 // Turn on synclet injection. Should be called before any builds.
 func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject

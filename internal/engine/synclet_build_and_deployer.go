@@ -87,6 +87,22 @@ func (sbd *SyncletBuildAndDeployer) deployInfoForImageBlocking(ctx context.Conte
 	return deployInfo, ok
 }
 
+func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img reference.NamedTagged) error {
+	sbd.deployInfoMu.Lock()
+	defer sbd.deployInfoMu.Unlock()
+
+	imgNameAndTag := docker.ToImgNameAndTag(img)
+
+	deployInfo, ok := sbd.deployInfo[imgNameAndTag]
+	if !ok {
+		return nil
+	}
+
+	delete(sbd.deployInfo, imgNameAndTag)
+
+	return sbd.ssm.ForgetPod(ctx, deployInfo.podID)
+}
+
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("manifest", manifest.Name.String())

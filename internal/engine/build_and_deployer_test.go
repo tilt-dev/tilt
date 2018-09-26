@@ -155,7 +155,7 @@ func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
 	}
 	if f.sCli.UpdateContainerCount != 1 {
-		t.Errorf("Expected 1 UpdateContaine count via synclet, actual: %d", f.sCli.UpdateContainerCount)
+		t.Errorf("Expected 1 UpdateContainer count via synclet, actual: %d", f.sCli.UpdateContainerCount)
 	}
 }
 
@@ -361,6 +361,24 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 			Contents: "b",
 		},
 	})
+}
+
+func TestBaDForgetsImages(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE).withContainerForBuild(alreadyBuilt)
+	defer f.TearDown()
+
+	// make sBaD return an error so that we fall back to iBaD and get a new image id
+	f.sCli.ErrorToReturn = errors.New("blah")
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.sCli.ClosedCount != 1 {
+		t.Errorf("Expected 1 synclet client close, actual: %d", f.sCli.ClosedCount)
+	}
+
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and

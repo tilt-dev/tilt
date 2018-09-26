@@ -49,6 +49,10 @@ func (b *fakeBuildAndDeployer) nextBuildResult() BuildResult {
 	return BuildResult{Image: nt}
 }
 
+func (b *fakeBuildAndDeployer) forgetImage(ctx context.Context, image reference.NamedTagged) error {
+	return nil
+}
+
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
 	select {
 	case b.calls <- buildAndDeployCall{manifest, state}:

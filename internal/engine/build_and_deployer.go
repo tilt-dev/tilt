@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 
+	"github.com/docker/distribution/reference"
+
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -22,6 +24,8 @@ type BuildAndDeployer interface {
 	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
 	// In general, we'll store this info ON the BuildAndDeployer that needs it.
 	PostProcessBuild(ctx context.Context, result BuildResult)
+
+	forgetImage(ctx context.Context, image reference.NamedTagged) error
 }
 
 type BuildOrder []BuildAndDeployer
@@ -47,6 +51,17 @@ func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTe
 	}
 }
 
+func (composite *CompositeBuildAndDeployer) forgetImage(ctx context.Context, image reference.NamedTagged) error {
+	for _, builder := range composite.builders {
+		err := builder.forgetImage(ctx, image)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
@@ -55,6 +70,9 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			// TODO(maia): maybe this only needs to be called after certain builds?
 			// I.e. should be called after image build but not after a successful container build?
 			go composite.PostProcessBuild(ctx, br)
+			if currentState.LastImage() != nil && br.Image != currentState.LastImage() {
+				composite.forgetImage(ctx, currentState.LastImage())
+			}
 			return br, err
 		}
 

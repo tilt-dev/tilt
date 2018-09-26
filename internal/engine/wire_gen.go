@@ -6,14 +6,14 @@
 package engine
 
 import (
-	context "context"
-	wire "github.com/google/go-cloud/wire"
-	build "github.com/windmilleng/tilt/internal/build"
-	docker "github.com/windmilleng/tilt/internal/docker"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
-	synclet "github.com/windmilleng/tilt/internal/synclet"
-	analytics "github.com/windmilleng/wmclient/pkg/analytics"
-	dirs "github.com/windmilleng/wmclient/pkg/dirs"
+	"context"
+	"github.com/google/go-cloud/wire"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
