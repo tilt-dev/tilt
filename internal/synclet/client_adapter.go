@@ -3,6 +3,7 @@ package synclet
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -15,6 +16,8 @@ import (
 
 	"google.golang.org/grpc"
 )
+
+const containerIdTimeout = time.Second * 10
 
 type SyncletClient interface {
 	UpdateContainer(ctx context.Context, containerID k8s.ContainerID, tarArchive []byte,
@@ -92,7 +95,21 @@ func (s *SyncletCli) UpdateContainer(
 	}
 }
 
-func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
+func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID k8s.ContainerID, err error) {
+	start := time.Now()
+	for time.Since(start) < containerIdTimeout {
+		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
+		// and "everything is borked, stop trying"
+		cID, err = s.containerIDForPod(ctx, podID, imageID)
+		if !cID.Empty() {
+			return cID, nil
+		}
+	}
+	return "", errors.Wrapf(err, "timed out trying to get container ID for pod %s (after %s). Latest err",
+		podID.String(), containerIdTimeout)
+}
+
+func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
 	stream, err := s.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{
 		LogStyle: newLogStyle(ctx),
 		PodId:    podID.String(),
