@@ -54,7 +54,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 }
 
 func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
-	matches, err := manifest.FileFilter.Matches(f.JoinPath(path), isDir)
+	matches, err := manifest.Filter().Matches(f.JoinPath(path), isDir)
 	if err != nil {
 		f.T().Fatal(err)
 	}

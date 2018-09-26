@@ -109,7 +109,7 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
 	}
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Step{step1, step2}, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1, step2}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 		Trigger: inputs,
 	}
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, []model.Step{step1}, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}

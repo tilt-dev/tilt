@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -350,6 +351,44 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 	})
 }
 
+func TestIgnoredFiles(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+	ctx := output.CtxForTest()
+
+	manifest := NewSanchoManifest()
+	manifest.Mounts[0].LocalPath = f.Path()
+
+	gitFilter, _ := git.NewRepoIgnoreTester(ctx, f.Path())
+	tiltfileFilter := model.NewSimpleFileMatcher(filepath.Join(f.Path(), "Tiltfile"))
+	manifest.FileFilter = model.NewCompositeMatcher([]model.PathMatcher{gitFilter, tiltfileFilter})
+
+	f.WriteFile("Tiltfile", "# hello world")
+	f.WriteFile("a.txt", "a")
+	f.WriteFile(".git/index", "garbage")
+
+	_, err := f.bd.BuildAndDeploy(ctx, manifest, BuildStateClean)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tr := tar.NewReader(f.docker.BuildOptions.Context)
+	testutils.AssertFilesInTar(t, tr, []expectedFile{
+		expectedFile{
+			Path:     "go/src/github.com/windmilleng/sancho/a.txt",
+			Contents: "a",
+		},
+		expectedFile{
+			Path:    "go/src/github.com/windmilleng/sancho/.git/index",
+			Missing: true,
+		},
+		expectedFile{
+			Path:    "go/src/github.com/windmilleng/sancho/Tiltfile",
+			Missing: true,
+		},
+	})
+}
+
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake DockerClient and K8sClient
@@ -413,6 +452,8 @@ func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
 }
 
 func (f *bdFixture) assertContainerRestarts(count int) {
+	// Ensure that MagicTestContainerID was the only container id that saw
+	// restarts, and that it saw the right number of restarts.
 	expected := map[string]int{}
 	if count != 0 {
 		expected[string(build.MagicTestContainerID)] = count

@@ -7,26 +7,29 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/model"
 
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type ArchiveBuilder struct {
-	tw  *tar.Writer
-	buf *bytes.Buffer
+	tw     *tar.Writer
+	buf    *bytes.Buffer
+	filter model.PathMatcher
 }
 
-func NewArchiveBuilder() *ArchiveBuilder {
+func NewArchiveBuilder(filter model.PathMatcher) *ArchiveBuilder {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
+	if filter == nil {
+		filter = model.EmptyMatcher
+	}
 
-	return &ArchiveBuilder{tw: tw, buf: buf}
+	return &ArchiveBuilder{tw: tw, buf: buf, filter: filter}
 }
 
 func (a *ArchiveBuilder) close() error {
@@ -78,11 +81,6 @@ func (a *ArchiveBuilder) BytesBuffer() (*bytes.Buffer, error) {
 	return a.buf, nil
 }
 
-func pathIsTiltfile(p string) bool {
-	_, f := path.Split(p)
-	return f == tiltfile.FileName
-}
-
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 // If source path does not exist, quietly skips it and returns no err
@@ -115,7 +113,10 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 			return fmt.Errorf("error walking to %s: %v", path, err)
 		}
 
-		if pathIsTiltfile(path) {
+		matches, err := a.filter.Matches(path, info.IsDir())
+		if err != nil {
+			return err
+		} else if matches {
 			return nil
 		}
 
@@ -169,11 +170,11 @@ func (a *ArchiveBuilder) len() int {
 	return a.buf.Len()
 }
 
-func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
 
-	ab := NewArchiveBuilder()
+	ab := NewArchiveBuilder(filter)
 	err := ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return nil, fmt.Errorf("archivePaths: %v", err)

@@ -99,7 +99,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return BuildResult{}, err
 	}
 
-	err = cbd.cu.UpdateInContainer(ctx, cID, cf, boiledSteps)
+	err = cbd.cu.UpdateInContainer(ctx, cID, cf, manifest.Filter(), boiledSteps)
 	if err != nil {
 		return BuildResult{}, err
 	}
