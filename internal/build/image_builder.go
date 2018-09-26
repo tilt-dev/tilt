@@ -359,7 +359,7 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
 
-	b := newBuildkitPrinter(os.Stdout)
+	b := newBuildkitPrinter(logger.Get(ctx))
 
 	for decoder.More() {
 		if innerSpan != nil {
