@@ -70,7 +70,8 @@ func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) 
 	return ok
 }
 
-func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult, canResume chan struct{}) {
+	close(canResume)
 	if result.HasImage() && !b.haveContainerForImage(result.Image) {
 		b.deployInfo[docker.ToImgNameAndTag(result.Image)] = k8s.ContainerID("testcontainer")
 	}

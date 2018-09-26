@@ -187,21 +187,27 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult, canResume chan struct{}) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()
 
 	if !result.HasImage() {
 		// This is normal if the previous build failed.
+		close(canResume)
 		return
 	}
 
 	info, ok := sbd.deployInfoForImageOrNew(result.Image)
 	if ok {
 		// This info was already in the map, nothing to do.
+		close(canResume)
 		return
 	}
+
+	// We've created the deployInfo and anything trying to read from in will block
+	// on its population -- it's safe for concurrent code to resume.
+	close(canResume)
 
 	// We just made this info, so populate it.
 	err := sbd.populateDeployInfo(ctx, result.Image, info)

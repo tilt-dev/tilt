@@ -108,10 +108,13 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult, canResume chan struct{}) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()
+
+	// Safe for concurrent code to keep executing
+	close(canResume)
 
 	if !result.HasImage() {
 		// This is normal condition if the previous build failed.
