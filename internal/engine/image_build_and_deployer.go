@@ -89,7 +89,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 		df := build.Dockerfile(manifest.DockerfileText)
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, steps, manifest.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, manifest.Filter(), steps, manifest.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -111,7 +111,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, manifest.Filter(), steps)
 		if err != nil {
 			return nil, err
 		}
