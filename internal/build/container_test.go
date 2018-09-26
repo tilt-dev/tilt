@@ -16,6 +16,37 @@ import (
 
 // * * * IMAGE BUILDER * * *
 
+func TestStaticDockerfile(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	df := Dockerfile(`
+FROM alpine
+WORKDIR /src
+ADD a.txt .
+RUN cp a.txt b.txt
+ADD dir/c.txt .
+`)
+
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("dir/c.txt", "c")
+	f.WriteFile("missing.txt", "missing")
+
+	ref, err := f.b.BuildDockerfile(f.ctx, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []expectedFile{
+		expectedFile{Path: "/src/a.txt", Contents: "a"},
+		expectedFile{Path: "/src/b.txt", Contents: "a"},
+		expectedFile{Path: "/src/c.txt", Contents: "c"},
+		expectedFile{Path: "/src/dir/c.txt", Missing: true},
+		expectedFile{Path: "/src/missing.txt", Missing: true},
+	}
+	f.assertFilesInImage(ref, pcs)
+}
+
 func TestMount(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()

@@ -77,7 +77,7 @@ type mount struct {
 
 type dockerImage struct {
 	fileName   string
-	fileTag    reference.Named
+	ref        reference.Named
 	mounts     []mount
 	steps      []model.Step
 	entrypoint string
@@ -184,7 +184,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 }
 
 func (d *dockerImage) String() string {
-	return fmt.Sprintf("fileName: %v, fileTag: %v, cmds: %v", d.fileName, d.fileTag, d.steps)
+	return fmt.Sprintf("fileName: %v, ref: %s, cmds: %v", d.fileName, d.ref, d.steps)
 }
 
 func (d *dockerImage) Type() string {
@@ -207,7 +207,7 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	case "file_name":
 		return skylark.String(d.fileName), nil
 	case "file_tag":
-		return skylark.String(d.fileTag.String()), nil
+		return skylark.String(d.ref.String()), nil
 	default:
 		return nil, nil
 	}

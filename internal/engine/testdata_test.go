@@ -33,18 +33,18 @@ spec:
                 key: token
 `
 
-const SanchoDockerfile = `
+const SanchoBaseDockerfile = `
 FROM go:1.10
 `
 
-var SanchoTag, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
+var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
 
 func NewSanchoManifest() model.Manifest {
 	return model.Manifest{
 		Name:           "sancho",
-		DockerfileTag:  SanchoTag,
+		DockerRef:      SanchoRef,
 		K8sYaml:        SanchoYAML,
-		DockerfileText: SanchoDockerfile,
+		BaseDockerfile: SanchoBaseDockerfile,
 		Mounts: []model.Mount{
 			model.Mount{
 				LocalPath:     "/src/sancho",
