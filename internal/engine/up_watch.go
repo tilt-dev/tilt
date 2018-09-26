@@ -5,7 +5,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -123,10 +122,7 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
-		filter := sn.manifest.FileFilter
-		if filter == nil {
-			filter = git.FalseIgnoreTester{}
-		}
+		filter := sn.manifest.Filter()
 
 		go func(manifest model.Manifest, watcher watch.Notify) {
 			// TODO(matt) this will panic if we actually close channels. look at "merge" in https://blog.golang.org/pipelines

@@ -4,6 +4,15 @@ type PathMatcher interface {
 	Matches(f string, isDir bool) (bool, error)
 }
 
+// A Matcher that matches nothing.
+type emptyMatcher struct{}
+
+func (m emptyMatcher) Matches(f string, isDir bool) (bool, error) {
+	return false, nil
+}
+
+var EmptyMatcher PathMatcher = emptyMatcher{}
+
 type PatternMatcher interface {
 	PathMatcher
 

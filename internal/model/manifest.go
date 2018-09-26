@@ -23,6 +23,14 @@ type Manifest struct {
 	Name           ManifestName
 }
 
+func (m Manifest) Filter() PathMatcher {
+	f := m.FileFilter
+	if f == nil {
+		return EmptyMatcher
+	}
+	return f
+}
+
 func (m Manifest) Validate() error {
 	err := m.validate()
 	if err != nil {

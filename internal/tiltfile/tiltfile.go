@@ -55,7 +55,7 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
-	buildContext := &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
+	buildContext := &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{model.EmptyMatcher}}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
 }
