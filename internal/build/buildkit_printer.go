@@ -2,25 +2,26 @@ package build
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 type buildkitPrinter struct {
-	output io.Writer
+	logger logger.Logger
 	vData  map[digest.Digest]*vertexAndLogs
 	vOrder []digest.Digest
 }
 
 type vertex struct {
-	digest     digest.Digest
-	name       string
-	error      string
-	started    bool
-	completed  bool
-	cmdPrinted bool
+	digest      digest.Digest
+	name        string
+	error       string
+	started     bool
+	completed   bool
+	cmdPrinted  bool
+	logsPrinted bool
 }
 
 // HACK: The prefix we assume here isn't valid for RUNS in exec format
@@ -46,9 +47,9 @@ type vertexLog struct {
 	msg    []byte
 }
 
-func newBuildkitPrinter(output io.Writer) *buildkitPrinter {
+func newBuildkitPrinter(logger logger.Logger) *buildkitPrinter {
 	return &buildkitPrinter{
-		output: output,
+		logger: logger,
 		vData:  map[digest.Digest]*vertexAndLogs{},
 		vOrder: []digest.Digest{},
 	}
@@ -85,33 +86,29 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
 		if vl.vertex.isRun() && vl.vertex.started && !vl.vertex.cmdPrinted {
-			msg := fmt.Sprintf("%sRUNNING: %s\n", buildPrefix, trimCmd(vl.vertex.name))
-			_, err := b.output.Write([]byte(msg))
-			if err != nil {
-				return err
-			}
-
+			b.logger.Infof("%sRUNNING: %s", buildPrefix, trimCmd(vl.vertex.name))
 			vl.vertex.cmdPrinted = true
 		}
 
+		logWriter := b.logger.Writer(logger.VerboseLvl)
 		if vl.vertex.isError() {
-			msg := fmt.Sprintf("\n%sERROR IN: %s\n", buildPrefix, trimCmd(vl.vertex.name))
-			_, err := b.output.Write([]byte(msg))
-			if err != nil {
-				return err
-			}
+			b.logger.Infof("\n%sERROR IN: %s", buildPrefix, trimCmd(vl.vertex.name))
+			logWriter = b.logger.Writer(logger.InfoLvl)
+		}
 
+		if vl.vertex.isRun() && vl.vertex.completed && !vl.vertex.logsPrinted {
 			for _, l := range vl.logs {
 				sl := strings.TrimSpace(string(l.msg))
 				if len(sl) == 0 {
 					continue
 				}
 				msg := fmt.Sprintf("%s  → %s\n", buildPrefix, sl)
-				_, err := b.output.Write([]byte(msg))
+				_, err := logWriter.Write([]byte(msg))
 				if err != nil {
 					return err
 				}
 			}
+			vl.vertex.logsPrinted = true
 		}
 	}
 
