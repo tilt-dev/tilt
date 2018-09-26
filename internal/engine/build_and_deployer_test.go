@@ -360,7 +360,7 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest.Mounts[0].LocalPath = f.Path()
 
 	gitFilter, _ := git.NewRepoIgnoreTester(ctx, f.Path())
-	tiltfileFilter := model.NewSimpleFileMatcher(filepath.Join(f.Path(), "Tiltfile"))
+	tiltfileFilter, _ := model.NewSimpleFileMatcher(filepath.Join(f.Path(), "Tiltfile"))
 	manifest.FileFilter = model.NewCompositeMatcher([]model.PathMatcher{gitFilter, tiltfileFilter})
 
 	f.WriteFile("Tiltfile", "# hello world")

@@ -1,5 +1,10 @@
 package model
 
+import (
+	"fmt"
+	"path/filepath"
+)
+
 type PathMatcher interface {
 	Matches(f string, isDir bool) (bool, error)
 }
@@ -22,8 +27,14 @@ func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
 	return f == m.path, nil
 }
 
-func NewSimpleFileMatcher(f string) fileMatcher {
-	return fileMatcher{path: f}
+func NewSimpleFileMatcher(f string) (fileMatcher, error) {
+	// Get the absolute path of the file, because PathMatchers expect to always
+	// work with absolute paths.
+	f, err := filepath.Abs(f)
+	if err != nil {
+		return fileMatcher{}, fmt.Errorf("NewSimpleFileMatcher: %v", err)
+	}
+	return fileMatcher{path: f}, nil
 }
 
 type PatternMatcher interface {

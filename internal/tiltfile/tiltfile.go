@@ -55,7 +55,11 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
-	filter := model.NewSimpleFileMatcher(t.filename)
+	filter, err := model.NewSimpleFileMatcher(t.filename)
+	if err != nil {
+		return skylark.None, err
+	}
+
 	buildContext := &dockerImage{
 		dockerfileName,
 		tag,
