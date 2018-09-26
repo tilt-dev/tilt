@@ -75,6 +75,7 @@ func portForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1I
 	go func() {
 		errChan <- pf.ForwardPorts()
 		err := <-errChan
+		pf.Close()
 		// logging isn't really sufficient, since we're in a goroutine and who knows where the caller
 		// has moved on to by this point, but other options are much more expensive (e.g., monitoring the state
 		// of the port forward from the caller and/or automatically reconnecting port forwards)
@@ -83,6 +84,7 @@ func portForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1I
 
 	select {
 	case err = <-errChan:
+		pf.Close()
 		return nil, errors.Wrap(err, "error forwarding port")
 	case <-pf.Ready:
 		closer = func() {
