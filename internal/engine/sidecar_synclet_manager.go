@@ -58,7 +58,7 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 
 	t := opentracing.GlobalTracer()
 
-	conn, err := grpc.Dial(fmt.Sprintf("127.0.0.1:%d", tunneledPort), grpc.WithInsecure(),
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", tunneledPort), grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(t)),
 		grpc.WithStreamInterceptor(otgrpc.OpenTracingStreamClientInterceptor(t)))
 	if err != nil {
