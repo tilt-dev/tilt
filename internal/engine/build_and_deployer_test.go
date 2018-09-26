@@ -141,12 +141,6 @@ func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// HACK: if we fail to container build here, the test has already failed. However,
-	// this test setup doesn't support incremental image build, and we'll get misleading
-	// errors, so just don't fall back.
-	dontFallBack := func(err error) bool { return false }
-	f.setBDFallbackTester(dontFallBack)
-
 	// Expected behavior: this build call waits on the PostProcess initiated at the end
 	// of the previous build, and when that info is available, does a container build
 	_, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(res))
@@ -451,14 +445,6 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 		sCli:           sCli,
 		bd:             bd,
 	}
-}
-
-func (f *bdFixture) setBDFallbackTester(tester FallbackTester) {
-	composite, ok := f.bd.(*CompositeBuildAndDeployer)
-	if !ok {
-		f.T().Fatal("bdFixture.bd is not a *CompositeBuildAndDeployer?? This should never happen.")
-	}
-	composite.shouldFallBack = tester
 }
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
