@@ -36,25 +36,6 @@ func NewGRPCClient(conn *grpc.ClientConn) *SyncletCli {
 	return &SyncletCli{del: proto.NewSyncletClient(conn), conn: conn}
 }
 
-func protoLogLevelToLevel(protoLevel proto.LogLevel) logger.Level {
-	switch protoLevel {
-	case proto.LogLevel_INFO:
-		return logger.InfoLvl
-	case proto.LogLevel_VERBOSE:
-		return logger.VerboseLvl
-	case proto.LogLevel_DEBUG:
-		return logger.DebugLvl
-	default:
-		// the server returned a log level that we don't recognize - err on the side of caution and return
-		// the minimum log level to ensure that all output is printed
-		return logger.NoneLvl
-	}
-}
-
-func newLogStyle(ctx context.Context) *proto.LogStyle {
-	return &proto.LogStyle{ColorsEnabled: logger.Get(ctx).SupportsColor()}
-}
-
 func (s *SyncletCli) UpdateContainer(
 	ctx context.Context,
 	containerId k8s.ContainerID,
@@ -68,8 +49,13 @@ func (s *SyncletCli) UpdateContainer(
 		protoCmds = append(protoCmds, &proto.Cmd{Argv: cmd.Argv})
 	}
 
+	logStyle, err := newLogStyle(ctx)
+	if err != nil {
+		return err
+	}
+
 	stream, err := s.del.UpdateContainer(ctx, &proto.UpdateContainerRequest{
-		LogStyle:      newLogStyle(ctx),
+		LogStyle:      logStyle,
 		ContainerId:   containerId.String(),
 		TarArchive:    tarArchive,
 		FilesToDelete: filesToDelete,
@@ -110,8 +96,13 @@ func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, ima
 }
 
 func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
+	logStyle, err := newLogStyle(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	stream, err := s.del.GetContainerIdForPod(ctx, &proto.GetContainerIdForPodRequest{
-		LogStyle: newLogStyle(ctx),
+		LogStyle: logStyle,
 		PodId:    podID.String(),
 		ImageId:  imageID.String(),
 	})

@@ -23,6 +23,8 @@ type Logger interface {
 	// gets an io.Writer that filters to the specified level for, e.g., passing to a subprocess
 	Writer(level Level) io.Writer
 
+	Level() Level
+
 	SupportsColor() bool
 }
 
@@ -73,6 +75,10 @@ type logger struct {
 	level         Level
 	writer        io.Writer
 	supportsColor bool
+}
+
+func (l logger) Level() Level {
+	return l.level
 }
 
 func (l logger) Infof(format string, a ...interface{}) {
