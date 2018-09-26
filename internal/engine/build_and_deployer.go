@@ -21,7 +21,8 @@ type BuildAndDeployer interface {
 
 	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
 	// In general, we'll store this info ON the BuildAndDeployer that needs it.
-	PostProcessBuild(ctx context.Context, result BuildResult)
+	// When channel `canResume` is closed, we know that concurrent code can continue to execute.
+	PostProcessBuild(ctx context.Context, result BuildResult, canResume chan struct{})
 }
 
 type BuildOrder []BuildAndDeployer
@@ -52,9 +53,9 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
-			// TODO(maia): maybe this only needs to be called after certain builds?
-			// I.e. should be called after image build but not after a successful container build?
-			go composite.PostProcessBuild(ctx, br)
+			canResume := make(chan struct{})
+			go composite.PostProcessBuild(ctx, br, canResume)
+			<-canResume // don't return until PostProcessBuild tells us it's okay
 			return br, err
 		}
 
@@ -97,10 +98,10 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult, canResume chan struct{}) {
 	// NOTE(maia): for now, expect the first BaD to be the one that needs additional info.
 	if len(composite.builders) != 0 {
-		composite.builders[0].PostProcessBuild(ctx, result)
+		composite.builders[0].PostProcessBuild(ctx, result, canResume)
 	}
 }
 

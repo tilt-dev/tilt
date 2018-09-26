@@ -135,8 +135,9 @@ func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 	defer f.TearDown()
 
 	f.k8s.SetPollForPodWithImageDelay(time.Second)
-	go f.bd.PostProcessBuild(f.ctx, alreadyBuilt) // will take 1s
-	time.Sleep(time.Millisecond * 100)            // let the PostProcessBuild call actually start
+	canResume := make(chan struct{})
+	go f.bd.PostProcessBuild(f.ctx, alreadyBuilt, canResume) // will take 1s
+	<-canResume                                              // wait for PostProcessBuild call to tell us to continue
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
@@ -447,7 +448,9 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
 func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
-	f.bd.PostProcessBuild(f.ctx, build)
+	canResume := make(chan struct{})
+	f.bd.PostProcessBuild(f.ctx, build, canResume)
+	<-canResume
 	return f
 }
 
