@@ -59,8 +59,9 @@ func (s Synclet) rmFiles(ctx context.Context, containerId k8s.ContainerID, files
 	out := bytes.NewBuffer(nil)
 	err := s.dcli.ExecInContainer(ctx, containerId, cmd, out)
 	if err != nil {
-		if docker.IsExitError(err) {
-			return fmt.Errorf("Error deleting files: %s", out.String())
+		dockerExitErr, ok := err.(docker.ExitError)
+		if ok {
+			return fmt.Errorf("Error deleting files. error '%v', exit code %d, output '%s'", err, dockerExitErr.ExitCode, out.String())
 		}
 		return fmt.Errorf("Error deleting files: %v", err)
 	}
