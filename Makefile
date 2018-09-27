@@ -20,7 +20,7 @@ install:
 install-dev:
 	docker build -t $(SYNCLET_IMAGE):dirty -f synclet/Dockerfile .
 	$(eval HASH := $(shell docker inspect $(SYNCLET_IMAGE):dirty -f '{{.Id}}' | \
-                         sed -r 's/sha256:(.{20}).*/dirty-\1/'))
+                         sed -E 's/sha256:(.{20}).*/dirty-\1/'))
 	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$(HASH)
 	docker push $(SYNCLET_IMAGE):$(HASH)
 	./hide_tbd_warning go install -ldflags "-X './internal/synclet/sidecar.SyncletTag=$(HASH)'" ./...
