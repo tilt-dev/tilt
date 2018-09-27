@@ -73,7 +73,7 @@ type Client interface {
 	ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error)
 
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
-	ForwardPort(ctx context.Context, namespace string, podID PodID, remotePort int) (localPort int, closer func(), err error)
+	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (localPort int, closer func(), err error)
 }
 
 type K8sClient struct {

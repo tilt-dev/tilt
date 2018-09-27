@@ -3,6 +3,7 @@ package sidecar
 import (
 	"fmt"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"k8s.io/api/core/v1"
@@ -17,6 +18,8 @@ func syncletPrivileged() *bool {
 var SyncletTag = "latest"
 
 const SyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
+
+var SyncletImageRef = k8s.MustParseNamed(SyncletImageName)
 
 var SyncletContainer = v1.Container{
 	Name:            "tilt-synclet",

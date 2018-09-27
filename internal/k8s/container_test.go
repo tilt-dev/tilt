@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 )
 
@@ -17,8 +18,9 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	podData.Status = v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
 			{
-				Image: nt.String(),
-				Ready: true,
+				ContainerID: "docker://container-id",
+				Image:       nt.String(),
+				Ready:       true,
 			},
 		},
 	}
@@ -32,10 +34,12 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 
-	err = WaitForContainerReady(ctx, f.client, pod, nt)
+	cID, err := WaitForContainerReady(ctx, f.client, pod, nt)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Equal(t, "container-id", cID.String())
 }
 
 func TestWaitForContainerSuccess(t *testing.T) {
@@ -53,7 +57,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 
 	result := make(chan error)
 	go func() {
-		err := WaitForContainerReady(ctx, f.client, pod, nt)
+		_, err := WaitForContainerReady(ctx, f.client, pod, nt)
 		result <- err
 	}()
 
@@ -61,8 +65,9 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	newPod.Status = v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
 			{
-				Image: nt.String(),
-				Ready: true,
+				ContainerID: "docker://container-id",
+				Image:       nt.String(),
+				Ready:       true,
 			},
 		},
 	}
@@ -90,7 +95,7 @@ func TestWaitForContainerFailure(t *testing.T) {
 
 	result := make(chan error)
 	go func() {
-		err := WaitForContainerReady(ctx, f.client, pod, nt)
+		_, err := WaitForContainerReady(ctx, f.client, pod, nt)
 		result <- err
 	}()
 

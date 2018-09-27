@@ -9,6 +9,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -119,7 +120,19 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-newSidecarSyncletClient")
 	defer span.Finish()
 
-	tunneledPort, tunnelCloser, err := kCli.ForwardPort(ctx, "default", podID, synclet.Port)
+	pod, err := kCli.PodByID(ctx, podID, k8s.DefaultNamespace)
+	if err != nil {
+		return nil, errors.Wrap(err, "newSidecarSyncletClient")
+	}
+
+	// Make sure that the synclet container is ready and not crashlooping.
+	_, err = k8s.WaitForContainerReady(ctx, kCli, pod, sidecar.SyncletImageRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "newSidecarSyncletClient")
+	}
+
+	// TODO(nick): We need a better way to kill the client when the pod dies.
+	tunneledPort, tunnelCloser, err := kCli.ForwardPort(ctx, k8s.DefaultNamespace, podID, synclet.Port)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
 	}

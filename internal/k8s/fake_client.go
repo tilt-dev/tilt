@@ -56,15 +56,32 @@ func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v
 }
 
 func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error) {
+	status := v1.PodStatus{
+		ContainerStatuses: []v1.ContainerStatus{
+			{
+				ContainerID: "docker://tilt-testcontainer",
+				Image:       image.String(),
+				Ready:       true,
+			},
+			{
+				ContainerID: "docker://tilt-testservlet",
+				// can't use the constants in synclet because that would create a dep cycle
+				Image: "gcr.io/windmill-public-containers/tilt-synclet:latest",
+				Ready: true,
+			},
+		},
+	}
 	if !c.PodWithImageResp.Empty() {
 		res := c.PodWithImageResp
 		c.PodWithImageResp = ""
 		return &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: string(res)},
+			Status:     status,
 		}, nil
 	}
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+		Status:     status,
 	}, nil
 }
 
@@ -96,6 +113,6 @@ func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID,
 	return NodeID("node"), nil
 }
 
-func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace string, podID PodID, remotePort int) (int, func(), error) {
+func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (int, func(), error) {
 	return 0, nil, nil
 }

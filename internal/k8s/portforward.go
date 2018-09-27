@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (k K8sClient) ForwardPort(ctx context.Context, namespace string, podID PodID, remotePort int) (localPort int, closer func(), err error) {
+func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (localPort int, closer func(), err error) {
 	// preferably, we'd set the localport to 0, and let the underlying function pick a port for us,
 	// to avoid the race condition potential of something else grabbing this port between
 	// the call to `getAvailablePort` and whenever `portForwarder` actually binds the port.
@@ -30,7 +30,7 @@ func (k K8sClient) ForwardPort(ctx context.Context, namespace string, podID PodI
 		return 0, nil, errors.Wrap(err, "failed to find an available local port")
 	}
 
-	closer, err = k.portForwarder(ctx, k.restConfig, k.core, namespace, podID, localPort, remotePort)
+	closer, err = k.portForwarder(ctx, k.restConfig, k.core, namespace.String(), podID, localPort, remotePort)
 	if err != nil {
 		return 0, nil, err
 	}
