@@ -81,6 +81,10 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}
 
+	if manifest.IsStaticBuild() {
+		return BuildResult{}, fmt.Errorf("container build does not support static dockerfiles")
+	}
+
 	// Otherwise, manifest has already been deployed; try to update in the running container
 	cID, ok := cbd.getContainerIDForImage(state.LastResult.Image)
 
@@ -99,7 +103,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return BuildResult{}, err
 	}
 
-	err = cbd.cu.UpdateInContainer(ctx, cID, cf, boiledSteps)
+	err = cbd.cu.UpdateInContainer(ctx, cID, cf, manifest.Filter(), boiledSteps)
 	if err != nil {
 		return BuildResult{}, err
 	}

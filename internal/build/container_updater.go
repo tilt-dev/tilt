@@ -21,7 +21,7 @@ func NewContainerUpdater(dcli docker.DockerClient) *ContainerUpdater {
 	return &ContainerUpdater{dcli: dcli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping, steps []model.Cmd) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping, filter model.PathMatcher, steps []model.Cmd) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
 
@@ -37,7 +37,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 	}
 
 	// copy files to container
-	ab := NewArchiveBuilder()
+	ab := NewArchiveBuilder(filter)
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return fmt.Errorf("archivePathsIfExists: %v", err)

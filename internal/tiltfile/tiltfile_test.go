@@ -54,7 +54,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 }
 
 func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
-	matches, err := manifest.FileFilter.Matches(f.JoinPath(path), isDir)
+	matches, err := manifest.Filter().Matches(f.JoinPath(path), isDir)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -122,8 +122,8 @@ func TestGetManifestConfig(t *testing.T) {
 	}
 
 	manifest := manifestConfig[0]
-	assert.Equal(t, "docker text", manifest.DockerfileText)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerfileTag.String())
+	assert.Equal(t, "docker text", manifest.BaseDockerfile)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
 	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYaml)
 	assert.Equal(t, 1, len(manifest.Mounts), "number of mounts")
 	assert.Equal(t, "/mount_points/1", manifest.Mounts[0].ContainerPath)
@@ -395,8 +395,8 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 	}
 
 	manifest := manifestConfig[0]
-	assert.Equal(t, "docker text", manifest.DockerfileText)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerfileTag.String())
+	assert.Equal(t, "docker text", manifest.BaseDockerfile)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
 	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYaml)
 	assert.Equal(t, 2, len(manifest.Steps))
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv)
@@ -718,20 +718,18 @@ func TestReadsIgnoreFiles(t *testing.T) {
 	defer f.TearDown()
 	f.WriteFile(".gitignore", "*.exe")
 	f.WriteFile(".dockerignore", "node_modules")
-
-	dockerfile := tempFile("docker text")
-	file := tempFile(
-		fmt.Sprintf(`def blorgly():
+	f.WriteFile("Dockerfile", "docker text")
+	f.WriteFile("Tiltfile", fmt.Sprintf(`def blorgly():
   start_fast_build("%v", "docker-tag", "the entrypoint")
   add(local_git_repo('.'), '/mount_points/1')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile))
-	defer os.Remove(file)
-	defer os.Remove(dockerfile)
-	tiltconfig, err := Load(file, os.Stdout)
+`, filepath.Join(f.Path(), "Dockerfile")))
+
+	tf := filepath.Join(f.Path(), "Tiltfile")
+	tiltconfig, err := Load(tf, os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -745,6 +743,7 @@ func TestReadsIgnoreFiles(t *testing.T) {
 
 	manifest := manifests[0]
 
+	assert.True(t, f.FiltersPath(manifest, "Tiltfile", true))
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false))
 	assert.True(t, f.FiltersPath(manifest, "node_modules", true))
 	assert.True(t, f.FiltersPath(manifest, ".git", true))

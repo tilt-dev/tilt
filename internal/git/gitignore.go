@@ -20,15 +20,6 @@ import (
 // 3. does not use .git/info/exclude
 // 4. does not take index into account
 
-// an IgnoreTester that ignores nothing
-type FalseIgnoreTester struct{}
-
-func (FalseIgnoreTester) Matches(f string, isDir bool) (bool, error) {
-	return false, nil
-}
-
-var _ model.PathMatcher = FalseIgnoreTester{}
-
 // ignores files specified in .gitignore
 type gitIgnoreTester struct {
 	repoRoot      string
@@ -63,7 +54,7 @@ func NewGitIgnoreTester(ctx context.Context, repoRoot string) (model.PathMatcher
 		if ok && pathError.Err != syscall.ENOENT {
 			logger.Get(ctx).Verbosef("failed to open gitignore %v: %v", p, err)
 		}
-		return &FalseIgnoreTester{}, nil
+		return model.EmptyMatcher, nil
 	}
 	return &gitIgnoreTester{absRoot, i}, nil
 }

@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -16,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -128,34 +127,34 @@ func TestIncrementalBuild(t *testing.T) {
 	if len(f.docker.ExecCalls) != 1 {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
-	if len(f.docker.RestartsByContainer) != 1 {
-		t.Errorf("Expected 1 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
-	}
+	f.assertContainerRestarts(1)
 }
 
 func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	f.k8s.SetPollForPodWithImageDelay(time.Second)
-	go f.bd.PostProcessBuild(f.ctx, alreadyBuilt) // will take 1s
-	time.Sleep(time.Millisecond * 100)            // let the PostProcessBuild call actually start
+	f.k8s.SetPollForPodWithImageDelay(time.Second * 1)
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	res, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Rather than falling back to image build b/c of lack of deploy info, we should
-	// wait for the concurrent call to PostProcessBuild to finish and do a container build.
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	// Expected behavior: this build call waits on the PostProcess initiated at the end
+	// of the previous build, and when that info is available, does a container build
+	_, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(res))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	if f.docker.BuildCount != 1 { // initial build
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
-	if f.sCli.UpdateContainerCount != 1 {
-		t.Errorf("Expected 1 UpdateContaine count via synclet, actual: %d", f.sCli.UpdateContainerCount)
+	if f.docker.PushCount != 1 { // initial build
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.sCli.UpdateContainerCount != 1 { // second build via synclet
+		t.Errorf("Expected 1 UpdateContainer count via synclet, actual: %d", f.sCli.UpdateContainerCount)
 	}
 }
 
@@ -185,9 +184,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	if len(f.docker.ExecCalls) != 1 {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
-	if len(f.docker.RestartsByContainer) != 0 {
-		t.Errorf("Expected 0 containers to be restarted, actual: %d", len(f.docker.RestartsByContainer))
-	}
+	f.assertContainerRestarts(0)
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
@@ -201,9 +198,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(f.docker.RestartsByContainer) != 0 {
-		t.Errorf("Expected no docker container restarts, actual: %d", len(f.docker.RestartsByContainer))
-	}
+	f.assertContainerRestarts(0)
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
@@ -230,22 +225,21 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 }
 
 func TestIncrementalBuildTwice(t *testing.T) {
-	t.Skip()
 	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	manifest := SanchoManifest
+	manifest := NewSanchoManifest()
 	manifest.Mounts[0].LocalPath = f.Path()
 	aPath := filepath.Join(f.Path(), "a.txt")
 	bPath := filepath.Join(f.Path(), "b.txt")
-	ioutil.WriteFile(aPath, []byte("a"), os.FileMode(0777))
-	ioutil.WriteFile(bPath, []byte("b"), os.FileMode(0777))
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
 
 	firstState := NewBuildState(alreadyBuilt)
 	firstState.filesChangedSet[aPath] = true
 
-	firstResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, firstState)
+	firstResult, err := f.bd.BuildAndDeploy(ctx, manifest, firstState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +251,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 
 	secondState := NewBuildState(firstResult)
 	secondState.filesChangedSet[bPath] = true
-	secondResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, secondState)
+	secondResult, err := f.bd.BuildAndDeploy(ctx, manifest, secondState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,9 +273,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	if len(f.docker.ExecCalls) != 2 {
 		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
-	if len(f.docker.RestartsByContainer) != 2 {
-		t.Errorf("Expected 2 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
-	}
+	f.assertContainerRestarts(2)
 }
 
 // Kill the pod after the first container update,
@@ -291,17 +283,17 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	manifest := SanchoManifest
+	manifest := NewSanchoManifest()
 	manifest.Mounts[0].LocalPath = f.Path()
 	aPath := filepath.Join(f.Path(), "a.txt")
 	bPath := filepath.Join(f.Path(), "b.txt")
-	ioutil.WriteFile(aPath, []byte("a"), os.FileMode(0777))
-	ioutil.WriteFile(bPath, []byte("b"), os.FileMode(0777))
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
 
 	firstState := NewBuildState(alreadyBuilt)
 	firstState.filesChangedSet[aPath] = true
 
-	firstResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, firstState)
+	firstResult, err := f.bd.BuildAndDeploy(ctx, manifest, firstState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +308,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 
 	secondState := NewBuildState(firstResult)
 	secondState.filesChangedSet[bPath] = true
-	secondResult, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, secondState)
+	secondResult, err := f.bd.BuildAndDeploy(ctx, manifest, secondState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,9 +330,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	if len(f.docker.ExecCalls) != 2 {
 		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
-	if len(f.docker.RestartsByContainer) != 1 {
-		t.Errorf("Expected 1 container to be restarted, actual: %d", len(f.docker.RestartsByContainer))
-	}
+	f.assertContainerRestarts(1)
 
 	// Make sure the right files were pushed to docker.
 	tr := tar.NewReader(f.docker.BuildOptions.Context)
@@ -359,6 +349,44 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 		expectedFile{
 			Path:     "go/src/github.com/windmilleng/sancho/b.txt",
 			Contents: "b",
+		},
+	})
+}
+
+func TestIgnoredFiles(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+	ctx := output.CtxForTest()
+
+	manifest := NewSanchoManifest()
+	manifest.Mounts[0].LocalPath = f.Path()
+
+	gitFilter, _ := git.NewRepoIgnoreTester(ctx, f.Path())
+	tiltfileFilter, _ := model.NewSimpleFileMatcher(filepath.Join(f.Path(), "Tiltfile"))
+	manifest.FileFilter = model.NewCompositeMatcher([]model.PathMatcher{gitFilter, tiltfileFilter})
+
+	f.WriteFile("Tiltfile", "# hello world")
+	f.WriteFile("a.txt", "a")
+	f.WriteFile(".git/index", "garbage")
+
+	_, err := f.bd.BuildAndDeploy(ctx, manifest, BuildStateClean)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tr := tar.NewReader(f.docker.BuildOptions.Context)
+	testutils.AssertFilesInTar(t, tr, []expectedFile{
+		expectedFile{
+			Path:     "go/src/github.com/windmilleng/sancho/a.txt",
+			Contents: "a",
+		},
+		expectedFile{
+			Path:    "go/src/github.com/windmilleng/sancho/.git/index",
+			Missing: true,
+		},
+		expectedFile{
+			Path:    "go/src/github.com/windmilleng/sancho/Tiltfile",
+			Missing: true,
 		},
 	})
 }
@@ -423,4 +451,14 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
 	f.bd.PostProcessBuild(f.ctx, build)
 	return f
+}
+
+func (f *bdFixture) assertContainerRestarts(count int) {
+	// Ensure that MagicTestContainerID was the only container id that saw
+	// restarts, and that it saw the right number of restarts.
+	expected := map[string]int{}
+	if count != 0 {
+		expected[string(build.MagicTestContainerID)] = count
+	}
+	assert.Equal(f.T(), expected, f.docker.RestartsByContainer)
 }

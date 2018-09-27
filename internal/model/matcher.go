@@ -1,7 +1,40 @@
 package model
 
+import (
+	"fmt"
+	"path/filepath"
+)
+
 type PathMatcher interface {
 	Matches(f string, isDir bool) (bool, error)
+}
+
+// A Matcher that matches nothing.
+type emptyMatcher struct{}
+
+func (m emptyMatcher) Matches(f string, isDir bool) (bool, error) {
+	return false, nil
+}
+
+var EmptyMatcher PathMatcher = emptyMatcher{}
+
+// A matcher that matches one file.
+type fileMatcher struct {
+	path string
+}
+
+func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
+	return f == m.path, nil
+}
+
+func NewSimpleFileMatcher(f string) (fileMatcher, error) {
+	// Get the absolute path of the file, because PathMatchers expect to always
+	// work with absolute paths.
+	f, err := filepath.Abs(f)
+	if err != nil {
+		return fileMatcher{}, fmt.Errorf("NewSimpleFileMatcher: %v", err)
+	}
+	return fileMatcher{path: f}, nil
 }
 
 type PatternMatcher interface {

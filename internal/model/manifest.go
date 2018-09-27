@@ -13,14 +13,47 @@ type ManifestName string
 func (m ManifestName) String() string { return string(m) }
 
 type Manifest struct {
-	K8sYaml        string
-	DockerfileText string
+	// Properties for all builds.
+	Name       ManifestName
+	K8sYaml    string
+	FileFilter PathMatcher
+	DockerRef  reference.Named
+
+	// Properties for fast_build (builds that support
+	// iteration based on past artifacts)
+	BaseDockerfile string
 	Mounts         []Mount
-	FileFilter     PathMatcher
 	Steps          []Step
 	Entrypoint     Cmd
-	DockerfileTag  reference.Named
-	Name           ManifestName
+
+	// From static_build. If StaticDockerfile is populated,
+	// we do not expect the iterative build fields to be populated.
+	StaticDockerfile string
+	StaticBuildPath  string // the absolute path to the files
+}
+
+func (m Manifest) IsStaticBuild() bool {
+	return m.StaticDockerfile != ""
+}
+
+func (m Manifest) Filter() PathMatcher {
+	f := m.FileFilter
+	if f == nil {
+		return EmptyMatcher
+	}
+	return f
+}
+
+func (m Manifest) LocalPaths() []string {
+	if m.IsStaticBuild() {
+		return []string{m.StaticBuildPath}
+	}
+
+	result := make([]string, len(m.Mounts))
+	for i, mount := range m.Mounts {
+		result[i] = mount.LocalPath
+	}
+	return result
 }
 
 func (m Manifest) Validate() error {
@@ -36,16 +69,22 @@ func (m Manifest) validate() *ValidateErr {
 		return validateErrf("[validate] manifest missing name: %+v", m)
 	}
 
-	if m.DockerfileTag == nil {
-		return validateErrf("[validate] manifest %q missing image tag", m.Name)
+	if m.DockerRef == nil {
+		return validateErrf("[validate] manifest %q missing image ref", m.Name)
 	}
 
 	if m.K8sYaml == "" {
 		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
 	}
 
-	if m.Entrypoint.Empty() {
-		return validateErrf("[validate] manifest %q missing Entrypoint", m.Name)
+	if m.IsStaticBuild() {
+		if m.StaticBuildPath == "" {
+			return validateErrf("[validate] manifest %q missing build path", m.Name)
+		}
+	} else {
+		if m.BaseDockerfile == "" {
+			return validateErrf("[validate] manifest %q missing base dockerfile", m.Name)
+		}
 	}
 
 	return nil

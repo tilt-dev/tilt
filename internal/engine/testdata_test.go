@@ -33,25 +33,29 @@ spec:
                 key: token
 `
 
-const SanchoDockerfile = `
+const SanchoBaseDockerfile = `
 FROM go:1.10
 `
 
-var SanchoTag, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
+var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
 
-var SanchoManifest = model.Manifest{
-	Name:           "sancho",
-	DockerfileTag:  SanchoTag,
-	K8sYaml:        SanchoYAML,
-	DockerfileText: SanchoDockerfile,
-	Mounts: []model.Mount{
-		model.Mount{
-			LocalPath:     "/src/sancho",
-			ContainerPath: "/go/src/github.com/windmilleng/sancho",
+func NewSanchoManifest() model.Manifest {
+	return model.Manifest{
+		Name:           "sancho",
+		DockerRef:      SanchoRef,
+		K8sYaml:        SanchoYAML,
+		BaseDockerfile: SanchoBaseDockerfile,
+		Mounts: []model.Mount{
+			model.Mount{
+				LocalPath:     "/src/sancho",
+				ContainerPath: "/go/src/github.com/windmilleng/sancho",
+			},
 		},
-	},
-	Steps: model.ToSteps([]model.Cmd{
-		model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
-	}),
-	Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
+		Steps: model.ToSteps([]model.Cmd{
+			model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
+		}),
+		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
+	}
 }
+
+var SanchoManifest = NewSanchoManifest()

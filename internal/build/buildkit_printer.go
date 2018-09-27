@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	digest "github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 type buildkitPrinter struct {
-	output io.Writer
+	logger logger.Logger
 	vData  map[digest.Digest]*vertexAndLogs
 	vOrder []digest.Digest
 }
@@ -37,8 +38,9 @@ func (v *vertex) isError() bool {
 }
 
 type vertexAndLogs struct {
-	vertex *vertex
-	logs   []*vertexLog
+	vertex      *vertex
+	logs        []*vertexLog
+	logsPrinted int
 }
 
 type vertexLog struct {
@@ -46,9 +48,9 @@ type vertexLog struct {
 	msg    []byte
 }
 
-func newBuildkitPrinter(output io.Writer) *buildkitPrinter {
+func newBuildkitPrinter(logger logger.Logger) *buildkitPrinter {
 	return &buildkitPrinter{
-		output: output,
+		logger: logger,
 		vData:  map[digest.Digest]*vertexAndLogs{},
 		vOrder: []digest.Digest{},
 	}
@@ -79,42 +81,56 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		}
 	}
 
+	// If the log level is at least verbose, we want to stream the output as
+	// it comes in. Otherwise, we only want to dump it at the end of there's
+	// an error.
+	streamLogs := b.logger.Level() >= logger.VerboseLvl
 	for _, d := range b.vOrder {
 		vl, ok := b.vData[d]
 		if !ok {
 			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
 		if vl.vertex.isRun() && vl.vertex.started && !vl.vertex.cmdPrinted {
-			msg := fmt.Sprintf("%sRUNNING: %s\n", buildPrefix, trimCmd(vl.vertex.name))
-			_, err := b.output.Write([]byte(msg))
-			if err != nil {
-				return err
-			}
-
+			b.logger.Infof("%sRUNNING: %s", buildPrefix, trimCmd(vl.vertex.name))
 			vl.vertex.cmdPrinted = true
 		}
 
 		if vl.vertex.isError() {
-			msg := fmt.Sprintf("\n%sERROR IN: %s\n", buildPrefix, trimCmd(vl.vertex.name))
-			_, err := b.output.Write([]byte(msg))
-			if err != nil {
-				return err
-			}
-
-			for _, l := range vl.logs {
-				sl := strings.TrimSpace(string(l.msg))
-				if len(sl) == 0 {
-					continue
-				}
-				msg := fmt.Sprintf("%s  → %s\n", buildPrefix, sl)
-				_, err := b.output.Write([]byte(msg))
+			b.logger.Infof("\n%sERROR IN: %s", buildPrefix, trimCmd(vl.vertex.name))
+			if !streamLogs {
+				err := b.flushLogs(b.logger.Writer(logger.InfoLvl), vl)
 				if err != nil {
 					return err
 				}
 			}
 		}
+
+		if streamLogs && vl.vertex.isRun() {
+			err := b.flushLogs(b.logger.Writer(logger.VerboseLvl), vl)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
+	return nil
+}
+
+func (b *buildkitPrinter) flushLogs(writer io.Writer, vl *vertexAndLogs) error {
+	for vl.logsPrinted < len(vl.logs) {
+		l := vl.logs[vl.logsPrinted]
+		vl.logsPrinted++
+
+		sl := strings.TrimSpace(string(l.msg))
+		if len(sl) == 0 {
+			continue
+		}
+		msg := fmt.Sprintf("%s  → %s\n", buildPrefix, sl)
+		_, err := writer.Write([]byte(msg))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

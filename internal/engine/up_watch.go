@@ -5,7 +5,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -34,13 +33,14 @@ func makeManifestWatcher(
 			return nil, err
 		}
 
-		if len(manifest.Mounts) == 0 {
+		localPaths := manifest.LocalPaths()
+		if len(localPaths) == 0 {
 			// no mounts -  nothing to watch
 			continue
 		}
 
-		for _, mount := range manifest.Mounts {
-			err = watcher.Add(mount.LocalPath)
+		for _, localPath := range localPaths {
+			err = watcher.Add(localPath)
 			if err != nil {
 				return nil, err
 			}
@@ -123,10 +123,7 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
-		filter := sn.manifest.FileFilter
-		if filter == nil {
-			filter = git.FalseIgnoreTester{}
-		}
+		filter := sn.manifest.Filter()
 
 		go func(manifest model.Manifest, watcher watch.Notify) {
 			// TODO(matt) this will panic if we actually close channels. look at "merge" in https://blog.golang.org/pipelines
