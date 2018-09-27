@@ -391,6 +391,35 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	assert.Equal(t, endToken, err)
 }
 
+func TestStaticRebuildWithChangedFiles(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	manifest := f.newManifest("foobar", nil)
+	manifest.StaticDockerfile = `FROM golang
+ADD ./ ./
+go build ./...
+`
+	manifest.StaticBuildPath = f.Path()
+
+	endToken := errors.New("my-err-token")
+	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+
+		// Simulate a change to main.go
+		mainPath := filepath.Join(f.Path(), "main.go")
+		f.watcher.events <- watch.FileEvent{Path: mainPath}
+
+		// Check that this triggered a rebuild.
+		call = <-f.b.calls
+		assert.Equal(t, []string{mainPath}, call.state.FilesChanged())
+
+		f.watcher.errors <- endToken
+	}()
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	assert.Equal(t, endToken, err)
+}
+
 func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
