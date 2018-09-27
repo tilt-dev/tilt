@@ -57,10 +57,6 @@ func (cbd *LocalContainerBuildAndDeployer) setContainerIDForImage(img reference.
 	cbd.deployInfoMu.Unlock()
 }
 
-func (cbd *LocalContainerBuildAndDeployer) forgetImage(ctx context.Context, image reference.NamedTagged) error {
-	return nil
-}
-
 func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (result BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("manifest", manifest.Name.String())
@@ -116,7 +112,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()

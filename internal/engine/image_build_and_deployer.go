@@ -35,10 +35,6 @@ func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8
 	}
 }
 
-func (ibd *ImageBuildAndDeployer) forgetImage(ctx context.Context, image reference.NamedTagged) error {
-	return nil
-}
-
 // Turn on synclet injection. Should be called before any builds.
 func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
@@ -212,7 +208,7 @@ func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
 }
 
-func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
 	// No-op: ImageBuildAndDeployer doesn't currently need any extra info for a given build result.
 	return
 }

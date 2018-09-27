@@ -468,7 +468,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
 func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
-	f.bd.PostProcessBuild(f.ctx, build)
+	f.bd.PostProcessBuild(f.ctx, build, BuildResult{})
 	return f
 }
 

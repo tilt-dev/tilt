@@ -90,7 +90,6 @@ func (ssm SidecarSyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID)
 
 	client, ok := ssm.clients[podID]
 	if !ok {
-		fmt.Printf("no client for pod '%s', so nothing to close!\n", podID)
 		// if we don't know about the pod, it's already forgotten - noop
 		return nil
 	}
