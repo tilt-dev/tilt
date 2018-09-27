@@ -33,20 +33,20 @@ func init() {
 	resolve.AllowNestedDef = true
 }
 
-func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerfileName, entrypoint, dockerfileTag string
+func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var dockerfileName, entrypoint, dockerRef string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"docker_file_name", &dockerfileName,
-		"docker_file_tag", &dockerfileTag,
+		"docker_file_tag", &dockerRef,
 		"entrypoint?", &entrypoint,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	tag, err := reference.ParseNormalizedNamed(dockerfileTag)
+	ref, err := reference.ParseNormalizedNamed(dockerRef)
 	if err != nil {
-		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
+		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
 	existingBC := thread.Local(buildContextKey)
@@ -55,7 +55,15 @@ func makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args sk
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
-	buildContext := &dockerImage{dockerfileName, tag, []mount{}, []model.Step{}, entrypoint, []model.PathMatcher{git.FalseIgnoreTester{}}}
+	filter := model.NewSimpleFileMatcher(t.filename)
+	buildContext := &dockerImage{
+		dockerfileName,
+		ref,
+		[]mount{},
+		[]model.Step{},
+		entrypoint,
+		[]model.PathMatcher{filter},
+	}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
 }
@@ -197,8 +205,13 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		},
 	}
 
+	tiltfile := &Tiltfile{
+		filename: filename,
+		thread:   thread,
+	}
+
 	predeclared := skylark.StringDict{
-		"start_fast_build":  skylark.NewBuiltin("start_fast_build", makeSkylarkDockerImage),
+		"start_fast_build":  skylark.NewBuiltin("start_fast_build", tiltfile.makeSkylarkDockerImage),
 		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
 		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
 		"local_git_repo":    skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
@@ -215,7 +228,8 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		return nil, err
 	}
 
-	return &Tiltfile{globals, filename, thread}, nil
+	tiltfile.globals = globals
+	return tiltfile, nil
 }
 
 func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manifest, error) {
@@ -279,11 +293,11 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
-		DockerfileText: string(dockerFileBytes),
+		BaseDockerfile: string(dockerFileBytes),
 		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts),
 		Steps:          manifest.dockerImage.steps,
 		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
-		DockerfileTag:  manifest.dockerImage.fileTag,
+		DockerRef:      manifest.dockerImage.ref,
 		Name:           model.ManifestName(manifest.name),
 		FileFilter:     model.NewCompositeMatcher(manifest.dockerImage.filters),
 	}, nil

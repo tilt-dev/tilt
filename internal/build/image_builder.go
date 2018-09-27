@@ -41,8 +41,9 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
-	BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, steps []model.Step) (reference.NamedTagged, error)
+	BuildDockerfile(ctx context.Context, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
@@ -79,8 +80,22 @@ func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, ou
 	}
 }
 
+func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildDockerfile")
+	defer span.Finish()
+
+	paths := []pathMapping{
+		{
+			LocalPath:     buildPath,
+			ContainerPath: "/",
+		},
+	}
+	return d.buildFromDf(ctx, df, paths, filter, ref)
+}
+
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
-	mounts []model.Mount, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
+	mounts []model.Mount, filter model.PathMatcher,
+	steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
 	defer span.Finish()
@@ -112,11 +127,11 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		df = df.Entrypoint(entrypoint)
 	}
 
-	return d.buildFromDf(ctx, df, paths, ref)
+	return d.buildFromDf(ctx, df, paths, filter, ref)
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged,
-	paths []pathMapping, steps []model.Step) (reference.NamedTagged, error) {
+	paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
@@ -127,11 +142,11 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existin
 	// already handled by the watch loop.
 	df, err := d.addMounts(ctx, df, paths)
 	if err != nil {
-		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
+		return nil, fmt.Errorf("BuildImageFromExisting: %v", err)
 	}
 
 	df = d.addRemainingSteps(df, steps)
-	return d.buildFromDf(ctx, df, paths, existing)
+	return d.buildFromDf(ctx, df, paths, filter, existing)
 }
 
 func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Dockerfile {
@@ -288,14 +303,14 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, ref reference.Named) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
 	// TODO(Han): Extend output to print without newline
 	fmt.Printf("  → Tarring context…")
 
-	archive, err := tarContextAndUpdateDf(ctx, df, paths)
+	archive, err := tarContextAndUpdateDf(ctx, df, paths, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +374,7 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
 
-	b := newBuildkitPrinter(os.Stdout)
+	b := newBuildkitPrinter(logger.Get(ctx))
 
 	for decoder.More() {
 		if innerSpan != nil {

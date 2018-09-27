@@ -478,10 +478,10 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
-	tag, err := reference.ParseNormalizedNamed(name)
+	ref, err := reference.ParseNormalizedNamed(name)
 	if err != nil {
 		f.T().Fatal(err)
 	}
 
-	return model.Manifest{Name: model.ManifestName(name), DockerfileTag: tag, Mounts: mounts}
+	return model.Manifest{Name: model.ManifestName(name), DockerRef: ref, Mounts: mounts}
 }

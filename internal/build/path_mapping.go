@@ -11,9 +11,23 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-// pathMapping represents a mapping from a local path to the path on a container
-// where it should be mounted. Both LocalPath and ContainerPath are absolute paths.
-// May be files or directories.
+// pathMapping represents a mapping from the local path to the tarball path
+//
+// To send a local file into a container, we copy it into a tarball, send the
+// tarball to docker, and then run a sequence of steps to unpack the tarball in
+// the container file system.
+//
+// That means every file has 3 paths:
+// 1) LocalPath
+// 2) TarballPath
+// 3) ContainerPath
+//
+// In incremental builds, TarballPath and ContainerPath are always the
+// same, so it was correct to use TarballPath and ContainerPath interchangeably.
+//
+// In static builds, this is no longer the case.
+//
+// TODO(nick): Do a pass on renaming all the path types
 type pathMapping struct {
 	LocalPath     string
 	ContainerPath string

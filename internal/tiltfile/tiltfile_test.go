@@ -54,7 +54,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 }
 
 func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
-	matches, err := manifest.FileFilter.Matches(f.JoinPath(path), isDir)
+	matches, err := manifest.Filter().Matches(f.JoinPath(path), isDir)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -122,8 +122,8 @@ func TestGetManifestConfig(t *testing.T) {
 	}
 
 	manifest := manifestConfig[0]
-	assert.Equal(t, "docker text", manifest.DockerfileText)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerfileTag.String())
+	assert.Equal(t, "docker text", manifest.BaseDockerfile)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
 	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYaml)
 	assert.Equal(t, 1, len(manifest.Mounts), "number of mounts")
 	assert.Equal(t, "/mount_points/1", manifest.Mounts[0].ContainerPath)
@@ -395,8 +395,8 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 	}
 
 	manifest := manifestConfig[0]
-	assert.Equal(t, "docker text", manifest.DockerfileText)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerfileTag.String())
+	assert.Equal(t, "docker text", manifest.BaseDockerfile)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
 	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYaml)
 	assert.Equal(t, 2, len(manifest.Steps))
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv)

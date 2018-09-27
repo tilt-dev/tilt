@@ -133,11 +133,15 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
+	if manifest.IsStaticBuild() {
+		return fmt.Errorf("container build does not support static dockerfiles")
+	}
+
 	// Can't do container update if we don't know what container manifest is running in.
 	info, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok {
-		// TODO(maia): or we could, yknow, actually fetch the deploy info here.
-		return fmt.Errorf("have not yet fetched deploy info for this manifest")
+		return fmt.Errorf("have not yet fetched deploy info for this manifest. " +
+			"This should NEVER HAPPEN b/c of the way PostProcessBuild blocks, something is wrong")
 	}
 
 	if info.err != nil {
@@ -159,7 +163,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	}
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder()
+	ab := build.NewArchiveBuilder(manifest.Filter())
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)
@@ -219,16 +223,18 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 		return
 	}
 
-	// We just made this info, so populate it.
-	err := sbd.populateDeployInfo(ctx, result.Image, info)
-	if err != nil {
-		// There's a variety of reasons why we might not be able to get the deploy info.
-		// The cluster could be in a transient bad state, or the pod
-		// could be in a crash loop because the user wrote some code that
-		// segfaults. Don't worry too much about it, we'll fall back to an image build.
-		logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
-		return
-	}
+	// We just made this info, so populate it. (Can take a while--run async.)
+	go func() {
+		err := sbd.populateDeployInfo(ctx, result.Image, info)
+		if err != nil {
+			// There's a variety of reasons why we might not be able to get the deploy info.
+			// The cluster could be in a transient bad state, or the pod
+			// could be in a crash loop because the user wrote some code that
+			// segfaults. Don't worry too much about it, we'll fall back to an image build.
+			logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
+			return
+		}
+	}()
 }
 
 func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, info *DeployInfo) (err error) {

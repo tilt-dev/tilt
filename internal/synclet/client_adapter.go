@@ -84,6 +84,8 @@ func (s *SyncletCli) UpdateContainer(
 }
 
 func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID k8s.ContainerID, err error) {
+	// Poll for containerID (it's possible for us to connect to a synclet w/o it being fully up and running,
+	// so give it some time to spin up).
 	start := time.Now()
 	for time.Since(start) < containerIdTimeout {
 		// TODO(maia): better distinction between errs meaning "couldn't connect yet"

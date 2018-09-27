@@ -4,6 +4,28 @@ type PathMatcher interface {
 	Matches(f string, isDir bool) (bool, error)
 }
 
+// A Matcher that matches nothing.
+type emptyMatcher struct{}
+
+func (m emptyMatcher) Matches(f string, isDir bool) (bool, error) {
+	return false, nil
+}
+
+var EmptyMatcher PathMatcher = emptyMatcher{}
+
+// A matcher that matches one file.
+type fileMatcher struct {
+	path string
+}
+
+func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
+	return f == m.path, nil
+}
+
+func NewSimpleFileMatcher(f string) fileMatcher {
+	return fileMatcher{path: f}
+}
+
 type PatternMatcher interface {
 	PathMatcher
 

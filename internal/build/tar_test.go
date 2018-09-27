@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/dockerignore"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -12,7 +14,7 @@ import (
 
 func TestArchiveDf(t *testing.T) {
 	f := newFixture(t)
-	ab := NewArchiveBuilder()
+	ab := NewArchiveBuilder(model.EmptyMatcher)
 	defer ab.close()
 	defer f.tearDown()
 
@@ -33,7 +35,7 @@ func TestArchiveDf(t *testing.T) {
 
 func TestArchivePathsIfExists(t *testing.T) {
 	f := newFixture(t)
-	ab := NewArchiveBuilder()
+	ab := NewArchiveBuilder(model.EmptyMatcher)
 	defer ab.close()
 	defer f.tearDown()
 
@@ -60,7 +62,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 }
 
 func TestLen(t *testing.T) {
-	ab := NewArchiveBuilder()
+	ab := NewArchiveBuilder(model.EmptyMatcher)
 	dfText := "FROM alpine"
 	df := Dockerfile(dfText)
 	err := ab.archiveDf(context.Background(), df)
@@ -79,9 +81,15 @@ func TestLen(t *testing.T) {
 
 func TestDontArchiveTiltfile(t *testing.T) {
 	f := newFixture(t)
-	ab := NewArchiveBuilder()
-	defer ab.close()
 	defer f.tearDown()
+
+	filter, err := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"Tiltfile"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ab := NewArchiveBuilder(filter)
+	defer ab.close()
 
 	f.WriteFile("a", "a")
 	f.WriteFile("Tiltfile", "Tiltfile")
@@ -97,7 +105,7 @@ func TestDontArchiveTiltfile(t *testing.T) {
 		},
 	}
 
-	err := ab.ArchivePathsIfExist(f.ctx, paths)
+	err = ab.ArchivePathsIfExist(f.ctx, paths)
 	if err != nil {
 		f.t.Fatal(err)
 	}
