@@ -81,13 +81,26 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 
 func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state BuildState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
-	if !state.HasImage() {
-		// No existing image to build off of, need to build from scratch
-		name := manifest.DockerfileTag
-		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", manifest.DockerfileTag)
+
+	name := manifest.DockerRef
+	if manifest.IsStaticBuild() {
+		output.Get(ctx).StartPipelineStep("Building Dockerfile: [%s]", name)
 		defer output.Get(ctx).EndPipelineStep()
 
-		df := build.Dockerfile(manifest.DockerfileText)
+		df := build.Dockerfile(manifest.StaticDockerfile)
+		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, manifest.Filter())
+
+		if err != nil {
+			return nil, err
+		}
+		n = ref
+
+	} else if !state.HasImage() {
+		// No existing image to build off of, need to build from scratch
+		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", name)
+		defer output.Get(ctx).EndPipelineStep()
+
+		df := build.Dockerfile(manifest.BaseDockerfile)
 		steps := manifest.Steps
 		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, manifest.Filter(), steps, manifest.Entrypoint)
 
@@ -107,7 +120,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 			return nil, err
 		}
 
-		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", manifest.DockerfileTag)
+		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", name)
 		defer output.Get(ctx).EndPipelineStep()
 
 		steps := manifest.Steps
@@ -177,7 +190,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 	}
 
 	if !didReplace {
-		return nil, fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerfileTag)
+		return nil, fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef)
 	}
 
 	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)

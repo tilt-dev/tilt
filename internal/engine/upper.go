@@ -195,7 +195,7 @@ func (u Upper) logBuildEvent(ctx context.Context, manifest model.Manifest, build
 func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
 	refs := make([]reference.Named, len(manifests))
 	for i, s := range manifests {
-		refs[i] = s.DockerfileTag
+		refs[i] = s.DockerRef
 	}
 
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)

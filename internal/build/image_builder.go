@@ -41,6 +41,7 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
+	BuildDockerfile(ctx context.Context, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error)
 	BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
 	BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
@@ -77,6 +78,19 @@ func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, ou
 		out:         out,
 		extraLabels: extraLabels,
 	}
+}
+
+func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildDockerfile")
+	defer span.Finish()
+
+	paths := []pathMapping{
+		{
+			LocalPath:     buildPath,
+			ContainerPath: "/",
+		},
+	}
+	return d.buildFromDf(ctx, df, paths, filter, ref)
 }
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,

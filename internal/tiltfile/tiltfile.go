@@ -34,19 +34,19 @@ func init() {
 }
 
 func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerfileName, entrypoint, dockerfileTag string
+	var dockerfileName, entrypoint, dockerRef string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"docker_file_name", &dockerfileName,
-		"docker_file_tag", &dockerfileTag,
+		"docker_file_tag", &dockerRef,
 		"entrypoint?", &entrypoint,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	tag, err := reference.ParseNormalizedNamed(dockerfileTag)
+	ref, err := reference.ParseNormalizedNamed(dockerRef)
 	if err != nil {
-		return nil, fmt.Errorf("Parsing %q: %v", dockerfileTag, err)
+		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
 	existingBC := thread.Local(buildContextKey)
@@ -58,7 +58,7 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 	filter := model.NewSimpleFileMatcher(t.filename)
 	buildContext := &dockerImage{
 		dockerfileName,
-		tag,
+		ref,
 		[]mount{},
 		[]model.Step{},
 		entrypoint,
@@ -293,11 +293,11 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
-		DockerfileText: string(dockerFileBytes),
+		BaseDockerfile: string(dockerFileBytes),
 		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts),
 		Steps:          manifest.dockerImage.steps,
 		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
-		DockerfileTag:  manifest.dockerImage.fileTag,
+		DockerRef:      manifest.dockerImage.ref,
 		Name:           model.ManifestName(manifest.name),
 		FileFilter:     model.NewCompositeMatcher(manifest.dockerImage.filters),
 	}, nil

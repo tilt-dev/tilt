@@ -117,6 +117,10 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
+	if manifest.IsStaticBuild() {
+		return fmt.Errorf("container build does not support static dockerfiles")
+	}
+
 	// Can't do container update if we don't know what container manifest is running in.
 	info, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok {
