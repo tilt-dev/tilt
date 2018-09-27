@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/docker/distribution/reference"
 
@@ -56,6 +57,7 @@ func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTe
 
 func (composite *CompositeBuildAndDeployer) forgetImage(ctx context.Context, image reference.NamedTagged) error {
 	for _, builder := range composite.builders {
+		fmt.Printf("forgetting on %T\n", builder)
 		err := builder.forgetImage(ctx, image)
 		if err != nil {
 			return err
@@ -72,6 +74,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if err == nil {
 			// TODO(maia): maybe this only needs to be called after certain builds?
 			// I.e. should be called after image build but not after a successful container build?
+			fmt.Printf("old image: %s, new image: %s\n", currentState.LastImage(), br.Image)
 			if currentState.LastImage() != nil && br.Image != currentState.LastImage() {
 				composite.forgetImage(ctx, currentState.LastImage())
 			}

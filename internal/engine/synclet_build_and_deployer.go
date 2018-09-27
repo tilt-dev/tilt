@@ -95,6 +95,7 @@ func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img referen
 
 	deployInfo, ok := sbd.deployInfo[imgNameAndTag]
 	if !ok {
+		fmt.Printf("don't know about '%s', so can't forget!\n", imgNameAndTag)
 		return nil
 	}
 
@@ -212,13 +213,17 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()
 
+	fmt.Printf("post processing for %v\n", result.Image)
+
 	if !result.HasImage() {
+		fmt.Printf("no image for %v\n", result.Image)
 		// This is normal if the previous build failed.
 		return
 	}
 
 	info, ok := sbd.deployInfoForImageOrNew(result.Image)
 	if ok {
+		fmt.Printf("already had info for %v\n", result.Image)
 		// This info was already in the map, nothing to do.
 		return
 	}
@@ -254,6 +259,8 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 
 	pID := k8s.PodIDFromPod(pod)
 	nodeID := k8s.NodeIDFromPod(pod)
+
+	fmt.Printf("populating deploy info for pod %v\n", pID)
 
 	// note: this is here both to get sCli for the call to getContainerForBuild below
 	// *and* to preemptively set up the tunnel + client

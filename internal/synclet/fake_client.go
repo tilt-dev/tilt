@@ -11,9 +11,9 @@ import (
 // NOTE(maia): idk if we even need this -- maybe what we want is a real synclet client
 // with a fake docker client inside it. But ¯\_(ツ)_/¯
 type FakeSyncletClient struct {
-	UpdateContainerCount int
-	ClosedCount          int
-	ErrorToReturn        error
+	UpdateContainerCount         int
+	ClosedCount                  int
+	UpdateContainerErrorToReturn error
 }
 
 var _ SyncletClient = &FakeSyncletClient{}
@@ -24,9 +24,9 @@ func NewFakeSyncletClient() *FakeSyncletClient {
 
 func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID k8s.ContainerID,
 	tarArchive []byte, filesToDelete []string, commands []model.Cmd) error {
-	if c.ErrorToReturn != nil {
-		ret := c.ErrorToReturn
-		c.ErrorToReturn = nil
+	if c.UpdateContainerErrorToReturn != nil {
+		ret := c.UpdateContainerErrorToReturn
+		c.UpdateContainerErrorToReturn = nil
 		return ret
 	}
 	c.UpdateContainerCount += 1
@@ -34,12 +34,6 @@ func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID k8s
 }
 
 func (c *FakeSyncletClient) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
-	if c.ErrorToReturn != nil {
-		ret := c.ErrorToReturn
-		c.ErrorToReturn = nil
-		return k8s.ContainerID(""), ret
-	}
-
 	return k8s.ContainerID("foobar"), nil
 }
 

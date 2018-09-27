@@ -358,7 +358,9 @@ func TestBaDForgetsImages(t *testing.T) {
 	defer f.TearDown()
 
 	// make sBaD return an error so that we fall back to iBaD and get a new image id
-	f.sCli.ErrorToReturn = errors.New("blah")
+	f.sCli.UpdateContainerErrorToReturn = errors.New("blah")
+
+	f.k8s.SetPodWithImageResp(pod1)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {
@@ -368,8 +370,8 @@ func TestBaDForgetsImages(t *testing.T) {
 	if f.sCli.ClosedCount != 1 {
 		t.Errorf("Expected 1 synclet client close, actual: %d", f.sCli.ClosedCount)
 	}
+}
 
-=======
 func TestIgnoredFiles(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
