@@ -7,10 +7,13 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/kubernetes/typed/core/v1"
+	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 
@@ -47,11 +50,12 @@ func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout str
 var _ kubectlRunner = &fakeKubectlRunner{}
 
 type clientTestFixture struct {
-	t       *testing.T
-	ctx     context.Context
-	client  K8sClient
-	runner  *fakeKubectlRunner
-	tracker ktesting.ObjectTracker
+	t           *testing.T
+	ctx         context.Context
+	client      K8sClient
+	runner      *fakeKubectlRunner
+	tracker     ktesting.ObjectTracker
+	watchNotify chan watch.Interface
 }
 
 func newClientTestFixture(t *testing.T) *clientTestFixture {
@@ -61,9 +65,23 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.runner = &fakeKubectlRunner{}
 
 	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	watchNotify := make(chan watch.Interface, 100)
+	ret.watchNotify = watchNotify
 
 	cs := &fake.Clientset{}
 	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	cs.AddWatchReactor("*", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
+		gvr := action.GetResource()
+		ns := action.GetNamespace()
+		watch, err := tracker.Watch(gvr, ns)
+		if err != nil {
+			return false, nil, err
+		}
+
+		watchNotify <- watch
+		return true, watch, nil
+	})
+
 	ret.tracker = tracker
 
 	core := cs.CoreV1()
@@ -78,6 +96,22 @@ func (c clientTestFixture) addObject(obj runtime.Object) {
 	}
 }
 
+func (c clientTestFixture) updatePod(pod *v1.Pod) {
+	gvks, _, err := scheme.Scheme.ObjectKinds(pod)
+	if err != nil {
+		c.t.Fatalf("updatePod: %v", err)
+	} else if len(gvks) == 0 {
+		c.t.Fatal("Could not parse pod into k8s schema")
+	}
+	for _, gvk := range gvks {
+		gvr, _ := meta.UnsafeGuessKindToResource(gvk)
+		err = c.tracker.Update(gvr, pod, NamespaceFromPod(pod).String())
+		if err != nil {
+			c.t.Fatal(err)
+		}
+	}
+}
+
 func (c clientTestFixture) setOutput(s string) {
 	c.runner.stdout = s
 }
@@ -86,7 +120,7 @@ func (c clientTestFixture) setError(err error) {
 	c.runner.err = err
 }
 
-func fakePortForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+func fakePortForwarder(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
 	return nil, nil
 }
 
