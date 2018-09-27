@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 var _ Client = &FakeK8sClient{}
@@ -46,7 +47,15 @@ func (c *FakeK8sClient) SetPodWithImageResp(pID PodID) {
 	c.PodWithImageResp = pID
 }
 
-func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (*v1.Pod, error) {
+func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
+	return watch.NewEmptyWatch(), nil
+}
+
+func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
+	return nil, nil
+}
+
+func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error) {
 	if !c.PodWithImageResp.Empty() {
 		res := c.PodWithImageResp
 		c.PodWithImageResp = ""
@@ -63,7 +72,7 @@ func (c *FakeK8sClient) SetPollForPodWithImageDelay(dur time.Duration) {
 	c.PollForPodWithImageDelay = dur
 }
 
-func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error) {
+func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, timeout time.Duration) (*v1.Pod, error) {
 	defer c.SetPollForPodWithImageDelay(0)
 
 	if c.PollForPodWithImageDelay > timeout {
@@ -72,7 +81,7 @@ func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference
 	}
 
 	time.Sleep(c.PollForPodWithImageDelay)
-	return c.PodWithImage(ctx, image)
+	return c.PodWithImage(ctx, image, n)
 }
 
 func (c *FakeK8sClient) applyWasCalled() bool {

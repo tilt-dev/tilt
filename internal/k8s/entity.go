@@ -89,7 +89,7 @@ func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 
 type LoadBalancerSpec struct {
 	Name      string
-	Namespace string
+	Namespace Namespace
 	Ports     []int32
 }
 
@@ -125,7 +125,7 @@ func ToLoadBalancerSpec(entity K8sEntity) (LoadBalancerSpec, bool) {
 
 	result := LoadBalancerSpec{
 		Name:      name,
-		Namespace: meta.Namespace,
+		Namespace: Namespace(meta.Namespace),
 	}
 	for _, portSpec := range spec.Ports {
 		if portSpec.Port != 0 {

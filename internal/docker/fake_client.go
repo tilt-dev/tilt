@@ -49,7 +49,7 @@ var DefaultContainerListOutput = map[string][]types.Container{
 		types.Container{ID: TestContainer, ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
 	"two-containers": []types.Container{
-		types.Container{ID: "not a match", ImageID: ExamplePushSHA1, Command: k8s.PauseCmd},
+		types.Container{ID: "not a match", ImageID: ExamplePushSHA1, Command: "/pause"},
 		types.Container{ID: "the right container", ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
 }
