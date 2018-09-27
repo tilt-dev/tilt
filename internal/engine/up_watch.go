@@ -33,13 +33,14 @@ func makeManifestWatcher(
 			return nil, err
 		}
 
-		if len(manifest.Mounts) == 0 {
+		localPaths := manifest.LocalPaths()
+		if len(localPaths) == 0 {
 			// no mounts -  nothing to watch
 			continue
 		}
 
-		for _, mount := range manifest.Mounts {
-			err = watcher.Add(mount.LocalPath)
+		for _, localPath := range localPaths {
+			err = watcher.Add(localPath)
 			if err != nil {
 				return nil, err
 			}

@@ -44,6 +44,18 @@ func (m Manifest) Filter() PathMatcher {
 	return f
 }
 
+func (m Manifest) LocalPaths() []string {
+	if m.IsStaticBuild() {
+		return []string{m.StaticBuildPath}
+	}
+
+	result := make([]string, len(m.Mounts))
+	for i, mount := range m.Mounts {
+		result[i] = mount.LocalPath
+	}
+	return result
+}
+
 func (m Manifest) Validate() error {
 	err := m.validate()
 	if err != nil {
