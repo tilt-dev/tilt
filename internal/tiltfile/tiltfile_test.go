@@ -168,6 +168,21 @@ func TestOldMountSyntax(t *testing.T) {
 	}
 }
 
+func TestStopBuildBeforeStartBuild(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("Tiltfile", `def blorgly():
+  return stop_build()
+`)
+
+	err := f.LoadManifestForError("blorgly")
+	if !strings.Contains(err.Error(), noActiveBuildError) {
+		t.Errorf("Expected error message to contain %s, got %v", noActiveBuildError, err)
+	}
+}
+
 func TestGetManifestConfigMissingDockerFile(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
@@ -519,6 +534,33 @@ func TestReadFile(t *testing.T) {
 
 	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, manifest.K8sYaml, "hello world")
+}
+
+func TestConfigMatcher(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
+	f.WriteFile("Tiltfile", `def blorgly():
+  yaml = read_file("a.txt")
+  start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
+  image = stop_build()
+  return k8s_service(yaml, image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	matches := func(p string) bool {
+		ok, err := manifest.ConfigMatcher.Matches(p, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	assert.True(t, matches(f.JoinPath("Dockerfile.base")))
+	assert.True(t, matches(f.JoinPath("a.txt")))
+	assert.False(t, matches(f.JoinPath("b.txt")))
 }
 
 func TestRepoPath(t *testing.T) {

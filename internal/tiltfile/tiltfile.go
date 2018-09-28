@@ -2,7 +2,6 @@ package tiltfile
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
@@ -20,7 +21,6 @@ import (
 )
 
 const FileName = "Tiltfile"
-const buildContextKey = "buildContext"
 
 type Tiltfile struct {
 	globals  skylark.StringDict
@@ -121,7 +121,7 @@ func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args sky
 		return nil, err
 	}
 	// Name will be initialized later
-	return k8sManifest{yaml, *dockerImage, ""}, nil
+	return k8sManifest{yaml, *dockerImage, "", nil}, nil
 }
 
 func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -141,6 +141,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 	for i.Next(&v) {
 		switch v := v.(type) {
 		case *skylark.Function:
+			thread.SetLocal(readFilesKey, []string{})
 			r, err := v.Call(thread, nil, nil)
 			if err != nil {
 				return nil, err
@@ -149,7 +150,15 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
+
+			files, err := getAndClearReadFiles(thread)
+			if err != nil {
+				return nil, err
+			}
+
 			s.name = v.Name()
+			s.configFiles = files
+
 			manifests = append(manifests, s)
 		default:
 			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
@@ -226,16 +235,21 @@ func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, err
 	}
 
+	err = recordReadFile(thread, path)
+	if err != nil {
+		return nil, err
+	}
+
 	return skylark.String(dat), nil
 }
 
 func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	buildContext, ok := thread.Local(buildContextKey).(*dockerImage)
-	if !ok {
-		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
+	buildContext, err := getAndClearBuildContext(thread)
+	if err != nil {
+		return nil, err
+	} else if buildContext == nil {
+		return nil, errors.New(noActiveBuildError)
 	}
-	thread.SetLocal(buildContextKey, nil)
-
 	return buildContext, nil
 }
 
@@ -291,9 +305,17 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", manifestName)
 	}
 
+	thread := tiltfile.thread
+	thread.SetLocal(readFilesKey, []string{})
+
 	val, err := manifestFunction.Call(tiltfile.thread, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running '%v': %v", manifestName, err.Error())
+	}
+
+	files, err := getAndClearReadFiles(thread)
+	if err != nil {
+		return nil, err
 	}
 
 	switch manifest := val.(type) {
@@ -310,10 +332,13 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 		}
 		return servs, nil
 	case k8sManifest:
+		manifest.configFiles = files
+
 		s, err := skylarkManifestToDomain(manifest)
 		if err != nil {
 			return nil, err
 		}
+
 		s.Name = model.ManifestName(manifestName)
 		return []model.Manifest{s}, nil
 
@@ -332,16 +357,25 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 	image := manifest.dockerImage
 	baseDockerfileBytes := []byte{}
 	staticDockerfileBytes := []byte{}
+	filename := ""
 	if image.staticDockerfilePath != "" {
 		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath)
 		if err != nil {
 			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath, err)
 		}
+		filename = image.staticDockerfilePath
 	} else {
 		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath)
 		if err != nil {
 			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath, err)
 		}
+		filename = image.baseDockerfilePath
+	}
+
+	files := append([]string{filename}, manifest.configFiles...)
+	configMatcher, err := model.NewSimpleFileMatcher(files...)
+	if err != nil {
+		return model.Manifest{}, errors.Wrap(err, "skylarkManifestToDomain")
 	}
 
 	return model.Manifest{
@@ -353,6 +387,7 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
 		FileFilter:     model.NewCompositeMatcher(image.filters),
+		ConfigMatcher:  configMatcher,
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),

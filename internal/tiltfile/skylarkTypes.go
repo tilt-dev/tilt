@@ -14,6 +14,7 @@ import (
 )
 
 const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `add(dest: string, src: string)`. Now it is `add(src: localPath, dest: string)`."
+const noActiveBuildError = "No active build"
 
 type compManifest struct {
 	cManifest []k8sManifest
@@ -40,6 +41,7 @@ type k8sManifest struct {
 	k8sYaml     skylark.String
 	dockerImage dockerImage
 	name        string
+	configFiles []string
 }
 
 var _ skylark.Value = k8sManifest{}
