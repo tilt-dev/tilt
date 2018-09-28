@@ -7,8 +7,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/options"
 
 	"github.com/windmilleng/tilt/internal/tracer"
 
@@ -46,9 +46,10 @@ func main() {
 	// TODO(matt) figure out how to reconcile this with opt-in tracing
 	t := opentracing.GlobalTracer()
 
-	serv := grpc.NewServer(grpc.UnaryInterceptor(
-		otgrpc.OpenTracingServerInterceptor(t)),
-		grpc.StreamInterceptor(otgrpc.OpenTracingStreamServerInterceptor(t)))
+	opts := options.MaxMsgServer()
+	opts = append(opts, options.TracingInterceptorsServer(t)...)
+
+	serv := grpc.NewServer(opts...)
 
 	// TODO(Matt) fix this so either we don't need an k8s env to instantiate a synclet, or
 	// so that we can still detect env inside of containers w/o kubectl
