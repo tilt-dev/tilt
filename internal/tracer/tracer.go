@@ -47,6 +47,18 @@ func Init(ctx context.Context) (func() error, error) {
 
 }
 
+func TraceID(ctx context.Context) (string, error) {
+	spanContext := opentracing.SpanFromContext(ctx)
+	if spanContext == nil {
+		return "", errors.New("cannot get traceid - there is no span context")
+	}
+	zipkinSpanContext, ok := spanContext.Context().(zipkin.SpanContext)
+	if !ok {
+		return "", errors.New("cannot get traceid - span context was not a zipkin span context")
+	}
+	return zipkinSpanContext.TraceID.ToHex(), nil
+}
+
 // TagStrToMap converts a user-passed string of tags of the form `key1=val1,key2=val2` to a map.
 func TagStrToMap(tagStr string) map[string]string {
 	if tagStr == "" {
