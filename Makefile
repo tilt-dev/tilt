@@ -18,12 +18,16 @@ install:
 	./hide_tbd_warning go install ./...
 
 install-dev:
+	$(eval TAG := $(shell [ "$$SYNCLET_TAG" ] && echo "$$SYNCLET_TAG" || whoami))
+	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$(TAG)'" ./...
+
+synclet-dev:
 	docker build -t $(SYNCLET_IMAGE):dirty -f synclet/Dockerfile .
-	$(eval HASH := $(shell docker inspect $(SYNCLET_IMAGE):dirty -f '{{.Id}}' | \
-                         sed -E 's/sha256:(.{20}).*/dirty-\1/'))
-	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$(HASH)
-	docker push $(SYNCLET_IMAGE):$(HASH)
-	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$(HASH)'" ./...
+	$(eval TAG := $(shell [ "$$SYNCLET_TAG" ] && echo "$$SYNCLET_TAG" || whoami))
+	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$(TAG)
+	docker push $(SYNCLET_IMAGE):$(TAG)
+
+build-synclet-and-install: synclet-dev install-dev
 
 lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
@@ -70,4 +74,3 @@ clean:
 synclet-latest:
 	docker build -t $(SYNCLET_IMAGE):latest -f synclet/Dockerfile .
 	docker push $(SYNCLET_IMAGE):latest
-

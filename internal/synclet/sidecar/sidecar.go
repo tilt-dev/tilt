@@ -13,7 +13,7 @@ func syncletPrivileged() *bool {
 	return &val
 }
 
-// When we deploy Tilt, we override this with LDFLAGS
+// When we deploy Tilt for development, we override this with LDFLAGS
 var SyncletTag = "latest"
 
 const SyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
