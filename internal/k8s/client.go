@@ -11,6 +11,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 
@@ -22,11 +23,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const PauseCmd = "/pause"
-
+type Namespace string
 type PodID string
 type ContainerID string
 type NodeID string
+
+const DefaultNamespace = Namespace("default")
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
@@ -42,12 +44,24 @@ func (cID ContainerID) ShortStr() string {
 
 func (nID NodeID) String() string { return string(nID) }
 
+func (n Namespace) String() string {
+	if n == "" {
+		return string(DefaultNamespace)
+	}
+	return string(n)
+}
+
 type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	PodWithImage(ctx context.Context, image reference.NamedTagged) (*v1.Pod, error)
-	PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error)
+	PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error)
+	PollForPodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, timeout time.Duration) (*v1.Pod, error)
+	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
+
+	// Creates a channel where all changes to the pod are brodcast.
+	// Takes a pod as input, to indicate the version of the pod where we start watching.
+	WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error)
 
 	// Gets the ID for the Node on which the specified Pod is running
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
@@ -143,8 +157,7 @@ func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBal
 
 	port := lb.Ports[0]
 
-	// TODO(nick): Use lb.Namespace when it's committed.
-	svc, err := k.core.Services("default").Get(lb.Name, metav1.GetOptions{})
+	svc, err := k.core.Services(lb.Namespace.String()).Get(lb.Name, metav1.GetOptions{})
 	if err != nil {
 		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
 	}

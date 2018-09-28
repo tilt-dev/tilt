@@ -231,7 +231,7 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	}()
 
 	// get pod running the image we just deployed
-	pod, err := sbd.kCli.PollForPodWithImage(ctx, image, podPollTimeoutSynclet)
+	pod, err := sbd.kCli.PollForPodWithImage(ctx, image, k8s.DefaultNamespace, podPollTimeoutSynclet)
 	if err != nil {
 		return errors.Wrapf(err, "PodWithImage (img = %s)", image)
 	}

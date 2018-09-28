@@ -11,16 +11,33 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
-func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, timeout time.Duration) (*v1.Pod, error) {
+func (k K8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
+	podAPI := k.core.Pods(NamespaceFromPod(pod).String())
+	podID := PodIDFromPod(pod)
+	fieldSelector := fmt.Sprintf("metadata.name=%s", podID)
+	watchOptions := metav1.ListOptions{
+		FieldSelector:   fieldSelector,
+		Watch:           true,
+		ResourceVersion: pod.ObjectMeta.ResourceVersion,
+	}
+	return podAPI.Watch(watchOptions)
+}
+
+func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
+	return k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
+}
+
+func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, timeout time.Duration) (*v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodWithImage")
 	span.SetTag("img", image.String())
 	defer span.Finish()
 
 	start := time.Now()
 	for time.Since(start) < timeout {
-		pod, err := k.PodWithImage(ctx, image)
+		pod, err := k.PodWithImage(ctx, image, n)
 		if err != nil {
 			return nil, err
 		}
@@ -36,12 +53,12 @@ func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.Name
 
 // PodWithImage returns the ID of the pod running the given image. If too many matches, throw
 // an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged) (*v1.Pod, error) {
+func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodWithImage")
 	defer span.Finish()
 
-	// TODO(nick): This should take a Namespace, and maybe some label selectors?
-	podList, err := k.core.Pods("default").List(metav1.ListOptions{})
+	// TODO(nick): This should take some label selectors so that we're not querying the whole cluster?
+	podList, err := k.core.Pods(n.String()).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("PodWithImage: %v", err)
 	}
@@ -72,6 +89,10 @@ func podMap(podList *v1.PodList) map[string][]v1.Pod {
 
 func PodIDFromPod(pod *v1.Pod) PodID {
 	return PodID(pod.ObjectMeta.Name)
+}
+
+func NamespaceFromPod(pod *v1.Pod) Namespace {
+	return Namespace(pod.ObjectMeta.Namespace)
 }
 
 func NodeIDFromPod(pod *v1.Pod) NodeID {

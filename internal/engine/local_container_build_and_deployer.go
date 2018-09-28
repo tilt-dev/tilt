@@ -141,7 +141,7 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	defer span.Finish()
 
 	// get pod running the image we just deployed
-	pod, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, podPollTimeoutLocal)
+	pod, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, k8s.DefaultNamespace, podPollTimeoutLocal)
 	if err != nil {
 		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
 	}

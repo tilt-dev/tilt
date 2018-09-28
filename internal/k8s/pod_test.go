@@ -16,11 +16,15 @@ import (
 const expectedPod = PodID("blorg-fe-6b4477ffcd-xf98f")
 const blorgDevImgStr = "blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f"
 
+var resourceVersion = 1
+
 func fakePod(podID PodID, imageID string) v1.Pod {
+	resourceVersion++
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(podID),
-			Namespace: "default",
+			Name:            string(podID),
+			Namespace:       "default",
+			ResourceVersion: fmt.Sprintf("%d", resourceVersion),
 		},
 		Spec: v1.PodSpec{
 			NodeName: "node1",
@@ -79,7 +83,7 @@ func TestPodWithImage(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PodWithImage(f.ctx, nt)
+	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -94,7 +98,7 @@ func TestPollForPodWithImage(t *testing.T) {
 	}()
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PollForPodWithImage(f.ctx, nt, 2*time.Second)
+	pod, err := f.client.PollForPodWithImage(f.ctx, nt, DefaultNamespace, 2*time.Second)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -109,7 +113,7 @@ func TestPollForPodWithImageTimesOut(t *testing.T) {
 	}()
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	_, err := f.client.PollForPodWithImage(f.ctx, nt, 500*time.Millisecond)
+	_, err := f.client.PollForPodWithImage(f.ctx, nt, DefaultNamespace, 500*time.Millisecond)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "timed out polling for pod running image")
 	}
