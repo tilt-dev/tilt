@@ -272,5 +272,11 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	info.containerID = cID
 	info.nodeID = nodeID
 
+	// preemptively set up the tunnel + client
+	_, err = sbd.ssm.ClientForPod(ctx, pID)
+	if err != nil {
+		return errors.Wrapf(err, "creating synclet client for pod '%s'", pID)
+	}
+
 	return nil
 }
