@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/options"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 
 	"github.com/pkg/errors"
@@ -141,9 +141,11 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 
 	t := opentracing.GlobalTracer()
 
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", tunneledPort), grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(t)),
-		grpc.WithStreamInterceptor(otgrpc.OpenTracingStreamClientInterceptor(t)))
+	opts := options.MaxMsgDial()
+	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, options.TracingInterceptorsDial(t)...)
+
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", tunneledPort), opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "connecting to synclet")
 	}
