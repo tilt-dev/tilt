@@ -158,7 +158,7 @@ func (d *DockerCli) ContainerRestartNoWait(ctx context.Context, containerID stri
 }
 
 func (d *DockerCli) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd, out io.Writer) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ExecInContainer")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer")
 	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
 	defer span.Finish()
 
