@@ -3,6 +3,7 @@
 all: lint errcheck verify_gofmt wire-check test
 
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
+SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
 proto:
 	docker build -t tilt-protogen -f Dockerfile.protogen .
@@ -18,14 +19,14 @@ install:
 	./hide_tbd_warning go install ./...
 
 install-dev:
-	$(eval TAG := $(shell [ "$$SYNCLET_TAG" ] && echo "$$SYNCLET_TAG" || whoami))
-	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$(TAG)'" ./...
+	if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
+	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
 synclet-dev:
 	docker build -t $(SYNCLET_IMAGE):dirty -f synclet/Dockerfile .
-	$(eval TAG := $(shell [ "$$SYNCLET_TAG" ] && echo "$$SYNCLET_TAG" || whoami))
-	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$(TAG)
-	docker push $(SYNCLET_IMAGE):$(TAG)
+	docker inspect $(SYNCLET_IMAGE):dirty -f '{{.Id}}' | sed -E 's/sha256:(.{20}).*/dirty-\1/' > .synclet-dev-image-tag
+	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))
+	docker push $(SYNCLET_IMAGE):$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))
 
 build-synclet-and-install: synclet-dev install-dev
 
