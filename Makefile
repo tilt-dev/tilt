@@ -71,6 +71,9 @@ ci-container:
 clean:
 	go clean -cache -testcache -r -i ./...
 
-synclet-latest:
-	docker build -t $(SYNCLET_IMAGE):latest -f synclet/Dockerfile .
-	docker push $(SYNCLET_IMAGE):latest
+synclet-release:
+	$(eval TAG := $(shell date +v%Y%m%d))
+	docker build -t $(SYNCLET_IMAGE):$(TAG) -f synclet/Dockerfile .
+	docker push $(SYNCLET_IMAGE):$(TAG)
+	sed -i 's/var SyncletTag = ".*"/var SyncletTag = "$(TAG)"/' internal/synclet/sidecar/sidecar.go
+
