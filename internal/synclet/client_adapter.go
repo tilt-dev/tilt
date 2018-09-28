@@ -83,7 +83,7 @@ func (s *SyncletCli) UpdateContainer(
 }
 
 func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID k8s.ContainerID, err error) {
-	timeout := time.NewTimer(containerIdTimeout)
+	timeout := time.After(containerIdTimeout)
 	for {
 		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
 		// and "everything is borked, stop trying"
@@ -95,7 +95,7 @@ func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, ima
 		retryTimer := time.NewTimer(containerIdRetryDelay)
 
 		select {
-		case <-timeout.C:
+		case <-timeout:
 			return "", errors.Wrapf(err, "timed out trying to get container ID for pod %s (after %s). Latest err",
 				podID.String(), containerIdTimeout)
 		case <-ctx.Done():
