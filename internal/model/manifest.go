@@ -19,6 +19,10 @@ type Manifest struct {
 	FileFilter PathMatcher
 	DockerRef  reference.Named
 
+	// Local files read while reading the Tilt configuration.
+	// If these files are changed, we should reload the manifest.
+	ConfigMatcher PathMatcher
+
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
 	BaseDockerfile string

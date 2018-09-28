@@ -18,23 +18,27 @@ func (m emptyMatcher) Matches(f string, isDir bool) (bool, error) {
 
 var EmptyMatcher PathMatcher = emptyMatcher{}
 
-// A matcher that matches one file.
+// A matcher that matches against a set of files.
 type fileMatcher struct {
-	path string
+	paths map[string]bool
 }
 
 func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
-	return f == m.path, nil
+	return m.paths[f], nil
 }
 
-func NewSimpleFileMatcher(f string) (fileMatcher, error) {
-	// Get the absolute path of the file, because PathMatchers expect to always
-	// work with absolute paths.
-	f, err := filepath.Abs(f)
-	if err != nil {
-		return fileMatcher{}, fmt.Errorf("NewSimpleFileMatcher: %v", err)
+func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
+	pathMap := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		// Get the absolute path of the path, because PathMatchers expect to always
+		// work with absolute paths.
+		path, err := filepath.Abs(path)
+		if err != nil {
+			return fileMatcher{}, fmt.Errorf("NewSimplePathMatcher: %v", err)
+		}
+		pathMap[path] = true
 	}
-	return fileMatcher{path: f}, nil
+	return fileMatcher{paths: pathMap}, nil
 }
 
 type PatternMatcher interface {
