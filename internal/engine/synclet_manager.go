@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -16,8 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"google.golang.org/grpc"
 )
-
-const newClientTimeout = time.Second * 10
 
 type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error)
 type SyncletManager struct {
@@ -76,7 +73,7 @@ func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID) (syn
 		return client, nil
 	}
 
-	client, err := sm.pollForNewClient(ctx, sm.kCli, podID, newClientTimeout)
+	client, err := sm.newClient(ctx, sm.kCli, podID)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating synclet client")
 	}
@@ -100,24 +97,8 @@ func (sm SyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID) error {
 	return client.Close()
 }
 
-func (sm SyncletManager) pollForNewClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, timeout time.Duration) (cli synclet.SyncletClient, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletManager-pollForNewClient")
-	defer span.Finish()
-
-	start := time.Now()
-	for time.Since(start) < timeout {
-		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
-		// and "everything is borked, stop trying"
-		cli, err = sm.newClient(ctx, kCli, podID)
-		if cli != nil {
-			return cli, nil
-		}
-	}
-	return nil, errors.Wrapf(err, "timed out trying to create new synclet client for pod %s (after %s) with err",
-		podID.String(), timeout)
-}
 func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletManager-newSyncletClient")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-newSidecarSyncletClient")
 	defer span.Finish()
 
 	pod, err := kCli.PodByID(ctx, podID, k8s.DefaultNamespace)

@@ -51,7 +51,7 @@ class Service:
         self.up_called = False
 
     def tilt_up_cmd(self, case: str) -> List[str]:
-        return ["tilt", "up", self.name, '-d', '--browser=off', '--traceTags', tags_for_case_name(case)]
+        return ["tilt", "up", self.name, '-d', '--browser=off', '--trace', '--traceTags', tags_for_case(case)]
 
     def tilt_up_watch_cmd(self, case: str) -> List[str]:
         cmd = self.tilt_up_cmd(case)
@@ -71,13 +71,13 @@ class Service:
 
     def change_main_go(self):
         with open(self.main_go_path, 'a') as gofile:
-            gofile.write('\n// timing.py edit\n')
+            gofile.write('\n// {}\n'.format(randstr(10)))
         self.main_go_changed = True
 
 
 servantes_path = os.path.join(GOPATH, 'src/github.com/windmilleng/servantes')
 SERVANTES_FE = Service("fe", servantes_path, os.path.join(servantes_path, 'servantes'),
-                       os.path.join(servantes_path, 'servantes/main.go'))
+                       os.path.join(servantes_path, 'fe/main.go'))
 
 DOGGOS = Service("doggos", servantes_path, os.path.join(servantes_path, 'doggos'),
                  os.path.join(servantes_path, 'doggos/main.go'))
@@ -94,6 +94,24 @@ class K8sEnv(Enum):
     GKE = 1
     D4M = 2
     MINIKUBE = 3
+
+
+def get_k8s_env() -> K8sEnv:
+    """Get current Kubernetes env. (or throw an exception)."""
+    out = subprocess.check_output(['kubectl', 'config', 'current-context'])
+
+    outstr = out.decode('utf-8').strip()
+    if outstr == 'docker-for-desktop':
+        return K8sEnv.D4M
+    elif 'gke' in outstr:
+        return K8sEnv.GKE
+    elif outstr == 'minikube':
+        return K8sEnv.MINIKUBE
+    else:
+        raise Exception('Unable to find a matching k8s env for output "{}"'. format(outstr))
+
+
+ENV = get_k8s_env()
 
 
 class Case:
@@ -144,6 +162,7 @@ def main():
         Case('tilt up again new file', DOGGOS, test_tilt_up_again_new_file),
         Case('watch build from new file', DOGGOS, test_watch_build_from_new_file),
         Case('watch build from many changed files', DOGGOS, test_watch_build_from_many_changed_files),
+        Case('watch build from big file', DOGGOS, test_watch_build_from_big_file),
         Case('watch build from changed go file', DOGGOS, test_watch_build_from_changed_go_file),
         Case('tilt up big file (5MB)', DOGGOS, test_tilt_up_big_file),
 
@@ -246,21 +265,6 @@ def call_or_error(cmd: List[str]):
     return_code = subprocess.call(cmd)
     if return_code != 0:
         raise Exception('Command {} exited with exit code {}'.format(cmd, return_code))
-
-
-def get_k8s_env() -> K8sEnv:
-    """Get current Kubernetes env. (or throw an exception)."""
-    out = subprocess.check_output(['kubectl', 'config', 'current-context'])
-
-    outstr = out.decode('utf-8').strip()
-    if outstr == 'docker-for-desktop':
-        return K8sEnv.D4M
-    elif 'gke' in outstr:
-        return K8sEnv.GKE
-    elif outstr == 'minikube':
-        return K8sEnv.MINIKUBE
-    else:
-        raise Exception('Unable to find a matching k8s env for output "{}"'. format(outstr))
 
 
 def curl(url) -> str:
@@ -423,6 +427,24 @@ def test_watch_build_from_many_changed_files(serv: Service, case: str) -> float:
     return t.duration_secs
 
 
+def test_watch_build_from_big_file(serv: Service, case: str) -> float:
+    # TODO: make sure `tilt up --watch` isn't already running?
+
+    # run `tilt up --watch` and wait for it to finish the initial build
+    tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(case), '[timing.py] finished initial build')
+
+    # wait a sec for the pod to come up so we can do a container update
+    time.sleep(5)
+
+    # write a new file (does not affect go build)
+    serv.write_file(5 * MB)  # 100KB total
+
+    with Timer() as t:
+        wait_for_stdout(tilt_proc, '[timing.py] finished build from file change',
+                        kill_on_match=True)
+    return t.duration_secs
+
+
 def test_watch_build_from_changed_go_file(serv: Service, case: str) -> float:
     # TODO: make sure `tilt up --watch` isn't already running?
 
@@ -478,11 +500,10 @@ def secs_since(t: datetime.datetime) -> float:
     return(datetime.datetime.now() - t).total_seconds()
 
 
-# TODO(maia): tag with service name also?
-def tags_for_case_name(case: str) -> str:
+def tags_for_case(case: str) -> str:
     """Given name of test case, return str of tag(s) passable to `tilt up --traceTags`
     (of the form: `key1=val1,key2=val2`)."""
-    s = "case={}".format(case)
+    s = "case={},env={}".format(case.replace(" ", "-"), ENV.name.lower())
 
     global TRACE_TAG
     if TRACE_TAG:

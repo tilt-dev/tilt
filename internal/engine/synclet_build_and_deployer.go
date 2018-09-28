@@ -268,6 +268,8 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 		return errors.Wrapf(err, "WaitForContainerReady (pod = %s)", pID)
 	}
 
+	logger.Get(ctx).Verbosef("talking to synclet client for pod %s", pID.String())
+
 	info.podID = pID
 	info.containerID = cID
 	info.nodeID = nodeID
