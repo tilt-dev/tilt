@@ -137,7 +137,7 @@ func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.Pod
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
 	}
 
-	logger.Get(ctx).Verbosef("i'm a sidecar - tunneling to synclet client at %s (local port %d)", podID.String(), tunneledPort)
+	logger.Get(ctx).Verbosef("tunneling to synclet client at %s (local port %d)", podID.String(), tunneledPort)
 
 	t := opentracing.GlobalTracer()
 
