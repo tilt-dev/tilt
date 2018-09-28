@@ -51,7 +51,7 @@ func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref 
 			}
 		}
 	}
-	panic("WaitForContainerReady")
+	panic("WaitForContainerReady") // should never reach this state
 }
 
 func waitForContainerReadyHelper(pod *v1.Pod, ref reference.Named) (ContainerID, error) {
