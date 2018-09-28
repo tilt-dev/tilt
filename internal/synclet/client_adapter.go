@@ -18,6 +18,7 @@ import (
 )
 
 const containerIdTimeout = time.Second * 10
+const containerIdRetryDelay = time.Millisecond * 100
 
 type SyncletClient interface {
 	UpdateContainer(ctx context.Context, containerID k8s.ContainerID, tarArchive []byte,
@@ -82,19 +83,26 @@ func (s *SyncletCli) UpdateContainer(
 }
 
 func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID k8s.ContainerID, err error) {
-	// Poll for containerID (it's possible for us to connect to a synclet w/o it being fully up and running,
-	// so give it some time to spin up).
-	start := time.Now()
-	for time.Since(start) < containerIdTimeout {
+	timeout := time.After(containerIdTimeout)
+	for {
 		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
 		// and "everything is borked, stop trying"
 		cID, err = s.containerIDForPod(ctx, podID, imageID)
 		if !cID.Empty() {
 			return cID, nil
 		}
+
+		retryTimer := time.NewTimer(containerIdRetryDelay)
+
+		select {
+		case <-timeout:
+			return "", errors.Wrapf(err, "timed out trying to get container ID for pod %s (after %s). Latest err",
+				podID.String(), containerIdTimeout)
+		case <-ctx.Done():
+			return "", errors.New("ctx was cancelled")
+		case <-retryTimer.C:
+		}
 	}
-	return "", errors.Wrapf(err, "timed out trying to get container ID for pod %s (after %s). Latest err",
-		podID.String(), containerIdTimeout)
 }
 
 func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
