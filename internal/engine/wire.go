@@ -38,12 +38,12 @@ var DeployerBaseWireSet = wire.NewSet(
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSidecarSyncletManagerForTests,
+	NewSyncletManagerForTests,
 )
 
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSidecarSyncletManager,
+	NewSyncletManager,
 )
 
 func provideBuildAndDeployer(

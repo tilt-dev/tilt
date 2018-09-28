@@ -20,7 +20,7 @@ import (
 const newClientTimeout = time.Second * 10
 
 type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error)
-type SidecarSyncletManager struct {
+type SyncletManager struct {
 	kCli      k8s.Client
 	mutex     *sync.Mutex
 	clients   map[k8s.PodID]synclet.SyncletClient
@@ -45,21 +45,21 @@ func (t tunneledSyncletClient) Close() error {
 	return nil
 }
 
-func NewSidecarSyncletManager(kCli k8s.Client) SidecarSyncletManager {
-	return SidecarSyncletManager{
+func NewSyncletManager(kCli k8s.Client) SyncletManager {
+	return SyncletManager{
 		kCli:      kCli,
 		mutex:     new(sync.Mutex),
 		clients:   make(map[k8s.PodID]synclet.SyncletClient),
-		newClient: newSidecarSyncletClient,
+		newClient: newSyncletClient,
 	}
 }
 
-func NewSidecarSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) SidecarSyncletManager {
+func NewSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) SyncletManager {
 	newClientFn := func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
 		return fakeCli, nil
 	}
 
-	return SidecarSyncletManager{
+	return SyncletManager{
 		kCli:      kCli,
 		mutex:     new(sync.Mutex),
 		clients:   make(map[k8s.PodID]synclet.SyncletClient),
@@ -67,48 +67,48 @@ func NewSidecarSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletCl
 	}
 }
 
-func (ssm SidecarSyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID) (synclet.SyncletClient, error) {
-	ssm.mutex.Lock()
-	defer ssm.mutex.Unlock()
+func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID) (synclet.SyncletClient, error) {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
 
-	client, ok := ssm.clients[podID]
+	client, ok := sm.clients[podID]
 	if ok {
 		return client, nil
 	}
 
-	client, err := ssm.pollForNewClient(ctx, ssm.kCli, podID, newClientTimeout)
+	client, err := sm.pollForNewClient(ctx, sm.kCli, podID, newClientTimeout)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating synclet client")
 	}
-	ssm.clients[podID] = client
+	sm.clients[podID] = client
 
 	return client, nil
 }
 
-func (ssm SidecarSyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID) error {
-	ssm.mutex.Lock()
-	defer ssm.mutex.Unlock()
+func (sm SyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID) error {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
 
-	client, ok := ssm.clients[podID]
+	client, ok := sm.clients[podID]
 	if !ok {
 		// if we don't know about the pod, it's already forgotten - noop
 		return nil
 	}
 
-	delete(ssm.clients, podID)
+	delete(sm.clients, podID)
 
 	return client.Close()
 }
 
-func (ssm SidecarSyncletManager) pollForNewClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, timeout time.Duration) (cli synclet.SyncletClient, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-pollForNewClient")
+func (sm SyncletManager) pollForNewClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, timeout time.Duration) (cli synclet.SyncletClient, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletManager-pollForNewClient")
 	defer span.Finish()
 
 	start := time.Now()
 	for time.Since(start) < timeout {
 		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
 		// and "everything is borked, stop trying"
-		cli, err = ssm.newClient(ctx, kCli, podID)
+		cli, err = sm.newClient(ctx, kCli, podID)
 		if cli != nil {
 			return cli, nil
 		}
@@ -116,19 +116,19 @@ func (ssm SidecarSyncletManager) pollForNewClient(ctx context.Context, kCli k8s.
 	return nil, errors.Wrapf(err, "timed out trying to create new synclet client for pod %s (after %s) with err",
 		podID.String(), timeout)
 }
-func newSidecarSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-newSidecarSyncletClient")
+func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletManager-newSyncletClient")
 	defer span.Finish()
 
 	pod, err := kCli.PodByID(ctx, podID, k8s.DefaultNamespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "newSidecarSyncletClient")
+		return nil, errors.Wrap(err, "newSyncletClient")
 	}
 
 	// Make sure that the synclet container is ready and not crashlooping.
 	_, err = k8s.WaitForContainerReady(ctx, kCli, pod, sidecar.SyncletImageRef)
 	if err != nil {
-		return nil, errors.Wrap(err, "newSidecarSyncletClient")
+		return nil, errors.Wrap(err, "newSyncletClient")
 	}
 
 	// TODO(nick): We need a better way to kill the client when the pod dies.

@@ -22,7 +22,7 @@ const podPollTimeoutSynclet = time.Second * 30
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	ssm SidecarSyncletManager
+	sm SyncletManager
 
 	kCli k8s.Client
 
@@ -51,11 +51,11 @@ func newEmptyDeployInfo() *DeployInfo {
 	return &DeployInfo{ready: make(chan struct{})}
 }
 
-func NewSyncletBuildAndDeployer(kCli k8s.Client, ssm SidecarSyncletManager) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(kCli k8s.Client, sm SyncletManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
 		kCli:       kCli,
 		deployInfo: make(map[docker.ImgNameAndTag]*DeployInfo),
-		ssm:        ssm,
+		sm:         sm,
 	}
 }
 
@@ -100,7 +100,7 @@ func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img referen
 
 	delete(sbd.deployInfo, imgNameAndTag)
 
-	return sbd.ssm.ForgetPod(ctx, deployInfo.podID)
+	return sbd.sm.ForgetPod(ctx, deployInfo.podID)
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
@@ -194,7 +194,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return BuildResult{}, err
 	}
 
-	sCli, err := sbd.ssm.ClientForPod(ctx, deployInfo.podID)
+	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.podID)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -273,7 +273,7 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	info.nodeID = nodeID
 
 	// preemptively set up the tunnel + client
-	_, err = sbd.ssm.ClientForPod(ctx, pID)
+	_, err = sbd.sm.ClientForPod(ctx, pID)
 	if err != nil {
 		return errors.Wrapf(err, "creating synclet client for pod '%s'", pID)
 	}

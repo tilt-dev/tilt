@@ -6,21 +6,21 @@
 package engine
 
 import (
-	"context"
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	docker "github.com/windmilleng/tilt/internal/docker"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	synclet "github.com/windmilleng/tilt/internal/synclet"
+	analytics "github.com/windmilleng/wmclient/pkg/analytics"
+	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
-	sidecarSyncletManager := NewSidecarSyncletManagerForTests(k8s2, sCli)
-	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(k8s2, sidecarSyncletManager)
+	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
+	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(k8s2, syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	containerResolver := build.NewContainerResolver(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
@@ -49,10 +49,10 @@ var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wi
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSidecarSyncletManagerForTests,
+	NewSyncletManagerForTests,
 )
 
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSidecarSyncletManager,
+	NewSyncletManager,
 )
