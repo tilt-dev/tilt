@@ -36,7 +36,7 @@ func TestPostProcessBuild(t *testing.T) {
 	f.kCli.SetPodWithImageResp(pod1)
 
 	res := BuildResult{Image: image1}
-	f.cbad.PostProcessBuild(f.ctx, res)
+	f.cbad.PostProcessBuild(f.ctx, res, res)
 
 	if assert.NotEmpty(t, f.cbad.deployInfo) {
 		assert.Equal(t, container1, f.cbad.deployInfo[docker.ToImgNameAndTag(image1)])
@@ -52,7 +52,7 @@ func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 	f.cbad.deployInfo[docker.ToImgNameAndTag(image1)] = k8s.ContainerID("ohai")
 
 	res := BuildResult{Image: image1}
-	f.cbad.PostProcessBuild(f.ctx, res)
+	f.cbad.PostProcessBuild(f.ctx, res, res)
 
 	if assert.NotEmpty(t, f.cbad.deployInfo) {
 		assert.Equal(t, k8s.ContainerID("ohai"), f.cbad.deployInfo[docker.ToImgNameAndTag(image1)], "Getting info again for same image -- contents should not have changed")

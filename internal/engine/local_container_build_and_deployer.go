@@ -112,7 +112,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()

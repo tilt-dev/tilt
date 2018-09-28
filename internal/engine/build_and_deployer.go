@@ -22,7 +22,7 @@ type BuildAndDeployer interface {
 	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
 	// In general, we'll store this info ON the BuildAndDeployer that needs it.
 	// Each implementation of PostProcessBuild is responsible for executing long-running steps async.
-	PostProcessBuild(ctx context.Context, result BuildResult)
+	PostProcessBuild(ctx context.Context, result, prevResult BuildResult)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -57,7 +57,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if err == nil {
 			// TODO(maia): maybe this only needs to be called after certain builds?
 			// I.e. should be called after image build but not after a successful container build?
-			composite.PostProcessBuild(ctx, br)
+			composite.PostProcessBuild(ctx, br, currentState.LastResult)
 			return br, err
 		}
 
@@ -100,10 +100,9 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
-	// NOTE(maia): for now, expect the first BaD to be the one that needs additional info.
-	if len(composite.builders) != 0 {
-		composite.builders[0].PostProcessBuild(ctx, result)
+func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, prevResult BuildResult) {
+	for _, builder := range composite.builders {
+		builder.PostProcessBuild(ctx, result, prevResult)
 	}
 }
 

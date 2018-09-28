@@ -353,6 +353,25 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 	})
 }
 
+func TestBaDForgetsImages(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE).withContainerForBuild(alreadyBuilt)
+	defer f.TearDown()
+
+	// make sBaD return an error so that we fall back to iBaD and get a new image id
+	f.sCli.UpdateContainerErrorToReturn = errors.New("blah")
+
+	f.k8s.SetPodWithImageResp(pod1)
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.sCli.ClosedCount != 1 {
+		t.Errorf("Expected 1 synclet client close, actual: %d", f.sCli.ClosedCount)
+	}
+}
+
 func TestIgnoredFiles(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
@@ -449,7 +468,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
 func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
-	f.bd.PostProcessBuild(f.ctx, build)
+	f.bd.PostProcessBuild(f.ctx, build, BuildResult{})
 	return f
 }
 

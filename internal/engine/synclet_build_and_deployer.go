@@ -87,6 +87,22 @@ func (sbd *SyncletBuildAndDeployer) deployInfoForImageBlocking(ctx context.Conte
 	return deployInfo, ok
 }
 
+func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img reference.NamedTagged) error {
+	sbd.deployInfoMu.Lock()
+	defer sbd.deployInfoMu.Unlock()
+
+	imgNameAndTag := docker.ToImgNameAndTag(img)
+
+	deployInfo, ok := sbd.deployInfo[imgNameAndTag]
+	if !ok {
+		return nil
+	}
+
+	delete(sbd.deployInfo, imgNameAndTag)
+
+	return sbd.ssm.ForgetPod(ctx, deployInfo.podID)
+}
+
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("manifest", manifest.Name.String())
@@ -191,10 +207,17 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
 }
 
-func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result BuildResult) {
+func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()
+
+	if previousResult.HasImage() && (!result.HasImage() || result.Image != previousResult.Image) {
+		err := sbd.forgetImage(ctx, previousResult.Image)
+		if err != nil {
+			logger.Get(ctx).Debugf("failed to get clean up image-related state: %v", err)
+		}
+	}
 
 	if !result.HasImage() {
 		// This is normal if the previous build failed.
