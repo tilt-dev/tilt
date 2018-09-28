@@ -65,7 +65,7 @@ func portForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1I
 		stopChan,
 		readyChan,
 		logger.Get(ctx).Writer(logger.DebugLvl),
-		logger.Get(ctx).Writer(logger.InfoLvl))
+		logger.Get(ctx).Writer(logger.DebugLvl))
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error forwarding port")
