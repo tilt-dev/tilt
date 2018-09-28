@@ -120,3 +120,44 @@ func TestWaitForContainerFailure(t *testing.T) {
 		t.Fatalf("Expected error %q, actual: %v", expected, err)
 	}
 }
+
+func TestWaitForContainerUnschedulable(t *testing.T) {
+	f := newClientTestFixture(t)
+	f.addObject(&fakePodList)
+
+	nt := MustParseNamedTagged(blorgDevImgStr)
+	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	result := make(chan error)
+	go func() {
+		_, err := WaitForContainerReady(ctx, f.client, pod, nt)
+		result <- err
+	}()
+
+	newPod := fakePod(expectedPod, blorgDevImgStr)
+	newPod.Status = v1.PodStatus{
+		Conditions: []v1.PodCondition{
+			{
+				Reason:  v1.PodReasonUnschedulable,
+				Message: "0/4 nodes are available: 4 Insufficient cpu.",
+				Status:  "False",
+				Type:    v1.PodScheduled,
+			},
+		},
+	}
+
+	<-f.watchNotify
+	f.updatePod(&newPod)
+	err = <-result
+
+	expected := "Container will never be ready: 0/4 nodes are available: 4 Insufficient cpu."
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Fatalf("Expected error %q, actual: %v", expected, err)
+	}
+}

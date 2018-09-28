@@ -60,6 +60,11 @@ func waitForContainerReadyHelper(pod *v1.Pod, ref reference.Named) (ContainerID,
 		return "", errors.Wrap(err, "WaitForContainerReadyHelper")
 	}
 
+	unschedulable, msg := IsUnschedulable(pod.Status)
+	if unschedulable {
+		return "", fmt.Errorf("Container will never be ready: %s", msg)
+	}
+
 	if IsContainerExited(pod.Status, cStatus) {
 		return "", fmt.Errorf("Container will never be ready: %s", ref)
 	}
@@ -82,6 +87,16 @@ func IsContainerExited(pod v1.PodStatus, container v1.ContainerStatus) bool {
 	}
 
 	return false
+}
+
+// Returns the error message if the pod is unschedulable
+func IsUnschedulable(pod v1.PodStatus) (bool, string) {
+	for _, cond := range pod.Conditions {
+		if cond.Reason == v1.PodReasonUnschedulable {
+			return true, cond.Message
+		}
+	}
+	return false, ""
 }
 
 func ContainerMatching(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
