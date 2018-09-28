@@ -75,13 +75,17 @@ type mount struct {
 	mountPoint string
 }
 
+// See model.Manifest for more information on what all these fields mean.
 type dockerImage struct {
-	fileName   string
-	ref        reference.Named
-	mounts     []mount
-	steps      []model.Step
-	entrypoint string
-	filters    []model.PathMatcher
+	baseDockerfilePath string
+	ref                reference.Named
+	mounts             []mount
+	steps              []model.Step
+	entrypoint         string
+	filters            []model.PathMatcher
+
+	staticDockerfilePath string
+	staticBuildPath      string
 }
 
 var _ skylark.Value = &dockerImage{}
@@ -184,7 +188,11 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 }
 
 func (d *dockerImage) String() string {
-	return fmt.Sprintf("fileName: %v, ref: %s, cmds: %v", d.fileName, d.ref, d.steps)
+	if d.baseDockerfilePath != "" {
+		return fmt.Sprintf("fileName: %v, ref: %s, cmds: %v", d.baseDockerfilePath, d.ref, d.steps)
+	} else {
+		return fmt.Sprintf("fileName: %s, path: %s", d.staticDockerfilePath, d.staticBuildPath)
+	}
 }
 
 func (d *dockerImage) Type() string {
@@ -205,7 +213,11 @@ func (*dockerImage) Hash() (uint32, error) {
 func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	switch name {
 	case "file_name":
-		return skylark.String(d.fileName), nil
+		if d.staticDockerfilePath != "" {
+			return skylark.String(d.staticDockerfilePath), nil
+		} else {
+			return skylark.String(d.baseDockerfilePath), nil
+		}
 	case "file_tag":
 		return skylark.String(d.ref.String()), nil
 	default:

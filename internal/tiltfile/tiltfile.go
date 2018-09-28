@@ -61,15 +61,52 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 	}
 
 	buildContext := &dockerImage{
-		dockerfileName,
-		ref,
-		[]mount{},
-		[]model.Step{},
-		entrypoint,
-		[]model.PathMatcher{filter},
+		baseDockerfilePath: dockerfileName,
+		ref:                ref,
+		entrypoint:         entrypoint,
+		filters:            []model.PathMatcher{filter},
 	}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
+}
+
+func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var dockerfilePath, dockerRef, buildPath string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+		"dockerfile", &dockerfilePath,
+		"ref", &dockerRef,
+		"context?", &buildPath,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ref, err := reference.ParseNormalizedNamed(dockerRef)
+	if err != nil {
+		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
+	}
+
+	filter, err := model.NewSimpleFileMatcher(t.filename)
+	if err != nil {
+		return skylark.None, err
+	}
+
+	if buildPath == "" {
+		buildPath = filepath.Dir(dockerfilePath)
+	}
+
+	buildPath, err = filepath.Abs(buildPath)
+	if err != nil {
+		return skylark.None, err
+	}
+
+	buildContext := &dockerImage{
+		staticDockerfilePath: dockerfilePath,
+		staticBuildPath:      buildPath,
+		ref:                  ref,
+		filters:              []model.PathMatcher{filter},
+	}
+	return buildContext, nil
 }
 
 func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -217,6 +254,7 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	predeclared := skylark.StringDict{
 		"start_fast_build":  skylark.NewBuiltin("start_fast_build", tiltfile.makeSkylarkDockerImage),
 		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
+		"static_build":      skylark.NewBuiltin("static_build", tiltfile.makeStaticBuild),
 		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
 		"local_git_repo":    skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
 		"local":             skylark.NewBuiltin("local", runLocalCmd),
@@ -290,20 +328,34 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
 	}
 
-	dockerFileBytes, err := ioutil.ReadFile(manifest.dockerImage.fileName)
-	if err != nil {
-		return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", manifest.dockerImage.fileName, err)
+	var err error
+	image := manifest.dockerImage
+	baseDockerfileBytes := []byte{}
+	staticDockerfileBytes := []byte{}
+	if image.staticDockerfilePath != "" {
+		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath)
+		if err != nil {
+			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath, err)
+		}
+	} else {
+		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath)
+		if err != nil {
+			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath, err)
+		}
 	}
 
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
-		BaseDockerfile: string(dockerFileBytes),
-		Mounts:         skylarkMountsToDomain(manifest.dockerImage.mounts),
-		Steps:          manifest.dockerImage.steps,
-		Entrypoint:     model.ToShellCmd(manifest.dockerImage.entrypoint),
-		DockerRef:      manifest.dockerImage.ref,
+		BaseDockerfile: string(baseDockerfileBytes),
+		Mounts:         skylarkMountsToDomain(image.mounts),
+		Steps:          image.steps,
+		Entrypoint:     model.ToShellCmd(image.entrypoint),
+		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
-		FileFilter:     model.NewCompositeMatcher(manifest.dockerImage.filters),
+		FileFilter:     model.NewCompositeMatcher(image.filters),
+
+		StaticDockerfile: string(staticDockerfileBytes),
+		StaticBuildPath:  string(image.staticBuildPath),
 	}, nil
 
 }

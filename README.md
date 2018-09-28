@@ -6,19 +6,36 @@
 ## Installing
 Run `go get -u github.com/windmilleng/tilt`
 
-## Using tilt
+## Using Tilt
 `tilt up <service_name>` starts a service once; `tilt up --watch <service_name>` starts it and watches for changes.
 
 Tilt reads from a Tiltfile. A simple Tiltfile is below:
 ```python
 def backend():
-  start_fast_build('Dockerfile', 'companyname/backend', '/go/bin/server')
+  img = static_build('Dockerfile', 'gcr.io/companyname/backend')
+  yaml = read_file('backend.yaml')
+  return k8s_service(yaml, img)
+```
+
+## Optimizing Tilt
+
+Building with the `Tiltfile` above may be slow because it builds a new image each time.
+
+With a `Tiltfile` that uses `start_fast_build`, Tilt is able to optimize your build so
+that it only runs the steps that have changed.
+
+```python
+def backend():
+  start_fast_build('Dockerfile', 'gcr.io/companyname/backend', '/go/bin/server')
   repo = local_git_repo('.')
   add(repo, '/go/src/github.com/companyname/backend')
+  run('cd /go/src/github.com/companyname/backend && npm install .',
+      trigger=['package.json'])
   run('go install github.com/companyname/backend/server')
   img = stop_build()
 
-  return k8s_service(read_file('backend.yaml'), img)
+  yaml = read_file('backend.yaml')
+  return k8s_service(yaml, img)
 ```
 
 ## Mill
@@ -26,6 +43,16 @@ written in a Mill, a dialect of python. It's based on [starlark](https://github.
 
 ### Mill Builtins
 Mill comes with built-in functions.
+
+#### static_build(dockerfile, ref, context?)
+Builds a docker image.
+
+* Args:
+  * `dockerfile`: **str**, The path to a Dockerfile
+  * `ref`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
+  * `context?`: **str**, The path to use as the Docker build context.
+                Defaults to the Dockerfile directory.
+* Returns: **Image**
 
 #### local_git_repo(path)
 Creates a `repo` with the content at `path`.
@@ -41,14 +68,14 @@ Gets the absolute to the file specified at `path` in the repo. Must be a relativ
   * `path`: **str**
 * Returns:  **localPath**
 
-#### start_fast_build(dockerfile_path, img_name, entrypoint?)
-Builds a docker image.
+#### start_fast_build(dockerfile_path, ref, entrypoint?)
+Starts building a docker image on the current thread.
 
 * Args:
   * `dockerfile_path`: **str**
-  * `img_name`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
+  * `ref`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
   * `entrypoint?`: **str**
-* Returns: **Image**
+* Returns: **None**
 
 #### add(src, dest)
 Adds the content from `src` into the image at path `dest`. Paths must be relative.
@@ -102,7 +129,7 @@ Closes the currently active build and returns a container Image that has all of 
 * Returns: **Image**
 
 ## Developing
-See DEVELOPING.md
+See [DEVELOPING.md](DEVELOPING.md)
 
 
 ## Privacy
