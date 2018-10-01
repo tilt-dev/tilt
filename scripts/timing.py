@@ -342,6 +342,13 @@ def clean_up():
                 main_go.write(s.main_go_orig_contents)
 
 
+def dummy_watched_build(serv: Service, process: subprocess.Popen):
+    """Trigger a watched build that we don't really care about."""
+    serv.write_file(1 * KB)
+    wait_for_stdout(process, '[timing.py] finished build from file change')
+    time.sleep(0.5)
+
+
 ### THE TEST CASES
 def test_tilt_up_once(serv: Service, case: str) -> float:
     # Set-up:
@@ -400,6 +407,10 @@ def test_watch_build_from_new_file(serv: Service, case: str) -> float:
     # wait a sec for the pod to come up so we can do a container update
     time.sleep(2)
 
+    # first watched build may be a special case, we want to bench the SECOND,
+    # so do a throwaway watched build.
+    dummy_watched_build(serv, tilt_proc)
+
     # write a new file (does not affect go build)
     serv.write_file(100 * KB)  # 100KB total
 
@@ -418,6 +429,10 @@ def test_watch_build_from_many_changed_files(serv: Service, case: str) -> float:
     # wait a sec for the pod to come up so we can do a container update
     time.sleep(2)
 
+    # first watched build may be a special case, we want to bench the SECOND,
+    # so do a throwaway watched build.
+    dummy_watched_build(serv, tilt_proc)
+
     for _ in range(100):  # 100KB total
         serv.write_file(KB)
 
@@ -434,7 +449,11 @@ def test_watch_build_from_big_file(serv: Service, case: str) -> float:
     tilt_proc = run_and_wait_for_stdout(serv.tilt_up_watch_cmd(case), '[timing.py] finished initial build')
 
     # wait a sec for the pod to come up so we can do a container update
-    time.sleep(5)
+    time.sleep(2)
+
+    # first watched build may be a special case, we want to bench the SECOND,
+    # so do a throwaway watched build.
+    dummy_watched_build(serv, tilt_proc)
 
     # write a new file (does not affect go build)
     serv.write_file(5 * MB)  # 100KB total
@@ -453,6 +472,10 @@ def test_watch_build_from_changed_go_file(serv: Service, case: str) -> float:
 
     # wait a sec for the pod to come up so we can do a container update
     time.sleep(2)
+
+    # first watched build may be a special case, we want to bench the SECOND,
+    # so do a throwaway watched build.
+    dummy_watched_build(serv, tilt_proc)
 
     # change a go file
     serv.change_main_go()
