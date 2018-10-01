@@ -11,7 +11,7 @@ ENV SRC_DIR=/go/src/github.com/windmilleng/tilt
 ADD . $SRC_DIR
 
 # Build it
-RUN cd $SRC_DIR; go build -o server ./cmd/synclet/main.go; mv server /app
+RUN cd $SRC_DIR && go build -o server ./cmd/synclet/main.go && mv server /app
 
 # Create a minimal image with just the binary.
 FROM alpine:latest
