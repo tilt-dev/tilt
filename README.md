@@ -51,12 +51,18 @@ Mill comes with built-in functions.
 #### static_build(dockerfile, ref, context?)
 Builds a docker image.
 
-* Args:
-  * `dockerfile`: **str**, The path to a Dockerfile
-  * `ref`: **str**, e.g. blorgdev/backend or gcr.io/project-name/bucket-name
-  * `context?`: **str**, The path to use as the Docker build context.
-                Defaults to the Dockerfile directory.
-* Returns: **Image**
+```python
+def static_build(dockerfile: str, ref: str, context: str = "") -> Image:
+      """Builds a docker image.
+
+    Args:
+      dockerfile: The path to a Dockerfile
+      ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
+      context?: The path to use as the Docker build context. Defaults to the Dockerfile directory.
+    Returns:
+      Image
+    """
+```
 
 #### local_git_repo
 Creates a `repo` from the git repo at `path`.
