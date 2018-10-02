@@ -132,6 +132,11 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context,
 			logger.Get(ctx).Debugf("couldn't get container for img %s: %v", result.Image.String(), err)
 			return
 		}
+
+		if cID == "" {
+			return
+		}
+
 		cbd.setContainerIDForImage(result.Image, cID)
 	}
 }
@@ -141,12 +146,30 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	defer span.Finish()
 
 	// get pod running the image we just deployed
-	pod, err := cbd.k8sClient.PollForPodWithImage(ctx, build.Image, k8s.DefaultNamespace, podPollTimeoutLocal)
+	//
+	// We fetch the pod by the NamedTagged, to ensure we get a pod
+	// in the most recent Deployment, and not the pods in the process
+	// of being terminated from previous Deployments.
+	pods, err := cbd.k8sClient.PollForPodsWithImage(
+		ctx, build.Image, k8s.DefaultNamespace,
+		[]k8s.LabelPair{TiltRunLabel()}, podPollTimeoutLocal)
 	if err != nil {
-		return "", fmt.Errorf("PodWithImage (img = %s): %v", build.Image, err)
+		return "", fmt.Errorf("PodsWithImage (img = %s): %v", build.Image, err)
+	}
+
+	// If there's more than one pod, two possible things could be happening:
+	// 1) K8s is in a transitiion state.
+	// 2) The user is running a configuration where they want multiple replicas
+	//    of the same pod (e.g., a cockroach developer testing primary/replica).
+	// If this happens, don't bother populating the deployInfo.
+	// We want to fallback to image builds rather than managing the complexity
+	// of multiple replicas.
+	if len(pods) != 1 {
+		return "", nil
 	}
 
 	// get container that's running the app for the pod we found
+	pod := &(pods[0])
 	podID := k8s.PodIDFromPod(pod)
 	cID, err := cbd.cr.ContainerIDForPod(ctx, podID, build.Image)
 	if err != nil {

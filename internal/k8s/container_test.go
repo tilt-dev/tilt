@@ -26,7 +26,7 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	}
 	f.addObject(&podData)
 
-	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -34,6 +34,7 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 
+	pod := &(pods[0])
 	cID, err := WaitForContainerReady(ctx, f.client, pod, nt)
 	if err != nil {
 		t.Fatal(err)
@@ -47,10 +48,12 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	f.addObject(&fakePodList)
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
+
+	pod := &(pods[0])
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -85,10 +88,12 @@ func TestWaitForContainerFailure(t *testing.T) {
 	f.addObject(&fakePodList)
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
+
+	pod := &(pods[0])
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -126,10 +131,12 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 	f.addObject(&fakePodList)
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
+
+	pod := &(pods[0])
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()

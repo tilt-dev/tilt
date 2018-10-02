@@ -134,7 +134,7 @@ func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	f.k8s.SetPollForPodWithImageDelay(time.Second * 1)
+	f.k8s.SetPollForPodsWithImageDelay(time.Second * 1)
 
 	res, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
 	if err != nil {
@@ -360,7 +360,7 @@ func TestBaDForgetsImages(t *testing.T) {
 	// make sBaD return an error so that we fall back to iBaD and get a new image id
 	f.sCli.UpdateContainerErrorToReturn = errors.New("blah")
 
-	f.k8s.SetPodWithImageResp(pod1)
+	f.k8s.SetPodsWithImageResp(pod1)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
 	if err != nil {

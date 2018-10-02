@@ -17,8 +17,8 @@ type FakeK8sClient struct {
 	Yaml string
 	Lb   LoadBalancerSpec
 
-	PodWithImageResp         PodID
-	PollForPodWithImageDelay time.Duration
+	PodsWithImageResp         PodID
+	PollForPodsWithImageDelay time.Duration
 }
 
 func NewFakeK8sClient() *FakeK8sClient {
@@ -43,8 +43,8 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) SetPodWithImageResp(pID PodID) {
-	c.PodWithImageResp = pID
+func (c *FakeK8sClient) SetPodsWithImageResp(pID PodID) {
+	c.PodsWithImageResp = pID
 }
 
 func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
@@ -55,7 +55,7 @@ func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v
 	return nil, nil
 }
 
-func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error) {
+func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
 	status := v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
 			{
@@ -71,34 +71,44 @@ func (c *FakeK8sClient) PodWithImage(ctx context.Context, image reference.NamedT
 			},
 		},
 	}
-	if !c.PodWithImageResp.Empty() {
-		res := c.PodWithImageResp
-		c.PodWithImageResp = ""
-		return &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: string(res)},
-			Status:     status,
+	if !c.PodsWithImageResp.Empty() {
+		res := c.PodsWithImageResp
+		c.PodsWithImageResp = ""
+		return []v1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   string(res),
+					Labels: makeLabelSet(labels),
+				},
+				Status: status,
+			},
 		}, nil
 	}
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "pod"},
-		Status:     status,
+	return []v1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "pod",
+				Labels: makeLabelSet(labels),
+			},
+			Status: status,
+		},
 	}, nil
 }
 
-func (c *FakeK8sClient) SetPollForPodWithImageDelay(dur time.Duration) {
-	c.PollForPodWithImageDelay = dur
+func (c *FakeK8sClient) SetPollForPodsWithImageDelay(dur time.Duration) {
+	c.PollForPodsWithImageDelay = dur
 }
 
-func (c *FakeK8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, timeout time.Duration) (*v1.Pod, error) {
-	defer c.SetPollForPodWithImageDelay(0)
+func (c *FakeK8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+	defer c.SetPollForPodsWithImageDelay(0)
 
-	if c.PollForPodWithImageDelay > timeout {
+	if c.PollForPodsWithImageDelay > timeout {
 		return nil, fmt.Errorf("timeout polling for pod (delay %s > timeout %s)",
-			c.PollForPodWithImageDelay.String(), timeout.String())
+			c.PollForPodsWithImageDelay.String(), timeout.String())
 	}
 
-	time.Sleep(c.PollForPodWithImageDelay)
-	return c.PodWithImage(ctx, image, n)
+	time.Sleep(c.PollForPodsWithImageDelay)
+	return c.PodsWithImage(ctx, image, n, labels)
 }
 
 func (c *FakeK8sClient) applyWasCalled() bool {
