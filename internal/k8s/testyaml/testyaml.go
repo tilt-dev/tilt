@@ -243,3 +243,19 @@ spec:
           hostPath:
             path: /var/run/docker.sock
 `
+
+// We deliberately create a pod without any labels, to
+// ensure code works without them.
+const LonelyPodYAML = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lonely-pod
+spec:
+  containers:
+  - name: lonely-pod
+    image: gcr.io/windmill-public-containers/lonely-pod
+    command: ["/go/bin/lonely-pod"]
+    ports:
+    - containerPort: 8001
+`

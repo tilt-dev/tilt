@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
@@ -18,6 +19,23 @@ func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
 		c, ok := e.(*v1.PodSpec)
 		if !ok {
 			return nil, fmt.Errorf("extractPods: expected Pod, actual %T", e)
+		}
+		result[i] = c
+	}
+	return result, nil
+}
+
+func extractObjectMetas(obj interface{}) ([]*metav1.ObjectMeta, error) {
+	extracted, err := extractPointersOf(obj, reflect.TypeOf(metav1.ObjectMeta{}))
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*metav1.ObjectMeta, len(extracted))
+	for i, e := range extracted {
+		c, ok := e.(*metav1.ObjectMeta)
+		if !ok {
+			return nil, fmt.Errorf("ExtractObjectMetas: expected ObjectMeta, actual %T", e)
 		}
 		result[i] = c
 	}
