@@ -66,7 +66,10 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		entrypoint:         entrypoint,
 		filters:            []model.PathMatcher{filter},
 	}
-	recordReadFile(thread, dockerfileName)
+	err = recordReadFile(thread, dockerfileName)
+	if err != nil {
+		return skylark.None, err
+	}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
 }
@@ -107,7 +110,10 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		ref:                  ref,
 		filters:              []model.PathMatcher{filter},
 	}
-	recordReadFile(thread, dockerfilePath)
+	err = recordReadFile(thread, dockerfilePath)
+	if err != nil {
+		return skylark.None, err
+	}
 	return buildContext, nil
 }
 
