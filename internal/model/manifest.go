@@ -20,6 +20,7 @@ type Manifest struct {
 	DockerRef  reference.Named
 
 	// Local files read while reading the Tilt configuration.
+	ConfigFiles []string
 	// If these files are changed, we should reload the manifest.
 	ConfigMatcher PathMatcher
 

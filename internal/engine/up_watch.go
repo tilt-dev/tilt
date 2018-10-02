@@ -39,12 +39,21 @@ func makeManifestWatcher(
 			continue
 		}
 
+		// TODO(dmiller) also watch readFiles, or something?
 		for _, localPath := range localPaths {
 			err = watcher.Add(localPath)
 			if err != nil {
 				return nil, err
 			}
 		}
+
+		for _, localPath := range manifest.ConfigFiles {
+			err = watcher.Add(localPath)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		sns = append(sns, manifestNotifyPair{manifest, watcher})
 	}
 
