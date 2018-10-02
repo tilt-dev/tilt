@@ -316,6 +316,12 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	thread := tiltfile.thread
 	thread.SetLocal(readFilesKey, []string{})
 
+	// Record that we read the Tiltfile itself
+	err := recordReadFile(thread, FileName)
+	if err != nil {
+		return nil, err
+	}
+
 	val, err := manifestFunction.Call(tiltfile.thread, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running '%v': %v", manifestName, err.Error())
