@@ -365,23 +365,19 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 	image := manifest.dockerImage
 	baseDockerfileBytes := []byte{}
 	staticDockerfileBytes := []byte{}
-	filename := ""
 	if image.staticDockerfilePath != "" {
 		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath)
 		if err != nil {
 			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath, err)
 		}
-		filename = image.staticDockerfilePath
 	} else {
 		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath)
 		if err != nil {
 			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath, err)
 		}
-		filename = image.baseDockerfilePath
 	}
 
-	files := append([]string{filename}, manifest.configFiles...)
-	configMatcher, err := model.NewSimpleFileMatcher(files...)
+	configMatcher, err := model.NewSimpleFileMatcher(manifest.configFiles...)
 	if err != nil {
 		return model.Manifest{}, errors.Wrap(err, "skylarkManifestToDomain")
 	}
