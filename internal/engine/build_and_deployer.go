@@ -95,6 +95,9 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 func getChangedConfigFiles(changedFiles []string, m model.Manifest) []string {
 	crf := []string{}
+	if m.ConfigMatcher == nil {
+		return crf
+	}
 	for _, f := range changedFiles {
 		matches, err := m.ConfigMatcher.Matches(f, false)
 		if err != nil {
