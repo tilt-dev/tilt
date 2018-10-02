@@ -1,17 +1,25 @@
 # iron/go:dev is the alpine image with the go tools added
-FROM iron/go:dev as builder
+ARG baseImage="iron/go:dev"
 
-WORKDIR /app
+FROM ${baseImage} as builder
 
-ENV SRC_DIR=/go/src/github.com/windmilleng/tilt
+WORKDIR /go/src/github.com/windmilleng/tilt
 
 # Add the source code
 # (from current dir, add all files to dockerspace: /go/src...)
 # (assumes that this is being run from $GOPATH/.../windmilleng/tilt
-ADD . $SRC_DIR
+ADD . .
 
-# Build it
-RUN cd $SRC_DIR && go build -o server ./cmd/synclet/main.go && mv server /app
+RUN mkdir -p /app
+
+# Build the server binary.
+RUN go build -o server ./cmd/synclet/main.go
+RUN mv server /app/
+
+# Build an image with just the Go cache artifacts
+FROM iron/go:dev as go-cache
+
+COPY --from=builder /root/.cache /root/.cache
 
 # Create a minimal image with just the binary.
 FROM alpine:latest

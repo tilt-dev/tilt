@@ -22,11 +22,15 @@ install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
 	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
-synclet-dev:
-	docker build -t $(SYNCLET_IMAGE):dirty -f synclet/Dockerfile .
-	docker inspect $(SYNCLET_IMAGE):dirty -f '{{.Id}}' | sed -E 's/sha256:(.{20}).*/dirty-\1/' > .synclet-dev-image-tag
-	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))
-	docker push $(SYNCLET_IMAGE):$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))
+define synclet-build-dev
+	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
+	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$1
+	docker push $(SYNCLET_IMAGE):$1
+endef
+
+synclet-dev: synclet-cache
+	docker build --build-arg baseImage=synclet-cache -t $(SYNCLET_IMAGE):dirty -f synclet/Dockerfile .
+	$(call synclet-build-dev,$(shell docker inspect $(SYNCLET_IMAGE):dirty -f '{{.Id}}' | sed -E 's/sha256:(.{20}).*/dirty-\1/'))
 
 build-synclet-and-install: synclet-dev install-dev
 
@@ -71,10 +75,15 @@ ci-container:
 
 clean:
 	go clean -cache -testcache -r -i ./...
+	docker rmi synclet-cache
+
+synclet-cache:
+	if [ "$(shell docker images synclet-cache -q)" = "" ]; then \
+		docker build -t synclet-cache -f synclet/Dockerfile --target=go-cache .; \
+	fi;
 
 synclet-release:
 	$(eval TAG := $(shell date +v%Y%m%d))
 	docker build -t $(SYNCLET_IMAGE):$(TAG) -f synclet/Dockerfile .
 	docker push $(SYNCLET_IMAGE):$(TAG)
 	sed -i 's/var SyncletTag = ".*"/var SyncletTag = "$(TAG)"/' internal/synclet/sidecar/sidecar.go
-
