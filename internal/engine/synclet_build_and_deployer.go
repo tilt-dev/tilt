@@ -273,6 +273,7 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	// We want to fallback to image builds rather than managing the complexity
 	// of multiple replicas.
 	if len(pods) != 1 {
+		logger.Get(ctx).Debugf("Found too many pods (%d), skipping container updates: %s", len(pods), image)
 		return nil
 	}
 
