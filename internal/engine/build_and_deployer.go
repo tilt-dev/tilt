@@ -2,12 +2,15 @@ package engine
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 type BuildAndDeployer interface {
@@ -52,6 +55,26 @@ func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTe
 
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error) {
 	var lastErr error
+	changedConfigFiles := getChangedConfigFiles(currentState.FilesChanged(), manifest)
+	if len(changedConfigFiles) > 0 {
+		logger.Get(ctx).Verbosef("Detected a config file change (%v), re-executing tiltfile and doing an image build", changedConfigFiles)
+		lastBuilder := composite.builders[len(composite.builders)-1]
+		configChangeState := currentState.NewStateWithConfigFilesRemoved(manifest.ConfigMatcher)
+		tf, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+		if err != nil {
+			return BuildResult{}, err
+		}
+		newManifests, err := tf.GetManifestConfigs(manifest.Name.String())
+		if err != nil {
+			return BuildResult{}, err
+		}
+		// NOTE(dmiller) assume there's only one service that we're rebuilding?
+		if len(newManifests) != 1 {
+			return BuildResult{}, fmt.Errorf("Expected there to be one manifest for name %s, got %d", manifest.Name.String(), len(newManifests))
+		}
+
+		return lastBuilder.BuildAndDeploy(ctx, newManifests[0], configChangeState)
+	}
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
@@ -68,6 +91,21 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		lastErr = err
 	}
 	return BuildResult{}, lastErr
+}
+
+func getChangedConfigFiles(changedFiles []string, m model.Manifest) []string {
+	crf := []string{}
+	for _, f := range changedFiles {
+		matches, err := m.ConfigMatcher.Matches(f, false)
+		if err != nil {
+			// TODO(dmiller) log
+			continue
+		}
+		if matches {
+			crf = append(crf, f)
+		}
+	}
+	return crf
 }
 
 // A permanent error indicates that the whole build pipeline needs to stop.

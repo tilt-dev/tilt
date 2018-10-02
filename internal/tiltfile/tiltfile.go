@@ -396,6 +396,7 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		Name:           model.ManifestName(manifest.name),
 		FileFilter:     model.NewCompositeMatcher(image.filters),
 		ConfigMatcher:  configMatcher,
+		ConfigFiles:    manifest.configFiles,
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),

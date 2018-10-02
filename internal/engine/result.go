@@ -153,6 +153,22 @@ func (b BuildState) OnlySpuriousChanges() (bool, error) {
 	return true, nil
 }
 
+func (b BuildState) NewStateWithConfigFilesRemoved(matcher model.PathMatcher) BuildState {
+	result := NewBuildState(b.LastResult)
+	newCF := map[string]bool{}
+	for f, v := range b.filesChangedSet {
+		matches, err := matcher.Matches(f, false)
+		if matches || err != nil {
+			continue
+		}
+		newCF[f] = v
+	}
+
+	result.filesChangedSet = newCF
+
+	return result
+}
+
 // A build state is empty if there are no previous results.
 func (b BuildState) IsEmpty() bool {
 	return b.LastResult.IsEmpty()
