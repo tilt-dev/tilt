@@ -22,7 +22,7 @@ var debug bool
 var verbose bool
 var trace bool
 
-func logLevel() logger.Level {
+func logLevel(verbose, debug bool) logger.Level {
 	if debug {
 		return logger.DebugLvl
 	} else if verbose {
@@ -63,7 +63,7 @@ type tiltCmd interface {
 
 func preCommand(ctx context.Context) (context.Context, func() error) {
 	cleanup := func() error { return nil }
-	l := logger.NewLogger(logLevel(), os.Stdout)
+	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = context.Background()
 	ctx = output.WithOutputter(
 		logger.WithLogger(ctx, l),
