@@ -1,12 +1,11 @@
 package hud
 
-import "github.com/windmilleng/tilt/internal/hud/model"
+import "github.com/windmilleng/tilt/internal/hud/view"
 
 type Renderer struct {
 }
 
-func (r Renderer) Render(m model.Model) error {
-	// v := view.NewView(m)
+func (r Renderer) Render(v view.View) error {
 	// TODO: draw v
 	return nil
 }
