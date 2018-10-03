@@ -119,6 +119,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 
 	if watchMounts {
+		haveValidTiltfile := false
 		go func() {
 			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
 			if err != nil {
@@ -134,19 +135,11 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				return ctx.Err()
 			case event := <-sw.events:
 				if eventContainsConfigFiles(event) {
-					t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+					newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
 					if err != nil {
-						// TODO(dmiller) should we fail here, or is this OK?
-						return err
+						logger.Get(ctx).Infof("build watch error: %v", err)
+						continue
 					}
-					newManifests, err := t.GetManifestConfigs(string(event.manifest.Name))
-					if err != nil {
-						return err
-					}
-					if len(newManifests) != 1 {
-						return fmt.Errorf("Expected there to be 1 manifest for %s, got %d", event.manifest.Name, len(manifests))
-					}
-					newManifest := newManifests[0]
 					buildState := BuildStateClean
 					err = u.buildManifestFromBuildState(ctx, newManifest, buildState, buildStates)
 					if err != nil {
@@ -167,10 +160,20 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 						continue
 					}
 
-					err = u.buildManifestFromBuildState(ctx, event.manifest, buildState, buildStates)
+					manifest := event.manifest
+					if !haveValidTiltfile {
+						newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
+						if err != nil {
+							logger.Get(ctx).Infof("build watch error: %v", err)
+							continue
+						}
+						manifest = newManifest
+					}
+					err = u.buildManifestFromBuildState(ctx, manifest, buildState, buildStates)
 					if err != nil {
 						return err
 					}
+					haveValidTiltfile = true
 
 					output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 					output.Get(ctx).Printf("Awaiting changes…")
@@ -196,6 +199,23 @@ func eventContainsConfigFiles(e manifestFilesChangedEvent) bool {
 	}
 
 	return false
+}
+
+func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, error) {
+	t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	if err != nil {
+		return model.Manifest{}, err
+	}
+	newManifests, err := t.GetManifestConfigs(string(name))
+	if err != nil {
+		return model.Manifest{}, err
+	}
+	if len(newManifests) != 1 {
+		return model.Manifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+	}
+	newManifest := newManifests[0]
+
+	return newManifest, nil
 }
 
 func (u Upper) buildManifestFromBuildState(ctx context.Context, m model.Manifest, b BuildState, buildStates BuildStatesByName) error {
