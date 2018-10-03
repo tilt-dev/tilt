@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test wire-check wire ensure
+.PHONY: all proto install lint test integration wire-check wire ensure
 
 all: lint errcheck verify_gofmt wire-check test
 
@@ -43,6 +43,9 @@ build:
 
 test:
 	./hide_tbd_warning go test -timeout 60s ./...
+
+integration:
+	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration
 
 ensure:
 	dep ensure
