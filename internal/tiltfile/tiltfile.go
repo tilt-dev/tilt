@@ -386,11 +386,6 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		}
 	}
 
-	configMatcher, err := model.NewSimpleFileMatcher(manifest.configFiles...)
-	if err != nil {
-		return model.Manifest{}, errors.Wrap(err, "skylarkManifestToDomain")
-	}
-
 	return model.Manifest{
 		K8sYaml:        k8sYaml,
 		BaseDockerfile: string(baseDockerfileBytes),
@@ -400,7 +395,6 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
 		FileFilter:     model.NewCompositeMatcher(image.filters),
-		ConfigMatcher:  configMatcher,
 		ConfigFiles:    manifest.configFiles,
 
 		StaticDockerfile: string(staticDockerfileBytes),

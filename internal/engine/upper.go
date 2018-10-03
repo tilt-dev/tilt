@@ -187,12 +187,13 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 }
 
 func eventContainsConfigFiles(e manifestFilesChangedEvent) bool {
-	if e.manifest.ConfigMatcher == nil {
+	matcher, err := e.manifest.ConfigMatcher()
+	if err != nil {
 		return false
 	}
 
 	for _, f := range e.files {
-		matches, err := e.manifest.ConfigMatcher.Matches(f, false)
+		matches, err := matcher.Matches(f, false)
 		if matches && err == nil {
 			return true
 		}
