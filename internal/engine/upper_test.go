@@ -391,6 +391,60 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	assert.Equal(t, endToken, err)
 }
 
+func TestRebuildDockerfile(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	os.Chdir(f.Path())
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile", "docker-tag")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+`)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	mount := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.ConfigFiles = []string{
+		f.JoinPath("Dockerfile"),
+	}
+	endToken := errors.New("my-err-token")
+
+	// everything that we want to do while watch loop is running
+	go func() {
+		// First call: with the old manifest
+		call := <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+
+		f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+		// Second call: new manifest!
+		call = <-f.b.calls
+		assert.Equal(t, call.manifest.BaseDockerfile, "FROM iron/go:dev")
+		assert.Equal(t, call.manifest.K8sYaml, "yaaaaaaaaml")
+
+		f.WriteFile("Tiltfile", `def foobar():
+	start_fast_build("Dockerfile", "docker-tag")
+	image = stop_build()
+	return k8s_service("manifestyaml", image)
+`)
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+		call = <-f.b.calls
+		// TODO(dmiller) this fails because we have a stale manifest I think
+		// assert.Equal(t, call.manifest.BaseDockerfile, "FROM iron/go:dev")
+		// assert.Equal(t, call.manifest.K8sYaml, "manifestyaml")
+
+		f.watcher.errors <- endToken
+	}()
+	err = f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	assert.Equal(t, endToken, err)
+}
+
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
