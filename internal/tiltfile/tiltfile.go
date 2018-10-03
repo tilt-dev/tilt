@@ -66,6 +66,10 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		entrypoint:         entrypoint,
 		filters:            []model.PathMatcher{filter},
 	}
+	err = recordReadFile(thread, dockerfileName)
+	if err != nil {
+		return skylark.None, err
+	}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
 }
@@ -105,6 +109,10 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		staticBuildPath:      buildPath,
 		ref:                  ref,
 		filters:              []model.PathMatcher{filter},
+	}
+	err = recordReadFile(thread, dockerfilePath)
+	if err != nil {
+		return skylark.None, err
 	}
 	return buildContext, nil
 }
@@ -308,6 +316,12 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	thread := tiltfile.thread
 	thread.SetLocal(readFilesKey, []string{})
 
+	// Record that we read the Tiltfile itself
+	err := recordReadFile(thread, FileName)
+	if err != nil {
+		return nil, err
+	}
+
 	val, err := manifestFunction.Call(tiltfile.thread, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running '%v': %v", manifestName, err.Error())
@@ -357,23 +371,19 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 	image := manifest.dockerImage
 	baseDockerfileBytes := []byte{}
 	staticDockerfileBytes := []byte{}
-	filename := ""
 	if image.staticDockerfilePath != "" {
 		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath)
 		if err != nil {
 			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath, err)
 		}
-		filename = image.staticDockerfilePath
 	} else {
 		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath)
 		if err != nil {
 			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath, err)
 		}
-		filename = image.baseDockerfilePath
 	}
 
-	files := append([]string{filename}, manifest.configFiles...)
-	configMatcher, err := model.NewSimpleFileMatcher(files...)
+	configMatcher, err := model.NewSimpleFileMatcher(manifest.configFiles...)
 	if err != nil {
 		return model.Manifest{}, errors.Wrap(err, "skylarkManifestToDomain")
 	}
