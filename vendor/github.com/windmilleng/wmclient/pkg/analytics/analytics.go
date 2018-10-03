@@ -59,13 +59,17 @@ type remoteAnalytics struct {
 	wg      *sync.WaitGroup
 }
 
-func hashMd5(in []byte) string {
+func hashMD5(in []byte) string {
 	h := md5.New()
-	return fmt.Sprintf("%x", h.Sum(in))
+
+	// hash writes are guaranteed never to error
+	_, _ = h.Write(in)
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // getUserHash returns a unique identifier for this user by hashing `uname -a`
-func getUserId() string {
+func getUserID() string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "uname", "-a")
@@ -74,14 +78,14 @@ func getUserId() string {
 		// Something went wrong, but ¯\_(ツ)_/¯
 		return "anon"
 	}
-	return hashMd5(out)
+	return hashMD5(out)
 }
 
 // Create a remote analytics object with Windmill-specific defaults
 // for the HTTPClient, report URL, user ID, and opt-in status.
 func NewDefaultRemoteAnalytics(appName string) *remoteAnalytics {
 	optedIn := optedIn()
-	return NewRemoteAnalytics(cli, appName, statsEndpt, getUserId(), optedIn)
+	return NewRemoteAnalytics(cli, appName, statsEndpt, getUserID(), optedIn)
 }
 
 func NewRemoteAnalytics(cli HTTPClient, app, url, userId string, optedIn bool) *remoteAnalytics {
