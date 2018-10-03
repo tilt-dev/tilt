@@ -918,7 +918,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e1b0b90aead4ca6f6388e07374dc83892149568d103aaa3476362d5221f3a936"
+  digest = "1:2ffd27f2dd7543cf20df9d98f47e22ca632723d0def4e4513e232b0a9be8f757"
   name = "github.com/windmilleng/wmclient"
   packages = [
     "pkg/analytics",
@@ -927,7 +927,7 @@
     "pkg/os/temp",
   ]
   pruneopts = "UT"
-  revision = "d2afdb31ab3f257da8e81c15e7106670446e9558"
+  revision = "87d9c8d7164715a6d3aeaccbd836ba914bad445d"
 
 [[projects]]
   branch = "master"
@@ -1347,6 +1347,7 @@
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
+    "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer/json",
