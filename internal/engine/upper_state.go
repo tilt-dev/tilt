@@ -49,7 +49,7 @@ func newView(us upperState) view.View {
 		resources = append(resources, NewResourceView(us, name, *r))
 	}
 
-	return view.View{resources}
+	return view.View{Resources: resources}
 }
 
 func NewResourceView(us upperState, name model.ManifestName, r Resource) view.Resource {
