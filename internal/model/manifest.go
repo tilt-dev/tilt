@@ -20,7 +20,9 @@ type Manifest struct {
 	DockerRef  reference.Named
 
 	// Local files read while reading the Tilt configuration.
+	ConfigFiles []string
 	// If these files are changed, we should reload the manifest.
+	// TODO(dmiller) make this a function on the manifest model
 	ConfigMatcher PathMatcher
 
 	// Properties for fast_build (builds that support

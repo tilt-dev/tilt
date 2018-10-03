@@ -158,6 +158,10 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
+			err = recordReadToTiltFile(thread)
+			if err != nil {
+				return nil, err
+			}
 
 			files, err := getAndClearReadFiles(thread)
 			if err != nil {
@@ -316,8 +320,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	thread := tiltfile.thread
 	thread.SetLocal(readFilesKey, []string{})
 
-	// Record that we read the Tiltfile itself
-	err := recordReadFile(thread, FileName)
+	err := recordReadToTiltFile(thread)
 	if err != nil {
 		return nil, err
 	}
@@ -398,6 +401,7 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		Name:           model.ManifestName(manifest.name),
 		FileFilter:     model.NewCompositeMatcher(image.filters),
 		ConfigMatcher:  configMatcher,
+		ConfigFiles:    manifest.configFiles,
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
@@ -414,4 +418,13 @@ func skylarkMountsToDomain(sMounts []mount) []model.Mount {
 		}
 	}
 	return dMounts
+}
+
+func recordReadToTiltFile(t *skylark.Thread) error {
+	err := recordReadFile(t, FileName)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
