@@ -8,9 +8,9 @@ import (
 )
 
 func NewView(m hudmodel.Model) View {
-	var resources []Resource = nil
-	for name := range m.Resources {
-		resources = append(resources, NewResourceView(m, name, *m.Resources[name]))
+	var resources []Resource
+	for name, r := range m.Resources {
+		resources = append(resources, NewResourceView(m, name, *r))
 	}
 
 	return View{resources}
@@ -26,8 +26,7 @@ func NewResourceView(m hudmodel.Model, name tiltmodel.ManifestName, r hudmodel.R
 		StatusDesc:              "No pod found",
 	}
 
-	pod, ok := m.Pods[name]
-	if ok {
+	if pod, ok := m.Pods[name]; ok {
 		// TODO(matt) this mapping is probably wrong
 		switch pod.Status {
 		case "Running":
