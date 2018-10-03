@@ -49,8 +49,13 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, k8sClient, env, analytics)
-	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env)
+	updateModeFlag2 := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
+	if err != nil {
+		return nil, err
+	}
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, k8sClient, env, analytics, updateMode)
+	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)

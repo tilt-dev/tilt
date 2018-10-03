@@ -451,7 +451,8 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 	ctx := output.CtxForTest()
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, sCli, fallbackFn)
+	mode := UpdateModeFlag(UpdateModeAuto)
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, mode, sCli, fallbackFn)
 	if err != nil {
 		t.Fatal(err)
 	}
