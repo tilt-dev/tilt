@@ -253,12 +253,30 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 		info.markReady()
 	}()
 
-	// get pod running the image we just deployed
-	pod, err := sbd.kCli.PollForPodWithImage(ctx, image, k8s.DefaultNamespace, podPollTimeoutSynclet)
+	// get pod running the image we just deployed.
+	//
+	// We fetch the pod by the NamedTagged, to ensure we get a pod
+	// in the most recent Deployment, and not the pods in the process
+	// of being terminated from previous Deployments.
+	pods, err := sbd.kCli.PollForPodsWithImage(
+		ctx, image, k8s.DefaultNamespace,
+		[]k8s.LabelPair{TiltRunLabel()}, podPollTimeoutSynclet)
 	if err != nil {
-		return errors.Wrapf(err, "PodWithImage (img = %s)", image)
+		return errors.Wrapf(err, "PodsWithImage (img = %s)", image)
 	}
 
+	// If there's more than one pod, two possible things could be happening:
+	// 1) K8s is in a transitiion state.
+	// 2) The user is running a configuration where they want multiple replicas
+	//    of the same pod (e.g., a cockroach developer testing primary/replica).
+	// If this happens, don't bother populating the deployInfo.
+	// We want to fallback to image builds rather than managing the complexity
+	// of multiple replicas.
+	if len(pods) != 1 {
+		return nil
+	}
+
+	pod := &(pods[0])
 	pID := k8s.PodIDFromPod(pod)
 	nodeID := k8s.NodeIDFromPod(pod)
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
@@ -147,6 +149,9 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 	defer output.Get(ctx).EndPipelineStep()
 
 	output.Get(ctx).StartBuildStep("Parsing Kubernetes config YAML")
+
+	// TODO(nick): The parsed YAML should probably be a part of the model?
+	// It doesn't make much sense to re-parse it and inject labels on every deploy.
 	entities, err := k8s.ParseYAMLFromString(manifest.K8sYaml)
 	if err != nil {
 		return nil, err
@@ -155,6 +160,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
 	for _, e := range entities {
+		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel()})
+		if err != nil {
+			return nil, errors.Wrap(err, "deploy")
+		}
+
 		// For development, image pull policy should never be set to "Always",
 		// even if it might make sense to use "Always" in prod. People who
 		// set "Always" for development are shooting their own feet.

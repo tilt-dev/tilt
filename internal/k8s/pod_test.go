@@ -24,6 +24,7 @@ func fakePod(podID PodID, imageID string) v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            string(podID),
 			Namespace:       "default",
+			Labels:          make(map[string]string, 0),
 			ResourceVersion: fmt.Sprintf("%d", resourceVersion),
 		},
 		Spec: v1.PodSpec{
@@ -79,18 +80,50 @@ func (c clientTestFixture) AssertCallExistsWithArg(expectedArg string) {
 	assert.True(c.t, foundMatchingCall, "did not find arg '%s' in of the calls to kubectlRunner: %v", expectedArg, errorOutput)
 }
 
-func TestPodWithImage(t *testing.T) {
+func TestPodsWithImage(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PodWithImage(f.ctx, nt, DefaultNamespace)
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	pod := &(pods[0])
 	assert.Equal(t, expectedPod, PodIDFromPod(pod))
 }
 
-func TestPollForPodWithImage(t *testing.T) {
+func TestPodsWithImageLabels(t *testing.T) {
+	f := newClientTestFixture(t)
+
+	pod1 := fakePod("cockroach-0", "cockroachdb/cockroach:v2.0.5")
+	pod1.ObjectMeta.Labels["type"] = "primary"
+	pod2 := fakePod("cockroach-1", "cockroachdb/cockroach:v2.0.5")
+	pod2.ObjectMeta.Labels["type"] = "replica"
+
+	f.addObject(&pod1)
+	f.addObject(&pod2)
+	nt := MustParseNamedTagged("cockroachdb/cockroach:v2.0.5")
+
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []LabelPair{{"type", "primary"}})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	if assert.Equal(t, 1, len(pods)) {
+		assert.Equal(t, "primary", pods[0].ObjectMeta.Labels["type"])
+	}
+
+	pods, err = f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []LabelPair{{"type", "replica"}})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	if assert.Equal(t, 1, len(pods)) {
+		assert.Equal(t, "replica", pods[0].ObjectMeta.Labels["type"])
+	}
+}
+
+func TestPollForPodsWithImage(t *testing.T) {
 	f := newClientTestFixture(t)
 	go func() {
 		time.Sleep(time.Second)
@@ -98,14 +131,15 @@ func TestPollForPodWithImage(t *testing.T) {
 	}()
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	pod, err := f.client.PollForPodWithImage(f.ctx, nt, DefaultNamespace, 2*time.Second)
+	pods, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 2*time.Second)
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	pod := &(pods[0])
 	assert.Equal(t, expectedPod, PodIDFromPod(pod))
 }
 
-func TestPollForPodWithImageTimesOut(t *testing.T) {
+func TestPollForPodsWithImageTimesOut(t *testing.T) {
 	f := newClientTestFixture(t)
 	go func() {
 		time.Sleep(time.Second)
@@ -113,7 +147,7 @@ func TestPollForPodWithImageTimesOut(t *testing.T) {
 	}()
 
 	nt := MustParseNamedTagged(blorgDevImgStr)
-	_, err := f.client.PollForPodWithImage(f.ctx, nt, DefaultNamespace, 500*time.Millisecond)
+	_, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 500*time.Millisecond)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "timed out polling for pod running image")
 	}

@@ -30,14 +30,14 @@ func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod
 	return k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
 }
 
-func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, timeout time.Duration) (*v1.Pod, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodWithImage")
+func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodsWithImage")
 	span.SetTag("img", image.String())
 	defer span.Finish()
 
 	start := time.Now()
 	for time.Since(start) < timeout {
-		pod, err := k.PodWithImage(ctx, image, n)
+		pod, err := k.PodsWithImage(ctx, image, n, labels)
 		if err != nil {
 			return nil, err
 		}
@@ -51,16 +51,17 @@ func (k K8sClient) PollForPodWithImage(ctx context.Context, image reference.Name
 		image.String(), timeout)
 }
 
-// PodWithImage returns the ID of the pod running the given image. If too many matches, throw
+// PodsWithImage returns the ID of the pod running the given image. If too many matches, throw
 // an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodWithImage")
+func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodsWithImage")
 	defer span.Finish()
 
-	// TODO(nick): This should take some label selectors so that we're not querying the whole cluster?
-	podList, err := k.core.Pods(n.String()).List(metav1.ListOptions{})
+	podList, err := k.core.Pods(n.String()).List(metav1.ListOptions{
+		LabelSelector: makeLabelSelector(labels),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("PodWithImage: %v", err)
+		return nil, fmt.Errorf("PodsWithImage: %v", err)
 	}
 
 	ip := podMap(podList)
@@ -69,12 +70,7 @@ func (k K8sClient) PodWithImage(ctx context.Context, image reference.NamedTagged
 		// Nothing's wrong, we just didn't find a match.
 		return nil, nil
 	}
-	if len(pods) > 1 {
-		return nil, fmt.Errorf("too many pods found for %s: %d", image, len(pods))
-	}
-
-	pod := pods[0]
-	return &pod, nil
+	return pods, nil
 }
 
 func podMap(podList *v1.PodList) map[string][]v1.Pod {

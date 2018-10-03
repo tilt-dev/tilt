@@ -55,8 +55,13 @@ type Client interface {
 	Apply(ctx context.Context, entities []K8sEntity) error
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	PodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace) (*v1.Pod, error)
-	PollForPodWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, timeout time.Duration) (*v1.Pod, error)
+	// Find all the pods that match the given image, namespace, and labels.
+	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error)
+
+	// Find all the pods matching the given parameters, stopping on timeout or
+	// when we have at least one pod.
+	PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error)
+
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
 	// Creates a channel where all changes to the pod are brodcast.

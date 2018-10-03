@@ -33,7 +33,7 @@ func TestPostProcessBuild(t *testing.T) {
 	f := newContainerBadFixture()
 
 	f.dCli.SetContainerListOutput(containerListOutput)
-	f.kCli.SetPodWithImageResp(pod1)
+	f.kCli.SetPodsWithImageResp(pod1)
 
 	res := BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
@@ -47,7 +47,7 @@ func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 	f := newContainerBadFixture()
 
 	f.dCli.SetContainerListOutput(containerListOutput)
-	f.kCli.SetPodWithImageResp(pod1)
+	f.kCli.SetPodsWithImageResp(pod1)
 
 	f.cbad.deployInfo[docker.ToImgNameAndTag(image1)] = k8s.ContainerID("ohai")
 

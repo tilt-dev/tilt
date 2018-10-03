@@ -9,13 +9,16 @@ type LabelPair struct {
 	Value string
 }
 
-func makeLabelString(lps []LabelPair) string {
+func makeLabelSet(lps []LabelPair) labels.Set {
 	ls := labels.Set{}
 	for _, lp := range lps {
 		ls[lp.Key] = lp.Value
 	}
+	return ls
+}
 
-	return labels.SelectorFromSet(ls).String()
+func makeLabelSelector(lps []LabelPair) string {
+	return labels.SelectorFromSet(makeLabelSet(lps)).String()
 }
 
 func InjectLabels(entity K8sEntity, labels []LabelPair) (K8sEntity, error) {
