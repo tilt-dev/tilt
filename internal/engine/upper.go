@@ -9,6 +9,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/hud"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -44,6 +45,7 @@ type Upper struct {
 	k8s          k8s.Client
 	browserMode  BrowserMode
 	reaper       build.ImageReaper
+	hud          *hud.Hud
 }
 
 type watcherMaker func() (watch.Notify, error)
@@ -60,6 +62,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		k8s:          k8s,
 		browserMode:  browserMode,
 		reaper:       reaper,
+		hud:          hud.NewHud(),
 	}
 }
 
@@ -126,6 +129,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 		logger.Get(ctx).Infof("Awaiting edits...")
 
+		go u.PopulateK8sStatusOngoing()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -167,8 +172,13 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 			case err := <-sw.errs:
 				return err
+			default:
+				time.Sleep(time.Millisecond * 500) // take this out when we have a non-spammy HUD
 			}
+			u.PopulateTiltStatus()
+			u.hud.Render()
 		}
+
 	}
 	return nil
 }
@@ -208,6 +218,21 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifes
 	}
 
 	return nil
+}
+
+func (u Upper) PopulateTiltStatus() {
+	// Not implemented yet -- populate Tilt status on u.Hud.
+	return
+}
+
+func (u Upper) PopulateK8sStatusOngoing() {
+	// Not implemented yet -- populate k8s status on u.Hud in infinite loop.
+	time.Sleep(time.Second * 2)
+
+	u.hud.Model.Mu.Lock()
+	defer u.hud.Model.Mu.Unlock()
+
+	u.hud.Model.Info = "populated some k8s info"
 }
 
 var _ model.ManifestCreator = Upper{}
