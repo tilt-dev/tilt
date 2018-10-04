@@ -34,7 +34,7 @@ func TestNewViewBrokenPod(t *testing.T) {
 type viewTestFixture struct {
 	t        *testing.T
 	resource *Resource
-	model    *upperState
+	model    *UpperState
 
 	generatedView view.View
 }
@@ -49,7 +49,7 @@ func newViewTestFixture(t *testing.T) *viewTestFixture {
 		Status:             resourceStatusStale,
 	}
 
-	m := upperState{
+	m := UpperState{
 		Resources: map[model.ManifestName]*Resource{
 			manifestName: &r,
 		},
@@ -65,7 +65,7 @@ func newViewTestFixture(t *testing.T) *viewTestFixture {
 }
 
 func (vtf *viewTestFixture) run() {
-	ret := newView(*vtf.model)
+	ret := NewView(*vtf.model)
 
 	if !assert.Equal(vtf.t, 1, len(vtf.model.Resources)) {
 		vtf.t.Fail()

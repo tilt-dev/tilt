@@ -10,6 +10,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -48,6 +50,7 @@ type Upper struct {
 	reaper          build.ImageReaper
 	buildStates     BuildStatesByName
 	manifestOverlay map[model.ManifestName]model.Manifest
+	hud             *hud.Hud
 }
 
 type watcherMaker func() (watch.Notify, error)
@@ -57,6 +60,13 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
+	// TODO(maia): inject this
+	h, err := hud.NewHud()
+	if err != nil {
+		panic(fmt.Sprintf("err making hud: %v", err))
+	}
+	go h.Run(ctx)
+
 	return Upper{
 		b:               b,
 		watcherMaker:    watcherMaker,
@@ -66,6 +76,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		reaper:          reaper,
 		buildStates:     make(BuildStatesByName),
 		manifestOverlay: map[model.ManifestName]model.Manifest{},
+		hud:             h,
 	}
 }
 
@@ -170,6 +181,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				output.Get(ctx).Printf("Awaiting changes…")
 			case err := <-sw.errs:
 				return err
+			case <-time.After(time.Second):
+				u.hud.Update(view.View{})
 			}
 		}
 	}
