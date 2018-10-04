@@ -78,18 +78,15 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 		for {
 			_, err := stream.Recv() // assume it's a window change message
 			if err != nil {
-				fmt.Println("stream closed:", err)
 				a.streamClosedCh <- err
 				return
 			}
-			log.Printf("got a SIGWINCH")
 			// TODO(maia): inform HUD of SIGWINCH
 		}
 	}()
 
 	select {
 	case <-ctx.Done():
-		fmt.Printf("ctx is done")
 		return ctx.Err()
 	}
 }

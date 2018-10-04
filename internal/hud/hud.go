@@ -6,12 +6,19 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 )
 
+type HeadsUpDisplay interface {
+	Run(ctx context.Context)
+	Update(v view.View)
+}
+
 type Hud struct {
 	a *ServerAdapter
 	r *Renderer
 }
 
-func NewHud() (*Hud, error) {
+var _ HeadsUpDisplay = (*Hud)(nil)
+
+func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 	a, err := NewServer()
 	if err != nil {
 		return nil, err

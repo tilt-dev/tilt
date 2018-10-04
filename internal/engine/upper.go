@@ -50,22 +50,20 @@ type Upper struct {
 	reaper          build.ImageReaper
 	buildStates     BuildStatesByName
 	manifestOverlay map[model.ManifestName]model.Manifest
-	hud             *hud.Hud
+	hud             hud.HeadsUpDisplay
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode, reaper build.ImageReaper) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	// TODO(maia): dependency injection
-	h, err := hud.NewHud()
-	if err != nil {
-		panic(fmt.Sprintf("err making hud: %v", err))
-	}
-	go h.Run(ctx)
+
+	// Run the HUD in the background
+	go hud.Run(ctx)
 
 	return Upper{
 		b:               b,
@@ -76,7 +74,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		reaper:          reaper,
 		buildStates:     make(BuildStatesByName),
 		manifestOverlay: map[model.ManifestName]model.Manifest{},
-		hud:             h,
+		hud:             hud,
 	}
 }
 

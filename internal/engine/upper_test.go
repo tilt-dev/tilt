@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -620,7 +621,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	reaper := build.NewImageReaper(docker)
 
 	k8s := k8s.NewFakeK8sClient()
-	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper, make(BuildStatesByName), map[model.ManifestName]model.Manifest{}}
+
+	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto,
+		reaper, make(BuildStatesByName), map[model.ManifestName]model.Manifest{}, &hud.FakeHud{}}
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
 
