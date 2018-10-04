@@ -18,7 +18,6 @@ package tcell
 
 import (
 	"os"
-	"os/signal"
 	"syscall"
 	"unsafe"
 )
@@ -33,10 +32,10 @@ func (t *tScreen) termioInit() error {
 	var ioc uintptr
 	t.tiosp = &termiosPrivate{}
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
+	if t.in, e = os.OpenFile(t.ttyPath, os.O_RDONLY, 0); e != nil {
 		goto failed
 	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+	if t.out, e = os.OpenFile(t.ttyPath, os.O_WRONLY, 0); e != nil {
 		goto failed
 	}
 
@@ -78,7 +77,7 @@ func (t *tScreen) termioInit() error {
 		goto failed
 	}
 
-	signal.Notify(t.sigwinch, syscall.SIGWINCH)
+	t.sigwinch.Notify()
 
 	if w, h, e := t.getWinSize(); e == nil && w != 0 && h != 0 {
 		t.cells.Resize(w, h)
@@ -98,7 +97,7 @@ failed:
 
 func (t *tScreen) termioFini() {
 
-	signal.Stop(t.sigwinch)
+	t.sigwinch.Stop()
 
 	<-t.indoneq
 

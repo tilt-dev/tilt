@@ -28,16 +28,18 @@ import (
 	"github.com/gdamore/tcell/terminfo"
 )
 
-// NewTerminfoScreen returns a Screen that uses the stock TTY interface
-// and POSIX termios, combined with a terminfo description taken from
-// the $TERM environment variable.  It returns an error if the terminal
-// is not supported for any reason.
+const defaultTtyPath = "/dev/tty"
+
+// NewTerminfoScreenFromTty returns a Screen pointing to the given TTY,
+// combined with a terminfo description taken from the terminal name
+// (found in the $TERM environment variable of the corresponding TTY).
+// It returns an error if the terminal is not supported for any reason.
 //
 // For terminals that do not support dynamic resize events, the $LINES
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
-func NewTerminfoScreen() (Screen, error) {
-	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
+func NewTerminfoScreenFromTty(ttyPath string, sigwinchCh chan os.Signal, termName string) (Screen, error) {
+	ti, e := terminfo.LookupTerminfo(termName)
 	if e != nil {
 		return nil, e
 	}
@@ -50,13 +52,20 @@ func NewTerminfoScreen() (Screen, error) {
 	}
 	t.prepareKeys()
 	t.buildAcsMap()
-	t.sigwinch = make(chan os.Signal, 10)
 	t.fallback = make(map[rune]string)
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
 	}
+	t.ttyPath = ttyPath
+
+	t.sigwinch = sigwinchFromRemoteChan(sigwinchCh)
 
 	return t, nil
+}
+
+// NewTerminfoScreen returns a Screen for the current TTY.
+func NewTerminfoScreen() (Screen, error) {
+	return NewTerminfoScreenFromTty(defaultTtyPath, nil, os.Getenv("TERM"))
 }
 
 // tKeyCode represents a combination of a key code and modifiers.
@@ -72,12 +81,13 @@ type tScreen struct {
 	w         int
 	fini      bool
 	cells     CellBuffer
+	ttyPath   string
 	in        *os.File
 	out       *os.File
 	curstyle  Style
 	style     Style
 	evch      chan Event
-	sigwinch  chan os.Signal
+	sigwinch  sigwinch
 	quit      chan struct{}
 	indoneq   chan struct{}
 	keyexist  map[Key]bool
@@ -1256,7 +1266,7 @@ func (t *tScreen) mainLoop() {
 		case <-t.quit:
 			close(t.indoneq)
 			return
-		case <-t.sigwinch:
+		case <-t.sigwinch.ch:
 			t.Lock()
 			t.cx = -1
 			t.cy = -1
