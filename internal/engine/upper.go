@@ -84,6 +84,9 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		return err
 	}
 
+	startBuildChan := make(chan startBuildEvent)
+	endBuildChan := u.buildAll(startBuildChan)
+
 	lbs := make([]k8s.LoadBalancerSpec, 0)
 	for _, manifest := range manifests {
 		buildStates[manifest.Name] = BuildStateClean
@@ -131,46 +134,89 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			case <-ctx.Done():
 				return ctx.Err()
 			case event := <-sw.events:
-				oldState := buildStates[event.manifest.Name]
-				buildState := oldState.NewStateWithFilesChanged(event.files)
-				buildStates[event.manifest.Name] = buildState
-
-				spurious, err := buildState.OnlySpuriousChanges()
+				u.handleFSEvent(ctx, buildStates, event, startBuildChan)
+			case e := <-endBuildChan:
+				err := u.handleEndBuildEvent(ctx, e, buildStates, s)
 				if err != nil {
-					logger.Get(ctx).Infof("build watch error: %v", err)
+					return err
 				}
-
-				if spurious {
-					// TODO(nick): I think we probably want to log when this happens?
-					continue
-				}
-
-				u.logBuildEvent(ctx, event.manifest, buildState)
-
-				result, err := u.b.BuildAndDeploy(
-					ctx,
-					event.manifest,
-					buildState)
-				if err != nil {
-					if isPermanentError(err) {
-						return err
-					}
-					o := output.Get(ctx)
-					o.PrintColorf(o.Red(), "build failed: %v", err)
-				} else {
-					buildStates[event.manifest.Name] = NewBuildState(result)
-				}
-				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-				output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
-				output.Get(ctx).Printf("Awaiting changes…")
-
 			case err := <-sw.errs:
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+type startBuildEvent struct {
+	ctx        context.Context
+	manifest   model.Manifest
+	buildState BuildState
+}
+
+type endBuildEvent struct {
+	result       BuildResult
+	err          error
+	manifestName model.ManifestName
+}
+
+func (u Upper) buildAll(es <-chan startBuildEvent) <-chan endBuildEvent {
+	out := make(chan endBuildEvent)
+	go func() {
+		for e := range es {
+			u.logBuildEvent(e.ctx, e.manifest, e.buildState)
+
+			result, err := u.b.BuildAndDeploy(
+				e.ctx,
+				e.manifest,
+				e.buildState)
+			out <- endBuildEvent{result, err, e.manifest.Name}
+		}
+	}()
+
+	return out
+}
+
+func (u Upper) handleEndBuildEvent(ctx context.Context, ebe endBuildEvent, buildStates BuildStatesByName, s *summary.Summary) error {
+	err := ebe.err
+	if err != nil {
+		if isPermanentError(err) {
+			return err
+		}
+		o := output.Get(ctx)
+		o.PrintColorf(o.Red(), "build failed: %v", err)
+	} else {
+		buildStates[ebe.manifestName] = NewBuildState(ebe.result)
+	}
+	logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
+	output.Get(ctx).Printf("Awaiting changes…")
+
+	return nil
+}
+
+func (u Upper) handleFSEvent(
+	ctx context.Context,
+	buildStates BuildStatesByName,
+	event manifestFilesChangedEvent,
+	ch chan<- startBuildEvent) {
+
+	oldState := buildStates[event.manifest.Name]
+	buildState := oldState.NewStateWithFilesChanged(event.files)
+	buildStates[event.manifest.Name] = buildState
+
+	spurious, err := buildState.OnlySpuriousChanges()
+	if err != nil {
+		logger.Get(ctx).Infof("build watch error: %v", err)
+	}
+
+	if spurious {
+		// TODO(nick): I think we probably want to log when this happens?
+		return
+	}
+
+	ch <- startBuildEvent{ctx, event.manifest, buildState}
 }
 
 func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
