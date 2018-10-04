@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 func UnixListen(socketPath string) (net.Listener, error) {
@@ -74,4 +75,9 @@ func isErrno(err error, expected syscall.Errno) bool {
 		return false
 	}
 	return errno == expected
+}
+
+func UnixDial(addr string, timeout time.Duration) (net.Conn, error) {
+	// TODO(dbentley): do timeouts right
+	return net.DialTimeout("unix", addr, 100*time.Millisecond)
 }

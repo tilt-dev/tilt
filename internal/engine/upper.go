@@ -60,7 +60,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
-	// TODO(maia): inject this
+	// TODO(maia): dependency injection
 	h, err := hud.NewHud()
 	if err != nil {
 		panic(fmt.Sprintf("err making hud: %v", err))
@@ -181,6 +181,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				output.Get(ctx).Printf("Awaiting changes…")
 			case err := <-sw.errs:
 				return err
+			// HACK(maia): until upper notifies the HUD of updates, just tell the HUD to update every second
 			case <-time.After(time.Second):
 				u.hud.Update(view.View{})
 			}

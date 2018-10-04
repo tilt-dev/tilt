@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -15,6 +14,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/hud/proto"
+	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -49,18 +49,14 @@ func (c *hudCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting the HUD (built %s)…\n", buildDateStamp()))
 
-	return doHud(ctx)
+	return connectHud(ctx)
 }
 
-func doHud(ctx context.Context) error {
-	fmt.Printf("hello hud\n")
-
+func connectHud(ctx context.Context) error {
 	tty, err := curTty(ctx)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Got tty: %s\n", tty)
 
 	socketPath, err := proto.LocateSocket()
 	if err != nil {
@@ -70,7 +66,7 @@ func doHud(ctx context.Context) error {
 	conn, err := grpc.Dial(
 		socketPath,
 		grpc.WithInsecure(),
-		grpc.WithDialer(UnixDial),
+		grpc.WithDialer(network.UnixDial),
 	)
 	if err != nil {
 		return err
@@ -123,36 +119,6 @@ func doHud(ctx context.Context) error {
 	})
 
 	return g.Wait()
-}
-
-func UnixDial(addr string, timeout time.Duration) (net.Conn, error) {
-	// TODO(dbentley): do timeouts right
-	return net.DialTimeout("unix", addr, 100*time.Millisecond)
-}
-
-func sendFDs(fdListener *net.UnixListener, fs []*os.File) error {
-	if true {
-		return nil
-	}
-	defer fdListener.Close()
-	fdConn, err := fdListener.AcceptUnix()
-	log.Printf("got a client who wants fds %v", fdConn)
-	if err != nil {
-		return err
-	}
-	connFd, err := fdConn.File()
-	if err != nil {
-		return err
-	}
-	defer fdConn.Close()
-
-	fds := make([]int, len(fs))
-	for i, f := range fs {
-		fds[i] = int(f.Fd())
-	}
-
-	rights := syscall.UnixRights(fds...)
-	return syscall.Sendmsg(int(connFd.Fd()), nil, rights, nil, 0)
 }
 
 func curTty(ctx context.Context) (string, error) {

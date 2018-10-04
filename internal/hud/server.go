@@ -68,8 +68,6 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 		return fmt.Errorf("expected a connect msg; got %T %v", msg, msg)
 	}
 
-	// winchCh := make(chan os.Signal)
-
 	ready := ReadyEvent{
 		ttyPath: connectMsg.TtyPath,
 		ctx:     ctx,
@@ -85,8 +83,7 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 				return
 			}
 			log.Printf("got a SIGWINCH")
-			// TODO: inform winchCh of SIGWINCH
-			// winchCh <- syscall.SIGWINCH
+			// TODO(maia): inform HUD of SIGWINCH
 		}
 	}()
 
