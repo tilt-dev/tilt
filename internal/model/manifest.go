@@ -12,6 +12,7 @@ type ManifestName string
 
 func (m ManifestName) String() string { return string(m) }
 
+// NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
@@ -96,6 +97,14 @@ func (m Manifest) validate() *ValidateErr {
 	return nil
 }
 
+func (m1 Manifest) Equal(m2 Manifest) bool {
+	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath
+	cmdMatch := m1.Entrypoint.Equal(m2.Entrypoint)
+	pmMatch := m1.FileFilter == m2.FileFilter
+
+	return primitivesMatch && cmdMatch && pmMatch
+}
+
 type ManifestCreator interface {
 	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
@@ -176,6 +185,24 @@ func (c Cmd) String() string {
 		}
 	}
 	return fmt.Sprintf("%s", strings.Join(quoted, " "))
+}
+
+func (c1 Cmd) Equal(c2 Cmd) bool {
+	if (c1.Argv == nil) != (c2.Argv == nil) {
+		return false
+	}
+
+	if len(c1.Argv) != len(c2.Argv) {
+		return false
+	}
+
+	for i := range c1.Argv {
+		if c1.Argv[i] != c2.Argv[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c Cmd) Empty() bool {
