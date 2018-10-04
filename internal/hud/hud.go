@@ -3,8 +3,9 @@ package hud
 import (
 	"context"
 
+	"log"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/yanzay/log"
 )
 
 type HeadsUpDisplay interface {
@@ -49,6 +50,6 @@ func (h *Hud) Run(ctx context.Context) {
 func (h *Hud) Update(v view.View) {
 	err := h.r.Render(v)
 	if err != nil {
-		log.Infof("Error rendering HUD")
+		log.Println("Error rendering HUD")
 	}
 }
