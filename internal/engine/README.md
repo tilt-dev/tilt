@@ -6,6 +6,10 @@ state := &state{}
 for {
     select {
         // sources like local filesystem, kubernetes, ui, etc
+        case ev := <- fsCh:
+            e.handleFsEvent(ev)
+        case ev := <- k8sCh:
+            e.handleK8sEvent(ev)
     }
     // decide what to do: start a pipeline, stop a pipeline
     actions := handle(state)
