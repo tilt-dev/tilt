@@ -17,8 +17,9 @@ RUN mkdir -p /go/src/github.com/golang && \
   go get ./protoc-gen-go
 
 ADD internal/synclet /go/src/github.com/windmilleng/tilt/internal/synclet
+ADD internal/hud /go/src/github.com/windmilleng/tilt/internal/hud
 
 WORKDIR /go/src/github.com/windmilleng/tilt
 
 RUN protoc --go_out=plugins=grpc:../../../ -I. internal/synclet/*.proto
-
+RUN protoc --go_out=plugins=grpc:../../../ -I. internal/hud/proto/*.proto

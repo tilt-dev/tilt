@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package hud;
+
+option go_package = "github.com/windmilleng/tilt/internal/hud/proto;proto";
+
+service Hud {
+  rpc ConnectHud (stream HudControl) returns (DoneReply) {}
+}
+
+message HudControl {
+  oneof control {
+    ConnectRequest connect = 1;
+    WindowChange window_change = 2;
+  }
+}
+
+
+message ConnectRequest {
+  string tty_path = 1;
+}
+
+message WindowChange {}
+message DoneReply {}
