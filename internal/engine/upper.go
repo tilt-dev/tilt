@@ -121,7 +121,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 
 	if watchMounts {
-		haveValidTiltfile := true
 		go func() {
 			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
 			if err != nil {
@@ -140,17 +139,14 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 					newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
 					if err != nil {
 						logger.Get(ctx).Infof("getting new manifest error: %v", err)
-						haveValidTiltfile = false
 						continue
 					}
 					buildState := BuildStateClean
 					err = u.buildManifestFromBuildState(ctx, newManifest, buildState)
 					if err != nil {
 						logger.Get(ctx).Infof("config watch error: %v", err)
-						haveValidTiltfile = false
 						continue
 					}
-					haveValidTiltfile = true
 					u.manifestOverlay[newManifest.Name] = newManifest
 				} else {
 					oldState := u.buildStates[event.manifest.Name]
@@ -168,20 +164,10 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 					}
 
 					manifest := u.getMostRecentManifest(event)
-					if !haveValidTiltfile {
-						newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
-						if err != nil {
-							logger.Get(ctx).Infof("getting new manifest error: %v", err)
-							haveValidTiltfile = false
-							continue
-						}
-						manifest = newManifest
-					}
 					err = u.buildManifestFromBuildState(ctx, manifest, buildState)
 					if err != nil {
 						return err
 					}
-					haveValidTiltfile = true
 					u.manifestOverlay[manifest.Name] = manifest
 
 					output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
