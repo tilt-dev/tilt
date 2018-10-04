@@ -14,6 +14,8 @@
 
 package tcell
 
+import "os"
+
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
 // this differerently.
@@ -198,9 +200,24 @@ type Screen interface {
 // NewScreen returns a default Screen suitable for the user's terminal
 // environment.
 func NewScreen() (Screen, error) {
-	// First we attempt to obtain a terminfo screen.  This should work
-	// in most places if $TERM is set.
+	// First we attempt to obtain the default terminfo screen, i.e. for the
+	// current terminal. This should work in most places if $TERM is set.
 	if s, e := NewTerminfoScreen(); s != nil {
+		return s, nil
+
+	} else if s, _ := NewConsoleScreen(); s != nil {
+		return s, nil
+
+	} else {
+		return nil, e
+	}
+}
+
+// NewScreenFromTty returns a Screen for the given tty/termName (and listening
+// for SIGWINCH's on the given channel).
+func NewScreenFromTty(ttyPath string, sigwinch chan os.Signal, termName string) (Screen, error) {
+	// First we attempt to obtain a terminfo screen for the given tty/termName.
+	if s, e := NewTerminfoScreenFromTty(ttyPath, sigwinch, termName); s != nil {
 		return s, nil
 
 	} else if s, _ := NewConsoleScreen(); s != nil {
