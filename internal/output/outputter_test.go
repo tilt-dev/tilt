@@ -46,7 +46,7 @@ func TestPipeline(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	ctx := o.StartPipeline(context.Background(), 1)
+	ctx := o.ContextWithNewPipeline(context.Background(), 1)
 	o = *Get(ctx)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("in ur step")
@@ -61,7 +61,7 @@ func TestErroredPipeline(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	ctx := o.StartPipeline(context.Background(), 1)
+	ctx := o.ContextWithNewPipeline(context.Background(), 1)
 	o = *Get(ctx)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("in ur step")
@@ -76,7 +76,7 @@ func TestMultilinePrintInPipeline(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	ctx := o.StartPipeline(context.Background(), 1)
+	ctx := o.ContextWithNewPipeline(context.Background(), 1)
 	o = *Get(ctx)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("line 1\nline 2\n")
@@ -91,7 +91,7 @@ func TestPipelineContext(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	ctx := o.StartPipeline(context.Background(), 1)
+	ctx := o.ContextWithNewPipeline(context.Background(), 1)
 	o2 := *Get(ctx)
 	o2.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("line 1\nline 2\n")

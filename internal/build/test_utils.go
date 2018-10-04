@@ -39,7 +39,7 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	ctx := output.CtxForTest()
+	ctx := output.CtxWithPipelineForTest()
 	dcli, err := docker.DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 }
 
 func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	ctx := output.CtxForTest()
+	ctx := output.CtxWithPipelineForTest()
 	dcli := docker.NewFakeDockerClient()
 	labels := Labels(map[Label]LabelValue{
 		TestImage: "1",

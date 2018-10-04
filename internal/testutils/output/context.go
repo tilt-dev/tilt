@@ -16,3 +16,8 @@ func CtxForTest() context.Context {
 	ctx = output.WithOutputter(ctx, output.NewOutputter(l))
 	return ctx
 }
+
+func CtxWithPipelineForTest() context.Context {
+	ctx := CtxForTest()
+	return output.Get(ctx).ContextWithNewPipeline(ctx, 2)
+}

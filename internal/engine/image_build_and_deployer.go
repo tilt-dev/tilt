@@ -57,7 +57,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	}()
 
 	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
-	ctx = output.Get(ctx).StartPipeline(ctx, 2)
+	ctx = output.Get(ctx).ContextWithNewPipeline(ctx, 2)
 	defer func() { output.Get(ctx).EndPipeline(err) }()
 
 	err = manifest.Validate()

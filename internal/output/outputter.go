@@ -16,15 +16,19 @@ const (
 	outputterContextKey   = "outputter"
 )
 
-type Outputter struct {
-	logger logger.Logger
-
+type pipelineState struct {
 	curPipelineStep        int
 	curBuildStep           int
 	totalPipelineStepCount int
 	pipelineStepDurations  []time.Duration
 	curPipelineStart       time.Time
 	curPipelineStepStart   time.Time
+}
+
+type Outputter struct {
+	logger logger.Logger
+
+	pipelineState *pipelineState
 }
 
 func Get(ctx context.Context) *Outputter {
@@ -61,14 +65,15 @@ func (o *Outputter) yellow() *color.Color { return o.color(color.FgYellow) }
 func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
 func (o *Outputter) Red() *color.Color    { return o.color(color.FgRed) }
 
-func (o *Outputter) StartPipeline(ctx context.Context, totalStepCount int) context.Context {
+func (o *Outputter) ContextWithNewPipeline(ctx context.Context, totalStepCount int) context.Context {
 	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting… ├──────────────────────────────────────────────"))
 
 	newOutputter := NewOutputter(o.logger)
-	newOutputter.curPipelineStep = 1
-	newOutputter.totalPipelineStepCount = totalStepCount
-	newOutputter.pipelineStepDurations = nil
-	newOutputter.curPipelineStart = time.Now()
+	newOutputter.pipelineState = &pipelineState{
+		curPipelineStep:        1,
+		totalPipelineStepCount: totalStepCount,
+		curPipelineStart:       time.Now(),
+	}
 
 	return WithOutputter(ctx, newOutputter)
 }
@@ -79,43 +84,59 @@ func (o *Outputter) StartPipeline(ctx context.Context, totalStepCount int) conte
 // and NOT:
 //     defer o.EndPipeline(err)
 func (o *Outputter) EndPipeline(err error) {
-	elapsed := time.Now().Sub(o.curPipelineStart)
+	if o.pipelineState == nil {
+		panic("called EndPipeline on an outputter with no pipeline")
+	}
+
+	elapsed := time.Now().Sub(o.pipelineState.curPipelineStart)
 
 	if err != nil {
 		prefix := o.Red().Sprint(" ︎ERROR:")
 		o.logger.Infof("%s %s\n", prefix, err.Error())
-		o.curPipelineStep = 0
-		o.curBuildStep = 0
+		o.pipelineState.curPipelineStep = 0
+		o.pipelineState.curBuildStep = 0
 		return
 	}
 
-	for i, duration := range o.pipelineStepDurations {
+	for i, duration := range o.pipelineState.pipelineStepDurations {
 		o.logger.Infof("  │ Step %d - %.3fs │", i+1, duration.Seconds())
 	}
 
 	time := o.green().Sprintf("%.3fs", elapsed.Seconds())
 	o.logger.Infof("──┤ Done in: %s ︎├──\n", time)
-	o.curPipelineStep = 0
-	o.curBuildStep = 0
+	o.pipelineState.curPipelineStep = 0
+	o.pipelineState.curBuildStep = 0
 }
 
 func (o *Outputter) StartPipelineStep(format string, a ...interface{}) {
-	line := o.green().Sprintf("STEP %d/%d — %s", o.curPipelineStep, o.totalPipelineStepCount, fmt.Sprintf(format, a...))
+	if o.pipelineState == nil {
+		panic("called StartPipelineStep on an outputter with no pipeline")
+	}
+
+	line := o.green().Sprintf("STEP %d/%d — %s", o.pipelineState.curPipelineStep, o.pipelineState.totalPipelineStepCount, fmt.Sprintf(format, a...))
 	o.logger.Infof("%s", line)
-	o.curPipelineStep++
-	o.curBuildStep = 1
-	o.curPipelineStepStart = time.Now()
+	o.pipelineState.curPipelineStep++
+	o.pipelineState.curBuildStep = 1
+	o.pipelineState.curPipelineStepStart = time.Now()
 }
 
 func (o *Outputter) EndPipelineStep() {
-	elapsed := time.Now().Sub(o.curPipelineStepStart)
+	if o.pipelineState == nil {
+		panic("called StartPipelineStep on an outputter with no pipeline")
+	}
+
+	elapsed := time.Now().Sub(o.pipelineState.curPipelineStepStart)
 	o.logger.Infof("    (Done %.3fs)\n", elapsed.Seconds())
-	o.pipelineStepDurations = append(o.pipelineStepDurations, elapsed)
+	o.pipelineState.pipelineStepDurations = append(o.pipelineState.pipelineStepDurations, elapsed)
 }
 
 func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
+	if o.pipelineState == nil {
+		panic("called StartPipelineStep on an outputter with no pipeline")
+	}
+
 	o.logger.Infof("  → %s", fmt.Sprintf(format, a...))
-	o.curBuildStep++
+	o.pipelineState.curBuildStep++
 }
 
 func (o *Outputter) Summary(format string, a ...interface{}) {
@@ -129,7 +150,7 @@ func (o *Outputter) PrintColorf(color *color.Color, format string, a ...interfac
 }
 
 func (o *Outputter) Printf(format string, a ...interface{}) {
-	if o.curBuildStep == 0 {
+	if o.pipelineState == nil || o.pipelineState.curBuildStep == 0 {
 		o.logger.Infof(format, a...)
 	} else {
 		message := fmt.Sprintf(format, a...)
@@ -189,7 +210,7 @@ func (i *prefixedWriter) Write(buf []byte) (n int, err error) {
 
 func (o Outputter) Writer() io.Writer {
 	underlying := o.logger.Writer(logger.InfoLvl)
-	if o.curBuildStep == 0 {
+	if o.pipelineState == nil || o.pipelineState.curBuildStep == 0 {
 		return underlying
 	} else {
 		return newPrefixedWriter(buildStepOutputPrefix, underlying)
