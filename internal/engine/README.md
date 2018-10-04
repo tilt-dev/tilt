@@ -2,15 +2,15 @@
 Engine is primarily a `for` loop that takes inputs from a variety of sources, updates state, and makes a decision based off of that state. The rough shape of the for loop is as follows:
 
 ```go
-state := struct{}
+state := &state{}
 for {
     select {
         // sources like local filesystem, kubernetes, ui, etc
     }
     // decide what to do: start a pipeline, stop a pipeline
     actions := handle(state)
-    // tell subscribers what we did
-    updateSubscribers(actions)
+    // tell subscribers what we took
+    updateSubscribers(actions, state.copy())
 }
 ```
 
