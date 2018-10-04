@@ -19,7 +19,7 @@ func NewFakeHud() *FakeHud {
 	}
 }
 
-func (h *FakeHud) Run(ctx context.Context) {}
+func (h *FakeHud) Run(ctx context.Context) error { return nil }
 
 func (h *FakeHud) Update(v view.View) {
 	h.LastView = v

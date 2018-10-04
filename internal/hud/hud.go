@@ -9,7 +9,7 @@ import (
 )
 
 type HeadsUpDisplay interface {
-	Run(ctx context.Context)
+	Run(ctx context.Context) error
 	Update(v view.View)
 }
 
@@ -32,14 +32,16 @@ func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 	}, nil
 }
 
-func (h *Hud) Run(ctx context.Context) {
+func (h *Hud) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case ready := <-h.a.readyCh:
-			h.r.ttyPath = ready.ttyPath
-			h.r.ctx = ready.ctx
+			err := h.r.SetUp(ready)
+			if err != nil {
+				return err
+			}
 		case <-h.a.streamClosedCh:
 			h.r.Reset()
 		}
