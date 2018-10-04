@@ -539,7 +539,6 @@ func TestReadFile(t *testing.T) {
 func TestConfigMatcherWithFastBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
-
 	f.WriteFile("Dockerfile.base", "docker text")
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
@@ -549,10 +548,13 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
   image = stop_build()
   return k8s_service(yaml, image)
 `)
-
 	manifest := f.LoadManifest("blorgly")
 	matches := func(p string) bool {
-		ok, err := manifest.ConfigMatcher.Matches(p, false)
+		matcher, err := manifest.ConfigMatcher()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ok, err := matcher.Matches(p, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -563,19 +565,20 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
 	assert.True(t, matches(f.JoinPath("a.txt")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
-
 func TestConfigMatcherWithStaticBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
-
 	f.WriteFile("Dockerfile", "dockerfile text")
 	f.WriteFile("Tiltfile", `def blorgly():
   yaml = local('echo yaaaaaaaaml')
   return k8s_service(yaml, static_build("Dockerfile", "docker-tag"))`)
-
 	manifest := f.LoadManifest("blorgly")
 	matches := func(p string) bool {
-		ok, err := manifest.ConfigMatcher.Matches(p, false)
+		matcher, err := manifest.ConfigMatcher()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ok, err := matcher.Matches(p, false)
 		if err != nil {
 			t.Fatal(err)
 		}

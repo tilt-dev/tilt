@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -15,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/summary"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -38,12 +40,14 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b            BuildAndDeployer
-	watcherMaker watcherMaker
-	timerMaker   timerMaker
-	k8s          k8s.Client
-	browserMode  BrowserMode
-	reaper       build.ImageReaper
+	b               BuildAndDeployer
+	watcherMaker    watcherMaker
+	timerMaker      timerMaker
+	k8s             k8s.Client
+	browserMode     BrowserMode
+	reaper          build.ImageReaper
+	buildStates     BuildStatesByName
+	manifestOverlay map[model.ManifestName]model.Manifest
 }
 
 type watcherMaker func() (watch.Notify, error)
@@ -54,20 +58,20 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		return watch.NewWatcher()
 	}
 	return Upper{
-		b:            b,
-		watcherMaker: watcherMaker,
-		timerMaker:   time.After,
-		k8s:          k8s,
-		browserMode:  browserMode,
-		reaper:       reaper,
+		b:               b,
+		watcherMaker:    watcherMaker,
+		timerMaker:      time.After,
+		k8s:             k8s,
+		browserMode:     browserMode,
+		reaper:          reaper,
+		buildStates:     make(BuildStatesByName),
+		manifestOverlay: map[model.ManifestName]model.Manifest{},
 	}
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
-
-	buildStates := make(BuildStatesByName)
 
 	var sw *manifestWatcher
 	var err error
@@ -86,11 +90,11 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	lbs := make([]k8s.LoadBalancerSpec, 0)
 	for _, manifest := range manifests {
-		buildStates[manifest.Name] = BuildStateClean
+		u.buildStates[manifest.Name] = BuildStateClean
 
 		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
 		if err == nil {
-			buildStates[manifest.Name] = NewBuildState(buildResult)
+			u.buildStates[manifest.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
 		} else if isPermanentError(err) {
 			return err
@@ -131,9 +135,19 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			case <-ctx.Done():
 				return ctx.Err()
 			case event := <-sw.events:
-				oldState := buildStates[event.manifest.Name]
+				if eventContainsConfigFiles(event) {
+					fmt.Println("Event contains config files")
+					newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
+					if err != nil {
+						logger.Get(ctx).Infof("getting new manifest error: %v", err)
+						continue
+					}
+					u.buildStates[event.manifest.Name] = BuildStateClean
+					u.manifestOverlay[event.manifest.Name] = newManifest
+				}
+				oldState := u.buildStates[event.manifest.Name]
 				buildState := oldState.NewStateWithFilesChanged(event.files)
-				buildStates[event.manifest.Name] = buildState
+				u.buildStates[event.manifest.Name] = buildState
 
 				spurious, err := buildState.OnlySpuriousChanges()
 				if err != nil {
@@ -145,30 +159,77 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 					continue
 				}
 
-				u.logBuildEvent(ctx, event.manifest, buildState)
-
-				result, err := u.b.BuildAndDeploy(
-					ctx,
-					event.manifest,
-					buildState)
+				manifest := u.getMostRecentManifest(event)
+				err = u.buildManifestFromBuildState(ctx, manifest, buildState)
 				if err != nil {
-					if isPermanentError(err) {
-						return err
-					}
-					o := output.Get(ctx)
-					o.PrintColorf(o.Red(), "build failed: %v", err)
-				} else {
-					buildStates[event.manifest.Name] = NewBuildState(result)
+					return err
 				}
-				logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+				u.manifestOverlay[manifest.Name] = manifest
 
 				output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 				output.Get(ctx).Printf("Awaiting changes…")
-
 			case err := <-sw.errs:
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func (u Upper) getMostRecentManifest(e manifestFilesChangedEvent) model.Manifest {
+	if newManifest, ok := u.manifestOverlay[e.manifest.Name]; ok {
+		return newManifest
+	}
+
+	return e.manifest
+}
+
+func eventContainsConfigFiles(e manifestFilesChangedEvent) bool {
+	matcher, err := e.manifest.ConfigMatcher()
+	if err != nil {
+		return false
+	}
+
+	for _, f := range e.files {
+		matches, err := matcher.Matches(f, false)
+		if matches && err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, error) {
+	t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	if err != nil {
+		return model.Manifest{}, err
+	}
+	newManifests, err := t.GetManifestConfigs(string(name))
+	if err != nil {
+		return model.Manifest{}, err
+	}
+	if len(newManifests) != 1 {
+		return model.Manifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+	}
+	newManifest := newManifests[0]
+
+	return newManifest, nil
+}
+
+func (u Upper) buildManifestFromBuildState(ctx context.Context, m model.Manifest, b BuildState) error {
+	u.logBuildEvent(ctx, m, b)
+
+	result, err := u.b.BuildAndDeploy(ctx, m, b)
+	if err != nil {
+		if isPermanentError(err) {
+			return err
+		}
+		o := output.Get(ctx)
+		o.PrintColorf(o.Red(), "build failed: %v", err)
+	} else {
+		u.buildStates[m.Name] = NewBuildState(result)
+		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 	}
 	return nil
 }

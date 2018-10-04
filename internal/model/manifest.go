@@ -21,7 +21,7 @@ type Manifest struct {
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
-	ConfigMatcher PathMatcher
+	ConfigFiles []string
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -34,6 +34,14 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
+}
+
+func (m Manifest) ConfigMatcher() (PathMatcher, error) {
+	configMatcher, err := NewSimpleFileMatcher(m.ConfigFiles...)
+	if err != nil {
+		return nil, err
+	}
+	return configMatcher, nil
 }
 
 func (m Manifest) IsStaticBuild() bool {

@@ -45,6 +45,14 @@ func makeManifestWatcher(
 				return nil, err
 			}
 		}
+
+		for _, cf := range manifest.ConfigFiles {
+			err = watcher.Add(cf)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		sns = append(sns, manifestNotifyPair{manifest, watcher})
 	}
 
@@ -123,7 +131,6 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
-		filter := sn.manifest.Filter()
 
 		go func(manifest model.Manifest, watcher watch.Notify) {
 			// TODO(matt) this will panic if we actually close channels. look at "merge" in https://blog.golang.org/pipelines
@@ -147,14 +154,8 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 						if err != nil {
 							errs <- err
 						}
-						isIgnored, err := filter.Matches(path, false)
-						if err != nil {
-							errs <- err
-						}
 
-						if !isIgnored {
-							watchEvent.files = append(watchEvent.files, path)
-						}
+						watchEvent.files = append(watchEvent.files, path)
 					}
 					if len(watchEvent.files) > 0 {
 						events <- watchEvent
