@@ -141,38 +141,32 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 						logger.Get(ctx).Infof("getting new manifest error: %v", err)
 						continue
 					}
-					buildState := BuildStateClean
-					err = u.buildManifestFromBuildState(ctx, newManifest, buildState)
-					if err != nil {
-						logger.Get(ctx).Infof("config watch error: %v", err)
-						continue
-					}
-					u.manifestOverlay[newManifest.Name] = newManifest
-				} else {
-					oldState := u.buildStates[event.manifest.Name]
-					buildState := oldState.NewStateWithFilesChanged(event.files)
-					u.buildStates[event.manifest.Name] = buildState
-
-					spurious, err := buildState.OnlySpuriousChanges()
-					if err != nil {
-						logger.Get(ctx).Infof("build watch error: %v", err)
-					}
-
-					if spurious {
-						// TODO(nick): I think we probably want to log when this happens?
-						continue
-					}
-
-					manifest := u.getMostRecentManifest(event)
-					err = u.buildManifestFromBuildState(ctx, manifest, buildState)
-					if err != nil {
-						return err
-					}
-					u.manifestOverlay[manifest.Name] = manifest
-
-					output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
-					output.Get(ctx).Printf("Awaiting changes…")
+					u.buildStates[event.manifest.Name] = BuildStateClean
+					u.manifestOverlay[event.manifest.Name] = newManifest
 				}
+				oldState := u.buildStates[event.manifest.Name]
+				buildState := oldState.NewStateWithFilesChanged(event.files)
+				u.buildStates[event.manifest.Name] = buildState
+
+				spurious, err := buildState.OnlySpuriousChanges()
+				if err != nil {
+					logger.Get(ctx).Infof("build watch error: %v", err)
+				}
+
+				if spurious {
+					// TODO(nick): I think we probably want to log when this happens?
+					continue
+				}
+
+				manifest := u.getMostRecentManifest(event)
+				err = u.buildManifestFromBuildState(ctx, manifest, buildState)
+				if err != nil {
+					return err
+				}
+				u.manifestOverlay[manifest.Name] = manifest
+
+				output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
+				output.Get(ctx).Printf("Awaiting changes…")
 			case err := <-sw.errs:
 				return err
 			}
