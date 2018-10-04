@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -31,6 +32,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 
 		engine.DeployerWireSet,
 		engine.DefaultShouldFallBack,
+
+		hud.NewDefaultHeadsUpDisplay,
 
 		engine.NewUpper,
 		wire.Bind(new(model.ManifestCreator), engine.Upper{}),

@@ -10,6 +10,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -48,15 +50,21 @@ type Upper struct {
 	reaper          build.ImageReaper
 	buildStates     BuildStatesByName
 	manifestOverlay map[model.ManifestName]model.Manifest
+	hud             hud.HeadsUpDisplay
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode, reaper build.ImageReaper) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
+
+	// Run the HUD in the background
+	go hud.Run(ctx)
+
 	return Upper{
 		b:               b,
 		watcherMaker:    watcherMaker,
@@ -66,6 +74,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		reaper:          reaper,
 		buildStates:     make(BuildStatesByName),
 		manifestOverlay: map[model.ManifestName]model.Manifest{},
+		hud:             hud,
 	}
 }
 
@@ -170,6 +179,9 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				output.Get(ctx).Printf("Awaiting changes…")
 			case err := <-sw.errs:
 				return err
+			// HACK(maia): until upper notifies the HUD of updates, just tell the HUD to update every second
+			case <-time.After(time.Second):
+				u.hud.Update(view.View{})
 			}
 		}
 	}
