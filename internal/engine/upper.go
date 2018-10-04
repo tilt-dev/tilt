@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"time"
@@ -63,7 +64,12 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	}
 
 	// Run the HUD in the background
-	go hud.Run(ctx)
+	go func() {
+		err := hud.Run(ctx)
+		if err != nil {
+			log.Printf("*** HUD ERR *** %v", err)
+		}
+	}()
 
 	return Upper{
 		b:               b,
