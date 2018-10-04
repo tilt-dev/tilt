@@ -71,7 +71,12 @@ func connectHud(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			log.Printf("Error closing connection to HUD server: %v", err)
+		}
+	}()
 
 	cli := proto.NewHudClient(conn)
 

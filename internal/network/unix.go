@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -41,7 +42,10 @@ func replaceDeadServer(socketPath string, err error) net.Listener {
 	conn, connErr := net.Dial("unix", socketPath)
 	if connErr == nil {
 		// There is an active server, so bow out gracefully
-		conn.Close()
+		err = conn.Close()
+		if err != nil {
+			log.Printf("error closing unix conn to '%s': %v", socketPath, err)
+		}
 		return nil
 	}
 	if !isErrno(connErr, syscall.ECONNREFUSED) {
