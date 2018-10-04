@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -11,7 +12,7 @@ import (
 )
 
 // NOTE(dmiller): set at runtime with:
-// go test -ldflags="-X github.com/windmilleng/tilt/internal/build.WriteGoldenMaster=1" github.com/windmilleng/tilt/internal/build -run ^TestBuildkitPrinter
+// go test -ldflags="-X github.com/windmilleng/tilt/internal/output.WriteGoldenMaster=1" github.com/windmilleng/tilt/internal/output
 var WriteGoldenMaster = "0"
 
 func TestPrefixedWriter(t *testing.T) {
@@ -45,7 +46,8 @@ func TestPipeline(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	o.StartPipeline(1)
+	ctx := o.StartPipeline(context.Background(), 1)
+	o = *Get(ctx)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("in ur step")
 	o.EndPipelineStep()
@@ -59,7 +61,8 @@ func TestErroredPipeline(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	o.StartPipeline(1)
+	ctx := o.StartPipeline(context.Background(), 1)
+	o = *Get(ctx)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("in ur step")
 	o.EndPipelineStep()
@@ -73,11 +76,27 @@ func TestMultilinePrintInPipeline(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	o := NewOutputter(l)
-	o.StartPipeline(1)
+	ctx := o.StartPipeline(context.Background(), 1)
+	o = *Get(ctx)
 	o.StartPipelineStep("%s %s", "hello", "world")
 	o.Printf("line 1\nline 2\n")
 	o.EndPipelineStep()
 	o.EndPipeline(err)
+
+	assertSnapshot(t, out.String())
+}
+
+func TestPipelineContext(t *testing.T) {
+	var err error
+	out := &bytes.Buffer{}
+	l := logger.NewLogger(logger.InfoLvl, out)
+	o := NewOutputter(l)
+	ctx := o.StartPipeline(context.Background(), 1)
+	o2 := *Get(ctx)
+	o2.StartPipelineStep("%s %s", "hello", "world")
+	o.Printf("line 1\nline 2\n")
+	o2.EndPipelineStep()
+	o2.EndPipeline(err)
 
 	assertSnapshot(t, out.String())
 }

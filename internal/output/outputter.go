@@ -61,12 +61,16 @@ func (o *Outputter) yellow() *color.Color { return o.color(color.FgYellow) }
 func (o *Outputter) green() *color.Color  { return o.color(color.FgGreen) }
 func (o *Outputter) Red() *color.Color    { return o.color(color.FgRed) }
 
-func (o *Outputter) StartPipeline(totalStepCount int) {
+func (o *Outputter) StartPipeline(ctx context.Context, totalStepCount int) context.Context {
 	o.logger.Infof("%s", o.blue().Sprint("──┤ Pipeline Starting… ├──────────────────────────────────────────────"))
-	o.curPipelineStep = 1
-	o.totalPipelineStepCount = totalStepCount
-	o.pipelineStepDurations = nil
-	o.curPipelineStart = time.Now()
+
+	newOutputter := NewOutputter(o.logger)
+	newOutputter.curPipelineStep = 1
+	newOutputter.totalPipelineStepCount = totalStepCount
+	newOutputter.pipelineStepDurations = nil
+	newOutputter.curPipelineStart = time.Now()
+
+	return WithOutputter(ctx, newOutputter)
 }
 
 // NOTE(maia): this func should always be deferred in a closure, so that the `err` arg
