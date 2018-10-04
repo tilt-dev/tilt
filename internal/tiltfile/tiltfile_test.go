@@ -806,3 +806,56 @@ def blorgly():
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
 }
+
+func TestConfigMatcherWithFastBuild(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("b.txt", "b")
+	f.WriteFile("Tiltfile", `def blorgly():
+  yaml = read_file("a.txt")
+  start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
+  image = stop_build()
+  return k8s_service(yaml, image)
+`)
+	manifest := f.LoadManifest("blorgly")
+	matches := func(p string) bool {
+		matcher, err := manifest.ConfigMatcher()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ok, err := matcher.Matches(p, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	assert.True(t, matches(f.JoinPath("Dockerfile.base")))
+	assert.True(t, matches(f.JoinPath("Tiltfile")))
+	assert.True(t, matches(f.JoinPath("a.txt")))
+	assert.False(t, matches(f.JoinPath("b.txt")))
+}
+func TestConfigMatcherWithStaticBuild(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  return k8s_service(yaml, static_build("Dockerfile", "docker-tag"))`)
+	manifest := f.LoadManifest("blorgly")
+	matches := func(p string) bool {
+		matcher, err := manifest.ConfigMatcher()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ok, err := matcher.Matches(p, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	assert.True(t, matches(f.JoinPath("Dockerfile")))
+	assert.True(t, matches(f.JoinPath("Tiltfile")))
+	assert.False(t, matches(f.JoinPath("b.txt")))
+}
