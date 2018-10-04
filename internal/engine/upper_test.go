@@ -482,16 +482,18 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	return k8s_service("yaaaaaaaaml", image)
 `)
 
-		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 		call = <-f.b.calls
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 
 		// Third call: error!
 		f.WriteFile("Tiltfile", "def")
-		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
-		call = <-f.b.calls
-		// TODO(dmiller): what do I test here?
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+		select {
+		case call := <-f.b.calls:
+			t.Errorf("Expected build to not get called, but it did: %+v", call)
+		case <-time.After(100 * time.Millisecond):
+		}
 
 		// fourth call: fix
 		f.WriteFile("Tiltfile", `def foobar():
@@ -501,7 +503,6 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 `)
 
 		f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
-		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 		call = <-f.b.calls
 		assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)

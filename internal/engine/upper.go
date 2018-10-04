@@ -136,6 +136,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				return ctx.Err()
 			case event := <-sw.events:
 				if eventContainsConfigFiles(event) {
+					fmt.Println("Event contains config files")
 					newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
 					if err != nil {
 						logger.Get(ctx).Infof("getting new manifest error: %v", err)
