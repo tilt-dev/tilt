@@ -1,4 +1,4 @@
-package view
+package hudview
 
 import "time"
 

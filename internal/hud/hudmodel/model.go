@@ -3,7 +3,7 @@ package engine
 import (
 	"time"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/hud/hudview"
 
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -43,22 +43,22 @@ type upperState struct {
 	Pods      map[model.ManifestName]*Pod
 }
 
-func newView(us upperState) view.View {
-	var resources []view.Resource
+func newView(us upperState) hudview.View {
+	var resources []hudview.Resource
 	for name, r := range us.Resources {
 		resources = append(resources, NewResourceView(us, name, *r))
 	}
 
-	return view.View{Resources: resources}
+	return hudview.View{Resources: resources}
 }
 
-func NewResourceView(us upperState, name model.ManifestName, r Resource) view.Resource {
-	ret := view.Resource{
+func NewResourceView(us upperState, name model.ManifestName, r Resource) hudview.Resource {
+	ret := hudview.Resource{
 		Name:                    name.String(),
 		DirectoryWatched:        r.DirectoryWatched,
 		LatestFileChanges:       r.LatestFileChanges,
 		TimeSinceLastFileChange: time.Now().Sub(r.LastFileChangeTime),
-		Status:                  view.ResourceStatusStale,
+		Status:                  hudview.ResourceStatusStale,
 		StatusDesc:              "No pod found",
 	}
 
@@ -66,11 +66,11 @@ func NewResourceView(us upperState, name model.ManifestName, r Resource) view.Re
 		// TODO(matt) this mapping is probably wrong
 		switch pod.Status {
 		case "Running":
-			ret.Status = view.ResourceStatusFresh
+			ret.Status = hudview.ResourceStatusFresh
 		case "Pending":
-			ret.Status = view.ResourceStatusStale
+			ret.Status = hudview.ResourceStatusStale
 		default:
-			ret.Status = view.ResourceStatusBroken
+			ret.Status = hudview.ResourceStatusBroken
 		}
 		ret.StatusDesc = pod.Status
 	}
