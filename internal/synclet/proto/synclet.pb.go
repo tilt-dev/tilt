@@ -46,7 +46,7 @@ func (x LogLevel) String() string {
 	return proto.EnumName(LogLevel_name, int32(x))
 }
 func (LogLevel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{0}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{0}
 }
 
 type GetContainerIdForPodRequest struct {
@@ -62,7 +62,7 @@ func (m *GetContainerIdForPodRequest) Reset()         { *m = GetContainerIdForPo
 func (m *GetContainerIdForPodRequest) String() string { return proto.CompactTextString(m) }
 func (*GetContainerIdForPodRequest) ProtoMessage()    {}
 func (*GetContainerIdForPodRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{0}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{0}
 }
 func (m *GetContainerIdForPodRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetContainerIdForPodRequest.Unmarshal(m, b)
@@ -117,7 +117,7 @@ func (m *GetContainerIdForPodReply) Reset()         { *m = GetContainerIdForPodR
 func (m *GetContainerIdForPodReply) String() string { return proto.CompactTextString(m) }
 func (*GetContainerIdForPodReply) ProtoMessage()    {}
 func (*GetContainerIdForPodReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{1}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{1}
 }
 func (m *GetContainerIdForPodReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetContainerIdForPodReply.Unmarshal(m, b)
@@ -255,7 +255,7 @@ func (m *Cmd) Reset()         { *m = Cmd{} }
 func (m *Cmd) String() string { return proto.CompactTextString(m) }
 func (*Cmd) ProtoMessage()    {}
 func (*Cmd) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{2}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{2}
 }
 func (m *Cmd) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cmd.Unmarshal(m, b)
@@ -297,7 +297,7 @@ func (m *UpdateContainerRequest) Reset()         { *m = UpdateContainerRequest{}
 func (m *UpdateContainerRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateContainerRequest) ProtoMessage()    {}
 func (*UpdateContainerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{3}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{3}
 }
 func (m *UpdateContainerRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateContainerRequest.Unmarshal(m, b)
@@ -364,7 +364,7 @@ func (m *LogMessage) Reset()         { *m = LogMessage{} }
 func (m *LogMessage) String() string { return proto.CompactTextString(m) }
 func (*LogMessage) ProtoMessage()    {}
 func (*LogMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{4}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{4}
 }
 func (m *LogMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogMessage.Unmarshal(m, b)
@@ -409,7 +409,7 @@ func (m *UpdateContainerReply) Reset()         { *m = UpdateContainerReply{} }
 func (m *UpdateContainerReply) String() string { return proto.CompactTextString(m) }
 func (*UpdateContainerReply) ProtoMessage()    {}
 func (*UpdateContainerReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{5}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{5}
 }
 func (m *UpdateContainerReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateContainerReply.Unmarshal(m, b)
@@ -448,7 +448,7 @@ func (m *LogStyle) Reset()         { *m = LogStyle{} }
 func (m *LogStyle) String() string { return proto.CompactTextString(m) }
 func (*LogStyle) ProtoMessage()    {}
 func (*LogStyle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_synclet_674ef73d404c7e56, []int{6}
+	return fileDescriptor_synclet_9f4ba5e740658f53, []int{6}
 }
 func (m *LogStyle) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogStyle.Unmarshal(m, b)
@@ -657,10 +657,10 @@ var _Synclet_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("internal/synclet/synclet.proto", fileDescriptor_synclet_674ef73d404c7e56)
+	proto.RegisterFile("internal/synclet/synclet.proto", fileDescriptor_synclet_9f4ba5e740658f53)
 }
 
-var fileDescriptor_synclet_674ef73d404c7e56 = []byte{
+var fileDescriptor_synclet_9f4ba5e740658f53 = []byte{
 	// 550 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x54, 0x5f, 0x6f, 0xd3, 0x3e,
 	0x14, 0x6d, 0xfa, 0x67, 0x49, 0x6f, 0xba, 0xad, 0x3f, 0xff, 0x06, 0x6a, 0x87, 0x60, 0x25, 0xfc,
