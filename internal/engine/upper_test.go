@@ -423,21 +423,21 @@ func TestRebuildDockerfile(t *testing.T) {
 
 		f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+
 		// Second call: new manifest!
 		call = <-f.b.calls
-		assert.Equal(t, call.manifest.BaseDockerfile, "FROM iron/go:dev")
-		assert.Equal(t, call.manifest.K8sYaml, "yaaaaaaaaml")
+		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYaml)
 
 		f.WriteFile("Tiltfile", `def foobar():
 	start_fast_build("Dockerfile", "docker-tag")
 	image = stop_build()
-	return k8s_service("manifestyaml", image)
+	return k8s_service("yaaaaaaaaml", image)
 `)
-		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
+		// third call: new manifest should persist
 		call = <-f.b.calls
-		// TODO(dmiller) this fails because we have a stale manifest I think
-		// assert.Equal(t, call.manifest.BaseDockerfile, "FROM iron/go:dev")
-		// assert.Equal(t, call.manifest.K8sYaml, "manifestyaml")
+		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 
 		f.watcher.errors <- endToken
 	}()
@@ -552,7 +552,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	reaper := build.NewImageReaper(docker)
 
 	k8s := k8s.NewFakeK8sClient()
-	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper}
+	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper, make(BuildStatesByName), map[model.ManifestName]model.Manifest{}}
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
 

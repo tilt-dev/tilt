@@ -40,12 +40,14 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b            BuildAndDeployer
-	watcherMaker watcherMaker
-	timerMaker   timerMaker
-	k8s          k8s.Client
-	browserMode  BrowserMode
-	reaper       build.ImageReaper
+	b               BuildAndDeployer
+	watcherMaker    watcherMaker
+	timerMaker      timerMaker
+	k8s             k8s.Client
+	browserMode     BrowserMode
+	reaper          build.ImageReaper
+	buildStates     BuildStatesByName
+	manifestOverlay map[model.ManifestName]model.Manifest
 }
 
 type watcherMaker func() (watch.Notify, error)
@@ -56,20 +58,20 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		return watch.NewWatcher()
 	}
 	return Upper{
-		b:            b,
-		watcherMaker: watcherMaker,
-		timerMaker:   time.After,
-		k8s:          k8s,
-		browserMode:  browserMode,
-		reaper:       reaper,
+		b:               b,
+		watcherMaker:    watcherMaker,
+		timerMaker:      time.After,
+		k8s:             k8s,
+		browserMode:     browserMode,
+		reaper:          reaper,
+		buildStates:     make(BuildStatesByName),
+		manifestOverlay: map[model.ManifestName]model.Manifest{},
 	}
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
-
-	buildStates := make(BuildStatesByName)
 
 	var sw *manifestWatcher
 	var err error
@@ -88,11 +90,11 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	lbs := make([]k8s.LoadBalancerSpec, 0)
 	for _, manifest := range manifests {
-		buildStates[manifest.Name] = BuildStateClean
+		u.buildStates[manifest.Name] = BuildStateClean
 
 		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
 		if err == nil {
-			buildStates[manifest.Name] = NewBuildState(buildResult)
+			u.buildStates[manifest.Name] = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
 		} else if isPermanentError(err) {
 			return err
@@ -137,20 +139,23 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				if eventContainsConfigFiles(event) {
 					newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
 					if err != nil {
-						logger.Get(ctx).Infof("config watch error: %v", err)
+						logger.Get(ctx).Infof("getting new manifest error: %v", err)
 						haveValidTiltfile = false
 						continue
 					}
 					buildState := BuildStateClean
-					err = u.buildManifestFromBuildState(ctx, newManifest, buildState, buildStates)
+					err = u.buildManifestFromBuildState(ctx, newManifest, buildState)
 					if err != nil {
+						logger.Get(ctx).Infof("config watch error: %v", err)
 						haveValidTiltfile = false
+						continue
 					}
 					haveValidTiltfile = true
+					u.manifestOverlay[newManifest.Name] = newManifest
 				} else {
-					oldState := buildStates[event.manifest.Name]
+					oldState := u.buildStates[event.manifest.Name]
 					buildState := oldState.NewStateWithFilesChanged(event.files)
-					buildStates[event.manifest.Name] = buildState
+					u.buildStates[event.manifest.Name] = buildState
 
 					spurious, err := buildState.OnlySpuriousChanges()
 					if err != nil {
@@ -162,7 +167,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 						continue
 					}
 
-					manifest := event.manifest
+					manifest := u.getMostRecentManifest(event)
 					if !haveValidTiltfile {
 						newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
 						if err != nil {
@@ -172,11 +177,12 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 						}
 						manifest = newManifest
 					}
-					err = u.buildManifestFromBuildState(ctx, manifest, buildState, buildStates)
+					err = u.buildManifestFromBuildState(ctx, manifest, buildState)
 					if err != nil {
 						return err
 					}
 					haveValidTiltfile = true
+					u.manifestOverlay[manifest.Name] = manifest
 
 					output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
 					output.Get(ctx).Printf("Awaiting changes…")
@@ -187,6 +193,14 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		}
 	}
 	return nil
+}
+
+func (u Upper) getMostRecentManifest(e manifestFilesChangedEvent) model.Manifest {
+	if newManifest, ok := u.manifestOverlay[e.manifest.Name]; ok {
+		return newManifest
+	}
+
+	return e.manifest
 }
 
 func eventContainsConfigFiles(e manifestFilesChangedEvent) bool {
@@ -222,7 +236,7 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	return newManifest, nil
 }
 
-func (u Upper) buildManifestFromBuildState(ctx context.Context, m model.Manifest, b BuildState, buildStates BuildStatesByName) error {
+func (u Upper) buildManifestFromBuildState(ctx context.Context, m model.Manifest, b BuildState) error {
 	u.logBuildEvent(ctx, m, b)
 
 	result, err := u.b.BuildAndDeploy(ctx, m, b)
@@ -233,7 +247,7 @@ func (u Upper) buildManifestFromBuildState(ctx context.Context, m model.Manifest
 		o := output.Get(ctx)
 		o.PrintColorf(o.Red(), "build failed: %v", err)
 	} else {
-		buildStates[m.Name] = NewBuildState(result)
+		u.buildStates[m.Name] = NewBuildState(result)
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 	}
 	return nil
