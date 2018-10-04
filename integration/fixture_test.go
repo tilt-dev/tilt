@@ -1,5 +1,3 @@
-//+build integration
-
 package integration
 
 import (
@@ -92,7 +90,6 @@ func (f *fixture) CurlUntil(ctx context.Context, url string, expectedContents st
 		case <-time.After(200 * time.Millisecond):
 		}
 	}
-
 }
 
 func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
@@ -117,6 +114,46 @@ func (f *fixture) TiltUp(name string) {
 	if err != nil {
 		f.t.Fatalf("Failed to up service: %v. Logs:\n%s", err, out.String())
 	}
+}
+
+func (f *fixture) WaitForAllPodsReady(ctx context.Context, selector string) {
+	for {
+		allPodsReady, output := f.AllPodsReady(ctx, selector)
+		if allPodsReady {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.t.Fatalf("Timed out waiting for pods to be ready. Selector: %s. Output:\n:%s\n", selector, output)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+
+}
+
+func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, string) {
+	cmd := exec.Command("kubectl", "get", "pods",
+		namespaceFlag, "--selector="+selector, "-o=template",
+		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
+	out, err := cmd.Output()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	outStr := string(out)
+	phases := strings.Split(outStr, "\n")
+	for _, phase := range phases {
+		phase = strings.TrimSpace(phase)
+		if phase == "" {
+			continue
+		}
+
+		if !strings.Contains(phase, "Running") {
+			return false, outStr
+		}
+	}
+	return true, outStr
 }
 
 func (f *fixture) ForwardPort(name string, portMap string) {
