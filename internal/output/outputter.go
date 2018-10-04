@@ -114,12 +114,6 @@ func (o *Outputter) StartBuildStep(format string, a ...interface{}) {
 	o.curBuildStep++
 }
 
-func (o *Outputter) Summary(format string, a ...interface{}) {
-	o.logger.Infof("%s", o.blue().Sprint("──┤ Status ├──────────────────────────────────────────────────────────"))
-	o.logger.Infof(format, a...)
-	o.logger.Infof("%s", o.blue().Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
-}
-
 func (o *Outputter) PrintColorf(color *color.Color, format string, a ...interface{}) {
 	o.Printf(color.Sprintf(format, a...))
 }

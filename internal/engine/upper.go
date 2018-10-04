@@ -67,7 +67,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	buildStates := make(BuildStatesByName)
+	engineState := newState()
 
 	var sw *manifestWatcher
 	var err error
@@ -84,22 +84,19 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		return err
 	}
 
-	startBuildChan := make(chan startBuildEvent)
-	endBuildChan := u.buildAll(startBuildChan)
-
 	lbs := make([]k8s.LoadBalancerSpec, 0)
 	for _, manifest := range manifests {
-		buildStates[manifest.Name] = BuildStateClean
+		engineState.manifestStates[manifest.Name] = newManifestState(manifest)
 
 		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
 		if err == nil {
-			buildStates[manifest.Name] = NewBuildState(buildResult)
+			engineState.manifestStates[manifest.Name].lastBuild = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
 		} else if isPermanentError(err) {
 			return err
 		} else if watchMounts {
 			o := output.Get(ctx)
-			o.PrintColorf(o.Red(), "build failed: %v", err)
+			logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
 		} else {
 			return fmt.Errorf("build failed: %v", err)
 		}
@@ -117,7 +114,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
+	s.Log(ctx, u.resolveLB)
 
 	if watchMounts {
 		go func() {
@@ -133,80 +130,90 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case event := <-sw.events:
-				u.handleFSEvent(ctx, buildStates, event, startBuildChan)
-			case e := <-endBuildChan:
-				err := u.handleEndBuildEvent(ctx, e, buildStates, s)
+			case fsEvent := <-sw.events:
+				u.handleFSEvent(ctx, engineState, fsEvent)
+			case completedBuild := <-engineState.completedBuilds:
+				err := u.handleCompletedBuild(ctx, completedBuild, engineState, s)
 				if err != nil {
 					return err
 				}
 			case err := <-sw.errs:
 				return err
 			}
+			u.dispatch(ctx, engineState)
 		}
 	}
 	return nil
 }
 
-type startBuildEvent struct {
-	ctx        context.Context
-	manifest   model.Manifest
-	buildState BuildState
-}
+func (u Upper) dispatch(ctx context.Context, state *engineState) {
+	if len(state.manifestsToBuild) == 0 || state.currentlyBuilding != "" {
+		return
+	}
 
-type endBuildEvent struct {
-	result       BuildResult
-	err          error
-	manifestName model.ManifestName
-}
+	mn := state.dequeueNextManifestToBuild()
+	state.currentlyBuilding = mn
+	ms := state.manifestStates[mn]
+	m := ms.manifest
 
-func (u Upper) buildAll(es <-chan startBuildEvent) <-chan endBuildEvent {
-	out := make(chan endBuildEvent)
+	for f := range ms.pendingFileChanges {
+		ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
+	}
+	ms.pendingFileChanges = make(map[string]bool)
+
+	buildState := ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
+
 	go func() {
-		for e := range es {
-			u.logBuildEvent(e.ctx, e.manifest, e.buildState)
+		u.logBuildEvent(ctx, m, buildState)
 
-			result, err := u.b.BuildAndDeploy(
-				e.ctx,
-				e.manifest,
-				e.buildState)
-			out <- endBuildEvent{result, err, e.manifest.Name}
-		}
+		result, err := u.b.BuildAndDeploy(
+			ctx,
+			m,
+			buildState)
+
+		state.completedBuilds <- completedBuild{result, err}
+	}()
+}
+
+func (u Upper) handleCompletedBuild(ctx context.Context, cb completedBuild, engineState *engineState, s *summary.Summary) error {
+	defer func() {
+		engineState.currentlyBuilding = ""
 	}()
 
-	return out
-}
-
-func (u Upper) handleEndBuildEvent(ctx context.Context, ebe endBuildEvent, buildStates BuildStatesByName, s *summary.Summary) error {
-	err := ebe.err
+	err := cb.err
 	if err != nil {
 		if isPermanentError(err) {
 			return err
 		}
+
 		o := output.Get(ctx)
-		o.PrintColorf(o.Red(), "build failed: %v", err)
+		logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
 	} else {
-		buildStates[ebe.manifestName] = NewBuildState(ebe.result)
+		ms := engineState.manifestStates[engineState.currentlyBuilding]
+
+		ms.lastBuild = NewBuildState(cb.result)
+		ms.currentlyBuildingFileChanges = nil
 	}
 	logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
-	output.Get(ctx).Printf("Awaiting changes…")
+	s.Log(ctx, u.resolveLB)
+	logger.Get(ctx).Infof("Awaiting changes…")
 
 	return nil
 }
 
 func (u Upper) handleFSEvent(
 	ctx context.Context,
-	buildStates BuildStatesByName,
-	event manifestFilesChangedEvent,
-	ch chan<- startBuildEvent) {
+	state *engineState,
+	event manifestFilesChangedEvent) {
 
-	oldState := buildStates[event.manifest.Name]
-	buildState := oldState.NewStateWithFilesChanged(event.files)
-	buildStates[event.manifest.Name] = buildState
+	ms := state.manifestStates[event.manifest.Name]
 
-	spurious, err := buildState.OnlySpuriousChanges()
+	for _, f := range event.files {
+		ms.pendingFileChanges[f] = true
+	}
+
+	spurious, err := onlySpuriousChanges(ms.pendingFileChanges)
 	if err != nil {
 		logger.Get(ctx).Infof("build watch error: %v", err)
 	}
@@ -216,7 +223,33 @@ func (u Upper) handleFSEvent(
 		return
 	}
 
-	ch <- startBuildEvent{ctx, event.manifest, buildState}
+	state.enqueue(event.manifest.Name)
+}
+
+// Check if the filesChangedSet only contains spurious changes that
+// we don't want to rebuild on, like IDE temp/lock files.
+//
+// NOTE(nick): This isn't an ideal solution. In an ideal world, the user would
+// put everything to ignore in their gitignore/dockerignore files. This is a stop-gap
+// so they don't have a terrible experience if those files aren't there or
+// aren't in the right places.
+func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
+	// If a lot of files have changed, don't treat this as spurious.
+	if len(filesChanged) > 3 {
+		return false, nil
+	}
+
+	for f := range filesChanged {
+		broken, err := ospath.IsBrokenSymlink(f)
+		if err != nil {
+			return false, err
+		}
+
+		if !broken {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
