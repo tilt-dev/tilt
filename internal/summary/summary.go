@@ -28,7 +28,7 @@ type Service struct {
 type k8sObject struct {
 	Kind      string
 	Name      string
-	Namespace string
+	Namespace k8s.Namespace
 }
 
 // NewSummary returns summary state

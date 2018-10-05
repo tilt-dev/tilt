@@ -106,6 +106,30 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 }
 
+func TestNamespaceGKE(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	assert.Equal(t, "", string(f.sCli.Namespace))
+	assert.Equal(t, "", string(f.k8s.LastPodQueryNamespace))
+
+	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "sancho-ns", string(result.Namespace))
+
+	result, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(result))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "sancho-ns", string(result.Namespace))
+	assert.Equal(t, "sancho-ns", string(f.sCli.Namespace))
+	assert.Equal(t, "sancho-ns", string(f.k8s.LastPodQueryNamespace))
+}
+
 func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()

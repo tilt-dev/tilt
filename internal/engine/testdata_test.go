@@ -10,6 +10,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sancho
+  namespace: sancho-ns
   labels:
     app: sancho
 spec:
