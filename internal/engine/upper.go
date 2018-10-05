@@ -161,17 +161,33 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 		return
 	}
 
-	mn := state.dequeueNextManifestToBuild()
+	mn := state.manifestsToBuild[0]
+	state.manifestsToBuild = state.manifestsToBuild[1:]
 	state.currentlyBuilding = mn
 	ms := state.manifestStates[mn]
-	m := ms.manifest
 
-	for f := range ms.pendingFileChanges {
-		ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
+	var buildState BuildState
+	if ms.configIsDirty {
+		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
+		if err != nil {
+			logger.Get(ctx).Infof("getting new manifest error: %v", err)
+			state.currentlyBuilding = ""
+			return
+		}
+		ms.lastBuild = BuildStateClean
+		ms.manifest = newManifest
+		ms.configIsDirty = false
+		buildState = ms.lastBuild
+	} else {
+		for f := range ms.pendingFileChanges {
+			ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
+		}
+		ms.pendingFileChanges = make(map[string]bool)
+
+		buildState = ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
 	}
-	ms.pendingFileChanges = make(map[string]bool)
 
-	buildState := ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
+	m := ms.manifest
 
 	go func() {
 		u.logBuildEvent(ctx, m, buildState)
@@ -222,13 +238,7 @@ func (u Upper) handleFSEvent(
 
 	if eventContainsConfigFiles(manifest, event) {
 		logger.Get(ctx).Debugf("Event contains config files")
-		newManifest, err := getNewManifestFromTiltfile(ctx, event.manifestName)
-		if err != nil {
-			logger.Get(ctx).Infof("getting new manifest error: %v", err)
-			return
-		}
-		state.manifestStates[event.manifestName].lastBuild = BuildStateClean
-		state.manifestStates[event.manifestName].manifest = newManifest
+		state.manifestStates[event.manifestName].configIsDirty = true
 	}
 
 	ms := state.manifestStates[event.manifestName]
@@ -247,7 +257,14 @@ func (u Upper) handleFSEvent(
 		return
 	}
 
-	state.enqueue(event.manifestName)
+	// if the name is already in the queue, we don't need to add it again
+	for _, mn := range state.manifestsToBuild {
+		if mn == event.manifestName {
+			return
+		}
+	}
+
+	state.manifestsToBuild = append(state.manifestsToBuild, event.manifestName)
 }
 
 // Check if the filesChangedSet only contains spurious changes that

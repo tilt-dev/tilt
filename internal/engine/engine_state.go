@@ -14,6 +14,9 @@ type manifestState struct {
 	pendingFileChanges           map[string]bool
 	currentlyBuildingFileChanges []string
 	manifest                     model.Manifest
+
+	// we've observed changes to the config file and need to reload it the next time we start a build
+	configIsDirty bool
 }
 
 type completedBuild struct {
@@ -33,26 +36,5 @@ func newManifestState(manifest model.Manifest) *manifestState {
 		lastBuild:          BuildStateClean,
 		manifest:           manifest,
 		pendingFileChanges: make(map[string]bool),
-	}
-}
-
-func (s *engineState) enqueue(n model.ManifestName) {
-	s.manifestsToBuild = append(s.manifestsToBuild, n)
-}
-
-func (s *engineState) dequeueNextManifestToBuild() model.ManifestName {
-	if len(s.manifestsToBuild) == 0 {
-		return ""
-	} else {
-		ret := s.manifestsToBuild[0]
-
-		var newManifestsToBuild []model.ManifestName
-		for _, mn := range s.manifestsToBuild {
-			if mn != ret {
-				newManifestsToBuild = append(newManifestsToBuild, mn)
-			}
-		}
-		s.manifestsToBuild = newManifestsToBuild
-		return ret
 	}
 }
