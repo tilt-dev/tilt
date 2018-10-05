@@ -508,23 +508,21 @@ func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
 	return digest.Digest(id), nil
 }
 
-const tagPrefix = "tilt-"
-
 func digestAsTag(d digest.Digest) (string, error) {
 	str := d.Encoded()
 	if len(str) < 16 {
 		return "", fmt.Errorf("Digest too short: %s", str)
 	}
-	return fmt.Sprintf("%s%s", tagPrefix, str[:16]), nil
+	return fmt.Sprintf("%s%s", ImageTagPrefix, str[:16]), nil
 }
 
 func digestMatchesRef(ref reference.NamedTagged, digest digest.Digest) bool {
 	digestHash := digest.Encoded()
 	tag := ref.Tag()
-	if len(tag) <= len(tagPrefix) {
+	if len(tag) <= len(ImageTagPrefix) {
 		return false
 	}
 
-	tagHash := tag[len(tagPrefix):]
+	tagHash := tag[len(ImageTagPrefix):]
 	return strings.HasPrefix(digestHash, tagHash)
 }

@@ -19,6 +19,7 @@ import (
 )
 
 var packageDir string
+var imageTagPrefix string
 
 const namespaceFlag = "-n=tilt-integration"
 
@@ -29,6 +30,7 @@ func init() {
 	}
 
 	packageDir = pkg.Dir
+	imageTagPrefix = fmt.Sprintf("tilt-T-%x-", time.Now().Unix())
 }
 
 type fixture struct {
@@ -109,7 +111,7 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 
 func (f *fixture) TiltUp(name string) {
 	out := bytes.NewBuffer(nil)
-	cmd := f.tiltCmd([]string{"up", name, "--debug"}, out)
+	cmd := f.tiltCmd([]string{"up", name, "--debug", "--image-tag-prefix=" + imageTagPrefix}, out)
 	err := cmd.Run()
 	if err != nil {
 		f.t.Fatalf("Failed to up service: %v. Logs:\n%s", err, out.String())
