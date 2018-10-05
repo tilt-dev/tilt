@@ -166,7 +166,6 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 	state.currentlyBuilding = mn
 	ms := state.manifestStates[mn]
 
-	var buildState BuildState
 	if ms.configIsDirty {
 		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
 		if err != nil {
@@ -177,15 +176,14 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 		ms.lastBuild = BuildStateClean
 		ms.manifest = newManifest
 		ms.configIsDirty = false
-		buildState = ms.lastBuild
-	} else {
-		for f := range ms.pendingFileChanges {
-			ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
-		}
-		ms.pendingFileChanges = make(map[string]bool)
-
-		buildState = ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
 	}
+
+	for f := range ms.pendingFileChanges {
+		ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
+	}
+	ms.pendingFileChanges = make(map[string]bool)
+
+	buildState := ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
 
 	m := ms.manifest
 
