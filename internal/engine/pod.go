@@ -9,6 +9,8 @@ const TiltRunIDLabel = "tilt-runid"
 
 var TiltRunID = uuid.New().String()
 
+const ManifestNameLabel = "tilt-manifest"
+
 func TiltRunLabel() k8s.LabelPair {
 	return k8s.LabelPair{
 		Key:   TiltRunIDLabel,

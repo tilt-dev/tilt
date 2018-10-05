@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	build "github.com/windmilleng/tilt/internal/build"
@@ -41,21 +43,23 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b            BuildAndDeployer
-	watcherMaker watcherMaker
-	timerMaker   timerMaker
-	k8s          k8s.Client
-	browserMode  BrowserMode
-	reaper       build.ImageReaper
-	hud          hud.HeadsUpDisplay
+	b               BuildAndDeployer
+	fsWatcherMaker  fsWatcherMaker
+	timerMaker      timerMaker
+	podWatcherMaker podWatcherMaker
+	k8s             k8s.Client
+	browserMode     BrowserMode
+	reaper          build.ImageReaper
+	hud             hud.HeadsUpDisplay
 }
 
-type watcherMaker func() (watch.Notify, error)
+type fsWatcherMaker func() (watch.Notify, error)
+type podWatcherMaker func(context.Context, k8s.Client) (*podWatcher, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
 	reaper build.ImageReaper, hud hud.HeadsUpDisplay) Upper {
-	watcherMaker := func() (watch.Notify, error) {
+	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 
@@ -63,13 +67,14 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	go hud.Run(ctx)
 
 	return Upper{
-		b:            b,
-		watcherMaker: watcherMaker,
-		timerMaker:   time.After,
-		k8s:          k8s,
-		browserMode:  browserMode,
-		reaper:       reaper,
-		hud:          hud,
+		b:               b,
+		fsWatcherMaker:  fsWatcherMaker,
+		podWatcherMaker: makePodWatcher,
+		timerMaker:      time.After,
+		k8s:             k8s,
+		browserMode:     browserMode,
+		reaper:          reaper,
+		hud:             hud,
 	}
 }
 
@@ -84,9 +89,14 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	engineState := newState(manifestNames)
 
 	var sw *manifestWatcher
+	var pw *podWatcher
 	var err error
 	if watchMounts {
-		sw, err = makeManifestWatcher(ctx, u.watcherMaker, u.timerMaker, manifests)
+		sw, err = makeManifestWatcher(ctx, u.fsWatcherMaker, u.timerMaker, manifests)
+		if err != nil {
+			return err
+		}
+		pw, err = u.podWatcherMaker(ctx, u.k8s)
 		if err != nil {
 			return err
 		}
@@ -147,12 +157,14 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			case <-ctx.Done():
 				return ctx.Err()
 			case fsEvent := <-sw.events:
-				u.handleFSEvent(ctx, engineState, fsEvent)
+				handleFSEvent(ctx, engineState, fsEvent)
 			case completedBuild := <-engineState.completedBuilds:
 				err := u.handleCompletedBuild(ctx, completedBuild, engineState, s)
 				if err != nil {
 					return err
 				}
+			case pod := <-pw.events:
+				handlePodEvent(ctx, engineState, pod)
 			case err := <-sw.errs:
 				return err
 			}
@@ -233,7 +245,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, cb completedBuild, engi
 	return nil
 }
 
-func (u Upper) handleFSEvent(
+func handleFSEvent(
 	ctx context.Context,
 	state *engineState,
 	event manifestFilesChangedEvent) {
@@ -269,6 +281,31 @@ func (u Upper) handleFSEvent(
 	}
 
 	state.manifestsToBuild = append(state.manifestsToBuild, event.manifestName)
+}
+
+func handlePodEvent(ctx context.Context, state *engineState, pod *v1.Pod) {
+	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
+	if manifestName == "" {
+		return
+	}
+
+	newPod := Pod{
+		Name:      pod.Name,
+		StartedAt: pod.CreationTimestamp.Time,
+		Status:    podStatusToString(*pod),
+	}
+
+	ms, ok := state.manifestStates[manifestName]
+	if !ok {
+		logger.Get(ctx).Infof("error: got notified of pod for unknown manifest '%s'", manifestName)
+		return
+	}
+
+	oldPod := ms.pod
+
+	if oldPod == unknownPod || oldPod.Name == newPod.Name || oldPod.StartedAt.Before(newPod.StartedAt) {
+		ms.pod = newPod
+	}
 }
 
 // Check if the filesChangedSet only contains spurious changes that

@@ -1,10 +1,11 @@
 package engine
 
 import (
-	"github.com/windmilleng/tilt/internal/ospath"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type engineState struct {
@@ -22,6 +23,7 @@ type manifestState struct {
 	pendingFileChanges           map[string]bool
 	currentlyBuildingFileChanges []string
 	manifest                     model.Manifest
+	pod                          Pod
 
 	// we've observed changes to the config file and need to reload it the next time we start a build
 	configIsDirty bool
@@ -45,8 +47,18 @@ func newManifestState(manifest model.Manifest) *manifestState {
 		lastBuild:          BuildStateClean,
 		manifest:           manifest,
 		pendingFileChanges: make(map[string]bool),
+		pod:                unknownPod,
 	}
 }
+
+type Pod struct {
+	Name      string
+	StartedAt time.Time
+	Status    string
+}
+
+// manifestState.Pod will be set to this if we don't know anything about its pod
+var unknownPod = Pod{Name: "no pod yet found"}
 
 func stateToView(s engineState) view.View {
 	ret := view.View{}
@@ -78,6 +90,19 @@ func stateToView(s engineState) view.View {
 			TimeSinceLastFileChange: 0,
 			Status:                  rs,
 			StatusDesc:              "",
+		}
+
+		if ms.pod != unknownPod {
+			// TODO(matt) this mapping is probably wrong
+			switch ms.pod.Status {
+			case "Running":
+				r.Status = view.ResourceStatusFresh
+			case "Pending":
+				r.Status = view.ResourceStatusStale
+			default:
+				r.Status = view.ResourceStatusBroken
+			}
+			r.StatusDesc = ms.pod.Status
 		}
 
 		ret.Resources = append(ret.Resources, r)
