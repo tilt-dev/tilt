@@ -46,6 +46,7 @@ test:
 	./hide_tbd_warning go test -timeout 60s ./...
 
 integration:
+	integration/purge-test-images.sh
 	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration
 
 ensure:
