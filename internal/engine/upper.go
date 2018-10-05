@@ -4,17 +4,20 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/hud"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/summary"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -44,15 +47,21 @@ type Upper struct {
 	k8s          k8s.Client
 	browserMode  BrowserMode
 	reaper       build.ImageReaper
+	hud          hud.HeadsUpDisplay
 }
 
 type watcherMaker func() (watch.Notify, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode, reaper build.ImageReaper) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay) Upper {
 	watcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
+
+	// Run the HUD in the background
+	go hud.Run(ctx)
+
 	return Upper{
 		b:            b,
 		watcherMaker: watcherMaker,
@@ -60,6 +69,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		k8s:          k8s,
 		browserMode:  browserMode,
 		reaper:       reaper,
+		hud:          hud,
 	}
 }
 
@@ -181,6 +191,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, cb completedBuild, engi
 	}()
 
 	err := cb.err
+
 	if err != nil {
 		if isPermanentError(err) {
 			return err
@@ -207,7 +218,20 @@ func (u Upper) handleFSEvent(
 	state *engineState,
 	event manifestFilesChangedEvent) {
 
-	ms := state.manifestStates[event.manifest.Name]
+	manifest := state.manifestStates[event.manifestName].manifest
+
+	if eventContainsConfigFiles(manifest, event) {
+		logger.Get(ctx).Debugf("Event contains config files")
+		newManifest, err := getNewManifestFromTiltfile(ctx, event.manifestName)
+		if err != nil {
+			logger.Get(ctx).Infof("getting new manifest error: %v", err)
+			return
+		}
+		state.manifestStates[event.manifestName].lastBuild = BuildStateClean
+		state.manifestStates[event.manifestName].manifest = newManifest
+	}
+
+	ms := state.manifestStates[event.manifestName]
 
 	for _, f := range event.files {
 		ms.pendingFileChanges[f] = true
@@ -223,7 +247,7 @@ func (u Upper) handleFSEvent(
 		return
 	}
 
-	state.enqueue(event.manifest.Name)
+	state.enqueue(event.manifestName)
 }
 
 // Check if the filesChangedSet only contains spurious changes that
@@ -250,6 +274,39 @@ func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedEvent) bool {
+	matcher, err := manifest.ConfigMatcher()
+	if err != nil {
+		return false
+	}
+
+	for _, f := range e.files {
+		matches, err := matcher.Matches(f, false)
+		if matches && err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, error) {
+	t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	if err != nil {
+		return model.Manifest{}, err
+	}
+	newManifests, err := t.GetManifestConfigs(string(name))
+	if err != nil {
+		return model.Manifest{}, err
+	}
+	if len(newManifests) != 1 {
+		return model.Manifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+	}
+	newManifest := newManifests[0]
+
+	return newManifest, nil
 }
 
 func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {

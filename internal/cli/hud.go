@@ -3,11 +3,21 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/hud/proto"
+	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 type hudCmd struct {
@@ -39,7 +49,90 @@ func (c *hudCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting the HUD (built %s)…\n", buildDateStamp()))
 
-	logOutput("Look I made a HUD!")
+	return connectHud(ctx)
+}
 
-	return nil
+func connectHud(ctx context.Context) error {
+	tty, err := curTty(ctx)
+	if err != nil {
+		return err
+	}
+
+	socketPath, err := proto.LocateSocket()
+	if err != nil {
+		return err
+	}
+
+	conn, err := grpc.Dial(
+		socketPath,
+		grpc.WithInsecure(),
+		grpc.WithDialer(network.UnixDial),
+	)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			log.Printf("Error closing connection to HUD server: %v", err)
+		}
+	}()
+
+	cli := proto.NewHudClient(conn)
+
+	stream, err := cli.ConnectHud(ctx)
+	if err != nil {
+		return err
+	}
+
+	// TODO(maia): wrap in adaptors so we don't need to muck around in proto code
+	if err := stream.Send(
+		&proto.HudControl{
+			Control: &proto.HudControl_Connect{Connect: &proto.ConnectRequest{
+				TtyPath: tty,
+			}},
+		}); err != nil {
+		return err
+	}
+
+	// Wait for the stream to close
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// Returns when the stream closes (with error or otherwise)
+		return stream.RecvMsg(nil)
+	})
+
+	// Forward any SIGWINCH's
+	g.Go(func() error {
+		winchCh := make(chan os.Signal, 10) // 10 is enough that we don't overflow the buffer
+		signal.Notify(winchCh, syscall.SIGWINCH)
+		defer signal.Stop(winchCh)
+		for {
+			select {
+			case <-winchCh:
+				log.Printf("sending winch")
+				if err := stream.Send(
+					&proto.HudControl{
+						Control: &proto.HudControl_WindowChange{WindowChange: &proto.WindowChange{}},
+					}); err != nil {
+					return err
+				}
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	})
+
+	return g.Wait()
+}
+
+func curTty(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "tty")
+	cmd.Stdin = os.Stdin
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	outputString := strings.TrimRight(string(output), "\n")
+	return outputString, nil
 }

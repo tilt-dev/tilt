@@ -10,6 +10,7 @@ import (
 	build "github.com/windmilleng/tilt/internal/build"
 	docker "github.com/windmilleng/tilt/internal/docker"
 	engine "github.com/windmilleng/tilt/internal/engine"
+	hud "github.com/windmilleng/tilt/internal/hud"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	model "github.com/windmilleng/tilt/internal/model"
 )
@@ -54,7 +55,11 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper)
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay()
+	if err != nil {
+		return nil, err
+	}
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay)
 	return upper, nil
 }
 

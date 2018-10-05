@@ -2,17 +2,24 @@ FROM golang:1.10
 
 RUN apt update && apt install unzip
 
-ENV PROTOC_VERSION 3.5.1
+ENV PROTOC_VERSION 3.6.1
+ENV PROTOC_GEN_GO_VERSION v1.2.0
 
 RUN wget https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
   unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d protoc && \
   mv protoc/bin/protoc /usr/bin/protoc
 
-RUN go get github.com/golang/protobuf/protoc-gen-go
+RUN mkdir -p /go/src/github.com/golang && \
+  cd /go/src/github.com/golang && \
+  git clone https://github.com/golang/protobuf && \
+  cd protobuf && \
+  git checkout ${PROTOC_GEN_GO_VERSION} && \
+  go get ./protoc-gen-go
 
 ADD internal/synclet /go/src/github.com/windmilleng/tilt/internal/synclet
+ADD internal/hud /go/src/github.com/windmilleng/tilt/internal/hud
 
 WORKDIR /go/src/github.com/windmilleng/tilt
 
 RUN protoc --go_out=plugins=grpc:../../../ -I. internal/synclet/*.proto
-
+RUN protoc --go_out=plugins=grpc:../../../ -I. internal/hud/proto/*.proto

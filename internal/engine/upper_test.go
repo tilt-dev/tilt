@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -391,6 +392,128 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	assert.Equal(t, endToken, err)
 }
 
+func TestRebuildDockerfile(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	os.Chdir(f.Path())
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile", "docker-tag")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+`)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	mount := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.ConfigFiles = []string{
+		f.JoinPath("Dockerfile"),
+	}
+	endToken := errors.New("my-err-token")
+
+	// everything that we want to do while watch loop is running
+	go func() {
+		// First call: with the old manifest
+		call := <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+
+		f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+
+		// Second call: new manifest!
+		call = <-f.b.calls
+		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYaml)
+
+		f.WriteFile("Tiltfile", `def foobar():
+	start_fast_build("Dockerfile", "docker-tag")
+	image = stop_build()
+	return k8s_service("yaaaaaaaaml", image)
+`)
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
+		// third call: new manifest should persist
+		call = <-f.b.calls
+		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+
+		f.watcher.errors <- endToken
+	}()
+	err = f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	assert.Equal(t, endToken, err)
+}
+
+func TestRebuildDockerfileFailed(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	os.Chdir(f.Path())
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile", "docker-tag")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+`)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	mount := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.ConfigFiles = []string{
+		f.JoinPath("Dockerfile"),
+	}
+	endToken := errors.New("my-err-token")
+
+	// everything that we want to do while watch loop is running
+	go func() {
+		// First call: with the old manifest
+		call := <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+
+		// second call: do some stuff
+		f.WriteFile("Tiltfile", `def foobar():
+	start_fast_build("Dockerfile", "docker-tag")
+	image = stop_build()
+	return k8s_service("yaaaaaaaaml", image)
+`)
+
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+		call = <-f.b.calls
+		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+
+		// Third call: error!
+		f.WriteFile("Tiltfile", "def")
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+		select {
+		case call := <-f.b.calls:
+			t.Errorf("Expected build to not get called, but it did: %+v", call)
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		// fourth call: fix
+		f.WriteFile("Tiltfile", `def foobar():
+	start_fast_build("Dockerfile", "docker-tag")
+	image = stop_build()
+	return k8s_service("yaaaaaaaaml", image)
+`)
+
+		f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
+		f.watcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+		call = <-f.b.calls
+		assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
+
+		f.watcher.errors <- endToken
+	}()
+	err = f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	assert.Equal(t, endToken, err)
+}
+
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -498,7 +621,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	reaper := build.NewImageReaper(docker)
 
 	k8s := k8s.NewFakeK8sClient()
-	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto, reaper}
+
+	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto,
+		reaper, &hud.FakeHud{}}
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
 

@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test wire-check wire ensure
+.PHONY: all proto install lint test integration wire-check wire ensure
 
 all: lint errcheck verify_gofmt wire-check test
 
@@ -10,6 +10,7 @@ proto:
 	docker rm tilt-protogen || exit 0
 	docker run --name tilt-protogen tilt-protogen
 	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/synclet/proto/synclet.pb.go internal/synclet/proto
+	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/hud/proto/hud.pb.go internal/hud/proto
 	docker rm tilt-protogen
 
 # Build a binary that uses synclet:latest
@@ -36,13 +37,16 @@ build-synclet-and-install: synclet-dev install-dev
 
 lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
-	! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline(' # linting for improperly deferred EndPipeline calls; should be in closure, i.e. `defer func() { ...EndPipeline(err) }()`
+	! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline(' # linting for improperly deferred EndPipeline calls; should be in CLOSURE, i.e. `defer func() { ...EndPipeline(err) }()`
 
 build:
 	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
 
 test:
 	./hide_tbd_warning go test -timeout 60s ./...
+
+integration:
+	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration
 
 ensure:
 	dep ensure

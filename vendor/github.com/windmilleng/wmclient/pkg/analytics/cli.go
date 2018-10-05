@@ -16,7 +16,8 @@ func analyticsStatus(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("analytics status: %s\n", choice)
+	fmt.Printf("analytics status : %s\n", choice)
+	fmt.Printf("analytics user id: %s\n", getUserID())
 
 	return nil
 }
