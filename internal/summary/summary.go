@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
+	"github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -124,3 +127,13 @@ func (s *Summary) Output(ctx context.Context, resolver LBResolver) string {
 }
 
 type LBResolver func(ctx context.Context, lb k8s.LoadBalancerSpec) *url.URL
+
+func (s *Summary) Log(ctx context.Context, resolver LBResolver) {
+	blue := color.New(color.FgBlue)
+	if !logger.Get(ctx).SupportsColor() {
+		blue.DisableColor()
+	}
+	logger.Get(ctx).Infof("%s", blue.Sprint("──┤ Status ├──────────────────────────────────────────────────────────"))
+	logger.Get(ctx).Infof("%s", s.Output(ctx, resolver))
+	logger.Get(ctx).Infof("%s", blue.Sprint("╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴"))
+}

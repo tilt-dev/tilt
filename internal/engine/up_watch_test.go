@@ -124,12 +124,12 @@ func (s *manifestWatcherTestFixture) readEvents(numExpectedEvents int) []testMan
 		e := <-s.sw.events
 		manifestNumber := -1
 		for i := 0; i < len(s.manifests); i++ {
-			if s.manifests[i].Name == e.manifest.Name {
+			if s.manifests[i].Name == e.manifestName {
 				manifestNumber = i
 			}
 		}
 		if manifestNumber == -1 {
-			s.t.Fatalf("got event for unknown manifest %v", e.manifest)
+			s.t.Fatalf("got event for unknown manifest %v", e.manifestName)
 		}
 
 		var fileBaseNames []string

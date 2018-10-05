@@ -623,7 +623,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	k8s := k8s.NewFakeK8sClient()
 
 	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto,
-		reaper, make(BuildStatesByName), map[model.ManifestName]model.Manifest{}, &hud.FakeHud{}}
+		reaper, &hud.FakeHud{}}
 	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
 }
 

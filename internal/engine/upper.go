@@ -11,7 +11,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	build "github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -42,15 +41,13 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b               BuildAndDeployer
-	watcherMaker    watcherMaker
-	timerMaker      timerMaker
-	k8s             k8s.Client
-	browserMode     BrowserMode
-	reaper          build.ImageReaper
-	buildStates     BuildStatesByName
-	manifestOverlay map[model.ManifestName]model.Manifest
-	hud             hud.HeadsUpDisplay
+	b            BuildAndDeployer
+	watcherMaker watcherMaker
+	timerMaker   timerMaker
+	k8s          k8s.Client
+	browserMode  BrowserMode
+	reaper       build.ImageReaper
+	hud          hud.HeadsUpDisplay
 }
 
 type watcherMaker func() (watch.Notify, error)
@@ -66,21 +63,21 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	go hud.Run(ctx)
 
 	return Upper{
-		b:               b,
-		watcherMaker:    watcherMaker,
-		timerMaker:      time.After,
-		k8s:             k8s,
-		browserMode:     browserMode,
-		reaper:          reaper,
-		buildStates:     make(BuildStatesByName),
-		manifestOverlay: map[model.ManifestName]model.Manifest{},
-		hud:             hud,
+		b:            b,
+		watcherMaker: watcherMaker,
+		timerMaker:   time.After,
+		k8s:          k8s,
+		browserMode:  browserMode,
+		reaper:       reaper,
+		hud:          hud,
 	}
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
+
+	engineState := newState()
 
 	var sw *manifestWatcher
 	var err error
@@ -99,17 +96,17 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	lbs := make([]k8s.LoadBalancerSpec, 0)
 	for _, manifest := range manifests {
-		u.buildStates[manifest.Name] = BuildStateClean
+		engineState.manifestStates[manifest.Name] = newManifestState(manifest)
 
 		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
 		if err == nil {
-			u.buildStates[manifest.Name] = NewBuildState(buildResult)
+			engineState.manifestStates[manifest.Name].lastBuild = NewBuildState(buildResult)
 			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
 		} else if isPermanentError(err) {
 			return err
 		} else if watchMounts {
 			o := output.Get(ctx)
-			o.PrintColorf(o.Red(), "build failed: %v", err)
+			logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
 		} else {
 			return fmt.Errorf("build failed: %v", err)
 		}
@@ -127,7 +124,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 
-	output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
+	s.Log(ctx, u.resolveLB)
 
 	if watchMounts {
 		go func() {
@@ -143,61 +140,161 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case event := <-sw.events:
-				if eventContainsConfigFiles(event) {
-					fmt.Println("Event contains config files")
-					newManifest, err := getNewManifestFromTiltfile(ctx, event.manifest.Name)
-					if err != nil {
-						logger.Get(ctx).Infof("getting new manifest error: %v", err)
-						continue
-					}
-					u.buildStates[event.manifest.Name] = BuildStateClean
-					u.manifestOverlay[event.manifest.Name] = newManifest
-				}
-				oldState := u.buildStates[event.manifest.Name]
-				buildState := oldState.NewStateWithFilesChanged(event.files)
-				u.buildStates[event.manifest.Name] = buildState
-
-				spurious, err := buildState.OnlySpuriousChanges()
-				if err != nil {
-					logger.Get(ctx).Infof("build watch error: %v", err)
-				}
-
-				if spurious {
-					// TODO(nick): I think we probably want to log when this happens?
-					continue
-				}
-
-				manifest := u.getMostRecentManifest(event)
-				err = u.buildManifestFromBuildState(ctx, manifest, buildState)
+			case fsEvent := <-sw.events:
+				u.handleFSEvent(ctx, engineState, fsEvent)
+			case completedBuild := <-engineState.completedBuilds:
+				err := u.handleCompletedBuild(ctx, completedBuild, engineState, s)
 				if err != nil {
 					return err
 				}
-				u.manifestOverlay[manifest.Name] = manifest
-
-				output.Get(ctx).Summary(s.Output(ctx, u.resolveLB))
-				output.Get(ctx).Printf("Awaiting changes…")
 			case err := <-sw.errs:
 				return err
-			// HACK(maia): until upper notifies the HUD of updates, just tell the HUD to update every second
-			case <-time.After(time.Second):
-				u.hud.Update(view.View{})
 			}
+			u.dispatch(ctx, engineState)
 		}
 	}
 	return nil
 }
 
-func (u Upper) getMostRecentManifest(e manifestFilesChangedEvent) model.Manifest {
-	if newManifest, ok := u.manifestOverlay[e.manifest.Name]; ok {
-		return newManifest
+func (u Upper) dispatch(ctx context.Context, state *engineState) {
+	if len(state.manifestsToBuild) == 0 || state.currentlyBuilding != "" {
+		return
 	}
 
-	return e.manifest
+	mn := state.manifestsToBuild[0]
+	state.manifestsToBuild = state.manifestsToBuild[1:]
+	state.currentlyBuilding = mn
+	ms := state.manifestStates[mn]
+
+	var buildState BuildState
+	if ms.configIsDirty {
+		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
+		if err != nil {
+			logger.Get(ctx).Infof("getting new manifest error: %v", err)
+			state.currentlyBuilding = ""
+			return
+		}
+		ms.lastBuild = BuildStateClean
+		ms.manifest = newManifest
+		ms.configIsDirty = false
+		buildState = ms.lastBuild
+	} else {
+		for f := range ms.pendingFileChanges {
+			ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
+		}
+		ms.pendingFileChanges = make(map[string]bool)
+
+		buildState = ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
+	}
+
+	m := ms.manifest
+
+	go func() {
+		u.logBuildEvent(ctx, m, buildState)
+
+		result, err := u.b.BuildAndDeploy(
+			ctx,
+			m,
+			buildState)
+
+		state.completedBuilds <- completedBuild{result, err}
+	}()
 }
 
-func eventContainsConfigFiles(e manifestFilesChangedEvent) bool {
-	matcher, err := e.manifest.ConfigMatcher()
+func (u Upper) handleCompletedBuild(ctx context.Context, cb completedBuild, engineState *engineState, s *summary.Summary) error {
+	defer func() {
+		engineState.currentlyBuilding = ""
+	}()
+
+	err := cb.err
+
+	if err != nil {
+		if isPermanentError(err) {
+			return err
+		}
+
+		o := output.Get(ctx)
+		logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
+	} else {
+		ms := engineState.manifestStates[engineState.currentlyBuilding]
+
+		ms.lastBuild = NewBuildState(cb.result)
+		ms.currentlyBuildingFileChanges = nil
+	}
+	logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+	s.Log(ctx, u.resolveLB)
+	logger.Get(ctx).Infof("Awaiting changes…")
+
+	return nil
+}
+
+func (u Upper) handleFSEvent(
+	ctx context.Context,
+	state *engineState,
+	event manifestFilesChangedEvent) {
+
+	manifest := state.manifestStates[event.manifestName].manifest
+
+	if eventContainsConfigFiles(manifest, event) {
+		logger.Get(ctx).Debugf("Event contains config files")
+		state.manifestStates[event.manifestName].configIsDirty = true
+	}
+
+	ms := state.manifestStates[event.manifestName]
+
+	for _, f := range event.files {
+		ms.pendingFileChanges[f] = true
+	}
+
+	spurious, err := onlySpuriousChanges(ms.pendingFileChanges)
+	if err != nil {
+		logger.Get(ctx).Infof("build watch error: %v", err)
+	}
+
+	if spurious {
+		// TODO(nick): I think we probably want to log when this happens?
+		return
+	}
+
+	// if the name is already in the queue, we don't need to add it again
+	for _, mn := range state.manifestsToBuild {
+		if mn == event.manifestName {
+			return
+		}
+	}
+
+	state.manifestsToBuild = append(state.manifestsToBuild, event.manifestName)
+}
+
+// Check if the filesChangedSet only contains spurious changes that
+// we don't want to rebuild on, like IDE temp/lock files.
+//
+// NOTE(nick): This isn't an ideal solution. In an ideal world, the user would
+// put everything to ignore in their gitignore/dockerignore files. This is a stop-gap
+// so they don't have a terrible experience if those files aren't there or
+// aren't in the right places.
+func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
+	// If a lot of files have changed, don't treat this as spurious.
+	if len(filesChanged) > 3 {
+		return false, nil
+	}
+
+	for f := range filesChanged {
+		broken, err := ospath.IsBrokenSymlink(f)
+		if err != nil {
+			return false, err
+		}
+
+		if !broken {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedEvent) bool {
+	matcher, err := manifest.ConfigMatcher()
 	if err != nil {
 		return false
 	}
@@ -227,23 +324,6 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	newManifest := newManifests[0]
 
 	return newManifest, nil
-}
-
-func (u Upper) buildManifestFromBuildState(ctx context.Context, m model.Manifest, b BuildState) error {
-	u.logBuildEvent(ctx, m, b)
-
-	result, err := u.b.BuildAndDeploy(ctx, m, b)
-	if err != nil {
-		if isPermanentError(err) {
-			return err
-		}
-		o := output.Get(ctx)
-		o.PrintColorf(o.Red(), "build failed: %v", err)
-	} else {
-		u.buildStates[m.Name] = NewBuildState(result)
-		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-	}
-	return nil
 }
 
 func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {

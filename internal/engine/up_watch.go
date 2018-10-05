@@ -10,8 +10,8 @@ import (
 )
 
 type manifestFilesChangedEvent struct {
-	manifest model.Manifest
-	files    []string
+	manifestName model.ManifestName
+	files        []string
 }
 
 type manifestWatcher struct {
@@ -148,7 +148,7 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 					if !ok {
 						return
 					}
-					watchEvent := manifestFilesChangedEvent{manifest: manifest}
+					watchEvent := manifestFilesChangedEvent{manifestName: manifest.Name}
 					for _, fe := range fsEvents {
 						path, err := filepath.Abs(fe.Path)
 						if err != nil {
