@@ -38,6 +38,7 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		engine.NewUpper,
 		wire.Bind(new(model.ManifestCreator), engine.Upper{}),
 		provideAnalytics,
+		provideUpdateModeFlag,
 	)
 	return nil, nil
 }

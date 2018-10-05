@@ -106,12 +106,24 @@ func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context
 	}
 }
 
-func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, env k8s.Env) BuildOrder {
-	switch env {
-	case k8s.EnvMinikube, k8s.EnvDockerDesktop:
+func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, env k8s.Env, mode UpdateMode) BuildOrder {
+	if mode == UpdateModeImage || mode == UpdateModeNaive {
+		return BuildOrder{ibad}
+	}
+
+	if mode == UpdateModeContainer {
 		return BuildOrder{cbad, ibad}
-	default:
+	}
+
+	if mode == UpdateModeSynclet {
 		ibad.SetInjectSynclet(true)
 		return BuildOrder{sbad, ibad}
 	}
+
+	if env.IsLocalCluster() {
+		return BuildOrder{cbad, ibad}
+	}
+
+	ibad.SetInjectSynclet(true)
+	return BuildOrder{sbad, ibad}
 }

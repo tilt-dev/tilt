@@ -25,15 +25,17 @@ type ImageBuildAndDeployer struct {
 	k8sClient     k8s.Client
 	env           k8s.Env
 	analytics     analytics.Analytics
+	updateMode    UpdateMode
 	injectSynclet bool
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics) *ImageBuildAndDeployer {
+func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics, updateMode UpdateMode) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		b:         b,
-		k8sClient: k8sClient,
-		env:       env,
-		analytics: analytics,
+		b:          b,
+		k8sClient:  k8sClient,
+		env:        env,
+		analytics:  analytics,
+		updateMode: updateMode,
 	}
 }
 
@@ -97,7 +99,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		}
 		n = ref
 
-	} else if !state.HasImage() {
+	} else if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 		// No existing image to build off of, need to build from scratch
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", name)
 		defer output.Get(ctx).EndPipelineStep()
@@ -215,7 +217,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 // The k8s will use the image already available
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
-	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
+	return ibd.env.IsLocalCluster()
 }
 
 func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
