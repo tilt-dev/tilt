@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error)
+type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error)
 type SyncletManager struct {
 	kCli      k8s.Client
 	mutex     *sync.Mutex
@@ -52,7 +52,12 @@ func NewSyncletManager(kCli k8s.Client) SyncletManager {
 }
 
 func NewSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) SyncletManager {
-	newClientFn := func(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
+	newClientFn := func(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
+		fake, ok := fakeCli.(*synclet.FakeSyncletClient)
+		if ok {
+			fake.PodID = podID
+			fake.Namespace = ns
+		}
 		return fakeCli, nil
 	}
 
@@ -64,7 +69,7 @@ func NewSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) S
 	}
 }
 
-func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID) (synclet.SyncletClient, error) {
+func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
 
@@ -73,7 +78,7 @@ func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID) (syn
 		return client, nil
 	}
 
-	client, err := sm.newClient(ctx, sm.kCli, podID)
+	client, err := sm.newClient(ctx, sm.kCli, podID, ns)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating synclet client")
 	}
@@ -97,11 +102,11 @@ func (sm SyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID) error {
 	return client.Close()
 }
 
-func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (synclet.SyncletClient, error) {
+func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-newSidecarSyncletClient")
 	defer span.Finish()
 
-	pod, err := kCli.PodByID(ctx, podID, k8s.DefaultNamespace)
+	pod, err := kCli.PodByID(ctx, podID, ns)
 	if err != nil {
 		return nil, errors.Wrap(err, "newSyncletClient")
 	}
@@ -113,7 +118,7 @@ func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID) (sy
 	}
 
 	// TODO(nick): We need a better way to kill the client when the pod dies.
-	tunneledPort, tunnelCloser, err := kCli.ForwardPort(ctx, k8s.DefaultNamespace, podID, synclet.Port)
+	tunneledPort, tunnelCloser, err := kCli.ForwardPort(ctx, ns, podID, synclet.Port)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
 	}

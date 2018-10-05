@@ -151,7 +151,7 @@ func (cbd *LocalContainerBuildAndDeployer) getContainerForBuild(ctx context.Cont
 	// in the most recent Deployment, and not the pods in the process
 	// of being terminated from previous Deployments.
 	pods, err := cbd.k8sClient.PollForPodsWithImage(
-		ctx, build.Image, k8s.DefaultNamespace,
+		ctx, build.Image, build.Namespace,
 		[]k8s.LabelPair{TiltRunLabel()}, podPollTimeoutLocal)
 	if err != nil {
 		return "", fmt.Errorf("PodsWithImage (img = %s): %v", build.Image, err)

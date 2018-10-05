@@ -54,8 +54,12 @@ func (e K8sEntity) Name() string {
 	return e.Meta().Name
 }
 
-func (e K8sEntity) Namespace() string {
-	return e.Meta().Namespace
+func (e K8sEntity) Namespace() Namespace {
+	n := e.Meta().Namespace
+	if n == "" {
+		return DefaultNamespace
+	}
+	return Namespace(n)
 }
 
 // Most entities can be updated once running, but a few cannot.
