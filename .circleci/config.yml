@@ -10,6 +10,34 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make all
+      
+  build-integration:
+    docker:
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci
+    working_directory: /go/src/github.com/windmilleng/tilt
+    steps:
+      - checkout
+      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
+      - setup_remote_docker
+      - run: echo ${GCLOUD_SERVICE_KEY} > ${HOME}/gcloud-service-key.json
+      # NOTE(nick): Integration tests currently push images to windmill-test-containers,
+      # so we need to use a gcloud service account.
+      # I'm not super happy with this solution. I'd prefer we ran a local registry.
+      # But this is hard to coordinate effectively.
+      - run: |
+          gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+          gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
+          gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
+          gcloud auth configure-docker
+      # Cleaning is helpful when running with the local circleci toolchain
+      - run: /go/dind-cluster.sh clean
+      - run: docker kill portforward || exit 0
+      - run: docker rm portforward || exit 0
+      - run: /go/portforward.sh start
+      - run: DIND_PORT_FORWARDER_WAIT=1 DIND_PORT_FORWARDER="/go/portforward.sh" NUM_NODES=1 /go/dind-cluster.sh up
+      - run: /go/portforward.sh -wait $(/go/dind-cluster.sh apiserver-port) && 
+             kubectl get nodes &&
+             make integration
 
   build-macos:
     macos:
@@ -38,5 +66,8 @@ workflows:
     jobs:
       - build-linux
       - build-macos:
+          requires:
+            - build-linux
+      - build-integration:
           requires:
             - build-linux

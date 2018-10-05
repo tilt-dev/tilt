@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/fatih/color"
@@ -40,6 +41,12 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
+	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
+		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
+	err := cmd.Flags().MarkHidden("image-tag-prefix")
+	if err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
