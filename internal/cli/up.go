@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/fatih/color"
@@ -19,6 +20,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var updateModeFlag string = string(engine.UpdateModeAuto)
 
 type upCmd struct {
 	watch       bool
@@ -35,13 +38,24 @@ func (c *upCmd) register() *cobra.Command {
 
 	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started manifests will be automatically rebuilt and redeployed when files in their repos change")
 	cmd.Flags().Var(&c.browserMode, "browser", "open a browser when the manifest first starts")
+	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
+		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
+	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
+		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
+	err := cmd.Flags().MarkHidden("image-tag-prefix")
+	if err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.up", map[string]string{"watch": fmt.Sprintf("%v", c.watch)})
+	analyticsService.Incr("cmd.up", map[string]string{
+		"watch": fmt.Sprintf("%v", c.watch),
+		"mode":  string(updateModeFlag),
+	})
 	defer analyticsService.Flush(time.Second)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
@@ -97,4 +111,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 func logOutput(s string) {
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	log.Printf(color.GreenString(s))
+}
+
+func provideUpdateModeFlag() engine.UpdateModeFlag {
+	return engine.UpdateModeFlag(updateModeFlag)
 }

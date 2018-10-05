@@ -15,6 +15,9 @@ type BuildResult struct {
 	// The tag is derived from a content-addressable digest.
 	Image reference.NamedTagged
 
+	// The namespace where the pod was deployed.
+	Namespace k8s.Namespace
+
 	// The k8s entities deployed alongside the image.
 	Entities []k8s.K8sEntity
 
@@ -37,6 +40,7 @@ func (b BuildResult) HasImage() bool {
 func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
 	result := BuildResult{}
 	result.Image = b.Image
+	result.Namespace = b.Namespace
 	result.Entities = append([]k8s.K8sEntity{}, b.Entities...)
 
 	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))

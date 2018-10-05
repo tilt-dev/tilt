@@ -15,6 +15,10 @@ const (
 	EnvDockerDesktop     = "docker-for-desktop"
 )
 
+func (e Env) IsLocalCluster() bool {
+	return e == EnvMinikube || e == EnvDockerDesktop
+}
+
 func DetectEnv() (Env, error) {
 	cmd := exec.Command("kubectl", "config", "current-context")
 	outputBytes, err := cmd.Output()

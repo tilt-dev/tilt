@@ -194,7 +194,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return BuildResult{}, err
 	}
 
-	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.podID)
+	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.podID, state.LastResult.Namespace)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -232,7 +232,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 
 	// We just made this info, so populate it. (Can take a while--run async.)
 	go func() {
-		err := sbd.populateDeployInfo(ctx, result.Image, info)
+		err := sbd.populateDeployInfo(ctx, result.Image, result.Namespace, info)
 		if err != nil {
 			// There's a variety of reasons why we might not be able to get the deploy info.
 			// The cluster could be in a transient bad state, or the pod
@@ -244,7 +244,7 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 	}()
 }
 
-func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, info *DeployInfo) (err error) {
+func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, ns k8s.Namespace, info *DeployInfo) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-populateDeployInfo")
 	defer span.Finish()
 
@@ -259,7 +259,7 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	// in the most recent Deployment, and not the pods in the process
 	// of being terminated from previous Deployments.
 	pods, err := sbd.kCli.PollForPodsWithImage(
-		ctx, image, k8s.DefaultNamespace,
+		ctx, image, ns,
 		[]k8s.LabelPair{TiltRunLabel()}, podPollTimeoutSynclet)
 	if err != nil {
 		return errors.Wrapf(err, "PodsWithImage (img = %s)", image)
@@ -294,7 +294,7 @@ func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, imag
 	info.nodeID = nodeID
 
 	// preemptively set up the tunnel + client
-	_, err = sbd.sm.ClientForPod(ctx, pID)
+	_, err = sbd.sm.ClientForPod(ctx, pID, ns)
 	if err != nil {
 		return errors.Wrapf(err, "creating synclet client for pod '%s'", pID)
 	}

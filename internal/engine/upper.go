@@ -175,7 +175,6 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 		}
 		ms.lastBuild = BuildStateClean
 		ms.manifest = newManifest
-		ms.pendingFileChanges = make(map[string]bool)
 		ms.configIsDirty = false
 	}
 

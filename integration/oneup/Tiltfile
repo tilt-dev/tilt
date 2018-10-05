@@ -2,6 +2,6 @@
 
 def oneup():
   yaml = read_file('oneup.yaml')
-  image_name = 'gcr.io/windmill-public-containers/integration/oneup'
+  image_name = 'gcr.io/windmill-test-containers/integration/oneup'
   image = static_build('Dockerfile', image_name)
   return k8s_service(yaml, image)

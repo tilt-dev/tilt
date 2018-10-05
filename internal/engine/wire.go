@@ -34,6 +34,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
+	ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(
@@ -52,6 +53,7 @@ func provideBuildAndDeployer(
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
+	updateMode UpdateModeFlag,
 	sCli synclet.SyncletClient,
 	shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	wire.Build(

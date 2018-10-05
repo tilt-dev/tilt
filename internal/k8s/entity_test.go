@@ -26,7 +26,7 @@ func TestNamespace(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, len(entities))
-	assert.Equal(t, "kube-system", entities[0].Namespace())
+	assert.Equal(t, "kube-system", string(entities[0].Namespace()))
 }
 
 func TestImmutableFilter(t *testing.T) {

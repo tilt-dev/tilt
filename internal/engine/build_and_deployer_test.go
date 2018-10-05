@@ -106,6 +106,30 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 }
 
+func TestNamespaceGKE(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	assert.Equal(t, "", string(f.sCli.Namespace))
+	assert.Equal(t, "", string(f.k8s.LastPodQueryNamespace))
+
+	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "sancho-ns", string(result.Namespace))
+
+	result, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(result))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "sancho-ns", string(result.Namespace))
+	assert.Equal(t, "sancho-ns", string(f.sCli.Namespace))
+	assert.Equal(t, "sancho-ns", string(f.k8s.LastPodQueryNamespace))
+}
+
 func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
@@ -451,7 +475,8 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 	ctx := output.CtxForTest()
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, sCli, fallbackFn)
+	mode := UpdateModeFlag(UpdateModeAuto)
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, mode, sCli, fallbackFn)
 	if err != nil {
 		t.Fatal(err)
 	}

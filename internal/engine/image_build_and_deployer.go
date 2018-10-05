@@ -25,15 +25,17 @@ type ImageBuildAndDeployer struct {
 	k8sClient     k8s.Client
 	env           k8s.Env
 	analytics     analytics.Analytics
+	updateMode    UpdateMode
 	injectSynclet bool
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics) *ImageBuildAndDeployer {
+func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics, updateMode UpdateMode) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		b:         b,
-		k8sClient: k8sClient,
-		env:       env,
-		analytics: analytics,
+		b:          b,
+		k8sClient:  k8sClient,
+		env:        env,
+		analytics:  analytics,
+		updateMode: updateMode,
 	}
 }
 
@@ -70,14 +72,15 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 		return BuildResult{}, err
 	}
 
-	k8sEntities, err := ibd.deploy(ctx, manifest, ref)
+	k8sEntities, namespace, err := ibd.deploy(ctx, manifest, ref)
 	if err != nil {
 		return BuildResult{}, err
 	}
 
 	return BuildResult{
-		Image:    ref,
-		Entities: k8sEntities,
+		Image:     ref,
+		Namespace: namespace,
+		Entities:  k8sEntities,
 	}, nil
 }
 
@@ -97,7 +100,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		}
 		n = ref
 
-	} else if !state.HasImage() {
+	} else if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 		// No existing image to build off of, need to build from scratch
 		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", name)
 		defer output.Get(ctx).EndPipelineStep()
@@ -144,7 +147,8 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 	return n, nil
 }
 
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, error) {
+// Returns: the entities deployed and the namespace of the pod with the given image name/tag.
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
 	output.Get(ctx).StartPipelineStep("Deploying")
 	defer output.Get(ctx).EndPipelineStep()
 
@@ -154,15 +158,16 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 	// It doesn't make much sense to re-parse it and inject labels on every deploy.
 	entities, err := k8s.ParseYAMLFromString(manifest.K8sYaml)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	didReplace := false
 	newK8sEntities := []k8s.K8sEntity{}
+	namespace := k8s.DefaultNamespace
 	for _, e := range entities {
 		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel()})
 		if err != nil {
-			return nil, errors.Wrap(err, "deploy")
+			return nil, "", errors.Wrap(err, "deploy")
 		}
 
 		// For development, image pull policy should never be set to "Always",
@@ -170,7 +175,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 		// set "Always" for development are shooting their own feet.
 		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		// When working with a local k8s cluster, we set the pull policy to Never,
@@ -181,17 +186,18 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 		}
 		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if replaced {
 			didReplace = true
+			namespace = e.Namespace()
 
 			if ibd.injectSynclet {
 				e, replaced, err = sidecar.InjectSyncletSidecar(e, n)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				} else if !replaced {
-					return nil, fmt.Errorf("Could not inject synclet: %v", e)
+					return nil, "", fmt.Errorf("Could not inject synclet: %v", e)
 				}
 			}
 		}
@@ -200,14 +206,14 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 	}
 
 	if !didReplace {
-		return nil, fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef)
+		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef)
 	}
 
 	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return newK8sEntities, nil
+	return newK8sEntities, namespace, nil
 }
 
 // If we're using docker-for-desktop as our k8s backend,
@@ -215,7 +221,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 // The k8s will use the image already available
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
-	return ibd.env == k8s.EnvDockerDesktop || ibd.env == k8s.EnvMinikube
+	return ibd.env.IsLocalCluster()
 }
 
 func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {

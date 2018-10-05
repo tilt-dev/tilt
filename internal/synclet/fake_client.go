@@ -14,6 +14,8 @@ type FakeSyncletClient struct {
 	UpdateContainerCount         int
 	ClosedCount                  int
 	UpdateContainerErrorToReturn error
+	PodID                        k8s.PodID
+	Namespace                    k8s.Namespace
 }
 
 var _ SyncletClient = &FakeSyncletClient{}

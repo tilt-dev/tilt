@@ -19,6 +19,9 @@ type FakeK8sClient struct {
 
 	PodsWithImageResp         PodID
 	PollForPodsWithImageDelay time.Duration
+
+	LastPodQueryNamespace Namespace
+	LastPodQueryImage     reference.NamedTagged
 }
 
 func NewFakeK8sClient() *FakeK8sClient {
@@ -56,6 +59,9 @@ func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v
 }
 
 func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+	c.LastPodQueryImage = image
+	c.LastPodQueryNamespace = n
+
 	status := v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
 			{
