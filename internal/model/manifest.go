@@ -101,8 +101,46 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath
 	cmdMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	pmMatch := m1.FileFilter == m2.FileFilter
+	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
+	mountsMatch := m1.mountsEqual(m2.Mounts)
 
-	return primitivesMatch && cmdMatch && pmMatch
+	return primitivesMatch && cmdMatch && pmMatch && configFilesMatch && mountsMatch
+}
+
+func (m1 Manifest) configFilesEqual(c2 []string) bool {
+	if (m1.ConfigFiles == nil) != (c2 == nil) {
+		return false
+	}
+
+	if len(m1.ConfigFiles) != len(c2) {
+		return false
+	}
+
+	for i := range c2 {
+		if m1.ConfigFiles[i] != c2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) mountsEqual(m2 []Mount) bool {
+	if (m1.Mounts == nil) != (m2 == nil) {
+		return false
+	}
+
+	if len(m1.Mounts) != len(m2) {
+		return false
+	}
+
+	for i := range m2 {
+		if m1.Mounts[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 type ManifestCreator interface {
