@@ -77,7 +77,11 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	engineState := newState()
+	var manifestNames []model.ManifestName
+	for _, m := range manifests {
+		manifestNames = append(manifestNames, m.Name)
+	}
+	engineState := newState(manifestNames)
 
 	var sw *manifestWatcher
 	var err error
@@ -137,6 +141,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		logger.Get(ctx).Infof("Awaiting edits...")
 
 		for {
+			u.hud.Update(stateToView(*engineState))
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

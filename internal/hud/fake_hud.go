@@ -8,8 +8,12 @@ import (
 
 var _ HeadsUpDisplay = (*FakeHud)(nil)
 
-type FakeHud struct{}
+type FakeHud struct {
+	LastView view.View
+}
 
 func (h *FakeHud) Run(ctx context.Context) {}
 
-func (h *FakeHud) Update(v view.View) {}
+func (h *FakeHud) Update(v view.View) {
+	h.LastView = v
+}
