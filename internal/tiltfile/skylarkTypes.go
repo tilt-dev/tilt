@@ -184,7 +184,6 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	}
 
 	buildContext.mounts = append(buildContext.mounts, mount{lp, mountPoint})
-	buildContext.filters = append(buildContext.filters, lp.repo.pathMatcher)
 
 	return skylark.None, nil
 }
@@ -232,8 +231,9 @@ func (*dockerImage) AttrNames() []string {
 }
 
 type gitRepo struct {
-	basePath    string
-	pathMatcher model.PathMatcher
+	basePath             string
+	gitignoreContents    string
+	dockerignoreContents string
 }
 
 var _ skylark.Value = gitRepo{}

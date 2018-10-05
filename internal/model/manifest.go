@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/dockerignore"
+	"github.com/windmilleng/tilt/internal/git"
 )
 
 type ManifestName string
@@ -34,6 +36,8 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
+
+	Repos []LocalGithubRepo
 }
 
 func (m Manifest) ConfigMatcher() (PathMatcher, error) {
@@ -49,11 +53,21 @@ func (m Manifest) IsStaticBuild() bool {
 }
 
 func (m Manifest) Filter() PathMatcher {
-	f := m.FileFilter
-	if f == nil {
-		return EmptyMatcher
+	matchers := []PathMatcher{m.FileFilter}
+
+	for _, r := range m.Repos {
+		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
+		if err == nil {
+			matchers = append(matchers, gim)
+		}
+
+		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.DockerignoreContents)
+		if err == nil {
+			matchers = append(matchers, dim)
+		}
 	}
-	return f
+
+	return NewCompositeMatcher(matchers)
 }
 
 func (m Manifest) LocalPaths() []string {
@@ -111,12 +125,10 @@ type Mount struct {
 	ContainerPath string
 }
 
-type Repo interface {
-	IsRepo()
-}
-
 type LocalGithubRepo struct {
-	LocalPath string
+	LocalPath            string
+	DockerignoreContents string
+	GitignoreContents    string
 }
 
 func (LocalGithubRepo) IsRepo() {}

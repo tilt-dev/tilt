@@ -1,11 +1,15 @@
-package git
+package git_test
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -24,7 +28,7 @@ func TestNewGitIgnoreTester_NoGitignore(t *testing.T) {
 	tempDir := tempdir.NewTempDirFixture(t)
 	defer tempDir.TearDown()
 
-	g, err := NewGitIgnoreTester(output.CtxForTest(), tempDir.Path())
+	g, err := git.NewGitIgnoreTesterFromContents(output.CtxForTest(), tempDir.Path(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +89,16 @@ func newTestFixture(t *testing.T, gitignores ...string) *testFixture {
 }
 
 func (tf *testFixture) UseGitIgnoreTester() {
-	tester, err := NewGitIgnoreTester(output.CtxForTest(), tf.repoRoots[0].Path())
+	gitignorePath := tf.JoinPath(0, ".gitignore")
+	fmt.Println(gitignorePath)
+	contents, err := ioutil.ReadFile(gitignorePath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			tf.t.Fatal(err)
+		}
+	}
+	fmt.Println(contents)
+	tester, err := git.NewGitIgnoreTesterFromContents(output.CtxForTest(), tf.repoRoots[0].Path(), string(contents))
 	if err != nil {
 		tf.t.Fatal(err)
 	}
@@ -98,7 +111,11 @@ func (tf *testFixture) UseSingleRepoTester() {
 }
 
 func (tf *testFixture) UseSingleRepoTesterWithPath(path string) {
-	tester, err := NewRepoIgnoreTester(tf.ctx, path)
+	gitignoreContents, err := ioutil.ReadFile(filepath.Join(tf.repoRoots[0].JoinPath(".gitignore")))
+	if err != nil {
+		tf.t.Fatal(err)
+	}
+	tester, err := git.NewRepoIgnoreTester(tf.ctx, path, string(gitignoreContents))
 	if err != nil {
 		tf.t.Fatal(err)
 	}

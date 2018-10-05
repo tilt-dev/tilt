@@ -404,7 +404,7 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest := NewSanchoManifest()
 	manifest.Mounts[0].LocalPath = f.Path()
 
-	gitFilter, _ := git.NewRepoIgnoreTester(ctx, f.Path())
+	gitFilter, _ := git.NewRepoIgnoreTester(ctx, f.Path(), "")
 	tiltfileFilter, _ := model.NewSimpleFileMatcher(filepath.Join(f.Path(), "Tiltfile"))
 	manifest.FileFilter = model.NewCompositeMatcher([]model.PathMatcher{gitFilter, tiltfileFilter})
 

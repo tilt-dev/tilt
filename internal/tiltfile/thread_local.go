@@ -9,6 +9,7 @@ import (
 
 const buildContextKey = "buildContext"
 const readFilesKey = "readFiles"
+const reposKey = "repos"
 
 func getAndClearBuildContext(t *skylark.Thread) (*dockerImage, error) {
 	obj := t.Local(buildContextKey)
@@ -57,5 +58,29 @@ func recordReadFile(t *skylark.Thread, path string) error {
 		return err
 	}
 	t.SetLocal(readFilesKey, append(readFiles, path))
+	return nil
+}
+
+func getRepos(t *skylark.Thread) ([]gitRepo, error) {
+	obj := t.Local(reposKey)
+	if obj == nil {
+		return []gitRepo{}, nil
+	}
+
+	repos, ok := obj.([]gitRepo)
+	if !ok {
+		return nil, errors.New("internal error: repos thread local was not of type []gitRepo")
+	}
+
+	return repos, nil
+}
+
+func addRepo(t *skylark.Thread, repo gitRepo) error {
+	repos, err := getRepos(t)
+	if err != nil {
+		return err
+	}
+
+	t.SetLocal(reposKey, append(repos, repo))
 	return nil
 }

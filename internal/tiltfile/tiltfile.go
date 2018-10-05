@@ -1,22 +1,18 @@
 package tiltfile
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -200,20 +196,26 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	t1, err := git.NewRepoIgnoreTester(ctx, absPath)
+	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
 	if err != nil {
-		return nil, err
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
 	}
-	t2, err := dockerignore.NewDockerIgnoreTester(absPath)
+	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	repo := gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}
+	err = addRepo(thread, repo)
 	if err != nil {
 		return nil, err
 	}
 
-	ct := model.NewCompositeMatcher([]model.PathMatcher{t1, t2})
-
-	return gitRepo{absPath, ct}, nil
+	return repo, nil
 }
 
 func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -340,7 +342,11 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 		var servs []model.Manifest
 
 		for _, cServ := range manifest.cManifest {
-			s, err := skylarkManifestToDomain(cServ)
+			repos, err := getRepos(thread)
+			if err != nil {
+				return nil, err
+			}
+			s, err := skylarkManifestToDomain(cServ, repos)
 			if err != nil {
 				return nil, err
 			}
@@ -351,7 +357,11 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	case k8sManifest:
 		manifest.configFiles = files
 
-		s, err := skylarkManifestToDomain(manifest)
+		repos, err := getRepos(thread)
+		if err != nil {
+			return nil, err
+		}
+		s, err := skylarkManifestToDomain(manifest, repos)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +374,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	}
 }
 
-func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
+func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manifest, error) {
 	k8sYaml, ok := skylark.AsString(manifest.k8sYaml)
 	if !ok {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
@@ -399,8 +409,23 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
+
+		Repos: SkylarkReposToDomain(repos),
 	}, nil
 
+}
+
+func SkylarkReposToDomain(sRepos []gitRepo) []model.LocalGithubRepo {
+	dRepos := make([]model.LocalGithubRepo, len(sRepos))
+	for i, r := range sRepos {
+		dRepos[i] = model.LocalGithubRepo{
+			LocalPath:            r.basePath,
+			DockerignoreContents: r.dockerignoreContents,
+			GitignoreContents:    r.gitignoreContents,
+		}
+	}
+
+	return dRepos
 }
 
 func skylarkMountsToDomain(sMounts []mount) []model.Mount {

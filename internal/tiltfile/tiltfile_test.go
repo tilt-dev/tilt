@@ -703,11 +703,11 @@ func TestReadsIgnoreFiles(t *testing.T) {
 `)
 
 	manifest := f.LoadManifest("blorgly")
-	assert.True(t, f.FiltersPath(manifest, "Tiltfile", true))
-	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false))
-	assert.True(t, f.FiltersPath(manifest, "node_modules", true))
-	assert.True(t, f.FiltersPath(manifest, ".git", true))
-	assert.False(t, f.FiltersPath(manifest, "a.txt", false))
+	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
+	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
+	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
+	assert.True(t, f.FiltersPath(manifest, "node_modules", true), "Expected to filter node_modules")
+	assert.False(t, f.FiltersPath(manifest, "a.txt", false), "Expected to filter a.txt")
 }
 
 func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
@@ -751,14 +751,14 @@ func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
 
 	manifest := manifests[0]
 
-	assert.True(t, f1.FiltersPath(manifest, "cmd.exe", false))
-	assert.True(t, f1.FiltersPath(manifest, "node_modules", true))
-	assert.True(t, f1.FiltersPath(manifest, ".git", true))
-	assert.False(t, f1.FiltersPath(manifest, "a.txt", false))
-	assert.False(t, f2.FiltersPath(manifest, "cmd.exe", false))
-	assert.False(t, f2.FiltersPath(manifest, "node_modules", true))
-	assert.True(t, f2.FiltersPath(manifest, ".git", true))
-	assert.True(t, f2.FiltersPath(manifest, "a.txt", false))
+	assert.Truef(t, f1.FiltersPath(manifest, "cmd.exe", false), "Expected to match cmd.exe")
+	assert.Truef(t, f1.FiltersPath(manifest, "node_modules", true), "Expected to match node_modules")
+	assert.Truef(t, f1.FiltersPath(manifest, ".git", true), "Expected to match .git")
+	assert.Falsef(t, f1.FiltersPath(manifest, "a.txt", false), "Expected to not match a.txt")
+	assert.Falsef(t, f2.FiltersPath(manifest, "cmd.exe", false), "Expected to not much cmd.exe")
+	assert.Falsef(t, f2.FiltersPath(manifest, "node_modules", true), "Expected to not match node_modules")
+	assert.Truef(t, f2.FiltersPath(manifest, ".git", true), "Expected to match .git")
+	assert.Truef(t, f2.FiltersPath(manifest, "a.txt", false), "Expected to match a.txt")
 }
 
 func TestBuildContextAddError(t *testing.T) {
