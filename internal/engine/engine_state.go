@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -15,6 +16,11 @@ type engineState struct {
 	manifestsToBuild  []model.ManifestName
 	currentlyBuilding model.ManifestName
 	completedBuilds   chan completedBuild
+
+	initialBuildCount   int
+	completedBuildCount int
+
+	openBrowserOnNextLB bool
 }
 
 type manifestState struct {
@@ -22,6 +28,8 @@ type manifestState struct {
 	pendingFileChanges           map[string]bool
 	currentlyBuildingFileChanges []string
 	manifest                     model.Manifest
+	lbs                          []k8s.LoadBalancerSpec
+	hasBeenBuilt                 bool
 
 	// we've observed changes to the config file and need to reload it the next time we start a build
 	configIsDirty bool
@@ -32,12 +40,19 @@ type completedBuild struct {
 	err    error
 }
 
-func newState(manifestDefinitionOrder []model.ManifestName) *engineState {
-	return &engineState{
-		manifestDefinitionOrder: manifestDefinitionOrder,
-		manifestStates:          make(map[model.ManifestName]*manifestState),
-		completedBuilds:         make(chan completedBuild),
+func newState(manifests []model.Manifest) *engineState {
+	ret := &engineState{
+		completedBuilds: make(chan completedBuild),
 	}
+
+	ret.manifestStates = make(map[model.ManifestName]*manifestState)
+
+	for _, m := range manifests {
+		ret.manifestDefinitionOrder = append(ret.manifestDefinitionOrder, m.Name)
+		ret.manifestStates[m.Name] = newManifestState(m)
+	}
+
+	return ret
 }
 
 func newManifestState(manifest model.Manifest) *manifestState {

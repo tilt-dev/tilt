@@ -7,15 +7,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/output"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
-	build "github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -77,11 +78,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	var manifestNames []model.ManifestName
-	for _, m := range manifests {
-		manifestNames = append(manifestNames, m.Name)
-	}
-	engineState := newState(manifestNames)
+	engineState := newState(manifests)
 
 	var sw *manifestWatcher
 	var err error
@@ -90,6 +87,15 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		if err != nil {
 			return err
 		}
+
+		go func() {
+			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
+			if err != nil {
+				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
+			}
+		}()
+	} else {
+		sw = newDummyManifestWatcher()
 	}
 
 	s := summary.NewSummary()
@@ -98,68 +104,36 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		return err
 	}
 
-	lbs := make([]k8s.LoadBalancerSpec, 0)
-	for _, manifest := range manifests {
-		engineState.manifestStates[manifest.Name] = newManifestState(manifest)
+	for _, m := range manifests {
+		engineState.manifestsToBuild = append(engineState.manifestsToBuild, m.Name)
+	}
+	engineState.initialBuildCount = len(engineState.manifestsToBuild)
 
-		buildResult, err := u.b.BuildAndDeploy(ctx, manifest, BuildStateClean)
-		if err == nil {
-			engineState.manifestStates[manifest.Name].lastBuild = NewBuildState(buildResult)
-			lbs = append(lbs, k8s.ToLoadBalancerSpecs(buildResult.Entities)...)
-		} else if isPermanentError(err) {
-			return err
-		} else if watchMounts {
-			o := output.Get(ctx)
-			logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
-		} else {
-			return fmt.Errorf("build failed: %v", err)
-		}
+	if u.browserMode == BrowserAuto {
+		engineState.openBrowserOnNextLB = true
 	}
 
-	if len(lbs) > 0 && u.browserMode == BrowserAuto {
-		// Open only the first load balancer in a browser.
-		// TODO(nick): We might need some hints on what load balancer to
-		// open if we have multiple, or what path to default to on the opened manifest.
-		err := k8s.OpenService(ctx, u.k8s, lbs[0])
-		if err != nil {
-			return err
-		}
-	}
+	for {
+		u.dispatch(ctx, engineState)
+		u.hud.Update(stateToView(*engineState))
 
-	logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
-
-	s.Log(ctx, u.resolveLB)
-
-	if watchMounts {
-		go func() {
-			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case fsEvent := <-sw.events:
+			u.handleFSEvent(ctx, engineState, fsEvent)
+		case completedBuild := <-engineState.completedBuilds:
+			err := u.handleCompletedBuild(ctx, watchMounts, completedBuild, engineState, s)
 			if err != nil {
-				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
-			}
-		}()
-
-		logger.Get(ctx).Infof("Awaiting edits...")
-
-		for {
-			u.hud.Update(stateToView(*engineState))
-
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case fsEvent := <-sw.events:
-				u.handleFSEvent(ctx, engineState, fsEvent)
-			case completedBuild := <-engineState.completedBuilds:
-				err := u.handleCompletedBuild(ctx, completedBuild, engineState, s)
-				if err != nil {
-					return err
-				}
-			case err := <-sw.errs:
 				return err
 			}
-			u.dispatch(ctx, engineState)
+			if !watchMounts && len(engineState.manifestsToBuild) == 0 {
+				return nil
+			}
+		case err := <-sw.errs:
+			return err
 		}
 	}
-	return nil
 }
 
 func (u Upper) dispatch(ctx context.Context, state *engineState) {
@@ -194,7 +168,9 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 	m := ms.manifest
 
 	go func() {
-		u.logBuildEvent(ctx, m, buildState)
+		firstBuild := !ms.hasBeenBuilt
+		ms.hasBeenBuilt = true
+		u.logBuildEvent(ctx, firstBuild, m, buildState)
 
 		result, err := u.b.BuildAndDeploy(
 			ctx,
@@ -205,9 +181,17 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 	}()
 }
 
-func (u Upper) handleCompletedBuild(ctx context.Context, cb completedBuild, engineState *engineState, s *summary.Summary) error {
+func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb completedBuild, engineState *engineState, s *summary.Summary) error {
 	defer func() {
 		engineState.currentlyBuilding = ""
+	}()
+
+	engineState.completedBuildCount++
+
+	defer func() {
+		if engineState.completedBuildCount == engineState.initialBuildCount {
+			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
+		}
 	}()
 
 	err := cb.err
@@ -215,20 +199,40 @@ func (u Upper) handleCompletedBuild(ctx context.Context, cb completedBuild, engi
 	if err != nil {
 		if isPermanentError(err) {
 			return err
+		} else if watching {
+			o := output.Get(ctx)
+			logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
+		} else {
+			return fmt.Errorf("build failed: %v", err)
 		}
-
-		o := output.Get(ctx)
-		logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
 	} else {
 		ms := engineState.manifestStates[engineState.currentlyBuilding]
+
+		ms.lbs = k8s.ToLoadBalancerSpecs(cb.result.Entities)
+
+		if len(ms.lbs) > 0 && engineState.openBrowserOnNextLB {
+			// Open only the first load balancer in a browser.
+			// TODO(nick): We might need some hints on what load balancer to
+			// open if we have multiple, or what path to default to on the opened manifest.
+			err := k8s.OpenService(ctx, u.k8s, ms.lbs[0])
+			if err != nil {
+				return err
+			}
+			engineState.openBrowserOnNextLB = false
+		}
 
 		ms.lastBuild = NewBuildState(cb.result)
 		ms.currentlyBuildingFileChanges = nil
 	}
-	logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-	s.Log(ctx, u.resolveLB)
-	logger.Get(ctx).Infof("Awaiting changes…")
+	if watching {
+		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+		s.Log(ctx, u.resolveLB)
+		if len(engineState.manifestsToBuild) == 0 {
+			logger.Get(ctx).Infof("Awaiting changes…")
+		}
+	}
 
 	return nil
 }
@@ -335,18 +339,22 @@ func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.UR
 	return lb.URL
 }
 
-func (u Upper) logBuildEvent(ctx context.Context, manifest model.Manifest, buildState BuildState) {
-	changedFiles := buildState.FilesChanged()
-	var changedPathsToPrint []string
-	if len(changedFiles) > maxChangedFilesToPrint {
-		changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
-		changedPathsToPrint = append(changedPathsToPrint, "...")
+func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest model.Manifest, buildState BuildState) {
+	if firstBuild {
+		logger.Get(ctx).Infof("Building manifest: %s", manifest.Name)
 	} else {
-		changedPathsToPrint = changedFiles
-	}
+		changedFiles := buildState.FilesChanged()
+		var changedPathsToPrint []string
+		if len(changedFiles) > maxChangedFilesToPrint {
+			changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
+			changedPathsToPrint = append(changedPathsToPrint, "...")
+		} else {
+			changedPathsToPrint = changedFiles
+		}
 
-	logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
-	logger.Get(ctx).Infof("Rebuilding manifest: %s", manifest.Name)
+		logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
+		logger.Get(ctx).Infof("Rebuilding manifest: %s", manifest.Name)
+	}
 }
 
 func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
