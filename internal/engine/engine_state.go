@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/windmilleng/tilt/internal/ospath"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -51,7 +49,6 @@ func newManifestState(manifest model.Manifest) *manifestState {
 }
 
 func stateToView(s engineState) view.View {
-	fmt.Printf("engine state is '%v'\n", s)
 	ret := view.View{}
 
 	for _, name := range s.manifestDefinitionOrder {
