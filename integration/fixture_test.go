@@ -34,29 +34,38 @@ func init() {
 }
 
 type fixture struct {
-	t      *testing.T
-	ctx    context.Context
-	cancel func()
-	logs   *bytes.Buffer
-	cmds   []*exec.Cmd
+	t             *testing.T
+	ctx           context.Context
+	cancel        func()
+	dir           string
+	logs          *bytes.Buffer
+	cmds          []*exec.Cmd
+	originalFiles map[string]string
 }
 
 func newFixture(t *testing.T, dir string) *fixture {
-	err := os.Chdir(filepath.Join(packageDir, dir))
+	dir = filepath.Join(packageDir, dir)
+	err := os.Chdir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	f := &fixture{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
-		logs:   bytes.NewBuffer(nil),
+		t:             t,
+		ctx:           ctx,
+		cancel:        cancel,
+		dir:           dir,
+		logs:          bytes.NewBuffer(nil),
+		originalFiles: make(map[string]string),
 	}
 	f.CreateNamespaceIfNecessary()
 	f.ClearNamespace()
 	return f
+}
+
+func (f *fixture) DumpLogs() {
+	_, _ = os.Stdout.Write(f.logs.Bytes())
 }
 
 func (f *fixture) Curl(url string) (string, error) {
@@ -118,11 +127,27 @@ func (f *fixture) TiltUp(name string) {
 	}
 }
 
-func (f *fixture) WaitForAllPodsReady(ctx context.Context, selector string) {
+func (f *fixture) TiltWatch(name string) {
+	cmd := f.tiltCmd([]string{"up", name, "--debug", "--watch"}, os.Stdout)
+	err := cmd.Start()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	f.cmds = append(f.cmds, cmd)
+	go func() {
+		_ = cmd.Wait()
+	}()
+}
+
+// Waits until all pods matching the selector are ready.
+// At least one pod must match.
+// Returns the names of the ready pods.
+func (f *fixture) WaitForAllPodsReady(ctx context.Context, selector string) []string {
 	for {
-		allPodsReady, output := f.AllPodsReady(ctx, selector)
+		allPodsReady, output, podNames := f.AllPodsReady(ctx, selector)
 		if allPodsReady {
-			return
+			return podNames
 		}
 
 		select {
@@ -131,10 +156,10 @@ func (f *fixture) WaitForAllPodsReady(ctx context.Context, selector string) {
 		case <-time.After(200 * time.Millisecond):
 		}
 	}
-
 }
 
-func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, string) {
+// Returns the output (for diagnostics) and the name of the ready pods.
+func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, string, []string) {
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",
 		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
@@ -144,18 +169,30 @@ func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, stri
 	}
 
 	outStr := string(out)
-	phases := strings.Split(outStr, "\n")
-	for _, phase := range phases {
-		phase = strings.TrimSpace(phase)
-		if phase == "" {
+	lines := strings.Split(outStr, "\n")
+	podNames := []string{}
+	hasOneRunningPod := false
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
 			continue
 		}
 
-		if !strings.Contains(phase, "Running") {
-			return false, outStr
+		elements := strings.Split(line, " ")
+		if len(elements) < 2 {
+			f.t.Fatalf("Unexpected output of kubect get pods: %s", outStr)
 		}
+
+		name, phase := elements[0], elements[1]
+		if phase == "Running" {
+			hasOneRunningPod = true
+		} else {
+			return false, outStr, nil
+		}
+
+		podNames = append(podNames, name)
 	}
-	return true, outStr
+	return hasOneRunningPod, outStr, podNames
 }
 
 func (f *fixture) ForwardPort(name string, portMap string) {
@@ -172,6 +209,29 @@ func (f *fixture) ForwardPort(name string, portMap string) {
 	go func() {
 		_ = cmd.Wait()
 	}()
+}
+
+func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
+	file := filepath.Join(f.dir, fileBaseName)
+	contents, ok := f.originalFiles[file]
+	if !ok {
+		contentsB, err := ioutil.ReadFile(file)
+		if err != nil {
+			f.t.Fatal(err)
+		}
+		contents = string(contentsB)
+		f.originalFiles[file] = contents
+	}
+
+	newContents := strings.Replace(contents, original, replacement, -1)
+	if newContents == contents {
+		f.t.Fatalf("Could not find contents to replace in file %s: %s", fileBaseName, contents)
+	}
+
+	err := ioutil.WriteFile(file, []byte(newContents), os.FileMode(0777))
+	if err != nil {
+		f.t.Fatal(err)
+	}
 }
 
 func (f *fixture) ClearResource(name string) {
@@ -213,4 +273,8 @@ func (f *fixture) TearDown() {
 	f.ClearNamespace()
 
 	f.cancel()
+
+	for k, v := range f.originalFiles {
+		_ = ioutil.WriteFile(k, []byte(v), os.FileMode(0777))
+	}
 }
