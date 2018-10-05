@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/hud/view"
+
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
@@ -557,6 +559,38 @@ func TestReapOldBuilds(t *testing.T) {
 	assert.Equal(t, []string{"build-id-0"}, f.docker.RemovedImageIDs)
 }
 
+func TestHudUpdated(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	endToken := errors.New("my-err-token")
+	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
+
+		f.watcher.errors <- endToken
+	}()
+	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	assert.Equal(t, endToken, err)
+
+	// This is currently a mostly uninteresting test because a fair amount of model/view isn't implemented
+	expectedView := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                    "foobar",
+				DirectoryWatched:        "/go",
+				LatestFileChanges:       []string{},
+				TimeSinceLastFileChange: 0,
+				Status:                  view.ResourceStatusFresh,
+				StatusDesc:              "",
+			},
+		},
+	}
+
+	assert.Equal(t, expectedView, f.hud.LastView)
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -608,6 +642,7 @@ type testFixture struct {
 	watcher    *fakeNotify
 	timerMaker *fakeTimerMaker
 	docker     *docker.FakeDockerClient
+	hud        *hud.FakeHud
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -622,9 +657,11 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	k8s := k8s.NewFakeK8sClient()
 
+	hud := &hud.FakeHud{}
+
 	upper := Upper{b, watcherMaker, timerMaker.maker(), k8s, BrowserAuto,
-		reaper, &hud.FakeHud{}}
-	return &testFixture{f, upper, b, watcher, &timerMaker, docker}
+		reaper, hud}
+	return &testFixture{f, upper, b, watcher, &timerMaker, docker, hud}
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
