@@ -6,13 +6,13 @@
 package cli
 
 import (
-	context "context"
-	build "github.com/windmilleng/tilt/internal/build"
-	docker "github.com/windmilleng/tilt/internal/docker"
-	engine "github.com/windmilleng/tilt/internal/engine"
-	hud "github.com/windmilleng/tilt/internal/hud"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
-	model "github.com/windmilleng/tilt/internal/model"
+	"context"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Injectors from wire.go:
@@ -50,8 +50,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	updateModeFlag2 := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
+	engineUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	if err != nil {
 		return nil, err
 	}
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay)
+	podWatcherMaker := engine.ProvidePodWatcherMaker(k8sClient)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker)
 	return upper, nil
 }
 

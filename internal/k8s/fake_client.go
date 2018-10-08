@@ -24,6 +24,10 @@ type FakeK8sClient struct {
 	LastPodQueryImage     reference.NamedTagged
 }
 
+func (c *FakeK8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
+	return nil, nil
+}
+
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{}
 }
