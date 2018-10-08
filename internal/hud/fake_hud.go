@@ -10,12 +10,12 @@ var _ HeadsUpDisplay = (*FakeHud)(nil)
 
 type FakeHud struct {
 	LastView view.View
-	Updates  chan interface{}
+	Updates  chan view.View
 }
 
 func NewFakeHud() *FakeHud {
 	return &FakeHud{
-		Updates: make(chan interface{}, 10),
+		Updates: make(chan view.View, 10),
 	}
 }
 
@@ -23,5 +23,5 @@ func (h *FakeHud) Run(ctx context.Context) {}
 
 func (h *FakeHud) Update(v view.View) {
 	h.LastView = v
-	h.Updates <- true
+	h.Updates <- v
 }
