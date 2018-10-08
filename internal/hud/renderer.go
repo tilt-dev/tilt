@@ -18,7 +18,10 @@ type Renderer struct {
 func (r *Renderer) Render(v view.View) error {
 	if r.screen != nil {
 		p := newPen(r.screen)
-		p.putln(fmt.Sprintf("Rendered at: %s", time.Now().String()))
+		p.putln(fmt.Sprintf("rendered at %v", time.Now()))
+		for _, res := range v.Resources {
+			p.putln(fmt.Sprintf("%v", res))
+		}
 		r.screen.Show()
 	}
 	return nil
