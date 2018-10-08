@@ -125,7 +125,7 @@ func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, false)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedManifests []model.Manifest
@@ -139,7 +139,7 @@ func TestUpper_UpWatchZeroRepos(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "nothing to watch")
 	}
@@ -153,7 +153,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
@@ -183,12 +183,11 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
-	close(f.b.calls)
-
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
+	f.assertAllBuildsConsumed()
 }
 
 func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
@@ -223,12 +222,12 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
-	close(f.b.calls)
-
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
+
+	f.assertAllBuildsConsumed()
 }
 
 func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
@@ -263,12 +262,12 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
-	close(f.b.calls)
-
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
+
+	f.assertAllBuildsConsumed()
 }
 
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
@@ -290,8 +289,9 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestFirstBuildCancelsWhileWatching(t *testing.T) {
@@ -300,12 +300,17 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.b.nextBuildFailure = context.Canceled
+
+	closeCh := make(chan struct{})
 	go func() {
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
+		close(closeCh)
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, context.Canceled, err)
+	<-closeCh
+	f.assertAllBuildsConsumed()
 }
 
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
@@ -316,7 +321,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.b.nextBuildFailure = buildFailedToken
 
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, false)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
 	expected := fmt.Errorf("build failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
@@ -350,8 +355,9 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
@@ -385,8 +391,9 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestRebuildDockerfile(t *testing.T) {
@@ -439,8 +446,9 @@ func TestRebuildDockerfile(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err = f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err = f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestRebuildDockerfileFailed(t *testing.T) {
@@ -507,8 +515,9 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err = f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err = f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
@@ -536,8 +545,9 @@ go build ./...
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestReapOldBuilds(t *testing.T) {
@@ -547,7 +557,7 @@ func TestReapOldBuilds(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 
 	f.docker.BuildCount++
-	err := f.upper.reapOldWatchBuilds(output.CtxForTest(), []model.Manifest{manifest}, time.Now())
+	err := f.upper.reapOldWatchBuilds(f.ctx, []model.Manifest{manifest}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,7 +576,7 @@ func TestHudUpdated(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 
 	// This is currently a mostly uninteresting test because a fair amount of model/view isn't implemented
@@ -584,6 +594,7 @@ func TestHudUpdated(t *testing.T) {
 	}
 
 	assert.Equal(t, expectedView, f.hud.LastView)
+	f.assertAllBuildsConsumed()
 }
 
 func testPod(podName string, manifestName string, phase string, creationTime time.Time) *v1.Pod {
@@ -621,10 +632,11 @@ func TestPodEvent(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	go func() {
+		call := <-f.b.calls
+		assert.True(t, call.state.IsEmpty())
 		<-f.hud.Updates
-		<-f.b.calls
+		<-f.hud.Updates
 
-		<-f.hud.Updates
 		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", time.Now())
 
 		<-f.hud.Updates
@@ -633,8 +645,10 @@ func TestPodEvent(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
@@ -645,11 +659,11 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
 	go func() {
-		<-f.hud.Updates
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
-
 		<-f.hud.Updates
+		<-f.hud.Updates
+
 		firstCreationTime := time.Now()
 		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", firstCreationTime)
 
@@ -662,8 +676,10 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodEventUpdateByPodName(t *testing.T) {
@@ -674,11 +690,11 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
 	go func() {
-		<-f.hud.Updates
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
-
 		<-f.hud.Updates
+		<-f.hud.Updates
+
 		creationTime := time.Now()
 		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", creationTime)
 
@@ -691,8 +707,10 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodEventIgnoreOlderPod(t *testing.T) {
@@ -705,6 +723,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	go func() {
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
+		<-f.hud.Updates
 		<-f.hud.Updates
 
 		creationTime := time.Now()
@@ -719,8 +738,10 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 type fakeTimerMaker struct {
@@ -775,6 +796,8 @@ func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context) (*podWatcher
 
 type testFixture struct {
 	*tempdir.TempDirFixture
+	ctx        context.Context
+	cancel     func()
 	upper      Upper
 	b          *fakeBuildAndDeployer
 	fsWatcher  *fakeNotify
@@ -800,6 +823,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	k8s := k8s.NewFakeK8sClient()
 
 	hud := hud.NewFakeHud()
+	ctx, cancel := context.WithCancel(output.CtxForTest())
 
 	upper := Upper{
 		b:               b,
@@ -812,7 +836,23 @@ func newTestFixture(t *testing.T) *testFixture {
 		hud:             hud,
 	}
 
-	return &testFixture{f, upper, b, watcher, &timerMaker, docker, hud, podEvents}
+	return &testFixture{
+		f,
+		ctx,
+		cancel,
+		upper,
+		b,
+		watcher,
+		&timerMaker,
+		docker,
+		hud,
+		podEvents,
+	}
+}
+
+func (f *testFixture) TearDown() {
+	f.TempDirFixture.TearDown()
+	f.cancel()
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
@@ -822,4 +862,20 @@ func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manif
 	}
 
 	return model.Manifest{Name: model.ManifestName(name), DockerRef: ref, Mounts: mounts}
+}
+
+func (f *testFixture) assertAllBuildsConsumed() {
+	close(f.b.calls)
+
+	for call := range f.b.calls {
+		f.T().Fatalf("Build not consumed: %+v", call)
+	}
+}
+
+func (f *testFixture) assertAllHUDUpdatesConsumed() {
+	close(f.hud.Updates)
+
+	for update := range f.hud.Updates {
+		f.T().Fatalf("Update not consumed: %+v", update)
+	}
 }
