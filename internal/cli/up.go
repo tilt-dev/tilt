@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -31,9 +33,9 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up <name>",
-		Short: "stand up a manifest",
-		Args:  cobra.ExactArgs(1),
+		Use:   "up <name> [<name2>] [<name3>] [...]",
+		Short: "stand up one or more manifests",
+		Args:  cobra.MinimumNArgs(1),
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started manifests will be automatically rebuilt and redeployed when files in their repos change")
@@ -82,10 +84,14 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifestName := args[0]
-	manifests, err := tf.GetManifestConfigs(manifestName)
-	if err != nil {
-		return err
+	var manifests []model.Manifest
+	for _, manifestName := range args {
+		curManifests, err := tf.GetManifestConfigs(manifestName)
+		if err != nil {
+			return err
+		}
+
+		manifests = append(manifests, curManifests...)
 	}
 
 	manifestCreator, err := wireManifestCreator(ctx, c.browserMode)

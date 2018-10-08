@@ -7,18 +7,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/output"
-
-	"k8s.io/api/core/v1"
-
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+	"k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
