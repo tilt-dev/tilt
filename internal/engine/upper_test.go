@@ -151,18 +151,10 @@ func TestUpper_UpWatchError(t *testing.T) {
 		f.watcher.errors <- errors.New("bazquu")
 	}()
 	err := f.upper.CreateManifests(output.CtxForTest(), []model.Manifest{manifest}, true)
-	close(f.b.calls)
 
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
-
-	var startedManifests []model.Manifest
-	for call := range f.b.calls {
-		startedManifests = append(startedManifests, call.manifest)
-	}
-
-	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
 }
 
 // we can't have a test for a file change w/o error because Up doesn't return unless there's an error

@@ -19,6 +19,10 @@ type manifestWatcher struct {
 	errs   <-chan error
 }
 
+func newDummyManifestWatcher() *manifestWatcher {
+	return &manifestWatcher{}
+}
+
 // returns a manifestWatcher that tells its reader when a manifest's file dependencies have changed
 func makeManifestWatcher(
 	ctx context.Context,
