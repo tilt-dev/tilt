@@ -17,7 +17,10 @@ type engineState struct {
 	currentlyBuilding model.ManifestName
 	completedBuilds   chan completedBuild
 
-	initialBuildCount   int
+	// How many builds were queued on startup (i.e., how many manifests there were)
+	initialBuildCount int
+
+	// How many builds have been completed (pass or fail) since starting tilt
 	completedBuildCount int
 
 	openBrowserOnNextLB bool
