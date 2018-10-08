@@ -13,7 +13,7 @@ type podWatcher struct {
 }
 
 func makePodWatcher(ctx context.Context, kCli k8s.Client) (*podWatcher, error) {
-	ch, err := kCli.WatchPods(ctx, "default", []k8s.LabelPair{TiltRunLabel()})
+	ch, err := kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
 	if err != nil {
 		return &podWatcher{}, err
 	}

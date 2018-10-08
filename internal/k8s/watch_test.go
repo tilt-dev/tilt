@@ -87,21 +87,27 @@ func (tf *watchPodsTestFixture) run(input []runtime.Object, expectedOutput []run
 		tf.w.Add(o)
 	}
 
-	ch, err := tf.kCli.WatchPods(tf.ctx, Namespace("default"), []LabelPair{})
+	tf.w.Stop()
+
+	ch, err := tf.kCli.WatchPods(tf.ctx, []LabelPair{})
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
 	var observedPods []runtime.Object
 
-	timeout := time.After(time.Millisecond * 500)
+	timeout := time.After(500 * time.Millisecond)
 	done := false
 	for !done {
 		select {
-		case observedPod := <-ch:
-			observedPods = append(observedPods, observedPod)
+		case pod, ok := <-ch:
+			if !ok {
+				done = true
+			} else {
+				observedPods = append(observedPods, pod)
+			}
 		case <-timeout:
-			done = true
+			tf.t.Fatal("test timed out")
 		}
 	}
 
@@ -109,7 +115,7 @@ func (tf *watchPodsTestFixture) run(input []runtime.Object, expectedOutput []run
 }
 
 func (tf *watchPodsTestFixture) testLabels(input []LabelPair, expectedLabels []LabelPair) {
-	_, err := tf.kCli.WatchPods(tf.ctx, Namespace("default"), input)
+	_, err := tf.kCli.WatchPods(tf.ctx, input)
 	if !assert.NoError(tf.t, err) {
 		return
 	}

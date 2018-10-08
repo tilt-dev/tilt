@@ -46,7 +46,7 @@ type Upper struct {
 	b               BuildAndDeployer
 	fsWatcherMaker  fsWatcherMaker
 	timerMaker      timerMaker
-	podWatcherMaker podWatcherMaker
+	podWatcherMaker PodWatcherMaker
 	k8s             k8s.Client
 	browserMode     BrowserMode
 	reaper          build.ImageReaper
@@ -54,11 +54,17 @@ type Upper struct {
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
-type podWatcherMaker func(context.Context, k8s.Client) (*podWatcher, error)
+type PodWatcherMaker func(context.Context) (*podWatcher, error)
 type timerMaker func(d time.Duration) <-chan time.Time
 
+func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
+	return func(ctx context.Context) (*podWatcher, error) {
+		return makePodWatcher(ctx, kCli)
+	}
+}
+
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -69,7 +75,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	return Upper{
 		b:               b,
 		fsWatcherMaker:  fsWatcherMaker,
-		podWatcherMaker: makePodWatcher,
+		podWatcherMaker: pw,
 		timerMaker:      time.After,
 		k8s:             k8s,
 		browserMode:     browserMode,
@@ -92,7 +98,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		if err != nil {
 			return err
 		}
-		pw, err = u.podWatcherMaker(ctx, u.k8s)
+		pw, err = u.podWatcherMaker(ctx)
 		if err != nil {
 			return err
 		}

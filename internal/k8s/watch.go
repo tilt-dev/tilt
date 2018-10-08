@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, lps []LabelPair) (<-chan *v1.Pod, error) {
+func (kCli K8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
 	ch := make(chan *v1.Pod)
 
 	ls := labels.Set{}
@@ -16,7 +16,8 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, lps []LabelPa
 		ls[lp.Key] = lp.Value
 	}
 
-	watcher, err := kCli.core.Pods(ns.String()).Watch(metav1.ListOptions{LabelSelector: ls.String()})
+	// passing "" gets us all namespaces
+	watcher, err := kCli.core.Pods("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +25,12 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, lps []LabelPa
 	go func() {
 		for {
 			select {
-			case event := <-watcher.ResultChan():
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					close(ch)
+					return
+				}
+
 				if event.Object == nil {
 					continue
 				}

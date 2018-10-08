@@ -767,8 +767,8 @@ func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
 	}
 }
 
-func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, k8s.Client) (*podWatcher, error) {
-	return func(context.Context, k8s.Client) (*podWatcher, error) {
+func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context) (*podWatcher, error) {
+	return func(context.Context) (*podWatcher, error) {
 		return &podWatcher{ch}, nil
 	}
 }
