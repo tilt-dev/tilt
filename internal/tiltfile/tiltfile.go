@@ -197,11 +197,10 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 	}
 
 	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
 	}
+
 	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
 	if err != nil {
 		if !os.IsNotExist(err) {

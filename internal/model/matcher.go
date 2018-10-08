@@ -73,6 +73,9 @@ func NewCompositeMatcher(matchers []PathMatcher) PathMatcher {
 
 func (c CompositePathMatcher) Matches(f string, isDir bool) (bool, error) {
 	for _, t := range c.Matchers {
+		if t == nil {
+			continue
+		}
 		ret, err := t.Matches(f, isDir)
 		if err != nil {
 			return false, err
