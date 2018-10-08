@@ -53,7 +53,10 @@ func (m Manifest) IsStaticBuild() bool {
 }
 
 func (m Manifest) Filter() PathMatcher {
-	matchers := []PathMatcher{m.FileFilter}
+	matchers := []PathMatcher{}
+	if m.FileFilter != nil {
+		matchers = append(matchers, m.FileFilter)
+	}
 
 	for _, r := range m.Repos {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
