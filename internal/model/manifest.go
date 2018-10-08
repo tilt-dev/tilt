@@ -206,6 +206,9 @@ func (c Cmd) Empty() bool {
 }
 
 func ToShellCmd(cmd string) Cmd {
+	if cmd == "" {
+		return Cmd{}
+	}
 	return Cmd{Argv: []string{"sh", "-c", cmd}}
 }
 

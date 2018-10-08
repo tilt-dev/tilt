@@ -496,8 +496,8 @@ ENTRYPOINT echo hi`)
 `)
 
 	manifest := f.LoadManifest("blorgly")
-	// TODO(dmiller) is this right?
-	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
+	assert.Equal(t, []string(nil), manifest.Entrypoint.Argv)
+	assert.True(t, manifest.Entrypoint.Empty())
 }
 
 func TestAddMissingDir(t *testing.T) {
