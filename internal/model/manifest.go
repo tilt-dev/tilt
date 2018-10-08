@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/git"
 )
 
 type ManifestName string
@@ -50,27 +48,6 @@ func (m Manifest) ConfigMatcher() (PathMatcher, error) {
 
 func (m Manifest) IsStaticBuild() bool {
 	return m.StaticDockerfile != ""
-}
-
-func (m Manifest) Filter() PathMatcher {
-	matchers := []PathMatcher{}
-	if m.FileFilter != nil {
-		matchers = append(matchers, m.FileFilter)
-	}
-
-	for _, r := range m.Repos {
-		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
-		if err == nil {
-			matchers = append(matchers, gim)
-		}
-
-		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.DockerignoreContents)
-		if err == nil {
-			matchers = append(matchers, dim)
-		}
-	}
-
-	return NewCompositeMatcher(matchers)
 }
 
 func (m Manifest) LocalPaths() []string {
