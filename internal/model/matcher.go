@@ -56,6 +56,9 @@ type CompositePathMatcher struct {
 }
 
 func NewCompositeMatcher(matchers []PathMatcher) PathMatcher {
+	if len(matchers) == 0 {
+		return EmptyMatcher
+	}
 	cMatcher := CompositePathMatcher{Matchers: matchers}
 	pMatchers := make([]PatternMatcher, len(matchers))
 	for i, m := range matchers {

@@ -1,10 +1,11 @@
-package dockerignore
+package dockerignore_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
@@ -78,7 +79,7 @@ func newTestFixture(t *testing.T, dockerignores ...string) *testFixture {
 		tempDir.WriteFile(".dockerignore", ignoreText.String())
 	}
 
-	tester, err := NewDockerIgnoreTester(tempDir.Path())
+	tester, err := dockerignore.NewDockerIgnoreTester(tempDir.Path())
 	if err != nil {
 		t.Fatal(err)
 	}
