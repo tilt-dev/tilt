@@ -50,7 +50,7 @@ func TestManifestWatcherTwoManifestsErr(t *testing.T) {
 
 type manifestWatcherTestFixture struct {
 	sw              *manifestWatcher
-	watcherMaker    watcherMaker
+	watcherMaker    fsWatcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
 	manifests       []model.Manifest

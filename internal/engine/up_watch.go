@@ -26,7 +26,7 @@ func newDummyManifestWatcher() *manifestWatcher {
 // returns a manifestWatcher that tells its reader when a manifest's file dependencies have changed
 func makeManifestWatcher(
 	ctx context.Context,
-	watcherMaker watcherMaker,
+	watcherMaker fsWatcherMaker,
 	timerMaker timerMaker,
 	manifests []model.Manifest) (*manifestWatcher, error) {
 
