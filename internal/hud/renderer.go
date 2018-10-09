@@ -1,10 +1,8 @@
 package hud
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -12,13 +10,12 @@ import (
 
 type Renderer struct {
 	screen tcell.Screen
-	ctx    context.Context // idk the best way to use this context, or even if it should be here
 }
 
 func (r *Renderer) Render(v view.View) error {
 	if r.screen != nil {
+		r.screen.Clear()
 		p := newPen(r.screen)
-		p.putln(fmt.Sprintf("rendered at %v", time.Now()))
 		for _, res := range v.Resources {
 			p.putln(fmt.Sprintf("%v", res))
 		}
@@ -38,9 +35,6 @@ func (r *Renderer) SetUp(event ReadyEvent) error {
 	if err = screen.Init(); err != nil {
 		return err
 	}
-	r.screen = screen
-
-	// janky code to exit ever (stolen from tcell demos)
 	go func() {
 		for {
 			ev := screen.PollEvent()
@@ -55,12 +49,12 @@ func (r *Renderer) SetUp(event ReadyEvent) error {
 		}
 	}()
 
-	r.ctx = nil
+	r.screen = screen
+
 	return nil
 }
 
 func (r *Renderer) Reset() {
 	r.screen.Fini()
 	r.screen = nil
-	r.ctx = nil
 }

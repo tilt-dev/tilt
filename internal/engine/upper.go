@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"time"
@@ -41,6 +40,9 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 // When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
 const maxChangedFilesToPrint = 5
 
+// The main loop ensures the HUD updates at least this often
+const refreshInterval = 1 * time.Second
+
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
@@ -74,7 +76,8 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 	go func() {
 		err := hud.Run(ctx)
 		if err != nil {
-			log.Printf("*** HUD ERR *** %v", err)
+			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
+			logger.Get(ctx).Infof("error in hud: %v", err)
 		}
 	}()
 
@@ -156,6 +159,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			handlePodEvent(ctx, engineState, pod)
 		case err := <-sw.errs:
 			return err
+		case <-time.After(refreshInterval):
+			break
 		}
 	}
 }
