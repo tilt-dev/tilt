@@ -9,6 +9,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/ignore"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
@@ -163,7 +164,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	}
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder(manifest.Filter())
+	ab := build.NewArchiveBuilder(ignore.CreateFilter(manifest))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)

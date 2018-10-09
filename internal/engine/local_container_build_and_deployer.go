@@ -10,6 +10,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -103,7 +104,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return BuildResult{}, err
 	}
 
-	err = cbd.cu.UpdateInContainer(ctx, cID, cf, manifest.Filter(), boiledSteps)
+	err = cbd.cu.UpdateInContainer(ctx, cID, cf, ignore.CreateFilter(manifest), boiledSteps)
 	if err != nil {
 		return BuildResult{}, err
 	}

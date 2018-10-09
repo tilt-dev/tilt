@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
@@ -84,7 +85,7 @@ func (f *gitRepoFixture) LoadManifestForError(name string) error {
 }
 
 func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
-	matches, err := manifest.Filter().Matches(f.JoinPath(path), isDir)
+	matches, err := ignore.CreateFilter(manifest).Matches(f.JoinPath(path), isDir)
 	if err != nil {
 		f.T().Fatal(err)
 	}

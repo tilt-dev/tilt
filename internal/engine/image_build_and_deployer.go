@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
@@ -93,7 +94,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		df := build.Dockerfile(manifest.StaticDockerfile)
-		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, manifest.Filter())
+		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, ignore.CreateFilter(manifest))
 
 		if err != nil {
 			return nil, err
@@ -107,7 +108,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 		df := build.Dockerfile(manifest.BaseDockerfile)
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, manifest.Filter(), steps, manifest.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, ignore.CreateFilter(manifest), steps, manifest.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -129,7 +130,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, manifest.Filter(), steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, ignore.CreateFilter(manifest), steps)
 		if err != nil {
 			return nil, err
 		}
