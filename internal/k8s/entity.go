@@ -91,6 +91,16 @@ func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 	return result
 }
 
+func MutableEntities(entities []K8sEntity) []K8sEntity {
+	result := make([]K8sEntity, 0)
+	for _, e := range entities {
+		if !e.ImmutableOnceCreated() {
+			result = append(result, e)
+		}
+	}
+	return result
+}
+
 type LoadBalancerSpec struct {
 	Name      string
 	Namespace Namespace

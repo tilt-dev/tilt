@@ -210,7 +210,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef)
 	}
 
-	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
+	err = ibd.k8sClient.Upsert(ctx, newK8sEntities)
 	if err != nil {
 		return nil, "", err
 	}

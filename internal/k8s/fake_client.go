@@ -41,16 +41,12 @@ func (c *FakeK8sClient) ResolveLoadBalancer(ctx context.Context, lb LoadBalancer
 	return LoadBalancer{}, nil
 }
 
-func (c *FakeK8sClient) Apply(ctx context.Context, entities []K8sEntity) error {
+func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	yaml, err := SerializeYAML(entities)
 	if err != nil {
 		return fmt.Errorf("kubectl apply: %v", err)
 	}
 	c.Yaml = yaml
-	return nil
-}
-
-func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	return nil
 }
 
