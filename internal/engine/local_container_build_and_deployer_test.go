@@ -14,10 +14,8 @@ import (
 )
 
 const pod1 = k8s.PodID("pod1")
-const pod2 = k8s.PodID("pod2")
 
 const container1 = k8s.ContainerID("container1")
-const container2 = k8s.ContainerID("container2")
 
 var image1 = k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
 
