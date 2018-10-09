@@ -115,7 +115,10 @@ func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args sky
 		return nil, err
 	}
 	// Name will be initialized later
-	return k8sManifest{yaml, *dockerImage, "", nil}, nil
+	return &k8sManifest{
+		k8sYaml:     yaml,
+		dockerImage: *dockerImage,
+	}, nil
 }
 
 func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -127,7 +130,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 		return nil, err
 	}
 
-	var manifests []k8sManifest
+	var manifests []*k8sManifest
 
 	var v skylark.Value
 	i := manifestFuncs.Iterate()
@@ -140,7 +143,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 			if err != nil {
 				return nil, err
 			}
-			s, ok := r.(k8sManifest)
+			s, ok := r.(*k8sManifest)
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
@@ -343,7 +346,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 			servs = append(servs, s)
 		}
 		return servs, nil
-	case k8sManifest:
+	case *k8sManifest:
 		manifest.configFiles = files
 
 		repos, err := getRepos(thread)
@@ -363,7 +366,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	}
 }
 
-func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manifest, error) {
+func skylarkManifestToDomain(manifest *k8sManifest, repos []gitRepo) (model.Manifest, error) {
 	k8sYaml, ok := skylark.AsString(manifest.k8sYaml)
 	if !ok {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
@@ -399,7 +402,8 @@ func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manif
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
 
-		Repos: SkylarkReposToDomain(repos),
+		Repos:        SkylarkReposToDomain(repos),
+		PortForwards: manifest.portForwards,
 	}, nil
 
 }

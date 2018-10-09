@@ -19,6 +19,7 @@ type Manifest struct {
 	K8sYaml      string
 	TiltFilename string
 	DockerRef    reference.Named
+	PortForwards []PortForward
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
@@ -103,8 +104,9 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
 	reposMatch := m1.reposEqual(m2.Repos)
+	portForwardsMatch := m1.portForwardsEqual(m2)
 
-	return primitivesMatch && cmdMatch && configFilesMatch && mountsMatch && reposMatch
+	return primitivesMatch && cmdMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch
 }
 
 func (m1 Manifest) configFilesEqual(c2 []string) bool {
@@ -154,6 +156,20 @@ func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
 
 	for i := range m2 {
 		if m1.Repos[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
+	if len(m1.PortForwards) != len(m2.PortForwards) {
+		return false
+	}
+
+	for i := range m2.PortForwards {
+		if m1.PortForwards[i] != m2.PortForwards[i] {
 			return false
 		}
 	}
@@ -310,4 +326,13 @@ var _ error = &ValidateErr{}
 
 func validateErrf(format string, a ...interface{}) *ValidateErr {
 	return &ValidateErr{s: fmt.Sprintf(format, a...)}
+}
+
+type PortForward struct {
+	// The port to expose on localhost of the current machine.
+	LocalPort int
+
+	// The port to connect to inside the deployed container.
+	// If 0, we will connect to the first containerPort.
+	ContainerPort int
 }

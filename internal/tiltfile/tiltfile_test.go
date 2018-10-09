@@ -566,6 +566,7 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
 	assert.True(t, matches(f.JoinPath("a.txt")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
+
 func TestConfigMatcherWithStaticBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
@@ -859,4 +860,30 @@ def blorgly():
 	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
+}
+
+func TestPortForward(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  s = k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
+  s.port_forward(8000)
+  s.port_forward(8001, 443)
+  return s
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, []model.PortForward{
+		{
+			LocalPort:     8000,
+			ContainerPort: 0,
+		}, {
+			LocalPort:     8001,
+			ContainerPort: 443,
+		},
+	}, manifest.PortForwards)
 }
