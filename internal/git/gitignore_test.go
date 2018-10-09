@@ -2,7 +2,6 @@ package git_test
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -90,14 +89,12 @@ func newTestFixture(t *testing.T, gitignores ...string) *testFixture {
 
 func (tf *testFixture) UseGitIgnoreTester() {
 	gitignorePath := tf.JoinPath(0, ".gitignore")
-	fmt.Println(gitignorePath)
 	contents, err := ioutil.ReadFile(gitignorePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			tf.t.Fatal(err)
 		}
 	}
-	fmt.Println(contents)
 	tester, err := git.NewGitIgnoreTesterFromContents(output.CtxForTest(), tf.repoRoots[0].Path(), string(contents))
 	if err != nil {
 		tf.t.Fatal(err)
