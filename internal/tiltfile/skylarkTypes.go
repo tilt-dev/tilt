@@ -84,7 +84,7 @@ type dockerImage struct {
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
-	filters            []model.PathMatcher
+	tiltFilename       string
 
 	staticDockerfilePath string
 	staticBuildPath      string

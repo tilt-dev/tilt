@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -404,9 +403,14 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest := NewSanchoManifest()
 	manifest.Mounts[0].LocalPath = f.Path()
 
-	gitFilter, _ := git.NewRepoIgnoreTester(ctx, f.Path(), "")
-	tiltfileFilter, _ := model.NewSimpleFileMatcher(filepath.Join(f.Path(), "Tiltfile"))
-	manifest.FileFilter = model.NewCompositeMatcher([]model.PathMatcher{gitFilter, tiltfileFilter})
+	manifest.Repos = []model.LocalGithubRepo{
+		model.LocalGithubRepo{
+			LocalPath:            f.Path(),
+			DockerignoreContents: "",
+			GitignoreContents:    "",
+		},
+	}
+	manifest.TiltFilename = filepath.Join(f.Path(), "Tiltfile")
 
 	f.WriteFile("Tiltfile", "# hello world")
 	f.WriteFile("a.txt", "a")

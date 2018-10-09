@@ -51,16 +51,11 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
-	filter, err := model.NewSimpleFileMatcher(t.filename)
-	if err != nil {
-		return skylark.None, err
-	}
-
 	buildContext := &dockerImage{
 		baseDockerfilePath: dockerfileName,
 		ref:                ref,
 		entrypoint:         entrypoint,
-		filters:            []model.PathMatcher{filter},
+		tiltFilename:       t.filename,
 	}
 	err = recordReadFile(thread, dockerfileName)
 	if err != nil {
@@ -86,11 +81,6 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	filter, err := model.NewSimpleFileMatcher(t.filename)
-	if err != nil {
-		return skylark.None, err
-	}
-
 	if buildPath == "" {
 		buildPath = filepath.Dir(dockerfilePath)
 	}
@@ -104,7 +94,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		staticDockerfilePath: dockerfilePath,
 		staticBuildPath:      buildPath,
 		ref:                  ref,
-		filters:              []model.PathMatcher{filter},
+		tiltFilename:         t.filename,
 	}
 	err = recordReadFile(thread, dockerfilePath)
 	if err != nil {
@@ -403,7 +393,7 @@ func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manif
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
-		FileFilter:     model.NewCompositeMatcher(image.filters),
+		TiltFilename:   image.tiltFilename,
 		ConfigFiles:    manifest.configFiles,
 
 		StaticDockerfile: string(staticDockerfileBytes),
