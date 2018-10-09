@@ -15,10 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
-// A magic constant. If the docker client returns this constant, we always match
-// even if the container doesn't have the correct image name.
-const MagicTestContainerID = "tilt-testcontainer"
-
 const containerUpTimeout = 10 * time.Second
 
 type ContainerResolver struct {
@@ -80,7 +76,7 @@ func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName
 	}
 
 	for _, c := range containers {
-		if c.ID == MagicTestContainerID {
+		if c.ID == k8s.MagicTestContainerID {
 			return k8s.ContainerID(c.ID), nil
 		}
 

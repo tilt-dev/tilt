@@ -11,6 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
+// A magic constant. If the docker client returns this constant, we always match
+// even if the container doesn't have the correct image name.
+const MagicTestContainerID = "tilt-testcontainer"
+
 var _ Client = &FakeK8sClient{}
 
 type FakeK8sClient struct {
@@ -69,7 +73,7 @@ func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.Named
 	status := v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
 			{
-				ContainerID: "docker://tilt-testcontainer",
+				ContainerID: "docker://" + MagicTestContainerID,
 				Image:       image.String(),
 				Ready:       true,
 			},

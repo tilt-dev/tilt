@@ -3,17 +3,13 @@ package engine
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/ignore"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -24,84 +20,22 @@ var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
 	sm SyncletManager
-
-	kCli k8s.Client
-
-	deployInfo   map[docker.ImgNameAndTag]*DeployInfo
-	deployInfoMu sync.Mutex
+	dd *DeployDiscovery
 }
 
-type DeployInfo struct {
-	podID       k8s.PodID
-	containerID k8s.ContainerID
-	nodeID      k8s.NodeID
-
-	ready chan struct{} // Close this channel when the DeployInfo is populated
-	err   error         // error encountered when populating (if any)
-}
-
-func (di *DeployInfo) markReady() { close(di.ready) }
-func (di *DeployInfo) waitUntilReady(ctx context.Context) {
-	select {
-	case <-di.ready:
-	case <-ctx.Done():
-	}
-}
-
-func newEmptyDeployInfo() *DeployInfo {
-	return &DeployInfo{ready: make(chan struct{})}
-}
-
-func NewSyncletBuildAndDeployer(kCli k8s.Client, sm SyncletManager) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(dd *DeployDiscovery, sm SyncletManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		kCli:       kCli,
-		deployInfo: make(map[docker.ImgNameAndTag]*DeployInfo),
-		sm:         sm,
+		dd: dd,
+		sm: sm,
 	}
-}
-
-func (sbd *SyncletBuildAndDeployer) deployInfoForImage(img reference.NamedTagged) (*DeployInfo, bool) {
-	sbd.deployInfoMu.Lock()
-	defer sbd.deployInfoMu.Unlock()
-	deployInfo, ok := sbd.deployInfo[docker.ToImgNameAndTag(img)]
-	return deployInfo, ok
-}
-
-func (sbd *SyncletBuildAndDeployer) deployInfoForImageOrNew(img reference.NamedTagged) (*DeployInfo, bool) {
-	sbd.deployInfoMu.Lock()
-	defer sbd.deployInfoMu.Unlock()
-
-	deployInfo, ok := sbd.deployInfo[docker.ToImgNameAndTag(img)]
-
-	if !ok {
-		deployInfo = newEmptyDeployInfo()
-		sbd.deployInfo[docker.ToImgNameAndTag(img)] = deployInfo
-	}
-	return deployInfo, ok
-}
-
-func (sbd *SyncletBuildAndDeployer) deployInfoForImageBlocking(ctx context.Context, img reference.NamedTagged) (*DeployInfo, bool) {
-	deployInfo, ok := sbd.deployInfoForImage(img)
-	if deployInfo != nil {
-		deployInfo.waitUntilReady(ctx)
-	}
-	return deployInfo, ok
 }
 
 func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img reference.NamedTagged) error {
-	sbd.deployInfoMu.Lock()
-	defer sbd.deployInfoMu.Unlock()
-
-	imgNameAndTag := docker.ToImgNameAndTag(img)
-
-	deployInfo, ok := sbd.deployInfo[imgNameAndTag]
-	if !ok {
-		return nil
+	deployInfo, ok := sbd.dd.ForgetImage(img)
+	if ok {
+		return sbd.sm.ForgetPod(ctx, deployInfo.podID)
 	}
-
-	delete(sbd.deployInfo, imgNameAndTag)
-
-	return sbd.sm.ForgetPod(ctx, deployInfo.podID)
+	return nil
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
@@ -139,7 +73,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	info, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
+	info, ok := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok {
 		return fmt.Errorf("have not yet fetched deploy info for this manifest. " +
 			"This should NEVER HAPPEN b/c of the way PostProcessBuild blocks, something is wrong")
@@ -182,7 +116,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	deployInfo, ok := sbd.deployInfoForImageBlocking(ctx, state.LastResult.Image)
+	deployInfo, ok := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok || deployInfo == nil {
 		// We theoretically already checked this condition :(
 		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
@@ -225,80 +159,5 @@ func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result
 		return
 	}
 
-	info, ok := sbd.deployInfoForImageOrNew(result.Image)
-	if ok {
-		// This info was already in the map, nothing to do.
-		return
-	}
-
-	// We just made this info, so populate it. (Can take a while--run async.)
-	go func() {
-		err := sbd.populateDeployInfo(ctx, result.Image, result.Namespace, info)
-		if err != nil {
-			// There's a variety of reasons why we might not be able to get the deploy info.
-			// The cluster could be in a transient bad state, or the pod
-			// could be in a crash loop because the user wrote some code that
-			// segfaults. Don't worry too much about it, we'll fall back to an image build.
-			logger.Get(ctx).Debugf("failed to get deployInfo: %v", err)
-			return
-		}
-	}()
-}
-
-func (sbd *SyncletBuildAndDeployer) populateDeployInfo(ctx context.Context, image reference.NamedTagged, ns k8s.Namespace, info *DeployInfo) (err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-populateDeployInfo")
-	defer span.Finish()
-
-	defer func() {
-		info.err = err
-		info.markReady()
-	}()
-
-	// get pod running the image we just deployed.
-	//
-	// We fetch the pod by the NamedTagged, to ensure we get a pod
-	// in the most recent Deployment, and not the pods in the process
-	// of being terminated from previous Deployments.
-	pods, err := sbd.kCli.PollForPodsWithImage(
-		ctx, image, ns,
-		[]k8s.LabelPair{TiltRunLabel()}, podPollTimeoutSynclet)
-	if err != nil {
-		return errors.Wrapf(err, "PodsWithImage (img = %s)", image)
-	}
-
-	// If there's more than one pod, two possible things could be happening:
-	// 1) K8s is in a transitiion state.
-	// 2) The user is running a configuration where they want multiple replicas
-	//    of the same pod (e.g., a cockroach developer testing primary/replica).
-	// If this happens, don't bother populating the deployInfo.
-	// We want to fallback to image builds rather than managing the complexity
-	// of multiple replicas.
-	if len(pods) != 1 {
-		logger.Get(ctx).Debugf("Found too many pods (%d), skipping container updates: %s", len(pods), image)
-		return nil
-	}
-
-	pod := &(pods[0])
-	pID := k8s.PodIDFromPod(pod)
-	nodeID := k8s.NodeIDFromPod(pod)
-
-	// Make sure that the deployed image is ready and not crashlooping.
-	cID, err := k8s.WaitForContainerReady(ctx, sbd.kCli, pod, image)
-	if err != nil {
-		return errors.Wrapf(err, "WaitForContainerReady (pod = %s)", pID)
-	}
-
-	logger.Get(ctx).Verbosef("talking to synclet client for pod %s", pID.String())
-
-	info.podID = pID
-	info.containerID = cID
-	info.nodeID = nodeID
-
-	// preemptively set up the tunnel + client
-	_, err = sbd.sm.ClientForPod(ctx, pID, ns)
-	if err != nil {
-		return errors.Wrapf(err, "creating synclet client for pod '%s'", pID)
-	}
-
-	return nil
+	sbd.dd.EnsureDeployInfoFetchStarted(ctx, result.Image, result.Namespace)
 }
