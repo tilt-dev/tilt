@@ -28,7 +28,7 @@ func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 
 	return &Hud{
 		a: a,
-		r: &Renderer{},
+		r: NewRenderer(),
 	}, nil
 }
 

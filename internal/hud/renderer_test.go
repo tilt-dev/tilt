@@ -1,6 +1,7 @@
 package hud
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,10 @@ type rendererTestFixture struct {
 
 func newRendererTestFixture() *rendererTestFixture {
 	fs := fakeScreen{}
-	renderer := Renderer{screen: &fs}
+	renderer := Renderer{
+		screen:   &fs,
+		screenMu: new(sync.Mutex),
+	}
 	return &rendererTestFixture{
 		renderer:   &renderer,
 		fakeScreen: &fs,
