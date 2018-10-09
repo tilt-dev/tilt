@@ -140,7 +140,10 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	for {
 		u.dispatch(ctx, engineState)
-		u.hud.Update(stateToView(*engineState))
+		err := u.hud.Update(stateToView(*engineState))
+		if err != nil {
+			logger.Get(ctx).Infof("Error updating HUD: %v", err)
+		}
 
 		select {
 		case <-ctx.Done():
