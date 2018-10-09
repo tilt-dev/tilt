@@ -2,7 +2,6 @@ package ignore
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
@@ -18,7 +17,6 @@ func CreateFilter(m model.Manifest) model.PathMatcher {
 		}
 	}
 	for _, r := range m.Repos {
-		fmt.Printf("Creating a repo ignore tester at %s with %s\n", r.LocalPath, r.GitignoreContents)
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {
 			matchers = append(matchers, gim)
