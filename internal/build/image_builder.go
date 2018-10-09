@@ -105,13 +105,10 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		return nil, err
 	}
 
-	// TODO(nick): should there be an error if hasEntrypoint is false?
-	// right now, Service#Validate will fail on this case, but many of our
-	// test cases don't have entrypoints.
 	hasEntrypoint := !entrypoint.Empty()
 
 	paths := MountsToPathMappings(mounts)
-	df := d.applyLabels(baseDockerfile, BuildModeScratch)
+	df := baseDockerfile
 	df, steps, err = d.addConditionalSteps(df, steps, paths)
 	if err != nil {
 		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
@@ -127,6 +124,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		df = df.Entrypoint(entrypoint)
 	}
 
+	df = d.applyLabels(df, BuildModeScratch)
 	return d.buildFromDf(ctx, df, paths, filter, ref)
 }
 
