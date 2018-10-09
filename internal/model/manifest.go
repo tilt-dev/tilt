@@ -98,14 +98,13 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath
+	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
 	cmdMatch := m1.Entrypoint.Equal(m2.Entrypoint)
-	pmMatch := m1.FileFilter == m2.FileFilter
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
 	reposMatch := m1.reposEqual(m2.Repos)
 
-	return primitivesMatch && cmdMatch && pmMatch && configFilesMatch && mountsMatch && reposMatch
+	return primitivesMatch && cmdMatch && configFilesMatch && mountsMatch && reposMatch
 }
 
 func (m1 Manifest) configFilesEqual(c2 []string) bool {
