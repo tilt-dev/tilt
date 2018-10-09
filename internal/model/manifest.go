@@ -14,10 +14,10 @@ func (m ManifestName) String() string { return string(m) }
 
 type Manifest struct {
 	// Properties for all builds.
-	Name       ManifestName
-	K8sYaml    string
-	FileFilter PathMatcher
-	DockerRef  reference.Named
+	Name         ManifestName
+	K8sYaml      string
+	TiltFilename string
+	DockerRef    reference.Named
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
