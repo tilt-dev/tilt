@@ -4,68 +4,6 @@ import (
 	"testing"
 )
 
-type truePathMatcherStruct struct{}
-
-func (truePathMatcherStruct) Matches(f string, isDir bool) (bool, error) {
-	return true, nil
-}
-
-type falsePathMatcherStruct struct{}
-
-func (falsePathMatcherStruct) Matches(f string, isDir bool) (bool, error) {
-	return false, nil
-}
-
-type complexPatchMatcher1 struct{}
-
-func (complexPatchMatcher1) Matches(f string, isDir bool) (bool, error) {
-	configMatcher, err := NewSimpleFileMatcher("/a", "/b")
-	if err != nil {
-		return false, err
-	}
-
-	matches, err := configMatcher.Matches(f, isDir)
-	if err != nil {
-		return false, err
-	}
-
-	return matches, nil
-}
-
-type complexPatchMatcher2 struct{}
-
-func (complexPatchMatcher2) Matches(f string, isDir bool) (bool, error) {
-	configMatcher, err := NewSimpleFileMatcher("/a")
-	if err != nil {
-		return false, err
-	}
-
-	matches, err := configMatcher.Matches(f, isDir)
-	if err != nil {
-		return false, err
-	}
-
-	return matches, nil
-}
-
-type matcherWithState struct {
-	files []string
-}
-
-func (m matcherWithState) Matches(f string, isDir bool) (bool, error) {
-	configMatcher, err := NewSimpleFileMatcher(m.files...)
-	if err != nil {
-		return false, err
-	}
-
-	matches, err := configMatcher.Matches(f, isDir)
-	if err != nil {
-		return false, err
-	}
-
-	return matches, nil
-}
-
 var equalitytests = []struct {
 	m1       Manifest
 	m2       Manifest
@@ -94,28 +32,6 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			BaseDockerfile: "FROM node",
-			FileFilter:     truePathMatcherStruct{},
-		},
-		Manifest{
-			BaseDockerfile: "FROM node",
-			FileFilter:     truePathMatcherStruct{},
-		},
-		true,
-	},
-	{
-		Manifest{
-			BaseDockerfile: "FROM node",
-			FileFilter:     truePathMatcherStruct{},
-		},
-		Manifest{
-			BaseDockerfile: "FROM node",
-			FileFilter:     falsePathMatcherStruct{},
-		},
-		false,
-	},
-	{
-		Manifest{
 			Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
 		},
 		Manifest{
@@ -132,39 +48,44 @@ var equalitytests = []struct {
 		},
 		false,
 	},
-	// {
-	// 	Manifest{
-	// 		BaseDockerfile: "FROM node",
-	// 		FileFilter:     complexPatchMatcher1{},
-	// 	},
-	// 	Manifest{
-	// 		BaseDockerfile: "FROM node",
-	// 		FileFilter:     complexPatchMatcher1{},
-	// 	},
-	// 	true,
-	// },
-	// {
-	// 	Manifest{
-	// 		BaseDockerfile: "FROM node",
-	// 		FileFilter:     complexPatchMatcher1{},
-	// 	},
-	// 	Manifest{
-	// 		BaseDockerfile: "FROM node",
-	// 		FileFilter:     complexPatchMatcher2{},
-	// 	},
-	// 	false,
-	// },
-	// {
-	// 	Manifest{
-	// 		BaseDockerfile: "FROM node",
-	// 		FileFilter:     matcherWithState{files: []string{"/a", "/b"}},
-	// 	},
-	// 	Manifest{
-	// 		BaseDockerfile: "FROM node",
-	// 		FileFilter:     matcherWithState{files: []string{"/a", "/b"}},
-	// 	},
-	// 	true,
-	// },
+	{
+		Manifest{
+			Repos: []LocalGithubRepo{
+				LocalGithubRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.exe",
+				},
+			},
+		},
+		Manifest{
+			Repos: []LocalGithubRepo{
+				LocalGithubRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.so",
+				},
+			},
+		},
+		false,
+	},
+	{
+		Manifest{
+			Repos: []LocalGithubRepo{
+				LocalGithubRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.exe",
+				},
+			},
+		},
+		Manifest{
+			Repos: []LocalGithubRepo{
+				LocalGithubRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.exe",
+				},
+			},
+		},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

@@ -103,8 +103,9 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	pmMatch := m1.FileFilter == m2.FileFilter
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
+	reposMatch := m1.reposEqual(m2.Repos)
 
-	return primitivesMatch && cmdMatch && pmMatch && configFilesMatch && mountsMatch
+	return primitivesMatch && cmdMatch && pmMatch && configFilesMatch && mountsMatch && reposMatch
 }
 
 func (m1 Manifest) configFilesEqual(c2 []string) bool {
@@ -143,6 +144,24 @@ func (m1 Manifest) mountsEqual(m2 []Mount) bool {
 	return true
 }
 
+func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
+	if (m1.Repos == nil) != (m2 == nil) {
+		return false
+	}
+
+	if len(m1.Repos) != len(m2) {
+		return false
+	}
+
+	for i := range m2 {
+		if m1.Repos[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 type ManifestCreator interface {
 	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
@@ -159,6 +178,10 @@ type LocalGithubRepo struct {
 }
 
 func (LocalGithubRepo) IsRepo() {}
+
+func (r1 LocalGithubRepo) Equal(r2 LocalGithubRepo) bool {
+	return r1.DockerignoreContents == r2.DockerignoreContents && r1.GitignoreContents == r2.GitignoreContents && r1.LocalPath == r2.LocalPath
+}
 
 type Step struct {
 	// Required. The command to run in this step.
