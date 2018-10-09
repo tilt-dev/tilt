@@ -68,9 +68,3 @@ func NewRepoIgnoreTester(ctx context.Context, repoRoot string, gitignoreContents
 	}
 	return &repoIgnoreTester{repoRoot, g}, nil
 }
-
-type nothingMatcher struct{}
-
-func (nothingMatcher) Matches(f string, isDir bool) (bool, error) {
-	return false, nil
-}
