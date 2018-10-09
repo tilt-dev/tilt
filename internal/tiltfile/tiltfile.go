@@ -199,7 +199,10 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 	}
 
 	repo := gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}
-	err = addRepo(thread, repo)
+	if thread.Caller() == nil {
+		return nil, fmt.Errorf("internal error: no Caller for local_git_repo")
+	}
+	err = addRepo(thread, repo, thread.Caller().Callable().Name())
 	if err != nil {
 		return nil, err
 	}
@@ -326,16 +329,17 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 		return nil, err
 	}
 
+	repos, err := getAndClearRepos(thread)
+	if err != nil {
+		return nil, err
+	}
+
 	switch manifest := val.(type) {
 	case compManifest:
 		var servs []model.Manifest
 
 		for _, cServ := range manifest.cManifest {
-			repos, err := getRepos(thread)
-			if err != nil {
-				return nil, err
-			}
-			s, err := skylarkManifestToDomain(cServ, repos)
+			s, err := skylarkManifestToDomain(cServ, repos, model.ManifestName(cServ.name))
 			if err != nil {
 				return nil, err
 			}
@@ -346,11 +350,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	case k8sManifest:
 		manifest.configFiles = files
 
-		repos, err := getRepos(thread)
-		if err != nil {
-			return nil, err
-		}
-		s, err := skylarkManifestToDomain(manifest, repos)
+		s, err := skylarkManifestToDomain(manifest, repos, model.ManifestName(manifestName))
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +363,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	}
 }
 
-func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manifest, error) {
+func skylarkManifestToDomain(manifest k8sManifest, repos map[string][]gitRepo, name model.ManifestName) (model.Manifest, error) {
 	k8sYaml, ok := skylark.AsString(manifest.k8sYaml)
 	if !ok {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
@@ -385,7 +385,7 @@ func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manif
 		}
 	}
 
-	return model.Manifest{
+	man := model.Manifest{
 		K8sYaml:        k8sYaml,
 		BaseDockerfile: string(baseDockerfileBytes),
 		Mounts:         skylarkMountsToDomain(image.mounts),
@@ -399,19 +399,20 @@ func skylarkManifestToDomain(manifest k8sManifest, repos []gitRepo) (model.Manif
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
 
-		Repos: SkylarkReposToDomain(repos),
-	}, nil
+		Repos: SkylarkReposToDomain(name, repos),
+	}
 
+	return man, nil
 }
 
-func SkylarkReposToDomain(sRepos []gitRepo) []model.LocalGithubRepo {
-	dRepos := make([]model.LocalGithubRepo, len(sRepos))
-	for i, r := range sRepos {
-		dRepos[i] = model.LocalGithubRepo{
+func SkylarkReposToDomain(name model.ManifestName, sRepos map[string][]gitRepo) []model.LocalGithubRepo {
+	dRepos := []model.LocalGithubRepo{}
+	for _, r := range sRepos[string(name)] {
+		dRepos = append(dRepos, model.LocalGithubRepo{
 			LocalPath:            r.basePath,
 			DockerignoreContents: r.dockerignoreContents,
 			GitignoreContents:    r.gitignoreContents,
-		}
+		})
 	}
 
 	return dRepos
