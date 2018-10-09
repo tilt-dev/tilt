@@ -86,6 +86,40 @@ var equalitytests = []struct {
 		},
 		true,
 	},
+	{
+		Manifest{
+			PortForwards: []PortForward{
+				{
+					LocalPort: 8080,
+				},
+			},
+		},
+		Manifest{
+			PortForwards: []PortForward{
+				{
+					LocalPort: 8081,
+				},
+			},
+		},
+		false,
+	},
+	{
+		Manifest{
+			PortForwards: []PortForward{
+				{
+					LocalPort: 8080,
+				},
+			},
+		},
+		Manifest{
+			PortForwards: []PortForward{
+				{
+					LocalPort: 8080,
+				},
+			},
+		},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
