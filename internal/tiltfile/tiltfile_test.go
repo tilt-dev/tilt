@@ -235,13 +235,15 @@ func TestCompositeFunction(t *testing.T) {
   return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
-    start_fast_build("%v", "docker-tag", "the entrypoint")
-    run("go install github.com/windmilleng/blorgly-frontend/server/...")
-    run("echo hi")
-    image = stop_build()
-    return k8s_service("yaml", image)
+  local_git_repo(".")
+  start_fast_build("%v", "docker-tag", "the entrypoint")
+  run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  run("echo hi")
+  image = stop_build()
+  return k8s_service("yaml", image)
 
 def blorgly_frontend():
+  local_git_repo(".")
   start_fast_build("%v", "docker-tag", "the entrypoint")
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
@@ -262,7 +264,14 @@ def blorgly_frontend():
 	}
 
 	assert.Equal(t, "blorgly_backend", manifestConfig[0].Name.String())
+	assert.Equal(t, 1, len(manifestConfig[0].Repos))
+	assert.Equal(t, "", manifestConfig[0].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifestConfig[0].Repos[0].GitignoreContents)
 	assert.Equal(t, "blorgly_frontend", manifestConfig[1].Name.String())
+	assert.Equal(t, 1, len(manifestConfig[1].Repos))
+	assert.Equal(t, "", manifestConfig[1].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifestConfig[1].Repos[0].GitignoreContents)
+
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {
