@@ -12,6 +12,7 @@ type ManifestName string
 
 func (m ManifestName) String() string { return string(m) }
 
+// NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
@@ -96,6 +97,70 @@ func (m Manifest) validate() *ValidateErr {
 	return nil
 }
 
+func (m1 Manifest) Equal(m2 Manifest) bool {
+	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
+	cmdMatch := m1.Entrypoint.Equal(m2.Entrypoint)
+	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
+	mountsMatch := m1.mountsEqual(m2.Mounts)
+	reposMatch := m1.reposEqual(m2.Repos)
+
+	return primitivesMatch && cmdMatch && configFilesMatch && mountsMatch && reposMatch
+}
+
+func (m1 Manifest) configFilesEqual(c2 []string) bool {
+	if (m1.ConfigFiles == nil) != (c2 == nil) {
+		return false
+	}
+
+	if len(m1.ConfigFiles) != len(c2) {
+		return false
+	}
+
+	for i := range c2 {
+		if m1.ConfigFiles[i] != c2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) mountsEqual(m2 []Mount) bool {
+	if (m1.Mounts == nil) != (m2 == nil) {
+		return false
+	}
+
+	if len(m1.Mounts) != len(m2) {
+		return false
+	}
+
+	for i := range m2 {
+		if m1.Mounts[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
+	if (m1.Repos == nil) != (m2 == nil) {
+		return false
+	}
+
+	if len(m1.Repos) != len(m2) {
+		return false
+	}
+
+	for i := range m2 {
+		if m1.Repos[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 type ManifestCreator interface {
 	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
@@ -112,6 +177,10 @@ type LocalGithubRepo struct {
 }
 
 func (LocalGithubRepo) IsRepo() {}
+
+func (r1 LocalGithubRepo) Equal(r2 LocalGithubRepo) bool {
+	return r1.DockerignoreContents == r2.DockerignoreContents && r1.GitignoreContents == r2.GitignoreContents && r1.LocalPath == r2.LocalPath
+}
 
 type Step struct {
 	// Required. The command to run in this step.
@@ -176,6 +245,24 @@ func (c Cmd) String() string {
 		}
 	}
 	return fmt.Sprintf("%s", strings.Join(quoted, " "))
+}
+
+func (c1 Cmd) Equal(c2 Cmd) bool {
+	if (c1.Argv == nil) != (c2.Argv == nil) {
+		return false
+	}
+
+	if len(c1.Argv) != len(c2.Argv) {
+		return false
+	}
+
+	for i := range c1.Argv {
+		if c1.Argv[i] != c2.Argv[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c Cmd) Empty() bool {
