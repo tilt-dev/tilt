@@ -8,14 +8,10 @@ import (
 
 // Canvases hold content.
 
-type CanvasWriter interface {
+type Canvas interface {
 	Size() (int, int)
-	SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style)
-	Sub(startX, startY, width, height int) CanvasWriter
-}
-
-type CanvasReader interface {
-	Size() (int, int)
+	SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error
+	Close() (int, int)
 	GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int)
 }
 
@@ -31,10 +27,18 @@ type TempCanvas struct {
 	cells  [][]cell
 }
 
-func NewTempCanvas(width, height int) *TempCanvas {
-	cells := make([][]cell, height)
-	for i := 0; i < height; i++ {
-		cells[i] = make([]cell, width)
+type lineRange struct {
+	start int
+	end   int
+}
+
+func newTempCanvas(width, height int) *TempCanvas {
+	var cells [][]cell
+	if height != GROW {
+		cells = make([][]cell, height)
+		for i := 0; i < height; i++ {
+			cells[i] = make([]cell, width)
+		}
 	}
 	return &TempCanvas{width: width, height: height, cells: cells}
 }
@@ -43,12 +47,24 @@ func (c *TempCanvas) Size() (int, int) {
 	return c.width, c.height
 }
 
-func (c *TempCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) {
-	if x < 0 || x >= c.width || y < 0 || y >= c.width {
-		return
+func (c *TempCanvas) Close() (int, int) {
+	if c.height == GROW {
+		c.height = len(c.cells)
+	}
+	return c.width, c.height
+}
+
+func (c *TempCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
+	if x < 0 || x >= c.width || y < 0 || y >= c.height {
+		panic(fmt.Errorf("cell %v,%v outside canvas %v,%v", x, y, c.width, c.height))
+	}
+
+	for y >= len(c.cells) {
+		c.cells = append(c.cells, make([]cell, c.width))
 	}
 
 	c.cells[y][x] = cell{ch: mainc, style: style}
+	return nil
 }
 
 func (c *TempCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int) {
@@ -56,29 +72,35 @@ func (c *TempCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell
 		panic(fmt.Errorf("cell %d, %d outside bounds %d, %d", x, y, c.width, c.height))
 	}
 
+	if y >= len(c.cells) {
+		return 0, nil, tcell.StyleDefault, 1
+	}
+
 	cell := c.cells[y][x]
 	return cell.ch, nil, cell.style, 1
 }
 
-func (c *TempCanvas) Sub(startX, startY, width, height int) CanvasWriter {
-	return newSubCanvas(c, startX, startY, width, height)
-}
-
 type SubCanvas struct {
-	del    CanvasWriter
-	startX int
-	startY int
-	width  int
-	height int
+	del       Canvas
+	startX    int
+	startY    int
+	width     int
+	height    int
+	highWater int
 }
 
-func newSubCanvas(del CanvasWriter, startX int, startY int, width int, height int) *SubCanvas {
+func newSubCanvas(del Canvas, startX int, startY int, width int, height int) *SubCanvas {
+	_, delHeight := del.Size()
+	if height == GROW && delHeight != GROW {
+		panic(fmt.Errorf("can't create a growing subcanvas from a non-growing subcanvas"))
+	}
 	return &SubCanvas{
-		del:    del,
-		startX: startX,
-		startY: startY,
-		width:  width,
-		height: height,
+		del:       del,
+		startX:    startX,
+		startY:    startY,
+		width:     width,
+		height:    height,
+		highWater: -1,
 	}
 }
 
@@ -86,36 +108,51 @@ func (c *SubCanvas) Size() (int, int) {
 	return c.width, c.height
 }
 
-func (c *SubCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) {
-	if x < 0 || x >= c.width || y < 0 || y >= c.width {
-		return
+func (c *SubCanvas) Close() (int, int) {
+	if c.height == GROW {
+		c.height = c.highWater + 1
 	}
 
-	c.del.SetContent(c.startX+x, c.startY+y, mainc, combc, style)
+	return c.width, c.height
 }
 
-func (c *SubCanvas) Sub(startX, startY, width, height int) CanvasWriter {
-	return newSubCanvas(c, startX, startY, width, height)
-}
-
-func Copy(src CanvasReader, dst CanvasWriter) {
-	width, height := dst.Size()
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			mainc, combc, style, _ := src.GetContent(x, y)
-			dst.SetContent(x, y, mainc, combc, style)
-		}
+func (c *SubCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
+	if x < 0 || x >= c.width || y < 0 || y >= c.height {
+		return fmt.Errorf("coord %d,%d is outside bounds %d,%d", x, y, c.width, c.height)
 	}
+
+	if c.height == GROW && y > c.highWater {
+		c.highWater = y
+	}
+
+	return c.del.SetContent(c.startX+x, c.startY+y, mainc, combc, style)
+}
+
+func (c *SubCanvas) GetContent(x int, y int) (rune, []rune, tcell.Style, int) {
+	return c.del.GetContent(x, y)
 }
 
 type ScreenCanvas struct {
-	tcell.Screen
+	del tcell.Screen
 }
 
-func NewScreenCanvas(s tcell.Screen) *ScreenCanvas {
-	return &ScreenCanvas{s}
+func newScreenCanvas(del tcell.Screen) *ScreenCanvas {
+	return &ScreenCanvas{del: del}
 }
 
-func (c *ScreenCanvas) Sub(startX, startY, width, height int) CanvasWriter {
-	return newSubCanvas(c, startX, startY, width, height)
+func (c *ScreenCanvas) Size() (int, int) {
+	return c.del.Size()
+}
+
+func (c *ScreenCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
+	c.del.SetContent(x, y, mainc, combc, style)
+	return nil
+}
+
+func (c *ScreenCanvas) Close() (int, int) {
+	return c.del.Size()
+}
+
+func (c *ScreenCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int) {
+	return c.del.GetContent(x, y)
 }
