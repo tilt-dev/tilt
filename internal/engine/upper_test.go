@@ -819,9 +819,10 @@ func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
 	}
 }
 
-func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context) (*podWatcher, error) {
-	return func(context.Context) (*podWatcher, error) {
-		return &podWatcher{ch}, nil
+func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *Store) error {
+	return func(ctx context.Context, store *Store) error {
+		go dispatchPodChangesLoop(ch, store)
+		return nil
 	}
 }
 
