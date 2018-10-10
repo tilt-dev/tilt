@@ -57,12 +57,12 @@ type Upper struct {
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
-type PodWatcherMaker func(context.Context) (*podWatcher, error)
+type PodWatcherMaker func(context.Context, *Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
 func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
-	return func(ctx context.Context) (*podWatcher, error) {
-		return makePodWatcher(ctx, kCli)
+	return func(ctx context.Context, store *Store) error {
+		return makePodWatcher(ctx, kCli, store)
 	}
 }
 
@@ -99,15 +99,16 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 	engineState := newState(manifests)
 
-	var sw *manifestWatcher
-	var pw *podWatcher
+	// TODO(nick): inject Store into the constructor
+	store := NewStore(engineState)
+
 	var err error
 	if watchMounts {
-		sw, err = makeManifestWatcher(ctx, u.fsWatcherMaker, u.timerMaker, manifests)
+		err = makeManifestWatcher(ctx, store, u.fsWatcherMaker, u.timerMaker, manifests)
 		if err != nil {
 			return err
 		}
-		pw, err = u.podWatcherMaker(ctx)
+		err = u.podWatcherMaker(ctx, store)
 		if err != nil {
 			return err
 		}
@@ -118,9 +119,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
 			}
 		}()
-	} else {
-		sw = newDummyManifestWatcher()
-		pw = newDummyPodWatcher()
 	}
 
 	s := summary.NewSummary()
@@ -148,8 +146,18 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case fsEvent := <-sw.events:
-			handleFSEvent(ctx, engineState, fsEvent)
+		case action := <-store.Actions():
+			switch action := action.(type) {
+			case ErrorAction:
+				return action.Error
+			case manifestFilesChangedAction:
+				handleFSEvent(ctx, engineState, action)
+			case PodChangeAction:
+				handlePodEvent(ctx, engineState, action.Pod)
+			default:
+				return fmt.Errorf("Unrecognized action: %T", action)
+
+			}
 		case completedBuild := <-engineState.completedBuilds:
 			err := u.handleCompletedBuild(ctx, watchMounts, completedBuild, engineState, s)
 			if err != nil {
@@ -158,10 +166,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			if !watchMounts && len(engineState.manifestsToBuild) == 0 {
 				return nil
 			}
-		case pod := <-pw.events:
-			handlePodEvent(ctx, engineState, pod)
-		case err := <-sw.errs:
-			return err
 		case <-time.After(refreshInterval):
 			break
 		}
@@ -272,7 +276,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 func handleFSEvent(
 	ctx context.Context,
 	state *engineState,
-	event manifestFilesChangedEvent) {
+	event manifestFilesChangedAction) {
 
 	manifest := state.manifestStates[event.manifestName].manifest
 
@@ -358,7 +362,7 @@ func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
 	return true, nil
 }
 
-func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedEvent) bool {
+func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAction) bool {
 	matcher, err := manifest.ConfigMatcher()
 	if err != nil {
 		return false

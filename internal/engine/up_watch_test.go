@@ -49,7 +49,7 @@ func TestManifestWatcherTwoManifestsErr(t *testing.T) {
 }
 
 type manifestWatcherTestFixture struct {
-	sw              *manifestWatcher
+	store           *Store
 	watcherMaker    fsWatcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
@@ -90,7 +90,8 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 
 	ctx := output.CtxForTest()
 
-	sw, err := makeManifestWatcher(ctx, watcherMaker, timerMaker.maker(), manifests)
+	store := NewStore(nil)
+	err := makeManifestWatcher(ctx, store, watcherMaker, timerMaker.maker(), manifests)
 
 	timerMaker.maxTimerLock.Lock()
 
@@ -98,7 +99,7 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 		t.Fatal(err)
 	}
 
-	return &manifestWatcherTestFixture{sw, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
+	return &manifestWatcherTestFixture{store, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
 }
 
 func (s *manifestWatcherTestFixture) WriteFile(manifestNumber int) string {
@@ -121,7 +122,8 @@ type testManifestFilesChangedEvent struct {
 func (s *manifestWatcherTestFixture) readEvents(numExpectedEvents int) []testManifestFilesChangedEvent {
 	var ret []testManifestFilesChangedEvent
 	for i := 0; i < numExpectedEvents; i++ {
-		e := <-s.sw.events
+		action := <-s.store.Actions()
+		e := action.(manifestFilesChangedAction)
 		manifestNumber := -1
 		for i := 0; i < len(s.manifests); i++ {
 			if s.manifests[i].Name == e.manifestName {
@@ -156,7 +158,8 @@ func (s *manifestWatcherTestFixture) WriteError(manifestNumber int) {
 }
 
 func (s *manifestWatcherTestFixture) Error() error {
-	return <-s.sw.errs
+	action := <-s.store.Actions()
+	return action.(ErrorAction).Error
 }
 
 func (s *manifestWatcherTestFixture) FreezeTimer() {
