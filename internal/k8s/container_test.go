@@ -35,7 +35,12 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	defer cancel()
 
 	pod := &(pods[0])
-	cID, err := WaitForContainerReady(ctx, f.client, pod, nt)
+	cStatus, err := WaitForContainerReady(ctx, f.client, pod, nt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cID, err := ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -24,6 +25,15 @@ func (k K8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, 
 		ResourceVersion: pod.ObjectMeta.ResourceVersion,
 	}
 	return podAPI.Watch(watchOptions)
+}
+
+func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName ContainerName, n Namespace) (io.ReadCloser, error) {
+	options := &v1.PodLogOptions{
+		Container: cName.String(),
+		Follow:    true,
+	}
+	req := k.core.Pods(n.String()).GetLogs(pID.String(), options)
+	return req.Stream()
 }
 
 func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {

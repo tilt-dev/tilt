@@ -13,27 +13,27 @@ import (
 
 const containerIDPrefix = "docker://"
 
-func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref reference.Named) (ContainerID, error) {
-	cID, err := waitForContainerReadyHelper(pod, ref)
+func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
+	cStatus, err := waitForContainerReadyHelper(pod, ref)
 	if err != nil {
-		return "", err
-	} else if cID != "" {
-		return cID, nil
+		return v1.ContainerStatus{}, err
+	} else if cStatus != (v1.ContainerStatus{}) {
+		return cStatus, nil
 	}
 
 	watch, err := client.WatchPod(ctx, pod)
 	if err != nil {
-		return "", errors.Wrap(err, "WaitForContainerReady")
+		return v1.ContainerStatus{}, errors.Wrap(err, "WaitForContainerReady")
 	}
 	defer watch.Stop()
 
 	for true {
 		select {
 		case <-ctx.Done():
-			return "", errors.Wrap(ctx.Err(), "WaitForContainerReady")
+			return v1.ContainerStatus{}, errors.Wrap(ctx.Err(), "WaitForContainerReady")
 		case event, ok := <-watch.ResultChan():
 			if !ok {
-				return "", fmt.Errorf("Container watch closed: %s", ref)
+				return v1.ContainerStatus{}, fmt.Errorf("Container watch closed: %s", ref)
 			}
 
 			obj := event.Object
@@ -43,37 +43,37 @@ func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref 
 				continue
 			}
 
-			cID, err := waitForContainerReadyHelper(pod, ref)
+			cStatus, err := waitForContainerReadyHelper(pod, ref)
 			if err != nil {
-				return "", err
-			} else if cID != "" {
-				return cID, nil
+				return v1.ContainerStatus{}, err
+			} else if cStatus != (v1.ContainerStatus{}) {
+				return cStatus, nil
 			}
 		}
 	}
 	panic("WaitForContainerReady") // should never reach this state
 }
 
-func waitForContainerReadyHelper(pod *v1.Pod, ref reference.Named) (ContainerID, error) {
+func waitForContainerReadyHelper(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
 	cStatus, err := ContainerMatching(pod, ref)
 	if err != nil {
-		return "", errors.Wrap(err, "WaitForContainerReadyHelper")
+		return v1.ContainerStatus{}, errors.Wrap(err, "WaitForContainerReadyHelper")
 	}
 
 	unschedulable, msg := IsUnschedulable(pod.Status)
 	if unschedulable {
-		return "", fmt.Errorf("Container will never be ready: %s", msg)
+		return v1.ContainerStatus{}, fmt.Errorf("Container will never be ready: %s", msg)
 	}
 
 	if IsContainerExited(pod.Status, cStatus) {
-		return "", fmt.Errorf("Container will never be ready: %s", ref)
+		return v1.ContainerStatus{}, fmt.Errorf("Container will never be ready: %s", ref)
 	}
 
-	if cStatus.Ready {
-		return ContainerIDFromContainerStatus(cStatus)
+	if !cStatus.Ready {
+		return v1.ContainerStatus{}, nil
 	}
 
-	return "", nil
+	return cStatus, nil
 }
 
 // If true, this means the container is gone and will never recover.
@@ -119,4 +119,8 @@ func ContainerIDFromContainerStatus(status v1.ContainerStatus) (ContainerID, err
 		return "", fmt.Errorf("Malformed container ID: %s", id)
 	}
 	return ContainerID(id[len(containerIDPrefix):]), nil
+}
+
+func ContainerNameFromContainerStatus(status v1.ContainerStatus) ContainerName {
+	return ContainerName(status.Name)
 }

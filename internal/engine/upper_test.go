@@ -865,6 +865,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	hud := hud.NewFakeHud()
 	ctx, cancel := context.WithCancel(testoutput.CtxForTest())
 
+	dd := NewDeployDiscovery(k8s)
+	plm := NewPodLogManager(k8s, dd)
+
 	upper := Upper{
 		b:               b,
 		fsWatcherMaker:  fsWatcherMaker,
@@ -875,6 +878,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		reaper:          reaper,
 		hud:             hud,
 		store:           store.NewStore(),
+		plm:             plm,
 	}
 
 	return &testFixture{

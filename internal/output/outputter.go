@@ -144,7 +144,7 @@ type prefixedWriter struct {
 
 var _ io.Writer = &prefixedWriter{}
 
-func newPrefixedWriter(prefix string, underlying io.Writer) *prefixedWriter {
+func NewPrefixedWriter(prefix string, underlying io.Writer) *prefixedWriter {
 	return &prefixedWriter{prefix, underlying, true}
 }
 
@@ -189,6 +189,6 @@ func (o Outputter) Writer() io.Writer {
 	if o.curBuildStep == 0 {
 		return underlying
 	} else {
-		return newPrefixedWriter(buildStepOutputPrefix, underlying)
+		return NewPrefixedWriter(buildStepOutputPrefix, underlying)
 	}
 }
