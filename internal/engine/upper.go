@@ -184,6 +184,9 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 		if err != nil {
 			logger.Get(ctx).Infof("getting new manifest error: %v", err)
 			state.currentlyBuilding = ""
+			ms.lastError = err
+			ms.lastBuildFinishTime = time.Now()
+			ms.lastBuildDuration = 0
 			return
 		}
 		ms.lastBuild = BuildStateClean
