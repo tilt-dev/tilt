@@ -386,7 +386,7 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
 		TiltFilename:   image.tiltFilename,
-		ConfigFiles:    manifest.configFiles,
+		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
