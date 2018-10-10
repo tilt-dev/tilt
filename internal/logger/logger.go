@@ -141,6 +141,8 @@ func (l logger) SupportsColor() bool {
 	return l.supportsColor
 }
 
+// Returns a context containing a logger that forks all of its output
+// to both the parent context's logger and to the given `io.Writer`
 func CtxWithForkedOutput(ctx context.Context, writer io.Writer) context.Context {
 	l := Get(ctx)
 
