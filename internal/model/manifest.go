@@ -118,29 +118,13 @@ func (m1 Manifest) configFilesEqual(c2 []string) bool {
 		return false
 	}
 
-	diff := make(map[string]int, len(m1.ConfigFiles))
-
-	for _, x := range m1.ConfigFiles {
-		diff[x]++
-	}
-
-	for _, y := range c2 {
-		// If the string is not in the things from x, bail
-		if _, ok := diff[y]; !ok {
+	for i := range c2 {
+		if m1.ConfigFiles[i] != c2[i] {
 			return false
 		}
-		diff[y] -= 1
-		if diff[y] == 0 {
-			delete(diff, y)
-		}
 	}
 
-	// If there's anything left then the slices are not equal
-	if len(diff) == 0 {
-		return true
-	}
-
-	return false
+	return true
 }
 
 func (m1 Manifest) mountsEqual(m2 []Mount) bool {

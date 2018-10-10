@@ -136,7 +136,7 @@ var equalitytests = []struct {
 		Manifest{
 			ConfigFiles: []string{"hi", "hello", "my"},
 		},
-		true,
+		false,
 	},
 	{
 		Manifest{
