@@ -49,3 +49,12 @@ func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
 
 	return model.NewCompositeMatcher(matchers)
 }
+
+func CreateStepMatcher(s model.Step) (model.PathMatcher, error) {
+	dim, err := dockerignore.NewDockerPatternMatcher(s.WorkingDirectory, s.Triggers)
+	if err != nil {
+		return nil, err
+	}
+
+	return dim, nil
+}

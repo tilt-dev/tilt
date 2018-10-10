@@ -10,7 +10,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -197,7 +196,7 @@ func TestBuildOneStep(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	steps := model.ToSteps([]model.Cmd{
+	steps := model.ToSteps(f.Path(), []model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 	})
 
@@ -216,7 +215,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	steps := model.ToSteps([]model.Cmd{
+	steps := model.ToSteps(f.Path(), []model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 		model.ToShellCmd("echo -n sup >> hi2"),
 	})
@@ -237,7 +236,7 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	steps := model.ToSteps([]model.Cmd{
+	steps := model.ToSteps(f.Path(), []model.Cmd{
 		model.Cmd{Argv: []string{"sh", "-c", "echo -n hello >> hi"}},
 		model.Cmd{Argv: []string{"sh", "-c", "echo -n sup >> hi2"}},
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
@@ -259,7 +258,7 @@ func TestBuildFailingStep(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	steps := model.ToSteps([]model.Cmd{
+	steps := model.ToSteps(f.Path(), []model.Cmd{
 		model.ToShellCmd("echo hello && exit 1"),
 	})
 
@@ -371,7 +370,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 
 	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	steps := model.ToSteps([]model.Cmd{step})
+	steps := model.ToSteps(f.Path(), []model.Cmd{step})
 	ref, err := f.b.BuildImageFromExisting(f.ctx, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, steps)
 	if err != nil {
 		t.Fatal(err)
@@ -431,7 +430,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	step := model.ToShellCmd("echo -n hello >> /src/baz")
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	steps := model.ToSteps([]model.Cmd{step})
+	steps := model.ToSteps(f.Path(), []model.Cmd{step})
 	existing, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, steps, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -476,7 +475,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	entrypoint := model.ToShellCmd(
 		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 210")
 
-	steps := model.ToSteps([]model.Cmd{initStartcount})
+	steps := model.ToSteps(f.Path(), []model.Cmd{initStartcount})
 	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, steps, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -551,10 +550,10 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
-	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
 	step1 := model.Step{
-		Cmd:     model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
-		Trigger: inputs,
+		Cmd:              model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
+		Triggers:         []string{"a.txt"},
+		WorkingDirectory: f.Path(),
 	}
 	step2 := model.Step{
 		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),

@@ -9,7 +9,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
-	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -168,15 +167,9 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	step := model.ToStep(model.ToShellCmd(cmd))
+	step := model.ToStep(cwd, model.ToShellCmd(cmd))
 
-	if len(triggers) > 0 {
-		pm, err := dockerignore.NewDockerPatternMatcher(cwd, triggers)
-		if err != nil {
-			return nil, err
-		}
-		step.Trigger = pm
-	}
+	step.Triggers = triggers
 
 	buildContext.steps = append(buildContext.steps, step)
 	return skylark.None, nil
