@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -29,12 +30,20 @@ type engineState struct {
 
 type manifestState struct {
 	lastBuild                    BuildState
-	pendingFileChanges           map[string]bool
-	currentlyBuildingFileChanges []string
 	manifest                     model.Manifest
 	pod                          Pod
 	lbs                          []k8s.LoadBalancerSpec
 	hasBeenBuilt                 bool
+	pendingFileChanges           map[string]bool
+	currentlyBuildingFileChanges []string
+
+	currentBuildStartTime     time.Time
+	lastSuccessfulDeployEdits []string
+	lastError                 error
+	lastBuildFinishTime       time.Time
+	lastSuccessfulDeployTime  time.Time
+	lastBuildDuration         time.Duration
+	queueEntryTime            time.Time
 
 	// we've observed changes to the config file and need to reload it the next time we start a build
 	configIsDirty bool
@@ -78,6 +87,15 @@ type Pod struct {
 // manifestState.Pod will be set to this if we don't know anything about its pod
 var unknownPod = Pod{Name: "no pod yet found"}
 
+func shortenFileList(baseDir string, files []string) []string {
+	var ret []string
+	for _, f := range files {
+		ret = append(ret, strings.TrimPrefix(strings.TrimPrefix(f, baseDir), "/"))
+	}
+
+	return ret
+}
+
 func stateToView(s engineState) view.View {
 	ret := view.View{}
 
@@ -90,37 +108,41 @@ func stateToView(s engineState) view.View {
 			dirWatched = ospath.TryAsCwdChildren([]string{ms.manifest.Mounts[0].LocalPath})[0]
 		}
 
-		filesChanged := ms.currentlyBuildingFileChanges
+		var pendingBuildEdits []string
 		for f := range ms.pendingFileChanges {
-			filesChanged = append(filesChanged, f)
+			pendingBuildEdits = append(pendingBuildEdits, f)
 		}
 
-		filesChanged = ospath.TryAsCwdChildren(filesChanged)
-
-		rs := view.ResourceStatusFresh
-		if len(ms.pendingFileChanges) > 0 || len(ms.currentlyBuildingFileChanges) > 0 {
-			rs = view.ResourceStatusStale
+		baseDir := ""
+		if len(ms.manifest.Mounts) > 0 {
+			baseDir = ms.manifest.Mounts[0].LocalPath
 		}
+
+		pendingBuildEdits = shortenFileList(baseDir, pendingBuildEdits)
+		lastDeployEdits := shortenFileList(baseDir, ms.lastSuccessfulDeployEdits)
+		currentBuildEdits := shortenFileList(baseDir, ms.currentlyBuildingFileChanges)
+
+		lastBuildError := ""
+		if ms.lastError != nil {
+			lastBuildError = ms.lastError.Error()
+		}
+
 		r := view.Resource{
-			Name:                    name.String(),
-			DirectoryWatched:        dirWatched,
-			LatestFileChanges:       filesChanged,
-			TimeSinceLastFileChange: 0,
-			Status:                  rs,
-			StatusDesc:              "",
-		}
-
-		if ms.pod != unknownPod {
-			// TODO(matt) this mapping is probably wrong
-			switch ms.pod.Status {
-			case "Running":
-				r.Status = view.ResourceStatusFresh
-			case "Pending":
-				r.Status = view.ResourceStatusStale
-			default:
-				r.Status = view.ResourceStatusBroken
-			}
-			r.StatusDesc = ms.pod.Status
+			Name:                  name.String(),
+			DirectoryWatched:      dirWatched,
+			LastDeployTime:        ms.lastSuccessfulDeployTime,
+			LastDeployEdits:       lastDeployEdits,
+			LastBuildError:        lastBuildError,
+			LastBuildFinishTime:   ms.lastBuildFinishTime,
+			LastBuildDuration:     ms.lastBuildDuration,
+			PendingBuildEdits:     pendingBuildEdits,
+			PendingBuildSince:     ms.queueEntryTime,
+			CurrentBuildEdits:     currentBuildEdits,
+			CurrentBuildStartTime: ms.currentBuildStartTime,
+			PodName:               ms.pod.Name,
+			PodCreationTime:       ms.pod.StartedAt,
+			PodStatus:             ms.pod.Status,
+			Endpoint:              "",
 		}
 
 		ret.Resources = append(ret.Resources, r)

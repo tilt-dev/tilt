@@ -19,7 +19,6 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -579,21 +578,10 @@ func TestHudUpdated(t *testing.T) {
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 
-	// This is currently a mostly uninteresting test because a fair amount of model/view isn't implemented
-	expectedView := view.View{
-		Resources: []view.Resource{
-			{
-				Name:                    "foobar",
-				DirectoryWatched:        "/go",
-				LatestFileChanges:       []string{},
-				TimeSinceLastFileChange: 0,
-				Status:                  view.ResourceStatusFresh,
-				StatusDesc:              "",
-			},
-		},
-	}
-
-	assert.Equal(t, expectedView, f.hud.LastView)
+	assert.Equal(t, 1, len(f.hud.LastView.Resources))
+	rv := f.hud.LastView.Resources[0]
+	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
+	assert.Equal(t, manifest.Mounts[0].LocalPath, rv.DirectoryWatched)
 	f.assertAllBuildsConsumed()
 }
 
@@ -606,21 +594,6 @@ func testPod(podName string, manifestName string, phase string, creationTime tim
 		},
 		Status: v1.PodStatus{
 			Phase: v1.PodPhase(phase),
-		},
-	}
-}
-
-func testPodView(manifestName string, status view.ResourceStatus, statusDesc string) view.View {
-	return view.View{
-		Resources: []view.Resource{
-			{
-				Name:                    manifestName,
-				DirectoryWatched:        "/go",
-				LatestFileChanges:       []string{},
-				TimeSinceLastFileChange: 0,
-				Status:                  status,
-				StatusDesc:              statusDesc,
-			},
 		},
 	}
 }
@@ -640,8 +613,9 @@ func TestPodEvent(t *testing.T) {
 		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", time.Now())
 
 		<-f.hud.Updates
-		expectedView := testPodView("foobar", view.ResourceStatusBroken, "CrashLoopBackOff")
-		assert.Equal(t, expectedView, f.hud.LastView)
+		rv := f.hud.LastView.Resources[0]
+		assert.Equal(t, "my pod", rv.PodName)
+		assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
 
 		f.fsWatcher.errors <- endToken
 	}()
@@ -671,8 +645,9 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 		f.podEvents <- testPod("my new pod", "foobar", "Running", firstCreationTime.Add(time.Minute*2))
 
 		<-f.hud.Updates
-		expectedView := testPodView("foobar", view.ResourceStatusFresh, "Running")
-		assert.Equal(t, expectedView, f.hud.LastView)
+		rv := f.hud.LastView.Resources[0]
+		assert.Equal(t, "my new pod", rv.PodName)
+		assert.Equal(t, "Running", rv.PodStatus)
 
 		f.fsWatcher.errors <- endToken
 	}()
@@ -702,8 +677,9 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 		f.podEvents <- testPod("my pod", "foobar", "Running", creationTime)
 
 		<-f.hud.Updates
-		expectedView := testPodView("foobar", view.ResourceStatusFresh, "Running")
-		assert.Equal(t, expectedView, f.hud.LastView)
+		rv := f.hud.LastView.Resources[0]
+		assert.Equal(t, "my pod", rv.PodName)
+		assert.Equal(t, "Running", rv.PodStatus)
 
 		f.fsWatcher.errors <- endToken
 	}()
@@ -733,8 +709,9 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 		f.podEvents <- testPod("my pod", "foobar", "Running", creationTime.Add(time.Minute*-1))
 		<-f.hud.Updates
 
-		expectedView := testPodView("foobar", view.ResourceStatusBroken, "CrashLoopBackOff")
-		assert.Equal(t, expectedView, f.hud.LastView)
+		rv := f.hud.LastView.Resources[0]
+		assert.Equal(t, "my new pod", rv.PodName)
+		assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
 
 		f.fsWatcher.errors <- endToken
 	}()

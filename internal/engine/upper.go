@@ -130,7 +130,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	}
 
 	for _, m := range manifests {
-		engineState.manifestsToBuild = append(engineState.manifestsToBuild, m.Name)
+		enqueueBuild(engineState, m.Name)
 	}
 	engineState.initialBuildCount = len(engineState.manifestsToBuild)
 
@@ -177,12 +177,16 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 	state.manifestsToBuild = state.manifestsToBuild[1:]
 	state.currentlyBuilding = mn
 	ms := state.manifestStates[mn]
+	ms.queueEntryTime = time.Time{}
 
 	if ms.configIsDirty {
 		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
 		if err != nil {
 			logger.Get(ctx).Infof("getting new manifest error: %v", err)
 			state.currentlyBuilding = ""
+			ms.lastError = err
+			ms.lastBuildFinishTime = time.Now()
+			ms.lastBuildDuration = 0
 			return
 		}
 		ms.lastBuild = BuildStateClean
@@ -198,6 +202,8 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 	buildState := ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
 
 	m := ms.manifest
+
+	ms.currentBuildStartTime = time.Now()
 
 	go func() {
 		firstBuild := !ms.hasBeenBuilt
@@ -228,6 +234,12 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 
 	err := cb.err
 
+	ms := engineState.manifestStates[engineState.currentlyBuilding]
+	ms.lastError = err
+	ms.lastBuildFinishTime = time.Now()
+	ms.lastBuildDuration = time.Since(ms.currentBuildStartTime)
+	ms.currentBuildStartTime = time.Time{}
+
 	if err != nil {
 		if isPermanentError(err) {
 			return err
@@ -238,7 +250,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 			return fmt.Errorf("build failed: %v", err)
 		}
 	} else {
-		ms := engineState.manifestStates[engineState.currentlyBuilding]
+		ms.lastSuccessfulDeployTime = time.Now()
 
 		ms.lbs = k8s.ToLoadBalancerSpecs(cb.result.Entities)
 
@@ -254,6 +266,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 		}
 
 		ms.lastBuild = NewBuildState(cb.result)
+		ms.lastSuccessfulDeployEdits = ms.currentlyBuildingFileChanges
 		ms.currentlyBuildingFileChanges = nil
 	}
 
@@ -304,7 +317,12 @@ func handleFSEvent(
 		}
 	}
 
-	state.manifestsToBuild = append(state.manifestsToBuild, event.manifestName)
+	enqueueBuild(state, event.manifestName)
+}
+
+func enqueueBuild(state *engineState, mn model.ManifestName) {
+	state.manifestsToBuild = append(state.manifestsToBuild, mn)
+	state.manifestStates[mn].queueEntryTime = time.Now()
 }
 
 func handlePodEvent(ctx context.Context, state *engineState, pod *v1.Pod) {
