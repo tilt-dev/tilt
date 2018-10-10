@@ -229,6 +229,8 @@ def blorgly_frontend():
 }
 
 func TestCompositeFunction(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
@@ -236,7 +238,7 @@ func TestCompositeFunction(t *testing.T) {
 
 def blorgly_backend():
   start_fast_build("%v", "docker-tag", "the entrypoint")
-  add(local_git_repo('.'), '/mount_points/1')
+  add(local_git_repo('%s'), '/mount_points/1')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
@@ -244,12 +246,12 @@ def blorgly_backend():
 
 def blorgly_frontend():
   start_fast_build("%v", "docker-tag", "the entrypoint")
-  add(local_git_repo('.'), '/mount_points/2')
+  add(local_git_repo('%s'), '/mount_points/2')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile, dockerfile))
+`, dockerfile, f.Path(), dockerfile, f.Path()))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
