@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -52,8 +53,11 @@ func (n Namespace) String() string {
 }
 
 type Client interface {
-	Apply(ctx context.Context, entities []K8sEntity) error
-	Delete(ctx context.Context, entities []K8sEntity) error
+	// Updates the entities, creating them if necessary.
+	//
+	// Tries to update them in-place if possible. But for certain resource types,
+	// we might need to fallback to deleting and re-creating them.
+	Upsert(ctx context.Context, entities []K8sEntity) error
 
 	// Find all the pods that match the given image, namespace, and labels.
 	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error)
@@ -203,39 +207,47 @@ func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBal
 	return LoadBalancer{}, nil
 }
 
-func (k K8sClient) Apply(ctx context.Context, entities []K8sEntity) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
+func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
-	// TODO(dmiller) validate that the string is YAML and give a good error
+
 	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
-	_, stderr, err := k.applyOrDeleteFromEntities(ctx, "apply", entities)
-	if err != nil {
-		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
+
+	immutable := ImmutableEntities(entities)
+	if len(immutable) > 0 {
+		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)
+		if err != nil {
+			return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
+		}
+	}
+
+	mutable := MutableEntities(entities)
+	if len(mutable) > 0 {
+		_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, mutable)
+		if err != nil {
+			isImmutableFieldError := strings.Contains(stderr, validation.FieldImmutableErrorMsg)
+			if !isImmutableFieldError {
+				return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
+			}
+
+			// If the kubectl apply failed due to an immutable field, fall back to kubectl replace --force.
+			logger.Get(ctx).Infof("%sFalling back to 'kubectl replace' on immutable field error", logger.Tab)
+			_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, mutable)
+			if err != nil {
+				return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
+			}
+		}
 	}
 	return nil
 }
 
-func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, _, err := k.applyOrDeleteFromEntities(ctx, "delete", entities)
-	_, isExitErr := err.(*exec.ExitError)
-	if isExitErr {
-		// In general, an exit error is ok for our purposes.
-		// It just means that the job hasn't been created yet.
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("kubectl delete: %v", err)
-	}
-	return err
-}
-
-func (k K8sClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, entities []K8sEntity) (stdout string, stderr string, err error) {
-	args := []string{cmd, "-f", "-"}
+func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities []K8sEntity) (stdout string, stderr string, err error) {
+	args := append([]string{}, cmdArgs...)
+	args = append(args, "-f", "-")
 
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
-		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmd, err)
+		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmdArgs, err)
 	}
 	stdin := bytes.NewReader([]byte(rawYAML))
 
