@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -49,7 +51,7 @@ func TestManifestWatcherTwoManifestsErr(t *testing.T) {
 }
 
 type manifestWatcherTestFixture struct {
-	store           *Store
+	store           *store.Store
 	watcherMaker    fsWatcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
@@ -90,8 +92,8 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 
 	ctx := output.CtxForTest()
 
-	store := NewStore(nil)
-	err := makeManifestWatcher(ctx, store, watcherMaker, timerMaker.maker(), manifests)
+	st := store.NewStore(nil)
+	err := makeManifestWatcher(ctx, st, watcherMaker, timerMaker.maker(), manifests)
 
 	timerMaker.maxTimerLock.Lock()
 
@@ -99,7 +101,7 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 		t.Fatal(err)
 	}
 
-	return &manifestWatcherTestFixture{store, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
+	return &manifestWatcherTestFixture{st, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
 }
 
 func (s *manifestWatcherTestFixture) WriteFile(manifestNumber int) string {

@@ -1,4 +1,4 @@
-package engine
+package store
 
 import "sync"
 
@@ -7,7 +7,7 @@ import "sync"
 // https://redux.js.org/introduction/threeprinciples
 // https://redux.js.org/basics
 type Store struct {
-	state       *engineState
+	state       *EngineState
 	actionQueue *actionQueue
 	actionCh    chan Action
 	mu          sync.Mutex
@@ -16,7 +16,7 @@ type Store struct {
 	// The actionChan is an intermediate representation to make the transition easiser.
 }
 
-func NewStore(state *engineState) *Store {
+func NewStore(state *EngineState) *Store {
 	return &Store{
 		state:       state,
 		actionQueue: &actionQueue{},
@@ -25,7 +25,7 @@ func NewStore(state *engineState) *Store {
 }
 
 // TODO(nick): Clone the state to ensure it's not mutated.
-func (s *Store) State() engineState {
+func (s *Store) State() EngineState {
 	return *(s.state)
 }
 
