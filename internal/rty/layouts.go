@@ -8,12 +8,6 @@ import (
 
 // Layouts implement Component
 
-// FixedDimComponent has a fixed size in one dimension (for use in a FlexLayout)
-type FixedDimComponent interface {
-	Component
-	FixedDimSize() int
-}
-
 // FlexLayout lays out its sub-components.
 type FlexLayout struct {
 	dir Dir

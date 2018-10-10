@@ -34,11 +34,25 @@ func main() {
 }
 
 type Demo struct {
-	view view.View
+	view   view.View
+	model  *model
+	screen tcell.Screen
+}
+
+type model struct {
+	lastKey *tcell.EventKey
 }
 
 func NewDemo() (*Demo, error) {
-	r := &Demo{}
+	screen, err := tcell.NewTerminfoScreen()
+	if err != nil {
+		return nil, err
+	}
+
+	r := &Demo{
+		screen: screen,
+		model:  &model{},
+	}
 
 	r.view = view.View{
 		Resources: []view.Resource{
@@ -50,27 +64,195 @@ func NewDemo() (*Demo, error) {
 				view.ResourceStatusFresh,
 				"1/1 pods up",
 			},
+			view.Resource{
+				"be",
+				"be",
+				[]string{"/"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"graphql",
+				"graphql",
+				[]string{},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"snacks",
+				"snacks",
+				[]string{"snacks/whoops.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"doggos",
+				"doggos",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"elephants",
+				"elephants",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"heffalumps",
+				"heffalumps",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"aardvarks",
+				"aardvarks",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"quarks",
+				"quarks",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"boop",
+				"boop",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"laurel",
+				"laurel",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"hardy",
+				"hardy",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"north",
+				"north",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"west",
+				"west",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
+			view.Resource{
+				"east",
+				"east",
+				[]string{"fe/main.go"},
+				time.Second,
+				view.ResourceStatusFresh,
+				"1/1 pods up",
+			},
 		},
 	}
 
 	return r, nil
 }
 
+type rtyNavigationState struct {
+	resources rty.ScrollState
+	stream    rty.ScrollState
+}
+
 func (d *Demo) Run() error {
-	screen, err := tcell.NewTerminfoScreen()
-	if err != nil {
+	d.screen.Init()
+	defer d.screen.Fini()
+	d.screen.Clear()
+	screenEvs := make(chan tcell.Event)
+	go func() {
+		for {
+			screenEvs <- d.screen.PollEvent()
+		}
+	}()
+
+	// initial render
+	if err := d.render(); err != nil {
 		return err
 	}
 
-	screen.Init()
-	defer screen.Fini()
 	for {
-		screen.Clear()
-		c := d.TopLevel()
-		c.Render(rty.NewScreenCanvas(screen))
-		screen.Show()
+		select {
+		case ev := <-screenEvs:
+			done := d.handleScreenEvent(ev)
+			if done {
+				return nil
+			}
+		}
+		if err := d.render(); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+func (d *Demo) handleScreenEvent(ev tcell.Event) bool {
+	switch ev := ev.(type) {
+	case *tcell.EventKey:
+		switch ev.Key() {
+		case tcell.KeyRune:
+			d.model.lastKey = ev
+			switch ev.Rune() {
+			case 'q':
+				return true
+			case 'j':
+				scroll := d.resourcesScroll()
+				selected := scroll.Get()
+				if nextResource := d.nextResource(selected); nextResource != "" {
+					scroll.Select(rty.ComponentID(nextResource))
+				}
+			case 'k':
+				scroll := d.resourcesScroll()
+				selected := scroll.Get()
+				if nextResource := d.previousResource(selected); nextResource != "" {
+					scroll.Select(rty.ComponentID(nextResource))
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func (d *Demo) render() error {
+	c := d.TopLevel()
+	if err := c.Render(rty.NewScreenCanvas(d.screen)); err != nil {
+		return err
+	}
+	d.screen.Show()
 	return nil
 }
 
