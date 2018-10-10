@@ -203,8 +203,9 @@ type Step struct {
 	Cmd Cmd
 	// Optional. If not specified, this step runs on every change.
 	// If specified, we only run the Cmd if the trigger matches the changed file.
-	Triggers         []string
-	WorkingDirectory string
+	Triggers []string
+	// Directory the Triggers are relative to
+	BaseDirectory string
 }
 
 type Cmd struct {
@@ -301,7 +302,7 @@ func ToShellCmds(cmds []string) []Cmd {
 }
 
 func ToStep(cwd string, cmd Cmd) Step {
-	return Step{WorkingDirectory: cwd, Cmd: cmd}
+	return Step{BaseDirectory: cwd, Cmd: cmd}
 }
 
 func ToSteps(cwd string, cmds []Cmd) []Step {

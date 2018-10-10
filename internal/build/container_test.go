@@ -551,9 +551,9 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 		ContainerPath: "/src",
 	}
 	step1 := model.Step{
-		Cmd:              model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
-		Triggers:         []string{"a.txt"},
-		WorkingDirectory: f.Path(),
+		Cmd:           model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
+		Triggers:      []string{"a.txt"},
+		BaseDirectory: f.Path(),
 	}
 	step2 := model.Step{
 		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),

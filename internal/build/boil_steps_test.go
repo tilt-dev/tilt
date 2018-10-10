@@ -54,9 +54,9 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 	triggers := []string{"bar"}
 	steps := []model.Step{
 		model.Step{
-			Cmd:              model.ToShellCmd("echo hello"),
-			Triggers:         triggers,
-			WorkingDirectory: "/home/tilt/code/test",
+			Cmd:           model.ToShellCmd("echo hello"),
+			Triggers:      triggers,
+			BaseDirectory: "/home/tilt/code/test",
 		},
 	}
 
@@ -81,9 +81,9 @@ func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 	triggers := []string{"bar"}
 	steps := []model.Step{
 		model.Step{
-			Cmd:              model.ToShellCmd("echo world"),
-			Triggers:         triggers,
-			WorkingDirectory: "/home/tilt/code/test",
+			Cmd:           model.ToShellCmd("echo world"),
+			Triggers:      triggers,
+			BaseDirectory: "/home/tilt/code/test",
 		},
 	}
 
@@ -110,14 +110,14 @@ func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
 	triggers2 := []string{"bar"}
 	steps := []model.Step{
 		model.Step{
-			Cmd:              model.ToShellCmd("echo hello"),
-			Triggers:         triggers1,
-			WorkingDirectory: wd,
+			Cmd:           model.ToShellCmd("echo hello"),
+			Triggers:      triggers1,
+			BaseDirectory: wd,
 		},
 		model.Step{
-			Cmd:              model.ToShellCmd("echo world"),
-			Triggers:         triggers2,
-			WorkingDirectory: wd,
+			Cmd:           model.ToShellCmd("echo world"),
+			Triggers:      triggers2,
+			BaseDirectory: wd,
 		},
 	}
 

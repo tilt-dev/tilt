@@ -51,7 +51,7 @@ func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
 }
 
 func CreateStepMatcher(s model.Step) (model.PathMatcher, error) {
-	dim, err := dockerignore.NewDockerPatternMatcher(s.WorkingDirectory, s.Triggers)
+	dim, err := dockerignore.NewDockerPatternMatcher(s.BaseDirectory, s.Triggers)
 	if err != nil {
 		return nil, err
 	}
