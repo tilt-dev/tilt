@@ -229,25 +229,29 @@ def blorgly_frontend():
 }
 
 func TestCompositeFunction(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
-    start_fast_build("%v", "docker-tag", "the entrypoint")
-    run("go install github.com/windmilleng/blorgly-frontend/server/...")
-    run("echo hi")
-    image = stop_build()
-    return k8s_service("yaml", image)
+  start_fast_build("%v", "docker-tag", "the entrypoint")
+  add(local_git_repo('%s'), '/mount_points/1')
+  run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  run("echo hi")
+  image = stop_build()
+  return k8s_service("yaml", image)
 
 def blorgly_frontend():
   start_fast_build("%v", "docker-tag", "the entrypoint")
+  add(local_git_repo('%s'), '/mount_points/2')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile, dockerfile))
+`, dockerfile, f.Path(), dockerfile, f.Path()))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
@@ -262,7 +266,13 @@ def blorgly_frontend():
 	}
 
 	assert.Equal(t, "blorgly_backend", manifestConfig[0].Name.String())
+	assert.Equal(t, 1, len(manifestConfig[0].Repos))
+	assert.Equal(t, "", manifestConfig[0].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifestConfig[0].Repos[0].GitignoreContents)
 	assert.Equal(t, "blorgly_frontend", manifestConfig[1].Name.String())
+	assert.Equal(t, 1, len(manifestConfig[1].Repos))
+	assert.Equal(t, "", manifestConfig[1].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifestConfig[1].Repos[0].GitignoreContents)
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {

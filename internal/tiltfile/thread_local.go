@@ -60,27 +60,3 @@ func recordReadFile(t *skylark.Thread, path string) error {
 	t.SetLocal(readFilesKey, append(readFiles, path))
 	return nil
 }
-
-func getRepos(t *skylark.Thread) ([]gitRepo, error) {
-	obj := t.Local(reposKey)
-	if obj == nil {
-		return []gitRepo{}, nil
-	}
-
-	repos, ok := obj.([]gitRepo)
-	if !ok {
-		return nil, errors.New("internal error: repos thread local was not of type []gitRepo")
-	}
-
-	return repos, nil
-}
-
-func addRepo(t *skylark.Thread, repo gitRepo) error {
-	repos, err := getRepos(t)
-	if err != nil {
-		return err
-	}
-
-	t.SetLocal(reposKey, append(repos, repo))
-	return nil
-}
