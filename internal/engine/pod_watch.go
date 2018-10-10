@@ -8,21 +8,21 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-type podWatcher struct {
-	events <-chan *v1.Pod
-}
-
-func makePodWatcher(ctx context.Context, kCli k8s.Client) (*podWatcher, error) {
+func makePodWatcher(ctx context.Context, kCli k8s.Client, store *Store) error {
 	ch, err := kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
 	if err != nil {
-		return &podWatcher{}, err
+		return err
 	}
 
-	return &podWatcher{ch}, nil
+	go dispatchPodChangesLoop(ch, store)
+
+	return nil
 }
 
-func newDummyPodWatcher() *podWatcher {
-	return &podWatcher{}
+func dispatchPodChangesLoop(ch <-chan *v1.Pod, store *Store) {
+	for pod := range ch {
+		store.Dispatch(NewPodChangeAction(pod))
+	}
 }
 
 // copied from https://github.com/kubernetes/kubernetes/blob/aedeccda9562b9effe026bb02c8d3c539fc7bb77/pkg/kubectl/resource_printer.go#L692-L764
