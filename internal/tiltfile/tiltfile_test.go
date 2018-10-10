@@ -444,7 +444,11 @@ func TestRunTrigger(t *testing.T) {
 		},
 	)
 	packagePath := f.JoinPath("package.json")
-	matches, err := step0.Trigger.Matches(packagePath, false)
+	matcher, err := ignore.CreateStepMatcher(step0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches, err := matcher.Matches(packagePath, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,13 +461,17 @@ func TestRunTrigger(t *testing.T) {
 			Argv: []string{"sh", "-c", "npm install"},
 		},
 	)
-	matches, err = step1.Trigger.Matches(packagePath, false)
+	matcher, err = ignore.CreateStepMatcher(step1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches, err = matcher.Matches(packagePath, false)
 	yarnLockPath := f.JoinPath("yarn.lock")
-	matches, err = step1.Trigger.Matches(yarnLockPath, false)
+	matches, err = matcher.Matches(yarnLockPath, false)
 	assert.True(t, matches)
 
 	randomPath := f.JoinPath("foo")
-	matches, err = step1.Trigger.Matches(randomPath, false)
+	matches, err = matcher.Matches(randomPath, false)
 	assert.False(t, matches)
 
 	assert.Equal(
@@ -474,7 +482,7 @@ func TestRunTrigger(t *testing.T) {
 		},
 	)
 
-	assert.Nil(t, step2.Trigger)
+	assert.Nil(t, step2.Triggers)
 }
 
 func TestInvalidDockerTag(t *testing.T) {

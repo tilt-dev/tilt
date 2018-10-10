@@ -201,10 +201,11 @@ func (r1 LocalGithubRepo) Equal(r2 LocalGithubRepo) bool {
 type Step struct {
 	// Required. The command to run in this step.
 	Cmd Cmd
-
 	// Optional. If not specified, this step runs on every change.
 	// If specified, we only run the Cmd if the trigger matches the changed file.
-	Trigger PathMatcher
+	Triggers []string
+	// Directory the Triggers are relative to
+	BaseDirectory string
 }
 
 type Cmd struct {
@@ -300,20 +301,20 @@ func ToShellCmds(cmds []string) []Cmd {
 	return res
 }
 
-func ToStep(cmd Cmd) Step {
-	return Step{Cmd: cmd}
+func ToStep(cwd string, cmd Cmd) Step {
+	return Step{BaseDirectory: cwd, Cmd: cmd}
 }
 
-func ToSteps(cmds []Cmd) []Step {
+func ToSteps(cwd string, cmds []Cmd) []Step {
 	res := make([]Step, len(cmds))
 	for i, cmd := range cmds {
-		res[i] = ToStep(cmd)
+		res[i] = ToStep(cwd, cmd)
 	}
 	return res
 }
 
-func ToShellSteps(cmds []string) []Step {
-	return ToSteps(ToShellCmds(cmds))
+func ToShellSteps(cwd string, cmds []string) []Step {
+	return ToSteps(cwd, ToShellCmds(cmds))
 }
 
 type ValidateErr struct {
