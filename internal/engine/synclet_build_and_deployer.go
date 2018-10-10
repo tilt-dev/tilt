@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/ignore"
 
@@ -38,7 +40,7 @@ func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img referen
 	return nil
 }
 
-func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
+func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
@@ -46,7 +48,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 	// TODO(maia): proper output for this stuff
 
 	if err := sbd.canSyncletBuild(ctx, manifest, state); err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	return sbd.updateViaSynclet(ctx, manifest, state)
@@ -54,7 +56,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 
 // canSyncletBuild returns an error if we CAN'T build this manifest via the synclet
 func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
-	manifest model.Manifest, state BuildState) error {
+	manifest model.Manifest, state store.BuildState) error {
 
 	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
@@ -87,31 +89,31 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 }
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
-	manifest model.Manifest, state BuildState) (BuildResult, error) {
+	manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 
 	paths, err := build.FilesToPathMappings(
 		state.FilesChanged(), manifest.Mounts)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	// archive files to copy to container
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(manifest))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)
+		return store.BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)
 	}
 	archive, err := ab.BytesBuffer()
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	// get files to rm
 	toRemove, err := build.MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return BuildResult{}, fmt.Errorf("missingLocalPaths: %v", err)
+		return store.BuildResult{}, fmt.Errorf("missingLocalPaths: %v", err)
 	}
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
@@ -119,30 +121,30 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	deployInfo, ok := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok || deployInfo == nil {
 		// We theoretically already checked this condition :(
-		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
+		return store.BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
 			"(should have checked this upstream, something is wrong)",
 			manifest.Name, state.LastResult.Image.String())
 	}
 
 	cmds, err := build.BoilSteps(manifest.Steps, paths)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.podID, state.LastResult.Namespace)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	err = sCli.UpdateContainer(ctx, deployInfo.containerID, archive.Bytes(), containerPathsToRm, cmds)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
-	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
+	return state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet), nil
 }
 
-func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
+func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()

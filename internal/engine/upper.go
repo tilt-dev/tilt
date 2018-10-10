@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -57,11 +59,11 @@ type Upper struct {
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
-type PodWatcherMaker func(context.Context, *Store) error
+type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
 func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
-	return func(ctx context.Context, store *Store) error {
+	return func(ctx context.Context, store *store.Store) error {
 		return makePodWatcher(ctx, kCli, store)
 	}
 }
@@ -97,18 +99,18 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	engineState := newState(manifests)
+	engineState := store.NewState(manifests)
 
 	// TODO(nick): inject Store into the constructor
-	store := NewStore(engineState)
+	st := store.NewStore(engineState)
 
 	var err error
 	if watchMounts {
-		err = makeManifestWatcher(ctx, store, u.fsWatcherMaker, u.timerMaker, manifests)
+		err = makeManifestWatcher(ctx, st, u.fsWatcherMaker, u.timerMaker, manifests)
 		if err != nil {
 			return err
 		}
-		err = u.podWatcherMaker(ctx, store)
+		err = u.podWatcherMaker(ctx, st)
 		if err != nil {
 			return err
 		}
@@ -130,15 +132,15 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	for _, m := range manifests {
 		enqueueBuild(engineState, m.Name)
 	}
-	engineState.initialBuildCount = len(engineState.manifestsToBuild)
+	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
 
 	if u.browserMode == BrowserAuto {
-		engineState.openBrowserOnNextLB = true
+		engineState.OpenBrowserOnNextLB = true
 	}
 
 	for {
 		u.dispatch(ctx, engineState)
-		err := u.hud.Update(stateToView(*engineState))
+		err := u.hud.Update(store.StateToView(*engineState))
 		if err != nil {
 			logger.Get(ctx).Infof("Error updating HUD: %v", err)
 		}
@@ -146,7 +148,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case action := <-store.Actions():
+		case action := <-st.Actions():
 			switch action := action.(type) {
 			case ErrorAction:
 				return action.Error
@@ -158,12 +160,12 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				return fmt.Errorf("Unrecognized action: %T", action)
 
 			}
-		case completedBuild := <-engineState.completedBuilds:
+		case completedBuild := <-engineState.CompletedBuilds:
 			err := u.handleCompletedBuild(ctx, watchMounts, completedBuild, engineState, s)
 			if err != nil {
 				return err
 			}
-			if !watchMounts && len(engineState.manifestsToBuild) == 0 {
+			if !watchMounts && len(engineState.ManifestsToBuild) == 0 {
 				return nil
 			}
 		case <-time.After(refreshInterval):
@@ -172,46 +174,46 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	}
 }
 
-func (u Upper) dispatch(ctx context.Context, state *engineState) {
-	if len(state.manifestsToBuild) == 0 || state.currentlyBuilding != "" {
+func (u Upper) dispatch(ctx context.Context, state *store.EngineState) {
+	if len(state.ManifestsToBuild) == 0 || state.CurrentlyBuilding != "" {
 		return
 	}
 
-	mn := state.manifestsToBuild[0]
-	state.manifestsToBuild = state.manifestsToBuild[1:]
-	state.currentlyBuilding = mn
-	ms := state.manifestStates[mn]
-	ms.queueEntryTime = time.Time{}
+	mn := state.ManifestsToBuild[0]
+	state.ManifestsToBuild = state.ManifestsToBuild[1:]
+	state.CurrentlyBuilding = mn
+	ms := state.ManifestStates[mn]
+	ms.QueueEntryTime = time.Time{}
 
-	if ms.configIsDirty {
+	if ms.ConfigIsDirty {
 		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
 		if err != nil {
 			logger.Get(ctx).Infof("getting new manifest error: %v", err)
-			state.currentlyBuilding = ""
-			ms.lastError = err
-			ms.lastBuildFinishTime = time.Now()
-			ms.lastBuildDuration = 0
+			state.CurrentlyBuilding = ""
+			ms.LastError = err
+			ms.LastBuildFinishTime = time.Now()
+			ms.LastBuildDuration = 0
 			return
 		}
-		ms.lastBuild = BuildStateClean
-		ms.manifest = newManifest
-		ms.configIsDirty = false
+		ms.LastBuild = store.BuildStateClean
+		ms.Manifest = newManifest
+		ms.ConfigIsDirty = false
 	}
 
-	for f := range ms.pendingFileChanges {
-		ms.currentlyBuildingFileChanges = append(ms.currentlyBuildingFileChanges, f)
+	for f := range ms.PendingFileChanges {
+		ms.CurrentlyBuildingFileChanges = append(ms.CurrentlyBuildingFileChanges, f)
 	}
-	ms.pendingFileChanges = make(map[string]bool)
+	ms.PendingFileChanges = make(map[string]bool)
 
-	buildState := ms.lastBuild.NewStateWithFilesChanged(ms.currentlyBuildingFileChanges)
+	buildState := ms.LastBuild.NewStateWithFilesChanged(ms.CurrentlyBuildingFileChanges)
 
-	m := ms.manifest
+	m := ms.Manifest
 
-	ms.currentBuildStartTime = time.Now()
+	ms.CurrentBuildStartTime = time.Now()
 
 	go func() {
-		firstBuild := !ms.hasBeenBuilt
-		ms.hasBeenBuilt = true
+		firstBuild := !ms.HasBeenBuilt
+		ms.HasBeenBuilt = true
 		u.logBuildEvent(ctx, firstBuild, m, buildState)
 
 		result, err := u.b.BuildAndDeploy(
@@ -219,30 +221,30 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 			m,
 			buildState)
 
-		state.completedBuilds <- completedBuild{result, err}
+		state.CompletedBuilds <- store.CompletedBuild{Result: result, Err: err}
 	}()
 }
 
-func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb completedBuild, engineState *engineState, s *summary.Summary) error {
+func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb store.CompletedBuild, engineState *store.EngineState, s *summary.Summary) error {
 	defer func() {
-		engineState.currentlyBuilding = ""
+		engineState.CurrentlyBuilding = ""
 	}()
 
-	engineState.completedBuildCount++
+	engineState.CompletedBuildCount++
 
 	defer func() {
-		if engineState.completedBuildCount == engineState.initialBuildCount {
+		if engineState.CompletedBuildCount == engineState.InitialBuildCount {
 			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 		}
 	}()
 
-	err := cb.err
+	err := cb.Err
 
-	ms := engineState.manifestStates[engineState.currentlyBuilding]
-	ms.lastError = err
-	ms.lastBuildFinishTime = time.Now()
-	ms.lastBuildDuration = time.Since(ms.currentBuildStartTime)
-	ms.currentBuildStartTime = time.Time{}
+	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
+	ms.LastError = err
+	ms.LastBuildFinishTime = time.Now()
+	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
+	ms.CurrentBuildStartTime = time.Time{}
 
 	if err != nil {
 		if isPermanentError(err) {
@@ -254,31 +256,31 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 			return fmt.Errorf("build failed: %v", err)
 		}
 	} else {
-		ms.lastSuccessfulDeployTime = time.Now()
+		ms.LastSuccessfulDeployTime = time.Now()
 
-		ms.lbs = k8s.ToLoadBalancerSpecs(cb.result.Entities)
+		ms.Lbs = k8s.ToLoadBalancerSpecs(cb.Result.Entities)
 
-		if len(ms.lbs) > 0 && engineState.openBrowserOnNextLB {
+		if len(ms.Lbs) > 0 && engineState.OpenBrowserOnNextLB {
 			// Open only the first load balancer in a browser.
 			// TODO(nick): We might need some hints on what load balancer to
 			// open if we have multiple, or what path to default to on the opened manifest.
-			err := k8s.OpenService(ctx, u.k8s, ms.lbs[0])
+			err := k8s.OpenService(ctx, u.k8s, ms.Lbs[0])
 			if err != nil {
 				return err
 			}
-			engineState.openBrowserOnNextLB = false
+			engineState.OpenBrowserOnNextLB = false
 		}
 
-		ms.lastBuild = NewBuildState(cb.result)
-		ms.lastSuccessfulDeployEdits = ms.currentlyBuildingFileChanges
-		ms.currentlyBuildingFileChanges = nil
+		ms.LastBuild = store.NewBuildState(cb.Result)
+		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
+		ms.CurrentlyBuildingFileChanges = nil
 	}
 
 	if watching {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
 		s.Log(ctx, u.resolveLB)
-		if len(engineState.manifestsToBuild) == 0 {
+		if len(engineState.ManifestsToBuild) == 0 {
 			logger.Get(ctx).Infof("Awaiting changes…")
 		}
 	}
@@ -288,23 +290,23 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 
 func handleFSEvent(
 	ctx context.Context,
-	state *engineState,
+	state *store.EngineState,
 	event manifestFilesChangedAction) {
 
-	manifest := state.manifestStates[event.manifestName].manifest
+	manifest := state.ManifestStates[event.manifestName].Manifest
 
 	if eventContainsConfigFiles(manifest, event) {
 		logger.Get(ctx).Debugf("Event contains config files")
-		state.manifestStates[event.manifestName].configIsDirty = true
+		state.ManifestStates[event.manifestName].ConfigIsDirty = true
 	}
 
-	ms := state.manifestStates[event.manifestName]
+	ms := state.ManifestStates[event.manifestName]
 
 	for _, f := range event.files {
-		ms.pendingFileChanges[f] = true
+		ms.PendingFileChanges[f] = true
 	}
 
-	spurious, err := onlySpuriousChanges(ms.pendingFileChanges)
+	spurious, err := onlySpuriousChanges(ms.PendingFileChanges)
 	if err != nil {
 		logger.Get(ctx).Infof("build watch error: %v", err)
 	}
@@ -315,7 +317,7 @@ func handleFSEvent(
 	}
 
 	// if the name is already in the queue, we don't need to add it again
-	for _, mn := range state.manifestsToBuild {
+	for _, mn := range state.ManifestsToBuild {
 		if mn == event.manifestName {
 			return
 		}
@@ -324,33 +326,33 @@ func handleFSEvent(
 	enqueueBuild(state, event.manifestName)
 }
 
-func enqueueBuild(state *engineState, mn model.ManifestName) {
-	state.manifestsToBuild = append(state.manifestsToBuild, mn)
-	state.manifestStates[mn].queueEntryTime = time.Now()
+func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
+	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
+	state.ManifestStates[mn].QueueEntryTime = time.Now()
 }
 
-func handlePodEvent(ctx context.Context, state *engineState, pod *v1.Pod) {
+func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
 		return
 	}
 
-	newPod := Pod{
+	newPod := store.Pod{
 		Name:      pod.Name,
 		StartedAt: pod.CreationTimestamp.Time,
 		Status:    podStatusToString(*pod),
 	}
 
-	ms, ok := state.manifestStates[manifestName]
+	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
 		logger.Get(ctx).Infof("error: got notified of pod for unknown manifest '%s'", manifestName)
 		return
 	}
 
-	oldPod := ms.pod
+	oldPod := ms.Pod
 
-	if oldPod == unknownPod || oldPod.Name == newPod.Name || oldPod.StartedAt.Before(newPod.StartedAt) {
-		ms.pod = newPod
+	if oldPod == store.UnknownPod || oldPod.Name == newPod.Name || oldPod.StartedAt.Before(newPod.StartedAt) {
+		ms.Pod = newPod
 	}
 }
 
@@ -418,7 +420,7 @@ func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.UR
 	return lb.URL
 }
 
-func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest model.Manifest, buildState BuildState) {
+func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest model.Manifest, buildState store.BuildState) {
 	if firstBuild {
 		logger.Get(ctx).Infof("Building manifest: %s", manifest.Name)
 	} else {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -23,7 +25,7 @@ func TestPostProcessBuild(t *testing.T) {
 
 	f.kCli.SetPodsWithImageResp(pod1)
 
-	res := BuildResult{Image: image1}
+	res := store.BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
 
 	info, ok := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
@@ -41,7 +43,7 @@ func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 	info.markReady()
 	f.cbad.dd.deployInfo[docker.ToImgNameAndTag(image1)] = info
 
-	res := BuildResult{Image: image1}
+	res := store.BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
 
 	info, ok := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)

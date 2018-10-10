@@ -5,6 +5,8 @@ import (
 	"errors"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -20,7 +22,7 @@ func (manifestFilesChangedAction) Action() {}
 // returns a manifestWatcher that tells its reader when a manifest's file dependencies have changed
 func makeManifestWatcher(
 	ctx context.Context,
-	store *Store,
+	st *store.Store,
 	watcherMaker fsWatcherMaker,
 	timerMaker timerMaker,
 	manifests []model.Manifest) error {
@@ -59,7 +61,7 @@ func makeManifestWatcher(
 		return errors.New("--watch used when no manifests define mounts - nothing to watch")
 	}
 
-	return snsToManifestWatcher(ctx, store, timerMaker, sns)
+	return snsToManifestWatcher(ctx, st, timerMaker, sns)
 }
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
@@ -119,7 +121,7 @@ type manifestNotifyPair struct {
 }
 
 // turns a list of (manifest, chan fsevent) pairs into a single chan (manifest, fsevent)
-func snsToManifestWatcher(ctx context.Context, store *Store, timerMaker timerMaker, sns []manifestNotifyPair) error {
+func snsToManifestWatcher(ctx context.Context, st *store.Store, timerMaker timerMaker, sns []manifestNotifyPair) error {
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
 
@@ -135,7 +137,7 @@ func snsToManifestWatcher(ctx context.Context, store *Store, timerMaker timerMak
 					if !ok {
 						return
 					}
-					store.Dispatch(NewErrorAction(err))
+					st.Dispatch(NewErrorAction(err))
 
 				case fsEvents, ok := <-coalescedEvents:
 					if !ok {
@@ -145,12 +147,12 @@ func snsToManifestWatcher(ctx context.Context, store *Store, timerMaker timerMak
 					for _, fe := range fsEvents {
 						path, err := filepath.Abs(fe.Path)
 						if err != nil {
-							store.Dispatch(NewErrorAction(err))
+							st.Dispatch(NewErrorAction(err))
 							continue
 						}
 						isIgnored, err := filter.Matches(path, false)
 						if err != nil {
-							store.Dispatch(NewErrorAction(err))
+							st.Dispatch(NewErrorAction(err))
 							continue
 						}
 						if !isIgnored {
@@ -158,7 +160,7 @@ func snsToManifestWatcher(ctx context.Context, store *Store, timerMaker timerMak
 						}
 					}
 					if len(watchEvent.files) > 0 {
-						store.Dispatch(watchEvent)
+						st.Dispatch(watchEvent)
 					}
 				}
 			}

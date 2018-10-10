@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
@@ -25,7 +27,7 @@ import (
 )
 
 var imageID = k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
-var alreadyBuilt = BuildResult{Image: imageID}
+var alreadyBuilt = store.BuildResult{Image: imageID}
 
 type expectedFile = testutils.ExpectedFile
 
@@ -55,7 +57,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +84,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,14 +114,14 @@ func TestNamespaceGKE(t *testing.T) {
 	assert.Equal(t, "", string(f.sCli.Namespace))
 	assert.Equal(t, "", string(f.k8s.LastPodQueryNamespace))
 
-	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
+	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, "sancho-ns", string(result.Namespace))
 
-	result, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(result))
+	result, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(result))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +135,7 @@ func TestIncrementalBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,14 +161,14 @@ func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
 
 	f.k8s.SetPollForPodsWithImageDelay(time.Second * 1)
 
-	res, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, BuildStateClean)
+	res, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Expected behavior: this build call waits on the PostProcess initiated at the end
 	// of the previous build, and when that info is available, does a container build
-	_, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(res))
+	_, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(res))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +190,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	ctx := output.CtxForTest()
 
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, store.NewBuildState(alreadyBuilt))
 	msg := "Command failed with exit code: 1"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Fatalf("Expected error message %q, actual: %v", msg, err)
@@ -216,7 +218,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +235,7 @@ func TestNoFallbackForCertainErrors(t *testing.T) {
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt))
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propogate back up")
 	}
@@ -259,8 +261,8 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	firstState := NewBuildState(alreadyBuilt)
-	firstState.filesChangedSet[aPath] = true
+	firstState := store.NewBuildState(alreadyBuilt)
+	firstState.FilesChangedSet[aPath] = true
 
 	firstResult, err := f.bd.BuildAndDeploy(ctx, manifest, firstState)
 	if err != nil {
@@ -272,8 +274,8 @@ func TestIncrementalBuildTwice(t *testing.T) {
 		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
 	}
 
-	secondState := NewBuildState(firstResult)
-	secondState.filesChangedSet[bPath] = true
+	secondState := store.NewBuildState(firstResult)
+	secondState.FilesChangedSet[bPath] = true
 	secondResult, err := f.bd.BuildAndDeploy(ctx, manifest, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -313,8 +315,8 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	firstState := NewBuildState(alreadyBuilt)
-	firstState.filesChangedSet[aPath] = true
+	firstState := store.NewBuildState(alreadyBuilt)
+	firstState.FilesChangedSet[aPath] = true
 
 	firstResult, err := f.bd.BuildAndDeploy(ctx, manifest, firstState)
 	if err != nil {
@@ -329,8 +331,8 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	// Kill the pod
 	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
 
-	secondState := NewBuildState(firstResult)
-	secondState.filesChangedSet[bPath] = true
+	secondState := store.NewBuildState(firstResult)
+	secondState.FilesChangedSet[bPath] = true
 	secondResult, err := f.bd.BuildAndDeploy(ctx, manifest, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -385,7 +387,7 @@ func TestBaDForgetsImages(t *testing.T) {
 
 	f.k8s.SetPodsWithImageResp(pod1)
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, NewBuildState(alreadyBuilt))
+	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +418,7 @@ func TestIgnoredFiles(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile(".git/index", "garbage")
 
-	_, err := f.bd.BuildAndDeploy(ctx, manifest, BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(ctx, manifest, store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,8 +498,8 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 }
 
 // Ensure that the BuildAndDeployer has container information attached for the given manifest.
-func (f *bdFixture) withContainerForBuild(build BuildResult) *bdFixture {
-	f.bd.PostProcessBuild(f.ctx, build, BuildResult{})
+func (f *bdFixture) withContainerForBuild(build store.BuildResult) *bdFixture {
+	f.bd.PostProcessBuild(f.ctx, build, store.BuildResult{})
 	return f
 }
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -32,7 +34,7 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (result BuildResult, err error) {
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (result store.BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
@@ -48,47 +50,47 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	// of implementation of BuildAndDeploy?
 	err = manifest.Validate()
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
 	}
 
 	if manifest.IsStaticBuild() {
-		return BuildResult{}, fmt.Errorf("container build does not support static dockerfiles")
+		return store.BuildResult{}, fmt.Errorf("container build does not support static dockerfiles")
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
 	deployInfo, ok := cbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
 	if !ok || deployInfo == nil {
 		// We theoretically already checked this condition :(
-		return BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
+		return store.BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
 			"(should have checked this upstream, something is wrong)",
 			manifest.Name, state.LastResult.Image.String())
 	}
 
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
 	boiledSteps, err := build.BoilSteps(manifest.Steps, cf)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	err = cbd.cu.UpdateInContainer(ctx, deployInfo.containerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
-	return state.LastResult.ShallowCloneForContainerUpdate(state.filesChangedSet), nil
+	return state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
+func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuild")
 	span.SetTag("image", result.Image.String())
 	defer span.Finish()
