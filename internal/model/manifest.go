@@ -100,13 +100,14 @@ func (m Manifest) validate() *ValidateErr {
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
-	cmdMatch := m1.Entrypoint.Equal(m2.Entrypoint)
+	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
 	reposMatch := m1.reposEqual(m2.Repos)
+	stepsMatch := m1.stepsEqual(m2.Steps)
 	portForwardsMatch := m1.portForwardsEqual(m2)
 
-	return primitivesMatch && cmdMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch
+	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch
 }
 
 func (m1 Manifest) configFilesEqual(c2 []string) bool {
@@ -177,6 +178,24 @@ func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
 	return true
 }
 
+func (m1 Manifest) stepsEqual(s2 []Step) bool {
+	if (m1.Steps == nil) != (s2 == nil) {
+		return false
+	}
+
+	if len(m1.Steps) != len(s2) {
+		return false
+	}
+
+	for i := range s2 {
+		if !m1.Steps[i].Equal(s2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 type ManifestCreator interface {
 	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
@@ -206,6 +225,32 @@ type Step struct {
 	Triggers []string
 	// Directory the Triggers are relative to
 	BaseDirectory string
+}
+
+func (s1 Step) Equal(s2 Step) bool {
+	if s1.BaseDirectory != s2.BaseDirectory {
+		return false
+	}
+
+	if !s1.Cmd.Equal(s2.Cmd) {
+		return false
+	}
+
+	if (s1.Triggers == nil) != (s2.Triggers == nil) {
+		return false
+	}
+
+	if len(s1.Triggers) != len(s2.Triggers) {
+		return false
+	}
+
+	for i := range s2.Triggers {
+		if s1.Triggers[i] != s2.Triggers[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 type Cmd struct {

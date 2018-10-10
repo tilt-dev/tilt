@@ -147,6 +147,103 @@ var equalitytests = []struct {
 		},
 		true,
 	},
+	{
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},
+				},
+			},
+		},
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},
+				},
+			},
+		},
+		true,
+	},
+	{
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},
+				},
+			},
+		},
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd: Cmd{Argv: []string{"bash", "-c", "hello"}},
+				},
+			},
+		},
+		false,
+	},
+	{
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
+					Triggers:      []string{"foo"},
+					BaseDirectory: "/src",
+				},
+			},
+		},
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
+					Triggers:      []string{"foo"},
+					BaseDirectory: "/src",
+				},
+			},
+		},
+		true,
+	},
+	{
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
+					Triggers:      []string{"bar"},
+					BaseDirectory: "/src",
+				},
+			},
+		},
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
+					Triggers:      []string{"foo"},
+					BaseDirectory: "/src",
+				},
+			},
+		},
+		false,
+	},
+	{
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
+					Triggers:      []string{"foo"},
+					BaseDirectory: "/src1",
+				},
+			},
+		},
+		Manifest{
+			Steps: []Step{
+				Step{
+					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
+					Triggers:      []string{"foo"},
+					BaseDirectory: "/src2",
+				},
+			},
+		},
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
@@ -154,7 +251,7 @@ func TestManifestEquality(t *testing.T) {
 		actual := c.m1.Equal(c.m2)
 
 		if actual != c.expected {
-			t.Errorf("Test case #%d: Expected %v == %v to be %t, but got %t", i, c.m1, c.m2, c.expected, actual)
+			t.Errorf("Test case #%d: Expected %+v == %+v to be %t, but got %t", i, c.m1, c.m2, c.expected, actual)
 		}
 	}
 }
