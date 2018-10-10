@@ -472,7 +472,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 	docker.ContainerListOutput = map[string][]types.Container{
 		"pod": []types.Container{
 			types.Container{
-				ID: build.MagicTestContainerID,
+				ID: k8s.MagicTestContainerID,
 			},
 		},
 	}
@@ -506,7 +506,7 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 	// restarts, and that it saw the right number of restarts.
 	expected := map[string]int{}
 	if count != 0 {
-		expected[string(build.MagicTestContainerID)] = count
+		expected[string(k8s.MagicTestContainerID)] = count
 	}
 	assert.Equal(f.T(), expected, f.docker.RestartsByContainer)
 }

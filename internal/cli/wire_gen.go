@@ -32,19 +32,19 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
+	deployDiscovery := engine.NewDeployDiscovery(k8sClient)
 	syncletManager := engine.NewSyncletManager(k8sClient)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(k8sClient, syncletManager)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
 	dockerCli, err := docker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
-	containerResolver := build.NewContainerResolver(dockerCli)
 	analytics, err := provideAnalytics()
 	if err != nil {
 		return nil, err
 	}
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, containerResolver, env, k8sClient, analytics)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics, deployDiscovery)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
