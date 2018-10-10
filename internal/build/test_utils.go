@@ -5,12 +5,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -22,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
@@ -113,11 +112,10 @@ func (f *dockerBuildFixture) getNameFromTest() reference.Named {
 }
 
 func (f *dockerBuildFixture) startRegistry() {
-	stdout := &bytes.Buffer{}
-	stdoutSafe := makeThreadSafe(stdout)
+	stdout := bufsync.NewThreadSafeBuffer()
 	stderr := &bytes.Buffer{}
 	cmd := exec.Command("docker", "run", "--name", "tilt-registry", "-p", "5005:5000", "registry:2")
-	cmd.Stdout = stdoutSafe
+	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	f.registry = cmd
 
@@ -126,17 +124,10 @@ func (f *dockerBuildFixture) startRegistry() {
 		f.t.Fatal(err)
 	}
 
-	// Wait until the registry starts
-	start := time.Now()
-	for time.Since(start) < 5*time.Second {
-		stdoutSafe.mu.Lock()
-		result := stdout.String()
-		stdoutSafe.mu.Unlock()
-		if strings.Contains(result, "listening on") {
-			return
-		}
+	err = stdout.WaitUntilContains("listening on", 5*time.Second)
+	if err != nil {
+		f.t.Fatalf("Registry didn't start: %v", err)
 	}
-	f.t.Fatalf("Timed out waiting for registry to start. Output:\n%s\n%s", stdout.String(), stderr.String())
 }
 
 type expectedFile = testutils.ExpectedFile
@@ -202,21 +193,6 @@ func (f *dockerBuildFixture) startContainer(ctx context.Context, config *contain
 	result := k8s.ContainerID(cID)
 	f.containerIDs = append(f.containerIDs, result)
 	return result
-}
-
-type threadSafeWriter struct {
-	writer io.Writer
-	mu     *sync.Mutex
-}
-
-func makeThreadSafe(writer io.Writer) threadSafeWriter {
-	return threadSafeWriter{writer: writer, mu: &sync.Mutex{}}
-}
-
-func (w threadSafeWriter) Write(b []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.writer.Write(b)
 }
 
 // Get a container config to run a container with a given command instead of
