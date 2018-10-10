@@ -120,6 +120,33 @@ var equalitytests = []struct {
 		},
 		true,
 	},
+	{
+		Manifest{
+			ConfigFiles: []string{"hi", "hello"},
+		},
+		Manifest{
+			ConfigFiles: []string{"hi", "hello", "my"},
+		},
+		false,
+	},
+	{
+		Manifest{
+			ConfigFiles: []string{"my", "hi", "hello"},
+		},
+		Manifest{
+			ConfigFiles: []string{"hi", "hello", "my"},
+		},
+		false,
+	},
+	{
+		Manifest{
+			ConfigFiles: []string{"hi", "hello", "my"},
+		},
+		Manifest{
+			ConfigFiles: []string{"hi", "hello", "my"},
+		},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

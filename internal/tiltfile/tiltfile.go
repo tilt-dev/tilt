@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 
 	"github.com/pkg/errors"
 
@@ -385,7 +386,7 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
 		TiltFilename:   image.tiltFilename,
-		ConfigFiles:    manifest.configFiles,
+		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
@@ -394,6 +395,13 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		PortForwards: manifest.portForwards,
 	}, nil
 
+}
+
+func SkylarkConfigFilesToDomain(cf []string) []string {
+	ss := sort.StringSlice(cf)
+	ss.Sort()
+
+	return ss
 }
 
 func SkylarkReposToDomain(sMount []mount) []model.LocalGithubRepo {
