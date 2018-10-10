@@ -94,7 +94,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		df := build.Dockerfile(manifest.StaticDockerfile)
-		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, ignore.CreateFilter(manifest))
+		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
 
 		if err != nil {
 			return nil, err
@@ -108,7 +108,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 		df := build.Dockerfile(manifest.BaseDockerfile)
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, ignore.CreateFilter(manifest), steps, manifest.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -130,7 +130,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, ignore.CreateFilter(manifest), steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
 		if err != nil {
 			return nil, err
 		}

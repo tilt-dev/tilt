@@ -85,7 +85,7 @@ func (f *gitRepoFixture) LoadManifestForError(name string) error {
 }
 
 func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
-	matches, err := ignore.CreateFilter(manifest).Matches(f.JoinPath(path), isDir)
+	matches, err := ignore.CreateBuildContextFilter(manifest).Matches(f.JoinPath(path), isDir)
 	if err != nil {
 		f.T().Fatal(err)
 	}

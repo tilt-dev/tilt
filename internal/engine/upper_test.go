@@ -744,6 +744,60 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.assertAllHUDUpdatesConsumed()
 }
 
+func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.Repos = []model.LocalGithubRepo{
+		{
+			LocalPath:            f.Path(),
+			DockerignoreContents: "dignore.txt",
+		},
+	}
+
+	go func() {
+		call := <-f.b.calls
+		assert.Equal(t, manifest, call.manifest)
+
+		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
+		time.Sleep(10 * time.Millisecond)
+		f.fsWatcher.errors <- errors.New("done")
+	}()
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	if assert.NotNil(t, err) {
+		assert.Equal(t, "done", err.Error())
+	}
+	f.assertAllBuildsConsumed()
+}
+
+func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.Repos = []model.LocalGithubRepo{
+		{
+			LocalPath:         f.Path(),
+			GitignoreContents: "gignore.txt",
+		},
+	}
+
+	go func() {
+		call := <-f.b.calls
+		assert.Equal(t, manifest, call.manifest)
+
+		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
+		time.Sleep(10 * time.Millisecond)
+		f.fsWatcher.errors <- errors.New("done")
+	}()
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	if assert.NotNil(t, err) {
+		assert.Equal(t, "done", err.Error())
+	}
+	f.assertAllBuildsConsumed()
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
