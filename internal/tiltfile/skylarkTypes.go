@@ -105,6 +105,7 @@ func (k *k8sManifest) createPortForward(thread *skylark.Thread, fn *skylark.Buil
 type mount struct {
 	src        localPath
 	mountPoint string
+	repo       gitRepo
 }
 
 // See model.Manifest for more information on what all these fields mean.
@@ -204,17 +205,18 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, err
 	}
 
-	var lp localPath
+	m := mount{}
 	switch p := src.(type) {
 	case localPath:
-		lp = p
+		m.src = p
 	case gitRepo:
-		lp = localPath{p.basePath, p}
+		m.src = localPath{p.basePath, p}
+		m.repo = p
 	default:
 		return nil, fmt.Errorf("invalid type for src. Got %s want gitRepo OR localPath", src.Type())
 	}
-
-	buildContext.mounts = append(buildContext.mounts, mount{lp, mountPoint})
+	m.mountPoint = mountPoint
+	buildContext.mounts = append(buildContext.mounts, m)
 
 	return skylark.None, nil
 }
@@ -279,8 +281,8 @@ func (gr gitRepo) Type() string {
 
 func (gr gitRepo) Freeze() {}
 
-func (gitRepo) Truth() skylark.Bool {
-	return true
+func (gr gitRepo) Truth() skylark.Bool {
+	return gr.basePath != "" || gr.gitignoreContents != "" || gr.dockerignoreContents != ""
 }
 
 func (gitRepo) Hash() (uint32, error) {
