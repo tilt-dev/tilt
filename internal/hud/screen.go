@@ -1,6 +1,8 @@
 package hud
 
 import (
+	"fmt"
+
 	runewidth "github.com/mattn/go-runewidth"
 	"github.com/windmilleng/tcell"
 )
@@ -22,6 +24,10 @@ func newPen(s tcell.Screen) *pen {
 }
 
 // NOTE(maia): largely stolen from tcell demos, we may want to roll our own
+
+func (p *pen) putlnf(format string, a ...interface{}) {
+	p.putln(fmt.Sprintf(format, a...))
+}
 
 func (p *pen) putln(str string) {
 	p.x = 0

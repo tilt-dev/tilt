@@ -16,19 +16,15 @@ func TestRender(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:                    "foo",
-				DirectoryWatched:        "bar",
-				LatestFileChanges:       nil,
-				TimeSinceLastFileChange: 3,
-				Status:                  2,
-				StatusDesc:              "hello",
+				Name:             "foo",
+				DirectoryWatched: "bar",
 			},
 		},
 	}
 
 	tf.renderer.Render(v)
 
-	expectedContent := []string{"{foo bar [] 3ns 2 hello}"}
+	expectedContent := []string{"", "foo — not yet deployed", "  Watching bar/", "  BUILD: no build yet"}
 
 	assert.Equal(t, expectedContent, tf.fakeScreen.Lines())
 }
