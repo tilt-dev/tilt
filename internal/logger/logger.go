@@ -140,3 +140,28 @@ func (l logger) Writer(level Level) io.Writer {
 func (l logger) SupportsColor() bool {
 	return l.supportsColor
 }
+
+func CtxWithForkedOutput(ctx context.Context, writer io.Writer) context.Context {
+	l := Get(ctx)
+
+	write := func(level Level, b []byte) error {
+		l.Write(level, string(b))
+		if l.Level() >= level {
+			b = append([]byte{}, b...)
+			b = append(b, '\n')
+			_, err := writer.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	forkedLogger := funcLogger{
+		supportsColor: l.SupportsColor(),
+		level:         l.Level(),
+		write:         write,
+	}
+
+	return WithLogger(ctx, forkedLogger)
+}

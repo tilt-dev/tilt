@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"strings"
 	"time"
 
@@ -38,11 +39,13 @@ type manifestState struct {
 	currentlyBuildingFileChanges []string
 
 	currentBuildStartTime     time.Time
+	currentBuildLog           bytes.Buffer
 	lastSuccessfulDeployEdits []string
 	lastError                 error
 	lastBuildFinishTime       time.Time
 	lastSuccessfulDeployTime  time.Time
 	lastBuildDuration         time.Duration
+	lastBuildLog              bytes.Buffer
 	queueEntryTime            time.Time
 
 	// we've observed changes to the config file and need to reload it the next time we start a build

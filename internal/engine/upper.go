@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -205,9 +206,12 @@ func (u Upper) dispatch(ctx context.Context, state *engineState) {
 
 	ms.currentBuildStartTime = time.Now()
 
+	ctx = output.CtxWithForkedOutput(ctx, &ms.currentBuildLog)
+
 	go func() {
 		firstBuild := !ms.hasBeenBuilt
 		ms.hasBeenBuilt = true
+
 		u.logBuildEvent(ctx, firstBuild, m, buildState)
 
 		result, err := u.b.BuildAndDeploy(
@@ -239,6 +243,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb compl
 	ms.lastBuildFinishTime = time.Now()
 	ms.lastBuildDuration = time.Since(ms.currentBuildStartTime)
 	ms.currentBuildStartTime = time.Time{}
+	ms.lastBuildLog = ms.currentBuildLog
+	ms.currentBuildLog = bytes.Buffer{}
 
 	if err != nil {
 		if isPermanentError(err) {
