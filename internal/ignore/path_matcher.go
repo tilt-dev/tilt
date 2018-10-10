@@ -8,7 +8,8 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func CreateFilter(m model.Manifest) model.PathMatcher {
+// Filter out files that should not be included in the build context.
+func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
 	matchers := []model.PathMatcher{}
 	if m.TiltFilename != "" {
 		m, err := model.NewSimpleFileMatcher(m.TiltFilename)
@@ -16,6 +17,24 @@ func CreateFilter(m model.Manifest) model.PathMatcher {
 			matchers = append(matchers, m)
 		}
 	}
+	for _, r := range m.Repos {
+		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
+		if err == nil {
+			matchers = append(matchers, gim)
+		}
+
+		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.DockerignoreContents)
+		if err == nil {
+			matchers = append(matchers, dim)
+		}
+	}
+
+	return model.NewCompositeMatcher(matchers)
+}
+
+// Filter out files that should not trigger new builds.
+func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
+	matchers := []model.PathMatcher{}
 	for _, r := range m.Repos {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {

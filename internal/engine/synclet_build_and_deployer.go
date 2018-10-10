@@ -98,7 +98,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	}
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder(ignore.CreateFilter(manifest))
+	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(manifest))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)

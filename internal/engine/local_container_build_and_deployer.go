@@ -79,7 +79,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return BuildResult{}, err
 	}
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.containerID, cf, ignore.CreateFilter(manifest), boiledSteps)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.containerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps)
 	if err != nil {
 		return BuildResult{}, err
 	}

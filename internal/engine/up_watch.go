@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -141,6 +142,7 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 			//defer close(events)
 			//defer close(errs)
 
+			filter := ignore.CreateFileChangeFilter(manifest)
 			for {
 				select {
 				case err, ok := <-watcher.Errors():
@@ -158,8 +160,13 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 						if err != nil {
 							errs <- err
 						}
-
-						watchEvent.files = append(watchEvent.files, path)
+						isIgnored, err := filter.Matches(path, false)
+						if err != nil {
+							errs <- err
+						}
+						if !isIgnored {
+							watchEvent.files = append(watchEvent.files, path)
+						}
 					}
 					if len(watchEvent.files) > 0 {
 						events <- watchEvent
