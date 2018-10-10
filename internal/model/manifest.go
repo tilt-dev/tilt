@@ -179,10 +179,6 @@ func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
 }
 
 func (m1 Manifest) stepsEqual(s2 []Step) bool {
-	if (m1.Steps == nil) != (s2 == nil) {
-		return false
-	}
-
 	if len(m1.Steps) != len(s2) {
 		return false
 	}
@@ -233,10 +229,6 @@ func (s1 Step) Equal(s2 Step) bool {
 	}
 
 	if !s1.Cmd.Equal(s2.Cmd) {
-		return false
-	}
-
-	if (s1.Triggers == nil) != (s2.Triggers == nil) {
 		return false
 	}
 
