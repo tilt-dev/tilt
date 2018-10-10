@@ -4,24 +4,26 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"k8s.io/api/core/v1"
 )
 
-func makePodWatcher(ctx context.Context, kCli k8s.Client, store *Store) error {
+func makePodWatcher(ctx context.Context, kCli k8s.Client, st *store.Store) error {
 	ch, err := kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
 	if err != nil {
 		return err
 	}
 
-	go dispatchPodChangesLoop(ch, store)
+	go dispatchPodChangesLoop(ch, st)
 
 	return nil
 }
 
-func dispatchPodChangesLoop(ch <-chan *v1.Pod, store *Store) {
+func dispatchPodChangesLoop(ch <-chan *v1.Pod, st *store.Store) {
 	for pod := range ch {
-		store.Dispatch(NewPodChangeAction(pod))
+		st.Dispatch(NewPodChangeAction(pod))
 	}
 }
 

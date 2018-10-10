@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/api/core/v1"
@@ -29,7 +31,7 @@ import (
 // represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
 	manifest model.Manifest
-	state    BuildState
+	state    store.BuildState
 }
 
 type fakeBuildAndDeployer struct {
@@ -47,14 +49,14 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult() BuildResult {
+func (b *fakeBuildAndDeployer) nextBuildResult() store.BuildResult {
 	b.buildCount++
 	n, _ := reference.WithName("windmill.build/dummy")
 	nt, _ := reference.WithTag(n, fmt.Sprintf("tilt-%d", b.buildCount))
-	return BuildResult{Image: nt}
+	return store.BuildResult{Image: nt}
 }
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (BuildResult, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
 	select {
 	case b.calls <- buildAndDeployCall{manifest, state}:
 	default:
@@ -64,7 +66,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	err := b.nextBuildFailure
 	if err != nil {
 		b.nextBuildFailure = nil
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	return b.nextBuildResult(), nil
@@ -75,7 +77,7 @@ func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) 
 	return ok
 }
 
-func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
+func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	if result.HasImage() && !b.haveContainerForImage(result.Image) {
 		b.deployInfo[docker.ToImgNameAndTag(result.Image)] = k8s.ContainerID("testcontainer")
 	}
@@ -819,9 +821,9 @@ func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
 	}
 }
 
-func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *Store) error {
-	return func(ctx context.Context, store *Store) error {
-		go dispatchPodChangesLoop(ch, store)
+func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store) error {
+	return func(ctx context.Context, st *store.Store) error {
+		go dispatchPodChangesLoop(ch, st)
 		return nil
 	}
 }
