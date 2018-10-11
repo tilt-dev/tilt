@@ -881,6 +881,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
+	<-f.hud.Updates
 	<-f.b.calls
 	<-f.hud.Updates
 	f.upper.store.Dispatch(NewServiceChangeAction(testService("myservice", "foobar", "1.2.3.4", 8080)))
@@ -900,6 +901,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	assert.Equal(t, "http://1.2.3.4:8080/", url.String())
 
 	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 type fakeTimerMaker struct {
