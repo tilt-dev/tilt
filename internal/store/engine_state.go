@@ -26,6 +26,8 @@ type EngineState struct {
 	CompletedBuildCount int
 
 	OpenBrowserOnNextLB bool
+
+	PermanentError error
 }
 
 type ManifestState struct {
