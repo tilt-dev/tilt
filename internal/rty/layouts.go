@@ -55,10 +55,7 @@ func (l *FlexLayout) Size(width int, height int) (int, int) {
 }
 
 func (l *FlexLayout) Render(w Writer, width, height int) error {
-	length := width
-	if l.dir == DirVert {
-		length = height
-	}
+	length, _ := whToLd(width, height, l.dir)
 
 	allocations := make([]int, len(l.cs))
 	allocated := 0
@@ -67,7 +64,7 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 	for i, c := range l.cs {
 		reqWidth, reqHeight := c.Size(width, height)
 		reqLen, _ := whToLd(reqWidth, reqHeight, l.dir)
-		if reqLen >= height {
+		if reqLen >= length {
 			flexIdxs = append(flexIdxs, i)
 		} else {
 			allocations[i] = reqLen
@@ -83,6 +80,7 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 	for _, i := range flexIdxs {
 		elemLength := flexTotal / numFlex
 		allocations[i] = elemLength
+		numFlex--
 		flexTotal -= elemLength
 	}
 
@@ -190,8 +188,9 @@ func (l *Line) Render(w Writer, width int, height int) error {
 }
 
 type Box struct {
-	id    ID
-	inner Component
+	id      ID
+	focused bool
+	inner   Component
 }
 
 func NewBox(id ID) *Box {
@@ -200,6 +199,10 @@ func NewBox(id ID) *Box {
 
 func (b *Box) SetInner(c Component) {
 	b.inner = c
+}
+
+func (b *Box) SetFocused(focused bool) {
+	b.focused = focused
 }
 
 func (b *Box) ID() ID {
@@ -211,21 +214,32 @@ func (b *Box) Size(width int, height int) (int, int) {
 }
 
 func (b *Box) Render(w Writer, width int, height int) error {
-	for i := 0; i < width; i++ {
-		w.SetContent(i, 0, '+', nil, tcell.StyleDefault)
-		w.SetContent(i, height-1, '+', nil, tcell.StyleDefault)
+	innerHeight := height - 6
+	if height == GROW {
+		innerHeight = GROW
+	}
+	childHeight := w.Divide(3, 3, width-6, innerHeight).RenderChild(b.inner)
+	height = childHeight + 6
+
+	style := tcell.StyleDefault
+	if b.focused {
+		style = style.Bold(true)
 	}
 
-	for i := 0; i < height; i++ {
-		w.SetContent(0, i, '+', nil, tcell.StyleDefault)
-		w.SetContent(width-1, i, '+', nil, tcell.StyleDefault)
+	for i := 1; i < width-2; i++ {
+		w.SetContent(i, 1, '+', nil, style)
+		w.SetContent(i, height-2, '+', nil, style)
+	}
+
+	for i := 1; i < height-2; i++ {
+		w.SetContent(1, i, '+', nil, style)
+		w.SetContent(width-2, i, '+', nil, style)
 	}
 
 	if b.inner == nil {
 		return nil
 	}
 
-	w.Divide(1, 1, width-2, height-2).RenderChild(b.inner)
 	return nil
 }
 

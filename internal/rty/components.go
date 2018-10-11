@@ -14,16 +14,24 @@ type FQID string
 
 type RTY interface {
 	Render(c Component) error
+	// ElementScroller(FQID) ElementScroller
 	TextScroller(FQID) TextScroller
+}
+
+type ElementScroller interface {
+	GetSelection() string
+	Select(string)
+	Next()
+	Prev()
 }
 
 type TextScroller interface {
 	Up()
 	Down()
-	PgUp()
-	PgDn()
-	Home()
-	End()
+	// PgUp()
+	// PgDn()
+	// Home()
+	// End()
 }
 
 // Component renders onto a canvas

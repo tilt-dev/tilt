@@ -2,7 +2,6 @@ package rty
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"github.com/windmilleng/tcell"
@@ -11,6 +10,7 @@ import (
 func NewRTY(screen tcell.Screen) RTY {
 	return &rty{
 		screen: screen,
+		state:  make(renderState),
 	}
 }
 
@@ -22,10 +22,10 @@ type rty struct {
 type renderState map[FQID]interface{}
 
 func (r *rty) Render(c Component) error {
-	log.Printf("Render outer loop")
 	r.screen.Clear()
 	g := &renderGlobals{
 		prev: r.state,
+		next: make(renderState),
 	}
 	f := renderFrame{
 		fqid:    "/",
@@ -33,16 +33,18 @@ func (r *rty) Render(c Component) error {
 		globals: g,
 	}
 
-	log.Printf("showing")
-
 	f.RenderChild(c)
 	r.screen.Show()
 	r.state = g.next
 	return g.err
 }
 
-func (r *rty) TextScroller(FQID) TextScroller {
-	return nil
+func (r *rty) TextScroller(fqid FQID) TextScroller {
+	st, ok := r.state[fqid]
+	if !ok {
+		return nil
+	}
+	return NewTextScrollController(st.(*TextScrollState))
 }
 
 type renderGlobals struct {
@@ -95,7 +97,7 @@ func (f renderFrame) RenderChild(c Component) int {
 	}
 
 	_, height = f.canvas.Close()
-	f.lpw.WriteLineProvenance(f.fqid, 0, height)
+	f.lpw.WriteLineProvenance(f.fqid, height)
 	return height
 }
 
@@ -111,17 +113,19 @@ func (f renderFrame) RenderChildInTemp(c Component) (Canvas, *LineProvenanceData
 	if err := c.Render(f, width, GROW); err != nil {
 		f.error(err)
 	}
+	_, height := tmp.Close()
+	f.lpw.WriteLineProvenance(f.fqid, height)
 	return tmp, lpw.data()
 }
 
 func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
 	width, destLines := f.canvas.Size()
-	srcLines := srcHeight - srcY
 
 	numLines := destLines
-	if srcLines < destLines {
-		numLines = srcLines
+	if srcHeight < destLines {
+		numLines = srcHeight
 	}
+
 	for i := 0; i < numLines; i++ {
 		for j := 0; j < width; j++ {
 			mainc, combc, style, _ := src.GetContent(j, srcY+i)
@@ -135,7 +139,7 @@ func (f renderFrame) RenderChildScroll(c ScrollComponent) {
 	prev := f.globals.Get(f.fqid)
 
 	width, height := f.canvas.Size()
-	next, err := c.Render(f, prev, width, height)
+	next, err := c.RenderScroll(f, prev, width, height)
 	if err != nil {
 		f.error(err)
 	}
