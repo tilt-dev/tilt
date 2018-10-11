@@ -9,6 +9,7 @@ import (
 
 	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 type Renderer struct {
@@ -148,7 +149,7 @@ func renderResource(p *pen, r view.Resource) {
 
 }
 
-func (r *Renderer) SetUp(event ReadyEvent) error {
+func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
 	r.screenMu.Lock()
 	defer r.screenMu.Unlock()
 
@@ -171,6 +172,11 @@ func (r *Renderer) SetUp(event ReadyEvent) error {
 				case tcell.KeyEscape, tcell.KeyEnter:
 					// TODO: tell `tilt hud` to exit
 					screen.Fini()
+				case tcell.KeyRune:
+					switch r := ev.Rune(); {
+					case r >= '1' && r <= '9':
+						st.Dispatch(NewReplayBuildLogAction(int(r - '0')))
+					}
 				}
 			}
 		}

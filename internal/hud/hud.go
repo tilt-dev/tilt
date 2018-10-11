@@ -6,10 +6,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 type HeadsUpDisplay interface {
-	Run(ctx context.Context) error
+	Run(ctx context.Context, st *store.Store) error
 	Update(v view.View) error
 }
 
@@ -32,13 +33,13 @@ func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 	}, nil
 }
 
-func (h *Hud) Run(ctx context.Context) error {
+func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case ready := <-h.a.readyCh:
-			err := h.r.SetUp(ready)
+			err := h.r.SetUp(ready, st)
 			if err != nil {
 				return err
 			}

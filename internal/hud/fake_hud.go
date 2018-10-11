@@ -3,6 +3,8 @@ package hud
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 )
 
@@ -19,7 +21,7 @@ func NewFakeHud() *FakeHud {
 	}
 }
 
-func (h *FakeHud) Run(ctx context.Context) error { return nil }
+func (h *FakeHud) Run(ctx context.Context, st *store.Store) error { return nil }
 
 func (h *FakeHud) Update(v view.View) error {
 	h.LastView = v

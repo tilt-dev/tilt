@@ -76,15 +76,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		return watch.NewWatcher()
 	}
 
-	// Run the HUD in the background
-	go func() {
-		err := hud.Run(ctx)
-		if err != nil {
-			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-			logger.Get(ctx).Infof("error in hud: %v", err)
-		}
-	}()
-
 	return Upper{
 		b:               b,
 		fsWatcherMaker:  fsWatcherMaker,
@@ -107,6 +98,15 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		WatchMounts: watchMounts,
 		Manifests:   manifests,
 	})
+
+	// Run the HUD in the background
+	go func() {
+		err := u.hud.Run(ctx, u.store)
+		if err != nil {
+			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
+			logger.Get(ctx).Infof("error in hud: %v", err)
+		}
+	}()
 
 	for {
 		if len(u.store.State().ManifestStates) > 0 {
@@ -145,7 +145,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				if !u.store.State().WatchMounts && len(u.store.State().ManifestsToBuild) == 0 {
 					return nil
 				}
-
+			case hud.ReplayBuildLogAction:
+				replayBuildLog(ctx, u.store.State(), action.ResourceNumber)
 			default:
 				return fmt.Errorf("Unrecognized action: %T", action)
 
@@ -502,6 +503,24 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifes
 	}
 
 	return nil
+}
+
+func replayBuildLog(ctx context.Context, state store.EngineState, resourceNumber int) {
+	if resourceNumber > len(state.ManifestDefinitionOrder) {
+		logger.Get(ctx).Infof("Resource %d does not exist, so no log to print", resourceNumber)
+		return
+	}
+
+	mn := state.ManifestDefinitionOrder[resourceNumber-1]
+
+	ms := state.ManifestStates[mn]
+	if ms.LastBuildFinishTime.Equal(time.Time{}) {
+		logger.Get(ctx).Infof("Resource %d has no previous build, so no log to print", resourceNumber)
+		return
+	}
+
+	logger.Get(ctx).Infof("Reprinting last build log for %s:", mn)
+	logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
 }
 
 var _ model.ManifestCreator = Upper{}
