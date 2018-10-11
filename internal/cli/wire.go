@@ -6,6 +6,8 @@ package cli
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -35,6 +37,7 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		engine.ProvidePodWatcherMaker,
 
 		hud.NewDefaultHeadsUpDisplay,
+		store.NewStore,
 
 		engine.NewUpper,
 		wire.Bind(new(model.ManifestCreator), engine.Upper{}),

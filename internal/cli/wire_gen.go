@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 // Injectors from wire.go:
@@ -65,7 +66,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		return nil, err
 	}
 	podWatcherMaker := engine.ProvidePodWatcherMaker(k8sClient)
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker)
+	storeStore := store.NewStore()
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker, storeStore)
 	return upper, nil
 }
 
