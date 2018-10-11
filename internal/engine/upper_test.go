@@ -140,7 +140,9 @@ func TestUpper_Up(t *testing.T) {
 	}
 	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
 
-	lines := strings.Split(f.upper.store.State().ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
+	state := f.upper.store.RLockState()
+	defer f.upper.store.RUnlockState()
+	lines := strings.Split(state.ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
 	assert.Contains(t, lines, "fake building foobar")
 }
 

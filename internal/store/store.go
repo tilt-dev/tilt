@@ -11,6 +11,7 @@ type Store struct {
 	actionQueue *actionQueue
 	actionCh    chan Action
 	mu          sync.Mutex
+	stateMu     sync.RWMutex
 
 	// TODO(nick): Define Subscribers and Reducers.
 	// The actionChan is an intermediate representation to make the transition easiser.
@@ -25,13 +26,25 @@ func NewStore() *Store {
 }
 
 // TODO(nick): Clone the state to ensure it's not mutated.
-func (s *Store) State() EngineState {
+// For now, we use RW locks to simulate the same behavior, but the
+// onus is on the caller to RUnlockState.
+func (s *Store) RLockState() EngineState {
+	s.stateMu.RLock()
 	return *(s.state)
 }
 
+func (s *Store) RUnlockState() {
+	s.stateMu.RUnlock()
+}
+
 // TODO(nick): Phase this out. Anyone that uses this should be implemented as a reducer.
-func (s *Store) MutableState() *EngineState {
+func (s *Store) LockMutableState() *EngineState {
+	s.stateMu.Lock()
 	return s.state
+}
+
+func (s *Store) UnlockMutableState() {
+	s.stateMu.Unlock()
 }
 
 func (s *Store) Actions() <-chan Action {
