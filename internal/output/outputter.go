@@ -48,6 +48,13 @@ func WithOutputter(ctx context.Context, outputter Outputter) context.Context {
 	return context.WithValue(ctx, outputterContextKey, &outputter)
 }
 
+// Returns a context containing an outputter that forks all of its output
+// to both the parent context's outputter and to the given `io.Writer`
+func CtxWithForkedOutput(ctx context.Context, w io.Writer) context.Context {
+	ctx = logger.CtxWithForkedOutput(ctx, w)
+	return WithOutputter(ctx, NewOutputter(logger.Get(ctx)))
+}
+
 func (o *Outputter) color(c color.Attribute) *color.Color {
 	color := color.New(c)
 	if !o.logger.SupportsColor() {

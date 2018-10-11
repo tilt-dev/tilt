@@ -6,24 +6,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/api/core/v1"
-
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/store"
+	testoutput "github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -62,6 +62,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
+
+	output.Get(ctx).Printf("fake building %s", manifest.Name)
 
 	err := b.nextBuildFailure
 	if err != nil {
@@ -126,6 +128,7 @@ func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
+
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
@@ -134,6 +137,9 @@ func TestUpper_Up(t *testing.T) {
 		startedManifests = append(startedManifests, call.manifest)
 	}
 	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
+
+	lines := strings.Split(f.upper.store.State().ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
+	assert.Contains(t, lines, "fake building foobar")
 }
 
 func TestUpper_UpWatchZeroRepos(t *testing.T) {
@@ -857,7 +863,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	k8s := k8s.NewFakeK8sClient()
 
 	hud := hud.NewFakeHud()
-	ctx, cancel := context.WithCancel(output.CtxForTest())
+	ctx, cancel := context.WithCancel(testoutput.CtxForTest())
 
 	upper := Upper{
 		b:               b,

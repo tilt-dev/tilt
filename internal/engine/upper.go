@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -191,6 +192,8 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 
 	ms.CurrentBuildStartTime = time.Now()
 
+	ctx = output.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
+
 	go func() {
 		firstBuild := !ms.HasBeenBuilt
 		ms.HasBeenBuilt = true
@@ -200,6 +203,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 			ctx,
 			m,
 			buildState)
+
 		st.Dispatch(NewBuildCompleteAction(result, err))
 	}()
 }
@@ -226,6 +230,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb Bui
 	ms.LastBuildFinishTime = time.Now()
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
 	ms.CurrentBuildStartTime = time.Time{}
+	ms.LastBuildLog = ms.CurrentBuildLog
+	ms.CurrentBuildLog = &bytes.Buffer{}
 
 	if err != nil {
 		if isPermanentError(err) {
