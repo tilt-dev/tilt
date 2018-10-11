@@ -140,7 +140,9 @@ func TestUpper_Up(t *testing.T) {
 	}
 	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
 
-	lines := strings.Split(f.upper.store.State().ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
+	state := f.upper.store.RLockState()
+	defer f.upper.store.RUnlockState()
+	lines := strings.Split(state.ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
 	assert.Contains(t, lines, "fake building foobar")
 }
 
@@ -591,7 +593,7 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, 1, len(f.hud.LastView.Resources))
 	rv := f.hud.LastView.Resources[0]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
-	assert.Equal(t, manifest.Mounts[0].LocalPath, rv.DirectoryWatched)
+	assert.Equal(t, manifest.Mounts[0].LocalPath, rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
 }
 
@@ -892,7 +894,8 @@ func TestUpper_ServiceEvent(t *testing.T) {
 		return
 	}
 
-	ms := f.upper.store.State().ManifestStates[manifest.Name]
+	ms := f.upper.store.RLockState().ManifestStates[manifest.Name]
+	defer f.upper.store.RUnlockState()
 	assert.Equal(t, 1, len(ms.LBs))
 	url, ok := ms.LBs["myservice"]
 	if !ok {

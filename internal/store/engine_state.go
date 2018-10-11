@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -28,6 +27,8 @@ type EngineState struct {
 	CompletedBuildCount int
 
 	OpenBrowserOnNextLB bool
+
+	PermanentError error
 }
 
 type ManifestState struct {
@@ -79,12 +80,25 @@ type Pod struct {
 // manifestState.Pod will be set to this if we don't know anything about its pod
 var UnknownPod = Pod{}
 
-func shortenFileList(baseDir string, files []string) []string {
+func shortenFile(baseDirs []string, f string) string {
+	ret := f
+	for _, baseDir := range baseDirs {
+		short, isChild := ospath.Child(baseDir, f)
+		if isChild && len(short) < len(ret) {
+			ret = short
+		}
+	}
+	return ret
+}
+
+// for each filename in `files`, trims the longest appropriate basedir prefix off the front
+func shortenFileList(baseDirs []string, files []string) []string {
+	baseDirs = append([]string{}, baseDirs...)
+
 	var ret []string
 	for _, f := range files {
-		ret = append(ret, strings.TrimPrefix(strings.TrimPrefix(f, baseDir), "/"))
+		ret = append(ret, shortenFile(baseDirs, f))
 	}
-
 	return ret
 }
 
@@ -103,26 +117,21 @@ func StateToView(s EngineState) view.View {
 
 	for _, name := range s.ManifestDefinitionOrder {
 		ms := s.ManifestStates[name]
-		dirWatched := ""
 
-		// TODO handle multiple mounts
-		if len(ms.Manifest.Mounts) > 0 {
-			dirWatched = ospath.TryAsCwdChildren([]string{ms.Manifest.Mounts[0].LocalPath})[0]
+		var absWatchDirs []string
+		for _, p := range ms.Manifest.Mounts {
+			absWatchDirs = append(absWatchDirs, p.LocalPath)
 		}
+		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
 
 		var pendingBuildEdits []string
 		for f := range ms.PendingFileChanges {
 			pendingBuildEdits = append(pendingBuildEdits, f)
 		}
 
-		baseDir := ""
-		if len(ms.Manifest.Mounts) > 0 {
-			baseDir = ms.Manifest.Mounts[0].LocalPath
-		}
-
-		pendingBuildEdits = shortenFileList(baseDir, pendingBuildEdits)
-		lastDeployEdits := shortenFileList(baseDir, ms.LastSuccessfulDeployEdits)
-		currentBuildEdits := shortenFileList(baseDir, ms.CurrentlyBuildingFileChanges)
+		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
+		lastDeployEdits := shortenFileList(absWatchDirs, ms.LastSuccessfulDeployEdits)
+		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentlyBuildingFileChanges)
 
 		lastBuildError := ""
 		if ms.LastError != nil {
@@ -138,7 +147,7 @@ func StateToView(s EngineState) view.View {
 
 		r := view.Resource{
 			Name:                  name.String(),
-			DirectoryWatched:      dirWatched,
+			DirectoriesWatched:    relWatchDirs,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
 			LastBuildError:        lastBuildError,
