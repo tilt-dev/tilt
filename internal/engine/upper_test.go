@@ -462,6 +462,65 @@ func TestRebuildDockerfile(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestChangeOnlyDeploysOneManifest(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	os.Chdir(f.Path())
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile1", "docker-tag1")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+
+  def bazqux():
+    start_fast_build("Dockerfile2", "docker-tag2")
+    image = stop_build()
+    return k8s_service("yaaaaaaaaml", image)
+`)
+	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
+	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
+
+	mount1 := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	mount2 := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	manifest1 := f.newManifest("foobar", []model.Mount{mount1})
+	manifest1.ConfigFiles = []string{
+		f.JoinPath("Dockerfile1"),
+	}
+	manifest2 := f.newManifest("bazqux", []model.Mount{mount2})
+	manifest2.ConfigFiles = []string{
+		f.JoinPath("Dockerfile2"),
+	}
+	endToken := errors.New("my-err-token")
+
+	// everything that we want to do while watch loop is running
+	go func() {
+		// First call: with the old manifests
+		call := <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+		call = <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+
+		f.WriteFile("Dockerfile1", `FROM node:10`)
+		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile1")}
+
+		// Second call: one new manifest!
+		call = <-f.b.calls
+		assert.Equal(t, "foobar", string(call.manifest.Name))
+
+		// Importantly the other manifest, bazqux, is _not_ called
+
+		f.fsWatcher.errors <- endToken
+	}()
+	err = f.upper.CreateManifests(f.ctx, []model.Manifest{manifest1, manifest2}, true)
+	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestRebuildDockerfileFailed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
