@@ -230,6 +230,13 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 			ms.LastBuildDuration = 0
 			return
 		}
+
+		if newManifest.Equal(ms.Manifest) {
+			logger.Get(ctx).Verbosef("Manifest %s hasn't changed, not rebuilding", ms.Manifest.Name)
+			state.CurrentlyBuilding = ""
+			return
+		}
+
 		ms.LastBuild = store.BuildStateClean
 		ms.Manifest = newManifest
 		ms.ConfigIsDirty = false
