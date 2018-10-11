@@ -99,12 +99,19 @@ func renderResource(p *pen, r view.Resource) {
 	p.putsf(" %s ", strings.Repeat("┄", dashSize-len(r.Name)))
 	p.style = tcell.StyleDefault
 	p.puts(deployString)
-	p.newln()
 
 	// Resource FS Changes ---------------------------------------
-	p.style = cLightText
-	p.putsf("  (Watching %s/)", r.DirectoryWatched)
-	p.style = tcell.StyleDefault
+	if len(r.DirectoriesWatched) > 0 {
+		p.newln()
+		var dirs []string
+		for _, s := range r.DirectoriesWatched {
+			dirs = append(dirs, fmt.Sprintf("%s/", s))
+		}
+		p.style = cLightText
+		p.putsf("  (Watching %s)", strings.Join(dirs, " "))
+		p.style = tcell.StyleDefault
+	}
+
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		if len(r.LastDeployEdits) > 0 {
 			p.style = cLightText
@@ -113,7 +120,6 @@ func renderResource(p *pen, r view.Resource) {
 			p.puts(formatFileList(r.LastDeployEdits))
 		}
 	}
-	p.newln()
 
 	// Build Info ---------------------------------------
 	var buildStrings []string
@@ -156,8 +162,7 @@ func renderResource(p *pen, r view.Resource) {
 	if len(buildStrings) == 0 {
 		buildStrings = []string{"no build yet"}
 	}
-	p.style = cLightText
-
+	p.newln()
 	p.style = cLightText
 	p.puts("  BUILD: ")
 	p.style = tcell.StyleDefault

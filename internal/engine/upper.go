@@ -109,15 +109,13 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	}()
 
 	for {
-		if len(u.store.State().ManifestStates) > 0 {
-			// Subscribers
-			u.maybeStartBuild(ctx, u.store)
-
-			err := u.hud.Update(store.StateToView(u.store.State()))
-			if err != nil {
-				logger.Get(ctx).Infof("Error updating HUD: %v", err)
-			}
+		// Subscribers
+		done, err := maybeFinished(u.store)
+		if done {
+			return err
 		}
+		u.maybeStartBuild(ctx, u.store)
+		u.maybeUpdateHUD(ctx, u.store)
 
 		select {
 		case <-ctx.Done():
@@ -125,41 +123,79 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 
 			// Reducers
 		case action := <-u.store.Actions():
-			switch action := action.(type) {
-			case InitAction:
-				err := u.handleInitAction(ctx, u.store, action)
-				if err != nil {
-					return err
-				}
-			case ErrorAction:
-				return action.Error
-			case manifestFilesChangedAction:
-				handleFSEvent(ctx, u.store, action)
-			case PodChangeAction:
-				handlePodEvent(ctx, u.store, action.Pod)
-			case BuildCompleteAction:
-				err := u.handleCompletedBuild(ctx, u.store, action)
-				if err != nil {
-					return err
-				}
-				if !u.store.State().WatchMounts && len(u.store.State().ManifestsToBuild) == 0 {
-					return nil
-				}
-			case hud.ReplayBuildLogAction:
-				replayBuildLog(ctx, u.store.State(), action.ResourceNumber)
-			default:
-				return fmt.Errorf("Unrecognized action: %T", action)
-
+			state := u.store.LockMutableState()
+			err := u.reduceAction(ctx, state, action)
+			if err != nil {
+				state.PermanentError = err
 			}
+			u.store.UnlockMutableState()
 		case <-time.After(refreshInterval):
 			break
 		}
 	}
 }
 
+func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, action store.Action) error {
+	switch action := action.(type) {
+	case InitAction:
+		return u.handleInitAction(ctx, state, action)
+	case ErrorAction:
+		return action.Error
+	case manifestFilesChangedAction:
+		handleFSEvent(ctx, state, action)
+	case PodChangeAction:
+		handlePodEvent(ctx, state, action.Pod)
+	case BuildCompleteAction:
+		return u.handleCompletedBuild(ctx, state, action)
+	case hud.ReplayBuildLogAction:
+		replayBuildLog(ctx, state, action.ResourceNumber)
+	default:
+		return fmt.Errorf("Unrecognized action: %T", action)
+	}
+	return nil
+}
+
+func maybeFinished(st *store.Store) (bool, error) {
+	state := st.RLockState()
+	defer st.RUnlockState()
+
+	if len(state.ManifestStates) == 0 {
+		return false, nil
+	}
+
+	if state.PermanentError != nil {
+		return true, state.PermanentError
+	}
+
+	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
+	return finished, nil
+}
+
+func (u Upper) maybeUpdateHUD(ctx context.Context, st *store.Store) {
+	state := st.RLockState()
+	if len(state.ManifestStates) == 0 {
+		st.RUnlockState()
+		return
+	}
+
+	view := store.StateToView(state)
+	st.RUnlockState()
+
+	err := u.hud.Update(view)
+	if err != nil {
+		logger.Get(ctx).Infof("Error updating HUD: %v", err)
+	}
+}
+
+// TODO(nick): This should be broken up into a separate subscriber (that kicks
+// off the build) and a reducer (that modifies state).
 func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
-	state := st.MutableState()
-	if len(state.ManifestsToBuild) == 0 || state.CurrentlyBuilding != "" {
+	state := st.LockMutableState()
+	defer st.UnlockMutableState()
+
+	if len(state.ManifestStates) == 0 ||
+		len(state.ManifestsToBuild) == 0 ||
+		state.CurrentlyBuilding != "" {
 		return
 	}
 
@@ -211,9 +247,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	}()
 }
 
-func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb BuildCompleteAction) error {
-	engineState := st.MutableState()
-
+func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -254,6 +288,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb Bui
 			// Open only the first load balancer in a browser.
 			// TODO(nick): We might need some hints on what load balancer to
 			// open if we have multiple, or what path to default to on the opened manifest.
+			// TODO(nick): This should be in a subscriber.
 			err := k8s.OpenService(ctx, u.k8s, ms.Lbs[0])
 			if err != nil {
 				return err
@@ -296,10 +331,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb Bui
 
 func handleFSEvent(
 	ctx context.Context,
-	st *store.Store,
+	state *store.EngineState,
 	event manifestFilesChangedAction) {
-
-	state := st.MutableState()
 	manifest := state.ManifestStates[event.manifestName].Manifest
 
 	if eventContainsConfigFiles(manifest, event) {
@@ -338,8 +371,7 @@ func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
 }
 
-func handlePodEvent(ctx context.Context, st *store.Store, pod *v1.Pod) {
-	state := st.MutableState()
+func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
 		return
@@ -364,10 +396,9 @@ func handlePodEvent(ctx context.Context, st *store.Store, pod *v1.Pod) {
 	}
 }
 
-func (u Upper) handleInitAction(ctx context.Context, st *store.Store, action InitAction) error {
+func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
-	engineState := st.MutableState()
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
@@ -377,11 +408,12 @@ func (u Upper) handleInitAction(ctx context.Context, st *store.Store, action Ini
 
 	var err error
 	if watchMounts {
-		err = makeManifestWatcher(ctx, st, u.fsWatcherMaker, u.timerMaker, manifests)
+		// TODO(nick): The watchers should be in a subscriber.
+		err = makeManifestWatcher(ctx, u.store, u.fsWatcherMaker, u.timerMaker, manifests)
 		if err != nil {
 			return err
 		}
-		err = u.podWatcherMaker(ctx, st)
+		err = u.podWatcherMaker(ctx, u.store)
 		if err != nil {
 			return err
 		}
@@ -505,7 +537,8 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifes
 	return nil
 }
 
-func replayBuildLog(ctx context.Context, state store.EngineState, resourceNumber int) {
+// TODO(nick): This should be in the HUD
+func replayBuildLog(ctx context.Context, state *store.EngineState, resourceNumber int) {
 	if resourceNumber > len(state.ManifestDefinitionOrder) {
 		logger.Get(ctx).Infof("Resource %d does not exist, so no log to print", resourceNumber)
 		return
