@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
@@ -901,7 +902,7 @@ type testFixture struct {
 	hud                   *hud.FakeHud
 	podEvents             chan *v1.Pod
 	createManifestsResult chan error
-	log                   *bytes.Buffer
+	log                   *bufsync.ThreadSafeBuffer
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -921,7 +922,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	hud := hud.NewFakeHud()
 
-	log := new(bytes.Buffer)
+	log := new(bufsync.ThreadSafeBuffer)
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
 	upper := Upper{
