@@ -628,6 +628,30 @@ func TestRepoPath(t *testing.T) {
 	assert.Equal(t, []string{"sh", "-c", f.JoinPath("subpath")}, manifest.Entrypoint.Argv)
 }
 
+func TestAddRepoPath(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile(".gitignore", "*.txt")
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("src/b.txt", "b")
+	f.WriteFile("src/b/c.txt", "c")
+	f.WriteFile("src/b/d.go", "d")
+	f.WriteFile("Tiltfile", `def blorgly():
+  repo = local_git_repo('.')
+  start_fast_build("Dockerfile.base", "docker-tag")
+  add(repo.path('src'), '/src')
+  image = stop_build()
+  return k8s_service("", image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.True(t, f.FiltersPath(manifest, "src/b.txt", false), "Expected to filter b.txt")
+	assert.True(t, f.FiltersPath(manifest, "src/b/c.txt", false), "Expected to filter c.txt")
+	assert.False(t, f.FiltersPath(manifest, "src/b/d.go", false), "Expected not to filter d.txt")
+}
+
 func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
