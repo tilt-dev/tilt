@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -21,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -57,6 +56,7 @@ type Upper struct {
 	browserMode     BrowserMode
 	reaper          build.ImageReaper
 	hud             hud.HeadsUpDisplay
+	store           *store.Store
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
@@ -70,7 +70,7 @@ func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker, st *store.Store) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -93,6 +93,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		browserMode:     browserMode,
 		reaper:          reaper,
 		hud:             hud,
+		store:           st,
 	}
 }
 
@@ -100,74 +101,52 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	engineState := store.NewState(manifests)
-
-	// TODO(nick): inject Store into the constructor
-	st := store.NewStore(engineState)
-
-	var err error
-	if watchMounts {
-		err = makeManifestWatcher(ctx, st, u.fsWatcherMaker, u.timerMaker, manifests)
-		if err != nil {
-			return err
-		}
-		err = u.podWatcherMaker(ctx, st)
-		if err != nil {
-			return err
-		}
-
-		go func() {
-			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
-			if err != nil {
-				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
-			}
-		}()
-	}
-
-	s := summary.NewSummary()
-	err = s.Gather(manifests)
-	if err != nil {
-		return err
-	}
-
-	for _, m := range manifests {
-		enqueueBuild(engineState, m.Name)
-	}
-	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
-
-	if u.browserMode == BrowserAuto {
-		engineState.OpenBrowserOnNextLB = true
-	}
+	u.store.Dispatch(InitAction{
+		WatchMounts: watchMounts,
+		Manifests:   manifests,
+	})
 
 	for {
-		u.dispatch(ctx, engineState)
-		err := u.hud.Update(store.StateToView(*engineState))
-		if err != nil {
-			logger.Get(ctx).Infof("Error updating HUD: %v", err)
+		if len(u.store.State().ManifestStates) > 0 {
+			// Subscribers
+			u.maybeStartBuild(ctx, u.store)
+
+			err := u.hud.Update(store.StateToView(u.store.State()))
+			if err != nil {
+				logger.Get(ctx).Infof("Error updating HUD: %v", err)
+			}
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case action := <-st.Actions():
+
+			// Reducers
+		case action := <-u.store.Actions():
 			switch action := action.(type) {
+			case InitAction:
+				err := u.handleInitAction(ctx, u.store, action)
+				if err != nil {
+					return err
+				}
 			case ErrorAction:
 				return action.Error
 			case manifestFilesChangedAction:
-				handleFSEvent(ctx, engineState, action)
+				handleFSEvent(ctx, u.store, action)
 			case PodChangeAction:
-				handlePodEvent(ctx, engineState, action.Pod)
+				handlePodEvent(ctx, u.store, action.Pod)
+			case BuildCompleteAction:
+				err := u.handleCompletedBuild(ctx, u.store, action)
+				if err != nil {
+					return err
+				}
+				if !u.store.State().WatchMounts && len(u.store.State().ManifestsToBuild) == 0 {
+					return nil
+				}
+
 			default:
 				return fmt.Errorf("Unrecognized action: %T", action)
 
-			}
-		case completedBuild := <-engineState.CompletedBuilds:
-			err := u.handleCompletedBuild(ctx, watchMounts, completedBuild, engineState, s)
-			if err != nil {
-				return err
-			}
-			if !watchMounts && len(engineState.ManifestsToBuild) == 0 {
-				return nil
 			}
 		case <-time.After(refreshInterval):
 			break
@@ -175,7 +154,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	}
 }
 
-func (u Upper) dispatch(ctx context.Context, state *store.EngineState) {
+func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
+	state := st.MutableState()
 	if len(state.ManifestsToBuild) == 0 || state.CurrentlyBuilding != "" {
 		return
 	}
@@ -223,12 +203,13 @@ func (u Upper) dispatch(ctx context.Context, state *store.EngineState) {
 			ctx,
 			m,
 			buildState)
-
-		state.CompletedBuilds <- store.CompletedBuild{Result: result, Err: err}
+		st.Dispatch(NewBuildCompleteAction(result, err))
 	}()
 }
 
-func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb store.CompletedBuild, engineState *store.EngineState, s *summary.Summary) error {
+func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb BuildCompleteAction) error {
+	engineState := st.MutableState()
+
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -241,7 +222,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb store
 		}
 	}()
 
-	err := cb.Err
+	err := cb.Error
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
 	ms.LastError = err
@@ -254,7 +235,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb store
 	if err != nil {
 		if isPermanentError(err) {
 			return err
-		} else if watching {
+		} else if engineState.WatchMounts {
 			o := output.Get(ctx)
 			logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
 		} else {
@@ -281,10 +262,21 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb store
 		ms.CurrentlyBuildingFileChanges = nil
 	}
 
-	if watching {
+	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-		s.Log(ctx, u.resolveLB)
+		summary := summary.NewSummary()
+		err := summary.Gather(engineState.Manifests())
+		if err != nil {
+			// If the user edited their k8s YAML and it's currently malformed,
+			// summary.Gather() might fail. This is OK. Just don't print the log right now.
+			// A better reactive model might have a way to only collect the manifests
+			// that are actively deployed.
+			logger.Get(ctx).Debugf("handleCompletedBuild: %v", err)
+		} else {
+			summary.Log(ctx, u.resolveLB)
+		}
+
 		if len(engineState.ManifestsToBuild) == 0 {
 			logger.Get(ctx).Infof("Awaiting changes…")
 		}
@@ -295,9 +287,10 @@ func (u Upper) handleCompletedBuild(ctx context.Context, watching bool, cb store
 
 func handleFSEvent(
 	ctx context.Context,
-	state *store.EngineState,
+	st *store.Store,
 	event manifestFilesChangedAction) {
 
+	state := st.MutableState()
 	manifest := state.ManifestStates[event.manifestName].Manifest
 
 	if eventContainsConfigFiles(manifest, event) {
@@ -336,7 +329,8 @@ func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
 }
 
-func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
+func handlePodEvent(ctx context.Context, st *store.Store, pod *v1.Pod) {
+	state := st.MutableState()
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
 		return
@@ -359,6 +353,47 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	if oldPod == store.UnknownPod || oldPod.Name == newPod.Name || oldPod.StartedAt.Before(newPod.StartedAt) {
 		ms.Pod = newPod
 	}
+}
+
+func (u Upper) handleInitAction(ctx context.Context, st *store.Store, action InitAction) error {
+	watchMounts := action.WatchMounts
+	manifests := action.Manifests
+	engineState := st.MutableState()
+
+	for _, m := range manifests {
+		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
+		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
+	}
+	engineState.WatchMounts = watchMounts
+
+	var err error
+	if watchMounts {
+		err = makeManifestWatcher(ctx, st, u.fsWatcherMaker, u.timerMaker, manifests)
+		if err != nil {
+			return err
+		}
+		err = u.podWatcherMaker(ctx, st)
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
+			if err != nil {
+				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
+			}
+		}()
+	}
+
+	for _, m := range manifests {
+		enqueueBuild(engineState, m.Name)
+	}
+	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
+
+	if u.browserMode == BrowserAuto {
+		engineState.OpenBrowserOnNextLB = true
+	}
+	return nil
 }
 
 // Check if the filesChangedSet only contains spurious changes that

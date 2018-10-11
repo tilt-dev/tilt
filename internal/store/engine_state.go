@@ -18,7 +18,7 @@ type EngineState struct {
 	ManifestStates    map[model.ManifestName]*ManifestState
 	ManifestsToBuild  []model.ManifestName
 	CurrentlyBuilding model.ManifestName
-	CompletedBuilds   chan CompletedBuild
+	WatchMounts       bool
 
 	// How many builds were queued on startup (i.e., how many manifests there were)
 	InitialBuildCount int
@@ -52,27 +52,13 @@ type ManifestState struct {
 	ConfigIsDirty bool
 }
 
-type CompletedBuild struct {
-	Result BuildResult
-	Err    error
-}
-
-func NewState(manifests []model.Manifest) *EngineState {
-	ret := &EngineState{
-		CompletedBuilds: make(chan CompletedBuild),
-	}
-
+func NewState() *EngineState {
+	ret := &EngineState{}
 	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
-
-	for _, m := range manifests {
-		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
-		ret.ManifestStates[m.Name] = newManifestState(m)
-	}
-
 	return ret
 }
 
-func newManifestState(manifest model.Manifest) *ManifestState {
+func NewManifestState(manifest model.Manifest) *ManifestState {
 	return &ManifestState{
 		LastBuild:          BuildStateClean,
 		Manifest:           manifest,
@@ -97,6 +83,16 @@ func shortenFileList(baseDir string, files []string) []string {
 	}
 
 	return ret
+}
+
+// Returns the manifests in order.
+func (s EngineState) Manifests() []model.Manifest {
+	result := make([]model.Manifest, 0)
+	for _, name := range s.ManifestDefinitionOrder {
+		ms := s.ManifestStates[name]
+		result = append(result, ms.Manifest)
+	}
+	return result
 }
 
 func StateToView(s EngineState) view.View {
