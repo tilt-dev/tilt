@@ -33,6 +33,10 @@ type FakeK8sClient struct {
 	PodLogs string
 }
 
+func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
+	return nil, nil
+}
+
 func (c *FakeK8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
 	return nil, nil
 }

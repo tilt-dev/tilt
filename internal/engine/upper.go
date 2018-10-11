@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/browser"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -48,19 +50,21 @@ const refreshInterval = 1 * time.Second
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b               BuildAndDeployer
-	fsWatcherMaker  fsWatcherMaker
-	timerMaker      timerMaker
-	podWatcherMaker PodWatcherMaker
-	k8s             k8s.Client
-	browserMode     BrowserMode
-	reaper          build.ImageReaper
-	hud             hud.HeadsUpDisplay
-	store           *store.Store
-	plm             *PodLogManager
+	b                   BuildAndDeployer
+	fsWatcherMaker      fsWatcherMaker
+	timerMaker          timerMaker
+	podWatcherMaker     PodWatcherMaker
+	serviceWatcherMaker ServiceWatcherMaker
+	k8s                 k8s.Client
+	browserMode         BrowserMode
+	reaper              build.ImageReaper
+	hud                 hud.HeadsUpDisplay
+	store               *store.Store
+	plm                 *PodLogManager
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
+type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
@@ -70,23 +74,30 @@ func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
 	}
 }
 
+func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
+	return func(ctx context.Context, store *store.Store) error {
+		return makeServiceWatcher(ctx, kCli, store)
+	}
+}
+
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker, st *store.Store, plm *PodLogManager) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker, st *store.Store, plm *PodLogManager) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 
 	return Upper{
-		b:               b,
-		fsWatcherMaker:  fsWatcherMaker,
-		podWatcherMaker: pw,
-		timerMaker:      time.After,
-		k8s:             k8s,
-		browserMode:     browserMode,
-		reaper:          reaper,
-		hud:             hud,
-		store:           st,
-		plm:             plm,
+		b:                   b,
+		fsWatcherMaker:      fsWatcherMaker,
+		podWatcherMaker:     pwm,
+		serviceWatcherMaker: swm,
+		timerMaker:          time.After,
+		k8s:                 k8s,
+		browserMode:         browserMode,
+		reaper:              reaper,
+		hud:                 hud,
+		store:               st,
+		plm:                 plm,
 	}
 }
 
@@ -137,6 +148,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				handleFSEvent(ctx, u.store, action)
 			case PodChangeAction:
 				handlePodEvent(ctx, u.store, action.Pod)
+			case ServiceChangeAction:
+				handleServiceEvent(ctx, u.store, action.Service)
 			case BuildCompleteAction:
 				err := u.handleCompletedBuild(ctx, u.store, action)
 				if err != nil {
@@ -248,19 +261,6 @@ func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb Bui
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()
 
-		ms.Lbs = k8s.ToLoadBalancerSpecs(cb.Result.Entities)
-
-		if len(ms.Lbs) > 0 && engineState.OpenBrowserOnNextLB {
-			// Open only the first load balancer in a browser.
-			// TODO(nick): We might need some hints on what load balancer to
-			// open if we have multiple, or what path to default to on the opened manifest.
-			err := k8s.OpenService(ctx, u.k8s, ms.Lbs[0])
-			if err != nil {
-				return err
-			}
-			engineState.OpenBrowserOnNextLB = false
-		}
-
 		prevBuild := ms.LastBuild
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
@@ -364,6 +364,41 @@ func handlePodEvent(ctx context.Context, st *store.Store, pod *v1.Pod) {
 	}
 }
 
+func handleServiceEvent(ctx context.Context, st *store.Store, service *v1.Service) {
+	state := st.MutableState()
+	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
+	if manifestName == "" {
+		return
+	}
+
+	ms, ok := state.ManifestStates[manifestName]
+	if !ok {
+		logger.Get(ctx).Infof("error: got notified of service for unknown manifest '%s'", manifestName)
+		return
+	}
+
+	url, err := k8s.ServiceURL(service)
+	if err != nil {
+		logger.Get(ctx).Infof("error resolving service %s: %v", manifestName, err)
+		return
+	}
+
+	ms.LBs[k8s.ServiceName(service.Name)] = url
+
+	if url != nil && state.OpenBrowserOnNextLB {
+		// Open only the first load balancer in a browser.
+		// TODO(nick): We might need some hints on what load balancer to
+		// open if we have multiple, or what path to default to on the opened manifest.
+		err := browser.OpenURL(url.String())
+		if err != nil {
+			logger.Get(ctx).Infof("error opening service %s at %s: %v", service.Name, url.String(), err)
+			return
+		}
+
+		state.OpenBrowserOnNextLB = false
+	}
+}
+
 func (u Upper) handleInitAction(ctx context.Context, st *store.Store, action InitAction) error {
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
@@ -382,6 +417,10 @@ func (u Upper) handleInitAction(ctx context.Context, st *store.Store, action Ini
 			return err
 		}
 		err = u.podWatcherMaker(ctx, st)
+		if err != nil {
+			return err
+		}
+		err = u.serviceWatcherMaker(ctx, st)
 		if err != nil {
 			return err
 		}
