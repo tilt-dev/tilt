@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-
 	"github.com/docker/distribution/reference"
-	"github.com/windmilleng/tilt/internal/ignore"
-
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 const podPollTimeoutSynclet = time.Second * 30
@@ -33,8 +33,8 @@ func NewSyncletBuildAndDeployer(dd *DeployDiscovery, sm SyncletManager) *Synclet
 }
 
 func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img reference.NamedTagged) error {
-	deployInfo, ok := sbd.dd.ForgetImage(img)
-	if ok {
+	deployInfo := sbd.dd.ForgetImage(img)
+	if deployInfo.podID != "" {
 		return sbd.sm.ForgetPod(ctx, deployInfo.podID)
 	}
 	return nil
@@ -75,14 +75,11 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
-	info, ok := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
-	if !ok {
-		return fmt.Errorf("have not yet fetched deploy info for this manifest. " +
-			"This should NEVER HAPPEN b/c of the way PostProcessBuild blocks, something is wrong")
-	}
-
-	if info.err != nil {
-		return fmt.Errorf("no deploy info for this manifest (failed to fetch with error: %v)", info.err)
+	info, err := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
+	if err != nil {
+		return errors.Wrap(err, "deploy info fetch failed")
+	} else if info.Empty() {
+		return fmt.Errorf("no deploy info")
 	}
 
 	return nil
@@ -118,12 +115,13 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
-	deployInfo, ok := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
-	if !ok || deployInfo == nil {
-		// We theoretically already checked this condition :(
-		return store.BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
-			"(should have checked this upstream, something is wrong)",
-			manifest.Name, state.LastResult.Image.String())
+	deployInfo, err := sbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
+
+	// We theoretically already checked this condition :(
+	if err != nil {
+		return store.BuildResult{}, errors.Wrap(err, "deploy info fetch failed")
+	} else if deployInfo.Empty() {
+		return store.BuildResult{}, fmt.Errorf("no deploy info")
 	}
 
 	cmds, err := build.BoilSteps(manifest.Steps, paths)

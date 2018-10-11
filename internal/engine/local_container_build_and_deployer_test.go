@@ -28,8 +28,8 @@ func TestPostProcessBuild(t *testing.T) {
 	res := store.BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
 
-	info, ok := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
-	assert.True(t, ok)
+	info, err := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
+	assert.Nil(t, err)
 	assert.Equal(t, string(k8s.MagicTestContainerID), string(info.containerID))
 }
 
@@ -38,16 +38,16 @@ func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 
 	f.kCli.SetPodsWithImageResp(pod1)
 
-	info := newEmptyDeployInfo()
-	info.containerID = k8s.ContainerID("ohai")
-	info.markReady()
-	f.cbad.dd.deployInfo[docker.ToImgNameAndTag(image1)] = info
+	entry := newDeployInfoEntry()
+	entry.containerID = k8s.ContainerID("ohai")
+	entry.markReady()
+	f.cbad.dd.deployInfo[docker.ToImgNameAndTag(image1)] = entry
 
 	res := store.BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
 
-	info, ok := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
-	assert.True(t, ok)
+	info, err := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
+	assert.Nil(t, err)
 	assert.Equal(t, k8s.ContainerID("ohai"), info.containerID,
 		"Getting info again for same image -- contents should not have changed")
 }
