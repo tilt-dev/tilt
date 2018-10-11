@@ -202,6 +202,7 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	switch p := src.(type) {
 	case localPath:
 		m.src = p
+		m.repo = p.repo
 	case gitRepo:
 		m.src = localPath{p.basePath, p}
 		m.repo = p
