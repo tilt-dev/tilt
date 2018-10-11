@@ -1,7 +1,9 @@
 package main
 
 import (
-	"github.com/windmilleng/tilt/internal/view"
+	"time"
+
+	"github.com/windmilleng/tilt/internal/hud/view"
 )
 
 func sampleView() view.View {
