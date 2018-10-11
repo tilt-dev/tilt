@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -783,6 +784,60 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestUpper_ReplayBuildLog(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	<-f.b.calls
+	<-f.hud.Updates
+	f.upper.store.Dispatch(hud.NewReplayBuildLogAction(1))
+
+	<-f.hud.Updates
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	buildOutputCount := 0
+	for _, l := range f.LogLines() {
+		if l == "fake building foobar" {
+			buildOutputCount++
+		}
+	}
+	assert.Equal(t, 2, buildOutputCount)
+
+	f.assertAllBuildsConsumed()
+}
+
+func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	<-f.b.calls
+	<-f.hud.Updates
+	f.upper.store.Dispatch(hud.NewReplayBuildLogAction(5))
+
+	<-f.hud.Updates
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	assert.Contains(t, f.LogLines(), "Resource 5 does not exist, so no log to print")
+
+	f.assertAllBuildsConsumed()
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -836,15 +891,17 @@ func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store
 
 type testFixture struct {
 	*tempdir.TempDirFixture
-	ctx        context.Context
-	cancel     func()
-	upper      Upper
-	b          *fakeBuildAndDeployer
-	fsWatcher  *fakeNotify
-	timerMaker *fakeTimerMaker
-	docker     *docker.FakeDockerClient
-	hud        *hud.FakeHud
-	podEvents  chan *v1.Pod
+	ctx                   context.Context
+	cancel                func()
+	upper                 Upper
+	b                     *fakeBuildAndDeployer
+	fsWatcher             *fakeNotify
+	timerMaker            *fakeTimerMaker
+	docker                *docker.FakeDockerClient
+	hud                   *hud.FakeHud
+	podEvents             chan *v1.Pod
+	createManifestsResult chan error
+	log                   *bytes.Buffer
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -863,7 +920,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	k8s := k8s.NewFakeK8sClient()
 
 	hud := hud.NewFakeHud()
-	ctx, cancel := context.WithCancel(testoutput.CtxForTest())
+
+	log := new(bytes.Buffer)
+	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
 	upper := Upper{
 		b:               b,
@@ -878,17 +937,40 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 
 	return &testFixture{
-		f,
-		ctx,
-		cancel,
-		upper,
-		b,
-		watcher,
-		&timerMaker,
-		docker,
-		hud,
-		podEvents,
+		TempDirFixture: f,
+		ctx:            ctx,
+		cancel:         cancel,
+		upper:          upper,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         docker,
+		hud:            hud,
+		podEvents:      podEvents,
+		log:            log,
 	}
+}
+
+func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
+	f.createManifestsResult = make(chan error)
+
+	go func() {
+		f.createManifestsResult <- f.upper.CreateManifests(f.ctx, manifests, watchMounts)
+	}()
+}
+
+func (f *testFixture) Stop() error {
+	f.cancel()
+	err := <-f.createManifestsResult
+	if err == context.Canceled {
+		return nil
+	} else {
+		return err
+	}
+}
+
+func (f *testFixture) LogLines() []string {
+	return strings.Split(f.log.String(), "\n")
 }
 
 func (f *testFixture) TearDown() {
