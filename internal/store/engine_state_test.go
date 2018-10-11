@@ -1,6 +1,7 @@
 package store
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,6 +34,8 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 
 	r := v.Resources[0]
 	assert.Equal(t, []string{"d", "d/e"}, r.LastDeployEdits)
+
+	sort.Strings(r.CurrentBuildEdits)
 	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuildEdits)
 	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
 }

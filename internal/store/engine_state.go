@@ -2,7 +2,6 @@ package store
 
 import (
 	"bytes"
-	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -80,9 +79,9 @@ var UnknownPod = Pod{}
 func shortenFile(baseDirs []string, f string) string {
 	ret := f
 	for _, baseDir := range baseDirs {
-		trimmed := strings.TrimPrefix(strings.TrimPrefix(f, baseDir), "/")
-		if len(trimmed) < len(ret) {
-			ret = trimmed
+		short, isChild := ospath.Child(baseDir, f)
+		if isChild && len(short) < len(ret) {
+			ret = short
 		}
 	}
 	return ret
