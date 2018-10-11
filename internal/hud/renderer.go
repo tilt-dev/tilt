@@ -92,7 +92,13 @@ func renderResource(p *pen, r view.Resource) {
 	}
 	p.putlnf("%s — %s", r.Name, deployString)
 
-	p.putlnf("  Watching %s/", r.DirectoryWatched)
+	if len(r.DirectoriesWatched) > 0 {
+		var dirs []string
+		for _, s := range r.DirectoriesWatched {
+			dirs = append(dirs, fmt.Sprintf("%s/", s))
+		}
+		p.putlnf("  Watching %s", strings.Join(dirs, " "))
+	}
 
 	var buildStrings []string
 
