@@ -83,18 +83,39 @@ func formatFileList(files []string) string {
 }
 
 func renderResource(p *pen, r view.Resource) {
-	p.putln("")
-	deployString := "not yet deployed"
+	cLightText := tcell.StyleDefault.Foreground(tcell.Color241)
+	// cGreen := tcell.StyleDefault.Foreground(tcell.Color64)
+	// cRed := tcell.StyleDefault.Foreground(tcell.Color124)
+	// cYellow := tcell.StyleDefault.Foreground(tcell.Color136)
+
+	// Resource Title ---------------------------------------
+	deployString := "not deployed yet"
 	if !r.LastDeployTime.Equal(time.Time{}) {
-		deployString = fmt.Sprintf("Last deployed %s ago", formatDuration(time.Since(r.LastDeployTime)))
+		deployString = fmt.Sprintf("deployed %s ago", formatDuration(time.Since(r.LastDeployTime)))
+	}
+	p.puts(r.Name)
+	p.style = cLightText
+	dashSize := 35
+	p.putsf(" %s ", strings.Repeat("┄", dashSize-len(r.Name)))
+	p.style = tcell.StyleDefault
+	p.puts(deployString)
+	p.newln()
+
+	// Resource FS Changes ---------------------------------------
+	p.style = cLightText
+	p.putsf("  (Watching %s/)", r.DirectoryWatched)
+	p.style = tcell.StyleDefault
+	if !r.LastDeployTime.Equal(time.Time{}) {
 		if len(r.LastDeployEdits) > 0 {
-			deployString += fmt.Sprintf(" • Latest Edits: %s", formatFileList(r.LastDeployEdits))
+			p.style = cLightText
+			p.puts(" Last Deployed Edits: ")
+			p.style = tcell.StyleDefault
+			p.puts(formatFileList(r.LastDeployEdits))
 		}
 	}
-	p.putlnf("%s — %s", r.Name, deployString)
+	p.newln()
 
-	p.putlnf("  Watching %s/", r.DirectoryWatched)
-
+	// Build Info ---------------------------------------
 	var buildStrings []string
 
 	if !r.CurrentBuildStartTime.Equal(time.Time{}) {
@@ -116,13 +137,13 @@ func renderResource(p *pen, r view.Resource) {
 	if !r.LastBuildFinishTime.Equal(time.Time{}) {
 		shortBuildStatus := "OK"
 		if r.LastBuildError != "" {
-			shortBuildStatus = "Error"
+			shortBuildStatus = "ERR"
 		}
 
-		s := fmt.Sprintf("Last — %s • Took %s • Ended %s ago",
-			shortBuildStatus,
+		s := fmt.Sprintf("Last build (done in %s) ended %s ago — %s",
 			formatPreciseDuration(r.LastBuildDuration),
-			formatDuration(time.Since(r.LastBuildFinishTime)))
+			formatDuration(time.Since(r.LastBuildFinishTime)),
+			shortBuildStatus)
 
 		buildStrings = append(buildStrings, s)
 
@@ -135,18 +156,29 @@ func renderResource(p *pen, r view.Resource) {
 	if len(buildStrings) == 0 {
 		buildStrings = []string{"no build yet"}
 	}
-	p.putlnf("  BUILD: %s", buildStrings[0])
+	p.style = cLightText
+
+	p.style = cLightText
+	p.puts("  BUILD: ")
+	p.style = tcell.StyleDefault
+	p.puts(buildStrings[0])
+	p.newln()
 	for _, s := range buildStrings[1:] {
 		p.putlnf("         %s", s)
 	}
 
+	// Kubernetes Info ---------------------------------------
 	if r.PodStatus != "" {
-		p.putlnf("  K8s:   Pod %s - %s ago • Status: %s", r.PodName, formatDuration(time.Since(r.PodCreationTime)), r.PodStatus)
+		p.style = cLightText
+		p.puts("    K8S: ")
+		p.style = tcell.StyleDefault
+		p.putsf("Pod [%s] • %s ago — %s", r.PodName, formatDuration(time.Since(r.PodCreationTime)), r.PodStatus)
 	}
 	if r.Endpoint != "" {
 		p.putlnf("         %s", r.Endpoint)
 	}
-
+	p.newln()
+	p.newln()
 }
 
 func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
