@@ -907,6 +907,46 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.assertAllHUDUpdatesConsumed()
 }
 
+func TestUpper_PodLogs(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	<-f.b.calls
+
+	<-f.hud.Updates
+	<-f.hud.Updates
+
+	f.upper.store.Dispatch(PodChangeAction{
+		Pod: testPod("podid", "fe", "Running", time.Now()),
+	})
+	<-f.hud.Updates
+
+	expected := "Hello world!\n"
+	f.upper.store.Dispatch(PodLogAction{
+		ManifestName: manifest.Name,
+		PodID:        k8s.PodID("podid"),
+		Log:          []byte(expected),
+	})
+	<-f.hud.Updates
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	state := f.upper.store.RLockState()
+	defer f.upper.store.RUnlockState()
+	assert.Equal(t, expected, string(state.ManifestStates[manifest.Name].Pod.Log))
+
+	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -1004,8 +1044,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	log := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
-	dd := NewDeployDiscovery(k8s)
-	plm := NewPodLogManager(k8s, dd)
+	st := store.NewStore()
+	dd := NewDeployDiscovery(k8s, st)
+	plm := NewPodLogManager(k8s, dd, st)
 
 	upper := Upper{
 		b:                   b,

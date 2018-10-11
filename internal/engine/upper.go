@@ -158,6 +158,8 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		handlePodEvent(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action.Service)
+	case PodLogAction:
+		handlePodLogAction(state, action)
 	case BuildCompleteAction:
 		return u.handleCompletedBuild(ctx, state, action)
 	case hud.ReplayBuildLogAction:
@@ -376,23 +378,53 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 
-	newPod := store.Pod{
-		Name:      pod.Name,
-		StartedAt: pod.CreationTimestamp.Time,
-		Status:    podStatusToString(*pod),
-	}
+	podID := k8s.PodIDFromPod(pod)
+	startedAt := pod.CreationTimestamp.Time
+	status := podStatusToString(*pod)
 
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
-		logger.Get(ctx).Infof("error: got notified of pod for unknown manifest '%s'", manifestName)
+		// This is OK. The user could have edited the manifest recently.
 		return
 	}
 
 	oldPod := ms.Pod
-
-	if oldPod == store.UnknownPod || oldPod.Name == newPod.Name || oldPod.StartedAt.Before(newPod.StartedAt) {
-		ms.Pod = newPod
+	if oldPod.PodID == "" || oldPod.StartedAt.Before(startedAt) {
+		ms.Pod = store.Pod{
+			PodID:     podID,
+			StartedAt: startedAt,
+			Status:    status,
+		}
+	} else if oldPod.PodID == podID {
+		ms.Pod.Status = status
+		ms.Pod.StartedAt = startedAt
 	}
+}
+
+func handlePodLogAction(state *store.EngineState, action PodLogAction) {
+	manifestName := action.ManifestName
+	ms, ok := state.ManifestStates[manifestName]
+	if !ok {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+
+	if ms.Pod.PodID != action.PodID {
+		// NOTE(nick): There are two cases where this could happen:
+		// 1) Pod 1 died and kubernetes started Pod 2. What should we do with
+		//    logs from Pod 1 that are still in the action queue?
+		//    This is an open product question. A future HUD may aggregate
+		//    logs across pod restarts.
+		// 2) Due to race conditions, we got the logs for Pod 1 before
+		//    we saw Pod 1 materialize on the Pod API. The best way to fix
+		//    this would be to make PodLogManager a subscriber that only
+		//    starts listening on logs once the pod has materialized.
+		//    We may prioritize this higher or lower based on how often
+		//    this happens in practice.
+		return
+	}
+
+	ms.Pod.Log = append(ms.Pod.Log, action.Log...)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
