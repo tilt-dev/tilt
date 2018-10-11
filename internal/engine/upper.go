@@ -55,6 +55,7 @@ type Upper struct {
 	browserMode     BrowserMode
 	reaper          build.ImageReaper
 	hud             hud.HeadsUpDisplay
+	store           *store.Store
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
@@ -68,7 +69,7 @@ func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker, st *store.Store) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -91,6 +92,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		browserMode:     browserMode,
 		reaper:          reaper,
 		hud:             hud,
+		store:           st,
 	}
 }
 
@@ -98,19 +100,17 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
 	defer span.Finish()
 
-	// TODO(nick): inject Store into the constructor
-	st := store.NewStore()
-	st.Dispatch(InitAction{
+	u.store.Dispatch(InitAction{
 		WatchMounts: watchMounts,
 		Manifests:   manifests,
 	})
 
 	for {
-		if len(st.State().ManifestStates) > 0 {
+		if len(u.store.State().ManifestStates) > 0 {
 			// Subscribers
-			u.maybeStartBuild(ctx, st)
+			u.maybeStartBuild(ctx, u.store)
 
-			err := u.hud.Update(store.StateToView(st.State()))
+			err := u.hud.Update(store.StateToView(u.store.State()))
 			if err != nil {
 				logger.Get(ctx).Infof("Error updating HUD: %v", err)
 			}
@@ -121,25 +121,25 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			return ctx.Err()
 
 			// Reducers
-		case action := <-st.Actions():
+		case action := <-u.store.Actions():
 			switch action := action.(type) {
 			case InitAction:
-				err := u.handleInitAction(ctx, st, action)
+				err := u.handleInitAction(ctx, u.store, action)
 				if err != nil {
 					return err
 				}
 			case ErrorAction:
 				return action.Error
 			case manifestFilesChangedAction:
-				handleFSEvent(ctx, st, action)
+				handleFSEvent(ctx, u.store, action)
 			case PodChangeAction:
-				handlePodEvent(ctx, st, action.Pod)
+				handlePodEvent(ctx, u.store, action.Pod)
 			case BuildCompleteAction:
-				err := u.handleCompletedBuild(ctx, st, action)
+				err := u.handleCompletedBuild(ctx, u.store, action)
 				if err != nil {
 					return err
 				}
-				if !st.State().WatchMounts && len(st.State().ManifestsToBuild) == 0 {
+				if !u.store.State().WatchMounts && len(u.store.State().ManifestsToBuild) == 0 {
 					return nil
 				}
 

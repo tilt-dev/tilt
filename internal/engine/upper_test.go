@@ -868,6 +868,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		browserMode:     BrowserAuto,
 		reaper:          reaper,
 		hud:             hud,
+		store:           store.NewStore(),
 	}
 
 	return &testFixture{
