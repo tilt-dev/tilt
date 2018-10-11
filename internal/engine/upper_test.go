@@ -485,15 +485,15 @@ func TestChangeOnlyDeploysOneManifest(t *testing.T) {
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 
-	mount1 := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
-	mount2 := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	mount1 := model.Mount{LocalPath: f.TempDirFixture.JoinPath("mount1"), ContainerPath: "/go"}
+	mount2 := model.Mount{LocalPath: f.TempDirFixture.JoinPath("mount2"), ContainerPath: "/go"}
 	manifest1 := f.newManifest("foobar", []model.Mount{mount1})
 	manifest1.ConfigFiles = []string{
-		f.JoinPath("Dockerfile1"),
+		f.JoinPath("mount1", "Dockerfile1"),
 	}
 	manifest2 := f.newManifest("bazqux", []model.Mount{mount2})
 	manifest2.ConfigFiles = []string{
-		f.JoinPath("Dockerfile2"),
+		f.JoinPath("mount2", "Dockerfile2"),
 	}
 	endToken := errors.New("my-err-token")
 
@@ -502,11 +502,15 @@ func TestChangeOnlyDeploysOneManifest(t *testing.T) {
 		// First call: with the old manifests
 		call := <-f.b.calls
 		assert.Empty(t, call.manifest.BaseDockerfile)
+		assert.Equal(t, "foobar", string(call.manifest.Name))
 		call = <-f.b.calls
 		assert.Empty(t, call.manifest.BaseDockerfile)
+		assert.Equal(t, "bazqux", string(call.manifest.Name))
 
 		f.WriteFile("Dockerfile1", `FROM node:10`)
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile1")}
+		f.store.Dispatch(manifestFilesChangedAction{
+			files:        []string{f.JoinPath("mount1", "Dockerfile1")},
+			manifestName: manifest1.Name})
 
 		// Second call: one new manifest!
 		call = <-f.b.calls
@@ -1078,6 +1082,7 @@ type testFixture struct {
 	serviceEvents         chan *v1.Service
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
+	store                 *store.Store
 }
 
 func newTestFixture(t *testing.T) *testFixture {
