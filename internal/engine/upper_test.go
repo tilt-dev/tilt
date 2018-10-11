@@ -922,7 +922,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	hud := hud.NewFakeHud()
 
-	log := new(bufsync.ThreadSafeBuffer)
+	log := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
 	upper := Upper{
