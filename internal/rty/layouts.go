@@ -8,8 +8,16 @@ import (
 
 // Layouts implement Component
 
+type Dir int
+
+const (
+	DirHor Dir = iota
+	DirVert
+)
+
 // FlexLayout lays out its sub-components.
 type FlexLayout struct {
+	id  ID
 	dir Dir
 	cs  []Component
 }
@@ -20,214 +28,240 @@ func NewFlexLayout(dir Dir) *FlexLayout {
 	}
 }
 
+func (l *FlexLayout) ID() ID {
+	return l.id
+}
+
 func (l *FlexLayout) Add(c Component) {
 	l.cs = append(l.cs, c)
 }
 
-func (l *FlexLayout) Render(c CanvasWriter) error {
-	width, height := c.Size()
+func whToLd(width int, height int, dir Dir) (length int, depth int) {
+	if dir == DirVert {
+		return height, width
+	}
+	return width, height
+}
 
+func ldToWh(length int, depth int, dir Dir) (width int, height int) {
+	if dir == DirVert {
+		return depth, length
+	}
+	return length, depth
+}
+
+func (l *FlexLayout) Size(width int, height int) (int, int) {
+	return width, height
+}
+
+func (l *FlexLayout) Render(w Writer, width, height int) error {
 	length := width
 	if l.dir == DirVert {
 		length = height
 	}
 
+	allocations := make([]int, len(l.cs))
 	allocated := 0
-	numFlex := len(l.cs)
+	var flexIdxs []int
 
-	for _, c := range l.cs {
-		fdc, ok := c.(FixedDimComponent)
-		if !ok {
-			continue
+	for i, c := range l.cs {
+		reqWidth, reqHeight := c.Size(width, height)
+		reqLen, _ := whToLd(reqWidth, reqHeight, l.dir)
+		if reqLen >= height {
+			flexIdxs = append(flexIdxs, i)
+		} else {
+			allocations[i] = reqLen
+			allocated += reqLen
 		}
-		numFlex--
-		allocated += fdc.FixedDimSize()
 	}
 
 	flexTotal := length - allocated
 	if flexTotal < 0 {
 		return fmt.Errorf("FlexLayout can't render in %v lines; need at least %v", length, allocated)
 	}
-	var flexLengths []int
-	for i := 0; i < numFlex; i++ {
+	numFlex := len(flexIdxs)
+	for _, i := range flexIdxs {
 		elemLength := flexTotal / numFlex
-		flexLengths = append(flexLengths, elemLength)
+		allocations[i] = elemLength
 		flexTotal -= elemLength
 	}
 
 	offset := 0
-	for _, comp := range l.cs {
-		elemLength := 0
-		fdcomp, ok := comp.(FixedDimComponent)
-		if ok {
-			elemLength = fdcomp.FixedDimSize()
-		} else {
-			elemLength, flexLengths = flexLengths[0], flexLengths[1:]
-		}
+	for i, c := range l.cs {
+		elemLength := allocations[i]
 
-		var subC CanvasWriter
+		var subW Writer
 
 		if l.dir == DirHor {
-			subC = c.Sub(offset, 0, elemLength, height)
+			subW = w.Divide(offset, 0, allocations[i], height)
 		} else {
-			subC = c.Sub(0, offset, width, elemLength)
+			subW = w.Divide(0, offset, width, allocations[i])
 		}
 
 		offset += elemLength
 
-		if err := comp.Render(subC); err != nil {
-			return err
-		}
+		subW.RenderChild(c)
 	}
-
-	return nil
-}
-
-type ScrollLayout struct {
-	concat *ConcatLayout
-}
-
-func NewScrollLayout(dir Dir) *ScrollLayout {
-	if dir == DirHor {
-		panic(fmt.Errorf("ScrollLayout doesn't support Horizontal"))
-	}
-
-	return &ScrollLayout{
-		concat: NewConcatLayout(DirVert),
-	}
-}
-
-func (l *ScrollLayout) Add(c FixedDimComponent) {
-	l.concat.Add(c)
-}
-
-func (l *ScrollLayout) Render(c CanvasWriter) error {
-	width, height := c.Size()
-	if height < l.concat.FixedDimSize() {
-		height = l.concat.FixedDimSize()
-	}
-	tempC := NewTempCanvas(width, height)
-	if err := l.concat.Render(tempC); err != nil {
-		return err
-	}
-
-	Copy(tempC, c)
 	return nil
 }
 
 type ConcatLayout struct {
+	id  ID
 	dir Dir
-	cs  []FixedDimComponent
+	cs  []Component
 }
 
-func NewConcatLayout(dir Dir) *ConcatLayout {
-	return &ConcatLayout{dir: dir}
+func NewConcatLayout(id ID, dir Dir) *ConcatLayout {
+	return &ConcatLayout{id: id, dir: dir}
 }
 
-func (l *ConcatLayout) Add(c FixedDimComponent) {
+func (l *ConcatLayout) ID() ID {
+	return l.id
+}
+
+func (l *ConcatLayout) Add(c Component) {
 	l.cs = append(l.cs, c)
 }
 
-func (l *ConcatLayout) FixedDimSize() int {
-	r := 0
+func (l *ConcatLayout) Size(width, height int) (int, int) {
+	totalLen := 0
+	maxDepth := 0
 	for _, c := range l.cs {
-		r += c.FixedDimSize()
+		reqWidth, reqHeight := c.Size(width, height)
+		reqLen, reqDepth := whToLd(reqWidth, reqHeight, l.dir)
+		if reqLen == GROW {
+			return ldToWh(reqLen, maxDepth, l.dir)
+		}
+		totalLen += reqLen
+		if reqDepth > maxDepth {
+			maxDepth = reqDepth
+		}
 	}
-
-	return r
+	return ldToWh(totalLen, maxDepth, l.dir)
 }
 
-func (l *ConcatLayout) Render(c CanvasWriter) error {
-	width, height := c.Size()
+func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 	offset := 0
-	for _, subL := range l.cs {
-		elemLength := subL.FixedDimSize()
+	for _, c := range l.cs {
+		reqWidth, reqHeight := c.Size(width, height)
 
-		var subC CanvasWriter
+		var subW Writer
 		if l.dir == DirHor {
-			subC = c.Sub(offset, 0, elemLength, height)
+			subW = w.Divide(offset, 0, reqWidth, reqHeight)
+			offset += reqWidth
 		} else {
-			subC = c.Sub(0, offset, width, elemLength)
+			subW = w.Divide(0, offset, reqWidth, reqHeight)
+			offset += reqHeight
 		}
 
-		if err := subL.Render(subC); err != nil {
-			return err
-		}
-		offset += elemLength
+		subW.RenderChild(c)
 	}
 	return nil
 }
 
-func NewLines() *ConcatLayout {
-	return NewConcatLayout(DirVert)
+func NewLines(id ID) *ConcatLayout {
+	return NewConcatLayout(id, DirVert)
 }
 
 type Line struct {
+	id  ID
 	del *FlexLayout
 }
 
-func NewLine() *Line {
-	return &Line{del: NewFlexLayout(DirHor)}
+func NewLine(id ID) *Line {
+	return &Line{id: id, del: NewFlexLayout(DirHor)}
 }
 
 func (l *Line) Add(c Component) {
 	l.del.Add(c)
 }
 
-func (l *Line) FixedDimSize() int {
-	return 1
+func (l *Line) ID() ID {
+	return l.id
 }
 
-func (l *Line) Render(c CanvasWriter) error {
-	return l.del.Render(c)
+func (l *Line) Size(width int, height int) (int, int) {
+	return width, 1
+}
+
+func (l *Line) Render(w Writer, width int, height int) error {
+	w.RenderChild(l.del)
+	return nil
 }
 
 type Box struct {
+	id    ID
 	inner Component
 }
 
-func NewBox() *Box {
-	return &Box{}
+func NewBox(id ID) *Box {
+	return &Box{id: id}
 }
 
 func (b *Box) SetInner(c Component) {
 	b.inner = c
 }
 
-func (b *Box) Render(c CanvasWriter) error {
-	width, height := c.Size()
+func (b *Box) ID() ID {
+	return b.id
+}
 
+func (b *Box) Size(width int, height int) (int, int) {
+	return width, height
+}
+
+func (b *Box) Render(w Writer, width int, height int) error {
 	for i := 0; i < width; i++ {
-		c.SetContent(i, 0, '+', nil, tcell.StyleDefault)
-		c.SetContent(i, height-1, '+', nil, tcell.StyleDefault)
+		w.SetContent(i, 0, '+', nil, tcell.StyleDefault)
+		w.SetContent(i, height-1, '+', nil, tcell.StyleDefault)
 	}
 
 	for i := 0; i < height; i++ {
-		c.SetContent(0, i, '+', nil, tcell.StyleDefault)
-		c.SetContent(width-1, i, '+', nil, tcell.StyleDefault)
+		w.SetContent(0, i, '+', nil, tcell.StyleDefault)
+		w.SetContent(width-1, i, '+', nil, tcell.StyleDefault)
 	}
 
 	if b.inner == nil {
 		return nil
 	}
 
-	return b.inner.Render(c.Sub(1, 1, width-2, height-2))
+	w.Divide(1, 1, width-2, height-2).RenderChild(b.inner)
+	return nil
 }
 
-// FixedDimSizeLayout fixes a component to a size
-type FixedDimSizeLayout struct {
+// FixedSizeLayout fixes a component to a size
+type FixedSizeLayout struct {
+	id     ID
 	del    Component
-	length int
+	width  int
+	height int
 }
 
-func NewFixedDimSize(del Component, length int) *FixedDimSizeLayout {
-	return &FixedDimSizeLayout{del: del, length: length}
+func NewFixedSize(id ID, del Component, width int, height int) *FixedSizeLayout {
+	return &FixedSizeLayout{id: id, del: del, width: width, height: height}
 }
 
-func (l *FixedDimSizeLayout) FixedDimSize() int {
-	return l.length
+func (l *FixedSizeLayout) ID() ID {
+	return l.id
 }
 
-func (l *FixedDimSizeLayout) Render(c CanvasWriter) error {
-	return l.del.Render(c)
+func (l *FixedSizeLayout) Size(width int, height int) (int, int) {
+	if l.width != GROW && l.height != GROW {
+		return l.width, l.height
+	}
+	rWidth, rHeight := l.width, l.height
+	delWidth, delHeight := l.del.Size(width, height)
+	if rWidth == GROW {
+		rWidth = delWidth
+	}
+	if rHeight == GROW {
+		rHeight = delHeight
+	}
+
+	return rWidth, rHeight
+}
+
+func (l *FixedSizeLayout) Render(w Writer, width int, height int) error {
+	w.RenderChild(l.del)
+	return nil
 }

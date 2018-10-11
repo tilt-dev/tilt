@@ -34,9 +34,8 @@ func main() {
 }
 
 type Demo struct {
-	view   view.View
-	model  *model
-	screen tcell.Screen
+	view  view.View
+	model *model
 }
 
 type model struct {
@@ -44,14 +43,8 @@ type model struct {
 }
 
 func NewDemo() (*Demo, error) {
-	screen, err := tcell.NewTerminfoScreen()
-	if err != nil {
-		return nil, err
-	}
-
 	r := &Demo{
-		screen: screen,
-		model:  &model{},
+		model: &model{},
 	}
 
 	r.view = view.View{
@@ -203,6 +196,23 @@ func (d *Demo) Run() error {
 		return err
 	}
 
+	screen.Init()
+	term := rty.NewRTY(screen)
+
+	defer screen.Fini()
+	screenEvs := make(chan tcell.Event)
+	go func() {
+		for {
+			screenEvs <- screen.PollEvent()
+		}
+	}()
+
+	// initial render
+
+	if err := term.Render(d.TopLevel()); err != nil {
+		return err
+	}
+
 	for {
 		select {
 		case ev := <-screenEvs:
@@ -211,37 +221,12 @@ func (d *Demo) Run() error {
 				return nil
 			}
 		}
-		if err := d.render(); err != nil {
+		log.Printf("starting render")
+		if err := term.Render(d.TopLevel()); err != nil {
+			log.Printf("render err: %v", err)
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (d *Demo) handleScreenEvent(ev tcell.Event) bool {
-	switch ev := ev.(type) {
-	case *tcell.EventKey:
-		switch ev.Key() {
-		case tcell.KeyRune:
-			d.model.lastKey = ev
-			switch ev.Rune() {
-			case 'q':
-				return true
-			case 'j':
-				scroll := d.resourcesScroll()
-				selected := scroll.Get()
-				if nextResource := d.nextResource(selected); nextResource != "" {
-					scroll.Select(rty.ComponentID(nextResource))
-				}
-			case 'k':
-				scroll := d.resourcesScroll()
-				selected := scroll.Get()
-				if nextResource := d.previousResource(selected); nextResource != "" {
-					scroll.Select(rty.ComponentID(nextResource))
-				}
-			}
-		}
+		log.Printf("done with render")
 	}
 
 	return false
@@ -256,56 +241,222 @@ func (d *Demo) render() error {
 	return nil
 }
 
+func (d *Demo) handleScreenEvent(ev tcell.Event) bool {
+	switch ev := ev.(type) {
+	case *tcell.EventKey:
+		switch ev.Key() {
+		// case tcell.KeyUp:
+		// 	d.textScroll().Up()
+		// case tcell.KeyDown:
+		// 	d.textScroll().Down()
+		case tcell.KeyRune:
+			d.model.lastKey = ev
+			switch ev.Rune() {
+			case 'q':
+				return true
+				// case 'j':
+				// 	scroll := d.resourcesScroll()
+				// 	selected := scroll.Get()
+				// 	if nextResource := d.nextResource(selected); nextResource != "" {
+				// 		scroll.Select(rty.ComponentID(nextResource))
+				// 	}
+				// case 'k':
+				// 	scroll := d.resourcesScroll()
+				// 	selected := scroll.Get()
+				// 	if nextResource := d.previousResource(selected); nextResource != "" {
+				// 		scroll.Select(rty.ComponentID(nextResource))
+				// 	}
+			}
+		}
+	}
+
+	return false
+}
+
 func (d *Demo) TopLevel() rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
 
 	l.Add(d.header())
-	l.Add(d.resources())
+	// l.Add(d.resources())
+	l.Add(d.stream())
 	l.Add(d.footer())
 
 	return l
 }
 
-func (d *Demo) header() rty.FixedDimComponent {
-	b := rty.NewBox()
-	b.SetInner(rty.String("header"))
-	return rty.NewFixedDimSize(b, 3)
+func (d *Demo) header() rty.Component {
+	b := rty.NewBox("")
+	b.SetInner(rty.String("", "header"))
+	return rty.NewFixedSize("", b, rty.GROW, 3)
 }
 
-func (d *Demo) resources() rty.Component {
-	l := rty.NewScrollLayout(rty.DirVert)
+// func (d *Demo) resources() rty.Component {
+// 	l := rty.NewScrollLayout(rty.DirVert)
 
-	for _, r := range d.view.Resources {
-		rc := d.resource(r)
-		l.Add(rc)
-	}
+// 	for _, r := range d.view.Resources {
+// 		rc := d.resource(r)
+// 		l.Add(rc)
+// 	}
 
-	return l
+// 	return l
+// }
+
+// func (d *Demo) resource(r view.Resource) rty.FixedDimComponent {
+// 	lines := rty.NewLines()
+// 	cl := rty.NewLine()
+// 	cl.Add(rty.String(r.Name))
+// 	cl.Add(rty.NewFillerString('-'))
+// 	cl.Add(rty.String(fmt.Sprintf("%d", r.Status)))
+// 	lines.Add(cl)
+// 	cl = rty.NewLine()
+// 	cl.Add(rty.String(fmt.Sprintf(
+// 		"LOCAL: (watching %v) - ", r.DirectoryWatched)))
+// 	cl.Add(rty.NewTruncatingStrings(r.LatestFileChanges))
+// 	lines.Add(cl)
+// 	cl = rty.NewLine()
+// 	cl.Add(rty.String(
+// 		fmt.Sprintf("  K8S: %v", r.StatusDesc)))
+// 	lines.Add(cl)
+// 	cl = rty.NewLine()
+// 	return lines
+// }
+
+func (d *Demo) stream() rty.Component {
+	return rty.NewBox("")
 }
 
-func (d *Demo) resource(r view.Resource) rty.FixedDimComponent {
-	lines := rty.NewLines()
-	cl := rty.NewLine()
-	cl.Add(rty.String(r.Name))
-	cl.Add(rty.NewFillerString('-'))
-	cl.Add(rty.String(fmt.Sprintf("%d", r.Status)))
-	lines.Add(cl)
-	cl = rty.NewLine()
-	cl.Add(rty.String(fmt.Sprintf(
-		"LOCAL: (watching %v) - ", r.DirectoryWatched)))
-	cl.Add(rty.NewTruncatingStrings(r.LatestFileChanges))
-	lines.Add(cl)
-	cl = rty.NewLine()
-	cl.Add(rty.String(
-		fmt.Sprintf("  K8S: %v", r.StatusDesc)))
-	lines.Add(cl)
-	cl = rty.NewLine()
-	return lines
+func (d *Demo) footer() rty.Component {
+	b := rty.NewBox("")
+	b.SetInner(rty.String("", "footer"))
+
+	return rty.NewFixedSize("", b, rty.GROW, 3)
 }
 
-func (d *Demo) footer() rty.FixedDimComponent {
-	b := rty.NewBox()
-	b.SetInner(rty.String("footer"))
-
-	return rty.NewFixedDimSize(b, 3)
-}
+const text string = `
+Hello
+Here is text
+lots of it
+It has looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong lines
+And many of them
+So many lines
+a
+a
+a
+a
+a
+fasdf
+f
+f
+f
+f
+ff
+f
+f
+f
+f
+f
+f
+ff
+f
+f
+f
+g
+g
+g
+g
+g
+gasdfgasg
+g
+g
+g
+g
+g
+g
+g
+g
+gasg
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+gasgsd
+g
+g
+g
+g
+g
+g
+g
+g
+g
+gqwer
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+gfff
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+gasf
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+asdf
+`

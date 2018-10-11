@@ -1,28 +1,53 @@
 package rty
 
+import (
+	"math"
+
+	"github.com/windmilleng/tcell"
+)
+
 // Components are able to render themselves onto a screen
 
-type ComponentID string
+type ID string
 
 type FQID string
 
+type RTY interface {
+	Render(c Component) error
+	TextScroller(FQID) TextScroller
+}
+
+type TextScroller interface {
+	Up()
+	Down()
+	PgUp()
+	PgDn()
+	Home()
+	End()
+}
+
 // Component renders onto a canvas
 type Component interface {
-	ID() ComponentID
+	ID() ID
 	Size(availWidth, availHeight int) (int, int)
 	Render(w Writer, width, height int) error
 }
 
-type Dir int
+type Writer interface {
+	SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style)
 
-const (
-	DirHor Dir = iota
-	DirVert
-)
+	Divide(x, y, width, height int) Writer
 
-// XXX(dbentley): delete
-// FixedDimComponent has a fixed size in one dimension (for use in a FlexLayout)
-type FixedDimComponent interface {
-	Component
-	FixedDimSize() int
+	RenderChild(c Component) int
+
+	RenderChildInTemp(c Component) (Canvas, *LineProvenanceData)
+	Embed(src Canvas, srcY, srcHeight int)
+
+	RenderChildScroll(c ScrollComponent)
 }
+
+type LineProvenanceData struct {
+	Data []FQID
+}
+
+const GROW = math.MaxInt32
