@@ -3,10 +3,10 @@ package view
 import "time"
 
 type Resource struct {
-	Name             string
-	DirectoryWatched string
-	LastDeployTime   time.Time
-	LastDeployEdits  []string
+	Name               string
+	DirectoriesWatched []string
+	LastDeployTime     time.Time
+	LastDeployEdits    []string
 
 	LastBuildError      string
 	LastBuildFinishTime time.Time

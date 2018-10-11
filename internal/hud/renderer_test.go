@@ -16,8 +16,8 @@ func TestRender(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:             "foo",
-				DirectoryWatched: "bar",
+				Name:               "foo",
+				DirectoriesWatched: []string{"bar"},
 			},
 		},
 	}
