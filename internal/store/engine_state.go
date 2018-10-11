@@ -66,19 +66,19 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]bool),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
-		Pod:                UnknownPod,
 		CurrentBuildLog:    &bytes.Buffer{},
 	}
 }
 
 type Pod struct {
-	Name      string
+	PodID     k8s.PodID
 	StartedAt time.Time
 	Status    string
-}
 
-// manifestState.Pod will be set to this if we don't know anything about its pod
-var UnknownPod = Pod{}
+	Log []byte
+
+	// TODO(nick): Put ContainerID and ContainerName here as well.
+}
 
 func shortenFile(baseDirs []string, f string) string {
 	ret := f
@@ -157,7 +157,7 @@ func StateToView(s EngineState) view.View {
 			PendingBuildSince:     ms.QueueEntryTime,
 			CurrentBuildEdits:     currentBuildEdits,
 			CurrentBuildStartTime: ms.CurrentBuildStartTime,
-			PodName:               ms.Pod.Name,
+			PodName:               ms.Pod.PodID.String(),
 			PodCreationTime:       ms.Pod.StartedAt,
 			PodStatus:             ms.Pod.Status,
 			Endpoints:             endpoints,

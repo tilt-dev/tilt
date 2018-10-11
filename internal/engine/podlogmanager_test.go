@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,20 @@ func TestLogs(t *testing.T) {
 	}
 }
 
+func TestLogActions(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	f.kClient.PodLogs = "hello world!\ngoodbye world!\n"
+	name := model.ManifestName("server")
+	ref := k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
+	prevBuild := store.BuildResult{}
+	build := store.BuildResult{Image: ref}
+
+	f.plm.PostProcessBuild(f.ctx, name, build, prevBuild)
+	f.ConsumeLogActionsUntil("hello world!")
+}
+
 func TestLogsFailed(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
@@ -59,13 +74,15 @@ type plmFixture struct {
 	plm     *PodLogManager
 	cancel  func()
 	out     *bufsync.ThreadSafeBuffer
+	store   *store.Store
 }
 
 func newPLMFixture(t *testing.T) *plmFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kClient := k8s.NewFakeK8sClient()
-	dd := NewDeployDiscovery(kClient)
-	plm := NewPodLogManager(kClient, dd)
+	st := store.NewStore()
+	dd := NewDeployDiscovery(kClient, st)
+	plm := NewPodLogManager(kClient, dd, st)
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -80,6 +97,32 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		ctx:            ctx,
 		cancel:         cancel,
 		out:            out,
+		store:          st,
+	}
+}
+
+func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
+	out := []byte{}
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			f.T().Fatalf("Timeout. Collected output: %s", string(out))
+		case action := <-f.store.Actions():
+			podLog, ok := action.(PodLogAction)
+			if !ok {
+				f.T().Errorf("Expected action type PodLogAction. Actual: %T", action)
+			}
+			out = append(out, podLog.Log...)
+			if !strings.Contains(string(out), expected) {
+				continue
+			}
+
+			// we're done!
+			return
+		}
 	}
 }
 

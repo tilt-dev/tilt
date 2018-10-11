@@ -11,19 +11,22 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 // Looks up containers after they've been deployed.
 type DeployDiscovery struct {
 	kCli       k8s.Client
+	store      *store.Store
 	deployInfo map[docker.ImgNameAndTag]*deployInfoEntry
 	mu         sync.Mutex
 }
 
-func NewDeployDiscovery(kCli k8s.Client) *DeployDiscovery {
+func NewDeployDiscovery(kCli k8s.Client, store *store.Store) *DeployDiscovery {
 	return &DeployDiscovery{
 		kCli:       kCli,
 		deployInfo: make(map[docker.ImgNameAndTag]*deployInfoEntry),
+		store:      store,
 	}
 }
 
