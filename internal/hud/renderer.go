@@ -149,8 +149,9 @@ func renderResource(p *pen, r view.Resource) {
 	if r.PodStatus != "" {
 		p.putlnf("  K8s:   Pod %s - %s ago • Status: %s", r.PodName, formatDuration(time.Since(r.PodCreationTime)), r.PodStatus)
 	}
-	if r.Endpoint != "" {
-		p.putlnf("         %s", r.Endpoint)
+
+	if len(r.Endpoints) != 0 {
+		p.putlnf("         %s", strings.Join(r.Endpoints, " "))
 	}
 
 }

@@ -851,6 +851,62 @@ func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
 	f.assertAllHUDUpdatesConsumed()
 }
 
+func testService(serviceName string, manifestName string, ip string, port int) *v1.Service {
+	return &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   serviceName,
+			Labels: map[string]string{ManifestNameLabel: manifestName},
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{{
+				Port: int32(port),
+			}},
+		},
+		Status: v1.ServiceStatus{
+			LoadBalancer: v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{
+					{
+						IP: ip,
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestUpper_ServiceEvent(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	<-f.hud.Updates
+	<-f.b.calls
+	<-f.hud.Updates
+	f.upper.store.Dispatch(NewServiceChangeAction(testService("myservice", "foobar", "1.2.3.4", 8080)))
+
+	<-f.hud.Updates
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	ms := f.upper.store.RLockState().ManifestStates[manifest.Name]
+	defer f.upper.store.RUnlockState()
+	assert.Equal(t, 1, len(ms.LBs))
+	url, ok := ms.LBs["myservice"]
+	if !ok {
+		t.Fatalf("%v did not contain key 'myservice'", ms.LBs)
+	}
+	assert.Equal(t, "http://1.2.3.4:8080/", url.String())
+
+	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -902,6 +958,13 @@ func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store
 	}
 }
 
+func makeFakeServiceWatcherMaker(ch chan *v1.Service) func(context.Context, *store.Store) error {
+	return func(ctx context.Context, st *store.Store) error {
+		go dispatchServiceChangesLoop(ch, st)
+		return nil
+	}
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	ctx                   context.Context
@@ -913,6 +976,7 @@ type testFixture struct {
 	docker                *docker.FakeDockerClient
 	hud                   *hud.FakeHud
 	podEvents             chan *v1.Pod
+	serviceEvents         chan *v1.Service
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
 }
@@ -925,6 +989,9 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	podEvents := make(chan *v1.Pod)
 	fakePodWatcherMaker := makeFakePodWatcherMaker(podEvents)
+
+	serviceEvents := make(chan *v1.Service)
+	fakeServiceWatcherMaker := makeFakeServiceWatcherMaker(serviceEvents)
 
 	timerMaker := makeFakeTimerMaker(t)
 	docker := docker.NewFakeDockerClient()
@@ -941,16 +1008,17 @@ func newTestFixture(t *testing.T) *testFixture {
 	plm := NewPodLogManager(k8s, dd)
 
 	upper := Upper{
-		b:               b,
-		fsWatcherMaker:  fsWatcherMaker,
-		timerMaker:      timerMaker.maker(),
-		podWatcherMaker: fakePodWatcherMaker,
-		k8s:             k8s,
-		browserMode:     BrowserAuto,
-		reaper:          reaper,
-		hud:             hud,
-		store:           store.NewStore(),
-		plm:             plm,
+		b:                   b,
+		fsWatcherMaker:      fsWatcherMaker,
+		timerMaker:          timerMaker.maker(),
+		podWatcherMaker:     fakePodWatcherMaker,
+		serviceWatcherMaker: fakeServiceWatcherMaker,
+		k8s:                 k8s,
+		browserMode:         BrowserOff,
+		reaper:              reaper,
+		hud:                 hud,
+		store:               store.NewStore(),
+		plm:                 plm,
 	}
 
 	return &testFixture{
@@ -964,6 +1032,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		docker:         docker,
 		hud:            hud,
 		podEvents:      podEvents,
+		serviceEvents:  serviceEvents,
 		log:            log,
 	}
 }

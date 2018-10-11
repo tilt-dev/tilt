@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"net/url"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -34,7 +35,7 @@ type ManifestState struct {
 	LastBuild                    BuildState
 	Manifest                     model.Manifest
 	Pod                          Pod
-	Lbs                          []k8s.LoadBalancerSpec
+	LBs                          map[k8s.ServiceName]*url.URL
 	HasBeenBuilt                 bool
 	PendingFileChanges           map[string]bool
 	CurrentlyBuildingFileChanges []string
@@ -64,6 +65,7 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		LastBuild:          BuildStateClean,
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]bool),
+		LBs:                make(map[k8s.ServiceName]*url.URL),
 		Pod:                UnknownPod,
 		CurrentBuildLog:    &bytes.Buffer{},
 	}
@@ -136,6 +138,13 @@ func StateToView(s EngineState) view.View {
 			lastBuildError = ms.LastError.Error()
 		}
 
+		var endpoints []string
+		for _, u := range ms.LBs {
+			if u != nil {
+				endpoints = append(endpoints, u.String())
+			}
+		}
+
 		r := view.Resource{
 			Name:                  name.String(),
 			DirectoriesWatched:    relWatchDirs,
@@ -151,7 +160,7 @@ func StateToView(s EngineState) view.View {
 			PodName:               ms.Pod.Name,
 			PodCreationTime:       ms.Pod.StartedAt,
 			PodStatus:             ms.Pod.Status,
-			Endpoint:              "",
+			Endpoints:             endpoints,
 		}
 
 		ret.Resources = append(ret.Resources, r)

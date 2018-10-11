@@ -26,6 +26,16 @@ func NewPodChangeAction(pod *v1.Pod) PodChangeAction {
 	return PodChangeAction{Pod: pod}
 }
 
+type ServiceChangeAction struct {
+	Service *v1.Service
+}
+
+func (ServiceChangeAction) Action() {}
+
+func NewServiceChangeAction(service *v1.Service) ServiceChangeAction {
+	return ServiceChangeAction{Service: service}
+}
+
 type BuildCompleteAction struct {
 	Result store.BuildResult
 	Error  error

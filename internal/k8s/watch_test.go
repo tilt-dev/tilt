@@ -21,33 +21,60 @@ import (
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {
-	tf := newWatchPodsTestFixture(t)
+	tf := newWatchTestFixture(t)
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pod2 := fakePod(PodID("1234"), "hieruyge")
 	pod3 := fakePod(PodID("754"), "efgh")
 	pods := []runtime.Object{&pod1, &pod2, &pod3}
-	tf.run(pods, pods)
+	tf.runPods(pods, pods)
 }
 
 func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
-	tf := newWatchPodsTestFixture(t)
+	tf := newWatchTestFixture(t)
 
 	pod := fakePod(PodID("abcd"), "efgh")
 	pods := []runtime.Object{&pod}
 
 	deployment := v1.Deployment{}
 	input := []runtime.Object{&deployment, &pod}
-	tf.run(input, pods)
+	tf.runPods(input, pods)
 }
 
 func TestK8sClient_WatchPodsLabelsPassed(t *testing.T) {
-	tf := newWatchPodsTestFixture(t)
+	tf := newWatchTestFixture(t)
 	lps := []LabelPair{{"foo", "bar"}, {"baz", "quu"}}
-	tf.testLabels(lps, lps)
+	tf.testPodLabels(lps, lps)
 }
 
-type watchPodsTestFixture struct {
+func TestK8sClient_WatchServices(t *testing.T) {
+	tf := newWatchTestFixture(t)
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pod2 := fakePod(PodID("1234"), "hieruyge")
+	pod3 := fakePod(PodID("754"), "efgh")
+	pods := []runtime.Object{&pod1, &pod2, &pod3}
+	tf.runPods(pods, pods)
+}
+
+func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
+	tf := newWatchTestFixture(t)
+
+	pod := fakePod(PodID("abcd"), "efgh")
+	pods := []runtime.Object{&pod}
+
+	deployment := v1.Deployment{}
+	input := []runtime.Object{&deployment, &pod}
+	tf.runPods(input, pods)
+}
+
+func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	lps := []LabelPair{{"foo", "bar"}, {"baz", "quu"}}
+	tf.testServiceLabels(lps, lps)
+}
+
+type watchTestFixture struct {
 	t                 *testing.T
 	kCli              Client
 	w                 *watch.FakeWatcher
@@ -55,8 +82,8 @@ type watchPodsTestFixture struct {
 	ctx               context.Context
 }
 
-func newWatchPodsTestFixture(t *testing.T) *watchPodsTestFixture {
-	ret := &watchPodsTestFixture{t: t}
+func newWatchTestFixture(t *testing.T) *watchTestFixture {
+	ret := &watchTestFixture{t: t}
 
 	c := fake.NewSimpleClientset()
 
@@ -82,7 +109,7 @@ func newWatchPodsTestFixture(t *testing.T) *watchPodsTestFixture {
 	return ret
 }
 
-func (tf *watchPodsTestFixture) run(input []runtime.Object, expectedOutput []runtime.Object) {
+func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []runtime.Object) {
 	for _, o := range input {
 		tf.w.Add(o)
 	}
@@ -114,8 +141,56 @@ func (tf *watchPodsTestFixture) run(input []runtime.Object, expectedOutput []run
 	assert.Equal(tf.t, expectedOutput, observedPods)
 }
 
-func (tf *watchPodsTestFixture) testLabels(input []LabelPair, expectedLabels []LabelPair) {
+func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput []runtime.Object) {
+	for _, o := range input {
+		tf.w.Add(o)
+	}
+
+	tf.w.Stop()
+
+	ch, err := tf.kCli.WatchServices(tf.ctx, []LabelPair{})
+	if !assert.NoError(tf.t, err) {
+		return
+	}
+
+	var observedServices []runtime.Object
+
+	timeout := time.After(500 * time.Millisecond)
+	done := false
+	for !done {
+		select {
+		case pod, ok := <-ch:
+			if !ok {
+				done = true
+			} else {
+				observedServices = append(observedServices, pod)
+			}
+		case <-timeout:
+			tf.t.Fatal("test timed out")
+		}
+	}
+
+	assert.Equal(tf.t, expectedOutput, observedServices)
+}
+
+func (tf *watchTestFixture) testPodLabels(input []LabelPair, expectedLabels []LabelPair) {
 	_, err := tf.kCli.WatchPods(tf.ctx, input)
+	if !assert.NoError(tf.t, err) {
+		return
+	}
+
+	assert.Equal(tf.t, fields.Everything(), tf.watchRestrictions.Fields)
+
+	ls := labels.Set{}
+	for _, l := range expectedLabels {
+		ls[l.Key] = l.Value
+	}
+	expectedLabelSelector := labels.SelectorFromSet(ls)
+	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
+}
+
+func (tf *watchTestFixture) testServiceLabels(input []LabelPair, expectedLabels []LabelPair) {
+	_, err := tf.kCli.WatchServices(tf.ctx, input)
 	if !assert.NoError(tf.t, err) {
 		return
 	}

@@ -21,7 +21,7 @@ type Resource struct {
 	PodName         string
 	PodCreationTime time.Time
 	PodStatus       string
-	Endpoint        string
+	Endpoints       []string
 }
 
 type View struct {
