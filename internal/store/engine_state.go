@@ -39,13 +39,13 @@ type ManifestState struct {
 	CurrentlyBuildingFileChanges []string
 
 	CurrentBuildStartTime     time.Time
-	CurrentBuildLog           bytes.Buffer
+	CurrentBuildLog           *bytes.Buffer
 	LastSuccessfulDeployEdits []string
 	LastError                 error
 	LastBuildFinishTime       time.Time
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
-	LastBuildLog              bytes.Buffer
+	LastBuildLog              *bytes.Buffer
 	QueueEntryTime            time.Time
 
 	// we've observed changes to the config file and need to reload it the next time we start a build
@@ -64,6 +64,7 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]bool),
 		Pod:                UnknownPod,
+		CurrentBuildLog:    &bytes.Buffer{},
 	}
 }
 
