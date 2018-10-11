@@ -92,7 +92,7 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 
 	ctx := output.CtxForTest()
 
-	st := store.NewStore(nil)
+	st := store.NewStore()
 	err := makeManifestWatcher(ctx, st, watcherMaker, timerMaker.maker(), manifests)
 
 	timerMaker.maxTimerLock.Lock()

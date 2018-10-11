@@ -16,9 +16,9 @@ type Store struct {
 	// The actionChan is an intermediate representation to make the transition easiser.
 }
 
-func NewStore(state *EngineState) *Store {
+func NewStore() *Store {
 	return &Store{
-		state:       state,
+		state:       NewState(),
 		actionQueue: &actionQueue{},
 		actionCh:    make(chan Action),
 	}
@@ -27,6 +27,11 @@ func NewStore(state *EngineState) *Store {
 // TODO(nick): Clone the state to ensure it's not mutated.
 func (s *Store) State() EngineState {
 	return *(s.state)
+}
+
+// TODO(nick): Phase this out. Anyone that uses this should be implemented as a reducer.
+func (s *Store) MutableState() *EngineState {
+	return s.state
 }
 
 func (s *Store) Actions() <-chan Action {
