@@ -22,6 +22,7 @@ type FakeK8sClient struct {
 	Lb   LoadBalancerSpec
 
 	PodsWithImageResp         PodID
+	PodsWithImageError        error
 	PollForPodsWithImageDelay time.Duration
 
 	LastPodQueryNamespace Namespace
@@ -65,6 +66,10 @@ func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v
 func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
 	c.LastPodQueryImage = image
 	c.LastPodQueryNamespace = n
+
+	if c.PodsWithImageError != nil {
+		return nil, c.PodsWithImageError
+	}
 
 	status := v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{

@@ -16,22 +16,15 @@ import (
 // Looks up containers after they've been deployed.
 type DeployDiscovery struct {
 	kCli       k8s.Client
-	deployInfo map[docker.ImgNameAndTag]*DeployInfo
+	deployInfo map[docker.ImgNameAndTag]*deployInfoEntry
 	mu         sync.Mutex
 }
 
 func NewDeployDiscovery(kCli k8s.Client) *DeployDiscovery {
 	return &DeployDiscovery{
 		kCli:       kCli,
-		deployInfo: make(map[docker.ImgNameAndTag]*DeployInfo),
+		deployInfo: make(map[docker.ImgNameAndTag]*deployInfoEntry),
 	}
-}
-
-func (d *DeployDiscovery) DeployInfoForImage(img reference.NamedTagged) (*DeployInfo, bool) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	deployInfo, ok := d.deployInfo[docker.ToImgNameAndTag(img)]
-	return deployInfo, ok
 }
 
 func (d *DeployDiscovery) EnsureDeployInfoFetchStarted(ctx context.Context, img reference.NamedTagged, ns k8s.Namespace) {
@@ -40,7 +33,7 @@ func (d *DeployDiscovery) EnsureDeployInfoFetchStarted(ctx context.Context, img 
 
 	_, ok := d.deployInfo[docker.ToImgNameAndTag(img)]
 	if !ok {
-		deployInfo := newEmptyDeployInfo()
+		deployInfo := newDeployInfoEntry()
 		d.deployInfo[docker.ToImgNameAndTag(img)] = deployInfo
 
 		go func() {
@@ -56,25 +49,33 @@ func (d *DeployDiscovery) EnsureDeployInfoFetchStarted(ctx context.Context, img 
 	}
 }
 
-func (d *DeployDiscovery) DeployInfoForImageBlocking(ctx context.Context, img reference.NamedTagged) (*DeployInfo, bool) {
-	deployInfo, ok := d.DeployInfoForImage(img)
-	if deployInfo != nil {
-		deployInfo.waitUntilReady(ctx)
+func (d *DeployDiscovery) DeployInfoForImageBlocking(ctx context.Context, img reference.NamedTagged) (DeployInfo, error) {
+	d.mu.Lock()
+	deployInfo := d.deployInfo[docker.ToImgNameAndTag(img)]
+	d.mu.Unlock()
+
+	if deployInfo == nil {
+		return DeployInfo{}, nil
 	}
-	return deployInfo, ok
+
+	deployInfo.waitUntilReady(ctx)
+	return deployInfo.DeployInfo, deployInfo.err
 }
 
 // Returns the deploy info that was forgotten, if any.
-func (d *DeployDiscovery) ForgetImage(img reference.NamedTagged) (*DeployInfo, bool) {
+func (d *DeployDiscovery) ForgetImage(img reference.NamedTagged) DeployInfo {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	key := docker.ToImgNameAndTag(img)
-	deployInfo, ok := d.deployInfo[key]
+	deployInfo := d.deployInfo[key]
 	delete(d.deployInfo, key)
-	return deployInfo, ok
+	if deployInfo == nil {
+		return DeployInfo{}
+	}
+	return deployInfo.DeployInfo
 }
 
-func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image reference.NamedTagged, ns k8s.Namespace, info *DeployInfo) (err error) {
+func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image reference.NamedTagged, ns k8s.Namespace, info *deployInfoEntry) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DeployDiscovery-populateDeployInfo")
 	defer span.Finish()
 
@@ -130,19 +131,27 @@ type DeployInfo struct {
 	podID       k8s.PodID
 	containerID k8s.ContainerID
 	nodeID      k8s.NodeID
+}
+
+func (d DeployInfo) Empty() bool {
+	return d == DeployInfo{}
+}
+
+type deployInfoEntry struct {
+	DeployInfo
 
 	ready chan struct{} // Close this channel when the DeployInfo is populated
 	err   error         // error encountered when populating (if any)
 }
 
-func (di *DeployInfo) markReady() { close(di.ready) }
-func (di *DeployInfo) waitUntilReady(ctx context.Context) {
+func newDeployInfoEntry() *deployInfoEntry {
+	return &deployInfoEntry{ready: make(chan struct{})}
+}
+
+func (di *deployInfoEntry) markReady() { close(di.ready) }
+func (di *deployInfoEntry) waitUntilReady(ctx context.Context) {
 	select {
 	case <-di.ready:
 	case <-ctx.Done():
 	}
-}
-
-func newEmptyDeployInfo() *DeployInfo {
-	return &DeployInfo{ready: make(chan struct{})}
 }

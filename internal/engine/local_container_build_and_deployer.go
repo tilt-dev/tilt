@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -63,12 +64,11 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
-	deployInfo, ok := cbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
-	if !ok || deployInfo == nil {
-		// We theoretically already checked this condition :(
-		return store.BuildResult{}, fmt.Errorf("no container ID found for %s (image: %s) "+
-			"(should have checked this upstream, something is wrong)",
-			manifest.Name, state.LastResult.Image.String())
+	deployInfo, err := cbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
+	if err != nil {
+		return store.BuildResult{}, errors.Wrap(err, "deploy info fetch failed")
+	} else if deployInfo.Empty() {
+		return store.BuildResult{}, fmt.Errorf("no deploy info")
 	}
 
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
@@ -96,7 +96,7 @@ func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context,
 	defer span.Finish()
 
 	if previousResult.HasImage() && (!result.HasImage() || result.Image != previousResult.Image) {
-		_, _ = cbd.dd.ForgetImage(previousResult.Image)
+		_ = cbd.dd.ForgetImage(previousResult.Image)
 	}
 
 	if !result.HasImage() {
