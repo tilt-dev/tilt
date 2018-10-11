@@ -795,7 +795,12 @@ func TestUpper_ReplayBuildLog(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	<-f.b.calls
+
+	// Wait until the logs reach the HUD.
+	// TODO(nick): Create a better primitive for subscribing to state changes.
 	<-f.hud.Updates
+	<-f.hud.Updates
+
 	f.upper.store.Dispatch(hud.NewReplayBuildLogAction(1))
 
 	<-f.hud.Updates
@@ -813,6 +818,7 @@ func TestUpper_ReplayBuildLog(t *testing.T) {
 	assert.Equal(t, 2, buildOutputCount)
 
 	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
@@ -825,7 +831,10 @@ func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	<-f.b.calls
+
 	<-f.hud.Updates
+	<-f.hud.Updates
+
 	f.upper.store.Dispatch(hud.NewReplayBuildLogAction(5))
 
 	<-f.hud.Updates
@@ -837,6 +846,7 @@ func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
 	assert.Contains(t, f.LogLines(), "Resource 5 does not exist, so no log to print")
 
 	f.assertAllBuildsConsumed()
+	f.assertAllHUDUpdatesConsumed()
 }
 
 type fakeTimerMaker struct {
