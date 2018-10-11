@@ -113,24 +113,33 @@ func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image referenc
 	nodeID := k8s.NodeIDFromPod(pod)
 
 	// Make sure that the deployed image is ready and not crashlooping.
-	cID, err := k8s.WaitForContainerReady(ctx, d.kCli, pod, image)
+	cStatus, err := k8s.WaitForContainerReady(ctx, d.kCli, pod, image)
 	if err != nil {
 		return errors.Wrapf(err, "WaitForContainerReady (pod = %s)", pID)
 	}
+
+	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
+	if err != nil {
+		return errors.Wrapf(err, "populateDeployInfo")
+	}
+
+	cName := k8s.ContainerNameFromContainerStatus(cStatus)
 
 	logger.Get(ctx).Verbosef("talking to synclet client for pod %s", pID.String())
 
 	info.podID = pID
 	info.containerID = cID
+	info.containerName = cName
 	info.nodeID = nodeID
 
 	return nil
 }
 
 type DeployInfo struct {
-	podID       k8s.PodID
-	containerID k8s.ContainerID
-	nodeID      k8s.NodeID
+	podID         k8s.PodID
+	containerID   k8s.ContainerID
+	containerName k8s.ContainerName
+	nodeID        k8s.NodeID
 }
 
 func (d DeployInfo) Empty() bool {

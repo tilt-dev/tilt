@@ -57,6 +57,7 @@ type Upper struct {
 	reaper          build.ImageReaper
 	hud             hud.HeadsUpDisplay
 	store           *store.Store
+	plm             *PodLogManager
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
@@ -70,7 +71,7 @@ func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker, st *store.Store) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker, st *store.Store, plm *PodLogManager) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
@@ -94,6 +95,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		reaper:          reaper,
 		hud:             hud,
 		store:           st,
+		plm:             plm,
 	}
 }
 
@@ -258,9 +260,14 @@ func (u Upper) handleCompletedBuild(ctx context.Context, st *store.Store, cb Bui
 			engineState.OpenBrowserOnNextLB = false
 		}
 
+		prevBuild := ms.LastBuild
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
+
+		if engineState.WatchMounts {
+			u.plm.PostProcessBuild(ctx, ms.Manifest.Name, cb.Result, prevBuild.LastResult)
+		}
 	}
 
 	if engineState.WatchMounts {

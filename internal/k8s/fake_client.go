@@ -1,8 +1,10 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -27,6 +29,8 @@ type FakeK8sClient struct {
 
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
+
+	PodLogs string
 }
 
 func (c *FakeK8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
@@ -57,6 +61,10 @@ func (c *FakeK8sClient) SetPodsWithImageResp(pID PodID) {
 
 func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
 	return watch.NewEmptyWatch(), nil
+}
+
+func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName ContainerName, n Namespace) (io.ReadCloser, error) {
+	return BufferCloser{bytes.NewBufferString(c.PodLogs)}, nil
 }
 
 func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
@@ -141,3 +149,13 @@ func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID,
 func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (int, func(), error) {
 	return 0, nil, nil
 }
+
+type BufferCloser struct {
+	*bytes.Buffer
+}
+
+func (b BufferCloser) Close() error {
+	return nil
+}
+
+var _ io.ReadCloser = BufferCloser{}

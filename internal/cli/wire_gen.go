@@ -67,7 +67,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	}
 	podWatcherMaker := engine.ProvidePodWatcherMaker(k8sClient)
 	storeStore := store.NewStore()
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker, storeStore)
+	podLogManager := engine.NewPodLogManager(k8sClient, deployDiscovery)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker, storeStore, podLogManager)
 	return upper, nil
 }
 
