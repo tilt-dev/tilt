@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -132,6 +133,9 @@ func StateToView(s EngineState) view.View {
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
 		lastDeployEdits := shortenFileList(absWatchDirs, ms.LastSuccessfulDeployEdits)
 		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentlyBuildingFileChanges)
+
+		// Sort the strings to make the outputs deterministic.
+		sort.Strings(pendingBuildEdits)
 
 		lastBuildError := ""
 		if ms.LastError != nil {
