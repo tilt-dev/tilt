@@ -8,22 +8,18 @@ import (
 
 // Components are able to render themselves onto a screen
 
-type ID string
-
-type FQID string
-
 type RTY interface {
 	Render(c Component) error
 	// ElementScroller(FQID) ElementScroller
-	TextScroller(FQID) TextScroller
+	TextScroller(name string) TextScroller
 }
 
-type ElementScroller interface {
-	GetSelection() string
-	Select(string)
-	Next()
-	Prev()
-}
+// type ElementScroller interface {
+// 	GetSelection() string
+// 	Select(string)
+// 	Next()
+// 	Prev()
+// }
 
 type TextScroller interface {
 	Up()
@@ -36,7 +32,6 @@ type TextScroller interface {
 
 // Component renders onto a canvas
 type Component interface {
-	ID() ID
 	Size(availWidth, availHeight int) (int, int)
 	Render(w Writer, width, height int) error
 }
@@ -48,14 +43,10 @@ type Writer interface {
 
 	RenderChild(c Component) int
 
-	RenderChildInTemp(c Component) (Canvas, *LineProvenanceData)
+	RenderChildInTemp(c Component) Canvas
 	Embed(src Canvas, srcY, srcHeight int)
 
-	RenderChildScroll(c ScrollComponent)
-}
-
-type LineProvenanceData struct {
-	Data []FQID
+	RenderStateful(c StatefulComponent, name string)
 }
 
 const GROW = math.MaxInt32

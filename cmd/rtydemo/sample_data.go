@@ -133,9 +133,11 @@ func sampleView() view.View {
 	}
 }
 
-const longText string = `
-Hello
+const longText string = `Hello
+
 Here is text
+
+f
 lots of it
 It has looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong lines
 And many of them
@@ -259,5 +261,4 @@ g
 g
 g
 g
-asdf
-`
+asdf`

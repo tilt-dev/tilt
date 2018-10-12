@@ -17,7 +17,6 @@ const (
 
 // FlexLayout lays out its sub-components.
 type FlexLayout struct {
-	id  ID
 	dir Dir
 	cs  []Component
 }
@@ -26,10 +25,6 @@ func NewFlexLayout(dir Dir) *FlexLayout {
 	return &FlexLayout{
 		dir: dir,
 	}
-}
-
-func (l *FlexLayout) ID() ID {
-	return l.id
 }
 
 func (l *FlexLayout) Add(c Component) {
@@ -104,17 +99,12 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 }
 
 type ConcatLayout struct {
-	id  ID
 	dir Dir
 	cs  []Component
 }
 
-func NewConcatLayout(id ID, dir Dir) *ConcatLayout {
-	return &ConcatLayout{id: id, dir: dir}
-}
-
-func (l *ConcatLayout) ID() ID {
-	return l.id
+func NewConcatLayout(dir Dir) *ConcatLayout {
+	return &ConcatLayout{dir: dir}
 }
 
 func (l *ConcatLayout) Add(c Component) {
@@ -157,25 +147,20 @@ func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 	return nil
 }
 
-func NewLines(id ID) *ConcatLayout {
-	return NewConcatLayout(id, DirVert)
+func NewLines() *ConcatLayout {
+	return NewConcatLayout(DirVert)
 }
 
 type Line struct {
-	id  ID
 	del *FlexLayout
 }
 
-func NewLine(id ID) *Line {
-	return &Line{id: id, del: NewFlexLayout(DirHor)}
+func NewLine() *Line {
+	return &Line{del: NewFlexLayout(DirHor)}
 }
 
 func (l *Line) Add(c Component) {
 	l.del.Add(c)
-}
-
-func (l *Line) ID() ID {
-	return l.id
 }
 
 func (l *Line) Size(width int, height int) (int, int) {
@@ -183,18 +168,18 @@ func (l *Line) Size(width int, height int) (int, int) {
 }
 
 func (l *Line) Render(w Writer, width int, height int) error {
+	w.SetContent(0, 0, 0, nil, tcell.StyleDefault) // set at least one to take up our line
 	w.RenderChild(l.del)
 	return nil
 }
 
 type Box struct {
-	id      ID
 	focused bool
 	inner   Component
 }
 
-func NewBox(id ID) *Box {
-	return &Box{id: id}
+func NewBox() *Box {
+	return &Box{}
 }
 
 func (b *Box) SetInner(c Component) {
@@ -203,10 +188,6 @@ func (b *Box) SetInner(c Component) {
 
 func (b *Box) SetFocused(focused bool) {
 	b.focused = focused
-}
-
-func (b *Box) ID() ID {
-	return b.id
 }
 
 func (b *Box) Size(width int, height int) (int, int) {
@@ -226,12 +207,12 @@ func (b *Box) Render(w Writer, width int, height int) error {
 		style = style.Bold(true)
 	}
 
-	for i := 1; i < width-2; i++ {
+	for i := 1; i < width-1; i++ {
 		w.SetContent(i, 1, '+', nil, style)
 		w.SetContent(i, height-2, '+', nil, style)
 	}
 
-	for i := 1; i < height-2; i++ {
+	for i := 1; i < height-1; i++ {
 		w.SetContent(1, i, '+', nil, style)
 		w.SetContent(width-2, i, '+', nil, style)
 	}
@@ -245,18 +226,13 @@ func (b *Box) Render(w Writer, width int, height int) error {
 
 // FixedSizeLayout fixes a component to a size
 type FixedSizeLayout struct {
-	id     ID
 	del    Component
 	width  int
 	height int
 }
 
-func NewFixedSize(id ID, del Component, width int, height int) *FixedSizeLayout {
-	return &FixedSizeLayout{id: id, del: del, width: width, height: height}
-}
-
-func (l *FixedSizeLayout) ID() ID {
-	return l.id
+func NewFixedSize(del Component, width int, height int) *FixedSizeLayout {
+	return &FixedSizeLayout{del: del, width: width, height: height}
 }
 
 func (l *FixedSizeLayout) Size(width int, height int) (int, int) {

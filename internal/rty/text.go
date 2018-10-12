@@ -10,16 +10,11 @@ import (
 
 // Layout a string on one line, suitable for a label
 type StringLayout struct {
-	id ID
-	s  string
+	s string
 }
 
-func String(id ID, s string) *StringLayout {
-	return &StringLayout{id: id, s: s}
-}
-
-func (l *StringLayout) ID() ID {
-	return l.id
+func String(s string) *StringLayout {
+	return &StringLayout{s: s}
 }
 
 func (l *StringLayout) Size(width int, height int) (int, int) {
@@ -33,16 +28,11 @@ func (l *StringLayout) Render(w Writer, width int, height int) error {
 
 // Fills a space by repeating a string
 type FillerString struct {
-	id ID
 	ch rune
 }
 
-func NewFillerString(id ID, ch rune) *FillerString {
-	return &FillerString{id: id, ch: ch}
-}
-
-func (l *FillerString) ID() ID {
-	return l.id
+func NewFillerString(ch rune) *FillerString {
+	return &FillerString{ch: ch}
 }
 
 func (l *FillerString) Size(width, height int) (int, int) {
@@ -57,16 +47,11 @@ func (l *FillerString) Render(w Writer, width int, height int) error {
 }
 
 type TruncatingStrings struct {
-	id   ID
 	data []string
 }
 
-func NewTruncatingStrings(id ID, data []string) *TruncatingStrings {
-	return &TruncatingStrings{id: id, data: data}
-}
-
-func (l *TruncatingStrings) ID() ID {
-	return l.id
+func NewTruncatingStrings(data []string) *TruncatingStrings {
+	return &TruncatingStrings{data: data}
 }
 
 func (l *TruncatingStrings) Size(width int, height int) (int, int) {
@@ -99,19 +84,13 @@ func printStringOneLine(w Writer, s string) {
 }
 
 type WrappingTextLine struct {
-	id   ID
 	text string
 }
 
-func NewWrappingTextLine(id ID, text string) *WrappingTextLine {
+func NewWrappingTextLine(text string) *WrappingTextLine {
 	return &WrappingTextLine{
-		id:   id,
 		text: text,
 	}
-}
-
-func (l *WrappingTextLine) ID() ID {
-	return l.id
 }
 
 func (l *WrappingTextLine) Size(width int, height int) (int, int) {
@@ -129,6 +108,9 @@ func (l *WrappingTextLine) Size(width int, height int) (int, int) {
 }
 
 func (l *WrappingTextLine) Render(w Writer, width int, height int) error {
+	if len(l.text) == 0 {
+		w.SetContent(0, 0, 0, nil, tcell.StyleDefault)
+	}
 	x, y := 0, 0
 	for _, ch := range l.text {
 		w.SetContent(x, y, ch, nil, tcell.StyleDefault)

@@ -1,102 +1,48 @@
 package rty
 
 import (
-	"fmt"
 	"strings"
 )
 
-type ScrollComponent interface {
-	ID() ID
-	RenderScroll(w Writer, prevState interface{}, width, height int) (state interface{}, err error)
-}
-
-func newLineProvenanceWriter() *lineProvenanceWriter {
-	return &lineProvenanceWriter{}
-}
-
-type lineProvenanceWriter struct {
-	del    []FQID
-	offset int
-}
-
-func (p *lineProvenanceWriter) WriteLineProvenance(fqid FQID, numLines int) {
-	if p == nil {
-		return
-	}
-	for len(p.del) < p.offset+numLines {
-		p.del = append(p.del, "")
-	}
-	for i := 0; i < numLines; i++ {
-		current := p.del[p.offset+i]
-		if len(fqid) > len(current) {
-			p.del[p.offset+i] = fqid
-		}
-	}
-}
-
-func (p *lineProvenanceWriter) Divide(offset int) *lineProvenanceWriter {
-	if p == nil {
-		return (*lineProvenanceWriter)(nil)
-	}
-
-	return &lineProvenanceWriter{del: p.del, offset: p.offset + offset}
-}
-
-func (p *lineProvenanceWriter) data() *LineProvenanceData {
-	if p == nil {
-		return nil
-	}
-	return &LineProvenanceData{append([]FQID(nil), p.del...)}
-}
-
-type WrapScrollComponent struct {
-	del ScrollComponent
-}
-
-func NewWrapScrollComponent(del ScrollComponent) *WrapScrollComponent {
-	return &WrapScrollComponent{del: del}
-}
-
-func (l *WrapScrollComponent) ID() ID {
-	return ""
-}
-
-func (l *WrapScrollComponent) Size(width, height int) (int, int) {
-	return width, height
-}
-
-func (l *WrapScrollComponent) Render(w Writer, width, height int) error {
-	w.RenderChildScroll(l.del)
-	return nil
+type StatefulComponent interface {
+	RenderStateful(w Writer, prevState interface{}, width, height int) (state interface{}, err error)
 }
 
 type TextScrollLayout struct {
-	id ID
-	cs []Component
+	name string
+	cs   []Component
 }
 
-func NewTextScrollLayout(id ID) *TextScrollLayout {
-	return &TextScrollLayout{
-		id: id,
-	}
+func NewTextScrollLayout(name string) *TextScrollLayout {
+	return &TextScrollLayout{name: name}
 }
 
 func (l *TextScrollLayout) Add(c Component) {
 	l.cs = append(l.cs, c)
 }
 
-func (l *TextScrollLayout) ID() ID {
-	return l.id
-}
-
 func (l *TextScrollLayout) Size(width int, height int) (int, int) {
 	return width, height
 }
 
-func (l *TextScrollLayout) RenderScroll(w Writer, prevState interface{}, width, height int) (state interface{}, err error) {
+type TextScrollState struct {
+	width  int
+	height int
+
+	canvasIdx     int
+	lineIdx       int
+	canvasLengths []int
+}
+
+func (l *TextScrollLayout) Render(w Writer, width, height int) error {
+	w.RenderStateful(l, l.name)
+	return nil
+}
+
+func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width, height int) (state interface{}, err error) {
 	prev, ok := prevState.(*TextScrollState)
 	if !ok {
-		prev = &TextScrollState{idx: 5}
+		prev = &TextScrollState{}
 	}
 	next := &TextScrollState{
 		width:  width,
@@ -107,83 +53,58 @@ func (l *TextScrollLayout) RenderScroll(w Writer, prevState interface{}, width, 
 		return next, nil
 	}
 
-	var canvases []Canvas
+	next.canvasLengths = make([]int, len(l.cs))
+	canvases := make([]Canvas, len(l.cs))
 
-	for _, c := range l.cs {
-		childCanvas, childProvenance := w.RenderChildInTemp(c)
-		canvases = append(canvases, childCanvas)
-		next.provenance = append(next.provenance, childProvenance.Data...)
+	for i, c := range l.cs {
+		childCanvas := w.RenderChildInTemp(c)
+		canvases[i] = childCanvas
+		_, childHeight := childCanvas.Size()
+		next.canvasLengths[i] = childHeight
 	}
 
-	skip := l.findInitialIdx(prev, next)
-	canvasIdx := 0
-	srcY := 0
-	for skip > 0 {
-		canvas := canvases[canvasIdx]
-		_, canvasHeight := canvas.Size()
-		if canvasHeight <= skip {
-			skip -= canvasHeight
-			canvasIdx++
-		} else {
-			srcY = skip
-			skip = 0
-		}
-	}
+	l.adjustCursor(prev, next, canvases)
 
 	y := 0
-	remaining := height
-	for remaining > 0 && canvasIdx < len(canvases) {
-		canvas := canvases[canvasIdx]
-		_, canvasHeight := canvas.Size()
-		numLines := canvasHeight - srcY
-		if numLines > remaining {
-			numLines = remaining
+	canvases = canvases[next.canvasIdx:]
+
+	if next.lineIdx != 0 {
+		firstCanvas := canvases[0]
+		canvases = canvases[1:]
+		_, firstHeight := firstCanvas.Size()
+		numLines := firstHeight - prev.lineIdx
+		if numLines > height {
+			numLines = height
 		}
-		w.Divide(0, y, width, numLines).Embed(canvas, srcY, numLines)
+
+		w.Divide(0, 0, width, numLines).Embed(firstCanvas, next.lineIdx, numLines)
 		y += numLines
-		remaining -= numLines
-		srcY = 0
-		canvasIdx++
 	}
+
+	for _, canvas := range canvases {
+		_, canvasHeight := canvas.Size()
+		numLines := canvasHeight
+		if numLines > height-y {
+			numLines = height - y
+		}
+		w.Divide(0, y, width, numLines).Embed(canvas, 0, numLines)
+		y += numLines
+	}
+
 	return next, nil
 }
 
-func (l *TextScrollLayout) findInitialIdx(prev *TextScrollState, next *TextScrollState) int {
-	if len(prev.provenance) == 0 {
-		return 0
+func (l *TextScrollLayout) adjustCursor(prev *TextScrollState, next *TextScrollState, canvases []Canvas) {
+	if prev.canvasIdx >= len(canvases) {
+		return
 	}
 
-	prevTopFqid := prev.provenance[prev.idx]
-	prevLineInElem := 0
-
-	for _, fqid := range prev.provenance[0:prev.idx] {
-		if fqid == prevTopFqid {
-			prevLineInElem++
-		}
+	next.canvasIdx = prev.canvasIdx
+	_, canvasHeight := canvases[next.canvasIdx].Size()
+	if prev.lineIdx >= canvasHeight {
+		return
 	}
-
-	bestIdx := 0
-	lineInElem := -1
-	for i, fqid := range next.provenance {
-		if fqid == prevTopFqid {
-			bestIdx = i
-			lineInElem++
-			if lineInElem == prevLineInElem {
-				break
-			}
-		}
-	}
-
-	next.idx = bestIdx
-	return bestIdx
-}
-
-type TextScrollState struct {
-	width  int
-	height int
-
-	idx        int
-	provenance []FQID
+	next.lineIdx = prev.lineIdx
 }
 
 type TextScrollController struct {
@@ -195,59 +116,41 @@ func NewTextScrollController(state *TextScrollState) *TextScrollController {
 }
 
 func (s *TextScrollController) Up() {
-	if s.state.idx == 0 {
+	st := s.state
+	if st.lineIdx != 0 {
+		st.lineIdx--
 		return
 	}
 
-	s.state.idx = s.state.idx - 1
+	if st.canvasIdx == 0 {
+		return
+	}
+	st.canvasIdx--
+	st.lineIdx = st.canvasLengths[st.canvasIdx] - 1
 }
 
 func (s *TextScrollController) Down() {
-	if s.state.idx == len(s.state.provenance)-1 {
+	st := s.state
+	canvasLength := st.canvasLengths[st.canvasIdx]
+	if st.lineIdx < canvasLength-1 {
+		// we can just go down in this canvas
+		st.lineIdx++
 		return
 	}
-
-	s.state.idx = s.state.idx + 1
+	if st.canvasIdx == len(st.canvasLengths)-1 {
+		// we're at the end of the last canvas
+		return
+	}
+	st.canvasIdx++
+	st.lineIdx = 0
 }
 
-func NewScrollingWrappingTextArea(id ID, text string) Component {
-	l := NewTextScrollLayout(id)
+func NewScrollingWrappingTextArea(name string, text string) Component {
+	l := NewTextScrollLayout(name)
 	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		l.Add(NewWrappingTextLine(ID(fmt.Sprintf("line-%06d", i)), line))
+	for _, line := range lines {
+		l.Add(NewWrappingTextLine(line))
 	}
 
-	return NewWrapScrollComponent(l)
+	return l
 }
-
-// type ScrollLayout struct {
-// 	concat *ConcatLayout
-// }
-
-// func NewScrollLayout(dir Dir) *ScrollLayout {
-// 	if dir == DirHor {
-// 		panic(fmt.Errorf("ScrollLayout doesn't support Horizontal"))
-// 	}
-
-// 	return &ScrollLayout{
-// 		concat: NewConcatLayout(DirVert),
-// 	}
-// }
-
-// func (l *ScrollLayout) Add(c FixedDimComponent) {
-// 	l.concat.Add(c)
-// }
-
-// func (l *ScrollLayout) Render(c CanvasWriter) error {
-// 	width, height := c.Size()
-// 	if height < l.concat.FixedDimSize() {
-// 		height = l.concat.FixedDimSize()
-// 	}
-// 	tempC := NewTempCanvas(width, height)
-// 	if err := l.concat.Render(tempC); err != nil {
-// 		return err
-// 	}
-
-// 	Copy(tempC, c)
-// 	return nil
-// }

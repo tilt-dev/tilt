@@ -49,9 +49,9 @@ func (d *Demo) handleScreenEvent(ev tcell.Event) bool {
 }
 
 func (d *Demo) textScroll() rty.TextScroller {
-	return d.rty.TextScroller("/stream")
+	return d.rty.TextScroller("stream")
 }
 
 func (d *Demo) resourcesScroll() rty.TextScroller {
-	return d.rty.TextScroller("/resources")
+	return d.rty.TextScroller("resources")
 }

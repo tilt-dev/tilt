@@ -2,7 +2,6 @@ package rty
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/windmilleng/tcell"
 )
@@ -19,7 +18,7 @@ type rty struct {
 	state  renderState
 }
 
-type renderState map[FQID]interface{}
+type renderState map[string]interface{}
 
 func (r *rty) Render(c Component) error {
 	r.screen.Clear()
@@ -28,7 +27,6 @@ func (r *rty) Render(c Component) error {
 		next: make(renderState),
 	}
 	f := renderFrame{
-		fqid:    "/",
 		canvas:  newScreenCanvas(r.screen),
 		globals: g,
 	}
@@ -39,8 +37,8 @@ func (r *rty) Render(c Component) error {
 	return g.err
 }
 
-func (r *rty) TextScroller(fqid FQID) TextScroller {
-	st, ok := r.state[fqid]
+func (r *rty) TextScroller(key string) TextScroller {
+	st, ok := r.state[key]
 	if !ok {
 		return nil
 	}
@@ -53,12 +51,12 @@ type renderGlobals struct {
 	next renderState
 }
 
-func (g *renderGlobals) Get(fqid FQID) interface{} {
-	return g.prev[fqid]
+func (g *renderGlobals) Get(key string) interface{} {
+	return g.prev[key]
 }
 
-func (g *renderGlobals) Set(fqid FQID, d interface{}) {
-	g.next[fqid] = d
+func (g *renderGlobals) Set(key string, d interface{}) {
+	g.next[key] = d
 }
 
 func (g *renderGlobals) errorf(format string, a ...interface{}) {
@@ -69,9 +67,7 @@ func (g *renderGlobals) errorf(format string, a ...interface{}) {
 }
 
 type renderFrame struct {
-	fqid   FQID
 	canvas Canvas
-	lpw    *lineProvenanceWriter
 
 	globals *renderGlobals
 }
@@ -84,12 +80,10 @@ func (f renderFrame) SetContent(x int, y int, mainc rune, combc []rune, style tc
 
 func (f renderFrame) Divide(x, y, width, height int) Writer {
 	f.canvas = newSubCanvas(f.canvas, x, y, width, height)
-	f.lpw = f.lpw.Divide(y)
 	return f
 }
 
 func (f renderFrame) RenderChild(c Component) int {
-	f = f.join(c.ID())
 
 	width, height := f.canvas.Size()
 	if err := c.Render(f, width, height); err != nil {
@@ -97,25 +91,19 @@ func (f renderFrame) RenderChild(c Component) int {
 	}
 
 	_, height = f.canvas.Close()
-	f.lpw.WriteLineProvenance(f.fqid, height)
 	return height
 }
 
-func (f renderFrame) RenderChildInTemp(c Component) (Canvas, *LineProvenanceData) {
-	f = f.join(c.ID())
+func (f renderFrame) RenderChildInTemp(c Component) Canvas {
 	width, _ := f.canvas.Size()
 	tmp := newTempCanvas(width, GROW)
 	f.canvas = tmp
 
-	lpw := newLineProvenanceWriter()
-	f.lpw = lpw
-
 	if err := c.Render(f, width, GROW); err != nil {
 		f.error(err)
 	}
-	_, height := tmp.Close()
-	f.lpw.WriteLineProvenance(f.fqid, height)
-	return tmp, lpw.data()
+	tmp.Close()
+	return tmp
 }
 
 func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
@@ -134,30 +122,22 @@ func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
 	}
 }
 
-func (f renderFrame) RenderChildScroll(c ScrollComponent) {
-	f = f.join(c.ID())
-	prev := f.globals.Get(f.fqid)
+func (f renderFrame) RenderStateful(c StatefulComponent, name string) {
+	prev := f.globals.Get(name)
 
 	width, height := f.canvas.Size()
-	next, err := c.RenderScroll(f, prev, width, height)
+	next, err := c.RenderStateful(f, prev, width, height)
 	if err != nil {
 		f.error(err)
 	}
 
-	f.globals.Set(f.fqid, next)
+	f.globals.Set(name, next)
 }
 
 func (f renderFrame) errorf(fmt string, a ...interface{}) {
-	f.globals.errorf("%s"+fmt, append([]interface{}{f.fqid}, a...))
+	f.globals.errorf(fmt, a...)
 }
 
 func (f renderFrame) error(err error) {
-	f.globals.errorf("%s: %s", f.fqid, err.Error())
-}
-
-func (f renderFrame) join(id ID) renderFrame {
-	if id != "" {
-		f.fqid = FQID(filepath.Join(string(f.fqid), string(id)))
-	}
-	return f
+	f.globals.errorf("%s", err.Error())
 }

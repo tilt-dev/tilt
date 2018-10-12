@@ -22,9 +22,9 @@ func (d *Demo) Layout() rty.Component {
 }
 
 func (d *Demo) header() rty.Component {
-	b := rty.NewBox("")
-	b.SetInner(rty.String("", "header"))
-	return rty.NewFixedSize("", b, rty.GROW, 7)
+	b := rty.NewBox()
+	b.SetInner(rty.String("header"))
+	return rty.NewFixedSize(b, rty.GROW, 7)
 }
 
 func (d *Demo) resources() rty.Component {
@@ -35,46 +35,45 @@ func (d *Demo) resources() rty.Component {
 		l.Add(rc)
 	}
 
-	b := rty.NewBox("")
+	b := rty.NewBox()
 	if d.nav.selectedPane == selectedResources {
 		b.SetFocused(true)
 	}
-	b.SetInner(rty.NewWrapScrollComponent(l))
+	b.SetInner(l)
 	return b
 }
 
 func (d *Demo) resource(r view.Resource) rty.Component {
-	lines := rty.NewLines("")
-	cl := rty.NewLine("")
-	cl.Add(rty.String("", r.Name))
-	cl.Add(rty.NewFillerString("", '-'))
-	cl.Add(rty.String("", fmt.Sprintf("%d", r.Status)))
+	lines := rty.NewLines()
+	cl := rty.NewLine()
+	cl.Add(rty.String(r.Name))
+	cl.Add(rty.NewFillerString('-'))
+	cl.Add(rty.String(fmt.Sprintf("%d", r.Status)))
 	lines.Add(cl)
-	cl = rty.NewLine("")
-	cl.Add(rty.String("", fmt.Sprintf(
+	cl = rty.NewLine()
+	cl.Add(rty.String(fmt.Sprintf(
 		"LOCAL: (watching %v) - ", r.DirectoryWatched)))
-	cl.Add(rty.NewTruncatingStrings("", r.LatestFileChanges))
+	cl.Add(rty.NewTruncatingStrings(r.LatestFileChanges))
 	lines.Add(cl)
-	cl = rty.NewLine("")
-	cl.Add(rty.String("",
-		fmt.Sprintf("  K8S: %v", r.StatusDesc)))
+	cl = rty.NewLine()
+	cl.Add(rty.String(fmt.Sprintf("  K8S: %v", r.StatusDesc)))
 	lines.Add(cl)
-	cl = rty.NewLine("")
+	cl = rty.NewLine()
 	lines.Add(cl)
-	cl = rty.NewLine("")
-	cl.Add(rty.String("", "padding"))
+	cl = rty.NewLine()
+	cl.Add(rty.String("padding"))
 	lines.Add(cl)
-	cl = rty.NewLine("")
-	cl.Add(rty.String("", "padding2"))
+	cl = rty.NewLine()
+	cl.Add(rty.String("padding2"))
 	lines.Add(cl)
 
-	b := rty.NewBox("")
+	b := rty.NewBox()
 	b.SetInner(lines)
 	return b
 }
 
 func (d *Demo) stream() rty.Component {
-	b := rty.NewBox("")
+	b := rty.NewBox()
 	if d.nav.selectedPane == selectedStream {
 		b.SetFocused(true)
 	}
@@ -83,8 +82,8 @@ func (d *Demo) stream() rty.Component {
 }
 
 func (d *Demo) footer() rty.Component {
-	b := rty.NewBox("")
-	b.SetInner(rty.String("", "footer"))
+	b := rty.NewBox()
+	b.SetInner(rty.String("footer"))
 
-	return rty.NewFixedSize("", b, rty.GROW, 7)
+	return rty.NewFixedSize(b, rty.GROW, 7)
 }
