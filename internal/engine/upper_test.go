@@ -1112,6 +1112,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	dd := NewDeployDiscovery(k8s, st)
 	plm := NewPodLogManager(k8s, dd, st)
 
+	store := store.NewStore()
+
 	upper := Upper{
 		b:                   b,
 		fsWatcherMaker:      fsWatcherMaker,
@@ -1122,7 +1124,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		browserMode:         BrowserOff,
 		reaper:              reaper,
 		hud:                 hud,
-		store:               store.NewStore(),
+		store:               store,
 		plm:                 plm,
 	}
 
@@ -1139,6 +1141,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		podEvents:      podEvents,
 		serviceEvents:  serviceEvents,
 		log:            log,
+		store:          store,
 	}
 }
 
