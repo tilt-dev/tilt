@@ -31,6 +31,8 @@ type FakeK8sClient struct {
 	LastPodQueryImage     reference.NamedTagged
 
 	PodLogs string
+
+	LastForwardPortPodID PodID
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
@@ -181,8 +183,9 @@ func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID,
 	return NodeID("node"), nil
 }
 
-func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (int, func(), error) {
-	return 0, nil, nil
+func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (int, func(), error) {
+	c.LastForwardPortPodID = podID
+	return optionalLocalPort, func() {}, nil
 }
 
 type BufferCloser struct {

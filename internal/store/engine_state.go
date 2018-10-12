@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"k8s.io/api/core/v1"
 )
 
 type EngineState struct {
@@ -73,8 +74,10 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 
 type Pod struct {
 	PodID     k8s.PodID
+	Namespace k8s.Namespace
 	StartedAt time.Time
 	Status    string
+	Phase     v1.PodPhase
 
 	Log []byte
 
