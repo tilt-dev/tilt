@@ -86,6 +86,8 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		return watch.NewWatcher()
 	}
 
+	st.AddSubscriber(hud)
+
 	return Upper{
 		b:                   b,
 		fsWatcherMaker:      fsWatcherMaker,
@@ -120,14 +122,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	}()
 
 	for {
-		// Subscribers
-		done, err := maybeFinished(u.store)
-		if done {
-			return err
-		}
-		u.maybeStartBuild(ctx, u.store)
-		u.maybeUpdateHUD(ctx, u.store)
-
 		timer := u.timerMaker(refreshInterval)
 
 		select {
@@ -148,6 +142,14 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		case <-timer:
 			break
 		}
+
+		// Subscribers
+		done, err := maybeFinished(u.store)
+		if done {
+			return err
+		}
+		u.maybeStartBuild(ctx, u.store)
+		u.store.NotifySubscribers(ctx)
 	}
 }
 
@@ -189,22 +191,6 @@ func maybeFinished(st *store.Store) (bool, error) {
 
 	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
 	return finished, nil
-}
-
-func (u Upper) maybeUpdateHUD(ctx context.Context, st *store.Store) {
-	state := st.RLockState()
-	if len(state.ManifestStates) == 0 {
-		st.RUnlockState()
-		return
-	}
-
-	view := store.StateToView(state)
-	st.RUnlockState()
-
-	err := u.hud.Update(view)
-	if err != nil {
-		logger.Get(ctx).Infof("Error updating HUD: %v", err)
-	}
 }
 
 // TODO(nick): This should be broken up into a separate subscriber (that kicks

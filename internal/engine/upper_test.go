@@ -680,9 +680,11 @@ func TestPodEvent(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
 	go func() {
+		// Init Action
+		<-f.hud.Updates
+
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
 		<-f.hud.Updates
 
 		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", time.Now())
@@ -708,15 +710,18 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
 	go func() {
+		// Init Action
+		<-f.hud.Updates
+
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
 		<-f.hud.Updates
-		<-f.hud.Updates
 
 		firstCreationTime := time.Now()
-		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", firstCreationTime)
 
+		f.podEvents <- testPod("my pod", "foobar", "CrashLoopBackOff", firstCreationTime)
 		<-f.hud.Updates
+
 		f.podEvents <- testPod("my new pod", "foobar", "Running", firstCreationTime.Add(time.Minute*2))
 
 		<-f.hud.Updates
@@ -740,9 +745,11 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
 	go func() {
+		// Init Action
+		<-f.hud.Updates
+
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
 		<-f.hud.Updates
 
 		creationTime := time.Now()
@@ -772,9 +779,11 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	endToken := errors.New("my-err-token")
 	f.b.nextBuildFailure = errors.New("Build failed")
 	go func() {
+		// Init Action
+		<-f.hud.Updates
+
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
 		<-f.hud.Updates
 
 		creationTime := time.Now()
@@ -903,8 +912,6 @@ func TestUpper_ShowErrorBuildLog(t *testing.T) {
 	<-f.b.calls
 
 	// Wait until the logs reach the HUD.
-	// TODO(nick): Create a better primitive for subscribing to state changes.
-	<-f.hud.Updates
 	<-f.hud.Updates
 
 	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
@@ -1015,7 +1022,6 @@ func TestUpper_ShowErrorNonExistentResource(t *testing.T) {
 	<-f.b.calls
 
 	<-f.hud.Updates
-	<-f.hud.Updates
 
 	f.upper.store.Dispatch(hud.NewShowErrorAction(5))
 
@@ -1063,12 +1069,13 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	<-f.hud.Updates
 	<-f.b.calls
 	<-f.hud.Updates
+
 	f.upper.store.Dispatch(NewServiceChangeAction(testService("myservice", "foobar", "1.2.3.4", 8080)))
 
 	<-f.hud.Updates
+
 	err := f.Stop()
 	if !assert.NoError(t, err) {
 		return
@@ -1232,10 +1239,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
 	st := store.NewStore()
+	st.AddSubscriber(hud)
 	dd := NewDeployDiscovery(k8s, st)
 	plm := NewPodLogManager(k8s, dd, st)
-
-	store := store.NewStore()
 
 	upper := Upper{
 		b:                   b,
@@ -1247,7 +1253,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		browserMode:         BrowserOff,
 		reaper:              reaper,
 		hud:                 hud,
-		store:               store,
+		store:               st,
 		plm:                 plm,
 	}
 
@@ -1264,7 +1270,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		podEvents:      podEvents,
 		serviceEvents:  serviceEvents,
 		log:            log,
-		store:          store,
+		store:          st,
 	}
 }
 
@@ -1274,6 +1280,9 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	go func() {
 		f.createManifestsResult <- f.upper.CreateManifests(f.ctx, manifests, watchMounts)
 	}()
+
+	// Init Action
+	<-f.hud.Updates
 }
 
 func (f *testFixture) Stop() error {
