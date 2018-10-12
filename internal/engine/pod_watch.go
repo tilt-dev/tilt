@@ -16,14 +16,22 @@ func makePodWatcher(ctx context.Context, kCli k8s.Client, st *store.Store) error
 		return err
 	}
 
-	go dispatchPodChangesLoop(ch, st)
+	go dispatchPodChangesLoop(ctx, ch, st)
 
 	return nil
 }
 
-func dispatchPodChangesLoop(ch <-chan *v1.Pod, st *store.Store) {
-	for pod := range ch {
-		st.Dispatch(NewPodChangeAction(pod))
+func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st *store.Store) {
+	for {
+		select {
+		case pod, ok := <-ch:
+			if !ok {
+				return
+			}
+			st.Dispatch(NewPodChangeAction(pod))
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

@@ -1093,14 +1093,14 @@ func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
 
 func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store) error {
 	return func(ctx context.Context, st *store.Store) error {
-		go dispatchPodChangesLoop(ch, st)
+		go dispatchPodChangesLoop(ctx, ch, st)
 		return nil
 	}
 }
 
 func makeFakeServiceWatcherMaker(ch chan *v1.Service) func(context.Context, *store.Store) error {
 	return func(ctx context.Context, st *store.Store) error {
-		go dispatchServiceChangesLoop(ch, st)
+		go dispatchServiceChangesLoop(ctx, ch, st)
 		return nil
 	}
 }
@@ -1242,6 +1242,8 @@ func (f *testFixture) LogLines() []string {
 func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
 	f.cancel()
+	close(f.podEvents)
+	close(f.serviceEvents)
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
