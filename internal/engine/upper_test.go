@@ -1048,9 +1048,10 @@ func TestUpper_PodLogs(t *testing.T) {
 }
 
 type fakeTimerMaker struct {
-	restTimerLock *sync.Mutex
-	maxTimerLock  *sync.Mutex
-	t             *testing.T
+	restTimerLock    *sync.Mutex
+	maxTimerLock     *sync.Mutex
+	refreshTimerLock *sync.Mutex
+	t                *testing.T
 }
 
 func (f fakeTimerMaker) maker() timerMaker {
@@ -1062,6 +1063,8 @@ func (f fakeTimerMaker) maker() timerMaker {
 			lock = f.restTimerLock
 		case watchBufferMaxDuration:
 			lock = f.maxTimerLock
+		case refreshInterval:
+			lock = f.refreshTimerLock
 		default:
 			// if you hit this, someone (you!?) might have added a new timer with a new duration, and you probably
 			// want to add a case above
@@ -1081,8 +1084,9 @@ func (f fakeTimerMaker) maker() timerMaker {
 func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	restTimerLock := new(sync.Mutex)
 	maxTimerLock := new(sync.Mutex)
+	refreshTimerLock := new(sync.Mutex)
 
-	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
+	return fakeTimerMaker{restTimerLock, maxTimerLock, refreshTimerLock, t}
 }
 
 func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
@@ -1135,6 +1139,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeServiceWatcherMaker := makeFakeServiceWatcherMaker(serviceEvents)
 
 	timerMaker := makeFakeTimerMaker(t)
+
+	// disable the refresh timer, which introduces non-determinism we don't want
+	timerMaker.refreshTimerLock.Lock()
+
 	docker := docker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
@@ -1244,6 +1252,7 @@ func (f *testFixture) TearDown() {
 	f.cancel()
 	close(f.podEvents)
 	close(f.serviceEvents)
+	f.timerMaker.refreshTimerLock.Unlock()
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
