@@ -15,13 +15,21 @@ func makeServiceWatcher(ctx context.Context, kCli k8s.Client, st *store.Store) e
 		return err
 	}
 
-	go dispatchServiceChangesLoop(ch, st)
+	go dispatchServiceChangesLoop(ctx, ch, st)
 
 	return nil
 }
 
-func dispatchServiceChangesLoop(ch <-chan *v1.Service, st *store.Store) {
-	for service := range ch {
-		st.Dispatch(NewServiceChangeAction(service))
+func dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st *store.Store) {
+	for {
+		select {
+		case service, ok := <-ch:
+			if !ok {
+				return
+			}
+			st.Dispatch(NewServiceChangeAction(service))
+		case <-ctx.Done():
+			return
+		}
 	}
 }
