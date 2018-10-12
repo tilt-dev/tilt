@@ -119,7 +119,7 @@ func renderResource(p *pen, r view.Resource) {
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		if len(r.LastDeployEdits) > 0 {
 			p.putStyledString(styledString{" Last Deployed Edits: ", cLightText})
-			p.puts(formatFileList(r.LastDeployEdits))
+			p.putln(formatFileList(r.LastDeployEdits))
 		}
 	}
 
