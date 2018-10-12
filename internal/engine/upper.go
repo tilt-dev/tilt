@@ -230,6 +230,30 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 			ms.LastBuildDuration = 0
 			return
 		}
+
+		if newManifest.Equal(ms.Manifest) {
+			logger.Get(ctx).Debugf("Manifest %s hasn't changed, not rebuilding", ms.Manifest.Name)
+			state.CurrentlyBuilding = ""
+			matcher, err := ms.Manifest.ConfigMatcher()
+			if err != nil {
+				logger.Get(ctx).Infof("Error getting config matcher: %v", err)
+				return
+			}
+			remainingPendingFileChanges := make(map[string]bool)
+			for f, _ := range ms.PendingFileChanges {
+				matches, err := matcher.Matches(f, false)
+				if err != nil {
+					logger.Get(ctx).Infof("Error matches %s: %v", f, err)
+				}
+				if !matches {
+					remainingPendingFileChanges[f] = true
+				}
+			}
+			if len(remainingPendingFileChanges) == 0 {
+				return
+			}
+		}
+
 		ms.LastBuild = store.BuildStateClean
 		ms.Manifest = newManifest
 		ms.ConfigIsDirty = false

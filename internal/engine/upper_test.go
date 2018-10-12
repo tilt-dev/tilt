@@ -461,6 +461,70 @@ func TestRebuildDockerfile(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	os.Chdir(f.Path())
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile1", "docker-tag1")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+
+  def bazqux():
+    start_fast_build("Dockerfile2", "docker-tag2")
+    image = stop_build()
+    return k8s_service("yaaaaaaaaml", image)
+`)
+	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
+	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
+
+	mount1 := model.Mount{LocalPath: f.TempDirFixture.JoinPath("mount1"), ContainerPath: "/go"}
+	mount2 := model.Mount{LocalPath: f.TempDirFixture.JoinPath("mount2"), ContainerPath: "/go"}
+	manifest1 := f.newManifest("foobar", []model.Mount{mount1})
+	manifest1.ConfigFiles = []string{
+		f.JoinPath("mount1", "Dockerfile1"),
+	}
+	manifest2 := f.newManifest("bazqux", []model.Mount{mount2})
+	manifest2.ConfigFiles = []string{
+		f.JoinPath("mount2", "Dockerfile2"),
+	}
+	endToken := errors.New("my-err-token")
+
+	// everything that we want to do while watch loop is running
+	go func() {
+		// First call: with the old manifests
+		call := <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+		assert.Equal(t, "foobar", string(call.manifest.Name))
+		call = <-f.b.calls
+		assert.Empty(t, call.manifest.BaseDockerfile)
+		assert.Equal(t, "bazqux", string(call.manifest.Name))
+
+		f.WriteFile("Dockerfile1", `FROM node:10`)
+		f.store.Dispatch(manifestFilesChangedAction{
+			files:        []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")},
+			manifestName: manifest1.Name})
+
+		// Second call: one new manifest!
+		call = <-f.b.calls
+		assert.Equal(t, "foobar", string(call.manifest.Name))
+		assert.ElementsMatch(t, []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")}, call.state.FilesChanged())
+
+		// Importantly the other manifest, bazqux, is _not_ called
+
+		f.fsWatcher.errors <- endToken
+	}()
+	err = f.upper.CreateManifests(f.ctx, []model.Manifest{manifest1, manifest2}, true)
+	assert.Equal(t, endToken, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestRebuildDockerfileFailed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1055,6 +1119,7 @@ type testFixture struct {
 	serviceEvents         chan *v1.Service
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
+	store                 *store.Store
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -1084,6 +1149,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	dd := NewDeployDiscovery(k8s, st)
 	plm := NewPodLogManager(k8s, dd, st)
 
+	store := store.NewStore()
+
 	upper := Upper{
 		b:                   b,
 		fsWatcherMaker:      fsWatcherMaker,
@@ -1094,7 +1161,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		browserMode:         BrowserOff,
 		reaper:              reaper,
 		hud:                 hud,
-		store:               store.NewStore(),
+		store:               store,
 		plm:                 plm,
 	}
 
@@ -1111,6 +1178,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		podEvents:      podEvents,
 		serviceEvents:  serviceEvents,
 		log:            log,
+		store:          store,
 	}
 }
 
