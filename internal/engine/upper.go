@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/browser"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -48,19 +50,21 @@ const refreshInterval = 1 * time.Second
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b               BuildAndDeployer
-	fsWatcherMaker  fsWatcherMaker
-	timerMaker      timerMaker
-	podWatcherMaker PodWatcherMaker
-	k8s             k8s.Client
-	browserMode     BrowserMode
-	reaper          build.ImageReaper
-	hud             hud.HeadsUpDisplay
-	store           *store.Store
-	plm             *PodLogManager
+	b                   BuildAndDeployer
+	fsWatcherMaker      fsWatcherMaker
+	timerMaker          timerMaker
+	podWatcherMaker     PodWatcherMaker
+	serviceWatcherMaker ServiceWatcherMaker
+	k8s                 k8s.Client
+	browserMode         BrowserMode
+	reaper              build.ImageReaper
+	hud                 hud.HeadsUpDisplay
+	store               *store.Store
+	plm                 *PodLogManager
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
+type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
@@ -70,23 +74,30 @@ func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
 	}
 }
 
+func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
+	return func(ctx context.Context, store *store.Store) error {
+		return makeServiceWatcher(ctx, kCli, store)
+	}
+}
+
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw PodWatcherMaker, st *store.Store, plm *PodLogManager) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker, st *store.Store, plm *PodLogManager) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 
 	return Upper{
-		b:               b,
-		fsWatcherMaker:  fsWatcherMaker,
-		podWatcherMaker: pw,
-		timerMaker:      time.After,
-		k8s:             k8s,
-		browserMode:     browserMode,
-		reaper:          reaper,
-		hud:             hud,
-		store:           st,
-		plm:             plm,
+		b:                   b,
+		fsWatcherMaker:      fsWatcherMaker,
+		podWatcherMaker:     pwm,
+		serviceWatcherMaker: swm,
+		timerMaker:          time.After,
+		k8s:                 k8s,
+		browserMode:         browserMode,
+		reaper:              reaper,
+		hud:                 hud,
+		store:               st,
+		plm:                 plm,
 	}
 }
 
@@ -145,6 +156,10 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
 		handlePodEvent(ctx, state, action.Pod)
+	case ServiceChangeAction:
+		handleServiceEvent(ctx, state, action.Service)
+	case PodLogAction:
+		handlePodLogAction(state, action)
 	case BuildCompleteAction:
 		return u.handleCompletedBuild(ctx, state, action)
 	case hud.ReplayBuildLogAction:
@@ -282,20 +297,6 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()
 
-		ms.Lbs = k8s.ToLoadBalancerSpecs(cb.Result.Entities)
-
-		if len(ms.Lbs) > 0 && engineState.OpenBrowserOnNextLB {
-			// Open only the first load balancer in a browser.
-			// TODO(nick): We might need some hints on what load balancer to
-			// open if we have multiple, or what path to default to on the opened manifest.
-			// TODO(nick): This should be in a subscriber.
-			err := k8s.OpenService(ctx, u.k8s, ms.Lbs[0])
-			if err != nil {
-				return err
-			}
-			engineState.OpenBrowserOnNextLB = false
-		}
-
 		prevBuild := ms.LastBuild
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
@@ -377,22 +378,86 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 
-	newPod := store.Pod{
-		Name:      pod.Name,
-		StartedAt: pod.CreationTimestamp.Time,
-		Status:    podStatusToString(*pod),
-	}
+	podID := k8s.PodIDFromPod(pod)
+	startedAt := pod.CreationTimestamp.Time
+	status := podStatusToString(*pod)
 
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
-		logger.Get(ctx).Infof("error: got notified of pod for unknown manifest '%s'", manifestName)
+		// This is OK. The user could have edited the manifest recently.
 		return
 	}
 
 	oldPod := ms.Pod
+	if oldPod.PodID == "" || oldPod.StartedAt.Before(startedAt) {
+		ms.Pod = store.Pod{
+			PodID:     podID,
+			StartedAt: startedAt,
+			Status:    status,
+		}
+	} else if oldPod.PodID == podID {
+		ms.Pod.Status = status
+		ms.Pod.StartedAt = startedAt
+	}
+}
 
-	if oldPod == store.UnknownPod || oldPod.Name == newPod.Name || oldPod.StartedAt.Before(newPod.StartedAt) {
-		ms.Pod = newPod
+func handlePodLogAction(state *store.EngineState, action PodLogAction) {
+	manifestName := action.ManifestName
+	ms, ok := state.ManifestStates[manifestName]
+	if !ok {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+
+	if ms.Pod.PodID != action.PodID {
+		// NOTE(nick): There are two cases where this could happen:
+		// 1) Pod 1 died and kubernetes started Pod 2. What should we do with
+		//    logs from Pod 1 that are still in the action queue?
+		//    This is an open product question. A future HUD may aggregate
+		//    logs across pod restarts.
+		// 2) Due to race conditions, we got the logs for Pod 1 before
+		//    we saw Pod 1 materialize on the Pod API. The best way to fix
+		//    this would be to make PodLogManager a subscriber that only
+		//    starts listening on logs once the pod has materialized.
+		//    We may prioritize this higher or lower based on how often
+		//    this happens in practice.
+		return
+	}
+
+	ms.Pod.Log = append(ms.Pod.Log, action.Log...)
+}
+
+func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
+	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
+	if manifestName == "" {
+		return
+	}
+
+	ms, ok := state.ManifestStates[manifestName]
+	if !ok {
+		logger.Get(ctx).Infof("error: got notified of service for unknown manifest '%s'", manifestName)
+		return
+	}
+
+	url, err := k8s.ServiceURL(service)
+	if err != nil {
+		logger.Get(ctx).Infof("error resolving service %s: %v", manifestName, err)
+		return
+	}
+
+	ms.LBs[k8s.ServiceName(service.Name)] = url
+
+	if url != nil && state.OpenBrowserOnNextLB {
+		// Open only the first load balancer in a browser.
+		// TODO(nick): We might need some hints on what load balancer to
+		// open if we have multiple, or what path to default to on the opened manifest.
+		err := browser.OpenURL(url.String())
+		if err != nil {
+			logger.Get(ctx).Infof("error opening service %s at %s: %v", service.Name, url.String(), err)
+			return
+		}
+
+		state.OpenBrowserOnNextLB = false
 	}
 }
 
@@ -414,6 +479,10 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 			return err
 		}
 		err = u.podWatcherMaker(ctx, u.store)
+		if err != nil {
+			return err
+		}
+		err = u.serviceWatcherMaker(ctx, u.store)
 		if err != nil {
 			return err
 		}

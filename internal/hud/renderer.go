@@ -179,8 +179,9 @@ func renderResource(p *pen, r view.Resource) {
 		p.style = tcell.StyleDefault
 		p.putsf("Pod [%s] • %s ago — %s", r.PodName, formatDuration(time.Since(r.PodCreationTime)), r.PodStatus)
 	}
-	if r.Endpoint != "" {
-		p.putlnf("         %s", r.Endpoint)
+
+	if len(r.Endpoints) != 0 {
+		p.putlnf("         %s", strings.Join(r.Endpoints, " "))
 	}
 	p.newln()
 	p.newln()

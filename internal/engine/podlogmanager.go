@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -18,16 +19,18 @@ import (
 type PodLogManager struct {
 	kClient k8s.Client
 	dd      *DeployDiscovery
+	store   *store.Store
 
 	// TODO(nick): This should really be part of a reactive state store.
 	watches map[docker.ImgNameAndTag]PodLogWatch
 	mu      sync.Mutex
 }
 
-func NewPodLogManager(kClient k8s.Client, dd *DeployDiscovery) *PodLogManager {
+func NewPodLogManager(kClient k8s.Client, dd *DeployDiscovery, store *store.Store) *PodLogManager {
 	return &PodLogManager{
 		kClient: kClient,
 		dd:      dd,
+		store:   store,
 		watches: make(map[docker.ImgNameAndTag]PodLogWatch),
 	}
 }
@@ -86,9 +89,20 @@ func (m *PodLogManager) consumeLogs(name model.ManifestName, result store.BuildR
 		_ = readCloser.Close()
 	}()
 
-	writer := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	writer = output.NewPrefixedWriter(fmt.Sprintf("[%s] ", name), writer)
-	_, err = io.Copy(writer, readCloser)
+	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
+	prefixLogWriter := output.NewPrefixedWriter(fmt.Sprintf("[%s] ", name), logWriter)
+	actionWriter := PodLogActionWriter{
+		store:        m.store,
+		manifestName: name,
+		podID:        pID,
+	}
+	actionBufWriter := bufio.NewWriter(actionWriter)
+	defer func() {
+		_ = actionBufWriter.Flush()
+	}()
+	multiWriter := io.MultiWriter(prefixLogWriter, actionBufWriter)
+
+	_, err = io.Copy(multiWriter, readCloser)
 	if err != nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
@@ -109,4 +123,19 @@ func (m *PodLogManager) tearDownWatcher(result store.BuildResult) {
 type PodLogWatch struct {
 	ctx    context.Context
 	cancel func()
+}
+
+type PodLogActionWriter struct {
+	store        *store.Store
+	podID        k8s.PodID
+	manifestName model.ManifestName
+}
+
+func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
+	w.store.Dispatch(PodLogAction{
+		PodID:        w.podID,
+		ManifestName: w.manifestName,
+		Log:          append([]byte{}, p...),
+	})
+	return len(p), nil
 }

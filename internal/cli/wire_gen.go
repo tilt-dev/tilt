@@ -33,7 +33,8 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
-	deployDiscovery := engine.NewDeployDiscovery(k8sClient)
+	storeStore := store.NewStore()
+	deployDiscovery := engine.NewDeployDiscovery(k8sClient, storeStore)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
 	dockerCli, err := docker.DefaultDockerClient(ctx, env)
@@ -66,9 +67,9 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		return nil, err
 	}
 	podWatcherMaker := engine.ProvidePodWatcherMaker(k8sClient)
-	storeStore := store.NewStore()
-	podLogManager := engine.NewPodLogManager(k8sClient, deployDiscovery)
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker, storeStore, podLogManager)
+	serviceWatcherMaker := engine.ProvideServiceWatcherMaker(k8sClient)
+	podLogManager := engine.NewPodLogManager(k8sClient, deployDiscovery, storeStore)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, storeStore, podLogManager)
 	return upper, nil
 }
 

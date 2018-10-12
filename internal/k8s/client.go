@@ -30,6 +30,7 @@ type PodID string
 type ContainerID string
 type ContainerName string
 type NodeID string
+type ServiceName string
 
 const DefaultNamespace = Namespace("default")
 
@@ -92,6 +93,8 @@ type Client interface {
 	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (localPort int, closer func(), err error)
 
 	WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error)
+
+	WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error)
 }
 
 type K8sClient struct {
@@ -168,20 +171,12 @@ func (k K8sClient) resolveLoadBalancerFromMinikube(ctx context.Context, lb LoadB
 	}, nil
 }
 
-func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	if len(lb.Ports) == 0 {
-		return LoadBalancer{}, nil
-	}
+func ServiceURL(service *v1.Service) (*url.URL, error) {
+	status := service.Status
 
-	port := lb.Ports[0]
-
-	svc, err := k.core.Services(lb.Namespace.String()).Get(lb.Name, metav1.GetOptions{})
-	if err != nil {
-		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
-	}
-
-	status := svc.Status
 	lbStatus := status.LoadBalancer
+
+	port := service.Spec.Ports[0].Port
 
 	// Documentation here is helpful:
 	// https://godoc.org/k8s.io/api/core/v1#LoadBalancerIngress
@@ -203,15 +198,32 @@ func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBal
 
 		url, err := url.Parse(urlString)
 		if err != nil {
-			return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
+			return nil, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
 		}
-		return LoadBalancer{
-			URL:  url,
-			Spec: lb,
-		}, nil
+		return url, nil
 	}
 
-	return LoadBalancer{}, nil
+	return nil, nil
+}
+
+func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
+	if len(lb.Ports) == 0 {
+		return LoadBalancer{}, nil
+	}
+
+	svc, err := k.core.Services(lb.Namespace.String()).Get(lb.Name, metav1.GetOptions{})
+	if err != nil {
+		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
+	}
+
+	url, err := ServiceURL(svc)
+	if err != nil {
+		return LoadBalancer{}, err
+	}
+	return LoadBalancer{
+		URL:  url,
+		Spec: lb,
+	}, nil
 }
 
 func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
