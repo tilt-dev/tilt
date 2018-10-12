@@ -110,7 +110,6 @@ func connectHud(ctx context.Context) error {
 		for {
 			select {
 			case <-winchCh:
-				log.Printf("sending winch")
 				if err := stream.Send(
 					&proto.HudControl{
 						Control: &proto.HudControl_WindowChange{WindowChange: &proto.WindowChange{}},
