@@ -124,3 +124,12 @@ func ContainerIDFromContainerStatus(status v1.ContainerStatus) (ContainerID, err
 func ContainerNameFromContainerStatus(status v1.ContainerStatus) ContainerName {
 	return ContainerName(status.Name)
 }
+
+func ContainerSpecOf(pod *v1.Pod, status v1.ContainerStatus) v1.Container {
+	for _, spec := range pod.Spec.Containers {
+		if spec.Name == status.Name {
+			return spec
+		}
+	}
+	return v1.Container{}
+}

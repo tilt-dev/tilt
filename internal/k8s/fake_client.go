@@ -75,6 +75,47 @@ func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v
 	return nil, nil
 }
 
+func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {
+	return v1.PodStatus{
+		Phase: v1.PodPhase(phase),
+		ContainerStatuses: []v1.ContainerStatus{
+			{
+				Name:        "main",
+				ContainerID: "docker://" + MagicTestContainerID,
+				Image:       image.String(),
+				Ready:       true,
+			},
+			{
+				Name:        "tilt-synclet",
+				ContainerID: "docker://tilt-testsynclet",
+				// can't use the constants in synclet because that would create a dep cycle
+				Image: "gcr.io/windmill-public-containers/tilt-synclet:latest",
+				Ready: true,
+			},
+		},
+	}
+}
+
+func FakePodSpec(image reference.NamedTagged) v1.PodSpec {
+	return v1.PodSpec{
+		Containers: []v1.Container{
+			{
+				Name:  "main",
+				Image: image.String(),
+				Ports: []v1.ContainerPort{
+					{
+						ContainerPort: 8080,
+					},
+				},
+			},
+			{
+				Name:  "tilt-synclet",
+				Image: "gcr.io/windmill-public-containers/tilt-synclet:latest",
+			},
+		},
+	}
+}
+
 func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
 	c.LastPodQueryImage = image
 	c.LastPodQueryNamespace = n
@@ -83,21 +124,9 @@ func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.Named
 		return nil, c.PodsWithImageError
 	}
 
-	status := v1.PodStatus{
-		ContainerStatuses: []v1.ContainerStatus{
-			{
-				ContainerID: "docker://" + MagicTestContainerID,
-				Image:       image.String(),
-				Ready:       true,
-			},
-			{
-				ContainerID: "docker://tilt-testservlet",
-				// can't use the constants in synclet because that would create a dep cycle
-				Image: "gcr.io/windmill-public-containers/tilt-synclet:latest",
-				Ready: true,
-			},
-		},
-	}
+	status := FakePodStatus(image, "Running")
+	spec := FakePodSpec(image)
+
 	if !c.PodsWithImageResp.Empty() {
 		res := c.PodsWithImageResp
 		c.PodsWithImageResp = ""
@@ -108,6 +137,7 @@ func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.Named
 					Labels: makeLabelSet(labels),
 				},
 				Status: status,
+				Spec:   spec,
 			},
 		}, nil
 	}
@@ -118,6 +148,7 @@ func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.Named
 				Labels: makeLabelSet(labels),
 			},
 			Status: status,
+			Spec:   spec,
 		},
 	}, nil
 }
