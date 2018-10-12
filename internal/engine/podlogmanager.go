@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -96,11 +95,7 @@ func (m *PodLogManager) consumeLogs(name model.ManifestName, result store.BuildR
 		manifestName: name,
 		podID:        pID,
 	}
-	actionBufWriter := bufio.NewWriter(actionWriter)
-	defer func() {
-		_ = actionBufWriter.Flush()
-	}()
-	multiWriter := io.MultiWriter(prefixLogWriter, actionBufWriter)
+	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
 
 	_, err = io.Copy(multiWriter, readCloser)
 	if err != nil {

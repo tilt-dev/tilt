@@ -162,8 +162,8 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
 		return u.handleCompletedBuild(ctx, state, action)
-	case hud.ReplayBuildLogAction:
-		replayBuildLog(ctx, state, action.ResourceNumber)
+	case hud.ShowErrorAction:
+		showError(ctx, state, action.ResourceNumber)
 	default:
 		return fmt.Errorf("Unrecognized action: %T", action)
 	}
@@ -271,6 +271,8 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	ms.CurrentBuildStartTime = time.Now()
 
 	ctx = output.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
+
+	ms.Pod.Log = []byte{}
 
 	go func() {
 		firstBuild := !ms.HasBeenBuilt
@@ -476,6 +478,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	manifestName := action.ManifestName
 	ms, ok := state.ManifestStates[manifestName]
+
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
 		return
@@ -679,7 +682,7 @@ func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifes
 }
 
 // TODO(nick): This should be in the HUD
-func replayBuildLog(ctx context.Context, state *store.EngineState, resourceNumber int) {
+func showError(ctx context.Context, state *store.EngineState, resourceNumber int) {
 	if resourceNumber > len(state.ManifestDefinitionOrder) {
 		logger.Get(ctx).Infof("Resource %d does not exist, so no log to print", resourceNumber)
 		return
@@ -688,13 +691,23 @@ func replayBuildLog(ctx context.Context, state *store.EngineState, resourceNumbe
 	mn := state.ManifestDefinitionOrder[resourceNumber-1]
 
 	ms := state.ManifestStates[mn]
+
 	if ms.LastBuildFinishTime.Equal(time.Time{}) {
 		logger.Get(ctx).Infof("Resource %d has no previous build, so no log to print", resourceNumber)
 		return
 	}
 
-	logger.Get(ctx).Infof("Reprinting last build log for %s:", mn)
-	logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
+	if ms.LastError != nil {
+		logger.Get(ctx).Infof("Last %s build log:", mn)
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+		logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+	} else {
+		logger.Get(ctx).Infof("%s pod log since last build:", mn)
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+		logger.Get(ctx).Infof("%s", ms.Pod.Log)
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+	}
 }
 
 var _ model.ManifestCreator = Upper{}

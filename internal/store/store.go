@@ -56,6 +56,10 @@ func (s *Store) Dispatch(action Action) {
 	go s.drainActions()
 }
 
+func (s *Store) Close() {
+	close(s.actionCh)
+}
+
 func (s *Store) drainActions() {
 	// The mutex here ensures that the actions appear on the channel in-order.
 	// It will also be necessary once we have reducers.

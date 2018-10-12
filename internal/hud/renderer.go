@@ -218,7 +218,7 @@ func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
 				case tcell.KeyRune:
 					switch r := ev.Rune(); {
 					case r >= '1' && r <= '9':
-						st.Dispatch(NewReplayBuildLogAction(int(r - '0')))
+						st.Dispatch(NewShowErrorAction(int(r - '0')))
 					}
 				}
 			}
