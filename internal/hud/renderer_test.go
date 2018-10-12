@@ -24,7 +24,7 @@ func TestRender(t *testing.T) {
 
 	tf.renderer.Render(v)
 
-	expectedContent := []string{"", "foo — not yet deployed", "  Watching bar/", "  BUILD: no build yet"}
+	expectedContent := []string{"foo ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ not deployed yet", "  (Watching bar/)", "  BUILD: no build yet"}
 
 	assert.Equal(t, expectedContent, tf.fakeScreen.Lines())
 }

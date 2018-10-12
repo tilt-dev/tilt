@@ -82,78 +82,114 @@ func formatFileList(files []string) string {
 	return strings.Join(ret, ", ")
 }
 
-func renderResource(p *pen, r view.Resource) {
-	p.putln("")
-	deployString := "not yet deployed"
-	if !r.LastDeployTime.Equal(time.Time{}) {
-		deployString = fmt.Sprintf("Last deployed %s ago", formatDuration(time.Since(r.LastDeployTime)))
-		if len(r.LastDeployEdits) > 0 {
-			deployString += fmt.Sprintf(" • Latest Edits: %s", formatFileList(r.LastDeployEdits))
-		}
-	}
-	p.putlnf("%s — %s", r.Name, deployString)
+var cLightText = tcell.StyleDefault.Foreground(tcell.Color241)
+var cGood = tcell.StyleDefault.Foreground(tcell.ColorGreen)
+var cBad = tcell.StyleDefault.Foreground(tcell.ColorRed)
+var cPending = tcell.StyleDefault.Foreground(tcell.ColorYellow)
 
+var podStatusColors = map[string]tcell.Style{
+	"Running":           cGood,
+	"ContainerCreating": cPending,
+	"Error":             cBad,
+	"CrashLoopBackOff":  cBad,
+}
+
+func renderResource(p *pen, r view.Resource) {
+
+	// Resource Title ---------------------------------------
+	deployString := "not deployed yet"
+	if !r.LastDeployTime.Equal(time.Time{}) {
+		deployString = fmt.Sprintf("deployed %s ago", formatDuration(time.Since(r.LastDeployTime)))
+	}
+	p.puts(r.Name)
+	const dashSize = 35
+	p.putStyledString(styledString{fmt.Sprintf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))), cLightText})
+	p.puts(deployString)
+
+	// Resource FS Changes ---------------------------------------
 	if len(r.DirectoriesWatched) > 0 {
+		p.newln()
 		var dirs []string
 		for _, s := range r.DirectoriesWatched {
 			dirs = append(dirs, fmt.Sprintf("%s/", s))
 		}
-		p.putlnf("  Watching %s", strings.Join(dirs, " "))
+		p.putlnStyledString(styledString{fmt.Sprintf("  (Watching %s)", strings.Join(dirs, " ")), cLightText})
 	}
 
-	var buildStrings []string
+	if !r.LastDeployTime.Equal(time.Time{}) {
+		if len(r.LastDeployEdits) > 0 {
+			p.putStyledString(styledString{" Last Deployed Edits: ", cLightText})
+			p.puts(formatFileList(r.LastDeployEdits))
+		}
+	}
+
+	// Build Info ---------------------------------------
+	var buildStrings [][]styledString
 
 	if !r.CurrentBuildStartTime.Equal(time.Time{}) {
-		s := fmt.Sprintf("In Progress - For %s", formatDuration(time.Since(r.CurrentBuildStartTime)))
+		statusString := styledString{"In Progress", cPending}
+		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.CurrentBuildStartTime)))
 		if len(r.CurrentBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.CurrentBuildEdits))
 		}
-		buildStrings = append(buildStrings, s)
+		buildStrings = append(buildStrings, []styledString{statusString, {string: s}})
 	}
 
 	if !r.PendingBuildSince.Equal(time.Time{}) {
-		s := fmt.Sprintf("Pending - For %s", formatDuration(time.Since(r.PendingBuildSince)))
+		statusString := styledString{"Pending", cPending}
+		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.PendingBuildSince)))
 		if len(r.PendingBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.PendingBuildEdits))
 		}
-		buildStrings = append(buildStrings, s)
+		buildStrings = append(buildStrings, []styledString{statusString, {string: s}})
 	}
 
 	if !r.LastBuildFinishTime.Equal(time.Time{}) {
-		shortBuildStatus := "OK"
+		shortBuildStatus := styledString{"OK", cGood}
 		if r.LastBuildError != "" {
-			shortBuildStatus = "Error"
+			shortBuildStatus = styledString{"ERR", cBad}
 		}
 
-		s := fmt.Sprintf("Last — %s • Took %s • Ended %s ago",
-			shortBuildStatus,
+		s := fmt.Sprintf("Last build (done in %s) ended %s ago — ",
 			formatPreciseDuration(r.LastBuildDuration),
 			formatDuration(time.Since(r.LastBuildFinishTime)))
 
-		buildStrings = append(buildStrings, s)
+		buildStrings = append(buildStrings, []styledString{{string: s}, shortBuildStatus})
 
 		if r.LastBuildError != "" {
 			s := fmt.Sprintf("Error: %s", r.LastBuildError)
-			buildStrings = append(buildStrings, s)
+			buildStrings = append(buildStrings, []styledString{{string: s}})
 		}
 	}
 
 	if len(buildStrings) == 0 {
-		buildStrings = []string{"no build yet"}
+		buildStrings = [][]styledString{{{string: "no build yet"}}}
 	}
-	p.putlnf("  BUILD: %s", buildStrings[0])
+	p.putStyledString(styledString{"  BUILD: ", cLightText})
+	p.putlnStyledString(buildStrings[0]...)
 	for _, s := range buildStrings[1:] {
-		p.putlnf("         %s", s)
+		p.puts("         ")
+		p.putlnStyledString(s...)
 	}
 
+	// Kubernetes Info ---------------------------------------
 	if r.PodStatus != "" {
-		p.putlnf("  K8s:   Pod %s - %s ago • Status: %s", r.PodName, formatDuration(time.Since(r.PodCreationTime)), r.PodStatus)
+		podStatusColor, ok := podStatusColors[r.PodStatus]
+		if !ok {
+			podStatusColor = tcell.StyleDefault
+		}
+		p.putlnStyledString(
+			styledString{"    K8S: ", cLightText},
+			styledString{string: fmt.Sprintf("Pod [%s] • %s ago — ", r.PodName, formatDuration(time.Since(r.PodCreationTime)))},
+			styledString{r.PodStatus, podStatusColor},
+		)
 	}
 
 	if len(r.Endpoints) != 0 {
 		p.putlnf("         %s", strings.Join(r.Endpoints, " "))
 	}
-
+	p.newln()
+	p.newln()
 }
 
 func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {

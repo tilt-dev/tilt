@@ -7,6 +7,11 @@ import (
 	"github.com/windmilleng/tcell"
 )
 
+type styledString struct {
+	string
+	style tcell.Style
+}
+
 type pen struct {
 	s     tcell.Screen
 	x     int
@@ -29,17 +34,38 @@ func (p *pen) putlnf(format string, a ...interface{}) {
 	p.putln(fmt.Sprintf(format, a...))
 }
 
+func (p *pen) putStyledString(strings ...styledString) {
+	for _, s := range strings {
+		p.x += puts(p.s, s.style, p.x, p.y, s.string)
+	}
+}
+
+func (p *pen) putlnStyledString(s ...styledString) {
+	p.putStyledString(s...)
+	p.newln()
+}
+
 func (p *pen) putln(str string) {
-	p.x = 0
+	// p.x = 0
 	p.puts(str)
+	// p.y++
+	p.newln()
+}
+
+func (p *pen) newln() {
+	p.x = 0
 	p.y++
 }
 
-func (p *pen) puts(str string) {
-	puts(p.s, p.style, p.x, p.y, str)
+func (p *pen) putsf(format string, a ...interface{}) {
+	p.puts(fmt.Sprintf(format, a...))
 }
 
-func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
+func (p *pen) puts(str string) {
+	p.x += puts(p.s, p.style, p.x, p.y, str)
+}
+
+func puts(s tcell.Screen, style tcell.Style, x, y int, str string) int {
 	i := 0
 	var deferred []rune
 	dwidth := 0
@@ -86,4 +112,5 @@ func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
 		s.SetContent(x+i, y, deferred[0], deferred[1:], style)
 		i += dwidth
 	}
+	return i
 }
