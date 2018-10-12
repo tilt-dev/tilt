@@ -372,10 +372,14 @@ func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
 }
 
-func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
+// Get a pointer to a mutable manifest state,
+// ensuring that some Pod exists on the state.
+//
+// Intended as a helper for pod-mutating events.
+func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.ManifestState {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
-		return
+		return nil
 	}
 
 	podID := k8s.PodIDFromPod(pod)
@@ -385,20 +389,64 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
-		return
+		return nil
 	}
 
-	oldPod := ms.Pod
-	if oldPod.PodID == "" || oldPod.StartedAt.Before(startedAt) {
+	// If the pod is empty, or older then the current pod, replace it.
+	if ms.Pod.PodID == "" || ms.Pod.StartedAt.Before(startedAt) {
 		ms.Pod = store.Pod{
 			PodID:     podID,
 			StartedAt: startedAt,
 			Status:    status,
 		}
-	} else if oldPod.PodID == podID {
-		ms.Pod.Status = status
-		ms.Pod.StartedAt = startedAt
 	}
+	return ms
+}
+
+// Fill in container fields on the pod state.
+func populateContainerStatus(ctx context.Context, ms *store.ManifestState, pod *v1.Pod, cStatus v1.ContainerStatus) {
+	cName := k8s.ContainerNameFromContainerStatus(cStatus)
+	ms.Pod.ContainerName = cName
+
+	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
+	if err != nil {
+		logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
+		return
+	}
+	ms.Pod.ContainerID = cID
+
+	ports := make([]int32, 0)
+	cSpec := k8s.ContainerSpecOf(pod, cStatus)
+	for _, cPort := range cSpec.Ports {
+		ports = append(ports, cPort.ContainerPort)
+	}
+	ms.Pod.ContainerPorts = ports
+}
+
+func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
+	ms := ensureManifestStateWithPod(state, pod)
+	if ms == nil {
+		return
+	}
+
+	podID := k8s.PodIDFromPod(pod)
+	if ms.Pod.PodID != podID {
+		// This is an event from an old pod.
+		return
+	}
+
+	// Update the status
+	ms.Pod.Status = podStatusToString(*pod)
+
+	// Check if the container is ready.
+	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef)
+	if err != nil {
+		logger.Get(ctx).Debugf("Error matching container: %v", err)
+		return
+	} else if !cStatus.Ready {
+		return
+	}
+	populateContainerStatus(ctx, ms, pod, cStatus)
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {

@@ -51,10 +51,9 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult() store.BuildResult {
+func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildResult {
 	b.buildCount++
-	n, _ := reference.WithName("windmill.build/dummy")
-	nt, _ := reference.WithTag(n, fmt.Sprintf("tilt-%d", b.buildCount))
+	nt, _ := reference.WithTag(ref, fmt.Sprintf("tilt-%d", b.buildCount))
 	return store.BuildResult{Image: nt}
 }
 
@@ -73,7 +72,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		return store.BuildResult{}, err
 	}
 
-	return b.nextBuildResult(), nil
+	return b.nextBuildResult(manifest.DockerRef), nil
 }
 
 func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) bool {
@@ -186,7 +185,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 		call = <-f.b.calls
 		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
+		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
 		fileAbsPath, err := filepath.Abs(fileRelPath)
 		if err != nil {
 			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
@@ -352,7 +351,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 		f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
 		call = <-f.b.calls
-		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
+		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
 		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
 
 		// Simulate a change to b.go
@@ -362,7 +361,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 		// on the last successful result, from before a.go changed.
 		call = <-f.b.calls
 		assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
-		assert.Equal(t, "windmill.build/dummy:tilt-1", call.state.LastImage().String())
+		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
 
 		f.fsWatcher.errors <- endToken
 	}()
@@ -733,6 +732,45 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.assertAllHUDUpdatesConsumed()
 }
 
+func TestPodContainerStatus(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Mount{mount})
+	f.Start([]model.Manifest{manifest}, true)
+
+	<-f.b.calls
+
+	var ref reference.NamedTagged
+	f.WaitUntilManifest("image appears", "fe", func(ms store.ManifestState) bool {
+		ref = ms.LastBuild.LastResult.Image
+		return ref != nil
+	})
+
+	startedAt := time.Now()
+	f.podEvents <- testPod("pod-id", "fe", "Running", startedAt)
+	f.WaitUntilManifest("pod appears", "fe", func(ms store.ManifestState) bool {
+		return ms.Pod.PodID == "pod-id"
+	})
+
+	pod := testPod("pod-id", "fe", "Running", startedAt)
+	pod.Spec = k8s.FakePodSpec(ref)
+	pod.Status = k8s.FakePodStatus(ref, "Running")
+	f.podEvents <- pod
+
+	f.WaitUntilManifest("container is ready", "fe", func(ms store.ManifestState) bool {
+		ports := ms.Pod.ContainerPorts
+		return len(ports) == 1 && ports[0] == 8080
+	})
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	f.assertAllBuildsConsumed()
+}
+
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -912,39 +950,37 @@ func TestUpper_PodLogs(t *testing.T) {
 	defer f.TearDown()
 
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Mount{mount})
+	name := model.ManifestName("fe")
+	pID := k8s.PodID("podid")
+	manifest := f.newManifest(string(name), []model.Mount{mount})
 
 	f.Start([]model.Manifest{manifest}, true)
 
 	<-f.b.calls
 
-	<-f.hud.Updates
-	<-f.hud.Updates
-
 	f.upper.store.Dispatch(PodChangeAction{
-		Pod: testPod("podid", "fe", "Running", time.Now()),
+		Pod: testPod(pID.String(), string(name), "Running", time.Now()),
 	})
-	<-f.hud.Updates
+	f.WaitUntilManifest("pod appears", "fe", func(ms store.ManifestState) bool {
+		return ms.Pod.PodID == pID
+	})
 
 	expected := "Hello world!\n"
 	f.upper.store.Dispatch(PodLogAction{
 		ManifestName: manifest.Name,
-		PodID:        k8s.PodID("podid"),
+		PodID:        pID,
 		Log:          []byte(expected),
 	})
-	<-f.hud.Updates
+	f.WaitUntilManifest("podlog contains Hello world!", "fe", func(ms store.ManifestState) bool {
+		return string(ms.Pod.Log) == expected
+	})
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	state := f.upper.store.RLockState()
-	defer f.upper.store.RUnlockState()
-	assert.Equal(t, expected, string(state.ManifestStates[manifest.Name].Pod.Log))
-
 	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 type fakeTimerMaker struct {
@@ -1094,6 +1130,41 @@ func (f *testFixture) Stop() error {
 	} else {
 		return err
 	}
+}
+
+// Wait until the given engine state test passes.
+func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool) {
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	for {
+		state := f.upper.store.RLockState()
+		done := isDone(state)
+		f.upper.store.RUnlockState()
+		if done {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.T().Fatalf("Timed out waiting for: %s", msg)
+
+			// TODO(nick): Right now we're using the HUD update channel as a proxy for
+			// "the model changed". Eventually we should have a real reactive
+			// subscription mechanism.
+		case <-f.hud.Updates:
+		}
+	}
+}
+
+func (f *testFixture) WaitUntilManifest(msg string, name string, isDone func(store.ManifestState) bool) {
+	f.WaitUntil(msg, func(es store.EngineState) bool {
+		ms, ok := es.ManifestStates[model.ManifestName(name)]
+		if !ok {
+			return false
+		}
+		return isDone(*ms)
+	})
 }
 
 func (f *testFixture) LogLines() []string {

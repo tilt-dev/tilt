@@ -78,7 +78,10 @@ type Pod struct {
 
 	Log []byte
 
-	// TODO(nick): Put ContainerID and ContainerName here as well.
+	// Corresponds to the deployed container.
+	ContainerName  k8s.ContainerName
+	ContainerID    k8s.ContainerID
+	ContainerPorts []int32
 }
 
 func shortenFile(baseDirs []string, f string) string {

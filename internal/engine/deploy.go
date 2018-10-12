@@ -78,6 +78,9 @@ func (d *DeployDiscovery) ForgetImage(img reference.NamedTagged) DeployInfo {
 	return deployInfo.DeployInfo
 }
 
+// TODO(nick): Delete this method. Ideally, the state management that this function
+// does should be part of the handlePodEvent state reducer, and this class will
+// simply manage control flow (i.e., closing the ready channel when the container is ready.)
 func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image reference.NamedTagged, ns k8s.Namespace, info *deployInfoEntry) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DeployDiscovery-populateDeployInfo")
 	defer span.Finish()
