@@ -7,6 +7,11 @@ import (
 	"github.com/windmilleng/tcell"
 )
 
+type styledString struct {
+	string
+	style tcell.Style
+}
+
 type pen struct {
 	s     tcell.Screen
 	x     int
@@ -27,6 +32,17 @@ func newPen(s tcell.Screen) *pen {
 
 func (p *pen) putlnf(format string, a ...interface{}) {
 	p.putln(fmt.Sprintf(format, a...))
+}
+
+func (p *pen) putStyledString(strings ...styledString) {
+	for _, s := range strings {
+		p.x += puts(p.s, s.style, p.x, p.y, s.string)
+	}
+}
+
+func (p *pen) putlnStyledString(s ...styledString) {
+	p.putStyledString(s...)
+	p.newln()
 }
 
 func (p *pen) putln(str string) {
