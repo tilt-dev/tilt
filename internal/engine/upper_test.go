@@ -462,7 +462,7 @@ func TestRebuildDockerfile(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestChangeOnlyDeploysOneManifest(t *testing.T) {
+func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	cwd, err := os.Getwd()
@@ -509,12 +509,13 @@ func TestChangeOnlyDeploysOneManifest(t *testing.T) {
 
 		f.WriteFile("Dockerfile1", `FROM node:10`)
 		f.store.Dispatch(manifestFilesChangedAction{
-			files:        []string{f.JoinPath("mount1", "Dockerfile1")},
+			files:        []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")},
 			manifestName: manifest1.Name})
 
 		// Second call: one new manifest!
 		call = <-f.b.calls
 		assert.Equal(t, "foobar", string(call.manifest.Name))
+		assert.ElementsMatch(t, []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")}, call.state.FilesChanged())
 
 		// Importantly the other manifest, bazqux, is _not_ called
 
