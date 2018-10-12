@@ -19,7 +19,7 @@ import (
 func TestManifestWatcher(t *testing.T) {
 	tf := makeManifestWatcherTestFixture(t, 1)
 
-	f1 := tf.WriteFile(0)
+	f1 := tf.WriteRandomFile(0)
 
 	tf.AssertNextEvent(0, []string{f1})
 }
@@ -27,14 +27,14 @@ func TestManifestWatcher(t *testing.T) {
 func TestManifestWatcherTwoManifests(t *testing.T) {
 	tf := makeManifestWatcherTestFixture(t, 2)
 
-	f1 := tf.WriteFile(0)
+	f1 := tf.WriteRandomFile(0)
 
 	tf.AssertNextEvent(0, []string{f1})
 
 	tf.FreezeTimer()
-	f2 := tf.WriteFile(1)
-	f3 := tf.WriteFile(0)
-	f4 := tf.WriteFile(1)
+	f2 := tf.WriteRandomFile(1)
+	f3 := tf.WriteRandomFile(0)
+	f4 := tf.WriteRandomFile(1)
 	tf.UnfreezeTimer()
 
 	tf.AssertNextEvents([]testManifestFilesChangedEvent{
@@ -48,6 +48,12 @@ func TestManifestWatcherTwoManifestsErr(t *testing.T) {
 	tf.WriteError(1)
 	err := tf.Error()
 	assert.Error(t, err)
+}
+
+func TestManifestWatchesConfigsIfIgnored(t *testing.T) {
+	tf := makeManifestWatcherTestFixture(t, 1)
+	cf := tf.WriteFile(0, "myconfig.configfile")
+	tf.AssertNextEvent(0, []string{cf})
 }
 
 type manifestWatcherTestFixture struct {
@@ -80,8 +86,16 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 		tempDir := tempdir.NewTempDirFixture(t)
 		manifests = append(manifests,
 			model.Manifest{
-				Name:   model.ManifestName(fmt.Sprintf("manifest%v", i)),
-				Mounts: []model.Mount{{LocalPath: tempDir.Path(), ContainerPath: ""}}})
+				Name:        model.ManifestName(fmt.Sprintf("manifest%v", i)),
+				Mounts:      []model.Mount{{LocalPath: tempDir.Path(), ContainerPath: ""}},
+				ConfigFiles: []string{tempDir.JoinPath("myconfig.configfile")},
+				Repos: []model.LocalGithubRepo{
+					model.LocalGithubRepo{
+						LocalPath:            tempDir.Path(),
+						DockerignoreContents: "*.configfile",
+					},
+				},
+			})
 
 		tempDirs = append(tempDirs, tempDir)
 		watcher := newFakeNotify()
@@ -104,9 +118,15 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 	return &manifestWatcherTestFixture{st, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
 }
 
-func (s *manifestWatcherTestFixture) WriteFile(manifestNumber int) string {
+func (s *manifestWatcherTestFixture) WriteRandomFile(manifestNumber int) string {
+	name := fmt.Sprintf("f%d_", s.numFilesWritten)
+
+	return s.WriteFile(manifestNumber, name)
+}
+
+func (s *manifestWatcherTestFixture) WriteFile(manifestNumber int, name string) string {
 	s.numFilesWritten++
-	f, err := s.tempDirs[manifestNumber].NewFile(fmt.Sprintf("f%v_", s.numFilesWritten))
+	f, err := s.tempDirs[manifestNumber].NewFile(name)
 	if err != nil {
 		s.t.Fatal(err)
 	}
