@@ -333,7 +333,10 @@
 
 [[projects]]
   name = "github.com/gdamore/tcell"
-  packages = ["terminfo"]
+  packages = [
+    ".",
+    "terminfo"
+  ]
   revision = "de7e78efa4a71b3f36c7154989c529dbdf9ae623"
   version = "v1.1.0"
 
@@ -702,6 +705,12 @@
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
   revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/rivo/tview"
+  packages = ["."]
+  revision = "bc39bf8d245d184b5d8a9ee082ed0ece558e24fe"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -1123,6 +1132,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bc3936ea9c5f5d5fd404a07b993c2ca1f876c7a8bee9324a00041a256427ffb5"
+  inputs-digest = "5a30747f5eadf3914ca5e17bafbc46e2634b3d53b70d0ec656e9356f700ec749"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -44,4 +44,16 @@ func StyleCases(f *fixture) {
 	c = Fg(b, tcell.ColorGreen)
 	c = Bg(c, tcell.ColorWhite)
 	f.add(10, 10, c)
+
+	l := NewFlexLayout(DirHor)
+	l.Add(Bg(NewBox(), tcell.ColorBlue))
+	l.Add(Bg(NewBox(), tcell.ColorWhite))
+	l.Add(Bg(NewBox(), tcell.ColorRed))
+	f.add(30, 30, l)
+
+	l = NewFlexLayout(DirVert)
+	l.Add(Bg(NewBox(), tcell.ColorBlue))
+	l.Add(Bg(NewBox(), tcell.ColorWhite))
+	l.Add(Bg(NewBox(), tcell.ColorRed))
+	f.add(30, 30, l)
 }
