@@ -9,31 +9,31 @@ import (
 
 	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
 type Renderer struct {
+	rty    rty.RTY
 	screen tcell.Screen
-
-	screenMu *sync.Mutex
+	mu     *sync.Mutex
 }
 
 func NewRenderer() *Renderer {
 	return &Renderer{
-		screenMu: new(sync.Mutex),
+		mu: new(sync.Mutex),
 	}
 }
 
 func (r *Renderer) Render(v view.View) error {
-	r.screenMu.Lock()
-	defer r.screenMu.Unlock()
-	if r.screen != nil {
-		r.screen.Clear()
-		p := newPen(r.screen)
-		for _, res := range v.Resources {
-			renderResource(p, res)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.rty != nil {
+		layout := layout(v)
+		err := r.rty.Render(layout)
+		if err != nil {
+			return err
 		}
-		r.screen.Show()
 	}
 	return nil
 }
@@ -82,119 +82,159 @@ func formatFileList(files []string) string {
 	return strings.Join(ret, ", ")
 }
 
-var cLightText = tcell.StyleDefault.Foreground(tcell.Color241)
-var cGood = tcell.StyleDefault.Foreground(tcell.ColorGreen)
-var cBad = tcell.StyleDefault.Foreground(tcell.ColorRed)
-var cPending = tcell.StyleDefault.Foreground(tcell.ColorYellow)
+var cLightText = tcell.Color241
+var cGood = tcell.ColorGreen
+var cBad = tcell.ColorRed
+var cPending = tcell.ColorYellow
 
-var podStatusColors = map[string]tcell.Style{
+var podStatusColors = map[string]tcell.Color{
 	"Running":           cGood,
 	"ContainerCreating": cPending,
 	"Error":             cBad,
 	"CrashLoopBackOff":  cBad,
 }
 
-func renderResource(p *pen, r view.Resource) {
+func layout(v view.View) rty.Component {
+	l := rty.NewFlexLayout(rty.DirVert)
 
-	// Resource Title ---------------------------------------
+	split := rty.NewFlexLayout(rty.DirHor)
+
+	split.Add(renderResources(v.Resources))
+	l.Add(split)
+
+	return l
+}
+
+func renderResources(rs []view.Resource) rty.Component {
+	l := rty.NewTextScrollLayout("resources")
+
+	for _, r := range rs {
+		l.Add(renderResource(r))
+	}
+
+	return l
+}
+
+func renderResource(r view.Resource) rty.Component {
+	lines := rty.NewLines()
+	l := rty.NewLine()
+	l.Add(rty.TextString(r.Name))
+	const dashSize = 35
+	l.Add(rty.ColoredString(fmt.Sprintf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))), cLightText, tcell.ColorBlack))
 	deployString := "not deployed yet"
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		deployString = fmt.Sprintf("deployed %s ago", formatDuration(time.Since(r.LastDeployTime)))
 	}
-	p.puts(r.Name)
-	const dashSize = 35
-	p.putStyledString(styledString{fmt.Sprintf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))), cLightText})
-	p.puts(deployString)
+	l.Add(rty.TextString(deployString))
 
-	// Resource FS Changes ---------------------------------------
+	lines.Add(l)
+
 	if len(r.DirectoriesWatched) > 0 {
-		p.newln()
 		var dirs []string
 		for _, s := range r.DirectoriesWatched {
 			dirs = append(dirs, fmt.Sprintf("%s/", s))
 		}
-		p.putlnStyledString(styledString{fmt.Sprintf("  (Watching %s)", strings.Join(dirs, " ")), cLightText})
+		l = rty.NewLine()
+		l.Add(rty.ColoredString(fmt.Sprintf("  (Watching %s)", strings.Join(dirs, " ")), cLightText, tcell.ColorBlack))
+		lines.Add(l)
 	}
 
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		if len(r.LastDeployEdits) > 0 {
-			p.putStyledString(styledString{" Last Deployed Edits: ", cLightText})
-			p.putln(formatFileList(r.LastDeployEdits))
+			l = rty.NewLine()
+			l.Add(rty.ColoredString(" Last Deployed Edits: ", cLightText, tcell.ColorBlack))
+			lines.Add(l)
 		}
 	}
 
 	// Build Info ---------------------------------------
-	var buildStrings [][]styledString
+	var buildComponents [][]rty.Component
 
 	if !r.CurrentBuildStartTime.Equal(time.Time{}) {
-		statusString := styledString{"In Progress", cPending}
+		statusString := rty.ColoredString("In Progress", cPending, tcell.ColorBlack)
 		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.CurrentBuildStartTime)))
 		if len(r.CurrentBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.CurrentBuildEdits))
 		}
-		buildStrings = append(buildStrings, []styledString{statusString, {string: s}})
+		buildComponents = append(buildComponents, []rty.Component{statusString, rty.TextString(s)})
 	}
 
 	if !r.PendingBuildSince.Equal(time.Time{}) {
-		statusString := styledString{"Pending", cPending}
+		statusString := rty.ColoredString("Pending", cPending, tcell.ColorBlack)
 		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.PendingBuildSince)))
 		if len(r.PendingBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.PendingBuildEdits))
 		}
-		buildStrings = append(buildStrings, []styledString{statusString, {string: s}})
+		buildComponents = append(buildComponents, []rty.Component{statusString, rty.TextString(s)})
 	}
 
 	if !r.LastBuildFinishTime.Equal(time.Time{}) {
-		shortBuildStatus := styledString{"OK", cGood}
+		shortBuildStatus := rty.ColoredString("OK", cGood, tcell.ColorBlack)
 		if r.LastBuildError != "" {
-			shortBuildStatus = styledString{"ERR", cBad}
+			shortBuildStatus = rty.ColoredString("ERR", cBad, tcell.ColorBlack)
 		}
 
 		s := fmt.Sprintf("Last build (done in %s) ended %s ago — ",
 			formatPreciseDuration(r.LastBuildDuration),
 			formatDuration(time.Since(r.LastBuildFinishTime)))
 
-		buildStrings = append(buildStrings, []styledString{{string: s}, shortBuildStatus})
+		buildComponents = append(buildComponents, []rty.Component{rty.TextString(s), shortBuildStatus})
 
 		if r.LastBuildError != "" {
 			s := fmt.Sprintf("Error: %s", r.LastBuildError)
-			buildStrings = append(buildStrings, []styledString{{string: s}})
+			buildComponents = append(buildComponents, []rty.Component{rty.TextString(s)})
 		}
 	}
 
-	if len(buildStrings) == 0 {
-		buildStrings = [][]styledString{{{string: "no build yet"}}}
+	if len(buildComponents) == 0 {
+		buildComponents = [][]rty.Component{{rty.TextString("no build yet")}}
 	}
-	p.putStyledString(styledString{"  BUILD: ", cLightText})
-	p.putlnStyledString(buildStrings[0]...)
-	for _, s := range buildStrings[1:] {
-		p.puts("         ")
-		p.putlnStyledString(s...)
+
+	l = rty.NewLine()
+	l.Add(rty.ColoredString("  BUILD: ", cLightText, tcell.ColorBlack))
+	for _, c := range buildComponents[0] {
+		l.Add(c)
+	}
+
+	lines.Add(l)
+
+	for _, cs := range buildComponents[1:] {
+		l := rty.NewLine()
+		l.Add(rty.TextString("         "))
+		for _, c := range cs {
+			l.Add(c)
+		}
+		lines.Add(l)
 	}
 
 	// Kubernetes Info ---------------------------------------
 	if r.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[r.PodStatus]
 		if !ok {
-			podStatusColor = tcell.StyleDefault
+			podStatusColor = tcell.ColorBlack
 		}
-		p.putlnStyledString(
-			styledString{"    K8S: ", cLightText},
-			styledString{string: fmt.Sprintf("Pod [%s] • %s ago — ", r.PodName, formatDuration(time.Since(r.PodCreationTime)))},
-			styledString{r.PodStatus, podStatusColor},
-		)
+
+		l := rty.NewLine()
+		l.Add(rty.ColoredString("    K8S: ", cLightText, tcell.ColorBlack))
+		l.Add(rty.TextString(fmt.Sprintf("Pod [%s] • %s ago — ", r.PodName, formatDuration(time.Since(r.PodCreationTime)))))
+		l.Add(rty.ColoredString(r.PodStatus, podStatusColor, tcell.ColorBlack))
+		lines.Add(l)
 	}
 
 	if len(r.Endpoints) != 0 {
-		p.putlnf("         %s", strings.Join(r.Endpoints, " "))
+		l := rty.NewLine()
+		l.Add(rty.TextString(fmt.Sprintf("         %s", strings.Join(r.Endpoints, " "))))
+		lines.Add(l)
 	}
-	p.newln()
-	p.newln()
+
+	lines.Add(rty.NewLine())
+
+	return lines
 }
 
 func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
-	r.screenMu.Lock()
-	defer r.screenMu.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	// TODO(maia): support sigwinch
 	// TODO(maia): pass term name along with ttyPath via RPC. Temporary hack:
@@ -225,14 +265,16 @@ func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
 		}
 	}()
 
+	r.rty = rty.NewRTY(screen)
+
 	r.screen = screen
 
 	return nil
 }
 
 func (r *Renderer) Reset() {
-	r.screenMu.Lock()
-	defer r.screenMu.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	r.screen.Fini()
 	r.screen = nil

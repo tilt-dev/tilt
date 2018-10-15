@@ -947,7 +947,6 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.WaitUntil("build done", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
 	})
-	<-f.hud.Updates
 
 	pID := k8s.PodID("mypod")
 	f.upper.store.Dispatch(PodChangeAction{

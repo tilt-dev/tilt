@@ -1,8 +1,11 @@
 package hud
 
 import (
+	"bytes"
 	"sync"
 	"testing"
+
+	"github.com/windmilleng/tilt/internal/rty"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -37,8 +40,9 @@ type rendererTestFixture struct {
 func newRendererTestFixture() *rendererTestFixture {
 	fs := fakeScreen{}
 	renderer := Renderer{
-		screen:   &fs,
-		screenMu: new(sync.Mutex),
+		screen: &fs,
+		rty:    rty.NewRTY(&fs),
+		mu:     new(sync.Mutex),
 	}
 	return &rendererTestFixture{
 		renderer:   &renderer,
@@ -56,7 +60,10 @@ var _ tcell.Screen = &fakeScreen{}
 func (fs *fakeScreen) Lines() []string {
 	var ret []string
 	for _, row := range fs.content {
-		ret = append(ret, string(row))
+		s := string(bytes.Trim([]byte(string(row)), "\x00"))
+		if len(s) > 0 {
+			ret = append(ret, s)
+		}
 	}
 	return ret
 }
@@ -71,6 +78,7 @@ func (fs *fakeScreen) Fini() {
 }
 
 func (fs *fakeScreen) Clear() {
+	fs.content = nil
 }
 
 func (fs *fakeScreen) Fill(rune, tcell.Style) {
@@ -115,8 +123,7 @@ func (fs *fakeScreen) HideCursor() {
 }
 
 func (fs *fakeScreen) Size() (int, int) {
-	fs.t.Fatal("Size not implemented in fake screen")
-	return 0, 0
+	return 100, 100
 }
 
 func (fs *fakeScreen) PollEvent() tcell.Event {
