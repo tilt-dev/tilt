@@ -45,7 +45,7 @@ type fakeBuildAndDeployer struct {
 	// where we store container info for each manifest
 	deployInfo map[docker.ImgNameAndTag]k8s.ContainerID
 
-	// Set this to simulate the build failing
+	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 }
 
@@ -286,7 +286,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
-	f.b.nextBuildFailure = errors.New("Build failed")
+	f.SetNextBuildFailure(errors.New("Build failed"))
 	go func() {
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
@@ -309,7 +309,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	f.b.nextBuildFailure = context.Canceled
+	f.SetNextBuildFailure(context.Canceled)
 
 	closeCh := make(chan struct{})
 	go func() {
@@ -329,7 +329,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	buildFailedToken := errors.New("doesn't compile")
-	f.b.nextBuildFailure = buildFailedToken
+	f.SetNextBuildFailure(buildFailedToken)
 
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
 	expected := fmt.Errorf("build failed: %v", buildFailedToken)
@@ -341,32 +341,33 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
+	f.Start([]model.Manifest{manifest}, true)
 
-		// Simulate a change to a.go that makes the build fail.
-		f.b.nextBuildFailure = errors.New("Build failed")
-		f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		call = <-f.b.calls
-		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
-		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+	// Simulate a change to a.go that makes the build fail.
+	f.SetNextBuildFailure(errors.New("Build failed"))
+	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
-		// Simulate a change to b.go
-		f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
+	call = <-f.b.calls
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
 
-		// The next build should treat both a.go and b.go as changed, and build
-		// on the last successful result, from before a.go changed.
-		call = <-f.b.calls
-		assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
-		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	// Simulate a change to b.go
+	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-	assert.Equal(t, endToken, err)
+	// The next build should treat both a.go and b.go as changed, and build
+	// on the last successful result, from before a.go changed.
+	call = <-f.b.calls
+	assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
 	f.assertAllBuildsConsumed()
 }
 
@@ -708,7 +709,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
-	f.b.nextBuildFailure = errors.New("Build failed")
+	f.SetNextBuildFailure(errors.New("Build failed"))
 	go func() {
 		// Init Action
 		<-f.hud.Updates
@@ -743,7 +744,7 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
-	f.b.nextBuildFailure = errors.New("Build failed")
+	f.SetNextBuildFailure(errors.New("Build failed"))
 	go func() {
 		// Init Action
 		<-f.hud.Updates
@@ -777,7 +778,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	endToken := errors.New("my-err-token")
-	f.b.nextBuildFailure = errors.New("Build failed")
+	f.SetNextBuildFailure(errors.New("Build failed"))
 	go func() {
 		// Init Action
 		<-f.hud.Updates
@@ -905,7 +906,7 @@ func TestUpper_ShowErrorBuildLog(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 
-	f.b.nextBuildFailure = errors.New("failed!")
+	f.SetNextBuildFailure(errors.New("failed!"))
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1292,6 +1293,17 @@ func (f *testFixture) Stop() error {
 	} else {
 		return err
 	}
+}
+
+func (f *testFixture) SetNextBuildFailure(err error) {
+	// Don't set the nextBuildFailure flag when a completed build needs to be processed
+	// by the state machine.
+	f.WaitUntil("build complete processed", func(state store.EngineState) bool {
+		return state.CurrentlyBuilding == ""
+	})
+	_ = f.store.RLockState()
+	f.b.nextBuildFailure = err
+	f.store.RUnlockState()
 }
 
 // Wait until the given engine state test passes.
