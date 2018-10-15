@@ -23,6 +23,10 @@ func NewFakeHud() *FakeHud {
 
 func (h *FakeHud) Run(ctx context.Context, st *store.Store) error { return nil }
 
+func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
+	onChange(ctx, st, h)
+}
+
 func (h *FakeHud) Update(v view.View) error {
 	h.LastView = v
 	h.Updates <- v

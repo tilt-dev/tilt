@@ -6,12 +6,14 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
 type HeadsUpDisplay interface {
 	Run(ctx context.Context, st *store.Store) error
 	Update(v view.View) error
+	OnChange(ctx context.Context, st *store.Store)
 }
 
 type Hud struct {
@@ -50,7 +52,29 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 	}
 }
 
+func (h *Hud) OnChange(ctx context.Context, st *store.Store) {
+	onChange(ctx, st, h)
+}
+
 func (h *Hud) Update(v view.View) error {
 	err := h.r.Render(v)
 	return errors.Wrap(err, "error rendering hud")
 }
+
+func onChange(ctx context.Context, st *store.Store, h HeadsUpDisplay) {
+	state := st.RLockState()
+	if len(state.ManifestStates) == 0 {
+		st.RUnlockState()
+		return
+	}
+
+	view := store.StateToView(state)
+	st.RUnlockState()
+
+	err := h.Update(view)
+	if err != nil {
+		logger.Get(ctx).Infof("Error updating HUD: %v", err)
+	}
+}
+
+var _ store.Subscriber = &Hud{}

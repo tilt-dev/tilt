@@ -1,6 +1,9 @@
 package store
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // A central state store, modeled after the Reactive programming UX pattern.
 // Terminology is borrowed liberally from Redux. These docs in particular are helpful:
@@ -8,6 +11,7 @@ import "sync"
 // https://redux.js.org/basics
 type Store struct {
 	state       *EngineState
+	subscribers *subscriberList
 	actionQueue *actionQueue
 	actionCh    chan Action
 	mu          sync.Mutex
@@ -22,7 +26,17 @@ func NewStore() *Store {
 		state:       NewState(),
 		actionQueue: &actionQueue{},
 		actionCh:    make(chan Action),
+		subscribers: &subscriberList{},
 	}
+}
+
+func (s *Store) AddSubscriber(sub Subscriber) {
+	s.subscribers.Add(sub)
+}
+
+// Sends messages to all the subscribers asynchronously.
+func (s *Store) NotifySubscribers(ctx context.Context) {
+	s.subscribers.NotifyAll(ctx, s)
 }
 
 // TODO(nick): Clone the state to ensure it's not mutated.
