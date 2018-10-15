@@ -30,7 +30,10 @@ func (r *Renderer) Render(v view.View) error {
 	defer r.mu.Unlock()
 	if r.rty != nil {
 		layout := layout(v)
-		r.rty.Render(layout)
+		err := r.rty.Render(layout)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
