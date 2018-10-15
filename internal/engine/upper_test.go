@@ -341,32 +341,41 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
+	f.Start([]model.Manifest{manifest}, true)
 
-		// Simulate a change to a.go that makes the build fail.
-		f.b.nextBuildFailure = errors.New("Build failed")
-		f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		call = <-f.b.calls
-		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
-		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+	f.WaitUntil("build complete", func(state store.EngineState) bool {
+		return state.CurrentlyBuilding == ""
+	})
 
-		// Simulate a change to b.go
-		f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
+	// Simulate a change to a.go that makes the build fail.
+	f.b.nextBuildFailure = errors.New("Build failed")
+	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
-		// The next build should treat both a.go and b.go as changed, and build
-		// on the last successful result, from before a.go changed.
-		call = <-f.b.calls
-		assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
-		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	call = <-f.b.calls
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-	assert.Equal(t, endToken, err)
+	f.WaitUntil("build complete", func(state store.EngineState) bool {
+		return state.CurrentlyBuilding == ""
+	})
+
+	// Simulate a change to b.go
+	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
+
+	// The next build should treat both a.go and b.go as changed, and build
+	// on the last successful result, from before a.go changed.
+	call = <-f.b.calls
+	assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
 	f.assertAllBuildsConsumed()
 }
 
