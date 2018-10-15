@@ -8,6 +8,20 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+type fileChangeFilter struct {
+	ignoreMatchers model.PathMatcher
+	configMatcher  model.PathMatcher
+}
+
+func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
+	configMatches, err := fcf.configMatcher.Matches(f, isDir)
+	if configMatches && err == nil {
+		return false, nil
+	}
+
+	return fcf.ignoreMatchers.Matches(f, isDir)
+}
+
 // Filter out files that should not be included in the build context.
 func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
 	matchers := []model.PathMatcher{}
@@ -33,7 +47,7 @@ func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
 }
 
 // Filter out files that should not trigger new builds.
-func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
+func CreateFileChangeFilter(m model.Manifest) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
 	for _, r := range m.Repos {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
@@ -47,7 +61,16 @@ func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
 		}
 	}
 
-	return model.NewCompositeMatcher(matchers)
+	ignoreMatcher := model.NewCompositeMatcher(matchers)
+	configMatcher, err := m.ConfigMatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	return fileChangeFilter{
+		ignoreMatchers: ignoreMatcher,
+		configMatcher:  configMatcher,
+	}, nil
 }
 
 func CreateStepMatcher(s model.Step) (model.PathMatcher, error) {

@@ -130,7 +130,12 @@ func snsToManifestWatcher(ctx context.Context, st *store.Store, timerMaker timer
 			//defer close(events)
 			//defer close(errs)
 
-			filter := ignore.CreateFileChangeFilter(manifest)
+			filter, err := ignore.CreateFileChangeFilter(manifest)
+			if err != nil {
+				st.Dispatch(NewErrorAction(err))
+				return
+			}
+
 			for {
 				select {
 				case err, ok := <-watcher.Errors():
