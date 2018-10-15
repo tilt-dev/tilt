@@ -85,6 +85,7 @@ type Pod struct {
 	ContainerName  k8s.ContainerName
 	ContainerID    k8s.ContainerID
 	ContainerPorts []int32
+	ContainerReady bool
 }
 
 func shortenFile(baseDirs []string, f string) string {
