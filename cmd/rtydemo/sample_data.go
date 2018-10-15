@@ -2,131 +2,155 @@ package main
 
 import (
 	"time"
-
-	"github.com/windmilleng/tilt/internal/hud/view"
 )
 
-func sampleView() view.View {
-	return view.View{
-		Resources: []view.Resource{
-			view.Resource{
+type Resource struct {
+	Name                    string
+	DirectoryWatched        string
+	LatestFileChanges       []string
+	TimeSinceLastFileChange time.Duration
+	Status                  ResourceStatus
+
+	// e.g., "CrashLoopBackOff", "No Pod found", "Build error"
+	StatusDesc string
+}
+
+type ResourceStatus int
+
+const (
+	// something is wrong and requires investigation, e.g. the build failed or the pod is crashlooping
+	ResourceStatusBroken ResourceStatus = iota
+	// tilt has observed changes since the last deploy, and is in the process of rebuilding and deploying
+	ResourceStatusStale
+	// the latest code is currently running
+	ResourceStatusFresh
+)
+
+type View struct {
+	Resources []Resource
+}
+
+func sampleView() View {
+	return View{
+		Resources: []Resource{
+			Resource{
 				"fe",
 				"fe",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"be",
 				"be",
 				[]string{"/"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"graphql",
 				"graphql",
 				[]string{},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"snacks",
 				"snacks",
 				[]string{"snacks/whoops.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"doggos",
 				"doggos",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"elephants",
 				"elephants",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"heffalumps",
 				"heffalumps",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"aardvarks",
 				"aardvarks",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"quarks",
 				"quarks",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"boop",
 				"boop",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"laurel",
 				"laurel",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"hardy",
 				"hardy",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"north",
 				"north",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"west",
 				"west",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
-			view.Resource{
+			Resource{
 				"east",
 				"east",
 				[]string{"fe/main.go"},
 				time.Second,
-				view.ResourceStatusFresh,
+				ResourceStatusFresh,
 				"1/1 pods up",
 			},
 		},

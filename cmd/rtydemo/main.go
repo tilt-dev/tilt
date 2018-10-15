@@ -6,7 +6,6 @@ import (
 
 	"github.com/windmilleng/tcell"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -29,7 +28,7 @@ func main() {
 }
 
 type Demo struct {
-	view view.View
+	view View
 	rty  rty.RTY
 	nav  *navState
 }

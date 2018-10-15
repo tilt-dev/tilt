@@ -5,7 +5,6 @@ import (
 
 	"github.com/windmilleng/tcell"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -49,7 +48,7 @@ func (d *Demo) resources() rty.Component {
 	return b
 }
 
-func (d *Demo) resource(r view.Resource, selected bool, even bool) rty.Component {
+func (d *Demo) resource(r Resource, selected bool, even bool) rty.Component {
 	lines := rty.NewLines()
 	cl := rty.NewLine()
 	cl.Add(rty.TextString(r.Name))
