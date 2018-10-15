@@ -159,7 +159,9 @@ func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
 	for i := 0; i < numLines; i++ {
 		for j := 0; j < width; j++ {
 			mainc, combc, style, _ := src.GetContent(j, srcY+i)
-			f.canvas.SetContent(j, i, mainc, combc, style)
+			if err := f.canvas.SetContent(j, i, mainc, combc, style); err != nil {
+				f.error(err)
+			}
 		}
 	}
 }

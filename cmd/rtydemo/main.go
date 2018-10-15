@@ -49,7 +49,9 @@ func (d *Demo) Run() error {
 	if err != nil {
 		return err
 	}
-	screen.Init()
+	if err := screen.Init(); err != nil {
+		return err
+	}
 	defer screen.Fini()
 	d.rty = rty.NewRTY(screen)
 	screenEvs := make(chan tcell.Event)

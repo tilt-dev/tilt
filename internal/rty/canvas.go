@@ -149,7 +149,9 @@ func (c *SubCanvas) fill(lastFilled int) {
 	}
 	for y := startY; y < maxY; y++ {
 		for x := 0; x < c.width; x++ {
-			c.del.SetContent(c.startX+x, c.startY+y, 0, nil, c.style)
+			if err := c.del.SetContent(c.startX+x, c.startY+y, 0, nil, c.style); err != nil {
+				panic(err)
+			}
 		}
 	}
 }
