@@ -1,12 +1,12 @@
 package hud
 
-type ReplayBuildLogAction struct {
+type ShowErrorAction struct {
 	// 1-based index of resource whose log should be printed
 	ResourceNumber int
 }
 
-func (ReplayBuildLogAction) Action() {}
+func (ShowErrorAction) Action() {}
 
-func NewReplayBuildLogAction(resourceNumber int) ReplayBuildLogAction {
-	return ReplayBuildLogAction{resourceNumber}
+func NewShowErrorAction(resourceNumber int) ShowErrorAction {
+	return ShowErrorAction{resourceNumber}
 }

@@ -889,12 +889,14 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestUpper_ReplayBuildLog(t *testing.T) {
+func TestUpper_ShowErrorBuildLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
+
+	f.b.nextBuildFailure = errors.New("failed!")
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -905,7 +907,7 @@ func TestUpper_ReplayBuildLog(t *testing.T) {
 	<-f.hud.Updates
 	<-f.hud.Updates
 
-	f.upper.store.Dispatch(hud.NewReplayBuildLogAction(1))
+	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
 
 	<-f.hud.Updates
 	err := f.Stop()
@@ -925,7 +927,83 @@ func TestUpper_ReplayBuildLog(t *testing.T) {
 	f.assertAllHUDUpdatesConsumed()
 }
 
-func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
+func TestUpper_ShowErrorPodLog(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("build done", func(state store.EngineState) bool {
+		return state.CompletedBuildCount == 1
+	})
+
+	pID := k8s.PodID("mypod")
+	f.upper.store.Dispatch(PodChangeAction{
+		Pod: testPod(pID.String(), string(name), "Running", time.Now()),
+	})
+	f.WaitUntilManifest("pod appears", name.String(), func(ms store.ManifestState) bool {
+		return ms.Pod.PodID == pID
+	})
+
+	firstLogString := "first string"
+	f.upper.store.Dispatch(PodLogAction{
+		ManifestName: name,
+		PodID:        pID,
+		Log:          []byte(firstLogString),
+	})
+
+	f.WaitUntilManifest("first pod log seen", "foobar", func(ms store.ManifestState) bool {
+		return strings.Contains(string(ms.Pod.Log), firstLogString)
+	})
+
+	st := f.store.RLockState()
+	fmt.Printf("before changing files, completed build count is %d\n", st.CompletedBuildCount)
+	f.store.RUnlockState()
+
+	f.upper.store.Dispatch(manifestFilesChangedAction{
+		manifestName: "foobar",
+		files:        []string{"/go/a.go"},
+	})
+
+	f.WaitUntil("build done", func(state store.EngineState) bool {
+		return state.CompletedBuildCount == 2
+	})
+
+	secondLogString := "second string"
+	f.upper.store.Dispatch(PodLogAction{
+		ManifestName: name,
+		PodID:        pID,
+		Log:          []byte(secondLogString),
+	})
+
+	f.WaitUntilManifest("second pod log seen", "foobar", func(ms store.ManifestState) bool {
+		return strings.Contains(string(ms.Pod.Log), secondLogString)
+	})
+
+	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
+	<-f.hud.Updates
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	expectedOutput := strings.Join([]string{
+		"foobar pod log since last build:",
+		"──────────────────────────────────────────────────────────",
+		secondLogString,
+		"──────────────────────────────────────────────────────────",
+	}, "\n")
+	assert.Contains(t, f.log.String(), expectedOutput)
+
+	f.assertAllHUDUpdatesConsumed()
+}
+
+func TestUpper_ShowErrorNonExistentResource(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -939,7 +1017,7 @@ func TestUpper_ReplayBuildLogNonExistentResource(t *testing.T) {
 	<-f.hud.Updates
 	<-f.hud.Updates
 
-	f.upper.store.Dispatch(hud.NewReplayBuildLogAction(5))
+	f.upper.store.Dispatch(hud.NewShowErrorAction(5))
 
 	<-f.hud.Updates
 	err := f.Stop()
