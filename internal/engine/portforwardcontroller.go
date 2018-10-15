@@ -43,11 +43,12 @@ func (m *PortForwardController) diff(ctx context.Context, st *store.Store) (toSt
 			continue
 		}
 
-		statePods[podID] = true
-
-		if len(ms.Manifest.PortForwards) == 0 {
+		forwards := PopulatePortForwards(ms.Manifest, ms.Pod)
+		if len(forwards) == 0 {
 			continue
 		}
+
+		statePods[podID] = true
 
 		_, isActive := m.activeForwards[podID]
 		if isActive {
@@ -59,10 +60,11 @@ func (m *PortForwardController) diff(ctx context.Context, st *store.Store) (toSt
 			podID:     podID,
 			name:      ms.Manifest.Name,
 			namespace: ms.Pod.Namespace,
-			forwards:  append([]model.PortForward{}, ms.Manifest.PortForwards...),
+			forwards:  forwards,
 			ctx:       ctx,
 			cancel:    cancel,
 		}
+
 		toStart = append(toStart, entry)
 		m.activeForwards[podID] = entry
 	}
@@ -93,7 +95,6 @@ func (m *PortForwardController) OnChange(ctx context.Context, st *store.Store) {
 		ns := entry.namespace
 		podID := entry.podID
 		for _, forward := range entry.forwards {
-			// TODO(nick): Handle the case where ContainerPort is 0
 			// TODO(nick): Handle the case where DockerForDesktop is handling
 			// the port-forwarding natively already
 			_, closer, err := m.kClient.ForwardPort(ctx, ns, podID, forward.LocalPort, forward.ContainerPort)
@@ -113,10 +114,30 @@ func (m *PortForwardController) OnChange(ctx context.Context, st *store.Store) {
 var _ store.Subscriber = &PortForwardController{}
 
 type portForwardEntry struct {
-	name      model.ManifestName
-	namespace k8s.Namespace
-	podID     k8s.PodID
-	forwards  []model.PortForward
-	ctx       context.Context
-	cancel    func()
+	name               model.ManifestName
+	namespace          k8s.Namespace
+	podID              k8s.PodID
+	firstContainerPort int32
+	forwards           []model.PortForward
+	ctx                context.Context
+	cancel             func()
+}
+
+// Extract the port-forward specs from the manifest. If any of them
+// have ContainerPort = 0, populate them with the default port in the pod spec.
+// Quietly drop forwards that we can't populate.
+func PopulatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
+	cPorts := pod.ContainerPorts
+	forwards := make([]model.PortForward, 0, len(m.PortForwards))
+	for _, forward := range m.PortForwards {
+		if forward.ContainerPort == 0 {
+			if len(cPorts) == 0 {
+				continue
+			}
+
+			forward.ContainerPort = int(cPorts[0])
+		}
+		forwards = append(forwards, forward)
+	}
+	return forwards
 }
