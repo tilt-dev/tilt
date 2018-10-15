@@ -947,6 +947,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.WaitUntil("build done", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
 	})
+	<-f.hud.Updates
 
 	pID := k8s.PodID("mypod")
 	f.upper.store.Dispatch(PodChangeAction{
@@ -992,22 +993,21 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	})
 
 	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
-	<-f.hud.Updates
+
+	f.WaitUntil("pod log shown", func(s store.EngineState) bool {
+		expectedOutput := strings.Join([]string{
+			"foobar pod log since last build:",
+			"──────────────────────────────────────────────────────────",
+			secondLogString,
+			"──────────────────────────────────────────────────────────",
+		}, "\n")
+		return strings.Contains(f.log.String(), expectedOutput)
+	})
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
 		return
 	}
-
-	expectedOutput := strings.Join([]string{
-		"foobar pod log since last build:",
-		"──────────────────────────────────────────────────────────",
-		secondLogString,
-		"──────────────────────────────────────────────────────────",
-	}, "\n")
-	assert.Contains(t, f.log.String(), expectedOutput)
-
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestUpper_ShowErrorNonExistentResource(t *testing.T) {
