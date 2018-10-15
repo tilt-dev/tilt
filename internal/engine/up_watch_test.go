@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -49,8 +51,8 @@ func TestManifestWatcherTwoManifestsErr(t *testing.T) {
 }
 
 type manifestWatcherTestFixture struct {
-	sw              *manifestWatcher
-	watcherMaker    watcherMaker
+	store           *store.Store
+	watcherMaker    fsWatcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
 	manifests       []model.Manifest
@@ -90,7 +92,8 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 
 	ctx := output.CtxForTest()
 
-	sw, err := makeManifestWatcher(ctx, watcherMaker, timerMaker.maker(), manifests)
+	st := store.NewStore()
+	err := makeManifestWatcher(ctx, st, watcherMaker, timerMaker.maker(), manifests)
 
 	timerMaker.maxTimerLock.Lock()
 
@@ -98,7 +101,7 @@ func makeManifestWatcherTestFixture(t *testing.T, manifestCount int) *manifestWa
 		t.Fatal(err)
 	}
 
-	return &manifestWatcherTestFixture{sw, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
+	return &manifestWatcherTestFixture{st, watcherMaker, ctx, tempDirs, manifests, watchers, timerMaker, t, 0}
 }
 
 func (s *manifestWatcherTestFixture) WriteFile(manifestNumber int) string {
@@ -121,7 +124,8 @@ type testManifestFilesChangedEvent struct {
 func (s *manifestWatcherTestFixture) readEvents(numExpectedEvents int) []testManifestFilesChangedEvent {
 	var ret []testManifestFilesChangedEvent
 	for i := 0; i < numExpectedEvents; i++ {
-		e := <-s.sw.events
+		action := <-s.store.Actions()
+		e := action.(manifestFilesChangedAction)
 		manifestNumber := -1
 		for i := 0; i < len(s.manifests); i++ {
 			if s.manifests[i].Name == e.manifestName {
@@ -156,7 +160,8 @@ func (s *manifestWatcherTestFixture) WriteError(manifestNumber int) {
 }
 
 func (s *manifestWatcherTestFixture) Error() error {
-	return <-s.sw.errs
+	action := <-s.store.Actions()
+	return action.(ErrorAction).Error
 }
 
 func (s *manifestWatcherTestFixture) FreezeTimer() {

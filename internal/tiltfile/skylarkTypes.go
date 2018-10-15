@@ -9,7 +9,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
-	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -17,7 +16,7 @@ const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `ad
 const noActiveBuildError = "No active build"
 
 type compManifest struct {
-	cManifest []k8sManifest
+	cManifest []*k8sManifest
 }
 
 var _ skylark.Value = compManifest{}
@@ -38,43 +37,74 @@ func (compManifest) Hash() (uint32, error) {
 }
 
 type k8sManifest struct {
-	k8sYaml     skylark.String
-	dockerImage dockerImage
-	name        string
-	configFiles []string
+	k8sYaml      skylark.String
+	dockerImage  dockerImage
+	name         string
+	configFiles  []string
+	portForwards []model.PortForward
 }
 
-var _ skylark.Value = k8sManifest{}
+var _ skylark.Value = &k8sManifest{}
+var _ skylark.HasAttrs = &k8sManifest{}
 
-func (s k8sManifest) String() string {
-	shortYaml := s.k8sYaml.String()
+func (k *k8sManifest) String() string {
+	shortYaml := k.k8sYaml.String()
 	const maxYamlCharsToInclude = 40
 	if len(shortYaml) > maxYamlCharsToInclude {
 		shortYaml = shortYaml[:maxYamlCharsToInclude]
 	}
-	return fmt.Sprintf("[k8sManifest] yaml: '%v' dockerImage: '%v'", shortYaml, s.dockerImage)
+	return fmt.Sprintf("[k8sManifest] yaml: '%v' dockerImage: '%v'", shortYaml, k.dockerImage)
 }
 
-func (s k8sManifest) Type() string {
+func (k *k8sManifest) Type() string {
 	return "k8sManifest"
 }
 
-func (s k8sManifest) Freeze() {
-	s.k8sYaml.Freeze()
-	s.dockerImage.Freeze()
+func (k *k8sManifest) Freeze() {
+	k.k8sYaml.Freeze()
+	k.dockerImage.Freeze()
 }
 
-func (k8sManifest) Truth() skylark.Bool {
+func (k *k8sManifest) Truth() skylark.Bool {
 	return true
 }
 
-func (k8sManifest) Hash() (uint32, error) {
+func (k *k8sManifest) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: k8sManifest")
+}
+
+func (k *k8sManifest) Attr(name string) (skylark.Value, error) {
+	switch name {
+	case "port_forward":
+		return skylark.NewBuiltin(name, k.createPortForward), nil
+	default:
+		return nil, nil
+	}
+}
+
+func (k *k8sManifest) AttrNames() []string {
+	return []string{"port_forward"}
+}
+
+func (k *k8sManifest) createPortForward(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var localPort int
+	var containerPort int
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "local", &localPort, "remote?", &containerPort)
+	if err != nil {
+		return nil, err
+	}
+
+	k.portForwards = append(k.portForwards, model.PortForward{
+		LocalPort:     localPort,
+		ContainerPort: containerPort,
+	})
+	return skylark.None, nil
 }
 
 type mount struct {
 	src        localPath
 	mountPoint string
+	repo       gitRepo
 }
 
 // See model.Manifest for more information on what all these fields mean.
@@ -84,13 +114,14 @@ type dockerImage struct {
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
-	filters            []model.PathMatcher
+	tiltFilename       string
 
 	staticDockerfilePath string
 	staticBuildPath      string
 }
 
 var _ skylark.Value = &dockerImage{}
+var _ skylark.HasAttrs = &dockerImage{}
 
 func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var skylarkCmd skylark.String
@@ -136,15 +167,9 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	step := model.ToStep(model.ToShellCmd(cmd))
+	step := model.ToStep(cwd, model.ToShellCmd(cmd))
 
-	if len(triggers) > 0 {
-		pm, err := dockerignore.NewDockerPatternMatcher(cwd, triggers)
-		if err != nil {
-			return nil, err
-		}
-		step.Trigger = pm
-	}
+	step.Triggers = triggers
 
 	buildContext.steps = append(buildContext.steps, step)
 	return skylark.None, nil
@@ -173,18 +198,19 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, err
 	}
 
-	var lp localPath
+	m := mount{}
 	switch p := src.(type) {
 	case localPath:
-		lp = p
+		m.src = p
+		m.repo = p.repo
 	case gitRepo:
-		lp = localPath{p.basePath, p}
+		m.src = localPath{p.basePath, p}
+		m.repo = p
 	default:
 		return nil, fmt.Errorf("invalid type for src. Got %s want gitRepo OR localPath", src.Type())
 	}
-
-	buildContext.mounts = append(buildContext.mounts, mount{lp, mountPoint})
-	buildContext.filters = append(buildContext.filters, lp.repo.pathMatcher)
+	m.mountPoint = mountPoint
+	buildContext.mounts = append(buildContext.mounts, m)
 
 	return skylark.None, nil
 }
@@ -228,12 +254,13 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 }
 
 func (*dockerImage) AttrNames() []string {
-	return []string{"file_name", "file_tag", "run"}
+	return []string{"file_name", "file_tag"}
 }
 
 type gitRepo struct {
-	basePath    string
-	pathMatcher model.PathMatcher
+	basePath             string
+	gitignoreContents    string
+	dockerignoreContents string
 }
 
 var _ skylark.Value = gitRepo{}
@@ -248,8 +275,8 @@ func (gr gitRepo) Type() string {
 
 func (gr gitRepo) Freeze() {}
 
-func (gitRepo) Truth() skylark.Bool {
-	return true
+func (gr gitRepo) Truth() skylark.Bool {
+	return gr.basePath != "" || gr.gitignoreContents != "" || gr.dockerignoreContents != ""
 }
 
 func (gitRepo) Hash() (uint32, error) {

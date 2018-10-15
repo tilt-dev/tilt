@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -82,6 +83,23 @@ func TestMultilinePrintInPipeline(t *testing.T) {
 	assertSnapshot(t, out.String())
 }
 
+func TestForkedOutputter(t *testing.T) {
+	out1 := &bytes.Buffer{}
+	out2 := &bytes.Buffer{}
+
+	l := logger.NewLogger(logger.InfoLvl, out1)
+	ctx := WithOutputter(logger.WithLogger(context.Background(), l), NewOutputter(l))
+	o := Get(CtxWithForkedOutput(ctx, out2))
+
+	o.StartPipeline(1)
+	o.StartPipelineStep("foo")
+	o.Printf("hello\ngoodbye\n")
+	o.EndPipelineStep()
+	o.EndPipeline(nil)
+
+	assert.Equal(t, out1.String(), out2.String())
+}
+
 type prefixedWriterTestFixture struct {
 	buf    *bytes.Buffer
 	writer *prefixedWriter
@@ -90,7 +108,7 @@ type prefixedWriterTestFixture struct {
 
 func newPrefixedWriterTestFixture(t *testing.T, prefix string) prefixedWriterTestFixture {
 	buf := bytes.NewBuffer(make([]byte, 0))
-	return prefixedWriterTestFixture{writer: newPrefixedWriter(prefix, buf), buf: buf, t: t}
+	return prefixedWriterTestFixture{writer: NewPrefixedWriter(prefix, buf), buf: buf, t: t}
 }
 
 func (p prefixedWriterTestFixture) Write(s string) {

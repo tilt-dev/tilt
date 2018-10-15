@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -31,10 +32,12 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	DefaultBuildOrder,
+	NewDeployDiscovery,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
+	store.NewStore,
 )
 
 var DeployerWireSetTest = wire.NewSet(

@@ -34,7 +34,6 @@ func NewServer() (*ServerAdapter, error) {
 
 	// TODO(dbentley): deal with error
 	go func() {
-		log.Printf("listening")
 		err := grpcServer.Serve(l)
 		if err != nil {
 			log.Printf("hud server error: %v", err)

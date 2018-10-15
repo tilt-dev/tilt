@@ -3,14 +3,15 @@ package hud
 import (
 	"context"
 
-	"log"
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 type HeadsUpDisplay interface {
-	Run(ctx context.Context)
-	Update(v view.View)
+	Run(ctx context.Context, st *store.Store) error
+	Update(v view.View) error
 }
 
 type Hud struct {
@@ -28,18 +29,20 @@ func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 
 	return &Hud{
 		a: a,
-		r: &Renderer{},
+		r: NewRenderer(),
 	}, nil
 }
 
-func (h *Hud) Run(ctx context.Context) {
+func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case ready := <-h.a.readyCh:
-			h.r.ttyPath = ready.ttyPath
-			h.r.ctx = ready.ctx
+			err := h.r.SetUp(ready, st)
+			if err != nil {
+				return err
+			}
 		case <-h.a.streamClosedCh:
 			h.r.Reset()
 		}
@@ -47,9 +50,7 @@ func (h *Hud) Run(ctx context.Context) {
 	}
 }
 
-func (h *Hud) Update(v view.View) {
+func (h *Hud) Update(v view.View) error {
 	err := h.r.Render(v)
-	if err != nil {
-		log.Println("Error rendering HUD")
-	}
+	return errors.Wrap(err, "error rendering hud")
 }

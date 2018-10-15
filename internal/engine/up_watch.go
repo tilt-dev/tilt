@@ -5,32 +5,33 @@ import (
 	"errors"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/store"
+
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-type manifestFilesChangedEvent struct {
+type manifestFilesChangedAction struct {
 	manifestName model.ManifestName
 	files        []string
 }
 
-type manifestWatcher struct {
-	events <-chan manifestFilesChangedEvent
-	errs   <-chan error
-}
+func (manifestFilesChangedAction) Action() {}
 
 // returns a manifestWatcher that tells its reader when a manifest's file dependencies have changed
 func makeManifestWatcher(
 	ctx context.Context,
-	watcherMaker watcherMaker,
+	st *store.Store,
+	watcherMaker fsWatcherMaker,
 	timerMaker timerMaker,
-	manifests []model.Manifest) (*manifestWatcher, error) {
+	manifests []model.Manifest) error {
 
 	var sns []manifestNotifyPair
 	for _, manifest := range manifests {
 		watcher, err := watcherMaker()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		localPaths := manifest.LocalPaths()
@@ -42,14 +43,14 @@ func makeManifestWatcher(
 		for _, localPath := range localPaths {
 			err = watcher.Add(localPath)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		for _, cf := range manifest.ConfigFiles {
 			err = watcher.Add(cf)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
@@ -57,15 +58,10 @@ func makeManifestWatcher(
 	}
 
 	if len(sns) == 0 {
-		return nil, errors.New("--watch used when no manifests define mounts - nothing to watch")
+		return errors.New("--watch used when no manifests define mounts - nothing to watch")
 	}
 
-	ret, err := snsToManifestWatcher(ctx, timerMaker, sns)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
+	return snsToManifestWatcher(ctx, st, timerMaker, sns)
 }
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
@@ -125,10 +121,7 @@ type manifestNotifyPair struct {
 }
 
 // turns a list of (manifest, chan fsevent) pairs into a single chan (manifest, fsevent)
-func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []manifestNotifyPair) (*manifestWatcher, error) {
-	events := make(chan manifestFilesChangedEvent)
-	errs := make(chan error)
-
+func snsToManifestWatcher(ctx context.Context, st *store.Store, timerMaker timerMaker, sns []manifestNotifyPair) error {
 	for _, sn := range sns {
 		coalescedEvents := coalesceEvents(timerMaker, sn.notify.Events())
 
@@ -137,33 +130,42 @@ func snsToManifestWatcher(ctx context.Context, timerMaker timerMaker, sns []mani
 			//defer close(events)
 			//defer close(errs)
 
+			filter := ignore.CreateFileChangeFilter(manifest)
 			for {
 				select {
 				case err, ok := <-watcher.Errors():
 					if !ok {
 						return
 					}
-					errs <- err
+					st.Dispatch(NewErrorAction(err))
+
 				case fsEvents, ok := <-coalescedEvents:
 					if !ok {
 						return
 					}
-					watchEvent := manifestFilesChangedEvent{manifestName: manifest.Name}
+					watchEvent := manifestFilesChangedAction{manifestName: manifest.Name}
 					for _, fe := range fsEvents {
 						path, err := filepath.Abs(fe.Path)
 						if err != nil {
-							errs <- err
+							st.Dispatch(NewErrorAction(err))
+							continue
 						}
-
-						watchEvent.files = append(watchEvent.files, path)
+						isIgnored, err := filter.Matches(path, false)
+						if err != nil {
+							st.Dispatch(NewErrorAction(err))
+							continue
+						}
+						if !isIgnored {
+							watchEvent.files = append(watchEvent.files, path)
+						}
 					}
 					if len(watchEvent.files) > 0 {
-						events <- watchEvent
+						st.Dispatch(watchEvent)
 					}
 				}
 			}
 		}(sn.manifest, sn.notify)
 	}
 
-	return &manifestWatcher{events, errs}, nil
+	return nil
 }

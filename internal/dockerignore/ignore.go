@@ -3,8 +3,7 @@ package dockerignore
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/windmilleng/tilt/internal/model"
+	"strings"
 
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/fileutils"
@@ -14,8 +13,6 @@ type dockerPathMatcher struct {
 	repoRoot string
 	matcher  *fileutils.PatternMatcher
 }
-
-var _ model.PathMatcher = dockerPathMatcher{}
 
 func (i dockerPathMatcher) Matches(f string, isDir bool) (bool, error) {
 	rp, err := filepath.Rel(i.repoRoot, f)
@@ -34,7 +31,7 @@ func (i dockerPathMatcher) AsMatchPatterns() []string {
 	return result
 }
 
-func NewDockerIgnoreTester(repoRoot string) (model.PathMatcher, error) {
+func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
@@ -48,7 +45,7 @@ func NewDockerIgnoreTester(repoRoot string) (model.PathMatcher, error) {
 	return NewDockerPatternMatcher(absRoot, patterns)
 }
 
-func NewDockerPatternMatcher(repoRoot string, patterns []string) (model.PathMatcher, error) {
+func NewDockerPatternMatcher(repoRoot string, patterns []string) (*dockerPathMatcher, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
@@ -59,7 +56,7 @@ func NewDockerPatternMatcher(repoRoot string, patterns []string) (model.PathMatc
 		return nil, err
 	}
 
-	return dockerPathMatcher{
+	return &dockerPathMatcher{
 		repoRoot: absRoot,
 		matcher:  pm,
 	}, nil
@@ -78,4 +75,13 @@ func readDockerignorePatterns(repoRoot string) ([]string, error) {
 	defer func() { _ = f.Close() }()
 
 	return dockerignore.ReadAll(f)
+}
+
+func DockerIgnoreTesterFromContents(repoRoot string, contents string) (*dockerPathMatcher, error) {
+	patterns, err := dockerignore.ReadAll(strings.NewReader(contents))
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDockerPatternMatcher(repoRoot, patterns)
 }

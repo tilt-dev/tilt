@@ -6,13 +6,14 @@
 package cli
 
 import (
-	context "context"
-	build "github.com/windmilleng/tilt/internal/build"
-	docker "github.com/windmilleng/tilt/internal/docker"
-	engine "github.com/windmilleng/tilt/internal/engine"
-	hud "github.com/windmilleng/tilt/internal/hud"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
-	model "github.com/windmilleng/tilt/internal/model"
+	"context"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 // Injectors from wire.go:
@@ -32,26 +33,27 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
+	storeStore := store.NewStore()
+	deployDiscovery := engine.NewDeployDiscovery(k8sClient, storeStore)
 	syncletManager := engine.NewSyncletManager(k8sClient)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(k8sClient, syncletManager)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
 	dockerCli, err := docker.DefaultDockerClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
-	containerResolver := build.NewContainerResolver(dockerCli)
 	analytics, err := provideAnalytics()
 	if err != nil {
 		return nil, err
 	}
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, containerResolver, env, k8sClient, analytics)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics, deployDiscovery)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	updateModeFlag2 := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
+	engineUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +66,10 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 	if err != nil {
 		return nil, err
 	}
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay)
+	podWatcherMaker := engine.ProvidePodWatcherMaker(k8sClient)
+	serviceWatcherMaker := engine.ProvideServiceWatcherMaker(k8sClient)
+	podLogManager := engine.NewPodLogManager(k8sClient, deployDiscovery, storeStore)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, browser, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, storeStore, podLogManager)
 	return upper, nil
 }
 

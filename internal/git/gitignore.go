@@ -2,15 +2,10 @@ package git
 
 import (
 	"context"
-	"os"
-	"path"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/monochromegane/go-gitignore"
-	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
@@ -26,9 +21,7 @@ type gitIgnoreTester struct {
 	ignoreMatcher gitignore.IgnoreMatcher
 }
 
-var _ model.PathMatcher = gitIgnoreTester{}
-
-func (i gitIgnoreTester) Matches(f string, isDir bool) (bool, error) {
+func (i *gitIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 	_, isChild := ospath.Child(i.repoRoot, f)
 	if !isChild {
 		return false, nil
@@ -37,35 +30,22 @@ func (i gitIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 	return i.ignoreMatcher.Match(f, isDir), nil
 }
 
-func NewGitIgnoreTester(ctx context.Context, repoRoot string) (model.PathMatcher, error) {
+func NewGitIgnoreTesterFromContents(ctx context.Context, repoRoot string, gitignoreContents string) (*gitIgnoreTester, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	p := path.Join(absRoot, ".gitignore")
-	i, err := gitignore.NewGitIgnore(p)
-	if err != nil {
-		_, err = os.Open(path.Join(absRoot, ".gitignore"))
+	i := gitignore.NewGitIgnoreFromReader(repoRoot, strings.NewReader(gitignoreContents))
 
-		pathError, ok := err.(*os.PathError)
-		//if the error is that file isn't there (ENOENT), then we don't need a warning, since that's a normal case
-		//if it's any other error, log and pretend the file doesn't exist (matching git's behavior)
-		if ok && pathError.Err != syscall.ENOENT {
-			logger.Get(ctx).Verbosef("failed to open gitignore %v: %v", p, err)
-		}
-		return model.EmptyMatcher, nil
-	}
 	return &gitIgnoreTester{absRoot, i}, nil
 }
 
 // ignores files specified in .gitignore plus any files in $ROOT/.git/
 type repoIgnoreTester struct {
 	repoRoot        string
-	gitIgnoreTester model.PathMatcher
+	gitIgnoreTester *gitIgnoreTester
 }
-
-var _ model.PathMatcher = repoIgnoreTester{}
 
 func (r repoIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 	// TODO(matt) what do we want to do with symlinks?
@@ -81,8 +61,8 @@ func (r repoIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 	return r.gitIgnoreTester.Matches(f, isDir)
 }
 
-func NewRepoIgnoreTester(ctx context.Context, repoRoot string) (model.PathMatcher, error) {
-	g, err := NewGitIgnoreTester(ctx, repoRoot)
+func NewRepoIgnoreTester(ctx context.Context, repoRoot string, gitignoreContents string) (*repoIgnoreTester, error) {
+	g, err := NewGitIgnoreTesterFromContents(ctx, repoRoot, gitignoreContents)
 	if err != nil {
 		return nil, err
 	}

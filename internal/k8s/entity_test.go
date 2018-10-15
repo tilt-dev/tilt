@@ -46,6 +46,23 @@ func TestImmutableFilter(t *testing.T) {
 	}
 }
 
+func TestMutableFilter(t *testing.T) {
+	yaml := fmt.Sprintf("%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML)
+	entities, err := ParseYAMLFromString(yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	results := MutableEntities(entities)
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 entity, actual: %d", len(results))
+	}
+
+	if results[0].Kind.Kind != "Deployment" {
+		t.Errorf("Expected Deployment entity, actual: %+v", results)
+	}
+}
+
 func TestLoadBalancerSpecs(t *testing.T) {
 	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
 	if err != nil {

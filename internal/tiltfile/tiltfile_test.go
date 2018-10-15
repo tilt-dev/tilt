@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
@@ -84,7 +85,7 @@ func (f *gitRepoFixture) LoadManifestForError(name string) error {
 }
 
 func (f *gitRepoFixture) FiltersPath(manifest model.Manifest, path string, isDir bool) bool {
-	matches, err := manifest.Filter().Matches(f.JoinPath(path), isDir)
+	matches, err := ignore.CreateBuildContextFilter(manifest).Matches(f.JoinPath(path), isDir)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -228,25 +229,29 @@ def blorgly_frontend():
 }
 
 func TestCompositeFunction(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 	dockerfile := tempFile("docker text")
 	file := tempFile(
 		fmt.Sprintf(`def blorgly():
   return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
-    start_fast_build("%v", "docker-tag", "the entrypoint")
-    run("go install github.com/windmilleng/blorgly-frontend/server/...")
-    run("echo hi")
-    image = stop_build()
-    return k8s_service("yaml", image)
+  start_fast_build("%v", "docker-tag", "the entrypoint")
+  add(local_git_repo('%s'), '/mount_points/1')
+  run("go install github.com/windmilleng/blorgly-frontend/server/...")
+  run("echo hi")
+  image = stop_build()
+  return k8s_service("yaml", image)
 
 def blorgly_frontend():
   start_fast_build("%v", "docker-tag", "the entrypoint")
+  add(local_git_repo('%s'), '/mount_points/2')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile, dockerfile))
+`, dockerfile, f.Path(), dockerfile, f.Path()))
 	defer os.Remove(file)
 	defer os.Remove(dockerfile)
 
@@ -261,7 +266,13 @@ def blorgly_frontend():
 	}
 
 	assert.Equal(t, "blorgly_backend", manifestConfig[0].Name.String())
+	assert.Equal(t, 1, len(manifestConfig[0].Repos))
+	assert.Equal(t, "", manifestConfig[0].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifestConfig[0].Repos[0].GitignoreContents)
 	assert.Equal(t, "blorgly_frontend", manifestConfig[1].Name.String())
+	assert.Equal(t, 1, len(manifestConfig[1].Repos))
+	assert.Equal(t, "", manifestConfig[1].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifestConfig[1].Repos[0].GitignoreContents)
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {
@@ -433,7 +444,11 @@ func TestRunTrigger(t *testing.T) {
 		},
 	)
 	packagePath := f.JoinPath("package.json")
-	matches, err := step0.Trigger.Matches(packagePath, false)
+	matcher, err := ignore.CreateStepMatcher(step0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches, err := matcher.Matches(packagePath, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -446,13 +461,17 @@ func TestRunTrigger(t *testing.T) {
 			Argv: []string{"sh", "-c", "npm install"},
 		},
 	)
-	matches, err = step1.Trigger.Matches(packagePath, false)
+	matcher, err = ignore.CreateStepMatcher(step1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches, err = matcher.Matches(packagePath, false)
 	yarnLockPath := f.JoinPath("yarn.lock")
-	matches, err = step1.Trigger.Matches(yarnLockPath, false)
+	matches, err = matcher.Matches(yarnLockPath, false)
 	assert.True(t, matches)
 
 	randomPath := f.JoinPath("foo")
-	matches, err = step1.Trigger.Matches(randomPath, false)
+	matches, err = matcher.Matches(randomPath, false)
 	assert.False(t, matches)
 
 	assert.Equal(
@@ -463,7 +482,7 @@ func TestRunTrigger(t *testing.T) {
 		},
 	)
 
-	assert.Nil(t, step2.Trigger)
+	assert.Nil(t, step2.Triggers)
 }
 
 func TestInvalidDockerTag(t *testing.T) {
@@ -496,8 +515,8 @@ ENTRYPOINT echo hi`)
 `)
 
 	manifest := f.LoadManifest("blorgly")
-	// TODO(dmiller) is this right?
-	assert.Equal(t, []string{"sh", "-c", ""}, manifest.Entrypoint.Argv)
+	assert.Equal(t, []string(nil), manifest.Entrypoint.Argv)
+	assert.True(t, manifest.Entrypoint.Empty())
 }
 
 func TestAddMissingDir(t *testing.T) {
@@ -565,6 +584,7 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
 	assert.True(t, matches(f.JoinPath("a.txt")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
+
 func TestConfigMatcherWithStaticBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
@@ -606,6 +626,30 @@ func TestRepoPath(t *testing.T) {
 
 	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, []string{"sh", "-c", f.JoinPath("subpath")}, manifest.Entrypoint.Argv)
+}
+
+func TestAddRepoPath(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile(".gitignore", "*.txt")
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "a")
+	f.WriteFile("src/b.txt", "b")
+	f.WriteFile("src/b/c.txt", "c")
+	f.WriteFile("src/b/d.go", "d")
+	f.WriteFile("Tiltfile", `def blorgly():
+  repo = local_git_repo('.')
+  start_fast_build("Dockerfile.base", "docker-tag")
+  add(repo.path('src'), '/src')
+  image = stop_build()
+  return k8s_service("", image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.True(t, f.FiltersPath(manifest, "src/b.txt", false), "Expected to filter b.txt")
+	assert.True(t, f.FiltersPath(manifest, "src/b/c.txt", false), "Expected to filter c.txt")
+	assert.False(t, f.FiltersPath(manifest, "src/b/d.go", false), "Expected not to filter d.txt")
 }
 
 func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
@@ -703,11 +747,11 @@ func TestReadsIgnoreFiles(t *testing.T) {
 `)
 
 	manifest := f.LoadManifest("blorgly")
-	assert.True(t, f.FiltersPath(manifest, "Tiltfile", true))
-	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false))
-	assert.True(t, f.FiltersPath(manifest, "node_modules", true))
-	assert.True(t, f.FiltersPath(manifest, ".git", true))
-	assert.False(t, f.FiltersPath(manifest, "a.txt", false))
+	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
+	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
+	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
+	assert.True(t, f.FiltersPath(manifest, "node_modules", true), "Expected to filter node_modules")
+	assert.False(t, f.FiltersPath(manifest, "a.txt", false), "Expected to filter a.txt")
 }
 
 func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
@@ -751,14 +795,14 @@ func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
 
 	manifest := manifests[0]
 
-	assert.True(t, f1.FiltersPath(manifest, "cmd.exe", false))
-	assert.True(t, f1.FiltersPath(manifest, "node_modules", true))
-	assert.True(t, f1.FiltersPath(manifest, ".git", true))
-	assert.False(t, f1.FiltersPath(manifest, "a.txt", false))
-	assert.False(t, f2.FiltersPath(manifest, "cmd.exe", false))
-	assert.False(t, f2.FiltersPath(manifest, "node_modules", true))
-	assert.True(t, f2.FiltersPath(manifest, ".git", true))
-	assert.True(t, f2.FiltersPath(manifest, "a.txt", false))
+	assert.Truef(t, f1.FiltersPath(manifest, "cmd.exe", false), "Expected to match cmd.exe")
+	assert.Truef(t, f1.FiltersPath(manifest, "node_modules", true), "Expected to match node_modules")
+	assert.Truef(t, f1.FiltersPath(manifest, ".git", true), "Expected to match .git")
+	assert.Falsef(t, f1.FiltersPath(manifest, "a.txt", false), "Expected to not match a.txt")
+	assert.Falsef(t, f2.FiltersPath(manifest, "cmd.exe", false), "Expected to not much cmd.exe")
+	assert.Falsef(t, f2.FiltersPath(manifest, "node_modules", true), "Expected to not match node_modules")
+	assert.Truef(t, f2.FiltersPath(manifest, ".git", true), "Expected to match .git")
+	assert.Truef(t, f2.FiltersPath(manifest, "a.txt", false), "Expected to match a.txt")
 }
 
 func TestBuildContextAddError(t *testing.T) {
@@ -858,4 +902,30 @@ def blorgly():
 	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
+}
+
+func TestPortForward(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  s = k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
+  s.port_forward(8000)
+  s.port_forward(8001, 443)
+  return s
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, []model.PortForward{
+		{
+			LocalPort:     8000,
+			ContainerPort: 0,
+		}, {
+			LocalPort:     8001,
+			ContainerPort: 443,
+		},
+	}, manifest.PortForwards)
 }

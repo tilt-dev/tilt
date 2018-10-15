@@ -48,6 +48,13 @@ func WithOutputter(ctx context.Context, outputter Outputter) context.Context {
 	return context.WithValue(ctx, outputterContextKey, &outputter)
 }
 
+// Returns a context containing an outputter that forks all of its output
+// to both the parent context's outputter and to the given `io.Writer`
+func CtxWithForkedOutput(ctx context.Context, w io.Writer) context.Context {
+	ctx = logger.CtxWithForkedOutput(ctx, w)
+	return WithOutputter(ctx, NewOutputter(logger.Get(ctx)))
+}
+
 func (o *Outputter) color(c color.Attribute) *color.Color {
 	color := color.New(c)
 	if !o.logger.SupportsColor() {
@@ -137,7 +144,7 @@ type prefixedWriter struct {
 
 var _ io.Writer = &prefixedWriter{}
 
-func newPrefixedWriter(prefix string, underlying io.Writer) *prefixedWriter {
+func NewPrefixedWriter(prefix string, underlying io.Writer) *prefixedWriter {
 	return &prefixedWriter{prefix, underlying, true}
 }
 
@@ -182,6 +189,6 @@ func (o Outputter) Writer() io.Writer {
 	if o.curBuildStep == 0 {
 		return underlying
 	} else {
-		return newPrefixedWriter(buildStepOutputPrefix, underlying)
+		return NewPrefixedWriter(buildStepOutputPrefix, underlying)
 	}
 }

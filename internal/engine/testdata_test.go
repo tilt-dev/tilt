@@ -52,7 +52,7 @@ func NewSanchoManifest() model.Manifest {
 				ContainerPath: "/go/src/github.com/windmilleng/sancho",
 			},
 		},
-		Steps: model.ToSteps([]model.Cmd{
+		Steps: model.ToSteps("/", []model.Cmd{
 			model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
 		}),
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},

@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
@@ -44,7 +47,7 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
 }
 
-func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state BuildState) (br BuildResult, err error) {
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
@@ -64,27 +67,27 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 
 	err = manifest.Validate()
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	ref, err := ibd.build(ctx, manifest, state)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
 	k8sEntities, namespace, err := ibd.deploy(ctx, manifest, ref)
 	if err != nil {
-		return BuildResult{}, err
+		return store.BuildResult{}, err
 	}
 
-	return BuildResult{
+	return store.BuildResult{
 		Image:     ref,
 		Namespace: namespace,
 		Entities:  k8sEntities,
 	}, nil
 }
 
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state BuildState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state store.BuildState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
 	name := manifest.DockerRef
@@ -93,7 +96,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		df := build.Dockerfile(manifest.StaticDockerfile)
-		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, manifest.Filter())
+		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
 
 		if err != nil {
 			return nil, err
@@ -107,7 +110,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 		df := build.Dockerfile(manifest.BaseDockerfile)
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, manifest.Filter(), steps, manifest.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -129,7 +132,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer output.Get(ctx).EndPipelineStep()
 
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, manifest.Filter(), steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +168,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 	newK8sEntities := []k8s.K8sEntity{}
 	namespace := k8s.DefaultNamespace
 	for _, e := range entities {
-		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel()})
+		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: manifest.Name.String()}})
 		if err != nil {
 			return nil, "", errors.Wrap(err, "deploy")
 		}
@@ -209,7 +212,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Man
 		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef)
 	}
 
-	err = k8s.Update(ctx, ibd.k8sClient, newK8sEntities)
+	err = ibd.k8sClient.Upsert(ctx, newK8sEntities)
 	if err != nil {
 		return nil, "", err
 	}
@@ -224,7 +227,7 @@ func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env.IsLocalCluster()
 }
 
-func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult BuildResult) {
+func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	// No-op: ImageBuildAndDeployer doesn't currently need any extra info for a given build result.
 	return
 }

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"os/exec"
 	"strings"
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -26,7 +28,9 @@ import (
 type Namespace string
 type PodID string
 type ContainerID string
+type ContainerName string
 type NodeID string
+type ServiceName string
 
 const DefaultNamespace = Namespace("default")
 
@@ -42,6 +46,8 @@ func (cID ContainerID) ShortStr() string {
 	return string(cID)
 }
 
+func (n ContainerName) String() string { return string(n) }
+
 func (nID NodeID) String() string { return string(nID) }
 
 func (n Namespace) String() string {
@@ -52,8 +58,11 @@ func (n Namespace) String() string {
 }
 
 type Client interface {
-	Apply(ctx context.Context, entities []K8sEntity) error
-	Delete(ctx context.Context, entities []K8sEntity) error
+	// Updates the entities, creating them if necessary.
+	//
+	// Tries to update them in-place if possible. But for certain resource types,
+	// we might need to fallback to deleting and re-creating them.
+	Upsert(ctx context.Context, entities []K8sEntity) error
 
 	// Find all the pods that match the given image, namespace, and labels.
 	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error)
@@ -68,6 +77,9 @@ type Client interface {
 	// Takes a pod as input, to indicate the version of the pod where we start watching.
 	WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error)
 
+	// Streams the container logs
+	ContainerLogs(ctx context.Context, podID PodID, cName ContainerName, n Namespace) (io.ReadCloser, error)
+
 	// Gets the ID for the Node on which the specified Pod is running
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
 
@@ -79,6 +91,10 @@ type Client interface {
 
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (localPort int, closer func(), err error)
+
+	WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error)
+
+	WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error)
 }
 
 type K8sClient struct {
@@ -155,20 +171,12 @@ func (k K8sClient) resolveLoadBalancerFromMinikube(ctx context.Context, lb LoadB
 	}, nil
 }
 
-func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	if len(lb.Ports) == 0 {
-		return LoadBalancer{}, nil
-	}
+func ServiceURL(service *v1.Service) (*url.URL, error) {
+	status := service.Status
 
-	port := lb.Ports[0]
-
-	svc, err := k.core.Services(lb.Namespace.String()).Get(lb.Name, metav1.GetOptions{})
-	if err != nil {
-		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
-	}
-
-	status := svc.Status
 	lbStatus := status.LoadBalancer
+
+	port := service.Spec.Ports[0].Port
 
 	// Documentation here is helpful:
 	// https://godoc.org/k8s.io/api/core/v1#LoadBalancerIngress
@@ -190,50 +198,75 @@ func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBal
 
 		url, err := url.Parse(urlString)
 		if err != nil {
-			return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
+			return nil, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
 		}
-		return LoadBalancer{
-			URL:  url,
-			Spec: lb,
-		}, nil
+		return url, nil
 	}
 
-	return LoadBalancer{}, nil
+	return nil, nil
 }
 
-func (k K8sClient) Apply(ctx context.Context, entities []K8sEntity) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sApply")
-	defer span.Finish()
-	// TODO(dmiller) validate that the string is YAML and give a good error
-	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
-	_, stderr, err := k.applyOrDeleteFromEntities(ctx, "apply", entities)
+func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
+	if len(lb.Ports) == 0 {
+		return LoadBalancer{}, nil
+	}
+
+	svc, err := k.core.Services(lb.Namespace.String()).Get(lb.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
+		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
+	}
+
+	url, err := ServiceURL(svc)
+	if err != nil {
+		return LoadBalancer{}, err
+	}
+	return LoadBalancer{
+		URL:  url,
+		Spec: lb,
+	}, nil
+}
+
+func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
+	defer span.Finish()
+
+	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
+
+	immutable := ImmutableEntities(entities)
+	if len(immutable) > 0 {
+		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)
+		if err != nil {
+			return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
+		}
+	}
+
+	mutable := MutableEntities(entities)
+	if len(mutable) > 0 {
+		_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, mutable)
+		if err != nil {
+			isImmutableFieldError := strings.Contains(stderr, validation.FieldImmutableErrorMsg)
+			if !isImmutableFieldError {
+				return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
+			}
+
+			// If the kubectl apply failed due to an immutable field, fall back to kubectl replace --force.
+			logger.Get(ctx).Infof("%sFalling back to 'kubectl replace' on immutable field error", logger.Tab)
+			_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, mutable)
+			if err != nil {
+				return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
+			}
+		}
 	}
 	return nil
 }
 
-func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, _, err := k.applyOrDeleteFromEntities(ctx, "delete", entities)
-	_, isExitErr := err.(*exec.ExitError)
-	if isExitErr {
-		// In general, an exit error is ok for our purposes.
-		// It just means that the job hasn't been created yet.
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("kubectl delete: %v", err)
-	}
-	return err
-}
-
-func (k K8sClient) applyOrDeleteFromEntities(ctx context.Context, cmd string, entities []K8sEntity) (stdout string, stderr string, err error) {
-	args := []string{cmd, "-f", "-"}
+func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities []K8sEntity) (stdout string, stderr string, err error) {
+	args := append([]string{}, cmdArgs...)
+	args = append(args, "-f", "-")
 
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
-		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmd, err)
+		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmdArgs, err)
 	}
 	stdin := bytes.NewReader([]byte(rawYAML))
 

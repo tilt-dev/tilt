@@ -1,22 +1,19 @@
 package tiltfile
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
+	"sort"
 
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -55,16 +52,11 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
-	filter, err := model.NewSimpleFileMatcher(t.filename)
-	if err != nil {
-		return skylark.None, err
-	}
-
 	buildContext := &dockerImage{
 		baseDockerfilePath: dockerfileName,
 		ref:                ref,
 		entrypoint:         entrypoint,
-		filters:            []model.PathMatcher{filter},
+		tiltFilename:       t.filename,
 	}
 	err = recordReadFile(thread, dockerfileName)
 	if err != nil {
@@ -90,11 +82,6 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	filter, err := model.NewSimpleFileMatcher(t.filename)
-	if err != nil {
-		return skylark.None, err
-	}
-
 	if buildPath == "" {
 		buildPath = filepath.Dir(dockerfilePath)
 	}
@@ -108,7 +95,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		staticDockerfilePath: dockerfilePath,
 		staticBuildPath:      buildPath,
 		ref:                  ref,
-		filters:              []model.PathMatcher{filter},
+		tiltFilename:         t.filename,
 	}
 	err = recordReadFile(thread, dockerfilePath)
 	if err != nil {
@@ -129,7 +116,10 @@ func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args sky
 		return nil, err
 	}
 	// Name will be initialized later
-	return k8sManifest{yaml, *dockerImage, "", nil}, nil
+	return &k8sManifest{
+		k8sYaml:     yaml,
+		dockerImage: *dockerImage,
+	}, nil
 }
 
 func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -141,7 +131,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 		return nil, err
 	}
 
-	var manifests []k8sManifest
+	var manifests []*k8sManifest
 
 	var v skylark.Value
 	i := manifestFuncs.Iterate()
@@ -154,7 +144,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 			if err != nil {
 				return nil, err
 			}
-			s, ok := r.(k8sManifest)
+			s, ok := r.(*k8sManifest)
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
@@ -200,20 +190,21 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	t1, err := git.NewRepoIgnoreTester(ctx, absPath)
-	if err != nil {
-		return nil, err
-	}
-	t2, err := dockerignore.NewDockerIgnoreTester(absPath)
-	if err != nil {
+	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 
-	ct := model.NewCompositeMatcher([]model.PathMatcher{t1, t2})
+	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
 
-	return gitRepo{absPath, ct}, nil
+	repo := gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}
+
+	return repo, nil
 }
 
 func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -348,7 +339,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 			servs = append(servs, s)
 		}
 		return servs, nil
-	case k8sManifest:
+	case *k8sManifest:
 		manifest.configFiles = files
 
 		s, err := skylarkManifestToDomain(manifest)
@@ -364,7 +355,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	}
 }
 
-func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
+func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 	k8sYaml, ok := skylark.AsString(manifest.k8sYaml)
 	if !ok {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
@@ -394,13 +385,38 @@ func skylarkManifestToDomain(manifest k8sManifest) (model.Manifest, error) {
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
-		FileFilter:     model.NewCompositeMatcher(image.filters),
-		ConfigFiles:    manifest.configFiles,
+		TiltFilename:   image.tiltFilename,
+		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath),
+
+		Repos:        SkylarkReposToDomain(image.mounts),
+		PortForwards: manifest.portForwards,
 	}, nil
 
+}
+
+func SkylarkConfigFilesToDomain(cf []string) []string {
+	ss := sort.StringSlice(cf)
+	ss.Sort()
+
+	return ss
+}
+
+func SkylarkReposToDomain(sMount []mount) []model.LocalGithubRepo {
+	dRepos := []model.LocalGithubRepo{}
+	for _, m := range sMount {
+		if m.repo.Truth() {
+			dRepos = append(dRepos, model.LocalGithubRepo{
+				LocalPath:            m.repo.basePath,
+				DockerignoreContents: m.repo.dockerignoreContents,
+				GitignoreContents:    m.repo.gitignoreContents,
+			})
+		}
+	}
+
+	return dRepos
 }
 
 func skylarkMountsToDomain(sMounts []mount) []model.Mount {

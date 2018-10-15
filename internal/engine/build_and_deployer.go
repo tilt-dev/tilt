@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -17,12 +19,12 @@ type BuildAndDeployer interface {
 	//
 	// BuildResult can be used to construct a BuildState, which contains
 	// the last successful build and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error)
+	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error)
 
 	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
 	// In general, we'll store this info ON the BuildAndDeployer that needs it.
 	// Each implementation of PostProcessBuild is responsible for executing long-running steps async.
-	PostProcessBuild(ctx context.Context, result, prevResult BuildResult)
+	PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -50,7 +52,7 @@ func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTe
 	}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState BuildState) (BuildResult, error) {
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
@@ -62,12 +64,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		}
 
 		if !composite.shouldFallBack(err) {
-			return BuildResult{}, err
+			return store.BuildResult{}, err
 		}
 		logger.Get(ctx).Verbosef("falling back to next build and deploy method after error: %v", err)
 		lastErr = err
 	}
-	return BuildResult{}, lastErr
+	return store.BuildResult{}, lastErr
 }
 
 // A permanent error indicates that the whole build pipeline needs to stop.
@@ -100,7 +102,7 @@ func shouldImageBuild(err error) bool {
 	return true
 }
 
-func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, prevResult BuildResult) {
+func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult) {
 	for _, builder := range composite.builders {
 		builder.PostProcessBuild(ctx, result, prevResult)
 	}

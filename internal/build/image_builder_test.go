@@ -8,7 +8,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -100,10 +99,10 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
-	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
 	step1 := model.Step{
-		Cmd:     model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
-		Trigger: inputs,
+		Cmd:           model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
+		Triggers:      []string{"a.txt"},
+		BaseDirectory: f.Path(),
 	}
 	step2 := model.Step{
 		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
@@ -117,12 +116,12 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `FROM alpine
-LABEL "tilt.buildMode"="scratch"
-LABEL "tilt.test"="1"
 COPY /src/a.txt /src/a.txt
 RUN cat /src/a.txt > /src/c.txt
 ADD . /
-RUN cat /src/b.txt > /src/d.txt`,
+RUN cat /src/b.txt > /src/d.txt
+LABEL "tilt.buildMode"="scratch"
+LABEL "tilt.test"="1"`,
 	}
 	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
 }
@@ -138,10 +137,10 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
-	inputs, _ := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"a.txt"})
 	step1 := model.Step{
-		Cmd:     model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
-		Trigger: inputs,
+		Cmd:           model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
+		Triggers:      []string{"a.txt"},
+		BaseDirectory: f.Path(),
 	}
 
 	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1}, model.Cmd{})
@@ -152,11 +151,11 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `FROM alpine
-LABEL "tilt.buildMode"="scratch"
-LABEL "tilt.test"="1"
 COPY /src/a.txt /src/a.txt
 RUN cat /src/a.txt > /src/c.txt
-ADD . /`,
+ADD . /
+LABEL "tilt.buildMode"="scratch"
+LABEL "tilt.test"="1"`,
 	}
 	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
 }

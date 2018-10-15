@@ -12,12 +12,14 @@ type ManifestName string
 
 func (m ManifestName) String() string { return string(m) }
 
+// NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all builds.
-	Name       ManifestName
-	K8sYaml    string
-	FileFilter PathMatcher
-	DockerRef  reference.Named
+	Name         ManifestName
+	K8sYaml      string
+	TiltFilename string
+	DockerRef    reference.Named
+	PortForwards []PortForward
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
@@ -34,6 +36,8 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
+
+	Repos []LocalGithubRepo
 }
 
 func (m Manifest) ConfigMatcher() (PathMatcher, error) {
@@ -46,14 +50,6 @@ func (m Manifest) ConfigMatcher() (PathMatcher, error) {
 
 func (m Manifest) IsStaticBuild() bool {
 	return m.StaticDockerfile != ""
-}
-
-func (m Manifest) Filter() PathMatcher {
-	f := m.FileFilter
-	if f == nil {
-		return EmptyMatcher
-	}
-	return f
 }
 
 func (m Manifest) LocalPaths() []string {
@@ -102,6 +98,100 @@ func (m Manifest) validate() *ValidateErr {
 	return nil
 }
 
+func (m1 Manifest) Equal(m2 Manifest) bool {
+	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
+	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
+	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
+	mountsMatch := m1.mountsEqual(m2.Mounts)
+	reposMatch := m1.reposEqual(m2.Repos)
+	stepsMatch := m1.stepsEqual(m2.Steps)
+	portForwardsMatch := m1.portForwardsEqual(m2)
+
+	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch
+}
+
+func (m1 Manifest) configFilesEqual(c2 []string) bool {
+	if (m1.ConfigFiles == nil) != (c2 == nil) {
+		return false
+	}
+
+	if len(m1.ConfigFiles) != len(c2) {
+		return false
+	}
+
+	for i := range c2 {
+		if m1.ConfigFiles[i] != c2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) mountsEqual(m2 []Mount) bool {
+	if (m1.Mounts == nil) != (m2 == nil) {
+		return false
+	}
+
+	if len(m1.Mounts) != len(m2) {
+		return false
+	}
+
+	for i := range m2 {
+		if m1.Mounts[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
+	if (m1.Repos == nil) != (m2 == nil) {
+		return false
+	}
+
+	if len(m1.Repos) != len(m2) {
+		return false
+	}
+
+	for i := range m2 {
+		if m1.Repos[i] != m2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
+	if len(m1.PortForwards) != len(m2.PortForwards) {
+		return false
+	}
+
+	for i := range m2.PortForwards {
+		if m1.PortForwards[i] != m2.PortForwards[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m1 Manifest) stepsEqual(s2 []Step) bool {
+	if len(m1.Steps) != len(s2) {
+		return false
+	}
+
+	for i := range s2 {
+		if !m1.Steps[i].Equal(s2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 type ManifestCreator interface {
 	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
@@ -111,23 +201,48 @@ type Mount struct {
 	ContainerPath string
 }
 
-type Repo interface {
-	IsRepo()
-}
-
 type LocalGithubRepo struct {
-	LocalPath string
+	LocalPath            string
+	DockerignoreContents string
+	GitignoreContents    string
 }
 
 func (LocalGithubRepo) IsRepo() {}
 
+func (r1 LocalGithubRepo) Equal(r2 LocalGithubRepo) bool {
+	return r1.DockerignoreContents == r2.DockerignoreContents && r1.GitignoreContents == r2.GitignoreContents && r1.LocalPath == r2.LocalPath
+}
+
 type Step struct {
 	// Required. The command to run in this step.
 	Cmd Cmd
-
 	// Optional. If not specified, this step runs on every change.
 	// If specified, we only run the Cmd if the trigger matches the changed file.
-	Trigger PathMatcher
+	Triggers []string
+	// Directory the Triggers are relative to
+	BaseDirectory string
+}
+
+func (s1 Step) Equal(s2 Step) bool {
+	if s1.BaseDirectory != s2.BaseDirectory {
+		return false
+	}
+
+	if !s1.Cmd.Equal(s2.Cmd) {
+		return false
+	}
+
+	if len(s1.Triggers) != len(s2.Triggers) {
+		return false
+	}
+
+	for i := range s2.Triggers {
+		if s1.Triggers[i] != s2.Triggers[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 type Cmd struct {
@@ -186,11 +301,32 @@ func (c Cmd) String() string {
 	return fmt.Sprintf("%s", strings.Join(quoted, " "))
 }
 
+func (c1 Cmd) Equal(c2 Cmd) bool {
+	if (c1.Argv == nil) != (c2.Argv == nil) {
+		return false
+	}
+
+	if len(c1.Argv) != len(c2.Argv) {
+		return false
+	}
+
+	for i := range c1.Argv {
+		if c1.Argv[i] != c2.Argv[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (c Cmd) Empty() bool {
 	return len(c.Argv) == 0
 }
 
 func ToShellCmd(cmd string) Cmd {
+	if cmd == "" {
+		return Cmd{}
+	}
 	return Cmd{Argv: []string{"sh", "-c", cmd}}
 }
 
@@ -202,20 +338,20 @@ func ToShellCmds(cmds []string) []Cmd {
 	return res
 }
 
-func ToStep(cmd Cmd) Step {
-	return Step{Cmd: cmd}
+func ToStep(cwd string, cmd Cmd) Step {
+	return Step{BaseDirectory: cwd, Cmd: cmd}
 }
 
-func ToSteps(cmds []Cmd) []Step {
+func ToSteps(cwd string, cmds []Cmd) []Step {
 	res := make([]Step, len(cmds))
 	for i, cmd := range cmds {
-		res[i] = ToStep(cmd)
+		res[i] = ToStep(cwd, cmd)
 	}
 	return res
 }
 
-func ToShellSteps(cmds []string) []Step {
-	return ToSteps(ToShellCmds(cmds))
+func ToShellSteps(cwd string, cmds []string) []Step {
+	return ToSteps(cwd, ToShellCmds(cmds))
 }
 
 type ValidateErr struct {
@@ -228,4 +364,13 @@ var _ error = &ValidateErr{}
 
 func validateErrf(format string, a ...interface{}) *ValidateErr {
 	return &ValidateErr{s: fmt.Sprintf(format, a...)}
+}
+
+type PortForward struct {
+	// The port to expose on localhost of the current machine.
+	LocalPort int
+
+	// The port to connect to inside the deployed container.
+	// If 0, we will connect to the first containerPort.
+	ContainerPort int
 }

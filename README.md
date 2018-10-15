@@ -37,7 +37,9 @@ def backend():
   img = stop_build()
 
   yaml = read_file('backend.yaml')
-  return k8s_service(yaml, img)
+  s = k8s_service(yaml, img)
+  s.port_forward(8080, 80)
+  return s
 ```
 
 ## Mill
@@ -122,6 +124,13 @@ Represents a Kubernetes service that Tilt can deploy and monitor.
 
 ```python
 class Service
+  def port_forward(local: int, remote: int = 0):
+    """Sets up port-forwarding for the deployed container when it's ready.
+
+    Args:
+      local: The local port
+      remote: The container port. If not specified, we will forward to the first port in the container
+    """
 ```
 
 #### k8s_service

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -52,14 +51,12 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 }
 
 func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
-	trigger, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"bar"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	triggers := []string{"bar"}
 	steps := []model.Step{
 		model.Step{
-			Cmd:     model.ToShellCmd("echo hello"),
-			Trigger: trigger,
+			Cmd:           model.ToShellCmd("echo hello"),
+			Triggers:      triggers,
+			BaseDirectory: "/home/tilt/code/test",
 		},
 	}
 
@@ -81,14 +78,12 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 }
 
 func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
-	trigger, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"bar"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	triggers := []string{"bar"}
 	steps := []model.Step{
 		model.Step{
-			Cmd:     model.ToShellCmd("echo world"),
-			Trigger: trigger,
+			Cmd:           model.ToShellCmd("echo world"),
+			Triggers:      triggers,
+			BaseDirectory: "/home/tilt/code/test",
 		},
 	}
 
@@ -110,22 +105,19 @@ func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 }
 
 func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
-	trigger1, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"foo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	trigger2, err := dockerignore.NewDockerPatternMatcher("/home/tilt/code/test", []string{"bar"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	wd := "/home/tilt/code/test"
+	triggers1 := []string{"foo"}
+	triggers2 := []string{"bar"}
 	steps := []model.Step{
 		model.Step{
-			Cmd:     model.ToShellCmd("echo hello"),
-			Trigger: trigger1,
+			Cmd:           model.ToShellCmd("echo hello"),
+			Triggers:      triggers1,
+			BaseDirectory: wd,
 		},
 		model.Step{
-			Cmd:     model.ToShellCmd("echo world"),
-			Trigger: trigger2,
+			Cmd:           model.ToShellCmd("echo world"),
+			Triggers:      triggers2,
+			BaseDirectory: wd,
 		},
 	}
 

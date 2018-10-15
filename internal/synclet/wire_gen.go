@@ -6,10 +6,10 @@
 package synclet
 
 import (
-	context "context"
-	build "github.com/windmilleng/tilt/internal/build"
-	docker "github.com/windmilleng/tilt/internal/docker"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
+	"context"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 // Injectors from wire.go:

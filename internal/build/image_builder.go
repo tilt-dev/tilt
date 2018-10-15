@@ -11,6 +11,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
@@ -105,13 +106,10 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		return nil, err
 	}
 
-	// TODO(nick): should there be an error if hasEntrypoint is false?
-	// right now, Service#Validate will fail on this case, but many of our
-	// test cases don't have entrypoints.
 	hasEntrypoint := !entrypoint.Empty()
 
 	paths := MountsToPathMappings(mounts)
-	df := d.applyLabels(baseDockerfile, BuildModeScratch)
+	df := baseDockerfile
 	df, steps, err = d.addConditionalSteps(df, steps, paths)
 	if err != nil {
 		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
@@ -127,6 +125,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 		df = df.Entrypoint(entrypoint)
 	}
 
+	df = d.applyLabels(df, BuildModeScratch)
 	return d.buildFromDf(ctx, df, paths, filter, ref)
 }
 
@@ -162,11 +161,16 @@ func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Do
 func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.Step, paths []pathMapping) (Dockerfile, []model.Step, error) {
 	consumed := 0
 	for _, step := range steps {
-		if step.Trigger == nil {
+		if step.Triggers == nil {
 			break
 		}
 
-		pathsToAdd, err := FilterMappings(paths, step.Trigger)
+		matcher, err := ignore.CreateStepMatcher(step)
+		if err != nil {
+			return "", nil, err
+		}
+
+		pathsToAdd, err := FilterMappings(paths, matcher)
 		if err != nil {
 			return "", nil, err
 		}

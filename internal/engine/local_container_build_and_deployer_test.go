@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/docker/docker/api/types"
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -14,49 +15,41 @@ import (
 )
 
 const pod1 = k8s.PodID("pod1")
-const pod2 = k8s.PodID("pod2")
-
-const container1 = k8s.ContainerID("container1")
-const container2 = k8s.ContainerID("container2")
 
 var image1 = k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
 
 const digest1 = "sha256:936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af"
 
-var containerListOutput = map[string][]types.Container{
-	pod1.String(): []types.Container{
-		types.Container{ID: container1.String(), ImageID: digest1},
-	},
-}
-
 func TestPostProcessBuild(t *testing.T) {
 	f := newContainerBadFixture()
 
-	f.dCli.SetContainerListOutput(containerListOutput)
 	f.kCli.SetPodsWithImageResp(pod1)
 
-	res := BuildResult{Image: image1}
+	res := store.BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
 
-	if assert.NotEmpty(t, f.cbad.deployInfo) {
-		assert.Equal(t, container1, f.cbad.deployInfo[docker.ToImgNameAndTag(image1)])
-	}
+	info, err := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
+	assert.Nil(t, err)
+	assert.Equal(t, string(k8s.MagicTestContainerID), string(info.containerID))
 }
 
 func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 	f := newContainerBadFixture()
 
-	f.dCli.SetContainerListOutput(containerListOutput)
 	f.kCli.SetPodsWithImageResp(pod1)
 
-	f.cbad.deployInfo[docker.ToImgNameAndTag(image1)] = k8s.ContainerID("ohai")
+	entry := newDeployInfoEntry()
+	entry.containerID = k8s.ContainerID("ohai")
+	entry.markReady()
+	f.cbad.dd.deployInfo[docker.ToImgNameAndTag(image1)] = entry
 
-	res := BuildResult{Image: image1}
+	res := store.BuildResult{Image: image1}
 	f.cbad.PostProcessBuild(f.ctx, res, res)
 
-	if assert.NotEmpty(t, f.cbad.deployInfo) {
-		assert.Equal(t, k8s.ContainerID("ohai"), f.cbad.deployInfo[docker.ToImgNameAndTag(image1)], "Getting info again for same image -- contents should not have changed")
-	}
+	info, err := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
+	assert.Nil(t, err)
+	assert.Equal(t, k8s.ContainerID("ohai"), info.containerID,
+		"Getting info again for same image -- contents should not have changed")
 }
 
 type containerBaDFixture struct {
@@ -72,10 +65,10 @@ func newContainerBadFixture() *containerBaDFixture {
 	fakeK8s := k8s.NewFakeK8sClient()
 
 	cu := build.NewContainerUpdater(fakeDocker)
-	cr := build.NewContainerResolver(fakeDocker)
 	a := analytics.NewMemoryAnalytics()
+	dd := NewDeployDiscovery(fakeK8s, store.NewStore())
 
-	cbad := NewLocalContainerBuildAndDeployer(cu, cr, k8s.EnvDockerDesktop, fakeK8s, a)
+	cbad := NewLocalContainerBuildAndDeployer(cu, a, dd)
 
 	return &containerBaDFixture{
 		ctx:  output.CtxForTest(),

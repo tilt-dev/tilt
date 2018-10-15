@@ -1,4 +1,4 @@
-package engine
+package store
 
 import (
 	"fmt"
@@ -63,13 +63,13 @@ type BuildState struct {
 
 	// Files changed since the last result was build.
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
-	filesChangedSet map[string]bool
+	FilesChangedSet map[string]bool
 }
 
 func NewBuildState(result BuildResult) BuildState {
 	return BuildState{
 		LastResult:      result,
-		filesChangedSet: make(map[string]bool, 0),
+		FilesChangedSet: make(map[string]bool, 0),
 	}
 }
 
@@ -81,8 +81,8 @@ func (b BuildState) LastImage() reference.NamedTagged {
 // The sorting helps ensure that this is deterministic, both for testing
 // and for deterministic builds.
 func (b BuildState) FilesChanged() []string {
-	result := make([]string, 0, len(b.filesChangedSet))
-	for file, _ := range b.filesChangedSet {
+	result := make([]string, 0, len(b.FilesChangedSet))
+	for file, _ := range b.FilesChangedSet {
 		result = append(result, file)
 	}
 	sort.Strings(result)
@@ -98,7 +98,7 @@ func (b BuildState) FilesChangedSinceLastResultImage() ([]string, error) {
 		return nil, fmt.Errorf("No image in last result")
 	}
 
-	cSet := b.filesChangedSet
+	cSet := b.FilesChangedSet
 	rSet := b.LastResult.FilesReplacedSet
 	sum := make(map[string]bool, len(cSet)+len(rSet))
 	for k, v := range cSet {
@@ -118,11 +118,11 @@ func (b BuildState) FilesChangedSinceLastResultImage() ([]string, error) {
 
 func (b BuildState) NewStateWithFilesChanged(files []string) BuildState {
 	result := NewBuildState(b.LastResult)
-	for k, v := range b.filesChangedSet {
-		result.filesChangedSet[k] = v
+	for k, v := range b.FilesChangedSet {
+		result.FilesChangedSet[k] = v
 	}
 	for _, f := range files {
-		result.filesChangedSet[f] = true
+		result.FilesChangedSet[f] = true
 	}
 	return result
 }

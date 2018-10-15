@@ -9,6 +9,7 @@ import (
 
 const buildContextKey = "buildContext"
 const readFilesKey = "readFiles"
+const reposKey = "repos"
 
 func getAndClearBuildContext(t *skylark.Thread) (*dockerImage, error) {
 	obj := t.Local(buildContextKey)
