@@ -69,22 +69,39 @@ func (g *renderGlobals) errorf(format string, a ...interface{}) {
 type renderFrame struct {
 	canvas Canvas
 
+	style tcell.Style
+
 	globals *renderGlobals
 }
 
-func (f renderFrame) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) {
-	if err := f.canvas.SetContent(x, y, mainc, combc, style); err != nil {
+func (f renderFrame) SetContent(x int, y int, mainc rune, combc []rune) {
+	if err := f.canvas.SetContent(x, y, mainc, combc, f.style); err != nil {
 		f.error(err)
 	}
 }
 
+func (f renderFrame) Fill() Writer {
+	width, height := f.canvas.Size()
+	f.canvas = newSubCanvas(f.canvas, 0, 0, width, height, f.style)
+	return f
+}
+
 func (f renderFrame) Divide(x, y, width, height int) Writer {
-	f.canvas = newSubCanvas(f.canvas, x, y, width, height)
+	f.canvas = newSubCanvas(f.canvas, x, y, width, height, f.style)
+	return f
+}
+
+func (f renderFrame) Foreground(c tcell.Color) Writer {
+	f.style = f.style.Foreground(c)
+	return f
+}
+
+func (f renderFrame) Background(c tcell.Color) Writer {
+	f.style = f.style.Background(c)
 	return f
 }
 
 func (f renderFrame) RenderChild(c Component) int {
-
 	width, height := f.canvas.Size()
 	if err := c.Render(f, width, height); err != nil {
 		f.error(err)
@@ -94,9 +111,15 @@ func (f renderFrame) RenderChild(c Component) int {
 	return height
 }
 
+func (f renderFrame) Style(style tcell.Style) Writer {
+	width, height := f.canvas.Size()
+	f.canvas = newSubCanvas(f.canvas, 0, 0, width, height, style)
+	return f
+}
+
 func (f renderFrame) RenderChildInTemp(c Component) Canvas {
 	width, _ := f.canvas.Size()
-	tmp := newTempCanvas(width, GROW)
+	tmp := newTempCanvas(width, GROW, f.style)
 	f.canvas = tmp
 
 	if err := c.Render(f, width, GROW); err != nil {
@@ -117,7 +140,7 @@ func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
 	for i := 0; i < numLines; i++ {
 		for j := 0; j < width; j++ {
 			mainc, combc, style, _ := src.GetContent(j, srcY+i)
-			f.SetContent(j, i, mainc, combc, style)
+			f.canvas.SetContent(j, i, mainc, combc, style)
 		}
 	}
 }

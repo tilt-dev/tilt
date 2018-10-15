@@ -6,122 +6,119 @@ import (
 	"github.com/windmilleng/tcell"
 )
 
-// TODO(dbentley): this whole file should print smarter (and strip out control characters)
+type StringBuilder interface {
+	Text(string) StringBuilder
+	Fg(tcell.Color) StringBuilder
+	Bg(tcell.Color) StringBuilder
+	Build() Component
+}
 
-// Layout a string on one line, suitable for a label
+func NewStringBuilder() StringBuilder {
+	return &stringBuilder{}
+}
+
+type directive interface {
+	directive()
+}
+
+type textDirective string
+type fgDirective tcell.Color
+type bgDirective tcell.Color
+
+func (textDirective) directive() {}
+func (fgDirective) directive()   {}
+func (bgDirective) directive()   {}
+
+type stringBuilder struct {
+	directives []directive
+}
+
+func (b *stringBuilder) Text(t string) StringBuilder {
+	b.directives = append(b.directives, textDirective(t))
+	return b
+}
+
+func (b *stringBuilder) Fg(c tcell.Color) StringBuilder {
+	b.directives = append(b.directives, fgDirective(c))
+	return b
+}
+
+func (b *stringBuilder) Bg(c tcell.Color) StringBuilder {
+	b.directives = append(b.directives, bgDirective(c))
+	return b
+}
+
+func (b *stringBuilder) Build() Component {
+	return &StringLayout{directives: b.directives}
+}
+
 type StringLayout struct {
-	s string
+	directives []directive
 }
 
-func String(s string) *StringLayout {
-	return &StringLayout{s: s}
+func TextString(s string) Component {
+	return NewStringBuilder().Text(s).Build()
 }
 
-func (l *StringLayout) Size(width int, height int) (int, int) {
-	return len(l.s), 1
+func ColoredString(s string, fg tcell.Color, bg tcell.Color) Component {
+	return NewStringBuilder().Fg(fg).Bg(bg).Text(s).Build()
+}
+
+func (l *StringLayout) Size(availWidth int, availHeight int) (int, int) {
+	return l.render(nil, availWidth, availHeight)
 }
 
 func (l *StringLayout) Render(w Writer, width int, height int) error {
-	printStringOneLine(w, l.s)
+	l.render(w, width, height)
 	return nil
 }
 
-// Fills a space by repeating a string
-type FillerString struct {
-	ch rune
-}
-
-func NewFillerString(ch rune) *FillerString {
-	return &FillerString{ch: ch}
-}
-
-func (l *FillerString) Size(width, height int) (int, int) {
-	return width, 1
-}
-
-func (l *FillerString) Render(w Writer, width int, height int) error {
-	for i := 0; i < width; i++ {
-		w.SetContent(i, 0, l.ch, nil, tcell.StyleDefault)
-	}
-	return nil
-}
-
-type TruncatingStrings struct {
-	data []string
-}
-
-func NewTruncatingStrings(data []string) *TruncatingStrings {
-	return &TruncatingStrings{data: data}
-}
-
-func (l *TruncatingStrings) Size(width int, height int) (int, int) {
-	return width, height
-}
-
-func (l *TruncatingStrings) Render(w Writer, width int, height int) error {
-	w.SetContent(0, 0, '[', nil, tcell.StyleDefault)
-	offset := 2 // "[ "
-	for i, s := range l.data {
-		subW := w.Divide(offset, 0, width-offset, 1)
-		endText := fmt.Sprintf("and %d more ]", len(l.data)-i)
-		if offset+len(endText)+len(s) > width {
-			// ran out of space; truncate!
-			printStringOneLine(subW, endText)
-			return nil
-		}
-		printStringOneLine(subW, s+" ")
-		offset += len(s) + 1
-	}
-
-	printStringOneLine(w.Divide(offset, 0, width-offset, 1), "]")
-	return nil
-}
-
-func printStringOneLine(w Writer, s string) {
-	for i, ch := range s {
-		w.SetContent(i, 0, ch, nil, tcell.StyleDefault)
-	}
-}
-
-type WrappingTextLine struct {
-	text string
-}
-
-func NewWrappingTextLine(text string) *WrappingTextLine {
-	return &WrappingTextLine{
-		text: text,
-	}
-}
-
-func (l *WrappingTextLine) Size(width int, height int) (int, int) {
-	if len(l.text) == 0 {
-		return width, 1
-	}
-
-	desiredHeight := len(l.text) / width
-	if desiredHeight > height {
-		// we'll make do
-		return width, height
-	}
-
-	return width, desiredHeight
-}
-
-func (l *WrappingTextLine) Render(w Writer, width int, height int) error {
-	if len(l.text) == 0 {
-		w.SetContent(0, 0, 0, nil, tcell.StyleDefault)
-	}
-	x, y := 0, 0
-	for _, ch := range l.text {
-		w.SetContent(x, y, ch, nil, tcell.StyleDefault)
-		x++
-		if x == width {
-			x = 0
-			y++
-			if y == height {
-				break
+// returns width, height for laying out full string
+func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
+	nextX, nextY := 0, 0
+	maxWidth := 0
+	for _, d := range l.directives {
+		var s string
+		switch d := d.(type) {
+		case textDirective:
+			s = string(d)
+		case fgDirective:
+			if w != nil {
+				w = w.Foreground(tcell.Color(d))
 			}
+			continue
+		case bgDirective:
+			if w != nil {
+				w = w.Background(tcell.Color(d))
+			}
+			continue
+		default:
+			panic(fmt.Errorf("StringLayout.Render: unexpected directive %T %+v", d, d))
+		}
+		// now we know it's a text directive
+		for _, ch := range s {
+			// TODO(dbentley): combining characters
+			// TODO(dbentley): tab, etc.
+			// TODO(dbentley): runewidth
+			if nextX >= width {
+				nextX, nextY = 0, nextY+1
+			}
+			if nextX+1 > maxWidth {
+				maxWidth = nextX + 1
+			}
+			if nextY >= height {
+				return maxWidth, height
+			}
+			if ch == '\n' {
+				nextX, nextY = 0, nextY+1
+				continue
+			}
+
+			if w != nil {
+				w.SetContent(nextX, nextY, ch, nil)
+			}
+			nextX = nextX + 1
 		}
 	}
-	return nil
+	return maxWidth, nextY
 }

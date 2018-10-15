@@ -149,7 +149,7 @@ func NewScrollingWrappingTextArea(name string, text string) Component {
 	l := NewTextScrollLayout(name)
 	lines := strings.Split(text, "\n")
 	for _, line := range lines {
-		l.Add(NewWrappingTextLine(line))
+		l.Add(TextString(line))
 	}
 
 	return l

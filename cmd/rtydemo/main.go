@@ -61,7 +61,6 @@ func (d *Demo) Run() error {
 	}()
 
 	// initial render
-
 	if err := d.render(); err != nil {
 		return err
 	}

@@ -23,7 +23,7 @@ func (d *Demo) Layout() rty.Component {
 
 func (d *Demo) header() rty.Component {
 	b := rty.NewBox()
-	b.SetInner(rty.String("header"))
+	b.SetInner(rty.TextString("header"))
 	return rty.NewFixedSize(b, rty.GROW, 7)
 }
 
@@ -46,25 +46,25 @@ func (d *Demo) resources() rty.Component {
 func (d *Demo) resource(r view.Resource) rty.Component {
 	lines := rty.NewLines()
 	cl := rty.NewLine()
-	cl.Add(rty.String(r.Name))
-	cl.Add(rty.NewFillerString('-'))
-	cl.Add(rty.String(fmt.Sprintf("%d", r.Status)))
+	cl.Add(rty.TextString(r.Name))
+	// cl.Add(rty.NewFillerString('-'))
+	cl.Add(rty.TextString(fmt.Sprintf("%d", r.Status)))
 	lines.Add(cl)
 	cl = rty.NewLine()
-	cl.Add(rty.String(fmt.Sprintf(
+	cl.Add(rty.TextString(fmt.Sprintf(
 		"LOCAL: (watching %v) - ", r.DirectoryWatched)))
-	cl.Add(rty.NewTruncatingStrings(r.LatestFileChanges))
+	// cl.Add(rty.NewTruncatingStrings(r.LatestFileChanges))
 	lines.Add(cl)
 	cl = rty.NewLine()
-	cl.Add(rty.String(fmt.Sprintf("  K8S: %v", r.StatusDesc)))
+	cl.Add(rty.TextString(fmt.Sprintf("  K8S: %v", r.StatusDesc)))
 	lines.Add(cl)
 	cl = rty.NewLine()
 	lines.Add(cl)
 	cl = rty.NewLine()
-	cl.Add(rty.String("padding"))
+	cl.Add(rty.TextString("padding"))
 	lines.Add(cl)
 	cl = rty.NewLine()
-	cl.Add(rty.String("padding2"))
+	cl.Add(rty.TextString("padding2"))
 	lines.Add(cl)
 
 	b := rty.NewBox()
@@ -83,7 +83,7 @@ func (d *Demo) stream() rty.Component {
 
 func (d *Demo) footer() rty.Component {
 	b := rty.NewBox()
-	b.SetInner(rty.String("footer"))
+	b.SetInner(rty.TextString("footer"))
 
 	return rty.NewFixedSize(b, rty.GROW, 7)
 }

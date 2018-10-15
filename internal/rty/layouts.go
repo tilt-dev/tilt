@@ -3,6 +3,8 @@ package rty
 import (
 	"fmt"
 
+	"github.com/rivo/tview"
+
 	"github.com/windmilleng/tcell"
 )
 
@@ -168,7 +170,44 @@ func (l *Line) Size(width int, height int) (int, int) {
 }
 
 func (l *Line) Render(w Writer, width int, height int) error {
-	w.SetContent(0, 0, 0, nil, tcell.StyleDefault) // set at least one to take up our line
+	w.SetContent(0, 0, 0, nil) // set at least one to take up our line
+	w.RenderChild(l.del)
+	return nil
+}
+
+type ColorLayout struct {
+	del        Component
+	color      tcell.Color
+	foreground bool
+}
+
+func Fg(del Component, color tcell.Color) Component {
+	return &ColorLayout{
+		del:        del,
+		color:      color,
+		foreground: true,
+	}
+}
+
+func Bg(del Component, color tcell.Color) Component {
+	return &ColorLayout{
+		del:        del,
+		color:      color,
+		foreground: false,
+	}
+}
+
+func (l *ColorLayout) Size(width int, height int) (int, int) {
+	return l.del.Size(width, height)
+}
+
+func (l *ColorLayout) Render(w Writer, width int, height int) error {
+	if l.foreground {
+		w = w.Foreground(l.color)
+	} else {
+		w = w.Background(l.color)
+	}
+	w = w.Fill()
 	w.RenderChild(l.del)
 	return nil
 }
@@ -195,31 +234,49 @@ func (b *Box) Size(width int, height int) (int, int) {
 }
 
 func (b *Box) Render(w Writer, width int, height int) error {
-	innerHeight := height - 6
-	if height == GROW {
-		innerHeight = GROW
+	if height == GROW && b.inner == nil {
+		return fmt.Errorf("box must have either fixed height or a child")
 	}
-	childHeight := w.Divide(3, 3, width-6, innerHeight).RenderChild(b.inner)
-	height = childHeight + 6
 
-	style := tcell.StyleDefault
+	if b.inner != nil {
+		innerHeight := height - 2
+		if height == GROW {
+			innerHeight = GROW
+		}
+
+		childHeight := w.Divide(1, 1, width-2, innerHeight).RenderChild(b.inner)
+		height = childHeight + 2
+	}
+
+	hor := tview.BoxDrawingsLightHorizontal
+	vert := tview.BoxDrawingsLightVertical
+	tl := tview.BoxDrawingsLightDownAndRight
+	tr := tview.BoxDrawingsLightDownAndLeft
+	bl := tview.BoxDrawingsLightUpAndRight
+	br := tview.BoxDrawingsLightUpAndLeft
 	if b.focused {
-		style = style.Bold(true)
+		hor = tview.BoxDrawingsDoubleHorizontal
+		vert = tview.BoxDrawingsDoubleVertical
+		tl = tview.BoxDrawingsDoubleDownAndRight
+		tr = tview.BoxDrawingsDoubleDownAndLeft
+		bl = tview.BoxDrawingsDoubleUpAndRight
+		br = tview.BoxDrawingsDoubleUpAndLeft
 	}
 
 	for i := 1; i < width-1; i++ {
-		w.SetContent(i, 1, '+', nil, style)
-		w.SetContent(i, height-2, '+', nil, style)
+		w.SetContent(i, 0, hor, nil)
+		w.SetContent(i, height-1, hor, nil)
 	}
 
 	for i := 1; i < height-1; i++ {
-		w.SetContent(1, i, '+', nil, style)
-		w.SetContent(width-2, i, '+', nil, style)
+		w.SetContent(0, i, vert, nil)
+		w.SetContent(width-1, i, vert, nil)
 	}
 
-	if b.inner == nil {
-		return nil
-	}
+	w.SetContent(0, 0, tl, nil)
+	w.SetContent(width-1, 0, tr, nil)
+	w.SetContent(0, height-1, bl, nil)
+	w.SetContent(width-1, height-1, br, nil)
 
 	return nil
 }

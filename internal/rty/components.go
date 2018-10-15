@@ -37,9 +37,12 @@ type Component interface {
 }
 
 type Writer interface {
-	SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style)
+	SetContent(x int, y int, mainc rune, combc []rune)
 
 	Divide(x, y, width, height int) Writer
+	Foreground(c tcell.Color) Writer
+	Background(c tcell.Color) Writer
+	Fill() Writer
 
 	RenderChild(c Component) int
 

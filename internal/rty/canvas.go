@@ -25,6 +25,7 @@ type TempCanvas struct {
 	width  int
 	height int
 	cells  [][]cell
+	style  tcell.Style
 }
 
 type lineRange struct {
@@ -32,15 +33,15 @@ type lineRange struct {
 	end   int
 }
 
-func newTempCanvas(width, height int) *TempCanvas {
-	var cells [][]cell
+func newTempCanvas(width, height int, style tcell.Style) *TempCanvas {
+	c := &TempCanvas{width: width, height: height}
 	if height != GROW {
-		cells = make([][]cell, height)
+		c.cells = make([][]cell, height)
 		for i := 0; i < height; i++ {
-			cells[i] = make([]cell, width)
+			c.cells[i] = c.makeRow()
 		}
 	}
-	return &TempCanvas{width: width, height: height, cells: cells}
+	return c
 }
 
 func (c *TempCanvas) Size() (int, int) {
@@ -54,13 +55,21 @@ func (c *TempCanvas) Close() (int, int) {
 	return c.width, c.height
 }
 
+func (c *TempCanvas) makeRow() []cell {
+	row := make([]cell, c.width)
+	for i := 0; i < c.width; i++ {
+		row[i].style = c.style
+	}
+	return row
+}
+
 func (c *TempCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
 	if x < 0 || x >= c.width || y < 0 || y >= c.height {
 		panic(fmt.Errorf("cell %v,%v outside canvas %v,%v", x, y, c.width, c.height))
 	}
 
 	for y >= len(c.cells) {
-		c.cells = append(c.cells, make([]cell, c.width))
+		c.cells = append(c.cells, c.makeRow())
 	}
 
 	c.cells[y][x] = cell{ch: mainc, style: style}
@@ -87,21 +96,25 @@ type SubCanvas struct {
 	width     int
 	height    int
 	highWater int
+	style     tcell.Style
 }
 
-func newSubCanvas(del Canvas, startX int, startY int, width int, height int) *SubCanvas {
+func newSubCanvas(del Canvas, startX int, startY int, width int, height int, style tcell.Style) *SubCanvas {
 	_, delHeight := del.Size()
 	if height == GROW && delHeight != GROW {
 		panic(fmt.Errorf("can't create a growing subcanvas from a non-growing subcanvas"))
 	}
-	return &SubCanvas{
+	r := &SubCanvas{
 		del:       del,
 		startX:    startX,
 		startY:    startY,
 		width:     width,
 		height:    height,
 		highWater: -1,
+		style:     style,
 	}
+	r.fill(-1)
+	return r
 }
 
 func (c *SubCanvas) Size() (int, int) {
@@ -112,7 +125,6 @@ func (c *SubCanvas) Close() (int, int) {
 	if c.height == GROW {
 		c.height = c.highWater + 1
 	}
-
 	return c.width, c.height
 }
 
@@ -122,10 +134,24 @@ func (c *SubCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tce
 	}
 
 	if c.height == GROW && y > c.highWater {
+		oldHighWater := c.highWater
 		c.highWater = y
+		c.fill(oldHighWater)
 	}
-
 	return c.del.SetContent(c.startX+x, c.startY+y, mainc, combc, style)
+}
+
+func (c *SubCanvas) fill(lastFilled int) {
+	startY := lastFilled + 1
+	maxY := c.height
+	if maxY == GROW {
+		maxY = c.highWater + 1
+	}
+	for y := startY; y < maxY; y++ {
+		for x := 0; x < c.width; x++ {
+			c.del.SetContent(c.startX+x, c.startY+y, 0, nil, c.style)
+		}
+	}
 }
 
 func (c *SubCanvas) GetContent(x int, y int) (rune, []rune, tcell.Style, int) {
