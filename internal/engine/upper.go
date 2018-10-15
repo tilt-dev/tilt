@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/pkg/browser"
-
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -517,19 +515,6 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, service *
 	}
 
 	ms.LBs[k8s.ServiceName(service.Name)] = url
-
-	if url != nil && state.OpenBrowserOnNextLB {
-		// Open only the first load balancer in a browser.
-		// TODO(nick): We might need some hints on what load balancer to
-		// open if we have multiple, or what path to default to on the opened manifest.
-		err := browser.OpenURL(url.String())
-		if err != nil {
-			logger.Get(ctx).Infof("error opening service %s at %s: %v", service.Name, url.String(), err)
-			return
-		}
-
-		state.OpenBrowserOnNextLB = false
-	}
 }
 
 func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
@@ -570,10 +555,6 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 		enqueueBuild(engineState, m.Name)
 	}
 	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
-
-	if u.browserMode == BrowserAuto {
-		engineState.OpenBrowserOnNextLB = true
-	}
 	return nil
 }
 
