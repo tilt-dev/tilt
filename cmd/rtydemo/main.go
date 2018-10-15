@@ -76,8 +76,6 @@ func (d *Demo) Run() error {
 			return err
 		}
 	}
-
-	return nil
 }
 
 func (d *Demo) render() error {
