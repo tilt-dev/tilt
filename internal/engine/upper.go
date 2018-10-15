@@ -81,12 +81,14 @@ func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker, st *store.Store, plm *PodLogManager) Upper {
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 
 	st.AddSubscriber(hud)
+	st.AddSubscriber(pfc)
 
 	return Upper{
 		b:                   b,
@@ -402,6 +404,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 	podID := k8s.PodIDFromPod(pod)
 	startedAt := pod.CreationTimestamp.Time
 	status := podStatusToString(*pod)
+	ns := k8s.NamespaceFromPod(pod)
 
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
@@ -415,6 +418,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 			PodID:     podID,
 			StartedAt: startedAt,
 			Status:    status,
+			Namespace: ns,
 		}
 	}
 	return ms
@@ -453,6 +457,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	}
 
 	// Update the status
+	ms.Pod.Phase = pod.Status.Phase
 	ms.Pod.Status = podStatusToString(*pod)
 
 	// Check if the container is ready.

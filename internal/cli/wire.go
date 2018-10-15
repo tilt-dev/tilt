@@ -35,6 +35,7 @@ func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model
 		engine.ProvidePodWatcherMaker,
 		engine.ProvideServiceWatcherMaker,
 		engine.NewPodLogManager,
+		engine.NewPortForwardController,
 
 		hud.NewDefaultHeadsUpDisplay,
 

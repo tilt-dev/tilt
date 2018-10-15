@@ -18,16 +18,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, remotePort int) (localPort int, closer func(), err error) {
-	// preferably, we'd set the localport to 0, and let the underlying function pick a port for us,
-	// to avoid the race condition potential of something else grabbing this port between
-	// the call to `getAvailablePort` and whenever `portForwarder` actually binds the port.
-	// the k8s client supports a local port of 0, and stores the actual local port assigned in a field,
-	// but unfortunately does not export that field, so there is no way for the caller to know which
-	// local port to talk to.
-	localPort, err = getAvailablePort()
-	if err != nil {
-		return 0, nil, errors.Wrap(err, "failed to find an available local port")
+func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error) {
+	localPort = optionalLocalPort
+	if localPort == 0 {
+		// preferably, we'd set the localport to 0, and let the underlying function pick a port for us,
+		// to avoid the race condition potential of something else grabbing this port between
+		// the call to `getAvailablePort` and whenever `portForwarder` actually binds the port.
+		// the k8s client supports a local port of 0, and stores the actual local port assigned in a field,
+		// but unfortunately does not export that field, so there is no way for the caller to know which
+		// local port to talk to.
+		localPort, err = getAvailablePort()
+		if err != nil {
+			return 0, nil, errors.Wrap(err, "failed to find an available local port")
+		}
 	}
 
 	closer, err = k.portForwarder(ctx, k.restConfig, k.core, namespace.String(), podID, localPort, remotePort)
