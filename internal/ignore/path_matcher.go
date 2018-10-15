@@ -47,13 +47,8 @@ func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
 }
 
 // Filter out files that should not trigger new builds.
-func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
+func CreateFileChangeFilter(m model.Manifest) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
-	configMatcher, err := m.ConfigMatcher()
-	if err == nil {
-		matchers = append(matchers, configMatcher)
-	}
-
 	for _, r := range m.Repos {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {
@@ -67,11 +62,15 @@ func CreateFileChangeFilter(m model.Manifest) model.PathMatcher {
 	}
 
 	ignoreMatcher := model.NewCompositeMatcher(matchers)
+	configMatcher, err := m.ConfigMatcher()
+	if err != nil {
+		return nil, err
+	}
 
 	return fileChangeFilter{
 		ignoreMatchers: ignoreMatcher,
 		configMatcher:  configMatcher,
-	}
+	}, nil
 }
 
 func CreateStepMatcher(s model.Step) (model.PathMatcher, error) {
