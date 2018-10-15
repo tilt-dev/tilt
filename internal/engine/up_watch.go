@@ -5,7 +5,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -132,10 +131,6 @@ func snsToManifestWatcher(ctx context.Context, st *store.Store, timerMaker timer
 			//defer close(errs)
 
 			filter := ignore.CreateFileChangeFilter(manifest)
-			configMatcher, err := manifest.ConfigMatcher()
-			if err != nil {
-				logger.Get(ctx).Infof("Error getting ConfigMatcher: %v", err)
-			}
 			for {
 				select {
 				case err, ok := <-watcher.Errors():
@@ -160,14 +155,7 @@ func snsToManifestWatcher(ctx context.Context, st *store.Store, timerMaker timer
 							st.Dispatch(NewErrorAction(err))
 							continue
 						}
-						isConfig, err := configMatcher.Matches(path, false)
-						if err != nil {
-							st.Dispatch(NewErrorAction(err))
-							continue
-						}
-						if isConfig {
-							watchEvent.files = append(watchEvent.files, path)
-						} else if !isIgnored {
+						if !isIgnored {
 							watchEvent.files = append(watchEvent.files, path)
 						}
 					}
