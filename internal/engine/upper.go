@@ -128,6 +128,8 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		u.maybeStartBuild(ctx, u.store)
 		u.maybeUpdateHUD(ctx, u.store)
 
+		timer := u.timerMaker(refreshInterval)
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -140,7 +142,10 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				state.PermanentError = err
 			}
 			u.store.UnlockMutableState()
-		case <-time.After(refreshInterval):
+
+			// TODO(nick): This should be internal to the HUD
+			// once we have a way to do the locking properly.
+		case <-timer:
 			break
 		}
 	}
