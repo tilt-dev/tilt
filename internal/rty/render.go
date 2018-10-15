@@ -37,12 +37,31 @@ func (r *rty) Render(c Component) error {
 	return g.err
 }
 
-func (r *rty) TextScroller(key string) TextScroller {
-	st, ok := r.state[key]
+func (r *rty) RegisterElementScroll(name string, children []string) (l *ElementScrollLayout, selectedChild string) {
+	r.state[name], selectedChild = adjustElementScroll(r.state[name], children)
+	return &ElementScrollLayout{
+		name: name,
+	}, selectedChild
+}
+
+func (r *rty) ElementScroller(name string) ElementScroller {
+	st, ok := r.state[name]
 	if !ok {
-		return nil
+		st = &ElementScrollState{}
+		r.state[name] = st
 	}
-	return NewTextScrollController(st.(*TextScrollState))
+
+	return &ElementScrollController{state: st.(*ElementScrollState)}
+}
+
+func (r *rty) TextScroller(name string) TextScroller {
+	st, ok := r.state[name]
+	if !ok {
+		st = &TextScrollState{}
+		r.state[name] = st
+	}
+
+	return &TextScrollController{state: st.(*TextScrollState)}
 }
 
 type renderGlobals struct {

@@ -110,6 +110,10 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 				return maxWidth, height
 			}
 			if ch == '\n' {
+				if nextX == 0 && w != nil {
+					// maked sure we take up our space
+					w.SetContent(nextY, nextY, ch, nil)
+				}
 				nextX, nextY = 0, nextY+1
 				continue
 			}

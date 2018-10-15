@@ -111,10 +111,6 @@ type TextScrollController struct {
 	state *TextScrollState
 }
 
-func NewTextScrollController(state *TextScrollState) *TextScrollController {
-	return &TextScrollController{state: state}
-}
-
 func (s *TextScrollController) Up() {
 	st := s.state
 	if st.lineIdx != 0 {
@@ -149,8 +145,119 @@ func NewScrollingWrappingTextArea(name string, text string) Component {
 	l := NewTextScrollLayout(name)
 	lines := strings.Split(text, "\n")
 	for _, line := range lines {
-		l.Add(TextString(line))
+		l.Add(TextString(line + "\n"))
+	}
+	return l
+}
+
+type ElementScrollLayout struct {
+	name     string
+	children []Component
+}
+
+func NewElementScrollLayout(name string) *ElementScrollLayout {
+	return &ElementScrollLayout{name: name}
+}
+
+func (l *ElementScrollLayout) Add(c Component) {
+	l.children = append(l.children, c)
+}
+
+func (l *ElementScrollLayout) Size(width int, height int) (int, int) {
+	return width, height
+}
+
+type ElementScrollState struct {
+	width  int
+	height int
+
+	children []string
+
+	elementIdx int
+}
+
+func (l *ElementScrollLayout) Render(w Writer, width, height int) error {
+	w.RenderStateful(l, l.name)
+	return nil
+}
+
+func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, width, height int) (state interface{}, err error) {
+	prev, ok := prevState.(*ElementScrollState)
+	if !ok {
+		prev = &ElementScrollState{}
+	}
+	next := &ElementScrollState{
+		width:      width,
+		height:     height,
+		children:   prev.children,
+		elementIdx: prev.elementIdx,
 	}
 
-	return l
+	if len(l.children) == 0 {
+		return next, nil
+	}
+
+	y := 0
+	for _, c := range l.children[next.elementIdx:] {
+		canvas := w.RenderChildInTemp(c)
+		_, childHeight := canvas.Size()
+		numLines := childHeight
+		if numLines > height-y {
+			numLines = height - y
+		}
+		w.Divide(0, y, width, numLines).Embed(canvas, 0, numLines)
+		y += numLines
+	}
+
+	return next, nil
+}
+
+type ElementScrollController struct {
+	state *ElementScrollState
+}
+
+func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScrollState, string) {
+	prev, ok := prevInt.(*ElementScrollState)
+	if !ok {
+		prev = &ElementScrollState{}
+	}
+
+	next := &ElementScrollState{
+		width:    prev.width,
+		height:   prev.height,
+		children: newChildren,
+	}
+	if len(prev.children) == 0 {
+		return next, ""
+	}
+	prevChild := prev.children[prev.elementIdx]
+	for i, child := range newChildren {
+		if child == prevChild {
+			next.elementIdx = i
+			return next, child
+		}
+	}
+	return next, ""
+}
+
+func (s *ElementScrollController) GetSelectedChild() string {
+	if len(s.state.children) == 0 {
+		return ""
+	}
+	return s.state.children[s.state.elementIdx]
+}
+
+func (s *ElementScrollController) UpElement() {
+	if s.state.elementIdx == 0 {
+		return
+	}
+
+	s.state.elementIdx--
+}
+
+func (s *ElementScrollController) DownElement() {
+	if s.state.elementIdx == len(s.state.children)-1 {
+		return
+	}
+	s.state.elementIdx++
 }

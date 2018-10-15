@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/windmilleng/tcell"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 )
@@ -24,15 +26,19 @@ func (d *Demo) Layout() rty.Component {
 func (d *Demo) header() rty.Component {
 	b := rty.NewBox()
 	b.SetInner(rty.TextString("header"))
-	return rty.NewFixedSize(b, rty.GROW, 7)
+	c := rty.Bg(rty.Fg(b, tcell.ColorBlack), tcell.ColorOrange)
+	return rty.NewFixedSize(c, rty.GROW, 7)
 }
 
 func (d *Demo) resources() rty.Component {
-	l := rty.NewTextScrollLayout("resources")
+	childNames := make([]string, len(d.view.Resources))
+	for i, r := range d.view.Resources {
+		childNames[i] = r.Name
+	}
+	l, selectedResource := d.rty.RegisterElementScroll("resources", childNames)
 
-	for _, r := range d.view.Resources {
-		rc := d.resource(r)
-		l.Add(rc)
+	for i, r := range d.view.Resources {
+		l.Add(d.resource(r, selectedResource == r.Name, i%2 == 0))
 	}
 
 	b := rty.NewBox()
@@ -43,7 +49,7 @@ func (d *Demo) resources() rty.Component {
 	return b
 }
 
-func (d *Demo) resource(r view.Resource) rty.Component {
+func (d *Demo) resource(r view.Resource, selected bool, even bool) rty.Component {
 	lines := rty.NewLines()
 	cl := rty.NewLine()
 	cl.Add(rty.TextString(r.Name))
@@ -69,15 +75,23 @@ func (d *Demo) resource(r view.Resource) rty.Component {
 
 	b := rty.NewBox()
 	b.SetInner(lines)
-	return b
+
+	var c rty.Component
+	c = b
+	if even {
+		c = rty.Fg(rty.Bg(c, tcell.ColorWhite), tcell.ColorBlack)
+	}
+	return c
 }
 
 func (d *Demo) stream() rty.Component {
+	c := rty.NewScrollingWrappingTextArea("stream", longText)
+
 	b := rty.NewBox()
+	b.SetInner(c)
 	if d.nav.selectedPane == selectedStream {
 		b.SetFocused(true)
 	}
-	b.SetInner(rty.NewScrollingWrappingTextArea("stream", longText))
 	return b
 }
 
@@ -85,5 +99,6 @@ func (d *Demo) footer() rty.Component {
 	b := rty.NewBox()
 	b.SetInner(rty.TextString("footer"))
 
-	return rty.NewFixedSize(b, rty.GROW, 7)
+	c := rty.Bg(rty.Fg(b, tcell.ColorOrange), tcell.ColorBlack)
+	return rty.NewFixedSize(c, rty.GROW, 7)
 }

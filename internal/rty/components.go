@@ -10,16 +10,19 @@ import (
 
 type RTY interface {
 	Render(c Component) error
-	// ElementScroller(FQID) ElementScroller
+
+	// Register must be called before Render
+	RegisterElementScroll(name string, children []string) (l *ElementScrollLayout, selectedChild string)
+
+	// *Scroller must be called after Render (each call to Render invalidates previous Crollers)
+	ElementScroller(name string) ElementScroller
 	TextScroller(name string) TextScroller
 }
 
-// type ElementScroller interface {
-// 	GetSelection() string
-// 	Select(string)
-// 	Next()
-// 	Prev()
-// }
+type ElementScroller interface {
+	UpElement()
+	DownElement()
+}
 
 type TextScroller interface {
 	Up()

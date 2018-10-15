@@ -23,13 +23,13 @@ func (d *Demo) handleScreenEvent(ev tcell.Event) bool {
 		switch ev.Key() {
 		case tcell.KeyUp:
 			if d.nav.selectedPane == selectedResources {
-				d.resourcesScroll().Up()
+				d.resourcesScroll().UpElement()
 			} else {
 				d.textScroll().Up()
 			}
 		case tcell.KeyDown:
 			if d.nav.selectedPane == selectedResources {
-				d.resourcesScroll().Down()
+				d.resourcesScroll().DownElement()
 			} else {
 				d.textScroll().Down()
 			}
@@ -48,10 +48,10 @@ func (d *Demo) handleScreenEvent(ev tcell.Event) bool {
 	return false
 }
 
-func (d *Demo) textScroll() rty.TextScroller {
-	return d.rty.TextScroller("stream")
+func (d *Demo) resourcesScroll() rty.ElementScroller {
+	return d.rty.ElementScroller("resources")
 }
 
-func (d *Demo) resourcesScroll() rty.TextScroller {
-	return d.rty.TextScroller("resources")
+func (d *Demo) textScroll() rty.TextScroller {
+	return d.rty.TextScroller("stream")
 }

@@ -120,9 +120,11 @@ func (l *ConcatLayout) Size(width, height int) (int, int) {
 		reqWidth, reqHeight := c.Size(width, height)
 		reqLen, reqDepth := whToLd(reqWidth, reqHeight, l.dir)
 		if reqLen == GROW {
-			return ldToWh(reqLen, maxDepth, l.dir)
+			totalLen = GROW
 		}
-		totalLen += reqLen
+		if totalLen != GROW {
+			totalLen += reqLen
+		}
 		if reqDepth > maxDepth {
 			maxDepth = reqDepth
 		}
@@ -171,7 +173,7 @@ func (l *Line) Size(width int, height int) (int, int) {
 
 func (l *Line) Render(w Writer, width int, height int) error {
 	w.SetContent(0, 0, 0, nil) // set at least one to take up our line
-	w.RenderChild(l.del)
+	w.Divide(0, 0, width, height).RenderChild(l.del)
 	return nil
 }
 
