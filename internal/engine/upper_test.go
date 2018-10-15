@@ -1000,7 +1000,6 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	}, "\n")
 	assert.Contains(t, f.log.String(), expectedOutput)
 
-	f.assertAllActionsConsumed()
 	f.assertAllHUDUpdatesConsumed()
 }
 
@@ -1345,13 +1344,5 @@ func (f *testFixture) assertAllHUDUpdatesConsumed() {
 
 	for update := range f.hud.Updates {
 		f.T().Fatalf("Update not consumed: %+v", update)
-	}
-}
-
-func (f *testFixture) assertAllActionsConsumed() {
-	f.store.Close()
-
-	for action := range f.store.Actions() {
-		f.T().Fatalf("Action not consumed: %+v", action)
 	}
 }
