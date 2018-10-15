@@ -57,6 +57,36 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 }
 
+func TestPortForwardAutoDiscovery(t *testing.T) {
+	f := newPLCFixture(t)
+	defer f.TearDown()
+
+	state := f.st.LockMutableState()
+	state.ManifestStates["fe"] = &store.ManifestState{
+		Manifest: model.Manifest{
+			Name: "fe",
+			PortForwards: []model.PortForward{
+				{
+					LocalPort: 8080,
+				},
+			},
+		},
+	}
+	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id", Phase: v1.PodRunning}
+	f.st.UnlockMutableState()
+
+	f.plc.OnChange(f.ctx, f.st)
+	assert.Equal(t, 0, len(f.plc.activeForwards))
+
+	state = f.st.LockMutableState()
+	state.ManifestStates["fe"].Pod.ContainerPorts = []int32{8000}
+	f.st.UnlockMutableState()
+
+	f.plc.OnChange(f.ctx, f.st)
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8000, f.kCli.LastForwardPortRemotePort)
+}
+
 type plcFixture struct {
 	*tempdir.TempDirFixture
 	ctx  context.Context

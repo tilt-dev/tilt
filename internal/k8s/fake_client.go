@@ -32,7 +32,8 @@ type FakeK8sClient struct {
 
 	PodLogs string
 
-	LastForwardPortPodID PodID
+	LastForwardPortPodID      PodID
+	LastForwardPortRemotePort int
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
@@ -185,6 +186,7 @@ func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID,
 
 func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (int, func(), error) {
 	c.LastForwardPortPodID = podID
+	c.LastForwardPortRemotePort = remotePort
 	return optionalLocalPort, func() {}, nil
 }
 
