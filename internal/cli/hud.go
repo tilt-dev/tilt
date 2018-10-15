@@ -49,6 +49,18 @@ func (c *hudCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting the HUD (built %s)…\n", buildDateStamp()))
 
+	// TODO(matt) figure out why tcell's Fini isn't working for us here
+	// this is a crummy workaround
+	defer func() {
+		cmd := exec.Command("reset")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("error restoring terminal settings: %v", err)
+		}
+	}()
+
 	return connectHud(ctx)
 }
 
