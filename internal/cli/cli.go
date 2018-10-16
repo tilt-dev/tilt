@@ -14,7 +14,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tracer"
 
 	"github.com/spf13/cobra"
-	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
@@ -44,7 +43,8 @@ func Execute() {
 		os.Exit(1)
 	}
 
-	addCommand(rootCmd, &upCmd{browserMode: engine.BrowserAuto})
+	addCommand(rootCmd, &upCmd{})
+	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, &hudCmd{})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")

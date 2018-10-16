@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -15,34 +16,40 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func wireManifestCreator(ctx context.Context, browser engine.BrowserMode) (model.ManifestCreator, error) {
-	wire.Build(
-		k8s.DetectEnv,
+var BaseWireSet = wire.NewSet(
+	k8s.DetectEnv,
 
-		k8s.ProvidePortForwarder,
-		k8s.ProvideRESTClient,
-		k8s.ProvideRESTConfig,
-		k8s.NewK8sClient,
-		wire.Bind(new(k8s.Client), k8s.K8sClient{}),
+	k8s.ProvidePortForwarder,
+	k8s.ProvideRESTClient,
+	k8s.ProvideRESTConfig,
+	k8s.NewK8sClient,
+	wire.Bind(new(k8s.Client), k8s.K8sClient{}),
 
-		docker.DefaultDockerClient,
-		wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
+	docker.DefaultDockerClient,
+	wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
 
-		build.NewImageReaper,
+	build.NewImageReaper,
 
-		engine.DeployerWireSet,
-		engine.DefaultShouldFallBack,
-		engine.ProvidePodWatcherMaker,
-		engine.ProvideServiceWatcherMaker,
-		engine.NewPodLogManager,
-		engine.NewPortForwardController,
+	engine.DeployerWireSet,
+	engine.DefaultShouldFallBack,
+	engine.ProvidePodWatcherMaker,
+	engine.ProvideServiceWatcherMaker,
+	engine.NewPodLogManager,
+	engine.NewPortForwardController,
 
-		hud.NewDefaultHeadsUpDisplay,
+	hud.NewDefaultHeadsUpDisplay,
 
-		engine.NewUpper,
-		wire.Bind(new(model.ManifestCreator), engine.Upper{}),
-		provideAnalytics,
-		provideUpdateModeFlag,
-	)
+	engine.NewUpper,
+	wire.Bind(new(model.ManifestCreator), engine.Upper{}),
+	provideAnalytics,
+	provideUpdateModeFlag)
+
+func wireDemo(ctx context.Context) (demo.Script, error) {
+	wire.Build(BaseWireSet, demo.NewScript)
+	return demo.Script{}, nil
+}
+
+func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
+	wire.Build(BaseWireSet)
 	return nil, nil
 }
