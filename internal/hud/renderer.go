@@ -143,6 +143,7 @@ func renderResource(r view.Resource) rty.Component {
 		if len(r.LastDeployEdits) > 0 {
 			l = rty.NewLine()
 			l.Add(rty.ColoredString(" Last Deployed Edits: ", cLightText, tcell.ColorBlack))
+			l.Add(rty.TextString(formatFileList(r.LastDeployEdits)))
 			lines.Add(l)
 		}
 	}
