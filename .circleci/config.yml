@@ -10,7 +10,7 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make all
-      
+
   build-integration:
     docker:
       - image: gcr.io/windmill-public-containers/tilt-integration-ci
@@ -35,7 +35,7 @@ jobs:
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
       - run: DIND_PORT_FORWARDER_WAIT=1 DIND_PORT_FORWARDER="/go/portforward.sh" NUM_NODES=1 /go/dind-cluster.sh up
-      - run: /go/portforward.sh -wait $(/go/dind-cluster.sh apiserver-port) && 
+      - run: /go/portforward.sh -wait $(/go/dind-cluster.sh apiserver-port) &&
              kubectl get nodes &&
              make integration
 
@@ -48,12 +48,12 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v2
-      - run: brew install go@1.10 # bump cache version when changing this
+            - homebrew_cache_v3
+      - run: brew install go@1.10 kustomize # bump cache version when changing this
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v2
+          key: homebrew_cache_v3
       - run: echo 'export PATH="/usr/local/opt/go@1.10/bin:$PATH"' >> $BASH_ENV
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
