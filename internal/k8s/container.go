@@ -115,6 +115,10 @@ func ContainerMatching(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, er
 
 func ContainerIDFromContainerStatus(status v1.ContainerStatus) (ContainerID, error) {
 	id := status.ContainerID
+	if id == "" {
+		return "", nil
+	}
+
 	if !strings.HasPrefix(id, containerIDPrefix) {
 		return "", fmt.Errorf("Malformed container ID: %s", id)
 	}

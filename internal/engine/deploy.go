@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -127,6 +128,8 @@ func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image referenc
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
 		return errors.Wrapf(err, "populateDeployInfo")
+	} else if cID == "" {
+		return fmt.Errorf("Missing container ID: %+v", cStatus)
 	}
 
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
