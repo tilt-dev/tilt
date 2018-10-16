@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"k8s.io/api/core/v1"
 )
 
 func TestLogs(t *testing.T) {
@@ -22,12 +23,21 @@ func TestLogs(t *testing.T) {
 	defer f.TearDown()
 
 	f.kClient.PodLogs = "hello world!"
-	name := model.ManifestName("server")
-	ref := k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
-	prevBuild := store.BuildResult{}
-	build := store.BuildResult{Image: ref}
 
-	f.plm.PostProcessBuild(f.ctx, name, build, prevBuild)
+	state := f.store.LockMutableState()
+	state.WatchMounts = true
+	state.ManifestStates["server"] = &store.ManifestState{
+		Manifest: model.Manifest{Name: "server"},
+		Pod: store.Pod{
+			PodID:         "pod-id",
+			ContainerName: "cname",
+			ContainerID:   "cid",
+			Phase:         v1.PodRunning,
+		},
+	}
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
 	err := f.out.WaitUntilContains("hello world!", time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -39,12 +49,21 @@ func TestLogActions(t *testing.T) {
 	defer f.TearDown()
 
 	f.kClient.PodLogs = "hello world!\ngoodbye world!\n"
-	name := model.ManifestName("server")
-	ref := k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
-	prevBuild := store.BuildResult{}
-	build := store.BuildResult{Image: ref}
 
-	f.plm.PostProcessBuild(f.ctx, name, build, prevBuild)
+	state := f.store.LockMutableState()
+	state.WatchMounts = true
+	state.ManifestStates["server"] = &store.ManifestState{
+		Manifest: model.Manifest{Name: "server"},
+		Pod: store.Pod{
+			PodID:         "pod-id",
+			ContainerName: "cname",
+			ContainerID:   "cid",
+			Phase:         v1.PodRunning,
+		},
+	}
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
 	f.ConsumeLogActionsUntil("hello world!")
 }
 
@@ -52,14 +71,22 @@ func TestLogsFailed(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.PodLogs = "hello world!"
-	f.kClient.PodsWithImageError = fmt.Errorf("my-error")
-	name := model.ManifestName("server")
-	ref := k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
-	prevBuild := store.BuildResult{}
-	build := store.BuildResult{Image: ref}
+	f.kClient.ContainerLogsError = fmt.Errorf("my-error")
 
-	f.plm.PostProcessBuild(f.ctx, name, build, prevBuild)
+	state := f.store.LockMutableState()
+	state.WatchMounts = true
+	state.ManifestStates["server"] = &store.ManifestState{
+		Manifest: model.Manifest{Name: "server"},
+		Pod: store.Pod{
+			PodID:         "pod-id",
+			ContainerName: "cname",
+			ContainerID:   "cid",
+			Phase:         v1.PodRunning,
+		},
+	}
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
 	err := f.out.WaitUntilContains("Error streaming server logs", time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -81,8 +108,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kClient := k8s.NewFakeK8sClient()
 	st := store.NewStore()
-	dd := NewDeployDiscovery(kClient, st)
-	plm := NewPodLogManager(kClient, dd, st)
+	plm := NewPodLogManager(kClient)
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())

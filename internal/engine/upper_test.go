@@ -1240,8 +1240,9 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	st := store.NewStore()
 	st.AddSubscriber(hud)
-	dd := NewDeployDiscovery(k8s, st)
-	plm := NewPodLogManager(k8s, dd, st)
+
+	plm := NewPodLogManager(k8s)
+	st.AddSubscriber(plm)
 
 	upper := Upper{
 		b:                   b,
@@ -1253,7 +1254,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,
-		plm:                 plm,
 	}
 
 	return &testFixture{

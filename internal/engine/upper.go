@@ -57,7 +57,6 @@ type Upper struct {
 	reaper              build.ImageReaper
 	hud                 hud.HeadsUpDisplay
 	store               *store.Store
-	plm                 *PodLogManager
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
@@ -86,6 +85,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 
 	st.AddSubscriber(hud)
 	st.AddSubscriber(pfc)
+	st.AddSubscriber(plm)
 
 	return Upper{
 		b:                   b,
@@ -97,7 +97,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,
-		plm:                 plm,
 	}
 }
 
@@ -311,15 +310,9 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		}
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()
-
-		prevBuild := ms.LastBuild
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
-
-		if engineState.WatchMounts {
-			u.plm.PostProcessBuild(ctx, ms.Manifest.Name, cb.Result, prevBuild.LastResult)
-		}
 	}
 
 	if engineState.WatchMounts {
@@ -424,6 +417,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 func populateContainerStatus(ctx context.Context, ms *store.ManifestState, pod *v1.Pod, cStatus v1.ContainerStatus) {
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
 	ms.Pod.ContainerName = cName
+	ms.Pod.ContainerReady = cStatus.Ready
 
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
@@ -467,8 +461,6 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
-		return
-	} else if !cStatus.Ready {
 		return
 	}
 	populateContainerStatus(ctx, ms, pod, cStatus)
