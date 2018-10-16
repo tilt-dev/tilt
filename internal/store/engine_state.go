@@ -28,8 +28,6 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	OpenBrowserOnNextLB bool
-
 	PermanentError error
 }
 
