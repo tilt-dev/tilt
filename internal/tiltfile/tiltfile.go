@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -31,7 +30,8 @@ func init() {
 }
 
 func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerfileName, entrypoint, dockerRef string
+	var dockerfileName skylark.Value
+	var entrypoint, dockerRef string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"docker_file_name", &dockerfileName,
 		"docker_file_tag", &dockerRef,
@@ -39,6 +39,11 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	dockerfileLocalPath, err := localPathFromSkylarkValue(dockerfileName)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (docker_file_name): %v", err)
 	}
 
 	ref, err := reference.ParseNormalizedNamed(dockerRef)
@@ -53,12 +58,12 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 	}
 
 	buildContext := &dockerImage{
-		baseDockerfilePath: dockerfileName,
+		baseDockerfilePath: dockerfileLocalPath,
 		ref:                ref,
 		entrypoint:         entrypoint,
 		tiltFilename:       t.filename,
 	}
-	err = recordReadFile(thread, dockerfileName)
+	err = recordReadFile(thread, dockerfileLocalPath.path)
 	if err != nil {
 		return skylark.None, err
 	}
@@ -67,7 +72,8 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 }
 
 func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerfilePath, dockerRef, buildPath string
+	var dockerRef string
+	var dockerfilePath, buildPath skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"dockerfile", &dockerfilePath,
 		"ref", &dockerRef,
@@ -82,22 +88,31 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	if buildPath == "" {
-		buildPath = filepath.Dir(dockerfilePath)
+	dockerfileLocalPath, err := localPathFromSkylarkValue(dockerfilePath)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (dockerfile): %v", err)
 	}
 
-	buildPath, err = filepath.Abs(buildPath)
-	if err != nil {
-		return skylark.None, err
+	var buildLocalPath localPath
+	if buildPath == nil {
+		buildLocalPath = localPath{
+			path: filepath.Dir(dockerfileLocalPath.path),
+			repo: dockerfileLocalPath.repo,
+		}
+	} else {
+		buildLocalPath, err = localPathFromSkylarkValue(buildPath)
+		if err != nil {
+			return nil, fmt.Errorf("Argument 2 (context): %v", err)
+		}
 	}
 
 	buildContext := &dockerImage{
-		staticDockerfilePath: dockerfilePath,
-		staticBuildPath:      buildPath,
+		staticDockerfilePath: dockerfileLocalPath,
+		staticBuildPath:      buildLocalPath,
 		ref:                  ref,
 		tiltFilename:         t.filename,
 	}
-	err = recordReadFile(thread, dockerfilePath)
+	err = recordReadFile(thread, dockerfileLocalPath.path)
 	if err != nil {
 		return skylark.None, err
 	}
@@ -176,33 +191,10 @@ func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 		return nil, err
 	}
 
-	absPath, err := filepath.Abs(path)
+	repo, err := newGitRepo(path)
 	if err != nil {
-		return nil, fmt.Errorf("filepath.Abs: %v", err)
-	}
-
-	_, err = os.Stat(absPath)
-	if err != nil {
-		return nil, fmt.Errorf("Reading path %s: %v", path, err)
-	}
-
-	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
-		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
-	}
-
-	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
-	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
-
-	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-
-	repo := gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}
 
 	return repo, nil
 }
@@ -365,15 +357,15 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 	image := manifest.dockerImage
 	baseDockerfileBytes := []byte{}
 	staticDockerfileBytes := []byte{}
-	if image.staticDockerfilePath != "" {
-		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath)
+	if image.staticDockerfilePath.Truth() {
+		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath.path)
 		if err != nil {
-			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath, err)
+			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath.path, err)
 		}
 	} else {
-		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath)
+		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath.path)
 		if err != nil {
-			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath, err)
+			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath.path, err)
 		}
 	}
 
@@ -389,9 +381,9 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
 		StaticDockerfile: string(staticDockerfileBytes),
-		StaticBuildPath:  string(image.staticBuildPath),
+		StaticBuildPath:  string(image.staticBuildPath.path),
 
-		Repos:        SkylarkReposToDomain(image.mounts),
+		Repos:        SkylarkReposToDomain(image),
 		PortForwards: manifest.portForwards,
 	}, nil
 
@@ -404,17 +396,33 @@ func SkylarkConfigFilesToDomain(cf []string) []string {
 	return ss
 }
 
-func SkylarkReposToDomain(sMount []mount) []model.LocalGithubRepo {
+func SkylarkReposToDomain(image dockerImage) []model.LocalGithubRepo {
 	dRepos := []model.LocalGithubRepo{}
-	for _, m := range sMount {
-		if m.repo.Truth() {
-			dRepos = append(dRepos, model.LocalGithubRepo{
-				LocalPath:            m.repo.basePath,
-				DockerignoreContents: m.repo.dockerignoreContents,
-				GitignoreContents:    m.repo.gitignoreContents,
-			})
+	repoSet := make(map[string]bool, 0)
+
+	maybeAddRepo := func(repo gitRepo) {
+		if !repo.Truth() {
+			return
 		}
+
+		if repoSet[repo.basePath] {
+			return
+		}
+
+		repoSet[repo.basePath] = true
+		dRepos = append(dRepos, model.LocalGithubRepo{
+			LocalPath:            repo.basePath,
+			DockerignoreContents: repo.dockerignoreContents,
+			GitignoreContents:    repo.gitignoreContents,
+		})
 	}
+
+	for _, m := range image.mounts {
+		maybeAddRepo(m.repo)
+	}
+	maybeAddRepo(image.baseDockerfilePath.repo)
+	maybeAddRepo(image.staticDockerfilePath.repo)
+	maybeAddRepo(image.staticBuildPath.repo)
 
 	return dRepos
 }
