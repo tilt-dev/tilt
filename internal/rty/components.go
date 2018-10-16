@@ -31,6 +31,8 @@ type TextScroller interface {
 	// PgDn()
 	// Home()
 	// End()
+
+	ToggleFollow()
 }
 
 // Component renders onto a canvas
