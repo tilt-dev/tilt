@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,15 +110,15 @@ type mount struct {
 
 // See model.Manifest for more information on what all these fields mean.
 type dockerImage struct {
-	baseDockerfilePath string
+	baseDockerfilePath localPath
 	ref                reference.Named
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
 	tiltFilename       string
 
-	staticDockerfilePath string
-	staticBuildPath      string
+	staticDockerfilePath localPath
+	staticBuildPath      localPath
 }
 
 var _ skylark.Value = &dockerImage{}
@@ -216,10 +217,10 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 }
 
 func (d *dockerImage) String() string {
-	if d.baseDockerfilePath != "" {
-		return fmt.Sprintf("fileName: %v, ref: %s, cmds: %v", d.baseDockerfilePath, d.ref, d.steps)
+	if d.baseDockerfilePath.Truth() {
+		return fmt.Sprintf("fileName: %v, ref: %s, cmds: %v", d.baseDockerfilePath.path, d.ref, d.steps)
 	} else {
-		return fmt.Sprintf("fileName: %s, path: %s", d.staticDockerfilePath, d.staticBuildPath)
+		return fmt.Sprintf("fileName: %s, path: %s", d.staticDockerfilePath.path, d.staticBuildPath.path)
 	}
 }
 
@@ -241,10 +242,10 @@ func (*dockerImage) Hash() (uint32, error) {
 func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 	switch name {
 	case "file_name":
-		if d.staticDockerfilePath != "" {
-			return skylark.String(d.staticDockerfilePath), nil
+		if d.staticDockerfilePath.Truth() {
+			return d.staticDockerfilePath, nil
 		} else {
-			return skylark.String(d.baseDockerfilePath), nil
+			return d.baseDockerfilePath, nil
 		}
 	case "file_tag":
 		return skylark.String(d.ref.String()), nil
@@ -261,6 +262,36 @@ type gitRepo struct {
 	basePath             string
 	gitignoreContents    string
 	dockerignoreContents string
+}
+
+func newGitRepo(path string) (gitRepo, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return gitRepo{}, fmt.Errorf("filepath.Abs: %v", err)
+	}
+
+	_, err = os.Stat(absPath)
+	if err != nil {
+		return gitRepo{}, fmt.Errorf("Reading path %s: %v", path, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
+		return gitRepo{}, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
+	}
+
+	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
+	if err != nil && !os.IsNotExist(err) {
+		return gitRepo{}, err
+	}
+
+	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return gitRepo{}, err
+		}
+	}
+
+	return gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}, nil
 }
 
 var _ skylark.Value = gitRepo{}
@@ -304,12 +335,62 @@ func (gr gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		return nil, err
 	}
 
-	return localPath{filepath.Join(gr.basePath, path), gr}, nil
+	return gr.makeLocalPath(path), nil
+}
+
+func (gr gitRepo) makeLocalPath(path string) localPath {
+	return localPath{filepath.Join(gr.basePath, path), gr}
 }
 
 type localPath struct {
 	path string
 	repo gitRepo
+}
+
+func localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
+	switch v := v.(type) {
+	case localPath:
+		return v, nil
+	case gitRepo:
+		return v.makeLocalPath("."), nil
+	case skylark.String:
+		return localPathFromString(string(v))
+	default:
+		return localPath{}, fmt.Errorf(" Expected local path. Actual type: %T", v)
+	}
+}
+
+func localPathFromString(path string) (localPath, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return localPath{}, fmt.Errorf("filepath.Abs: %v", err)
+	}
+
+	_, err = os.Stat(absPath)
+	if err != nil {
+		return localPath{}, fmt.Errorf("Reading path %s: %v", path, err)
+	}
+
+	absDirPath := filepath.Dir(absPath)
+	_, err = os.Stat(filepath.Join(absDirPath, ".git"))
+	if err != nil && !os.IsNotExist(err) {
+		return localPath{}, fmt.Errorf("Reading path %s: %v", path, err)
+	}
+
+	hasGitDir := !os.IsNotExist(err)
+	repo := gitRepo{}
+
+	if hasGitDir {
+		repo, err = newGitRepo(absDirPath)
+		if err != nil {
+			return localPath{}, err
+		}
+	}
+
+	return localPath{
+		path: absPath,
+		repo: repo,
+	}, nil
 }
 
 var _ skylark.Value = localPath{}
@@ -328,8 +409,8 @@ func (localPath) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: localPath")
 }
 
-func (localPath) Truth() skylark.Bool {
-	return true
+func (p localPath) Truth() skylark.Bool {
+	return p != localPath{}
 }
 
 func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {

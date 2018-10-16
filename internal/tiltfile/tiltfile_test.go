@@ -754,6 +754,45 @@ func TestReadsIgnoreFiles(t *testing.T) {
 	assert.False(t, f.FiltersPath(manifest, "a.txt", false), "Expected to filter a.txt")
 }
 
+func TestReadsIgnoreFilesStaticBuild(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	f.WriteFile(".gitignore", "*.exe")
+	f.WriteFile(".dockerignore", "node_modules")
+	f.WriteFile("Dockerfile", "docker text")
+	f.WriteFile("Tiltfile", `def blorgly():
+  image = static_build("Dockerfile", "docker-tag")
+  return k8s_service("yaaaaaaaaml", image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
+	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
+	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
+	assert.True(t, f.FiltersPath(manifest, "node_modules", true), "Expected to filter node_modules")
+	assert.False(t, f.FiltersPath(manifest, "a.txt", false), "Expected to filter a.txt")
+}
+
+func TestReadsIgnoreFilesStaticBuildSubdir(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	f.WriteFile(".gitignore", "*.exe")
+	f.WriteFile(".dockerignore", "node_modules")
+	f.WriteFile("subdir/Dockerfile", "docker text")
+	f.WriteFile("Tiltfile", `def blorgly():
+  repo = local_git_repo(".")
+  image = static_build(repo.path("subdir/Dockerfile"), "docker-tag", context=repo)
+  return k8s_service("yaaaaaaaaml", image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
+	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
+	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
+	assert.True(t, f.FiltersPath(manifest, "node_modules", true), "Expected to filter node_modules")
+	assert.False(t, f.FiltersPath(manifest, "a.txt", false), "Expected to filter a.txt")
+}
+
 func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
 	f1 := newGitRepoFixture(t)
 	defer f1.TearDown()
