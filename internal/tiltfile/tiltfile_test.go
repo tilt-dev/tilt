@@ -54,7 +54,10 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 }
 
 func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
-	tiltconfig, err := Load(f.JoinPath("Tiltfile"), os.Stdout)
+	// It's important that this uses a relative path, because
+	// that's how other places in Tilt call it. In the past, we've had
+	// a lot of bugs that come up due to relative paths vs. absolute paths.
+	tiltconfig, err := Load(FileName, os.Stdout)
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
@@ -146,6 +149,7 @@ func TestGetManifestConfig(t *testing.T) {
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv, "first step")
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv, "second step")
 	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, manifest.Entrypoint.Argv)
+	assert.Equal(t, f.JoinPath("Tiltfile"), manifest.TiltFilename)
 }
 
 func TestOldMountSyntax(t *testing.T) {
