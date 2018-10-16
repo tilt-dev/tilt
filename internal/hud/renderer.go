@@ -90,6 +90,7 @@ var cPending = tcell.ColorYellow
 var podStatusColors = map[string]tcell.Color{
 	"Running":           cGood,
 	"ContainerCreating": cPending,
+	"Pending":           cPending,
 	"Error":             cBad,
 	"CrashLoopBackOff":  cBad,
 }
@@ -211,7 +212,7 @@ func renderResource(r view.Resource) rty.Component {
 	if r.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[r.PodStatus]
 		if !ok {
-			podStatusColor = tcell.ColorBlack
+			podStatusColor = tcell.ColorDefault
 		}
 
 		l := rty.NewLine()
