@@ -276,7 +276,10 @@ func callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tup
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
 	for _, d := range deps {
-		recordReadFile(thread, d)
+		err := recordReadFile(thread, d)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return skylark.String(yaml), nil
