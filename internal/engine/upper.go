@@ -54,7 +54,6 @@ type Upper struct {
 	podWatcherMaker     PodWatcherMaker
 	serviceWatcherMaker ServiceWatcherMaker
 	k8s                 k8s.Client
-	browserMode         BrowserMode
 	reaper              build.ImageReaper
 	hud                 hud.HeadsUpDisplay
 	store               *store.Store
@@ -78,7 +77,7 @@ func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMode BrowserMode,
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
@@ -95,7 +94,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client, browserMo
 		serviceWatcherMaker: swm,
 		timerMaker:          time.After,
 		k8s:                 k8s,
-		browserMode:         browserMode,
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,

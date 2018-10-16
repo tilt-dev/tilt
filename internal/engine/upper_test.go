@@ -1250,7 +1250,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		podWatcherMaker:     fakePodWatcherMaker,
 		serviceWatcherMaker: fakeServiceWatcherMaker,
 		k8s:                 k8s,
-		browserMode:         BrowserOff,
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,
