@@ -703,6 +703,40 @@ func TestPodEvent(t *testing.T) {
 	f.assertAllHUDUpdatesConsumed()
 }
 
+func TestPodEventContainerStatus(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	f.Start([]model.Manifest{manifest}, true)
+
+	var ref reference.NamedTagged
+	f.WaitUntilManifest("image appears", "foobar", func(ms store.ManifestState) bool {
+		ref = ms.LastBuild.LastResult.Image
+		return ref != nil
+	})
+
+	pod := testPod("my-pod", "foobar", "Running", time.Now())
+	pod.Status = k8s.FakePodStatus(ref, "Running")
+	pod.Status.ContainerStatuses[0].ContainerID = ""
+	pod.Spec = k8s.FakePodSpec(ref)
+
+	f.podEvents <- pod
+
+	podState := store.Pod{}
+	f.WaitUntilManifest("container status", "foobar", func(ms store.ManifestState) bool {
+		podState = ms.Pod
+		return podState.PodID == "my-pod"
+	})
+
+	assert.Equal(t, "", string(podState.ContainerID))
+	assert.Equal(t, "main", string(podState.ContainerName))
+	assert.Equal(t, []int32{8080}, podState.ContainerPorts)
+
+	err := f.Stop()
+	assert.Nil(t, err)
+}
+
 func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

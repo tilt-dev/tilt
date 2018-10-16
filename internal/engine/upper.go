@@ -462,6 +462,8 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return
+	} else if cStatus.Name == "" {
+		return
 	}
 	populateContainerStatus(ctx, ms, pod, cStatus)
 }
