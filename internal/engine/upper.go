@@ -204,7 +204,6 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 
 	mn := state.ManifestsToBuild[0]
 	state.ManifestsToBuild = state.ManifestsToBuild[1:]
-	state.CurrentlyBuilding = mn
 	ms := state.ManifestStates[mn]
 	ms.QueueEntryTime = time.Time{}
 
@@ -212,7 +211,6 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
 		if err != nil {
 			logger.Get(ctx).Infof("getting new manifest error: %v", err)
-			state.CurrentlyBuilding = ""
 			ms.LastError = err
 			ms.LastBuildFinishTime = time.Now()
 			ms.LastBuildDuration = 0
@@ -221,7 +219,6 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 
 		if newManifest.Equal(ms.Manifest) {
 			logger.Get(ctx).Debugf("Manifest %s hasn't changed, not rebuilding", ms.Manifest.Name)
-			state.CurrentlyBuilding = ""
 			matcher, err := ms.Manifest.ConfigMatcher()
 			if err != nil {
 				logger.Get(ctx).Infof("Error getting config matcher: %v", err)
@@ -257,6 +254,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	m := ms.Manifest
 
 	ms.CurrentBuildStartTime = time.Now()
+	state.CurrentlyBuilding = mn
 
 	ctx = output.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
 

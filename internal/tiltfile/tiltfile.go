@@ -255,6 +255,11 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		},
 	}
 
+	filename, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, err
+	}
+
 	tiltfile := &Tiltfile{
 		filename: filename,
 		thread:   thread,
