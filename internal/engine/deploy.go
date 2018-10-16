@@ -131,7 +131,7 @@ func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image referenc
 
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
 
-	logger.Get(ctx).Verbosef("talking to synclet client for pod %s", pID.String())
+	// logger.Get(ctx).Verbosef("talking to synclet client for pod %s", pID.String())
 
 	info.podID = pID
 	info.containerID = cID
