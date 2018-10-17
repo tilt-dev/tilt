@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/windmilleng/tcell"
+
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -54,6 +56,7 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 
 	h.a = a
 
+	var screenEvents chan tcell.Event
 	for {
 		select {
 		case <-ctx.Done():
@@ -65,12 +68,14 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 				return nil
 			}
 		case ready := <-a.readyCh:
-			err := h.r.SetUp(ready, st)
+			screenEvents, err = h.r.SetUp(ready)
 			if err != nil {
 				return err
 			}
 		case <-a.streamClosedCh:
 			h.r.Reset()
+		case e := <-screenEvents:
+			h.handleScreenEvent(ctx, st, e)
 		case <-a.serverClosed:
 			return nil
 		}
@@ -80,6 +85,32 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 func (h *Hud) Close() {
 	if h.a != nil {
 		h.a.Close()
+	}
+}
+
+func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	switch ev := ev.(type) {
+	case *tcell.EventKey:
+		switch ev.Key() {
+		case tcell.KeyEscape:
+			h.Close()
+			h.r.Reset()
+		case tcell.KeyRune:
+			switch r := ev.Rune(); {
+			case r >= '1' && r <= '9':
+				st.Dispatch(NewShowErrorAction(int(r - '0')))
+			}
+		case tcell.KeyUp:
+			h.r.rty.ElementScroller("resources").UpElement()
+		case tcell.KeyDown:
+			h.r.rty.ElementScroller("resources").DownElement()
+		case tcell.KeyEnter:
+			activeItem := h.r.rty.ElementScroller("resources").GetSelectedIndex()
+			st.Dispatch(NewShowErrorAction(activeItem + 1))
+		}
 	}
 }
 

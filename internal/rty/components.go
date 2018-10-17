@@ -22,6 +22,7 @@ type RTY interface {
 type ElementScroller interface {
 	UpElement()
 	DownElement()
+	GetSelectedIndex() int
 }
 
 type TextScroller interface {

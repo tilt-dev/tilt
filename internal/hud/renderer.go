@@ -10,7 +10,6 @@ import (
 	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/internal/store"
 )
 
 type Renderer struct {
@@ -29,7 +28,7 @@ func (r *Renderer) Render(v view.View) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.rty != nil {
-		layout := layout(v)
+		layout := r.layout(v)
 		err := r.rty.Render(layout)
 		if err != nil {
 			return err
@@ -95,7 +94,7 @@ var podStatusColors = map[string]tcell.Color{
 	"CrashLoopBackOff":  cBad,
 }
 
-func layout(v view.View) rty.Component {
+func (r *Renderer) layout(v view.View) rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
 	if v.ViewState.ShowNarration {
 		l.Add(renderNarration(v.ViewState.NarrationMessage))
@@ -104,7 +103,7 @@ func layout(v view.View) rty.Component {
 
 	split := rty.NewFlexLayout(rty.DirHor)
 
-	split.Add(renderResources(v.Resources))
+	split.Add(r.renderResources(v.Resources))
 	l.Add(split)
 
 	return l
@@ -122,11 +121,16 @@ func renderNarration(msg string) rty.Component {
 	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
-func renderResources(rs []view.Resource) rty.Component {
-	l := rty.NewTextScrollLayout("resources")
+func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
+	childNames := make([]string, len(rs))
+	for i, r := range rs {
+		childNames[i] = r.Name
+	}
+
+	l, selectedResource := r.rty.RegisterElementScroll("resources", childNames)
 
 	for _, r := range rs {
-		l.Add(renderResource(r))
+		l.Add(renderResource(r, selectedResource == r.Name))
 	}
 
 	return l
@@ -138,7 +142,7 @@ func spinner() string {
 	return spinnerChars[time.Now().Second()%len(spinnerChars)]
 }
 
-func renderResource(r view.Resource) rty.Component {
+func renderResource(r view.Resource, selected bool) rty.Component {
 	lines := rty.NewLines()
 	l := rty.NewLine()
 	l.Add(rty.TextString(r.Name))
@@ -256,7 +260,7 @@ func renderResource(r view.Resource) rty.Component {
 	return lines
 }
 
-func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
+func (r *Renderer) SetUp(event ReadyEvent) (chan tcell.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -265,27 +269,15 @@ func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
 	// get termName from current terminal, assume it's the same 🙈
 	screen, err := tcell.NewScreenFromTty(event.ttyPath, nil, os.Getenv("TERM"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err = screen.Init(); err != nil {
-		return err
+		return nil, err
 	}
+	screenEvents := make(chan tcell.Event)
 	go func() {
 		for {
-			ev := screen.PollEvent()
-			switch ev := ev.(type) {
-			case *tcell.EventKey:
-				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter:
-					// TODO: tell `tilt hud` to exit
-					screen.Fini()
-				case tcell.KeyRune:
-					switch r := ev.Rune(); {
-					case r >= '1' && r <= '9':
-						st.Dispatch(NewShowErrorAction(int(r - '0')))
-					}
-				}
-			}
+			screenEvents <- screen.PollEvent()
 		}
 	}()
 
@@ -293,13 +285,16 @@ func (r *Renderer) SetUp(event ReadyEvent, st *store.Store) error {
 
 	r.screen = screen
 
-	return nil
+	return screenEvents, nil
 }
 
 func (r *Renderer) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.screen.Fini()
+	if r.screen != nil {
+		r.screen.Fini()
+	}
+
 	r.screen = nil
 }

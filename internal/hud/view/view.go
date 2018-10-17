@@ -34,6 +34,7 @@ type Resource struct {
 type ViewState struct {
 	ShowNarration    bool
 	NarrationMessage string
+	SelectedResource int
 }
 
 type View struct {
