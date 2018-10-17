@@ -116,6 +116,12 @@ func renderResources(rs []view.Resource) rty.Component {
 	return l
 }
 
+var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func spinner() string {
+	return spinnerChars[time.Now().Second()%len(spinnerChars)]
+}
+
 func renderResource(r view.Resource) rty.Component {
 	lines := rty.NewLines()
 	l := rty.NewLine()
@@ -153,7 +159,7 @@ func renderResource(r view.Resource) rty.Component {
 	var buildComponents [][]rty.Component
 
 	if !r.CurrentBuildStartTime.Equal(time.Time{}) {
-		statusString := rty.ColoredString("In Progress", cPending, tcell.ColorBlack)
+		statusString := rty.ColoredString(fmt.Sprintf("In Progress %s", spinner()), cPending, tcell.ColorBlack)
 		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.CurrentBuildStartTime)))
 		if len(r.CurrentBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.CurrentBuildEdits))
