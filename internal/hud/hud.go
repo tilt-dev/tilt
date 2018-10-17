@@ -39,7 +39,12 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			err := ctx.Err()
+			if err != context.Canceled {
+				return err
+			} else {
+				return nil
+			}
 		case ready := <-h.a.readyCh:
 			err := h.r.SetUp(ready, st)
 			if err != nil {
