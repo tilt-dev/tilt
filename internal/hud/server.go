@@ -94,10 +94,8 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 
 	select {
 	case <-streamContext.Done():
-		stream.Send(&proto.DoneReply{})
-		return streamContext.Err()
 	case <-a.ctx.Done():
-		stream.Send(&proto.DoneReply{})
-		return streamContext.Err()
 	}
+
+	return nil
 }

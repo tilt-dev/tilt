@@ -5,7 +5,7 @@ package hud;
 option go_package = "github.com/windmilleng/tilt/internal/hud/proto;proto";
 
 service Hud {
-  rpc ConnectHud (stream HudControl) returns (stream DoneReply) {}
+  rpc ConnectHud (stream HudControl) returns (DoneReply) {}
 }
 
 message HudControl {
