@@ -17,7 +17,6 @@ type HeadsUpDisplay interface {
 }
 
 type Hud struct {
-	a *ServerAdapter
 	r *Renderer
 }
 
@@ -34,24 +33,23 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 	if err != nil {
 		return err
 	}
-	h.a = a
 
 	for {
 		select {
 		case <-ctx.Done():
-			h.a.Close()
+			a.Close()
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err
 			} else {
 				return nil
 			}
-		case ready := <-h.a.readyCh:
+		case ready := <-a.readyCh:
 			err := h.r.SetUp(ready, st)
 			if err != nil {
 				return err
 			}
-		case <-h.a.streamClosedCh:
+		case <-a.streamClosedCh:
 			h.r.Reset()
 		}
 
