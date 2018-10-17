@@ -20,9 +20,11 @@ import (
 const FileName = "Tiltfile"
 
 type Tiltfile struct {
-	globals  skylark.StringDict
+	globals skylark.StringDict
+	thread  *skylark.Thread
+
+	// The filename we're executing. Must be absolute.
 	filename string
-	thread   *skylark.Thread
 }
 
 func init() {
@@ -42,7 +44,7 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		return nil, err
 	}
 
-	dockerfileLocalPath, err := localPathFromSkylarkValue(dockerfileName)
+	dockerfileLocalPath, err := t.localPathFromSkylarkValue(dockerfileName)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (docker_file_name): %v", err)
 	}
@@ -64,7 +66,7 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		entrypoint:         entrypoint,
 		tiltFilename:       t.filename,
 	}
-	err = recordReadFile(thread, dockerfileLocalPath.path)
+	err = t.recordReadFile(thread, dockerfileLocalPath.path)
 	if err != nil {
 		return skylark.None, err
 	}
@@ -89,7 +91,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	dockerfileLocalPath, err := localPathFromSkylarkValue(dockerfilePath)
+	dockerfileLocalPath, err := t.localPathFromSkylarkValue(dockerfilePath)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (dockerfile): %v", err)
 	}
@@ -101,7 +103,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 			repo: dockerfileLocalPath.repo,
 		}
 	} else {
-		buildLocalPath, err = localPathFromSkylarkValue(buildPath)
+		buildLocalPath, err = t.localPathFromSkylarkValue(buildPath)
 		if err != nil {
 			return nil, fmt.Errorf("Argument 2 (context): %v", err)
 		}
@@ -113,7 +115,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		ref:                  ref,
 		tiltFilename:         t.filename,
 	}
-	err = recordReadFile(thread, dockerfileLocalPath.path)
+	err = t.recordReadFile(thread, dockerfileLocalPath.path)
 	if err != nil {
 		return skylark.None, err
 	}
@@ -138,7 +140,7 @@ func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args sky
 	}, nil
 }
 
-func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 
 	var manifestFuncs skylark.Iterable
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
@@ -164,7 +166,7 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
-			err = recordReadToTiltFile(thread)
+			err = t.recordReadToTiltFile(thread)
 			if err != nil {
 				return nil, err
 			}
@@ -185,14 +187,14 @@ func makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skylark.Builtin, a
 	return compManifest{manifests}, nil
 }
 
-func makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (t *Tiltfile) makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var path string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
 
-	repo, err := newGitRepo(path)
+	repo, err := t.newGitRepo(path)
 	if err != nil {
 		return nil, err
 	}
@@ -229,19 +231,34 @@ func execLocalCmd(cmd string) (string, error) {
 	return string(out), nil
 }
 
-func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+// When running the Tilt demo, the current working directory is arbitrary.
+// So we want to resolve paths relative to the dir where the Tiltfile lives,
+// not relative to the working directory.
+func (t *Tiltfile) absPath(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(t.absWorkingDir(), path)
+}
+
+func (t *Tiltfile) absWorkingDir() string {
+	return filepath.Dir(t.filename)
+}
+
+func (t *Tiltfile) readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var path string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
 
+	path = t.absPath(path)
 	dat, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	err = recordReadFile(thread, path)
+	err = t.recordReadFile(thread, path)
 	if err != nil {
 		return nil, err
 	}
@@ -259,14 +276,14 @@ func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, 
 	return buildContext, nil
 }
 
-func callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var path skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
 
-	kustomizePath, err := localPathFromSkylarkValue(path)
+	kustomizePath, err := t.localPathFromSkylarkValue(path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (path): %v", err)
 	}
@@ -281,7 +298,7 @@ func callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tup
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
 	for _, d := range deps {
-		err := recordReadFile(thread, d)
+		err := t.recordReadFile(thread, d)
 		if err != nil {
 			return nil, err
 		}
@@ -312,14 +329,14 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
 		"static_build":      skylark.NewBuiltin("static_build", tiltfile.makeStaticBuild),
 		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
-		"local_git_repo":    skylark.NewBuiltin("local_git_repo", makeSkylarkGitRepo),
+		"local_git_repo":    skylark.NewBuiltin("local_git_repo", tiltfile.makeSkylarkGitRepo),
 		"local":             skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service": skylark.NewBuiltin("composite_service", makeSkylarkCompositeManifest),
-		"read_file":         skylark.NewBuiltin("read_file", readFile),
+		"composite_service": skylark.NewBuiltin("composite_service", tiltfile.makeSkylarkCompositeManifest),
+		"read_file":         skylark.NewBuiltin("read_file", tiltfile.readFile),
 		"stop_build":        skylark.NewBuiltin("stop_build", stopBuild),
 		"add":               skylark.NewBuiltin("add", addMount),
-		"run":               skylark.NewBuiltin("run", runDockerImageCmd),
-		"kustomize":         skylark.NewBuiltin("kustomize", callKustomize),
+		"run":               skylark.NewBuiltin("run", tiltfile.runDockerImageCmd),
+		"kustomize":         skylark.NewBuiltin("kustomize", tiltfile.callKustomize),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -351,7 +368,7 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 	thread := tiltfile.thread
 	thread.SetLocal(readFilesKey, []string{})
 
-	err := recordReadToTiltFile(thread)
+	err := tiltfile.recordReadToTiltFile(thread)
 	if err != nil {
 		return nil, err
 	}
@@ -486,8 +503,8 @@ func skylarkMountsToDomain(sMounts []mount) []model.Mount {
 	return dMounts
 }
 
-func recordReadToTiltFile(t *skylark.Thread) error {
-	err := recordReadFile(t, FileName)
+func (t *Tiltfile) recordReadToTiltFile(thread *skylark.Thread) error {
+	err := t.recordReadFile(thread, FileName)
 	if err != nil {
 		return err
 	}
