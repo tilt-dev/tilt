@@ -15,16 +15,21 @@ type FakeHud struct {
 	Updates  chan view.View
 	Canceled bool
 	Closed   bool
+	closeCh  chan interface{}
 }
 
 func NewFakeHud() *FakeHud {
 	return &FakeHud{
 		Updates: make(chan view.View, 10),
+		closeCh: make(chan interface{}),
 	}
 }
 
 func (h *FakeHud) Run(ctx context.Context, st *store.Store) error {
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-h.closeCh:
+	}
 	h.Canceled = true
 	return ctx.Err()
 }
@@ -35,6 +40,7 @@ func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
 
 func (h *FakeHud) Close() {
 	h.Closed = true
+	close(h.closeCh)
 }
 
 func (h *FakeHud) Update(v view.View) error {
