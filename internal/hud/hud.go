@@ -2,6 +2,7 @@ package hud
 
 import (
 	"context"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -11,14 +12,20 @@ import (
 )
 
 type HeadsUpDisplay interface {
+	store.Subscriber
+
 	Run(ctx context.Context, st *store.Store) error
 	Update(v view.View) error
-	OnChange(ctx context.Context, st *store.Store)
+	SetNarrationMessage(ctx context.Context, msg string)
 }
 
 type Hud struct {
 	a *ServerAdapter
 	r *Renderer
+
+	currentView view.View
+	viewState   view.ViewState
+	mu          sync.RWMutex
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
@@ -33,6 +40,15 @@ func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 		a: a,
 		r: NewRenderer(),
 	}, nil
+}
+
+func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	viewState := h.viewState
+	viewState.ShowNarration = true
+	viewState.NarrationMessage = msg
+	h.setViewState(ctx, viewState)
 }
 
 func (h *Hud) Run(ctx context.Context, st *store.Store) error {
@@ -58,28 +74,40 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 }
 
 func (h *Hud) OnChange(ctx context.Context, st *store.Store) {
-	onChange(ctx, st, h)
+	state := st.RLockState()
+	view := store.StateToView(state)
+	st.RUnlockState()
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.setView(ctx, view)
+}
+
+// Must hold the lock
+func (h *Hud) setView(ctx context.Context, view view.View) {
+	h.currentView = view
+	h.refresh(ctx)
+}
+
+// Must hold the lock
+func (h *Hud) setViewState(ctx context.Context, viewState view.ViewState) {
+	h.viewState = viewState
+	h.refresh(ctx)
+}
+
+// Must hold the lock
+func (h *Hud) refresh(ctx context.Context) {
+	h.currentView.ViewState = h.viewState
+
+	err := h.Update(h.currentView)
+	if err != nil {
+		logger.Get(ctx).Infof("Error updating HUD: %v", err)
+	}
 }
 
 func (h *Hud) Update(v view.View) error {
 	err := h.r.Render(v)
 	return errors.Wrap(err, "error rendering hud")
-}
-
-func onChange(ctx context.Context, st *store.Store, h HeadsUpDisplay) {
-	state := st.RLockState()
-	if len(state.ManifestStates) == 0 {
-		st.RUnlockState()
-		return
-	}
-
-	view := store.StateToView(state)
-	st.RUnlockState()
-
-	err := h.Update(view)
-	if err != nil {
-		logger.Get(ctx).Infof("Error updating HUD: %v", err)
-	}
 }
 
 var _ store.Subscriber = &Hud{}
