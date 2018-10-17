@@ -105,20 +105,6 @@ func NodeIDFromPod(pod *v1.Pod) NodeID {
 	return NodeID(pod.Spec.NodeName)
 }
 
-func RestartsFromPod(pod *v1.Pod) int {
-	var restarts int32 = 0
-	for _, cStatus := range pod.Status.ContainerStatuses {
-		if cStatus.Name == "tilt-synclet" { // this should be a constant but there's nowhere good to put it :(
-			continue
-		}
-		// If pod has multiple containers, take the max # of restarts
-		if cStatus.RestartCount > restarts {
-			restarts = cStatus.RestartCount
-		}
-	}
-	return int(restarts)
-}
-
 func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
 	jsonPath := "-o=jsonpath={.spec.nodeName}"
 	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", podID.String(), jsonPath})

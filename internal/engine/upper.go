@@ -394,7 +394,6 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 	startedAt := pod.CreationTimestamp.Time
 	status := podStatusToString(*pod)
 	ns := k8s.NamespaceFromPod(pod)
-	restarts := k8s.RestartsFromPod(pod)
 
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
@@ -410,11 +409,6 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 			Status:    status,
 			Namespace: ns,
 		}
-	}
-
-	if podID == ms.Pod.PodID {
-		// Always write restart info, it may have changed even if pod has not changed.
-		ms.Pod.TotalRestarts = restarts
 	}
 
 	return ms
@@ -463,6 +457,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	// Update the status
 	ms.Pod.Phase = pod.Status.Phase
 	ms.Pod.Status = podStatusToString(*pod)
+	ms.Pod.TotalRestarts = RestartsForPod(pod)
 
 	// Check if the container is ready.
 	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef)
