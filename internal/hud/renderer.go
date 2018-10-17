@@ -127,7 +127,7 @@ func renderResource(r view.Resource) rty.Component {
 	l := rty.NewLine()
 	l.Add(rty.TextString(r.Name))
 	const dashSize = 35
-	l.Add(rty.ColoredString(fmt.Sprintf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))), cLightText, tcell.ColorBlack))
+	l.Add(rty.ColoredString(fmt.Sprintf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))), cLightText))
 	deployString := "not deployed yet"
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		deployString = fmt.Sprintf("deployed %s ago", formatDuration(time.Since(r.LastDeployTime)))
@@ -142,14 +142,14 @@ func renderResource(r view.Resource) rty.Component {
 			dirs = append(dirs, fmt.Sprintf("%s/", s))
 		}
 		l = rty.NewLine()
-		l.Add(rty.ColoredString(fmt.Sprintf("  (Watching %s)", strings.Join(dirs, " ")), cLightText, tcell.ColorBlack))
+		l.Add(rty.ColoredString(fmt.Sprintf("  (Watching %s)", strings.Join(dirs, " ")), cLightText))
 		lines.Add(l)
 	}
 
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		if len(r.LastDeployEdits) > 0 {
 			l = rty.NewLine()
-			l.Add(rty.ColoredString(" Last Deployed Edits: ", cLightText, tcell.ColorBlack))
+			l.Add(rty.ColoredString(" Last Deployed Edits: ", cLightText))
 			l.Add(rty.TextString(formatFileList(r.LastDeployEdits)))
 			lines.Add(l)
 		}
@@ -159,7 +159,7 @@ func renderResource(r view.Resource) rty.Component {
 	var buildComponents [][]rty.Component
 
 	if !r.CurrentBuildStartTime.Equal(time.Time{}) {
-		statusString := rty.ColoredString(fmt.Sprintf("In Progress %s", spinner()), cPending, tcell.ColorBlack)
+		statusString := rty.ColoredString(fmt.Sprintf("In Progress %s", spinner()), cPending)
 		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.CurrentBuildStartTime)))
 		if len(r.CurrentBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.CurrentBuildEdits))
@@ -168,7 +168,7 @@ func renderResource(r view.Resource) rty.Component {
 	}
 
 	if !r.PendingBuildSince.Equal(time.Time{}) {
-		statusString := rty.ColoredString("Pending", cPending, tcell.ColorBlack)
+		statusString := rty.ColoredString("Pending", cPending)
 		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.PendingBuildSince)))
 		if len(r.PendingBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.PendingBuildEdits))
@@ -177,9 +177,9 @@ func renderResource(r view.Resource) rty.Component {
 	}
 
 	if !r.LastBuildFinishTime.Equal(time.Time{}) {
-		shortBuildStatus := rty.ColoredString("OK", cGood, tcell.ColorBlack)
+		shortBuildStatus := rty.ColoredString("OK", cGood)
 		if r.LastBuildError != "" {
-			shortBuildStatus = rty.ColoredString("ERR", cBad, tcell.ColorBlack)
+			shortBuildStatus = rty.ColoredString("ERR", cBad)
 		}
 
 		s := fmt.Sprintf("Last build (done in %s) ended %s ago — ",
@@ -199,7 +199,7 @@ func renderResource(r view.Resource) rty.Component {
 	}
 
 	l = rty.NewLine()
-	l.Add(rty.ColoredString("  BUILD: ", cLightText, tcell.ColorBlack))
+	l.Add(rty.ColoredString("  BUILD: ", cLightText))
 	for _, c := range buildComponents[0] {
 		l.Add(c)
 	}
@@ -223,9 +223,9 @@ func renderResource(r view.Resource) rty.Component {
 		}
 
 		l := rty.NewLine()
-		l.Add(rty.ColoredString("    K8S: ", cLightText, tcell.ColorBlack))
+		l.Add(rty.ColoredString("    K8S: ", cLightText))
 		l.Add(rty.TextString(fmt.Sprintf("Pod [%s] • %s ago — ", r.PodName, formatDuration(time.Since(r.PodCreationTime)))))
-		l.Add(rty.ColoredString(r.PodStatus, podStatusColor, tcell.ColorBlack))
+		l.Add(rty.ColoredString(r.PodStatus, podStatusColor))
 		lines.Add(l)
 	}
 
