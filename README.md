@@ -181,6 +181,14 @@ Closes the currently active build and returns a container Image that has all of 
 def stop_build() -> Image
 ```
 
+#### kustomize()
+
+Run [kustomize](https://github.com/kubernetes-sigs/kustomize) on a given directory and return the resulting YAML.
+
+```python
+def kustomize(pathToDir: str) -> str
+```
+
 ## Developing
 See [DEVELOPING.md](DEVELOPING.md)
 
