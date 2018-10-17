@@ -260,10 +260,15 @@ func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, 
 }
 
 func callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var path string
+	var path skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
+	}
+
+	kustomizePath, err := localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
 	}
 
 	cmd := fmt.Sprintf("kustomize build %s", path)
@@ -271,7 +276,7 @@ func callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tup
 	if err != nil {
 		return nil, err
 	}
-	deps, err := kustomize.Deps(path)
+	deps, err := kustomize.Deps(kustomizePath.String())
 	if err != nil {
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
