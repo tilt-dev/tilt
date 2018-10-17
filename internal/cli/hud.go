@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/hud/proto"
@@ -49,18 +51,6 @@ func (c *hudCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting the HUD (built %s)…\n", buildDateStamp()))
 
-	// TODO(matt) figure out why tcell's Fini isn't working for us here
-	// this is a crummy workaround
-	defer func() {
-		cmd := exec.Command("reset")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			fmt.Printf("error restoring terminal settings: %v", err)
-		}
-	}()
-
 	return connectHud(ctx)
 }
 
@@ -93,8 +83,26 @@ func connectHud(ctx context.Context) error {
 	cli := proto.NewHudClient(conn)
 
 	stream, err := cli.ConnectHud(ctx)
+
 	if err != nil {
-		return err
+		log.Printf("Waiting for `tilt up` to start.")
+
+		for {
+			stream, err = cli.ConnectHud(ctx)
+			if err == nil {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				err := ctx.Err()
+				if err != context.Canceled {
+					return err
+				} else {
+					return nil
+				}
+			case <-time.After(time.Second):
+			}
+		}
 	}
 
 	// TODO(maia): wrap in adaptors so we don't need to muck around in proto code
@@ -104,14 +112,26 @@ func connectHud(ctx context.Context) error {
 				TtyPath: tty,
 			}},
 		}); err != nil {
-		return err
+		return errors.Wrap(err, "error sending to hud server")
 	}
+
+	// TODO(matt) figure out why tcell's Fini isn't working for us here
+	// this is a crummy workaround
+	defer func() {
+		cmd := exec.Command("reset")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("error restoring terminal settings: %v", err)
+		}
+	}()
 
 	// Wait for the stream to close
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		// Returns when the stream closes (with error or otherwise)
-		return stream.RecvMsg(nil)
+		return errors.Wrap(stream.RecvMsg(nil), "error received from hud server")
 	})
 
 	// Forward any SIGWINCH's
