@@ -60,7 +60,11 @@ func TextString(s string) Component {
 	return NewStringBuilder().Text(s).Build()
 }
 
-func ColoredString(s string, fg tcell.Color, bg tcell.Color) Component {
+func ColoredString(s string, fg tcell.Color) Component {
+	return NewStringBuilder().Fg(fg).Text(s).Build()
+}
+
+func BgColoredString(s string, fg tcell.Color, bg tcell.Color) Component {
 	return NewStringBuilder().Fg(fg).Bg(bg).Text(s).Build()
 }
 
