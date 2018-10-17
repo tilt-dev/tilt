@@ -18,11 +18,12 @@ func syncletPrivileged() *bool {
 var SyncletTag = "v20180928"
 
 const SyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
+const SyncletContainerName = "tilt-synclet"
 
 var SyncletImageRef = k8s.MustParseNamed(SyncletImageName)
 
 var SyncletContainer = v1.Container{
-	Name:            "tilt-synclet",
+	Name:            SyncletContainerName,
 	Image:           fmt.Sprintf("%s:%s", SyncletImageName, SyncletTag),
 	ImagePullPolicy: v1.PullIfNotPresent,
 	Resources:       v1.ResourceRequirements{Requests: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0Mi")}},

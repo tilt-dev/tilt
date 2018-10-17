@@ -321,6 +321,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
+
+		ms.Pod.OldRestarts = ms.Pod.ContainerRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
 	}
 
 	if engineState.WatchMounts {
@@ -418,6 +420,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 			Namespace: ns,
 		}
 	}
+
 	return ms
 }
 
@@ -474,6 +477,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 	populateContainerStatus(ctx, ms, pod, cStatus)
+	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
