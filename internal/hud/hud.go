@@ -14,10 +14,12 @@ type HeadsUpDisplay interface {
 	Run(ctx context.Context, st *store.Store) error
 	Update(v view.View) error
 	OnChange(ctx context.Context, st *store.Store)
+	Close()
 }
 
 type Hud struct {
 	r *Renderer
+	a *ServerAdapter
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
@@ -34,10 +36,12 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 		return err
 	}
 
+	h.a = a
+
 	for {
 		select {
 		case <-ctx.Done():
-			a.Close()
+			h.Close()
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err
@@ -51,8 +55,15 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 			}
 		case <-a.streamClosedCh:
 			h.r.Reset()
+		case <-a.serverClosed:
+			return nil
 		}
+	}
+}
 
+func (h *Hud) Close() {
+	if h.a != nil {
+		h.a.Close()
 	}
 }
 

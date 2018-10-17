@@ -14,6 +14,7 @@ type FakeHud struct {
 	LastView view.View
 	Updates  chan view.View
 	Canceled bool
+	Closed   bool
 }
 
 func NewFakeHud() *FakeHud {
@@ -30,6 +31,10 @@ func (h *FakeHud) Run(ctx context.Context, st *store.Store) error {
 
 func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
 	onChange(ctx, st, h)
+}
+
+func (h *FakeHud) Close() {
+	h.Closed = true
 }
 
 func (h *FakeHud) Update(v view.View) error {

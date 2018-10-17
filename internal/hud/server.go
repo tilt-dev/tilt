@@ -28,6 +28,7 @@ func NewServer(ctx context.Context) (*ServerAdapter, error) {
 	a := &ServerAdapter{
 		readyCh:        make(chan ReadyEvent),
 		streamClosedCh: make(chan error),
+		serverClosed:   make(chan interface{}, 1),
 		server:         grpcServer,
 		ctx:            ctx,
 	}
@@ -50,6 +51,7 @@ type ServerAdapter struct {
 	streamClosedCh chan error
 	server         *grpc.Server
 	ctx            context.Context
+	serverClosed   chan interface{}
 }
 
 type ReadyEvent struct {
@@ -58,6 +60,11 @@ type ReadyEvent struct {
 }
 
 func (a *ServerAdapter) Close() {
+	select {
+	case <-a.serverClosed:
+	default:
+		close(a.serverClosed)
+	}
 	a.server.GracefulStop()
 }
 
@@ -95,6 +102,7 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 	select {
 	case <-streamContext.Done():
 	case <-a.ctx.Done():
+	case <-a.serverClosed:
 	}
 
 	return nil

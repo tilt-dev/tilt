@@ -675,15 +675,13 @@ func TestHudUpdated(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-	assert.Equal(t, endToken, err)
+	f.Start([]model.Manifest{manifest}, true)
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
+
+	err := f.Stop()
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, 1, len(f.hud.LastView.Resources))
 	rv := f.hud.LastView.Resources[0]
@@ -975,18 +973,23 @@ func TestUpper_ShowErrorBuildLog(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	<-f.b.calls
+	f.WaitUntil("build done", func(state store.EngineState) bool {
+		return state.CompletedBuildCount > 0
+	})
 
-	// Wait until the logs reach the HUD.
-	<-f.hud.Updates
+	f.consumeAllHudUpdates()
 
 	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
 
 	<-f.hud.Updates
+
 	err := f.Stop()
 	if !assert.NoError(t, err) {
 		return
 	}
+
+	// XXX
+	fmt.Printf("log: '%s'\n", f.log.String())
 
 	buildOutputCount := 0
 	for _, l := range f.LogLines() {
@@ -995,9 +998,6 @@ func TestUpper_ShowErrorBuildLog(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 2, buildOutputCount)
-
-	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestUpper_ShowErrorPodLog(t *testing.T) {
@@ -1084,9 +1084,11 @@ func TestUpper_ShowErrorNonExistentResource(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	<-f.b.calls
+	f.WaitUntil("build finished", func(state store.EngineState) bool {
+		return state.CompletedBuildCount > 0
+	})
 
-	<-f.hud.Updates
+	f.consumeAllHudUpdates()
 
 	f.upper.store.Dispatch(hud.NewShowErrorAction(5))
 
@@ -1097,9 +1099,6 @@ func TestUpper_ShowErrorNonExistentResource(t *testing.T) {
 	}
 
 	assert.Contains(t, f.LogLines(), "Resource 5 does not exist, so no log to print")
-
-	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func testService(serviceName string, manifestName string, ip string, port int) *v1.Service {
@@ -1134,12 +1133,15 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	<-f.b.calls
-	<-f.hud.Updates
+	f.WaitUntil("build finished", func(state store.EngineState) bool {
+		return state.CompletedBuildCount > 0
+	})
 
 	f.upper.store.Dispatch(NewServiceChangeAction(testService("myservice", "foobar", "1.2.3.4", 8080)))
 
-	<-f.hud.Updates
+	f.WaitUntilManifest("lb updated", "foobar", func(ms store.ManifestState) bool {
+		return len(ms.LBs) > 0
+	})
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
@@ -1154,9 +1156,6 @@ func TestUpper_ServiceEvent(t *testing.T) {
 		t.Fatalf("%v did not contain key 'myservice'", ms.LBs)
 	}
 	assert.Equal(t, "http://1.2.3.4:8080/", url.String())
-
-	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestUpper_PodLogs(t *testing.T) {
@@ -1197,7 +1196,7 @@ func TestUpper_PodLogs(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestUpperCancelsHud(t *testing.T) {
+func TestCancelingUpperCancelsHud(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -1210,11 +1209,28 @@ func TestUpperCancelsHud(t *testing.T) {
 	<-f.b.calls
 
 	err := f.Stop()
-	if err != nil {
-		t.Fatal(err)
+	if !assert.NoError(t, err) {
+		return
 	}
 
 	assert.True(t, f.hud.Canceled)
+}
+
+func TestCompletingUpperClosesHud(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("fe")
+	manifest := f.newManifest(string(name), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, false)
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	assert.True(t, f.hud.Closed)
 }
 
 type fakeTimerMaker struct {
@@ -1468,6 +1484,17 @@ func (f *testFixture) assertAllHUDUpdatesConsumed() {
 
 	for update := range f.hud.Updates {
 		f.T().Fatalf("Update not consumed: %+v", update)
+	}
+}
+
+func (f *testFixture) consumeAllHudUpdates() {
+	done := false
+	for !done {
+		select {
+		case <-f.hud.Updates:
+		default:
+			done = true
+		}
 	}
 }
 

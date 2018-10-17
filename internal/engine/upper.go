@@ -117,14 +117,17 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		close(hudErrorCh)
 	}()
 
+	defer func() {
+		u.hud.Close()
+		// make sure the hud has had a chance to clean up
+		<-hudErrorCh
+	}()
+
 	for {
 		timer := u.timerMaker(refreshInterval)
 
 		select {
 		case <-ctx.Done():
-			// make sure the hud has had a chance to clean up
-			<-hudErrorCh
-
 			return ctx.Err()
 
 			// Reducers
