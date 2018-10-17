@@ -13,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
 )
 
 var BaseWireSet = wire.NewSet(
@@ -40,7 +39,6 @@ var BaseWireSet = wire.NewSet(
 	hud.NewDefaultHeadsUpDisplay,
 
 	engine.NewUpper,
-	wire.Bind(new(model.ManifestCreator), engine.Upper{}),
 	provideAnalytics,
 	provideUpdateModeFlag)
 
@@ -49,7 +47,7 @@ func wireDemo(ctx context.Context) (demo.Script, error) {
 	return demo.Script{}, nil
 }
 
-func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
+func wireUpper(ctx context.Context) (engine.Upper, error) {
 	wire.Build(BaseWireSet)
-	return nil, nil
+	return engine.Upper{}, nil
 }
