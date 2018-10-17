@@ -1197,6 +1197,26 @@ func TestUpper_PodLogs(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestUpperCancelsHud(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("fe")
+	manifest := f.newManifest(string(name), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	<-f.b.calls
+
+	err := f.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, f.hud.Canceled)
+}
+
 type fakeTimerMaker struct {
 	restTimerLock    *sync.Mutex
 	maxTimerLock     *sync.Mutex

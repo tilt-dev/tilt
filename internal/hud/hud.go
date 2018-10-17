@@ -24,21 +24,22 @@ type Hud struct {
 var _ HeadsUpDisplay = (*Hud)(nil)
 
 func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
-	a, err := NewServer()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Hud{
-		a: a,
 		r: NewRenderer(),
 	}, nil
 }
 
 func (h *Hud) Run(ctx context.Context, st *store.Store) error {
+	a, err := NewServer(ctx)
+	if err != nil {
+		return err
+	}
+	h.a = a
+
 	for {
 		select {
 		case <-ctx.Done():
+			h.a.Close()
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err

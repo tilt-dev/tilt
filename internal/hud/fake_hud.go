@@ -13,6 +13,7 @@ var _ HeadsUpDisplay = (*FakeHud)(nil)
 type FakeHud struct {
 	LastView view.View
 	Updates  chan view.View
+	Canceled bool
 }
 
 func NewFakeHud() *FakeHud {
@@ -21,7 +22,11 @@ func NewFakeHud() *FakeHud {
 	}
 }
 
-func (h *FakeHud) Run(ctx context.Context, st *store.Store) error { return nil }
+func (h *FakeHud) Run(ctx context.Context, st *store.Store) error {
+	<-ctx.Done()
+	h.Canceled = true
+	return ctx.Err()
+}
 
 func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
 	onChange(ctx, st, h)

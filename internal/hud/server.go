@@ -12,7 +12,7 @@ import (
 
 var _ proto.HudServer = (*ServerAdapter)(nil)
 
-func NewServer() (*ServerAdapter, error) {
+func NewServer(ctx context.Context) (*ServerAdapter, error) {
 	socketPath, err := proto.LocateSocket()
 	if err != nil {
 		return nil, err
@@ -28,6 +28,8 @@ func NewServer() (*ServerAdapter, error) {
 	a := &ServerAdapter{
 		readyCh:        make(chan ReadyEvent),
 		streamClosedCh: make(chan error),
+		server:         grpcServer,
+		ctx:            ctx,
 	}
 
 	proto.RegisterHudServer(grpcServer, a)
@@ -46,6 +48,8 @@ func NewServer() (*ServerAdapter, error) {
 type ServerAdapter struct {
 	readyCh        chan ReadyEvent
 	streamClosedCh chan error
+	server         *grpc.Server
+	ctx            context.Context
 }
 
 type ReadyEvent struct {
@@ -53,8 +57,12 @@ type ReadyEvent struct {
 	ctx     context.Context
 }
 
+func (a *ServerAdapter) Close() {
+	a.server.GracefulStop()
+}
+
 func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
-	ctx := stream.Context()
+	streamContext := stream.Context()
 
 	msg, err := stream.Recv()
 	if err != nil {
@@ -69,7 +77,7 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 
 	ready := ReadyEvent{
 		ttyPath: connectMsg.TtyPath,
-		ctx:     ctx,
+		ctx:     streamContext,
 	}
 	a.readyCh <- ready
 
@@ -85,7 +93,11 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 	}()
 
 	select {
-	case <-ctx.Done():
-		return ctx.Err()
+	case <-streamContext.Done():
+		stream.Send(&proto.DoneReply{})
+		return streamContext.Err()
+	case <-a.ctx.Done():
+		stream.Send(&proto.DoneReply{})
+		return streamContext.Err()
 	}
 }
