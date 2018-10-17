@@ -32,6 +32,23 @@ func TestRender(t *testing.T) {
 	assert.Equal(t, expectedContent, tf.fakeScreen.Lines())
 }
 
+func TestRenderNarrationMessage(t *testing.T) {
+	tf := newRendererTestFixture()
+
+	v := view.View{
+		ViewState: view.ViewState{
+			ShowNarration:    true,
+			NarrationMessage: "hi mom",
+		},
+	}
+
+	tf.renderer.Render(v)
+
+	expectedContent := []string{"hi mom"}
+
+	assert.Equal(t, expectedContent, tf.fakeScreen.Lines())
+}
+
 type rendererTestFixture struct {
 	renderer   *Renderer
 	fakeScreen *fakeScreen

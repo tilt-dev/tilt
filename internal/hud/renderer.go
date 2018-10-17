@@ -97,6 +97,10 @@ var podStatusColors = map[string]tcell.Color{
 
 func layout(v view.View) rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
+	if v.ViewState.ShowNarration {
+		l.Add(renderNarration(v.ViewState.NarrationMessage))
+		l.Add(rty.NewLine())
+	}
 
 	split := rty.NewFlexLayout(rty.DirHor)
 
@@ -104,6 +108,18 @@ func layout(v view.View) rty.Component {
 	l.Add(split)
 
 	return l
+}
+
+func renderNarration(msg string) rty.Component {
+	lines := rty.NewLines()
+	l := rty.NewLine()
+	l.Add(rty.TextString(msg))
+	lines.Add(rty.NewLine())
+	lines.Add(l)
+	lines.Add(rty.NewLine())
+
+	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), tcell.ColorBlack)
+	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
 func renderResources(rs []view.Resource) rty.Component {
