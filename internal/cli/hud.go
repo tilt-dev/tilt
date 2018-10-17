@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/hud/proto"
@@ -93,8 +95,17 @@ func connectHud(ctx context.Context) error {
 	cli := proto.NewHudClient(conn)
 
 	stream, err := cli.ConnectHud(ctx)
+
 	if err != nil {
-		return err
+		log.Printf("Waiting for `tilt up` to start.")
+
+		for {
+			stream, err = cli.ConnectHud(ctx)
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second)
+		}
 	}
 
 	// TODO(maia): wrap in adaptors so we don't need to muck around in proto code
@@ -104,14 +115,14 @@ func connectHud(ctx context.Context) error {
 				TtyPath: tty,
 			}},
 		}); err != nil {
-		return err
+		return errors.Wrap(err, "error sending to hud server")
 	}
 
 	// Wait for the stream to close
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		// Returns when the stream closes (with error or otherwise)
-		return stream.RecvMsg(nil)
+		return errors.Wrap(stream.RecvMsg(nil), "error received from hud server")
 	})
 
 	// Forward any SIGWINCH's
