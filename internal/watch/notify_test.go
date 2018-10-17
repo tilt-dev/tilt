@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -304,7 +303,7 @@ func TestWatchBrokenLink(t *testing.T) {
 	f.assertEvents(link)
 }
 
-func TestVimEdit(t *testing.T) {
+func TestMoveAndReplace(t *testing.T) {
 	f := newNotifyFixture(t)
 	defer f.tearDown()
 
@@ -319,21 +318,23 @@ func TestVimEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = f.notify.Add(root.Path())
+	err = f.notify.Add(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// ex -s +'%s/hello/world/g' -cwq file
-	cmd := fmt.Sprintf("ex -s '+%%s/hello/world/g' %s", file)
-	fmt.Println(cmd)
-	out, err := exec.Command("sh", "-c", cmd).Output()
-	fmt.Println(out)
+	tmpFile := filepath.Join(root.Path(), ".myfile.swp")
+	err = ioutil.WriteFile(tmpFile, []byte("world"), 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f.assertEvents(file, filepath.Join(root.Path(), ".myfile.swpx"), filepath.Join(root.Path(), ".myfile.swp"))
+	err = os.Rename(tmpFile, file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertEvents(file)
 }
 
 type notifyFixture struct {
