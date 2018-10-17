@@ -16,6 +16,7 @@ type HeadsUpDisplay interface {
 
 	Run(ctx context.Context, st *store.Store) error
 	Update(v view.View) error
+	Close()
 	SetNarrationMessage(ctx context.Context, msg string)
 }
 
@@ -31,13 +32,7 @@ type Hud struct {
 var _ HeadsUpDisplay = (*Hud)(nil)
 
 func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
-	a, err := NewServer()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Hud{
-		a: a,
 		r: NewRenderer(),
 	}, nil
 }
@@ -52,24 +47,39 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 }
 
 func (h *Hud) Run(ctx context.Context, st *store.Store) error {
+	a, err := NewServer(ctx)
+	if err != nil {
+		return err
+	}
+
+	h.a = a
+
 	for {
 		select {
 		case <-ctx.Done():
+			h.Close()
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err
 			} else {
 				return nil
 			}
-		case ready := <-h.a.readyCh:
+		case ready := <-a.readyCh:
 			err := h.r.SetUp(ready, st)
 			if err != nil {
 				return err
 			}
-		case <-h.a.streamClosedCh:
+		case <-a.streamClosedCh:
 			h.r.Reset()
+		case <-a.serverClosed:
+			return nil
 		}
+	}
+}
 
+func (h *Hud) Close() {
+	if h.a != nil {
+		h.a.Close()
 	}
 }
 

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -51,10 +52,18 @@ func (c *hudCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting the HUD (built %s)…\n", buildDateStamp()))
 
-	return connectHud(ctx)
+	err := connectHud(ctx)
+	if err == context.Canceled {
+		return nil
+	} else {
+		return err
+	}
 }
 
 func connectHud(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	tty, err := curTty(ctx)
 	if err != nil {
 		return err
@@ -130,8 +139,13 @@ func connectHud(ctx context.Context) error {
 	// Wait for the stream to close
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		// Returns when the stream closes (with error or otherwise)
-		return errors.Wrap(stream.RecvMsg(nil), "error received from hud server")
+		err := stream.RecvMsg(nil)
+		cancel()
+		if err == io.EOF {
+			return nil
+		} else {
+			return err
+		}
 	})
 
 	// Forward any SIGWINCH's

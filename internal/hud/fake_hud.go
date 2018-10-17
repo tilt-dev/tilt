@@ -14,15 +14,26 @@ var _ HeadsUpDisplay = (*FakeHud)(nil)
 type FakeHud struct {
 	LastView view.View
 	Updates  chan view.View
+	Canceled bool
+	Closed   bool
+	closeCh  chan interface{}
 }
 
 func NewFakeHud() *FakeHud {
 	return &FakeHud{
 		Updates: make(chan view.View, 10),
+		closeCh: make(chan interface{}),
 	}
 }
 
-func (h *FakeHud) Run(ctx context.Context, st *store.Store) error { return nil }
+func (h *FakeHud) Run(ctx context.Context, st *store.Store) error {
+	select {
+	case <-ctx.Done():
+	case <-h.closeCh:
+	}
+	h.Canceled = true
+	return ctx.Err()
+}
 
 func (h *FakeHud) SetNarrationMessage(ctx context.Context, msg string) {}
 
@@ -35,6 +46,11 @@ func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
 	if err != nil {
 		logger.Get(ctx).Infof("Error updating HUD: %v", err)
 	}
+}
+
+func (h *FakeHud) Close() {
+	h.Closed = true
+	close(h.closeCh)
 }
 
 func (h *FakeHud) Update(v view.View) error {
