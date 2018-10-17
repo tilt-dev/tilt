@@ -113,7 +113,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	go func() {
 		err := u.hud.Run(ctx, u.store)
 		if err != nil {
-			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
+			// TODO(matt) this might not be the best thing to do with an error - seems easy to miss
 			logger.Get(ctx).Infof("error in hud: %v", err)
 		}
 	}()
@@ -313,6 +313,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
+
+		ms.Pod.OldRestarts = ms.Pod.TotalRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
 	}
 
 	if engineState.WatchMounts {
@@ -394,6 +396,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 	startedAt := pod.CreationTimestamp.Time
 	status := podStatusToString(*pod)
 	ns := k8s.NamespaceFromPod(pod)
+	restarts := k8s.RestartsFromPod(pod)
 
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
@@ -410,6 +413,12 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 			Namespace: ns,
 		}
 	}
+
+	if podID == ms.Pod.PodID {
+		// Always write restart info, it may have changed even if pod has not changed.
+		ms.Pod.TotalRestarts = restarts
+	}
+
 	return ms
 }
 

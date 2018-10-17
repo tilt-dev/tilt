@@ -220,6 +220,9 @@ func renderResource(r view.Resource) rty.Component {
 		l.Add(rty.ColoredString("    K8S: ", cLightText, tcell.ColorBlack))
 		l.Add(rty.TextString(fmt.Sprintf("Pod [%s] • %s ago — ", r.PodName, formatDuration(time.Since(r.PodCreationTime)))))
 		l.Add(rty.ColoredString(r.PodStatus, podStatusColor, tcell.ColorBlack))
+		if r.PodRestarts > 0 {
+			l.Add(rty.ColoredString(fmt.Sprintf(" [%d restart(s)]", r.PodRestarts), cBad, tcell.ColorDefault))
+		}
 		lines.Add(l)
 	}
 
