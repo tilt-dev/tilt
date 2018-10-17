@@ -312,7 +312,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
 
-		ms.Pod.OldRestarts = ms.Pod.TotalRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
+		ms.Pod.OldRestarts = ms.Pod.ContainerRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
 	}
 
 	if engineState.WatchMounts {
@@ -457,7 +457,6 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	// Update the status
 	ms.Pod.Phase = pod.Status.Phase
 	ms.Pod.Status = podStatusToString(*pod)
-	ms.Pod.TotalRestarts = RestartsForPod(pod)
 
 	// Check if the container is ready.
 	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef)
@@ -468,6 +467,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 	populateContainerStatus(ctx, ms, pod, cStatus)
+	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {

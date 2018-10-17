@@ -77,11 +77,6 @@ type Pod struct {
 	Status    string
 	Phase     v1.PodPhase
 
-	// We want to show the user # of restarts since pod has been running current code,
-	// i.e. OldRestarts - Total Restarts
-	TotalRestarts int
-	OldRestarts   int // # times the pod restarted when it was running old code
-
 	Log []byte
 
 	// Corresponds to the deployed container.
@@ -89,6 +84,11 @@ type Pod struct {
 	ContainerID    k8s.ContainerID
 	ContainerPorts []int32
 	ContainerReady bool
+
+	// We want to show the user # of restarts since pod has been running current code,
+	// i.e. OldRestarts - Total Restarts
+	ContainerRestarts int
+	OldRestarts       int // # times the pod restarted when it was running old code
 }
 
 func shortenFile(baseDirs []string, f string) string {
@@ -174,7 +174,7 @@ func StateToView(s EngineState) view.View {
 			PodName:               ms.Pod.PodID.String(),
 			PodCreationTime:       ms.Pod.StartedAt,
 			PodStatus:             ms.Pod.Status,
-			PodRestarts:           ms.Pod.TotalRestarts - ms.Pod.OldRestarts,
+			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
 			Endpoints:             endpoints,
 		}
 
