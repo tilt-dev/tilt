@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 
@@ -547,10 +548,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	// incremental build.
 	call = <-f.b.calls
 	assert.Equal(t, "foobar", string(call.manifest.Name))
-	assert.ElementsMatch(t, []string{
-		f.JoinPath("Dockerfile"),
-		f.JoinPath("random_file.go"),
-	}, call.state.FilesChanged())
+	assert.ElementsMatch(t, []string{f.JoinPath("random_file.go")}, call.state.FilesChanged())
 
 	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
 		return es.CurrentlyBuilding == ""
@@ -560,7 +558,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
 
-	assert.Contains(t, f.LogLines(), "Manifest foobar hasn't changed, not rebuilding")
+	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
 }
 
 func TestRebuildDockerfileFailed(t *testing.T) {

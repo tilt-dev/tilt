@@ -218,29 +218,30 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 		}
 
 		if newManifest.Equal(ms.Manifest) {
-			logger.Get(ctx).Debugf("Manifest %s hasn't changed, not rebuilding", ms.Manifest.Name)
-			matcher, err := ms.Manifest.ConfigMatcher()
+			logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
+				ms.Manifest.Name)
+
+			// TODO(maia): if ms.LastError is a bad-config error, clear it [ch603]
+
+			changedFilesWithoutConfigFiles, err := ms.PendingFileChangesWithoutConfigFiles(ctx)
 			if err != nil {
-				logger.Get(ctx).Infof("Error getting config matcher: %v", err)
+				logger.Get(ctx).Infof(err.Error())
 				return
 			}
-			remainingPendingFileChanges := make(map[string]bool)
-			for f, _ := range ms.PendingFileChanges {
-				matches, err := matcher.Matches(f, false)
-				if err != nil {
-					logger.Get(ctx).Infof("Error matches %s: %v", f, err)
-				}
-				if !matches {
-					remainingPendingFileChanges[f] = true
-				}
-			}
-			if len(remainingPendingFileChanges) == 0 {
+			ms.PendingFileChanges = changedFilesWithoutConfigFiles
+
+			if len(ms.PendingFileChanges) == 0 {
+				// No non-config files changed, no need to build.
+				ms.ConfigIsDirty = false
 				return
 			}
+
+		} else {
+			// Manifest has changed, ensure we do an image build so that we apply the changes
+			ms.LastBuild = store.BuildStateClean
+			ms.Manifest = newManifest
 		}
 
-		ms.LastBuild = store.BuildStateClean
-		ms.Manifest = newManifest
 		ms.ConfigIsDirty = false
 	}
 
