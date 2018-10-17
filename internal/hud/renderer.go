@@ -97,6 +97,10 @@ var podStatusColors = map[string]tcell.Color{
 
 func layout(v view.View) rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
+	if v.ViewState.ShowNarration {
+		l.Add(renderNarration(v.ViewState.NarrationMessage))
+		l.Add(rty.NewLine())
+	}
 
 	split := rty.NewFlexLayout(rty.DirHor)
 
@@ -104,6 +108,18 @@ func layout(v view.View) rty.Component {
 	l.Add(split)
 
 	return l
+}
+
+func renderNarration(msg string) rty.Component {
+	lines := rty.NewLines()
+	l := rty.NewLine()
+	l.Add(rty.TextString(msg))
+	lines.Add(rty.NewLine())
+	lines.Add(l)
+	lines.Add(rty.NewLine())
+
+	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), tcell.ColorBlack)
+	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
 func renderResources(rs []view.Resource) rty.Component {
@@ -114,6 +130,12 @@ func renderResources(rs []view.Resource) rty.Component {
 	}
 
 	return l
+}
+
+var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func spinner() string {
+	return spinnerChars[time.Now().Second()%len(spinnerChars)]
 }
 
 func renderResource(r view.Resource) rty.Component {
@@ -153,7 +175,7 @@ func renderResource(r view.Resource) rty.Component {
 	var buildComponents [][]rty.Component
 
 	if !r.CurrentBuildStartTime.Equal(time.Time{}) {
-		statusString := rty.ColoredString("In Progress", cPending)
+		statusString := rty.ColoredString(fmt.Sprintf("In Progress %s", spinner()), cPending)
 		s := fmt.Sprintf(" - For %s", formatDuration(time.Since(r.CurrentBuildStartTime)))
 		if len(r.CurrentBuildEdits) > 0 {
 			s += fmt.Sprintf(" • Edits: %s", formatFileList(r.CurrentBuildEdits))

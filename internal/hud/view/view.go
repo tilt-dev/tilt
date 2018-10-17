@@ -25,6 +25,19 @@ type Resource struct {
 	Endpoints       []string
 }
 
+// State of the current view that's not expressed in the underlying model state.
+//
+// This includes things like the current selection, warning messages,
+// narration messages, etc.
+//
+// Client should always hold this as a value struct, and copy it
+// whenever they need to mutate something.
+type ViewState struct {
+	ShowNarration    bool
+	NarrationMessage string
+}
+
 type View struct {
 	Resources []Resource
+	ViewState ViewState
 }

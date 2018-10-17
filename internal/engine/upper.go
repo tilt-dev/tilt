@@ -109,13 +109,18 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		Manifests:   manifests,
 	})
 
+	hudErrorCh := make(chan error)
+
 	// Run the HUD in the background
 	go func() {
-		err := u.hud.Run(ctx, u.store)
-		if err != nil {
-			// TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-			logger.Get(ctx).Infof("error in hud: %v", err)
-		}
+		hudErrorCh <- u.hud.Run(ctx, u.store)
+		close(hudErrorCh)
+	}()
+
+	defer func() {
+		u.hud.Close()
+		// make sure the hud has had a chance to clean up
+		<-hudErrorCh
 	}()
 
 	for {
@@ -138,6 +143,11 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			// once we have a way to do the locking properly.
 		case <-timer:
 			break
+		case hudErr, ok := <-hudErrorCh:
+			if ok && hudErr != nil {
+				//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
+				logger.Get(ctx).Infof("error in hud: %v", hudErr)
+			}
 		}
 
 		// Subscribers
