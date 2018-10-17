@@ -11,8 +11,8 @@ func SimpleTextCases(f *fixture) {
 }
 
 func StyledTextCases(f *fixture) {
-	f.add(20, 1, ColoredString("hello world", tcell.ColorBlue, tcell.ColorDefault))
-	f.add(20, 1, ColoredString("hello world", tcell.ColorBlack, tcell.ColorWhite))
+	f.add(20, 1, ColoredString("hello world", tcell.ColorBlue))
+	f.add(20, 1, BgColoredString("hello world", tcell.ColorBlack, tcell.ColorWhite))
 	c := NewStringBuilder().Text("hello ").Fg(tcell.ColorBlue).Text("world").Build()
 	f.add(20, 1, c)
 }
@@ -40,7 +40,7 @@ func StyleCases(f *fixture) {
 	c = Bg(c, tcell.ColorWhite)
 	f.add(10, 10, c)
 	b = NewBox()
-	b.SetInner(ColoredString("hello world", tcell.ColorBlue, tcell.ColorGreen))
+	b.SetInner(BgColoredString("hello world", tcell.ColorBlue, tcell.ColorGreen))
 	c = Fg(b, tcell.ColorGreen)
 	c = Bg(c, tcell.ColorWhite)
 	f.add(10, 10, c)

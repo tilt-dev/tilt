@@ -54,7 +54,10 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 }
 
 func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
-	tiltconfig, err := Load(f.JoinPath("Tiltfile"), os.Stdout)
+	// It's important that this uses a relative path, because
+	// that's how other places in Tilt call it. In the past, we've had
+	// a lot of bugs that come up due to relative paths vs. absolute paths.
+	tiltconfig, err := Load(FileName, os.Stdout)
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
@@ -146,6 +149,7 @@ func TestGetManifestConfig(t *testing.T) {
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv, "first step")
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv, "second step")
 	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, manifest.Entrypoint.Argv)
+	assert.Equal(t, f.JoinPath("Tiltfile"), manifest.TiltFilename)
 }
 
 func TestOldMountSyntax(t *testing.T) {
@@ -317,7 +321,7 @@ func TestGetManifestConfigNonFunction(t *testing.T) {
 func TestGetManifestConfigTakesArgs(t *testing.T) {
 	file := tempFile(
 		`def blorgly2(x):
-			return "foo"
+      return "foo"
 `)
 	defer os.Remove(file)
 
@@ -337,7 +341,7 @@ func TestGetManifestConfigTakesArgs(t *testing.T) {
 func TestGetManifestConfigRaisesError(t *testing.T) {
 	file := tempFile(
 		`def blorgly2():
-			"foo"[10]`) // index out of range
+      "foo"[10]`) // index out of range
 	defer os.Remove(file)
 
 	tiltConfig, err := Load(file, os.Stdout)
@@ -356,7 +360,7 @@ func TestGetManifestConfigRaisesError(t *testing.T) {
 func TestGetManifestConfigReturnsWrongType(t *testing.T) {
 	file := tempFile(
 		`def blorgly2():
-			return "foo"`) // index out of range
+      return "foo"`) // index out of range
 	defer os.Remove(file)
 
 	tiltConfig, err := Load(file, os.Stdout)
@@ -375,7 +379,7 @@ func TestGetManifestConfigReturnsWrongType(t *testing.T) {
 func TestGetManifestConfigLocalReturnsNon0(t *testing.T) {
 	file := tempFile(
 		`def blorgly2():
-			local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`) // index out of range
+      local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`) // index out of range
 	defer os.Remove(file)
 
 	tiltConfig, err := Load(file, os.Stdout)
@@ -967,4 +971,95 @@ def blorgly():
 			ContainerPort: 443,
 		},
 	}, manifest.PortForwards)
+}
+
+func TestKustomize(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+	kustomizeFile := `# Example configuration for the webserver
+# at https://github.com/monopole/hello
+commonLabels:
+  app: my-hello
+
+resources:
+- deployment.yaml
+- service.yaml
+- configMap.yaml`
+	f.WriteFile("kustomization.yaml", kustomizeFile)
+
+	configMap := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: the-map
+data:
+  altGreeting: "Good Morning!"
+  enableRisky: "false"`
+	f.WriteFile("configMap.yaml", configMap)
+
+	deployment := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: the-deployment
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        deployment: hello
+    spec:
+      containers:
+      - name: the-container
+        image: monopole/hello:1
+        command: ["/hello",
+                  "--port=8080",
+                  "--enableRiskyFeature=$(ENABLE_RISKY)"]
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ALT_GREETING
+          valueFrom:
+            configMapKeyRef:
+              name: the-map
+              key: altGreeting
+        - name: ENABLE_RISKY
+          valueFrom:
+            configMapKeyRef:
+              name: the-map
+              key: enableRisky`
+
+	f.WriteFile("deployment.yaml", deployment)
+
+	service := `kind: Service
+apiVersion: v1
+metadata:
+  name: the-service
+spec:
+  selector:
+    deployment: hello
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 8666
+    targetPort: 8080`
+
+	f.WriteFile("service.yaml", service)
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = kustomize(".")
+  s = k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
+  return s
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	expected := f.JoinPaths([]string{
+		"Dockerfile",
+		"Tiltfile",
+		"configMap.yaml",
+		"deployment.yaml",
+		"kustomization.yaml",
+		"service.yaml",
+	})
+	assert.Equal(t, expected, manifest.ConfigFiles)
 }

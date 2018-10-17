@@ -13,6 +13,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
+	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -206,16 +207,26 @@ func runLocalCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple
 		return nil, err
 	}
 
-	out, err := exec.Command("sh", "-c", command).Output()
+	out, err := execLocalCmd(command)
 	if err != nil {
-		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", command, err, string(out))
+		return nil, err
+	}
+
+	return skylark.String(out), nil
+}
+
+func execLocalCmd(cmd string) (string, error) {
+	out, err := exec.Command("sh", "-c", cmd).Output()
+	if err != nil {
+		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", cmd, err, string(out))
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
 			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(exitError.Stderr))
 		}
-		return nil, errors.New(errorMessage)
+		return "", errors.New(errorMessage)
 	}
-	return skylark.String(out), nil
+
+	return string(out), nil
 }
 
 func readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -248,11 +259,47 @@ func stopBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, 
 	return buildContext, nil
 }
 
+func callKustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var path skylark.Value
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	kustomizePath, err := localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	cmd := fmt.Sprintf("kustomize build %s", path)
+	yaml, err := execLocalCmd(cmd)
+	if err != nil {
+		return nil, err
+	}
+	deps, err := kustomize.Deps(kustomizePath.String())
+	if err != nil {
+		return nil, fmt.Errorf("internal error: %v", err)
+	}
+	for _, d := range deps {
+		err := recordReadFile(thread, d)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return skylark.String(yaml), nil
+}
+
 func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
 			_, _ = fmt.Fprintln(out, msg)
 		},
+	}
+
+	filename, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, err
 	}
 
 	tiltfile := &Tiltfile{
@@ -272,6 +319,7 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		"stop_build":        skylark.NewBuiltin("stop_build", stopBuild),
 		"add":               skylark.NewBuiltin("add", addMount),
 		"run":               skylark.NewBuiltin("run", runDockerImageCmd),
+		"kustomize":         skylark.NewBuiltin("kustomize", callKustomize),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
