@@ -20,7 +20,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -204,7 +203,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	ms.QueueEntryTime = time.Time{}
 
 	if ms.ConfigIsDirty {
-		newManifest, err := getNewManifestFromTiltfile(ctx, mn)
+		newManifest, err := getNewManifestFromTiltfile(mn)
 		if err != nil {
 			logger.Get(ctx).Infof("getting new manifest error: %v", err)
 			ms.LastError = err
@@ -217,7 +216,12 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 			logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
 				ms.Manifest.Name)
 
-			// TODO(maia): if ms.LastError is a bad-config error, clear it [ch603]
+			if _, ok := ms.LastError.(*manifestErr); ok {
+				// Last err indicates failure to make a new manifest b/c of bad config files.
+				// Manifest is now back to normal (the new one we just got is the same as the
+				// one we previously had) so clear this error.
+				ms.LastError = nil
+			}
 
 			changedFilesWithoutConfigFiles, err := ms.PendingFileChangesWithoutConfigFiles(ctx)
 			if err != nil {
@@ -314,18 +318,6 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-		summary := summary.NewSummary()
-		err := summary.Gather(engineState.Manifests())
-		if err != nil {
-			// If the user edited their k8s YAML and it's currently malformed,
-			// summary.Gather() might fail. This is OK. Just don't print the log right now.
-			// A better reactive model might have a way to only collect the manifests
-			// that are actively deployed.
-			logger.Get(ctx).Debugf("handleCompletedBuild: %v", err)
-		} else {
-			summary.Log(ctx, u.resolveLB)
-		}
 
 		if len(engineState.ManifestsToBuild) == 0 {
 			logger.Get(ctx).Infof("Awaiting changes…")
@@ -598,17 +590,17 @@ func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAct
 	return false
 }
 
-func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, error) {
+func getNewManifestFromTiltfile(name model.ManifestName) (model.Manifest, *manifestErr) {
 	t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
 	if err != nil {
-		return model.Manifest{}, err
+		return model.Manifest{}, manifestErrf(err.Error())
 	}
 	newManifests, err := t.GetManifestConfigs(string(name))
 	if err != nil {
-		return model.Manifest{}, err
+		return model.Manifest{}, manifestErrf(err.Error())
 	}
 	if len(newManifests) != 1 {
-		return model.Manifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+		return model.Manifest{}, manifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
 	}
 	newManifest := newManifests[0]
 
@@ -683,4 +675,16 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		logger.Get(ctx).Infof("%s", ms.Pod.Log)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
+}
+
+type manifestErr struct {
+	s string
+}
+
+func (e *manifestErr) Error() string { return e.s }
+
+var _ error = &manifestErr{}
+
+func manifestErrf(format string, a ...interface{}) *manifestErr {
+	return &manifestErr{s: fmt.Sprintf(format, a...)}
 }

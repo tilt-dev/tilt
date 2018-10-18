@@ -23,22 +23,26 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+type RepoBranch string
+
 // Runs the demo script
 type Script struct {
-	hud   hud.HeadsUpDisplay
-	upper engine.Upper
-	store *store.Store
-	env   k8s.Env
+	hud    hud.HeadsUpDisplay
+	upper  engine.Upper
+	store  *store.Store
+	env    k8s.Env
+	branch RepoBranch
 
 	readTiltfileCh chan string
 	podMonitor     *podMonitor
 }
 
-func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, env k8s.Env, st *store.Store) Script {
+func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, env k8s.Env, st *store.Store, branch RepoBranch) Script {
 	s := Script{
 		upper:          upper,
 		hud:            hud,
 		env:            env,
+		branch:         branch,
 		readTiltfileCh: make(chan string),
 		podMonitor:     &podMonitor{podsReadyCh: make(chan bool)},
 		store:          st,
@@ -52,7 +56,7 @@ type podMonitor struct {
 	podsReadyCh chan bool
 }
 
-func (m *podMonitor) arePodsReady(store *store.Store) bool {
+func (m *podMonitor) arePodsReady(ctx context.Context, store *store.Store) bool {
 	state := store.RLockState()
 	defer store.RUnlockState()
 	hasPods := false
@@ -70,7 +74,7 @@ func (m *podMonitor) arePodsReady(store *store.Store) bool {
 }
 
 func (m *podMonitor) OnChange(ctx context.Context, store *store.Store) {
-	podsReady := m.arePodsReady(store)
+	podsReady := m.arePodsReady(ctx, store)
 	if podsReady != m.podsReady {
 		m.podsReady = podsReady
 		m.podsReadyCh <- podsReady
@@ -160,6 +164,10 @@ func (s Script) runSteps(ctx context.Context, out io.Writer) error {
 	}()
 
 	for _, step := range steps {
+		if step.ChangeBranch && s.branch == "" {
+			continue
+		}
+
 		s.hud.SetNarrationMessage(ctx, step.Narration)
 
 		if step.Command != "" {
@@ -174,6 +182,16 @@ func (s Script) runSteps(ctx context.Context, out io.Writer) error {
 		} else if step.CreateManifests {
 			s.readTiltfileCh <- tmpDir
 			_ = s.podMonitor.waitUntilPodsReady(ctx)
+			continue
+		} else if step.ChangeBranch {
+			cmd := exec.CommandContext(ctx, "git", "checkout", string(s.branch))
+			cmd.Stdout = out
+			cmd.Stderr = out
+			cmd.Dir = tmpDir
+			err := cmd.Run()
+			if err != nil {
+				return errors.Wrap(err, "demo.runSteps")
+			}
 		}
 
 		select {

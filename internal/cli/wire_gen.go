@@ -19,7 +19,7 @@ import (
 
 // Injectors from wire.go:
 
-func wireDemo(ctx context.Context) (demo.Script, error) {
+func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
 	env, err := k8s.DetectEnv()
 	if err != nil {
 		return demo.Script{}, err
@@ -72,7 +72,7 @@ func wireDemo(ctx context.Context) (demo.Script, error) {
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, storeStore, podLogManager, portForwardController)
-	script := demo.NewScript(upper, headsUpDisplay, env, storeStore)
+	script := demo.NewScript(upper, headsUpDisplay, env, storeStore, branch)
 	return script, nil
 }
 

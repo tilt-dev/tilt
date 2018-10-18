@@ -146,6 +146,11 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 
 	sb := rty.NewStringBuilder()
+	if selected {
+		sb.Text("▶ ")
+	} else {
+		sb.Text("  ")
+	}
 	sb.Text(r.Name)
 	const dashSize = 35
 	sb.Fg(cLightText).Textf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))).Fg(tcell.ColorDefault)
