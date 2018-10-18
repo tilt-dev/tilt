@@ -312,7 +312,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	defer span.Finish()
 
 	// TODO(Han): Extend output to print without newline
-	fmt.Printf("  → Tarring context…")
+	output.Get(ctx).StartBuildStep("Tarring context…")
 
 	archive, err := tarContextAndUpdateDf(ctx, df, paths, filter)
 	if err != nil {
@@ -320,7 +320,8 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	}
 
 	// TODO(Han): Extend output to print without newline
-	fmt.Printf(" (size: %s)\n", humanize.Bytes(uint64(archive.Len())))
+	output.Get(ctx).Printf("Created tarball (size: %s)",
+		humanize.Bytes(uint64(archive.Len())))
 
 	output.Get(ctx).StartBuildStep("Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
