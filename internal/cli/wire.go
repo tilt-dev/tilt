@@ -42,7 +42,7 @@ var BaseWireSet = wire.NewSet(
 	provideAnalytics,
 	provideUpdateModeFlag)
 
-func wireDemo(ctx context.Context) (demo.Script, error) {
+func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
 	wire.Build(BaseWireSet, demo.NewScript)
 	return demo.Script{}, nil
 }
