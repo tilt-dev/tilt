@@ -77,12 +77,12 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 				return nil
 			}
 		case ready := <-a.readyCh:
-			screenEvents, err = h.r.SetUp(ready)
+			screenEvents, err = h.r.SetUp(ready, a.winchCh)
 			if err != nil {
 				return err
 			}
 		case <-a.winchCh:
-			h.refresh(ctx)
+			h.Refresh(ctx)
 		case <-a.streamClosedCh:
 			h.r.Reset()
 		case e := <-screenEvents:

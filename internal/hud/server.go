@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"syscall"
 
 	"github.com/windmilleng/tilt/internal/hud/proto"
 	"github.com/windmilleng/tilt/internal/network"
@@ -27,7 +29,7 @@ func NewServer(ctx context.Context) (*ServerAdapter, error) {
 
 	a := &ServerAdapter{
 		readyCh:        make(chan ReadyEvent),
-		winchCh:        make(chan interface{}),
+		winchCh:        make(chan os.Signal),
 		streamClosedCh: make(chan error),
 		serverClosed:   make(chan interface{}, 1),
 		server:         grpcServer,
@@ -49,7 +51,7 @@ func NewServer(ctx context.Context) (*ServerAdapter, error) {
 
 type ServerAdapter struct {
 	readyCh        chan ReadyEvent
-	winchCh        chan interface{}
+	winchCh        chan os.Signal
 	streamClosedCh chan error
 	server         *grpc.Server
 	ctx            context.Context
@@ -97,7 +99,7 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 				a.streamClosedCh <- err
 				return
 			}
-			a.winchCh <- nil
+			a.winchCh <- syscall.SIGWINCH
 		}
 	}()
 
