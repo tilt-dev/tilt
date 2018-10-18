@@ -58,7 +58,7 @@ func TestManifestWatchesConfigsIfIgnored(t *testing.T) {
 
 type manifestWatcherTestFixture struct {
 	store           *store.Store
-	watcherMaker    fsWatcherMaker
+	watcherMaker    FsWatcherMaker
 	ctx             context.Context
 	tempDirs        []*tempdir.TempDirFixture
 	manifests       []model.Manifest

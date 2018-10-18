@@ -1328,6 +1328,12 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
+func makeFakeFsWatcherMaker(fn *fakeNotify) FsWatcherMaker {
+	return func() (watch.Notify, error) {
+		return fn, nil
+	}
+}
+
 func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store) error {
 	return func(ctx context.Context, st *store.Store) error {
 		go dispatchPodChangesLoop(ctx, ch, st)
@@ -1394,7 +1400,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	pfc := NewPortForwardController(k8s)
 
-	upper := NewUpper(ctx, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, bc)
+	upper := NewUpper(ctx, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, fswm, fsWatcherMaker, bc)
 	upper.timerMaker = timerMaker.maker()
 	upper.hudErrorCh = make(chan error)
 	upper.fsWatcherMaker = fsWatcherMaker

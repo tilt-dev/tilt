@@ -44,7 +44,10 @@ var BaseWireSet = wire.NewSet(
 
 	engine.NewUpper,
 	provideAnalytics,
-	provideUpdateModeFlag)
+	provideUpdateModeFlag,
+	engine.NewWatchManager,
+	engine.ProvideFsWatcherMaker,
+)
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
 	wire.Build(BaseWireSet, demo.NewScript)
