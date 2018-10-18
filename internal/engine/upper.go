@@ -238,7 +238,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 
 		} else {
 			// Manifest has changed, ensure we do an image build so that we apply the changes
-			ms.LastBuild = store.BuildStateClean
+			ms.LastBuild = store.BuildResult{}
 			ms.Manifest = newManifest
 		}
 
@@ -250,7 +250,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	}
 	ms.PendingFileChanges = make(map[string]bool)
 
-	buildState := ms.LastBuild.NewStateWithFilesChanged(ms.CurrentlyBuildingFileChanges)
+	buildState := store.NewBuildState(ms.LastBuild, ms.CurrentlyBuildingFileChanges)
 
 	m := ms.Manifest
 
@@ -309,7 +309,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		}
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()
-		ms.LastBuild = store.NewBuildState(cb.Result)
+		ms.LastBuild = cb.Result
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
 
