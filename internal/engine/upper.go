@@ -252,6 +252,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	ms.CurrentBuildStartTime = time.Now()
 	state.CurrentlyBuilding = mn
 
+	ctx = output.CtxWithPrefix(ctx, "  │ ")
 	ctx = output.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
 
 	ms.Pod.Log = []byte{}

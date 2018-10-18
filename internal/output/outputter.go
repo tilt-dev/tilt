@@ -55,6 +55,14 @@ func CtxWithForkedOutput(ctx context.Context, w io.Writer) context.Context {
 	return WithOutputter(ctx, NewOutputter(logger.Get(ctx)))
 }
 
+func CtxWithPrefix(ctx context.Context, prefix string) context.Context {
+	l := logger.Get(ctx)
+	prefixWriter := NewPrefixedWriter(prefix, l.Writer(l.Level()))
+	nl := logger.NewLogger(l.Level(), prefixWriter)
+	ctx = logger.WithLogger(ctx, nl)
+	return WithOutputter(ctx, NewOutputter(nl))
+}
+
 func (o *Outputter) color(c color.Attribute) *color.Color {
 	color := color.New(c)
 	if !o.logger.SupportsColor() {
