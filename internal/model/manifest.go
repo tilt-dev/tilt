@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -82,6 +83,13 @@ func (m Manifest) validate() *ValidateErr {
 
 	if m.K8sYaml == "" {
 		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
+	}
+
+	for _, m := range m.Mounts {
+		if !filepath.IsAbs(m.LocalPath) {
+			return validateErrf(
+				"[validate] mount.LocalPath must be an absolute path (got: %s)", m.LocalPath)
+		}
 	}
 
 	if m.IsStaticBuild() {
