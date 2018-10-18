@@ -20,7 +20,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/summary"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -314,18 +313,6 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-		summary := summary.NewSummary()
-		err := summary.Gather(engineState.Manifests())
-		if err != nil {
-			// If the user edited their k8s YAML and it's currently malformed,
-			// summary.Gather() might fail. This is OK. Just don't print the log right now.
-			// A better reactive model might have a way to only collect the manifests
-			// that are actively deployed.
-			logger.Get(ctx).Debugf("handleCompletedBuild: %v", err)
-		} else {
-			summary.Log(ctx, u.resolveLB)
-		}
 
 		if len(engineState.ManifestsToBuild) == 0 {
 			logger.Get(ctx).Infof("Awaiting changes…")
