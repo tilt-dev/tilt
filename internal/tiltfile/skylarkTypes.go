@@ -124,7 +124,7 @@ type dockerImage struct {
 var _ skylark.Value = &dockerImage{}
 var _ skylark.HasAttrs = &dockerImage{}
 
-func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (t *Tiltfile) runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var skylarkCmd skylark.String
 	var trigger skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &skylarkCmd, "trigger?", &trigger)
@@ -161,14 +161,7 @@ func runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin, args skylark
 		triggers = []string{string(trigger)}
 	}
 
-	// TODO(dmiller): in practice, this is the directory that the Tiltfile exists in. It will error otherwise.
-	// We should formalize this.
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	step := model.ToStep(cwd, model.ToShellCmd(cmd))
+	step := model.ToStep(t.absWorkingDir(), model.ToShellCmd(cmd))
 
 	step.Triggers = triggers
 
@@ -264,13 +257,9 @@ type gitRepo struct {
 	dockerignoreContents string
 }
 
-func newGitRepo(path string) (gitRepo, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return gitRepo{}, fmt.Errorf("filepath.Abs: %v", err)
-	}
-
-	_, err = os.Stat(absPath)
+func (t *Tiltfile) newGitRepo(path string) (gitRepo, error) {
+	absPath := t.absPath(path)
+	_, err := os.Stat(absPath)
 	if err != nil {
 		return gitRepo{}, fmt.Errorf("Reading path %s: %v", path, err)
 	}
@@ -347,26 +336,22 @@ type localPath struct {
 	repo gitRepo
 }
 
-func localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
+func (tf *Tiltfile) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
 	switch v := v.(type) {
 	case localPath:
 		return v, nil
 	case gitRepo:
 		return v.makeLocalPath("."), nil
 	case skylark.String:
-		return localPathFromString(string(v))
+		return tf.localPathFromString(string(v))
 	default:
 		return localPath{}, fmt.Errorf(" Expected local path. Actual type: %T", v)
 	}
 }
 
-func localPathFromString(path string) (localPath, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return localPath{}, fmt.Errorf("filepath.Abs: %v", err)
-	}
-
-	_, err = os.Stat(absPath)
+func (t *Tiltfile) localPathFromString(path string) (localPath, error) {
+	absPath := t.absPath(path)
+	_, err := os.Stat(absPath)
 	if err != nil {
 		return localPath{}, fmt.Errorf("Reading path %s: %v", path, err)
 	}
@@ -381,7 +366,7 @@ func localPathFromString(path string) (localPath, error) {
 	repo := gitRepo{}
 
 	if hasGitDir {
-		repo, err = newGitRepo(absDirPath)
+		repo, err = t.newGitRepo(absDirPath)
 		if err != nil {
 			return localPath{}, err
 		}

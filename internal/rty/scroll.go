@@ -240,6 +240,10 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 	return next, ""
 }
 
+func (s *ElementScrollController) GetSelectedIndex() int {
+	return s.state.elementIdx
+}
+
 func (s *ElementScrollController) GetSelectedChild() string {
 	if len(s.state.children) == 0 {
 		return ""

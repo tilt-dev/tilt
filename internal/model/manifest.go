@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -190,10 +189,6 @@ func (m1 Manifest) stepsEqual(s2 []Step) bool {
 	}
 
 	return true
-}
-
-type ManifestCreator interface {
-	CreateManifests(ctx context.Context, svcs []Manifest, watch bool) error
 }
 
 type Mount struct {

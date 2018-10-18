@@ -42,9 +42,6 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 // When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
 const maxChangedFilesToPrint = 5
 
-// The main loop ensures the HUD updates at least this often
-const refreshInterval = 1 * time.Second
-
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
@@ -57,6 +54,7 @@ type Upper struct {
 	reaper              build.ImageReaper
 	hud                 hud.HeadsUpDisplay
 	store               *store.Store
+	hudErrorCh          chan error
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
@@ -97,7 +95,15 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,
+		hudErrorCh:          make(chan error),
 	}
+}
+
+func (u Upper) RunHud(ctx context.Context) error {
+	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
+	u.hudErrorCh <- err
+	close(u.hudErrorCh)
+	return err
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
@@ -109,23 +115,13 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		Manifests:   manifests,
 	})
 
-	hudErrorCh := make(chan error)
-
-	// Run the HUD in the background
-	go func() {
-		hudErrorCh <- u.hud.Run(ctx, u.store)
-		close(hudErrorCh)
-	}()
-
 	defer func() {
 		u.hud.Close()
 		// make sure the hud has had a chance to clean up
-		<-hudErrorCh
+		<-u.hudErrorCh
 	}()
 
 	for {
-		timer := u.timerMaker(refreshInterval)
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -138,16 +134,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				state.PermanentError = err
 			}
 			u.store.UnlockMutableState()
-
-			// TODO(nick): This should be internal to the HUD
-			// once we have a way to do the locking properly.
-		case <-timer:
-			break
-		case hudErr, ok := <-hudErrorCh:
-			if ok && hudErr != nil {
-				//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-				logger.Get(ctx).Infof("error in hud: %v", hudErr)
-			}
 		}
 
 		// Subscribers
@@ -231,7 +217,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 			logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
 				ms.Manifest.Name)
 
-			if _, ok := ms.LastError.(*newManifestErr); ok {
+			if _, ok := ms.LastError.(*manifestErr); ok {
 				// Last err indicates failure to make a new manifest b/c of bad config files.
 				// Manifest is now back to normal (the new one we just got is the same as the
 				// one we previously had) so clear this error.
@@ -617,17 +603,17 @@ func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAct
 	return false
 }
 
-func getNewManifestFromTiltfile(name model.ManifestName) (model.Manifest, *newManifestErr) {
+func getNewManifestFromTiltfile(name model.ManifestName) (model.Manifest, *manifestErr) {
 	t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
 	if err != nil {
-		return model.Manifest{}, newManifestErrf(err.Error())
+		return model.Manifest{}, manifestErrf(err.Error())
 	}
 	newManifests, err := t.GetManifestConfigs(string(name))
 	if err != nil {
-		return model.Manifest{}, newManifestErrf(err.Error())
+		return model.Manifest{}, manifestErrf(err.Error())
 	}
 	if len(newManifests) != 1 {
-		return model.Manifest{}, newManifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+		return model.Manifest{}, manifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
 	}
 	newManifest := newManifests[0]
 
@@ -704,16 +690,14 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 	}
 }
 
-var _ model.ManifestCreator = Upper{}
-
-type newManifestErr struct {
+type manifestErr struct {
 	s string
 }
 
-func (e *newManifestErr) Error() string { return e.s }
+func (e *manifestErr) Error() string { return e.s }
 
-var _ error = &newManifestErr{}
+var _ error = &manifestErr{}
 
-func newManifestErrf(format string, a ...interface{}) *newManifestErr {
-	return &newManifestErr{s: fmt.Sprintf(format, a...)}
+func manifestErrf(format string, a ...interface{}) *manifestErr {
+	return &manifestErr{s: fmt.Sprintf(format, a...)}
 }
