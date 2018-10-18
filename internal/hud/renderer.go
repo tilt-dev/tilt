@@ -273,14 +273,13 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 	return layout
 }
 
-func (r *Renderer) SetUp(event ReadyEvent) (chan tcell.Event, error) {
+func (r *Renderer) SetUp(event ReadyEvent, sigwinch chan os.Signal) (chan tcell.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// TODO(maia): support sigwinch
 	// TODO(maia): pass term name along with ttyPath via RPC. Temporary hack:
 	// get termName from current terminal, assume it's the same 🙈
-	screen, err := tcell.NewScreenFromTty(event.ttyPath, nil, os.Getenv("TERM"))
+	screen, err := tcell.NewScreenFromTty(event.ttyPath, sigwinch, os.Getenv("TERM"))
 	if err != nil {
 		return nil, err
 	}
