@@ -100,6 +100,7 @@ func (h *Hud) Close() {
 	if h.a != nil {
 		h.a.Close()
 	}
+	h.r.Reset()
 }
 
 func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) {
@@ -111,7 +112,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 		switch ev.Key() {
 		case tcell.KeyEscape:
 			h.Close()
-			h.r.Reset()
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
