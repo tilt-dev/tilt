@@ -6,65 +6,21 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
-	"runtime"
 	"runtime/debug"
 	"strings"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tcell"
 )
 
-type LayoutTestCase struct {
-	name   string
-	width  int
-	height int
-	C      Component
-}
+var usedNames = make(map[string]bool)
 
-func TestAll(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
-
-	f.addMany(SimpleTextCases)
-	f.addMany(StyledTextCases)
-	f.addMany(BoxCases)
-	f.addMany(StyleCases)
-
-	for _, c := range f.cases {
-		t.Run(c.name, func(t *testing.T) {
-			actual := newTempCanvas(c.width, c.height, tcell.StyleDefault)
-			g := &renderGlobals{prev: make(renderState), next: make(renderState)}
-			r := renderFrame{
-				canvas:  actual,
-				globals: g,
-			}
-			defer func() {
-				if e := recover(); e != nil {
-					t.Fatalf("panic rendering: %v %s", e, debug.Stack())
-				}
-			}()
-			r.RenderChild(c.C)
-			if g.err != nil {
-				t.Fatalf("error rendering: %v", g.err)
-			}
-			expected := f.loadGoldenFile(c.name)
-
-			if !f.canvasesEqual(actual, expected) {
-				err := f.displayAndMaybeWrite(c.name, actual, expected)
-				t.Fatal(err)
-			}
-		})
-	}
-}
+const testDataDir = "testdata"
 
 type fixture struct {
 	t *testing.T
-
-	cases []LayoutTestCase
-
-	prefix string
-	nextId int
 }
 
 func newLayoutTestFixture(t *testing.T) *fixture {
@@ -76,34 +32,39 @@ func newLayoutTestFixture(t *testing.T) *fixture {
 func (f *fixture) cleanUp() {
 }
 
-func (f *fixture) add(width int, height int, c Component) {
+func (f *fixture) run(name string, width int, height int, c Component) {
+	_, ok := usedNames[name]
+	if ok {
+		f.t.Fatalf("test name '%s' was already used", name)
+	}
+	actual := newTempCanvas(width, height, tcell.StyleDefault)
+	g := &renderGlobals{prev: make(renderState), next: make(renderState)}
+	r := renderFrame{
+		canvas:  actual,
+		globals: g,
+	}
+	defer func() {
+		if e := recover(); e != nil {
+			f.t.Fatalf("panic rendering: %v %s", e, debug.Stack())
+		}
+	}()
+	r.RenderChild(c)
+	if g.err != nil {
+		f.t.Fatalf("error rendering: %v", g.err)
+	}
+	expected := f.loadGoldenFile(name)
 
-	name := filepath.Join(f.prefix, fmt.Sprintf("%03d", f.nextId))
-	f.nextId++
-	f.cases = append(f.cases, LayoutTestCase{name, width, height, c})
-}
-
-func (f *fixture) addN(name string, width int, height int, c Component) {
-	name = filepath.Join(f.prefix, name)
-	f.cases = append(f.cases, LayoutTestCase{name, width, height, c})
-}
-
-func (f *fixture) addMany(addFunc func(f *fixture)) {
-	funcName := runtime.FuncForPC(reflect.ValueOf(addFunc).Pointer()).Name()
-	// this gives us something like "github.com/windmilleng/tilt/internal/rty.SimpleText"
-	// we want SimpleText
-	funcName = strings.Split(filepath.Base(funcName), ".")[1]
-	f.push(funcName)
-	defer f.pop()
-	addFunc(f)
-}
-
-func (f *fixture) push(s string) {
-	f.prefix = filepath.Join(f.prefix, s)
-}
-
-func (f *fixture) pop() {
-	f.prefix = filepath.Dir(f.prefix)
+	if !f.canvasesEqual(actual, expected) {
+		updated, err := f.displayAndMaybeWrite(name, actual, expected)
+		if err == nil {
+			if !updated {
+				err = errors.New("actual rendering didn't match expected")
+			}
+		}
+		if err != nil {
+			f.t.Errorf("%s: %v", name, err)
+		}
+	}
 }
 
 func (f *fixture) canvasesEqual(actual, expected Canvas) bool {
@@ -128,9 +89,9 @@ func (f *fixture) canvasesEqual(actual, expected Canvas) bool {
 
 var screen tcell.Screen
 
-func (f *fixture) displayAndMaybeWrite(name string, actual, expected Canvas) error {
+func (f *fixture) displayAndMaybeWrite(name string, actual, expected Canvas) (updated bool, err error) {
 	if screen == nil {
-		return nil
+		return false, nil
 	}
 
 	screen.Clear()
@@ -164,9 +125,9 @@ func (f *fixture) displayAndMaybeWrite(name string, actual, expected Canvas) err
 		case *tcell.EventKey:
 			switch ev.Rune() {
 			case 'y':
-				return f.writeGoldenFile(name, actual)
+				return true, f.writeGoldenFile(name, actual)
 			case 'n':
-				return nil
+				return false, errors.New("user indicated expected output was not as desired")
 			}
 		}
 	}
@@ -190,7 +151,7 @@ type caseCell struct {
 }
 
 func (f *fixture) filename(name string) string {
-	return filepath.Join("testdata", strings.Replace(name, "/", "_", -1)+".gob")
+	return filepath.Join(testDataDir, strings.Replace(name, "/", "_", -1)+".gob")
 }
 
 func (f *fixture) loadGoldenFile(name string) Canvas {
@@ -216,6 +177,15 @@ func (f *fixture) loadGoldenFile(name string) Canvas {
 }
 
 func (f *fixture) writeGoldenFile(name string, actual Canvas) error {
+	_, err := os.Stat(testDataDir)
+	if os.IsNotExist(err) {
+		err := os.Mkdir(testDataDir, os.FileMode(0755))
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
 	fi, err := os.Create(f.filename(name))
 	if err != nil {
 		return err
