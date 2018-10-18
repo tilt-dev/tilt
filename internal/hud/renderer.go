@@ -145,6 +145,11 @@ func spinner() string {
 func renderResource(r view.Resource, selected bool) rty.Component {
 	lines := rty.NewLines()
 	l := rty.NewLine()
+	if selected {
+		l.Add(rty.TextString("▶ "))
+	} else {
+		l.Add(rty.TextString("  "))
+	}
 	l.Add(rty.TextString(r.Name))
 	const dashSize = 35
 	l.Add(rty.ColoredString(fmt.Sprintf(" %s ", strings.Repeat("┄", dashSize-len(r.Name))), cLightText))
