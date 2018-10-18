@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -44,7 +45,7 @@ func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, env k8s.Env, st *stor
 		env:            env,
 		branch:         branch,
 		readTiltfileCh: make(chan string),
-		podMonitor:     &podMonitor{podsReadyCh: make(chan bool)},
+		podMonitor:     &podMonitor{},
 		store:          st,
 	}
 	st.AddSubscriber(s.podMonitor)
@@ -52,44 +53,80 @@ func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, env k8s.Env, st *stor
 }
 
 type podMonitor struct {
-	podsReady   bool
-	podsReadyCh chan bool
-}
-
-func (m *podMonitor) arePodsReady(ctx context.Context, store *store.Store) bool {
-	state := store.RLockState()
-	defer store.RUnlockState()
-	hasPods := false
-	allPodsReady := true
-	for _, ms := range state.ManifestStates {
-		if ms.Pod.PodID != "" {
-			hasPods = true
-		}
-
-		if ms.Pod.Phase != v1.PodRunning {
-			allPodsReady = false
-		}
-	}
-	return hasPods && allPodsReady
+	hasBuildError bool
+	hasPodRestart bool
+	healthy       bool
+	mu            sync.Mutex
 }
 
 func (m *podMonitor) OnChange(ctx context.Context, store *store.Store) {
-	podsReady := m.arePodsReady(ctx, store)
-	if podsReady != m.podsReady {
-		m.podsReady = podsReady
-		m.podsReadyCh <- podsReady
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	state := store.RLockState()
+	defer store.RUnlockState()
+
+	m.hasPodRestart = false
+	m.hasBuildError = false
+	m.healthy = true
+
+	if len(state.ManifestStates) == 0 {
+		m.healthy = false
 	}
+
+	for _, ms := range state.ManifestStates {
+		if ms.Pod.Phase != v1.PodRunning {
+			m.healthy = false
+		}
+
+		if ms.Pod.ContainerRestarts > 0 {
+			m.hasPodRestart = true
+			m.healthy = false
+		}
+
+		if ms.LastError != nil {
+			m.hasBuildError = true
+			m.healthy = false
+		}
+
+		if state.CurrentlyBuilding != "" || len(ms.PendingFileChanges) > 0 {
+			m.healthy = false
+		}
+	}
+
 }
 
 func (m *podMonitor) waitUntilPodsReady(ctx context.Context) error {
+	return m.waitUntilCond(ctx, func() bool {
+		return m.healthy
+	})
+}
+
+func (m *podMonitor) waitUntilBuildError(ctx context.Context) error {
+	return m.waitUntilCond(ctx, func() bool {
+		return m.hasBuildError
+	})
+}
+
+func (m *podMonitor) waitUntilPodRestart(ctx context.Context) error {
+	return m.waitUntilCond(ctx, func() bool {
+		return m.hasPodRestart
+	})
+}
+
+func (m *podMonitor) waitUntilCond(ctx context.Context, f func() bool) error {
 	for {
+		m.mu.Lock()
+		cond := f()
+		m.mu.Unlock()
+		if cond {
+			return nil
+		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case ready := <-m.podsReadyCh:
-			if ready {
-				return nil
-			}
+		case <-time.After(100 * time.Millisecond):
 		}
 	}
 }
@@ -115,7 +152,7 @@ func (s Script) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return s.hud.Run(ctx, s.store, hud.DefaultRefreshInterval)
+		return s.upper.RunHud(ctx)
 	})
 
 	g.Go(func() error {
@@ -181,8 +218,6 @@ func (s Script) runSteps(ctx context.Context, out io.Writer) error {
 			}
 		} else if step.CreateManifests {
 			s.readTiltfileCh <- tmpDir
-			_ = s.podMonitor.waitUntilPodsReady(ctx)
-			continue
 		} else if step.ChangeBranch {
 			cmd := exec.CommandContext(ctx, "git", "checkout", string(s.branch))
 			cmd.Stdout = out
@@ -198,6 +233,17 @@ func (s Script) runSteps(ctx context.Context, out io.Writer) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(Pause):
+		}
+
+		if step.WaitForHealthy {
+			_ = s.podMonitor.waitUntilPodsReady(ctx)
+			continue
+		} else if step.WaitForBuildError {
+			_ = s.podMonitor.waitUntilBuildError(ctx)
+			continue
+		} else if step.WaitForPodRestart {
+			_ = s.podMonitor.waitUntilPodRestart(ctx)
+			continue
 		}
 	}
 
