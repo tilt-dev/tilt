@@ -33,6 +33,15 @@ func (f *fixture) cleanUp() {
 }
 
 func (f *fixture) run(name string, width int, height int, c Component) {
+	err := f.runCaptureError(name, width, height, c)
+	if err != nil {
+		f.t.Errorf("error rendering %s: %v", name, err)
+	}
+}
+
+// Returns an error if rendering failed.
+// If any other failure is encountered, fails via `f.t`'s `testing.T` and returns `nil`.
+func (f *fixture) runCaptureError(name string, width int, height int, c Component) error {
 	_, ok := usedNames[name]
 	if ok {
 		f.t.Fatalf("test name '%s' was already used", name)
@@ -45,12 +54,12 @@ func (f *fixture) run(name string, width int, height int, c Component) {
 	}
 	defer func() {
 		if e := recover(); e != nil {
-			f.t.Fatalf("panic rendering: %v %s", e, debug.Stack())
+			f.t.Errorf("panic rendering %s: %v %s", name, e, debug.Stack())
 		}
 	}()
 	r.RenderChild(c)
 	if g.err != nil {
-		f.t.Fatalf("error rendering: %v", g.err)
+		return g.err
 	}
 	expected := f.loadGoldenFile(name)
 
@@ -65,6 +74,7 @@ func (f *fixture) run(name string, width int, height int, c Component) {
 			f.t.Errorf("%s: %v", name, err)
 		}
 	}
+	return nil
 }
 
 func (f *fixture) canvasesEqual(actual, expected Canvas) bool {

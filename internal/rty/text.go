@@ -8,6 +8,7 @@ import (
 
 type StringBuilder interface {
 	Text(string) StringBuilder
+	Textf(string, ...interface{}) StringBuilder
 	Fg(tcell.Color) StringBuilder
 	Bg(tcell.Color) StringBuilder
 	Build() Component
@@ -35,6 +36,11 @@ type stringBuilder struct {
 
 func (b *stringBuilder) Text(t string) StringBuilder {
 	b.directives = append(b.directives, textDirective(t))
+	return b
+}
+
+func (b *stringBuilder) Textf(format string, a ...interface{}) StringBuilder {
+	b.directives = append(b.directives, textDirective(fmt.Sprintf(format, a...)))
 	return b
 }
 
@@ -127,6 +133,9 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 			}
 			nextX = nextX + 1
 		}
+	}
+	if nextY == 0 {
+		nextY = 1
 	}
 	return maxWidth, nextY
 }

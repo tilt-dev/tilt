@@ -71,7 +71,11 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 
 	flexTotal := length - allocated
 	if flexTotal < 0 {
-		return fmt.Errorf("FlexLayout can't render in %v lines; need at least %v", length, allocated)
+		noun := "lines"
+		if l.dir == DirHor {
+			noun = "columns"
+		}
+		return fmt.Errorf("FlexLayout can't render in %v %s; need at least %v", length, noun, allocated)
 	}
 	numFlex := len(flexIdxs)
 	for _, i := range flexIdxs {
