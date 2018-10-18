@@ -27,6 +27,7 @@ func NewServer(ctx context.Context) (*ServerAdapter, error) {
 
 	a := &ServerAdapter{
 		readyCh:        make(chan ReadyEvent),
+		winchCh:        make(chan interface{}),
 		streamClosedCh: make(chan error),
 		serverClosed:   make(chan interface{}, 1),
 		server:         grpcServer,
@@ -48,6 +49,7 @@ func NewServer(ctx context.Context) (*ServerAdapter, error) {
 
 type ServerAdapter struct {
 	readyCh        chan ReadyEvent
+	winchCh        chan interface{}
 	streamClosedCh chan error
 	server         *grpc.Server
 	ctx            context.Context
@@ -95,7 +97,7 @@ func (a *ServerAdapter) ConnectHud(stream proto.Hud_ConnectHudServer) error {
 				a.streamClosedCh <- err
 				return
 			}
-			// TODO(maia): inform HUD of SIGWINCH
+			a.winchCh <- nil
 		}
 	}()
 
