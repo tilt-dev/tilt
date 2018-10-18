@@ -368,17 +368,17 @@ func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manife
 
 	switch manifest := val.(type) {
 	case compManifest:
-		var servs []model.Manifest
+		var manifests []model.Manifest
 
-		for _, cServ := range manifest.cManifest {
-			s, err := skylarkManifestToDomain(cServ)
+		for _, cMan := range manifest.cManifest {
+			m, err := skylarkManifestToDomain(cMan)
 			if err != nil {
 				return nil, err
 			}
 
-			servs = append(servs, s)
+			manifests = append(manifests, m)
 		}
-		return servs, nil
+		return manifests, nil
 	case *k8sManifest:
 		manifest.configFiles = files
 
