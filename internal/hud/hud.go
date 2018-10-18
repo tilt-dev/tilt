@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/browser"
 	"github.com/windmilleng/tcell"
 
 	"github.com/pkg/errors"
@@ -115,6 +116,20 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
 				st.Dispatch(NewShowErrorAction(int(r - '0')))
+			case r == 'b': // "[B]rowser
+				// If we have an endpoint(s), open the first one
+				// TODO(nick): We might need some hints on what load balancer to
+				// open if we have multiple, or what path to default to on the opened manifest.
+				_, selected := h.selectedResource()
+				if len(selected.Endpoints) > 0 {
+					err := browser.OpenURL(selected.Endpoints[0])
+					if err != nil {
+						logger.Get(ctx).Infof("error opening url '%s' for resource '%s': %v",
+							selected.Endpoints[0], selected.Name, err)
+					}
+				} else {
+					logger.Get(ctx).Infof("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
+				}
 			}
 		case tcell.KeyUp:
 			h.r.rty.ElementScroller("resources").UpElement()
@@ -123,8 +138,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			h.r.rty.ElementScroller("resources").DownElement()
 			h.refresh(ctx)
 		case tcell.KeyEnter:
-			activeItem := h.r.rty.ElementScroller("resources").GetSelectedIndex()
-			st.Dispatch(NewShowErrorAction(activeItem + 1))
+			selectedIdx, _ := h.selectedResource()
+			st.Dispatch(NewShowErrorAction(selectedIdx + 1))
 		}
 	}
 }
@@ -170,6 +185,14 @@ func (h *Hud) refresh(ctx context.Context) {
 func (h *Hud) Update(v view.View) error {
 	err := h.r.Render(v)
 	return errors.Wrap(err, "error rendering hud")
+}
+
+func (h *Hud) selectedResource() (i int, resource view.Resource) {
+	i = h.r.rty.ElementScroller("resources").GetSelectedIndex()
+	if i >= 0 && i < len(h.currentView.Resources) {
+		resource = h.currentView.Resources[i]
+	}
+	return i, resource
 }
 
 var _ store.Subscriber = &Hud{}
