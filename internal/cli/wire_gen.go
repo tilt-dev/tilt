@@ -14,7 +14,6 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -73,7 +72,7 @@ func wireDemo(ctx context.Context) (demo.Script, error) {
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, storeStore, podLogManager, portForwardController)
-	script := demo.NewScript(upper, headsUpDisplay, env)
+	script := demo.NewScript(upper, headsUpDisplay, env, storeStore)
 	return script, nil
 }
 
@@ -81,18 +80,18 @@ var (
 	_wireLabelsValue = build.Labels{}
 )
 
-func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
+func wireUpper(ctx context.Context) (engine.Upper, error) {
 	env, err := k8s.DetectEnv()
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	config, err := k8s.ProvideRESTConfig()
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	coreV1Interface, err := k8s.ProvideRESTClient(config)
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
@@ -102,12 +101,12 @@ func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
 	dockerCli, err := docker.DefaultDockerClient(ctx, env)
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	containerUpdater := build.NewContainerUpdater(dockerCli)
 	analytics, err := provideAnalytics()
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics, deployDiscovery)
 	console := build.DefaultConsole()
@@ -118,7 +117,7 @@ func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
 	engineUpdateModeFlag := provideUpdateModeFlag()
 	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, k8sClient, env, analytics, updateMode)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
@@ -127,7 +126,7 @@ func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
 	imageReaper := build.NewImageReaper(dockerCli)
 	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay()
 	if err != nil {
-		return nil, err
+		return engine.Upper{}, err
 	}
 	podWatcherMaker := engine.ProvidePodWatcherMaker(k8sClient)
 	serviceWatcherMaker := engine.ProvideServiceWatcherMaker(k8sClient)
@@ -139,5 +138,5 @@ func wireManifestCreator(ctx context.Context) (model.ManifestCreator, error) {
 
 // wire.go:
 
-var BaseWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}), docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.ProvidePodWatcherMaker, engine.ProvideServiceWatcherMaker, engine.NewPodLogManager, engine.NewPortForwardController, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, wire.Bind(new(model.ManifestCreator), engine.Upper{}), provideAnalytics,
+var BaseWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}), docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.ProvidePodWatcherMaker, engine.ProvideServiceWatcherMaker, engine.NewPodLogManager, engine.NewPortForwardController, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
 	provideUpdateModeFlag)
