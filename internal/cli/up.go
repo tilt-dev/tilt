@@ -98,12 +98,21 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		manifests = append(manifests, curManifests...)
 	}
 
-	manifestCreator, err := wireManifestCreator(ctx)
+	upper, err := wireUpper(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = manifestCreator.CreateManifests(ctx, manifests, c.watch)
+	// Run the HUD in the background
+	go func() {
+		err := upper.RunHud(ctx)
+		if err != nil {
+			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
+			logger.Get(ctx).Infof("error in hud: %v", err)
+		}
+	}()
+
+	err = upper.CreateManifests(ctx, manifests, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())

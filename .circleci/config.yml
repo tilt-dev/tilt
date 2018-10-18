@@ -48,12 +48,12 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v3
+            - homebrew_cache_v5
       - run: brew install go@1.10 kustomize # bump cache version when changing this
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v3
+          key: homebrew_cache_v5
       - run: echo 'export PATH="/usr/local/opt/go@1.10/bin:$PATH"' >> $BASH_ENV
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.

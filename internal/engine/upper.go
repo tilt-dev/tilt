@@ -42,9 +42,6 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 // When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
 const maxChangedFilesToPrint = 5
 
-// The main loop ensures the HUD updates at least this often
-const refreshInterval = 1 * time.Second
-
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
@@ -57,6 +54,7 @@ type Upper struct {
 	reaper              build.ImageReaper
 	hud                 hud.HeadsUpDisplay
 	store               *store.Store
+	hudErrorCh          chan error
 }
 
 type fsWatcherMaker func() (watch.Notify, error)
@@ -97,7 +95,15 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,
+		hudErrorCh:          make(chan error),
 	}
+}
+
+func (u Upper) RunHud(ctx context.Context) error {
+	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
+	u.hudErrorCh <- err
+	close(u.hudErrorCh)
+	return err
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
@@ -109,23 +115,13 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		Manifests:   manifests,
 	})
 
-	hudErrorCh := make(chan error)
-
-	// Run the HUD in the background
-	go func() {
-		hudErrorCh <- u.hud.Run(ctx, u.store)
-		close(hudErrorCh)
-	}()
-
 	defer func() {
 		u.hud.Close()
 		// make sure the hud has had a chance to clean up
-		<-hudErrorCh
+		<-u.hudErrorCh
 	}()
 
 	for {
-		timer := u.timerMaker(refreshInterval)
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -138,16 +134,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 				state.PermanentError = err
 			}
 			u.store.UnlockMutableState()
-
-			// TODO(nick): This should be internal to the HUD
-			// once we have a way to do the locking properly.
-		case <-timer:
-			break
-		case hudErr, ok := <-hudErrorCh:
-			if ok && hudErr != nil {
-				//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-				logger.Get(ctx).Infof("error in hud: %v", hudErr)
-			}
 		}
 
 		// Subscribers
@@ -228,29 +214,30 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 		}
 
 		if newManifest.Equal(ms.Manifest) {
-			logger.Get(ctx).Debugf("Manifest %s hasn't changed, not rebuilding", ms.Manifest.Name)
-			matcher, err := ms.Manifest.ConfigMatcher()
+			logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
+				ms.Manifest.Name)
+
+			// TODO(maia): if ms.LastError is a bad-config error, clear it [ch603]
+
+			changedFilesWithoutConfigFiles, err := ms.PendingFileChangesWithoutConfigFiles(ctx)
 			if err != nil {
-				logger.Get(ctx).Infof("Error getting config matcher: %v", err)
+				logger.Get(ctx).Infof(err.Error())
 				return
 			}
-			remainingPendingFileChanges := make(map[string]bool)
-			for f, _ := range ms.PendingFileChanges {
-				matches, err := matcher.Matches(f, false)
-				if err != nil {
-					logger.Get(ctx).Infof("Error matches %s: %v", f, err)
-				}
-				if !matches {
-					remainingPendingFileChanges[f] = true
-				}
-			}
-			if len(remainingPendingFileChanges) == 0 {
+			ms.PendingFileChanges = changedFilesWithoutConfigFiles
+
+			if len(ms.PendingFileChanges) == 0 {
+				// No non-config files changed, no need to build.
+				ms.ConfigIsDirty = false
 				return
 			}
+
+		} else {
+			// Manifest has changed, ensure we do an image build so that we apply the changes
+			ms.LastBuild = store.BuildStateClean
+			ms.Manifest = newManifest
 		}
 
-		ms.LastBuild = store.BuildStateClean
-		ms.Manifest = newManifest
 		ms.ConfigIsDirty = false
 	}
 
@@ -321,6 +308,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		ms.LastBuild = store.NewBuildState(cb.Result)
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
+
+		ms.Pod.OldRestarts = ms.Pod.ContainerRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
 	}
 
 	if engineState.WatchMounts {
@@ -418,6 +407,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 			Namespace: ns,
 		}
 	}
+
 	return ms
 }
 
@@ -474,6 +464,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 	populateContainerStatus(ctx, ms, pod, cStatus)
+	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
@@ -693,5 +684,3 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
 }
-
-var _ model.ManifestCreator = Upper{}

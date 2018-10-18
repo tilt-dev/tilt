@@ -547,10 +547,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	// incremental build.
 	call = <-f.b.calls
 	assert.Equal(t, "foobar", string(call.manifest.Name))
-	assert.ElementsMatch(t, []string{
-		f.JoinPath("Dockerfile"),
-		f.JoinPath("random_file.go"),
-	}, call.state.FilesChanged())
+	assert.ElementsMatch(t, []string{f.JoinPath("random_file.go")}, call.state.FilesChanged())
 
 	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
 		return es.CurrentlyBuilding == ""
@@ -560,7 +557,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
 
-	assert.Contains(t, f.LogLines(), "Manifest foobar hasn't changed, not rebuilding")
+	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
 }
 
 func TestRebuildDockerfileFailed(t *testing.T) {
@@ -1234,10 +1231,9 @@ func TestCompletingUpperClosesHud(t *testing.T) {
 }
 
 type fakeTimerMaker struct {
-	restTimerLock    *sync.Mutex
-	maxTimerLock     *sync.Mutex
-	refreshTimerLock *sync.Mutex
-	t                *testing.T
+	restTimerLock *sync.Mutex
+	maxTimerLock  *sync.Mutex
+	t             *testing.T
 }
 
 func (f fakeTimerMaker) maker() timerMaker {
@@ -1249,8 +1245,6 @@ func (f fakeTimerMaker) maker() timerMaker {
 			lock = f.restTimerLock
 		case watchBufferMaxDuration:
 			lock = f.maxTimerLock
-		case refreshInterval:
-			lock = f.refreshTimerLock
 		default:
 			// if you hit this, someone (you!?) might have added a new timer with a new duration, and you probably
 			// want to add a case above
@@ -1270,9 +1264,8 @@ func (f fakeTimerMaker) maker() timerMaker {
 func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	restTimerLock := new(sync.Mutex)
 	maxTimerLock := new(sync.Mutex)
-	refreshTimerLock := new(sync.Mutex)
 
-	return fakeTimerMaker{restTimerLock, maxTimerLock, refreshTimerLock, t}
+	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
 func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
@@ -1326,9 +1319,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	timerMaker := makeFakeTimerMaker(t)
 
-	// disable the refresh timer, which introduces non-determinism we don't want
-	timerMaker.refreshTimerLock.Lock()
-
 	docker := docker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
@@ -1358,7 +1348,12 @@ func newTestFixture(t *testing.T) *testFixture {
 		reaper:              reaper,
 		hud:                 hud,
 		store:               st,
+		hudErrorCh:          make(chan error),
 	}
+
+	go func() {
+		upper.RunHud(ctx)
+	}()
 
 	return &testFixture{
 		TempDirFixture: f,
@@ -1459,7 +1454,6 @@ func (f *testFixture) TearDown() {
 	f.cancel()
 	close(f.podEvents)
 	close(f.serviceEvents)
-	f.timerMaker.refreshTimerLock.Unlock()
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {

@@ -3,6 +3,7 @@ package hud
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/windmilleng/tcell"
 
@@ -13,10 +14,13 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
+// The main loop ensures the HUD updates at least this often
+const DefaultRefreshInterval = 1 * time.Second
+
 type HeadsUpDisplay interface {
 	store.Subscriber
 
-	Run(ctx context.Context, st *store.Store) error
+	Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error
 	Update(v view.View) error
 	Close()
 	SetNarrationMessage(ctx context.Context, msg string)
@@ -48,13 +52,18 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 	h.setViewState(ctx, viewState)
 }
 
-func (h *Hud) Run(ctx context.Context, st *store.Store) error {
+func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error {
 	a, err := NewServer(ctx)
 	if err != nil {
 		return err
 	}
 
 	h.a = a
+
+	if refreshRate == 0 {
+		refreshRate = DefaultRefreshInterval
+	}
+	ticker := time.NewTicker(refreshRate)
 
 	var screenEvents chan tcell.Event
 	for {
@@ -78,6 +87,8 @@ func (h *Hud) Run(ctx context.Context, st *store.Store) error {
 			h.handleScreenEvent(ctx, st, e)
 		case <-a.serverClosed:
 			return nil
+		case <-ticker.C:
+			h.Refresh(ctx)
 		}
 	}
 }
@@ -122,6 +133,12 @@ func (h *Hud) OnChange(ctx context.Context, st *store.Store) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.setView(ctx, view)
+}
+
+func (h *Hud) Refresh(ctx context.Context) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.refresh(ctx)
 }
 
 // Must hold the lock

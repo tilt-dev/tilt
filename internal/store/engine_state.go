@@ -2,12 +2,15 @@ package store
 
 import (
 	"bytes"
+	"context"
 	"net/url"
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"k8s.io/api/core/v1"
@@ -50,7 +53,7 @@ type ManifestState struct {
 	LastBuildLog              *bytes.Buffer
 	QueueEntryTime            time.Time
 
-	// we've observed changes to the config file and need to reload it the next time we start a build
+	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
 	ConfigIsDirty bool
 }
 
@@ -84,6 +87,11 @@ type Pod struct {
 	ContainerID    k8s.ContainerID
 	ContainerPorts []int32
 	ContainerReady bool
+
+	// We want to show the user # of restarts since pod has been running current code,
+	// i.e. OldRestarts - Total Restarts
+	ContainerRestarts int
+	OldRestarts       int // # times the pod restarted when it was running old code
 }
 
 func shortenFile(baseDirs []string, f string) string {
@@ -116,6 +124,26 @@ func (s EngineState) Manifests() []model.Manifest {
 		result = append(result, ms.Manifest)
 	}
 	return result
+}
+
+// Returns a set of pending file changes, with all config files removed
+func (ms *ManifestState) PendingFileChangesWithoutConfigFiles(ctx context.Context) (map[string]bool, error) {
+	matcher, err := ms.Manifest.ConfigMatcher()
+	if err != nil {
+		return nil, errors.Wrap(err, "[PendingFileChangesWithoutConfigFiles] getting config matcher")
+	}
+
+	files := make(map[string]bool)
+	for f := range ms.PendingFileChanges {
+		matches, err := matcher.Matches(f, false)
+		if err != nil {
+			logger.Get(ctx).Infof("Error matches %s: %v", f, err)
+		}
+		if !matches {
+			files[f] = true
+		}
+	}
+	return files, nil
 }
 
 func StateToView(s EngineState) view.View {
@@ -169,6 +197,7 @@ func StateToView(s EngineState) view.View {
 			PodName:               ms.Pod.PodID.String(),
 			PodCreationTime:       ms.Pod.StartedAt,
 			PodStatus:             ms.Pod.Status,
+			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
 			Endpoints:             endpoints,
 		}
 

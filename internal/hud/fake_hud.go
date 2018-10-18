@@ -2,6 +2,7 @@ package hud
 
 import (
 	"context"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
@@ -26,7 +27,7 @@ func NewFakeHud() *FakeHud {
 	}
 }
 
-func (h *FakeHud) Run(ctx context.Context, st *store.Store) error {
+func (h *FakeHud) Run(ctx context.Context, st *store.Store, refreshInterval time.Duration) error {
 	select {
 	case <-ctx.Done():
 	case <-h.closeCh:
@@ -36,6 +37,7 @@ func (h *FakeHud) Run(ctx context.Context, st *store.Store) error {
 }
 
 func (h *FakeHud) SetNarrationMessage(ctx context.Context, msg string) {}
+func (h *FakeHud) Refresh(ctx context.Context)                         {}
 
 func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
 	state := st.RLockState()

@@ -246,6 +246,11 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 		l.Add(rty.ColoredString("    K8S: ", cLightText))
 		l.Add(rty.TextString(fmt.Sprintf("Pod [%s] • %s ago — ", r.PodName, formatDuration(time.Since(r.PodCreationTime)))))
 		l.Add(rty.ColoredString(r.PodStatus, podStatusColor))
+
+		// TODO(maia): show # restarts even if == 0 (in gray or green)?
+		if r.PodRestarts > 0 {
+			l.Add(rty.ColoredString(fmt.Sprintf(" [%d restart(s)]", r.PodRestarts), cBad))
+		}
 		lines.Add(l)
 	}
 

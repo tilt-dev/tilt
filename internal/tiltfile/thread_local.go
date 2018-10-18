@@ -2,7 +2,6 @@ package tiltfile
 
 import (
 	"errors"
-	"path/filepath"
 
 	"github.com/google/skylark"
 )
@@ -47,16 +46,12 @@ func getReadFiles(t *skylark.Thread) ([]string, error) {
 	return readFiles, nil
 }
 
-func recordReadFile(t *skylark.Thread, path string) error {
-	path, err := filepath.Abs(path)
+func (t *Tiltfile) recordReadFile(thread *skylark.Thread, path string) error {
+	path = t.absPath(path)
+	readFiles, err := getReadFiles(thread)
 	if err != nil {
 		return err
 	}
-
-	readFiles, err := getReadFiles(t)
-	if err != nil {
-		return err
-	}
-	t.SetLocal(readFilesKey, append(readFiles, path))
+	thread.SetLocal(readFilesKey, append(readFiles, path))
 	return nil
 }

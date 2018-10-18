@@ -53,7 +53,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
+func (f *gitRepoFixture) LoadManifests(name string) []model.Manifest {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -66,11 +66,14 @@ func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
+	return manifests
+}
 
+func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
+	manifests := f.LoadManifests(name)
 	if len(manifests) != 1 {
 		f.T().Fatalf("expected 1 manifest, actual: %d", len(manifests))
 	}
-
 	return manifests[0]
 }
 
@@ -235,48 +238,38 @@ def blorgly_frontend():
 func TestCompositeFunction(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
-	dockerfile := tempFile("docker text")
-	file := tempFile(
-		fmt.Sprintf(`def blorgly():
+
+	f.WriteFile("Dockerfile", "docker text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
   return composite_service([blorgly_backend, blorgly_frontend])
 
 def blorgly_backend():
-  start_fast_build("%v", "docker-tag", "the entrypoint")
-  add(local_git_repo('%s'), '/mount_points/1')
+  start_fast_build("Dockerfile", "docker-tag", "the entrypoint")
+  add(local_git_repo('.'), '/mount_points/1')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaml", image)
 
 def blorgly_frontend():
-  start_fast_build("%v", "docker-tag", "the entrypoint")
-  add(local_git_repo('%s'), '/mount_points/2')
+  start_fast_build("Dockerfile", "docker-tag", "the entrypoint")
+  add(local_git_repo('.'), '/mount_points/2')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile, f.Path(), dockerfile, f.Path()))
-	defer os.Remove(file)
-	defer os.Remove(dockerfile)
+`)
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
-
-	manifestConfig, err := tiltConfig.GetManifestConfigs("blorgly")
-	if err != nil {
-		t.Fatal("getting manifest config:", err)
-	}
-
-	assert.Equal(t, "blorgly_backend", manifestConfig[0].Name.String())
-	assert.Equal(t, 1, len(manifestConfig[0].Repos))
-	assert.Equal(t, "", manifestConfig[0].Repos[0].DockerignoreContents)
-	assert.Equal(t, "", manifestConfig[0].Repos[0].GitignoreContents)
-	assert.Equal(t, "blorgly_frontend", manifestConfig[1].Name.String())
-	assert.Equal(t, 1, len(manifestConfig[1].Repos))
-	assert.Equal(t, "", manifestConfig[1].Repos[0].DockerignoreContents)
-	assert.Equal(t, "", manifestConfig[1].Repos[0].GitignoreContents)
+	manifests := f.LoadManifests("blorgly")
+	assert.Equal(t, "blorgly_backend", manifests[0].Name.String())
+	assert.Equal(t, 1, len(manifests[0].Repos))
+	assert.Equal(t, "", manifests[0].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifests[0].Repos[0].GitignoreContents)
+	assert.Equal(t, "blorgly_frontend", manifests[1].Name.String())
+	assert.Equal(t, 1, len(manifests[1].Repos))
+	assert.Equal(t, "", manifests[1].Repos[0].DockerignoreContents)
+	assert.Equal(t, "", manifests[1].Repos[0].GitignoreContents)
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {
@@ -700,30 +693,19 @@ func TestAddOneFileByPath(t *testing.T) {
 }
 
 func TestFailsIfNotGitRepo(t *testing.T) {
-	td := tempdir.NewTempDirFixture(t)
-	defer td.TearDown()
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(oldWD)
-	err = os.Chdir(td.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-	dockerfile := tempFile("docker text")
-	file := tempFile(
-		fmt.Sprintf(`def blorgly():
-  start_fast_build("%v", "docker-tag", "the entrypoint")
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+	f.WriteFile("Dockerfile", "docker text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  start_fast_build("Dockerfile", "docker-tag", "the entrypoint")
   add(local_git_repo('.'), '/mount_points/1')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile))
-	defer os.Remove(file)
-	defer os.Remove(dockerfile)
-	tiltconfig, err := Load(file, os.Stdout)
+`)
+	tiltconfig, err := Load(f.JoinPath("Tiltfile"), os.Stdout)
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -808,35 +790,25 @@ func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
 	f1.WriteFile(".dockerignore", "node_modules")
 	f2.WriteFile(".dockerignore", "*.txt")
 
+	// This needs to go last so it sets the working directory.
+	fMain := newGitRepoFixture(t)
+	defer fMain.TearDown()
+
 	// We don't use the standard test setup because we want to test
 	// external repos.
-	dockerfile := tempFile("docker text")
-	file := tempFile(
+	fMain.WriteFile("Dockerfile", "docker text")
+	fMain.WriteFile("Tiltfile",
 		fmt.Sprintf(`def blorgly():
-  start_fast_build("%v", "docker-tag", "the entrypoint")
+  start_fast_build("Dockerfile", "docker-tag", "the entrypoint")
   add(local_git_repo('%s'), '/mount_points/1')
   add(local_git_repo('%s'), '/mount_points/2')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
-`, dockerfile, f1.Path(), f2.Path()))
-	defer os.Remove(file)
-	defer os.Remove(dockerfile)
+`, f1.Path(), f2.Path()))
 
-	tiltconfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
-	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(manifests) == 0 {
-		t.Fatal("Expected at least 1 manifest, got 0")
-	}
-
-	manifest := manifests[0]
+	manifest := fMain.LoadManifest("blorgly")
 
 	assert.Truef(t, f1.FiltersPath(manifest, "cmd.exe", false), "Expected to match cmd.exe")
 	assert.Truef(t, f1.FiltersPath(manifest, "node_modules", true), "Expected to match node_modules")
