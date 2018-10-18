@@ -116,8 +116,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			}
 		case tcell.KeyUp:
 			h.r.rty.ElementScroller("resources").UpElement()
+			h.refresh(ctx)
 		case tcell.KeyDown:
 			h.r.rty.ElementScroller("resources").DownElement()
+			h.refresh(ctx)
 		case tcell.KeyEnter:
 			activeItem := h.r.rty.ElementScroller("resources").GetSelectedIndex()
 			st.Dispatch(NewShowErrorAction(activeItem + 1))
