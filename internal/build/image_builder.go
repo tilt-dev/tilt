@@ -391,7 +391,10 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 
 		if len(message.Stream) > 0 && message.Stream != "\n" {
 			msg := strings.TrimSuffix(message.Stream, "\n")
-			fmt.Fprint(writer, []byte(msg))
+			_, err = writer.Write([]byte(msg))
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to write docker output")
+			}
 			if strings.HasPrefix(msg, "Step") || strings.HasPrefix(msg, "Running") {
 				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
 			}
