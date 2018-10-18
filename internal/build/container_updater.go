@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 )
 
 type ContainerUpdater struct {
@@ -21,7 +21,7 @@ func NewContainerUpdater(dcli docker.DockerClient) *ContainerUpdater {
 	return &ContainerUpdater{dcli: dcli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping, filter model.PathMatcher, steps []model.Cmd) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.ContainerID, paths []pathMapping, filter model.PathMatcher, steps []model.Cmd, w io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
 
@@ -58,7 +58,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID k8s.Contai
 
 	// Exec steps on container
 	for _, s := range steps {
-		err = r.dcli.ExecInContainer(ctx, cID, s, output.Get(ctx).Writer())
+		err = r.dcli.ExecInContainer(ctx, cID, s, w)
 		if err != nil {
 			exitErr, isExitErr := err.(docker.ExitError)
 			if isExitErr {

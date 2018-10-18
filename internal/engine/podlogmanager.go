@@ -8,7 +8,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"k8s.io/api/core/v1"
 )
@@ -116,7 +115,7 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
 	}()
 
 	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	prefixLogWriter := output.NewPrefixedWriter(fmt.Sprintf("[%s] ", name), logWriter)
+	prefixLogWriter := logger.NewPrefixedWriter(fmt.Sprintf("[%s] ", name), logWriter)
 	actionWriter := PodLogActionWriter{
 		store:        st,
 		manifestName: name,

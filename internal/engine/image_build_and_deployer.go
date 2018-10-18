@@ -15,7 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"k8s.io/api/core/v1"
@@ -62,20 +61,20 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	}()
 
 	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
-	output.Get(ctx).StartPipeline(2)
-	defer func() { output.Get(ctx).EndPipeline(err) }()
+	ps := build.NewPipelineState(ctx, 2)
+	defer func() { ps.End(ctx, err) }()
 
 	err = manifest.Validate()
 	if err != nil {
 		return store.BuildResult{}, err
 	}
 
-	ref, err := ibd.build(ctx, manifest, state)
+	ref, err := ibd.build(ctx, manifest, state, ps)
 	if err != nil {
 		return store.BuildResult{}, err
 	}
 
-	k8sEntities, namespace, err := ibd.deploy(ctx, manifest, ref)
+	k8sEntities, namespace, err := ibd.deploy(ctx, ps, manifest, ref)
 	if err != nil {
 		return store.BuildResult{}, err
 	}
@@ -87,16 +86,16 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	}, nil
 }
 
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state store.BuildState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
 	name := manifest.DockerRef
 	if manifest.IsStaticBuild() {
-		output.Get(ctx).StartPipelineStep("Building Dockerfile: [%s]", name)
-		defer output.Get(ctx).EndPipelineStep()
+		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
+		defer ps.EndPipelineStep(ctx)
 
 		df := build.Dockerfile(manifest.StaticDockerfile)
-		ref, err := ibd.b.BuildDockerfile(ctx, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
 
 		if err != nil {
 			return nil, err
@@ -105,12 +104,12 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 	} else if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 		// No existing image to build off of, need to build from scratch
-		output.Get(ctx).StartPipelineStep("Building from scratch: [%s]", name)
-		defer output.Get(ctx).EndPipelineStep()
+		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", name)
+		defer ps.EndPipelineStep(ctx)
 
 		df := build.Dockerfile(manifest.BaseDockerfile)
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
 
 		if err != nil {
 			return nil, err
@@ -128,11 +127,11 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 			return nil, err
 		}
 
-		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", name)
-		defer output.Get(ctx).EndPipelineStep()
+		ps.StartPipelineStep(ctx, "Building from existing: [%s]", name)
+		defer ps.EndPipelineStep(ctx)
 
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +140,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 	if !ibd.canSkipPush() {
 		var err error
-		n, err = ibd.b.PushImage(ctx, n)
+		n, err = ibd.b.PushImage(ctx, n, ps.Writer(ctx))
 		if err != nil {
 			return nil, err
 		}
@@ -151,11 +150,11 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, manifest model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
-	output.Get(ctx).StartPipelineStep("Deploying")
-	defer output.Get(ctx).EndPipelineStep()
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
+	ps.StartPipelineStep(ctx, "Deploying")
+	defer ps.EndPipelineStep(ctx)
 
-	output.Get(ctx).StartBuildStep("Parsing Kubernetes config YAML")
+	ps.StartBuildStep(ctx, "Parsing Kubernetes config YAML")
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
 	// It doesn't make much sense to re-parse it and inject labels on every deploy.

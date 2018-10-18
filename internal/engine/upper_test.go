@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	logger "github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 
@@ -25,7 +27,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	testoutput "github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -66,7 +67,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
 
-	output.Get(ctx).Printf("fake building %s", manifest.Name)
+	logger.Get(ctx).Infof("fake building %s", manifest.Name)
 
 	err := b.nextBuildFailure
 	if err != nil {

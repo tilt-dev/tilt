@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/fatih/color"
+
 	"github.com/mattn/go-isatty"
 )
 
@@ -140,6 +142,19 @@ func (l logger) Writer(level Level) io.Writer {
 func (l logger) SupportsColor() bool {
 	return l.supportsColor
 }
+
+func getColor(l Logger, c color.Attribute) *color.Color {
+	color := color.New(c)
+	if !l.SupportsColor() {
+		color.DisableColor()
+	}
+	return color
+}
+
+func Blue(l Logger) *color.Color   { return getColor(l, color.FgBlue) }
+func Yellow(l Logger) *color.Color { return getColor(l, color.FgYellow) }
+func Green(l Logger) *color.Color  { return getColor(l, color.FgGreen) }
+func Red(l Logger) *color.Color    { return getColor(l, color.FgRed) }
 
 // Returns a context containing a logger that forks all of its output
 // to both the parent context's logger and to the given `io.Writer`

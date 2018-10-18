@@ -12,6 +12,8 @@ type funcLogger struct {
 	write         func(level Level, b []byte) error
 }
 
+var _ Logger = funcLogger{}
+
 func NewFuncLogger(supportsColor bool, level Level, write func(level Level, b []byte) error) Logger {
 	return funcLogger{supportsColor, level, write}
 }

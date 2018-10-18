@@ -11,7 +11,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -114,7 +113,6 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
-	ctx = output.WithOutputter(ctx, output.NewOutputter(l))
 
 	return &plmFixture{
 		TempDirFixture: f,

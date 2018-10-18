@@ -35,6 +35,7 @@ type dockerBuildFixture struct {
 	registry     *exec.Cmd
 	reaper       ImageReaper
 	containerIDs []k8s.ContainerID
+	ps           *PipelineState
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
@@ -43,6 +44,8 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ps := NewPipelineState(ctx, 3)
 
 	labels := Labels(map[Label]LabelValue{
 		TestImage: "1",
@@ -54,6 +57,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		dcli:           dcli,
 		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
 		reaper:         NewImageReaper(dcli),
+		ps:             ps,
 	}
 }
 
@@ -63,6 +67,9 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	labels := Labels(map[Label]LabelValue{
 		TestImage: "1",
 	})
+
+	ps := NewPipelineState(ctx, 3)
+
 	return &dockerBuildFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
@@ -70,6 +77,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		fakeDocker:     dcli,
 		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
 		reaper:         NewImageReaper(dcli),
+		ps:             ps,
 	}
 }
 
