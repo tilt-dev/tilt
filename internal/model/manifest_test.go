@@ -2,6 +2,9 @@ package model
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 var equalitytests = []struct {
@@ -254,4 +257,30 @@ func TestManifestEquality(t *testing.T) {
 			t.Errorf("Test case #%d: Expected %+v == %+v to be %t, but got %t", i, c.m1, c.m2, c.expected, actual)
 		}
 	}
+}
+
+func TestManifestValidateMountRelativePath(t *testing.T) {
+	mounts := []Mount{
+		Mount{
+			LocalPath:     "./hello",
+			ContainerPath: "/src",
+		},
+	}
+	manifest := Manifest{
+		Name:           "test",
+		K8sYaml:        "yamlll",
+		DockerRef:      k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
+		BaseDockerfile: "FROM node",
+		Mounts:         mounts,
+	}
+	err := manifest.Validate()
+
+	if assert.NotNil(t, err) {
+		assert.Contains(t, err.Error(), "must be an absolute path")
+	}
+
+	manifest.Mounts[0].LocalPath = "/abs/path/hello"
+	err = manifest.Validate()
+	assert.Nil(t, err)
+
 }
