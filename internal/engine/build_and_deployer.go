@@ -89,9 +89,6 @@ func isPermanentError(err error) bool {
 // Given the error from our initial BuildAndDeploy attempt, shouldImageBuild determines
 // whether we should fall back to an ImageBuild.
 func shouldImageBuild(err error) bool {
-	if _, ok := err.(*build.PathMappingErr); ok {
-		return false
-	}
 	if isPermanentError(err) {
 		return false
 	}

@@ -123,10 +123,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 			return nil, err
 		}
 
-		cf, err := build.FilesToPathMappings(changed, manifest.Mounts)
-		if err != nil {
-			return nil, err
-		}
+		cf := build.FilesToPathMappings(ctx, changed, manifest.Mounts)
 
 		output.Get(ctx).StartPipelineStep("Building from existing: [%s]", name)
 		defer output.Get(ctx).EndPipelineStep()

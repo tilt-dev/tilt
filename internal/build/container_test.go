@@ -334,10 +334,7 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f.Rm("sup")                            // delete a file
 	f.Rm("nested")                         // delete a directory
 	files := []string{"hi/hello", "sup", "nested"}
-	pms, err := FilesToPathMappings(f.JoinPaths(files), mounts)
-	if err != nil {
-		f.t.Fatal("FilesToPathMappings:", err)
-	}
+	pms := FilesToPathMappings(f.ctx, f.JoinPaths(files), mounts)
 
 	ref, err := f.b.BuildImageFromExisting(f.ctx, existing, pms, model.EmptyMatcher, nil)
 	if err != nil {

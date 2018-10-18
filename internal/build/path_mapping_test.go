@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -38,10 +39,7 @@ func TestFilesToPathMappings(t *testing.T) {
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	actual, err := FilesToPathMappings(absPaths, mounts)
-	if err != nil {
-		f.T().Fatal(err)
-	}
+	actual := FilesToPathMappings(output.CtxForTest(), absPaths, mounts)
 
 	expected := []pathMapping{
 		pathMapping{
@@ -65,11 +63,14 @@ func TestFilesToPathMappings(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestFileNotInMountThrowsErr(t *testing.T) {
+func TestFileNotInMount(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
-	files := []string{f.JoinPath("not/a/mount/fileA")}
+	files := []string{
+		f.JoinPath("mount1/fileA"),
+		f.JoinPath("not/a/mount/fileB"), // doesn't match, will be skipped
+	}
 
 	mounts := []model.Mount{
 		model.Mount{
@@ -78,8 +79,14 @@ func TestFileNotInMountThrowsErr(t *testing.T) {
 		},
 	}
 
-	_, err := FilesToPathMappings(files, mounts)
-	if assert.NotNil(t, err, "expected error for file not matching any mounts") {
-		assert.Contains(t, err.Error(), "matches no mounts")
+	pms := FilesToPathMappings(output.CtxForTest(), files, mounts)
+
+	expected := []pathMapping{
+		pathMapping{
+			LocalPath:     filepath.Join(f.Path(), "mount1/fileA"),
+			ContainerPath: "/dest1/fileA",
+		},
 	}
+
+	assert.ElementsMatch(t, expected, pms)
 }
