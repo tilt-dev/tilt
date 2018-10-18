@@ -198,7 +198,7 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	}
 
 	y := 0
-	for _, c := range l.children[next.elementIdx:] {
+	for _, c := range l.children {
 		canvas := w.RenderChildInTemp(c)
 		_, childHeight := canvas.Size()
 		numLines := childHeight
