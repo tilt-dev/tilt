@@ -14,7 +14,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 
 	"github.com/containerd/console"
 	"github.com/docker/cli/cli/command"
@@ -42,10 +41,10 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
-	BuildDockerfile(ctx context.Context, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged, paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
-	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
+	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
+	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
@@ -81,7 +80,7 @@ func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, ou
 	}
 }
 
-func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildDockerfile")
 	defer span.Finish()
 
@@ -91,10 +90,10 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ref reference.
 			ContainerPath: "/",
 		},
 	}
-	return d.buildFromDf(ctx, df, paths, filter, ref)
+	return d.buildFromDf(ctx, ps, df, paths, filter, ref)
 }
 
-func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref reference.Named, baseDockerfile Dockerfile,
+func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile Dockerfile,
 	mounts []model.Mount, filter model.PathMatcher,
 	steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
@@ -126,10 +125,10 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ref refe
 	}
 
 	df = d.applyLabels(df, BuildModeScratch)
-	return d.buildFromDf(ctx, df, paths, filter, ref)
+	return d.buildFromDf(ctx, ps, df, paths, filter, ref)
 }
 
-func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existing reference.NamedTagged,
+func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged,
 	paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
@@ -145,7 +144,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, existin
 	}
 
 	df = d.addRemainingSteps(df, steps)
-	return d.buildFromDf(ctx, df, paths, filter, existing)
+	return d.buildFromDf(ctx, ps, df, paths, filter, existing)
 }
 
 func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Dockerfile {
@@ -248,7 +247,7 @@ func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error) {
 	logger.Get(ctx).Infof("Pushing Docker image")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
@@ -260,7 +259,6 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	}
 
 	logger.Get(ctx).Infof("%sconnecting to repository", logger.Tab)
-	writer := output.Get(ctx).Writer()
 	cli := command.NewDockerCli(nil, writer, writer, true)
 
 	err = cli.Initialize(cliflags.NewClientOptions())
@@ -299,7 +297,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse)
+	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse, writer)
 	if err != nil {
 		return nil, fmt.Errorf("Pushing image %q: %v", ref.Name(), err)
 	}
@@ -307,12 +305,12 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
 	// TODO(Han): Extend output to print without newline
-	output.Get(ctx).StartBuildStep("Tarring context…")
+	ps.StartBuildStep(ctx, "Tarring context…")
 
 	archive, err := tarContextAndUpdateDf(ctx, df, paths, filter)
 	if err != nil {
@@ -320,10 +318,10 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 	}
 
 	// TODO(Han): Extend output to print without newline
-	output.Get(ctx).Printf("Created tarball (size: %s)",
+	ps.Printf(ctx, "Created tarball (size: %s)",
 		humanize.Bytes(uint64(archive.Len())))
 
-	output.Get(ctx).StartBuildStep("Building image")
+	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := d.dcli.ImageBuild(
 		ctx,
@@ -341,7 +339,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := d.readDockerOutput(ctx, imageBuildResponse.Body)
+	result, err := d.readDockerOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "ImageBuild")
 	}
@@ -371,7 +369,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, df Dockerfile, pat
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Reader) (*json.RawMessage, error) {
+func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (*json.RawMessage, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
@@ -393,7 +391,10 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 
 		if len(message.Stream) > 0 && message.Stream != "\n" {
 			msg := strings.TrimSuffix(message.Stream, "\n")
-			output.Get(ctx).Printf("%s", msg)
+			_, err = writer.Write([]byte(msg))
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to write docker output")
+			}
 			if strings.HasPrefix(msg, "Step") || strings.HasPrefix(msg, "Running") {
 				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
 			}
@@ -465,8 +466,8 @@ func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 	return msg.ID == "moby.buildkit.trace"
 }
 
-func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	aux, err := d.readDockerOutput(ctx, reader)
+func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
+	aux, err := d.readDockerOutput(ctx, reader, writer)
 	if err != nil {
 		return "", err
 	}
@@ -476,8 +477,8 @@ func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reade
 	return getDigestFromAux(*aux)
 }
 
-func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	aux, err := d.readDockerOutput(ctx, reader)
+func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
+	aux, err := d.readDockerOutput(ctx, reader, writer)
 	if err != nil {
 		return "", err
 	}

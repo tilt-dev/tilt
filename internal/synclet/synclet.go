@@ -7,6 +7,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/docker/distribution/reference"
@@ -14,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 )
 
 const Port = 23551
@@ -75,7 +76,9 @@ func (s Synclet) execCmds(ctx context.Context, containerId k8s.ContainerID, cmds
 	for i, c := range cmds {
 		// TODO: instrument this
 		log.Printf("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
-		err := s.dcli.ExecInContainer(ctx, containerId, c, output.Get(ctx).Writer())
+		// TODO(matt) - plumb PipelineState through
+		l := logger.Get(ctx)
+		err := s.dcli.ExecInContainer(ctx, containerId, c, l.Writer(logger.InfoLvl))
 		if err != nil {
 			exitError, isExitError := err.(docker.ExitError)
 			if isExitError {

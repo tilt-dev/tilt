@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 		pathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, paths, model.EmptyMatcher, nil)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, paths, model.EmptyMatcher, nil, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestUpdateInContainerExecsSteps(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []pathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB})
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []pathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []pathMapping{}, model.EmptyMatcher, nil)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []pathMapping{}, model.EmptyMatcher, nil, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}

@@ -1,11 +1,10 @@
 package synclet
 
 import (
-	context "context"
+	"context"
 	"fmt"
 
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 )
 
@@ -64,7 +63,5 @@ func makeContext(ctx context.Context, logStyle *proto.LogStyle, f func(m *proto.
 	level := protoLogLevelToLevel(logStyle.Level)
 	l := logger.NewFuncLogger(logStyle.ColorsEnabled, level, writeLog)
 
-	// TODO(matt) making a new outputter here is hacky - since outputter is stateful, someone might make
-	// rely on state persisting across service boundaries
-	return output.WithOutputter(logger.WithLogger(ctx, l), output.NewOutputter(l)), nil
+	return logger.WithLogger(ctx, l), nil
 }

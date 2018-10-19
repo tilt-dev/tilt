@@ -81,7 +81,10 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return store.BuildResult{}, err
 	}
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.containerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps)
+	// TODO - use PipelineState here when we actually do pipeline output for container builds
+	writer := logger.Get(ctx).Writer(logger.InfoLvl)
+
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.containerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps, writer)
 	if err != nil {
 		return store.BuildResult{}, err
 	}

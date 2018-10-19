@@ -18,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -257,7 +256,7 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	ms.CurrentBuildStartTime = time.Now()
 	state.CurrentlyBuilding = mn
 
-	ctx = output.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
+	ctx = logger.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
 
 	ms.Pod.Log = []byte{}
 
@@ -302,8 +301,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		if isPermanentError(err) {
 			return err
 		} else if engineState.WatchMounts {
-			o := output.Get(ctx)
-			logger.Get(ctx).Infof("%s", o.Red().Sprintf("build failed: %v", err))
+			l := logger.Get(ctx)
+			l.Infof("%s", logger.Red(l).Sprintf("build failed: %v", err))
 		} else {
 			return fmt.Errorf("build failed: %v", err)
 		}

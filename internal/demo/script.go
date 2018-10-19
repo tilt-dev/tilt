@@ -17,7 +17,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/client"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"golang.org/x/sync/errgroup"
@@ -144,9 +143,7 @@ func (s Script) Run(ctx context.Context) error {
 	//out, _ = os.OpenFile("log.txt", os.O_WRONLY|os.O_TRUNC|os.O_CREATE, os.FileMode(0644))
 
 	l := logger.NewLogger(logger.DebugLvl, out)
-	ctx = output.WithOutputter(
-		logger.WithLogger(ctx, l),
-		output.NewOutputter(l))
+	ctx = logger.WithLogger(ctx, l)
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
 
