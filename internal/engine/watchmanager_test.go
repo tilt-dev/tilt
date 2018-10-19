@@ -5,10 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	store "github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -87,7 +85,6 @@ type watchManagerFixture struct {
 	t      *testing.T
 	ctx    context.Context
 	cancel func()
-	out    *bufsync.ThreadSafeBuffer
 	store  *store.Store
 	fswm   *WatchManager
 	notify *fakeNotify
@@ -96,19 +93,13 @@ type watchManagerFixture struct {
 func newWatchManagerFixture(t *testing.T) *watchManagerFixture {
 	st := store.NewStore()
 
-	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
-	l := logger.NewLogger(logger.DebugLvl, out)
-	ctx = logger.WithLogger(ctx, l)
-	ctx = output.WithOutputter(ctx, output.NewOutputter(l))
-
 	notify := newFakeNotify()
 
 	f := &watchManagerFixture{
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
-		out:    out,
 		store:  st,
 		notify: notify,
 	}
