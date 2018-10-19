@@ -27,7 +27,6 @@ type manifestNotifyCancel struct {
 type WatchManager struct {
 	watches        map[model.ManifestName]manifestNotifyCancel
 	fsWatcherMaker FsWatcherMaker
-	// TODO(dmiller) do I need a mutex here?
 }
 
 func NewWatchManager(watcherMaker FsWatcherMaker) *WatchManager {
