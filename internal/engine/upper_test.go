@@ -739,7 +739,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifest("image appears", "foobar", func(ms store.ManifestState) bool {
-		ref = ms.LastBuild.LastResult.Image
+		ref = ms.LastBuild.Image
 		return ref != nil
 	})
 
@@ -878,7 +878,7 @@ func TestPodContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifest("image appears", "fe", func(ms store.ManifestState) bool {
-		ref = ms.LastBuild.LastResult.Image
+		ref = ms.LastBuild.Image
 		return ref != nil
 	})
 

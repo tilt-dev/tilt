@@ -66,10 +66,14 @@ type BuildState struct {
 	FilesChangedSet map[string]bool
 }
 
-func NewBuildState(result BuildResult) BuildState {
+func NewBuildState(result BuildResult, files []string) BuildState {
+	set := make(map[string]bool, len(files))
+	for _, f := range files {
+		set[f] = true
+	}
 	return BuildState{
 		LastResult:      result,
-		FilesChangedSet: make(map[string]bool, 0),
+		FilesChangedSet: set,
 	}
 }
 
@@ -114,17 +118,6 @@ func (b BuildState) FilesChangedSinceLastResultImage() ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
-}
-
-func (b BuildState) NewStateWithFilesChanged(files []string) BuildState {
-	result := NewBuildState(b.LastResult)
-	for k, v := range b.FilesChangedSet {
-		result.FilesChangedSet[k] = v
-	}
-	for _, f := range files {
-		result.FilesChangedSet[f] = true
-	}
-	return result
 }
 
 // A build state is empty if there are no previous results.

@@ -35,7 +35,7 @@ type EngineState struct {
 }
 
 type ManifestState struct {
-	LastBuild                    BuildState
+	LastBuild                    BuildResult
 	Manifest                     model.Manifest
 	Pod                          Pod
 	LBs                          map[k8s.ServiceName]*url.URL
@@ -65,7 +65,7 @@ func NewState() *EngineState {
 
 func NewManifestState(manifest model.Manifest) *ManifestState {
 	return &ManifestState{
-		LastBuild:          BuildStateClean,
+		LastBuild:          BuildResult{},
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]bool),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
