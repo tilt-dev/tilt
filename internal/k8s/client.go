@@ -230,7 +230,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
-	logger.Get(ctx).Infof("%sApplying via kubectl", logger.Tab)
+	l := logger.Get(ctx)
+	prefix := logger.Blue(l).Sprint("  │ ")
+	l.Infof("%sApplying via kubectl", prefix)
 
 	immutable := ImmutableEntities(entities)
 	if len(immutable) > 0 {
@@ -250,7 +252,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 			}
 
 			// If the kubectl apply failed due to an immutable field, fall back to kubectl replace --force.
-			logger.Get(ctx).Infof("%sFalling back to 'kubectl replace' on immutable field error", logger.Tab)
+			l.Infof("%sFalling back to 'kubectl replace' on immutable field error", prefix)
 			_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, mutable)
 			if err != nil {
 				return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)

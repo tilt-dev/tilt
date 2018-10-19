@@ -36,6 +36,7 @@ func NewPipelineState(ctx context.Context, totalStepCount int) *PipelineState {
 //     defer ps.End(err)
 func (ps *PipelineState) End(ctx context.Context, err error) {
 	l := logger.Get(ctx)
+	prefix := logger.Blue(l).Sprint("  │ ")
 
 	elapsed := time.Now().Sub(ps.curPipelineStart)
 
@@ -48,10 +49,10 @@ func (ps *PipelineState) End(ctx context.Context, err error) {
 	}
 
 	for i, duration := range ps.pipelineStepDurations {
-		l.Infof("  │ Step %d - %.3fs │", i+1, duration.Seconds())
+		l.Infof("%sStep %d - %.3fs", prefix, i+1, duration.Seconds())
 	}
 
-	l.Infof("──┤ Done in: %.3fs ︎├──\n", elapsed.Seconds())
+	l.Infof("%sDone in: %.3fs \n", prefix, elapsed.Seconds())
 	ps.curPipelineStep = 0
 	ps.curBuildStep = 0
 }
@@ -74,7 +75,8 @@ func (ps *PipelineState) EndPipelineStep(ctx context.Context) {
 
 func (ps *PipelineState) StartBuildStep(ctx context.Context, format string, a ...interface{}) {
 	l := logger.Get(ctx)
-	l.Infof("  → %s", fmt.Sprintf(format, a...))
+	p := logger.Blue(l).Sprint("  │ ")
+	l.Infof("%s%s", p, fmt.Sprintf(format, a...))
 	ps.curBuildStep++
 }
 
