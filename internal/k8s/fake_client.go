@@ -20,8 +20,9 @@ const MagicTestContainerID = "tilt-testcontainer"
 var _ Client = &FakeK8sClient{}
 
 type FakeK8sClient struct {
-	Yaml string
-	Lb   LoadBalancerSpec
+	Yaml        string
+	DeletedYaml string
+	Lb          LoadBalancerSpec
 
 	PodsWithImageResp         PodID
 	PodsWithImageError        error
@@ -60,6 +61,15 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 		return fmt.Errorf("kubectl apply: %v", err)
 	}
 	c.Yaml = yaml
+	return nil
+}
+
+func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+	yaml, err := SerializeYAML(entities)
+	if err != nil {
+		return fmt.Errorf("kubectl delete: %v", err)
+	}
+	c.DeletedYaml = yaml
 	return nil
 }
 

@@ -64,6 +64,9 @@ type Client interface {
 	// we might need to fallback to deleting and re-creating them.
 	Upsert(ctx context.Context, entities []K8sEntity) error
 
+	// Deletes all given entities
+	Delete(ctx context.Context, entities []K8sEntity) error
+
 	// Find all the pods that match the given image, namespace, and labels.
 	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error)
 
@@ -256,6 +259,14 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 				return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
 			}
 		}
+	}
+	return nil
+}
+
+func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+	_, stderr, err := k.actOnEntities(ctx, []string{"delete"}, entities)
+	if err != nil {
+		return fmt.Errorf("kubectl delete: %v\nstderr: %s", err, stderr)
 	}
 	return nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/client"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"golang.org/x/sync/errgroup"
@@ -27,21 +28,24 @@ type RepoBranch string
 
 // Runs the demo script
 type Script struct {
-	hud    hud.HeadsUpDisplay
-	upper  engine.Upper
-	store  *store.Store
-	env    k8s.Env
-	branch RepoBranch
+	hud     hud.HeadsUpDisplay
+	upper   engine.Upper
+	store   *store.Store
+	env     k8s.Env
+	kClient k8s.Client
+	branch  RepoBranch
 
 	readTiltfileCh chan string
 	podMonitor     *podMonitor
 }
 
-func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, env k8s.Env, st *store.Store, branch RepoBranch) Script {
+func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
+	env k8s.Env, st *store.Store, branch RepoBranch) Script {
 	s := Script{
 		upper:          upper,
 		hud:            hud,
 		env:            env,
+		kClient:        kClient,
 		branch:         branch,
 		readTiltfileCh: make(chan string),
 		podMonitor:     &podMonitor{},
@@ -182,10 +186,34 @@ func (s Script) Run(ctx context.Context) error {
 			return err
 		}
 
+		defer s.cleanUp(context.Background(), manifests)
+
 		return s.upper.CreateManifests(ctx, manifests, true)
 	})
 
 	return g.Wait()
+}
+
+func (s Script) cleanUp(ctx context.Context, manifests []model.Manifest) {
+	if manifests == nil {
+		return
+	}
+
+	allEntities := []k8s.K8sEntity{}
+	for _, m := range manifests {
+		entities, err := k8s.ParseYAMLFromString(m.K8sYaml)
+		if err != nil {
+			logger.Get(ctx).Infof("Parsing yaml: %v", err)
+			continue
+		}
+
+		allEntities = append(allEntities, entities...)
+	}
+
+	err := s.kClient.Delete(ctx, allEntities)
+	if err != nil {
+		logger.Get(ctx).Infof("Deleting entities: %v", err)
+	}
 }
 
 func (s Script) runSteps(ctx context.Context, out io.Writer) error {
