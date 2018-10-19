@@ -42,6 +42,7 @@ func Execute() {
 	}
 
 	addCommand(rootCmd, &upCmd{})
+	addCommand(rootCmd, &downCmd{})
 	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, &hudCmd{})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")

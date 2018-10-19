@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -88,14 +86,9 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	var manifests []model.Manifest
-	for _, manifestName := range args {
-		curManifests, err := tf.GetManifestConfigs(manifestName)
-		if err != nil {
-			return err
-		}
-
-		manifests = append(manifests, curManifests...)
+	manifests, err := tf.GetManifestConfigs(args...)
+	if err != nil {
+		return err
 	}
 
 	upper, err := wireUpper(ctx)
