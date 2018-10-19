@@ -72,7 +72,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, storeStore, podLogManager, portForwardController)
-	script := demo.NewScript(upper, headsUpDisplay, env, storeStore, branch)
+	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch)
 	return script, nil
 }
 
