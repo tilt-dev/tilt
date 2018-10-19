@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -943,6 +944,40 @@ def blorgly():
 			ContainerPort: 443,
 		},
 	}, manifest.PortForwards)
+}
+
+func TestSymlinkInPath(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("real/Dockerfile", "dockerfile text")
+	f.WriteFile("real/Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  start_fast_build("Dockerfile", "docker-tag")
+  add(local_git_repo('.'), '/src')
+  return k8s_service(yaml, stop_build())
+`)
+	_ = os.Mkdir(f.JoinPath("real", ".git"), os.FileMode(0777))
+	_ = os.Symlink(f.JoinPath("real"), f.JoinPath("fake"))
+
+	tiltconfig, err := Load(filepath.Join("fake", FileName), os.Stdout)
+	if err != nil {
+		t.Fatal("loading tiltconfig:", err)
+	}
+
+	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
+	if err != nil {
+		t.Fatal("getting manifest config:", err)
+	}
+	manifest := manifests[0]
+
+	// We used to have a bug where the mounts would use the fake path,
+	// but the file watchers would emit the real path, which would
+	// break systems where the directory had a symlink somewhere in the
+	// ancestor tree.
+	assert.Equal(t, f.JoinPath("real", FileName), manifest.TiltFilename)
+	assert.Equal(t, f.JoinPath("real"), manifest.Mounts[0].LocalPath)
 }
 
 func TestKustomize(t *testing.T) {

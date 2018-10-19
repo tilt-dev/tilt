@@ -15,6 +15,7 @@ import (
 	"github.com/google/skylark/resolve"
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 const FileName = "Tiltfile"
@@ -314,7 +315,7 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 		},
 	}
 
-	filename, err := filepath.Abs(filename)
+	filename, err := ospath.RealAbs(filename)
 	if err != nil {
 		return nil, err
 	}
