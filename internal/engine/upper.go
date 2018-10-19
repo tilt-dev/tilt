@@ -455,6 +455,11 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 	populateContainerStatus(ctx, ms, pod, cStatus)
+
+	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
+		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.Log...)
+		ms.Pod.Log = []byte{}
+	}
 	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
 }
 
@@ -669,9 +674,19 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	} else {
-		logger.Get(ctx).Infof("%s pod log since last build:", mn)
+		logger.Get(ctx).Infof("%s pod log:", mn)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.Pod.Log)
+
+		// attempting to include at most one crash:
+		// if the current pod has crashed, then just print the current pod
+		// if the current pod is live, print the current pod plus the last pod
+		var s string
+		if ms.Pod.ContainerReady {
+			s = string(ms.Pod.PreRestartLog) + string(ms.Pod.Log)
+		} else {
+			s = string(ms.Pod.Log)
+		}
+		logger.Get(ctx).Infof("%s", s)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
 }
