@@ -65,21 +65,6 @@ func TestFilesToPathMappings(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestRelativeRepoPathsThrowError(t *testing.T) {
-	files := []string{"/foo/bar.baz"}
-	mounts := []model.Mount{
-		model.Mount{
-			LocalPath:     "./hello",
-			ContainerPath: "/src",
-		},
-	}
-
-	_, err := FilesToPathMappings(files, mounts)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "must be an absolute path")
-	}
-}
-
 func TestFileNotInMountThrowsErr(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
