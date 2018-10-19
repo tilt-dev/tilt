@@ -319,7 +319,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
 		if len(engineState.ManifestsToBuild) == 0 {
-			logger.Get(ctx).Infof("Awaiting changes…")
+			logger.Get(ctx).Infof("Awaiting changes…\n")
 		}
 	}
 
@@ -613,7 +613,7 @@ func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.UR
 
 func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest model.Manifest, buildState store.BuildState) {
 	if firstBuild {
-		logger.Get(ctx).Infof("Building manifest: %s", manifest.Name)
+		logger.Get(ctx).Infof("──┤ Building: %s ├──────────────────────────────────────────────", manifest.Name)
 	} else {
 		changedFiles := buildState.FilesChanged()
 		var changedPathsToPrint []string

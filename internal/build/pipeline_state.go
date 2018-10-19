@@ -22,9 +22,6 @@ type PipelineState struct {
 const buildStepOutputPrefix = "    ╎ "
 
 func NewPipelineState(ctx context.Context, totalStepCount int) *PipelineState {
-	l := logger.Get(ctx)
-	l.Infof("%s", logger.Blue(l).Sprint("──┤ Pipeline Starting… ├──────────────────────────────────────────────"))
-
 	return &PipelineState{
 		curPipelineStep:        1,
 		totalPipelineStepCount: totalStepCount,
@@ -54,16 +51,15 @@ func (ps *PipelineState) End(ctx context.Context, err error) {
 		l.Infof("  │ Step %d - %.3fs │", i+1, duration.Seconds())
 	}
 
-	time := logger.Green(l).Sprintf("%.3fs", elapsed.Seconds())
-	l.Infof("──┤ Done in: %s ︎├──\n", time)
+	l.Infof("──┤ Done in: %.3fs ︎├──\n", elapsed.Seconds())
 	ps.curPipelineStep = 0
 	ps.curBuildStep = 0
 }
 
 func (ps *PipelineState) StartPipelineStep(ctx context.Context, format string, a ...interface{}) {
 	l := logger.Get(ctx)
-	line := logger.Green(l).Sprintf("STEP %d/%d — %s", ps.curPipelineStep, ps.totalPipelineStepCount, fmt.Sprintf(format, a...))
-	l.Infof("%s", line)
+	line := logger.Blue(l).Sprintf("STEP %d/%d — ", ps.curPipelineStep, ps.totalPipelineStepCount)
+	l.Infof("%s%s", line, fmt.Sprintf(format, a...))
 	ps.curPipelineStep++
 	ps.curBuildStep = 1
 	ps.curPipelineStepStart = time.Now()
