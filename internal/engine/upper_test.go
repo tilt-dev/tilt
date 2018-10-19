@@ -1328,12 +1328,6 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
-func makeFakeFsWatcherMaker(fn *fakeNotify) FsWatcherMaker {
-	return func() (watch.Notify, error) {
-		return fn, nil
-	}
-}
-
 func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store) error {
 	return func(ctx context.Context, st *store.Store) error {
 		go dispatchPodChangesLoop(ctx, ch, st)
@@ -1369,7 +1363,6 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 	watcher := newFakeNotify()
-	fsWatcherMaker := makeFakeFsWatcherMaker(watcher)
 	b := newFakeBuildAndDeployer(t)
 
 	podEvents := make(chan *v1.Pod)

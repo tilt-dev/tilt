@@ -44,7 +44,6 @@ const maxChangedFilesToPrint = 5
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	b                   BuildAndDeployer
-	fsWatcherMaker      FsWatcherMaker
 	timerMaker          timerMaker
 	podWatcherMaker     PodWatcherMaker
 	serviceWatcherMaker ServiceWatcherMaker
@@ -90,7 +89,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 
 	return Upper{
 		b:                   b,
-		fsWatcherMaker:      fswm,
 		podWatcherMaker:     pwm,
 		serviceWatcherMaker: swm,
 		timerMaker:          time.After,
