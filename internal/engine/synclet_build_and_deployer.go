@@ -90,11 +90,15 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 
-	paths := build.FilesToPathMappings(ctx, state.FilesChanged(), manifest.Mounts)
+	paths, err := build.FilesToPathMappings(
+		state.FilesChanged(), manifest.Mounts)
+	if err != nil {
+		return store.BuildResult{}, err
+	}
 
 	// archive files to copy to container
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(manifest))
-	err := ab.ArchivePathsIfExist(ctx, paths)
+	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return store.BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)
 	}

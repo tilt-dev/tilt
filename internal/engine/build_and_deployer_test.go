@@ -14,6 +14,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -33,6 +34,15 @@ type expectedFile = testutils.ExpectedFile
 var dontFallBackErrStr = "don't fall back"
 
 func TestShouldImageBuild(t *testing.T) {
+	m := model.Mount{
+		LocalPath:     "asdf",
+		ContainerPath: "blah",
+	}
+	_, pathMapErr := build.FilesToPathMappings([]string{"a"}, []model.Mount{m})
+	if assert.Error(t, pathMapErr) {
+		assert.False(t, shouldImageBuild(pathMapErr))
+	}
+
 	s := model.Manifest{Name: "many errors"}
 	validateErr := s.Validate()
 	if assert.Error(t, validateErr) {

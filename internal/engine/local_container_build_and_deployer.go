@@ -71,8 +71,10 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return store.BuildResult{}, fmt.Errorf("no deploy info")
 	}
 
-	cf := build.FilesToPathMappings(ctx, state.FilesChanged(), manifest.Mounts)
-
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
+	if err != nil {
+		return store.BuildResult{}, err
+	}
 	logger.Get(ctx).Infof("  → Updating container…")
 	boiledSteps, err := build.BoilSteps(manifest.Steps, cf)
 	if err != nil {
