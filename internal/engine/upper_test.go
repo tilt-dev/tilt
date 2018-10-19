@@ -986,9 +986,6 @@ func TestUpper_ShowErrorBuildLog(t *testing.T) {
 		return
 	}
 
-	// XXX
-	fmt.Printf("log: '%s'\n", f.log.String())
-
 	buildOutputCount := 0
 	for _, l := range f.LogLines() {
 		if l == "fake building foobar" {

@@ -3,7 +3,6 @@ package build
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -66,10 +65,6 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 	input := docker.ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	// XXX
-	if f.ps == nil {
-		fmt.Println("in test: ps is nil!")
-	}
 	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)), ioutil.Discard)
 	if err != nil {
 		t.Fatal(err)
