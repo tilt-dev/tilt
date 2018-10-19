@@ -153,8 +153,8 @@ func StateToView(s EngineState) view.View {
 		ms := s.ManifestStates[name]
 
 		var absWatchDirs []string
-		for _, p := range ms.Manifest.Mounts {
-			absWatchDirs = append(absWatchDirs, p.LocalPath)
+		for _, p := range ms.Manifest.LocalPaths() {
+			absWatchDirs = append(absWatchDirs, p)
 		}
 		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
 
