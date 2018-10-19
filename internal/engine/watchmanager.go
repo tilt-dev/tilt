@@ -103,52 +103,53 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go func(ctx context.Context, manifest model.Manifest, watcher watch.Notify) {
-			filter, err := ignore.CreateFileChangeFilter(manifest)
-			if err != nil {
-				st.Dispatch(NewErrorAction(err))
+		go dispatchFileChangesLoop(ctx, manifest, watcher, st)
+
+		w.watches[manifest.Name] = manifestNotifyCancel{manifest, watcher, cancel}
+	}
+}
+
+func dispatchFileChangesLoop(ctx context.Context, manifest model.Manifest, watcher watch.Notify, st *store.Store) {
+	filter, err := ignore.CreateFileChangeFilter(manifest)
+	if err != nil {
+		st.Dispatch(NewErrorAction(err))
+		return
+	}
+
+	for {
+		select {
+		case err, ok := <-watcher.Errors():
+			if !ok {
+				return
+			}
+			st.Dispatch(NewErrorAction(err))
+		case <-ctx.Done():
+			return
+
+		case fsEvent, ok := <-watcher.Events():
+			if !ok {
 				return
 			}
 
-			for {
-				select {
-				case err, ok := <-watcher.Errors():
-					if !ok {
-						return
-					}
-					st.Dispatch(NewErrorAction(err))
-				case <-ctx.Done():
-					return
+			watchEvent := manifestFilesChangedAction{manifestName: manifest.Name}
 
-				case fsEvent, ok := <-watcher.Events():
-					if !ok {
-						return
-					}
-
-					watchEvent := manifestFilesChangedAction{manifestName: manifest.Name}
-
-					path, err := filepath.Abs(fsEvent.Path)
-					if err != nil {
-						st.Dispatch(NewErrorAction(err))
-						continue
-					}
-					isIgnored, err := filter.Matches(path, false)
-					if err != nil {
-						st.Dispatch(NewErrorAction(err))
-						continue
-					}
-					if !isIgnored {
-						watchEvent.files = append(watchEvent.files, path)
-					}
-
-					if len(watchEvent.files) > 0 {
-						st.Dispatch(watchEvent)
-					}
-				}
-
+			path, err := filepath.Abs(fsEvent.Path)
+			if err != nil {
+				st.Dispatch(NewErrorAction(err))
+				continue
 			}
-		}(ctx, manifest, watcher)
+			isIgnored, err := filter.Matches(path, false)
+			if err != nil {
+				st.Dispatch(NewErrorAction(err))
+				continue
+			}
+			if !isIgnored {
+				watchEvent.files = append(watchEvent.files, path)
+			}
 
-		w.watches[manifest.Name] = manifestNotifyCancel{manifest, watcher, cancel}
+			if len(watchEvent.files) > 0 {
+				st.Dispatch(watchEvent)
+			}
+		}
 	}
 }
