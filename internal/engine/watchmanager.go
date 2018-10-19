@@ -37,7 +37,10 @@ func NewWatchManager(watcherMaker FsWatcherMaker) *WatchManager {
 	}
 }
 
-func (w *WatchManager) diff(ctx context.Context, state store.EngineState) (setup []model.Manifest, teardown []model.Manifest) {
+func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []model.Manifest, teardown []model.Manifest) {
+	state := st.RLockState()
+	defer st.RUnlockState()
+
 	setup = []model.Manifest{}
 	teardown = []model.Manifest{}
 	manifestsToProcess := make(map[model.ManifestName]model.Manifest, len(state.ManifestStates))
@@ -60,10 +63,7 @@ func (w *WatchManager) diff(ctx context.Context, state store.EngineState) (setup
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	setup, teardown := w.diff(ctx, state)
+	setup, teardown := w.diff(ctx, st)
 
 	for _, m := range teardown {
 		p, ok := w.watches[m.Name]
