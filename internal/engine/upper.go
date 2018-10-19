@@ -222,15 +222,15 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 				ms.LastError = nil
 			}
 
-			changedFilesWithoutConfigFiles, err := ms.PendingFileChangesWithoutConfigFiles(ctx)
+			mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
 			if err != nil {
 				logger.Get(ctx).Infof(err.Error())
 				return
 			}
-			ms.PendingFileChanges = changedFilesWithoutConfigFiles
+			ms.PendingFileChanges = mountedChangedFiles
 
 			if len(ms.PendingFileChanges) == 0 {
-				// No non-config files changed, no need to build.
+				// No mounted files changed, no need to build.
 				ms.ConfigIsDirty = false
 				return
 			}

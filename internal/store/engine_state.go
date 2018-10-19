@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -126,22 +127,28 @@ func (s EngineState) Manifests() []model.Manifest {
 	return result
 }
 
-// Returns a set of pending file changes, with all config files removed
-func (ms *ManifestState) PendingFileChangesWithoutConfigFiles(ctx context.Context) (map[string]bool, error) {
+// Returns a set of pending file changes, without config files that don't belong
+// to mounts. (Changed config files show up in ms.PendingFileChanges and don't
+// necessarily belong to any mounts/watched directories -- we don't want to run
+// these files through a build b/c we'll pitch an error if we find un-mounted
+// files at that point.)
+func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx context.Context) (map[string]bool, error) {
 	matcher, err := ms.Manifest.ConfigMatcher()
 	if err != nil {
-		return nil, errors.Wrap(err, "[PendingFileChangesWithoutConfigFiles] getting config matcher")
+		return nil, errors.Wrap(err, "[PendingFileChangesWithoutUnmountedConfigFiles] getting config matcher")
 	}
 
 	files := make(map[string]bool)
 	for f := range ms.PendingFileChanges {
 		matches, err := matcher.Matches(f, false)
 		if err != nil {
-			logger.Get(ctx).Infof("Error matches %s: %v", f, err)
+			logger.Get(ctx).Infof("Error matching %s: %v", f, err)
 		}
-		if !matches {
-			files[f] = true
+		if matches && !build.FileBelongsToMount(f, ms.Manifest.Mounts) {
+			// Filter out config files that don't belong to a mount
+			continue
 		}
+		files[f] = true
 	}
 	return files, nil
 }

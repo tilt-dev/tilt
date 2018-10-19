@@ -410,7 +410,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestRebuildDockerfile(t *testing.T) {
+func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.WriteFile("Tiltfile", `def foobar():
@@ -441,6 +441,9 @@ func TestRebuildDockerfile(t *testing.T) {
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYaml)
 
+		// Since the manifest changed, we cleared the previous build state to force an image build
+		assert.False(t, call.state.HasImage())
+
 		f.WriteFile("Tiltfile", `def foobar():
 	start_fast_build("Dockerfile", "docker-tag")
 	image = stop_build()
@@ -450,6 +453,9 @@ func TestRebuildDockerfile(t *testing.T) {
 		// third call: new manifest should persist
 		call = <-f.b.calls
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+
+		// Unchanged manifest --> we do NOT clear the build state
+		assert.True(t, call.state.HasImage())
 
 		f.fsWatcher.errors <- endToken
 	}()
@@ -504,8 +510,12 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 
 	// Second call: one new manifest!
 	call = <-f.b.calls
+
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 	assert.ElementsMatch(t, []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")}, call.state.FilesChanged())
+
+	// Since the manifest changed, we cleared the previous build state to force an image build
+	assert.False(t, call.state.HasImage())
 
 	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
 		return es.CurrentlyBuilding == ""
@@ -542,13 +552,18 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 		manifestName: manifest.Name,
 	})
 
-	// Second call: Editing the dockerfile means we have to
-	// reevaluate the tiltfile. Editing the random file means we have to do
-	// a rebuild. BUT! The dockerfile hasn't changed, so we can do an
-	// incremental build.
+	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
+	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
+	// hasn't changed, so the manifest hasn't changed, so we can do an incremental build.
 	call = <-f.b.calls
 	assert.Equal(t, "foobar", string(call.manifest.Name))
-	assert.ElementsMatch(t, []string{f.JoinPath("random_file.go")}, call.state.FilesChanged())
+	assert.ElementsMatch(t, []string{
+		f.JoinPath("Dockerfile"),
+		f.JoinPath("random_file.go"),
+	}, call.state.FilesChanged())
+
+	// Unchanged manifest --> we do NOT clear the build state
+	assert.True(t, call.state.HasImage())
 
 	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
 		return es.CurrentlyBuilding == ""
@@ -568,8 +583,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.WriteFile("Tiltfile", `def foobar():
   start_fast_build("Dockerfile", "docker-tag")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
-`)
+  return k8s_service("yaaaaaaaaml", image)`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
@@ -589,12 +603,12 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 		f.WriteFile("Tiltfile", `def foobar():
 	start_fast_build("Dockerfile", "docker-tag")
 	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)
-`)
+	return k8s_service("yaaaaaaaaml", image)`)
 
 		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 		call = <-f.b.calls
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+		assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 
 		// Third call: error!
 		f.WriteFile("Tiltfile", "def")
@@ -609,19 +623,68 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 		f.WriteFile("Tiltfile", `def foobar():
 	start_fast_build("Dockerfile", "docker-tag")
 	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)
-`)
+	return k8s_service("yaaaaaaaaml", image)`)
 
 		f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
 		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 		call = <-f.b.calls
+		// TODO(maia): any way to assert that manifestState.LastError got cleared?
 		assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
+
+		assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 
 		f.fsWatcher.errors <- endToken
 	}()
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestFilterOutNonMountedConfigFiles(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile", "docker-tag1")
+  add(local_git_repo('./nested'), '.')
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)
+`)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+
+	manifest := f.loadManifest("foobar")
+	f.Start([]model.Manifest{manifest}, true)
+
+	// First call: with the old manifests (should be image build)
+	call := <-f.b.calls
+	assert.False(t, call.state.HasImage()) // No prior build state
+	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+	assert.Equal(t, "foobar", string(call.manifest.Name))
+
+	f.store.Dispatch(manifestFilesChangedAction{
+		files:        []string{f.JoinPath("Dockerfile"), f.JoinPath("nested/random_file.go")},
+		manifestName: manifest.Name,
+	})
+
+	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile, but
+	// we made a no-op change --> no change to the manifest, will do an incremental build.
+	call = <-f.b.calls
+	assert.True(t, call.state.HasImage()) // Had prior build state (i.e. this was an incremental build)
+	assert.Equal(t, "foobar", string(call.manifest.Name))
+
+	// 'Dockerfile' didn't get passed through as a changed file b/c it's outside of our mount(s).
+	assert.ElementsMatch(t, []string{f.JoinPath("nested/random_file.go")}, call.state.FilesChanged())
+
+	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
+		return es.CurrentlyBuilding == ""
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+
+	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
 }
 
 func TestStaticRebuildWithChangedFiles(t *testing.T) {

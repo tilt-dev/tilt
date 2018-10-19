@@ -61,6 +61,14 @@ func (f *TempDirFixture) WriteFile(path string, contents string) {
 	}
 }
 
+func (f *TempDirFixture) MkdirAll(path string) {
+	fullPath := filepath.Join(f.Path(), path)
+	err := os.MkdirAll(fullPath, os.FileMode(0777))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+}
+
 func (f *TempDirFixture) TouchFiles(paths []string) {
 	for _, p := range paths {
 		f.WriteFile(p, "")

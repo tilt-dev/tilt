@@ -119,6 +119,11 @@ func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMap
 	return pathMapping{}, pathMappingErrf("file %s matches no mounts", file)
 }
 
+func FileBelongsToMount(file string, mounts []model.Mount) bool {
+	_, err := fileToPathMapping(file, mounts)
+	return err == nil
+}
+
 func MountsToPathMappings(mounts []model.Mount) []pathMapping {
 	pms := make([]pathMapping, len(mounts))
 	for i, m := range mounts {
