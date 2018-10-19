@@ -3,6 +3,8 @@ package rty
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tcell"
 )
 
@@ -37,7 +39,7 @@ func TestBoxes(t *testing.T) {
 	b = NewBox()
 	b.SetInner(TextString("hello world"))
 	f.run("text in box", 20, 10, b)
-	f.run("overflowed text in box", 10, 10, b)
+	f.run("wrapped text in box", 10, 10, b)
 }
 
 func TestStyles(t *testing.T) {
@@ -71,4 +73,33 @@ func TestStyles(t *testing.T) {
 	l.Add(Bg(NewBox(), tcell.ColorWhite))
 	l.Add(Bg(NewBox(), tcell.ColorRed))
 	f.run("blue, white, red boxes vertically", 30, 30, l)
+}
+
+func TestLines(t *testing.T) {
+	f := newLayoutTestFixture(t)
+	defer f.cleanUp()
+
+	fl := NewFlexLayout(DirHor)
+	for j := 0; j < 10; j++ {
+		fl.Add(TextString("x"))
+	}
+	err := f.runCaptureError("overflowed multi-string line", 3, 1, fl)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "can't render in 3 columns")
+	}
+
+	l := NewLines()
+	l.Add(NewStringBuilder().Text("hello").Build())
+	l.Add(NewStringBuilder().Text("hello").Text("goodbye").Build())
+	f.run("lines of stringbuilders", 10, 10, l)
+
+	l = NewLines()
+	line := NewLine()
+	line.Add(TextString("hello"))
+	l.Add(line)
+	line = NewLine()
+	line.Add(TextString("hello"))
+	line.Add(TextString("goodbye"))
+	l.Add(line)
+	f.run("lines of lines", 30, 10, l)
 }

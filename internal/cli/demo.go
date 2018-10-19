@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/demo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type demoCmd struct {
+	branch string
 }
 
 func (c *demoCmd) register() *cobra.Command {
@@ -19,6 +21,9 @@ func (c *demoCmd) register() *cobra.Command {
 		Short: "Run the demo script",
 	}
 
+	cmd.Flags().StringVar(&c.branch, "branch", "",
+		"Checks out a branch of the tiltdemo repo, instead of the master branch")
+
 	return cmd
 }
 
@@ -26,7 +31,7 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 	analyticsService.Incr("cmd.demo", map[string]string{})
 	defer analyticsService.Flush(time.Second)
 
-	demo, err := wireDemo(ctx)
+	demo, err := wireDemo(ctx, demo.RepoBranch(c.branch))
 	if err != nil {
 		return err
 	}

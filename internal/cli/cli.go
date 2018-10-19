@@ -9,8 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/output"
-
 	"github.com/windmilleng/tilt/internal/tracer"
 
 	"github.com/spf13/cobra"
@@ -65,10 +63,7 @@ type tiltCmd interface {
 func preCommand(ctx context.Context) (context.Context, func() error) {
 	cleanup := func() error { return nil }
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
-	ctx = context.Background()
-	ctx = output.WithOutputter(
-		logger.WithLogger(ctx, l),
-		output.NewOutputter(l))
+	ctx = logger.WithLogger(ctx, l)
 
 	if trace {
 		var err error

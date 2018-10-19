@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -82,18 +81,6 @@ func ConnectHud(ctx context.Context) error {
 		}); err != nil {
 		return errors.Wrap(err, "error sending to hud server")
 	}
-
-	// TODO(matt) figure out why tcell's Fini isn't working for us here
-	// this is a crummy workaround
-	defer func() {
-		cmd := exec.Command("reset")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			fmt.Printf("error restoring terminal settings: %v", err)
-		}
-	}()
 
 	// Wait for the stream to close
 	g, ctx := errgroup.WithContext(ctx)

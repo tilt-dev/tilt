@@ -15,6 +15,15 @@ type Canvas interface {
 	GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int)
 }
 
+func totalHeight(canvases []Canvas) int {
+	total := 0
+	for _, c := range canvases {
+		_, h := c.Size()
+		total += h
+	}
+	return total
+}
+
 // Implementations below
 type cell struct {
 	ch    rune

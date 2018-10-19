@@ -3,6 +3,7 @@ package build
 import (
 	"archive/tar"
 	"bytes"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -64,7 +65,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 	input := docker.ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
+	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)), ioutil.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func TestDigestFromPushOutput(t *testing.T) {
 
 	input := docker.ExamplePushOutput1
 	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	actual, err := f.b.getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)))
+	actual, err := f.b.getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)), ioutil.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +109,7 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
 	}
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1, step2}, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1, step2}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +144,7 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 		BaseDirectory: f.Path(),
 	}
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1}, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}

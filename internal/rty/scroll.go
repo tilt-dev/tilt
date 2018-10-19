@@ -30,10 +30,15 @@ type TextScrollState struct {
 	height int
 
 	canvasIdx     int
-	lineIdx       int
+	lineIdx       int // line within canvas
 	canvasLengths []int
+
+	following bool
 }
 
+func defaultTextScrollState() *TextScrollState {
+	return &TextScrollState{following: true}
+}
 func (l *TextScrollLayout) Render(w Writer, width, height int) error {
 	w.RenderStateful(l, l.name)
 	return nil
@@ -42,11 +47,12 @@ func (l *TextScrollLayout) Render(w Writer, width, height int) error {
 func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width, height int) (state interface{}, err error) {
 	prev, ok := prevState.(*TextScrollState)
 	if !ok {
-		prev = &TextScrollState{}
+		prev = defaultTextScrollState()
 	}
 	next := &TextScrollState{
-		width:  width,
-		height: height,
+		width:     width,
+		height:    height,
+		following: prev.following,
 	}
 
 	if len(l.cs) == 0 {
@@ -95,6 +101,11 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 }
 
 func (l *TextScrollLayout) adjustCursor(prev *TextScrollState, next *TextScrollState, canvases []Canvas) {
+	if next.following {
+		next.jumpToBottom(canvases)
+		return
+	}
+
 	if prev.canvasIdx >= len(canvases) {
 		return
 	}
@@ -105,6 +116,38 @@ func (l *TextScrollLayout) adjustCursor(prev *TextScrollState, next *TextScrollS
 		return
 	}
 	next.lineIdx = prev.lineIdx
+}
+
+func (s *TextScrollState) jumpToBottom(canvases []Canvas) {
+	totalHeight := totalHeight(canvases)
+	if totalHeight <= s.height {
+		// all content fits on the screen
+		s.canvasIdx = 0
+		s.lineIdx = 0
+		return
+	}
+
+	heightLeft := s.height
+	for i := range canvases {
+		// we actually want to iterate from the end
+		iEnd := len(canvases) - i - 1
+		c := canvases[iEnd]
+
+		_, cHeight := c.Size()
+		if cHeight < heightLeft {
+			heightLeft -= cHeight
+		} else if cHeight == heightLeft {
+			// start at the beginning of this canvas
+			s.canvasIdx = iEnd
+			s.lineIdx = 0
+			return
+		} else {
+			// start some number of lines into this canvas.
+			s.canvasIdx = iEnd
+			s.lineIdx = cHeight - heightLeft
+			return
+		}
+	}
 }
 
 type TextScrollController struct {
@@ -139,6 +182,10 @@ func (s *TextScrollController) Down() {
 	}
 	st.canvasIdx++
 	st.lineIdx = 0
+}
+
+func (s *TextScrollController) ToggleFollow() {
+	s.state.following = !s.state.following
 }
 
 func NewScrollingWrappingTextArea(name string, text string) Component {
@@ -198,7 +245,7 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	}
 
 	y := 0
-	for _, c := range l.children[next.elementIdx:] {
+	for _, c := range l.children {
 		canvas := w.RenderChildInTemp(c)
 		_, childHeight := canvas.Size()
 		numLines := childHeight
