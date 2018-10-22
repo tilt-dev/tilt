@@ -104,7 +104,9 @@ func newWatchManagerFixture(t *testing.T) *watchManagerFixture {
 		notify: notify,
 	}
 
-	fswm := NewWatchManager(f.provideFakeFsWatcher)
+	timerMaker := makeFakeTimerMaker(t)
+
+	fswm := NewWatchManager(f.provideFakeFsWatcher, timerMaker.maker())
 	f.fswm = fswm
 
 	return f

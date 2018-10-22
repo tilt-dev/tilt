@@ -77,6 +77,12 @@ func ProvideFsWatcherMaker() FsWatcherMaker {
 	}
 }
 
+func ProvideTimerMaker() timerMaker {
+	return func(t time.Duration) <-chan time.Time {
+		return time.After(t)
+	}
+}
+
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {

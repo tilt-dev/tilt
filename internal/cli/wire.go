@@ -47,6 +47,7 @@ var BaseWireSet = wire.NewSet(
 	provideUpdateModeFlag,
 	engine.NewWatchManager,
 	engine.ProvideFsWatcherMaker,
+	engine.ProvideTimerMaker,
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {

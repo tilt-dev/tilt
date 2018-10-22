@@ -72,7 +72,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
-	watchManager := engine.NewWatchManager(fsWatcherMaker)
+	timerMaker := engine.ProvideTimerMaker()
+	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, store2, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, store2, branch)
@@ -136,7 +137,8 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
-	watchManager := engine.NewWatchManager(fsWatcherMaker)
+	timerMaker := engine.ProvideTimerMaker()
+	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcherMaker, serviceWatcherMaker, store2, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController)
 	return upper, nil
@@ -166,5 +168,5 @@ var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.Provid
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.ProvidePodWatcherMaker, engine.ProvideServiceWatcherMaker, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
-	provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker,
+	provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker,
 )

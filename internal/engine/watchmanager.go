@@ -27,12 +27,14 @@ type manifestNotifyCancel struct {
 type WatchManager struct {
 	watches        map[model.ManifestName]manifestNotifyCancel
 	fsWatcherMaker FsWatcherMaker
+	timerMaker     timerMaker
 }
 
-func NewWatchManager(watcherMaker FsWatcherMaker) *WatchManager {
+func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchManager {
 	return &WatchManager{
 		watches:        make(map[model.ManifestName]manifestNotifyCancel),
 		fsWatcherMaker: watcherMaker,
+		timerMaker:     timerMaker,
 	}
 }
 
@@ -102,18 +104,20 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go dispatchFileChangesLoop(ctx, manifest, watcher, st)
+		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
 
 		w.watches[manifest.Name] = manifestNotifyCancel{manifest, watcher, cancel}
 	}
 }
 
-func dispatchFileChangesLoop(ctx context.Context, manifest model.Manifest, watcher watch.Notify, st *store.Store) {
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest model.Manifest, watcher watch.Notify, st *store.Store) {
 	filter, err := ignore.CreateFileChangeFilter(manifest)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))
 		return
 	}
+
+	eventsCh := coalesceEvents(w.timerMaker, watcher.Events())
 
 	for {
 		select {
@@ -125,25 +129,27 @@ func dispatchFileChangesLoop(ctx context.Context, manifest model.Manifest, watch
 		case <-ctx.Done():
 			return
 
-		case fsEvent, ok := <-watcher.Events():
+		case fsEvents, ok := <-eventsCh:
 			if !ok {
 				return
 			}
 
 			watchEvent := manifestFilesChangedAction{manifestName: manifest.Name}
 
-			path, err := filepath.Abs(fsEvent.Path)
-			if err != nil {
-				st.Dispatch(NewErrorAction(err))
-				continue
-			}
-			isIgnored, err := filter.Matches(path, false)
-			if err != nil {
-				st.Dispatch(NewErrorAction(err))
-				continue
-			}
-			if !isIgnored {
-				watchEvent.files = append(watchEvent.files, path)
+			for _, e := range fsEvents {
+				path, err := filepath.Abs(e.Path)
+				if err != nil {
+					st.Dispatch(NewErrorAction(err))
+					continue
+				}
+				isIgnored, err := filter.Matches(path, false)
+				if err != nil {
+					st.Dispatch(NewErrorAction(err))
+					continue
+				}
+				if !isIgnored {
+					watchEvent.files = append(watchEvent.files, path)
+				}
 			}
 
 			if len(watchEvent.files) > 0 {
@@ -151,4 +157,55 @@ func dispatchFileChangesLoop(ctx context.Context, manifest model.Manifest, watch
 			}
 		}
 	}
+}
+
+//makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
+//from the user's perspective are grouped together.
+func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
+	ret := make(chan []watch.FileEvent)
+	go func() {
+		defer close(ret)
+
+		for {
+			event, ok := <-eventChan
+			if !ok {
+				return
+			}
+			events := []watch.FileEvent{event}
+
+			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
+			minRestTimer := timerMaker(watchBufferMinRestDuration)
+
+			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
+			// then just send what we've got
+			timeout := timerMaker(watchBufferMaxDuration)
+
+			done := false
+			channelClosed := false
+			for !done && !channelClosed {
+				select {
+				case event, ok := <-eventChan:
+					if !ok {
+						channelClosed = true
+					} else {
+						minRestTimer = timerMaker(watchBufferMinRestDuration)
+						events = append(events, event)
+					}
+				case <-minRestTimer:
+					done = true
+				case <-timeout:
+					done = true
+				}
+			}
+			if len(events) > 0 {
+				ret <- events
+			}
+
+			if channelClosed {
+				return
+			}
+		}
+
+	}()
+	return ret
 }

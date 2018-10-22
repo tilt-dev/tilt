@@ -193,85 +193,85 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
-// 	f := newTestFixture(t)
-// 	defer f.TearDown()
-// 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-// 	manifest := f.newManifest("foobar", []model.Mount{mount})
-// 	go func() {
-// 		f.timerMaker.maxTimerLock.Lock()
-// 		call := <-f.b.calls
-// 		assert.Equal(t, manifest, call.manifest)
-// 		assert.Equal(t, []string{}, call.state.FilesChanged())
+func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	go func() {
+		f.timerMaker.maxTimerLock.Lock()
+		call := <-f.b.calls
+		assert.Equal(t, manifest, call.manifest)
+		assert.Equal(t, []string{}, call.state.FilesChanged())
 
-// 		f.timerMaker.restTimerLock.Lock()
-// 		fileRelPaths := []string{"fdas", "giueheh"}
-// 		for _, fileRelPath := range fileRelPaths {
-// 			f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
-// 		}
-// 		f.timerMaker.restTimerLock.Unlock()
+		f.timerMaker.restTimerLock.Lock()
+		fileRelPaths := []string{"fdas", "giueheh"}
+		for _, fileRelPath := range fileRelPaths {
+			f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+		}
+		f.timerMaker.restTimerLock.Unlock()
 
-// 		call = <-f.b.calls
-// 		assert.Equal(t, manifest, call.manifest)
+		call = <-f.b.calls
+		assert.Equal(t, manifest, call.manifest)
 
-// 		var fileAbsPaths []string
-// 		for _, fileRelPath := range fileRelPaths {
-// 			fileAbsPath, err := filepath.Abs(fileRelPath)
-// 			if err != nil {
-// 				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-// 			}
-// 			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
-// 		}
-// 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
-// 		f.fsWatcher.errors <- errors.New("bazquu")
-// 	}()
-// 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-// 	if assert.NotNil(t, err) {
-// 		assert.Equal(t, "bazquu", err.Error())
-// 	}
+		var fileAbsPaths []string
+		for _, fileRelPath := range fileRelPaths {
+			fileAbsPath, err := filepath.Abs(fileRelPath)
+			if err != nil {
+				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+			}
+			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+		}
+		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
+		f.fsWatcher.errors <- errors.New("bazquu")
+	}()
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	if assert.NotNil(t, err) {
+		assert.Equal(t, "bazquu", err.Error())
+	}
 
-// 	f.assertAllBuildsConsumed()
-// }
+	f.assertAllBuildsConsumed()
+}
 
-// func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
-// 	f := newTestFixture(t)
-// 	defer f.TearDown()
-// 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-// 	manifest := f.newManifest("foobar", []model.Mount{mount})
-// 	go func() {
-// 		call := <-f.b.calls
-// 		assert.Equal(t, manifest, call.manifest)
-// 		assert.Equal(t, []string{}, call.state.FilesChanged())
+func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	go func() {
+		call := <-f.b.calls
+		assert.Equal(t, manifest, call.manifest)
+		assert.Equal(t, []string{}, call.state.FilesChanged())
 
-// 		f.timerMaker.maxTimerLock.Lock()
-// 		f.timerMaker.restTimerLock.Lock()
-// 		fileRelPaths := []string{"fdas", "giueheh"}
-// 		for _, fileRelPath := range fileRelPaths {
-// 			f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
-// 		}
-// 		f.timerMaker.maxTimerLock.Unlock()
+		f.timerMaker.maxTimerLock.Lock()
+		f.timerMaker.restTimerLock.Lock()
+		fileRelPaths := []string{"fdas", "giueheh"}
+		for _, fileRelPath := range fileRelPaths {
+			f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+		}
+		f.timerMaker.maxTimerLock.Unlock()
 
-// 		call = <-f.b.calls
-// 		assert.Equal(t, manifest, call.manifest)
+		call = <-f.b.calls
+		assert.Equal(t, manifest, call.manifest)
 
-// 		var fileAbsPaths []string
-// 		for _, fileRelPath := range fileRelPaths {
-// 			fileAbsPath, err := filepath.Abs(fileRelPath)
-// 			if err != nil {
-// 				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-// 			}
-// 			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
-// 		}
-// 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
-// 		f.fsWatcher.errors <- errors.New("bazquu")
-// 	}()
-// 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-// 	if assert.NotNil(t, err) {
-// 		assert.Equal(t, "bazquu", err.Error())
-// 	}
+		var fileAbsPaths []string
+		for _, fileRelPath := range fileRelPaths {
+			fileAbsPath, err := filepath.Abs(fileRelPath)
+			if err != nil {
+				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+			}
+			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+		}
+		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
+		f.fsWatcher.errors <- errors.New("bazquu")
+	}()
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	if assert.NotNil(t, err) {
+		assert.Equal(t, "bazquu", err.Error())
+	}
 
-// 	f.assertAllBuildsConsumed()
-// }
+	f.assertAllBuildsConsumed()
+}
 
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
@@ -1385,7 +1385,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fswm := func() (watch.Notify, error) {
 		return watcher, nil
 	}
-	fwm := NewWatchManager(fswm)
+	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 
 	upper := NewUpper(ctx, b, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, fwm, fswm, bc)
