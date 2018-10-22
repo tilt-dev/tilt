@@ -81,6 +81,9 @@ type Pod struct {
 	Status    string
 	Phase     v1.PodPhase
 
+	// The log for the previously active pod, if any
+	PreRestartLog []byte
+	// The log for the currently active pod, if any
 	Log []byte
 
 	// Corresponds to the deployed container.
