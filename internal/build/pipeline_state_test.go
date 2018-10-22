@@ -11,7 +11,7 @@ import (
 )
 
 // NOTE(dmiller): set at runtime with:
-// go test -ldflags="-X github.com/windmilleng/tilt/internal/build.PipelineStateWriteGoldenMaster=1" github.com/windmilleng/tilt/internal/build -run ^TestBuildkitPrinter
+// go test -ldflags="-X 'github.com/windmilleng/tilt/internal/build.PipelineStateWriteGoldenMaster=1'" github.com/windmilleng/tilt/internal/build -run ^TestPipeline
 var PipelineStateWriteGoldenMaster = "0"
 
 func TestPipeline(t *testing.T) {
@@ -27,7 +27,7 @@ func TestPipeline(t *testing.T) {
 	assertSnapshot(t, out.String())
 }
 
-func TestErroredPipeline(t *testing.T) {
+func TestPipelineErrored(t *testing.T) {
 	err := fmt.Errorf("oh noes")
 	out := &bytes.Buffer{}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.InfoLvl, out))
@@ -40,7 +40,7 @@ func TestErroredPipeline(t *testing.T) {
 	assertSnapshot(t, out.String())
 }
 
-func TestMultilinePrintInPipeline(t *testing.T) {
+func TestPipelineMultilinePrint(t *testing.T) {
 	var err error
 	out := &bytes.Buffer{}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.InfoLvl, out))
@@ -56,7 +56,7 @@ func TestMultilinePrintInPipeline(t *testing.T) {
 func assertSnapshot(t *testing.T, output string) {
 	d1 := []byte(output)
 	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
-	if WriteGoldenMaster == "1" {
+	if PipelineStateWriteGoldenMaster == "1" {
 		err := ioutil.WriteFile(gmPath, d1, 0644)
 		if err != nil {
 			t.Fatal(err)

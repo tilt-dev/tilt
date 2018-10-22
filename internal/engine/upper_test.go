@@ -1049,7 +1049,10 @@ func TestUpper_ShowErrorBuildLog(t *testing.T) {
 
 	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
 
-	f.waitForBuildErrorReplay(manifest.Name, "Building manifest: foobar\nfake building foobar\n")
+	f.waitForBuildErrorReplay(manifest.Name,
+		`──┤ Building: foobar ├──────────────────────────────────────────────
+fake building foobar
+`)
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
