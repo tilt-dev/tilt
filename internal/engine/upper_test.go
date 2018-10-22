@@ -1387,13 +1387,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	st := store.NewStore()
 
 	plm := NewPodLogManager(k8s)
+	bc := NewBuildController(b)
 
 	_ = os.Chdir(f.Path())
 	_ = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 
 	pfc := NewPortForwardController(k8s)
 
-	upper := NewUpper(ctx, b, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc)
+	upper := NewUpper(ctx, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, bc)
 	upper.timerMaker = timerMaker.maker()
 	upper.hudErrorCh = make(chan error)
 	upper.fsWatcherMaker = fsWatcherMaker

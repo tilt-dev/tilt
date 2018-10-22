@@ -43,7 +43,6 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b                   BuildAndDeployer
 	fsWatcherMaker      fsWatcherMaker
 	timerMaker          timerMaker
 	podWatcherMaker     PodWatcherMaker
@@ -72,19 +71,19 @@ func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
+func NewUpper(ctx context.Context, k8s k8s.Client,
 	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController) Upper {
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController, bc *BuildController) Upper {
 	fsWatcherMaker := func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
 
+	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
 	st.AddSubscriber(pfc)
 	st.AddSubscriber(plm)
 
 	return Upper{
-		b:                   b,
 		fsWatcherMaker:      fsWatcherMaker,
 		podWatcherMaker:     pwm,
 		serviceWatcherMaker: swm,
@@ -131,6 +130,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			if err != nil {
 				state.PermanentError = err
 			}
+			handleMaybeStartBuild(ctx, state)
 			u.store.UnlockMutableState()
 		}
 
@@ -139,7 +139,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		if done {
 			return err
 		}
-		u.maybeStartBuild(ctx, u.store)
 		u.store.NotifySubscribers(ctx)
 	}
 }
@@ -159,7 +158,7 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
-		return u.handleCompletedBuild(ctx, state, action)
+		return handleCompletedBuild(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
 	default:
@@ -184,12 +183,7 @@ func maybeFinished(st *store.Store) (bool, error) {
 	return finished, nil
 }
 
-// TODO(nick): This should be broken up into a separate subscriber (that kicks
-// off the build) and a reducer (that modifies state).
-func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
-	state := st.LockMutableState()
-	defer st.UnlockMutableState()
-
+func handleMaybeStartBuild(ctx context.Context, state *store.EngineState) {
 	if len(state.ManifestStates) == 0 ||
 		len(state.ManifestsToBuild) == 0 ||
 		state.CurrentlyBuilding != "" {
@@ -202,6 +196,9 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 	ms.QueueEntryTime = time.Time{}
 
 	if ms.ConfigIsDirty {
+		// TODO(nick): Move this into BuildController, so that
+		// we don't hold the write lock on store while we reevaluate
+		// the tiltfile.
 		newManifest, err := getNewManifestFromTiltfile(mn)
 		if err != nil {
 			logger.Get(ctx).Infof("getting new manifest error: %v", err)
@@ -248,33 +245,17 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 		ms.CurrentlyBuildingFileChanges = append(ms.CurrentlyBuildingFileChanges, f)
 	}
 	ms.PendingFileChanges = make(map[string]bool)
-
-	buildState := store.NewBuildState(ms.LastBuild, ms.CurrentlyBuildingFileChanges)
-
-	m := ms.Manifest
-
 	ms.CurrentBuildStartTime = time.Now()
-	state.CurrentlyBuilding = mn
-
-	ctx = logger.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
-
 	ms.Pod.Log = []byte{}
 
-	go func() {
-		firstBuild := !ms.HasBeenBuilt
-		ms.HasBeenBuilt = true
-		u.logBuildEvent(ctx, firstBuild, m, buildState)
-
-		result, err := u.b.BuildAndDeploy(
-			ctx,
-			m,
-			buildState)
-
-		st.Dispatch(NewBuildCompleteAction(result, err))
-	}()
+	// TODO(nick): It would be better if we reversed the relationship
+	// between CurrentlyBuilding and BuildController. BuildController should dispatch
+	// a StartBuildAction, and that should change the state of CurrentlyBuilding
+	// (rather than BuildController starting in response to CurrentlyBuilding).
+	state.CurrentlyBuilding = mn
 }
 
-func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
+func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -290,6 +271,7 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 	err := cb.Error
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
+	ms.HasBeenBuilt = true
 	ms.LastError = err
 	ms.LastBuildFinishTime = time.Now()
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
@@ -616,31 +598,6 @@ func getNewManifestFromTiltfile(name model.ManifestName) (model.Manifest, *manif
 func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
 	lb, _ := u.k8s.ResolveLoadBalancer(ctx, spec)
 	return lb.URL
-}
-
-func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest model.Manifest, buildState store.BuildState) {
-	l := logger.Get(ctx)
-
-	if firstBuild {
-		p := logger.Blue(l).Sprintf("──┤ Building: ")
-		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
-		l.Infof("%s%s%s", p, manifest.Name, s)
-	} else {
-		changedFiles := buildState.FilesChanged()
-		var changedPathsToPrint []string
-		if len(changedFiles) > maxChangedFilesToPrint {
-			changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
-			changedPathsToPrint = append(changedPathsToPrint, "...")
-		} else {
-			changedPathsToPrint = changedFiles
-		}
-
-		p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
-		l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
-		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
-		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
-		l.Infof("%s%s%s", rp, manifest.Name, rs)
-	}
 }
 
 func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
