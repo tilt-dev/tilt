@@ -302,9 +302,10 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 			return err
 		} else if engineState.WatchMounts {
 			l := logger.Get(ctx)
-			l.Infof("%s", logger.Red(l).Sprintf("build failed: %v", err))
+			p := logger.Red(l).Sprintf("Build Failed:")
+			l.Infof("%s %v", p, err)
 		} else {
-			return fmt.Errorf("build failed: %v", err)
+			return fmt.Errorf("Build Failed: %v", err)
 		}
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()

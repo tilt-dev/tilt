@@ -41,8 +41,8 @@ func (ps *PipelineState) End(ctx context.Context, err error) {
 	elapsed := time.Now().Sub(ps.curPipelineStart)
 
 	if err != nil {
-		prefix := logger.Red(l).Sprint(" ︎ERROR:")
-		l.Infof("%s %s\n", prefix, err.Error())
+		prefix := logger.Red(l).Sprint("ERROR:")
+		l.Infof("%s %s", prefix, err.Error())
 		ps.curPipelineStep = 0
 		ps.curBuildStep = 0
 		return

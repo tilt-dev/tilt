@@ -335,7 +335,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.SetNextBuildFailure(buildFailedToken)
 
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
-	expected := fmt.Errorf("build failed: %v", buildFailedToken)
+	expected := fmt.Errorf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
 
