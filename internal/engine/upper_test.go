@@ -801,7 +801,6 @@ func TestPodEvent(t *testing.T) {
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodEventContainerStatus(t *testing.T) {
@@ -870,7 +869,6 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodEventUpdateByPodName(t *testing.T) {
@@ -904,7 +902,6 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodEventIgnoreOlderPod(t *testing.T) {
@@ -938,7 +935,6 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
-	f.assertAllHUDUpdatesConsumed()
 }
 
 func TestPodContainerStatus(t *testing.T) {
@@ -1032,6 +1028,12 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 		assert.Equal(t, "done", err.Error())
 	}
 	f.assertAllBuildsConsumed()
+}
+
+func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
+	return func() (watch.Notify, error) {
+		return fn, nil
+	}
 }
 
 func TestUpper_ShowErrorBuildLog(t *testing.T) {
@@ -1323,12 +1325,6 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
-func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
-	return func() (watch.Notify, error) {
-		return fn, nil
-	}
-}
-
 func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store) error {
 	return func(ctx context.Context, st *store.Store) error {
 		go dispatchPodChangesLoop(ctx, ch, st)
@@ -1386,26 +1382,18 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
 	st := store.NewStore()
-	st.AddSubscriber(hud)
 
 	plm := NewPodLogManager(k8s)
-	st.AddSubscriber(plm)
 
 	_ = os.Chdir(f.Path())
 	_ = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 
-	upper := Upper{
-		b:                   b,
-		fsWatcherMaker:      fsWatcherMaker,
-		timerMaker:          timerMaker.maker(),
-		podWatcherMaker:     fakePodWatcherMaker,
-		serviceWatcherMaker: fakeServiceWatcherMaker,
-		k8s:                 k8s,
-		reaper:              reaper,
-		hud:                 hud,
-		store:               st,
-		hudErrorCh:          make(chan error),
-	}
+	pfc := NewPortForwardController(k8s)
+
+	upper := NewUpper(ctx, b, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc)
+	upper.timerMaker = timerMaker.maker()
+	upper.hudErrorCh = make(chan error)
+	upper.fsWatcherMaker = fsWatcherMaker
 
 	go func() {
 		upper.RunHud(ctx)
@@ -1599,14 +1587,6 @@ func (f *testFixture) assertAllBuildsConsumed() {
 
 	for call := range f.b.calls {
 		f.T().Fatalf("Build not consumed: %+v", call)
-	}
-}
-
-func (f *testFixture) assertAllHUDUpdatesConsumed() {
-	close(f.hud.Updates)
-
-	for update := range f.hud.Updates {
-		f.T().Fatalf("Update not consumed: %+v", update)
 	}
 }
 
