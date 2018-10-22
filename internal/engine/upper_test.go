@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	logger "github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -31,6 +32,18 @@ import (
 	testoutput "github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
+)
+
+const (
+	testTiltfile = `def foobar():
+  start_fast_build("Dockerfile", "docker-tag")
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)`
+	testTiltfileWithMounts = `def foobar():
+  start_fast_build("Dockerfile", "docker-tag1")
+  add(local_git_repo('.'), '.')
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)`
 )
 
 // represents a single call to `BuildAndDeploy`
@@ -413,11 +426,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 func TestRebuildDockerfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.WriteFile("Tiltfile", `def foobar():
-  start_fast_build("Dockerfile", "docker-tag")
-  image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
-`)
+	f.WriteFile("Tiltfile", testTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
@@ -441,11 +450,7 @@ func TestRebuildDockerfile(t *testing.T) {
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYaml)
 
-		f.WriteFile("Tiltfile", `def foobar():
-	start_fast_build("Dockerfile", "docker-tag")
-	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)
-`)
+		f.WriteFile("Tiltfile", testTiltfile)
 		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
 		// third call: new manifest should persist
 		call = <-f.b.calls
@@ -521,12 +526,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", `def foobar():
-  start_fast_build("Dockerfile", "docker-tag1")
-  add(local_git_repo('.'), '.')
-  image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
-`)
+	f.WriteFile("Tiltfile", testTiltfileWithMounts)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
 	manifest := f.loadManifest("foobar")
@@ -565,63 +565,89 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", `def foobar():
-  start_fast_build("Dockerfile", "docker-tag")
-  image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
-`)
+	f.WriteFile("Tiltfile", testTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	manifest.ConfigFiles = []string{
-		f.JoinPath("Dockerfile"),
+		f.JoinPath("Tiltfile"),
 	}
-	endToken := errors.New("my-err-token")
 
-	// everything that we want to do while watch loop is running
-	go func() {
-		// First call: with the old manifest
-		call := <-f.b.calls
-		assert.Empty(t, call.manifest.BaseDockerfile)
+	f.Start([]model.Manifest{manifest}, true)
 
-		// second call: do some stuff
-		f.WriteFile("Tiltfile", `def foobar():
-	start_fast_build("Dockerfile", "docker-tag")
-	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)
-`)
+	// First call: with the old manifest
+	call := <-f.b.calls
+	assert.Empty(t, call.manifest.BaseDockerfile)
 
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
-		call = <-f.b.calls
-		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+	// second call: do some stuff
+	f.WriteFile("Tiltfile", testTiltfile)
 
-		// Third call: error!
-		f.WriteFile("Tiltfile", "def")
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
-		select {
-		case call := <-f.b.calls:
-			t.Errorf("Expected build to not get called, but it did: %+v", call)
-		case <-time.After(100 * time.Millisecond):
-		}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	call = <-f.b.calls
+	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 
-		// fourth call: fix
-		f.WriteFile("Tiltfile", `def foobar():
-	start_fast_build("Dockerfile", "docker-tag")
-	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)
-`)
+	// Third call: error!
+	f.WriteFile("Tiltfile", "borken")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	select {
+	case call := <-f.b.calls:
+		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-time.After(100 * time.Millisecond):
+	}
 
-		f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
-		call = <-f.b.calls
-		assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
+	// fourth call: fix
+	f.WriteFile("Tiltfile", testTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-	assert.Equal(t, endToken, err)
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+	call = <-f.b.calls
+	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
+
+	err := f.Stop()
+	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", testTiltfileWithMounts)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	manifest := f.loadManifest("foobar")
+	spew.Dump(manifest)
+	f.Start([]model.Manifest{manifest}, true)
+
+	// First call: all is well
+	_ = <-f.b.calls
+
+	// Second call: change Tiltfile, break manifest
+	f.WriteFile("Tiltfile", "borken")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	select {
+	case call := <-f.b.calls:
+		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Third call: put Tiltfile back. No change to manifest, so expect no build.
+	f.WriteFile("Tiltfile", testTiltfileWithMounts)
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	select {
+	case call := <-f.b.calls:
+		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-time.After(100 * time.Millisecond):
+	}
+	// TODO(maia): any way to assert that manifestState.LastError got cleared?
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+
+	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
 }
 
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
