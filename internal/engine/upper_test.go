@@ -38,11 +38,6 @@ const (
   start_fast_build("Dockerfile", "docker-tag")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)`
-	testTiltfileWithMounts = `def foobar():
-  start_fast_build("Dockerfile", "docker-tag1")
-  add(local_git_repo('.'), '.')
-  image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)`
 )
 
 // represents a single call to `BuildAndDeploy`
@@ -536,7 +531,11 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", testTiltfileWithMounts)
+	f.WriteFile("Tiltfile", `def foobar():
+  start_fast_build("Dockerfile", "docker-tag1")
+  add(local_git_repo('.'), '.')
+  image = stop_build()
+  return k8s_service("yaaaaaaaaml", image)`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
 	manifest := f.loadManifest("foobar")
@@ -631,7 +630,14 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", testTiltfileWithMounts)
+	origTiltfile := `def foobar():
+	start_fast_build("Dockerfile", "docker-tag1")
+	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	image = stop_build()
+	return k8s_service("yaaaaaaaaml", image)`
+
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	manifest := f.loadManifest("foobar")
@@ -649,8 +655,8 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	// Third call: put Tiltfile back. No change to manifest, so expect no build.
-	f.WriteFile("Tiltfile", testTiltfileWithMounts)
+	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
+	f.WriteFile("Tiltfile", origTiltfile)
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	select {
