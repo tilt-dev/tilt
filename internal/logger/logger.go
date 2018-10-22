@@ -124,9 +124,6 @@ type levelWriter struct {
 
 var _ io.Writer = levelWriter{}
 
-// Tab is a fancy indent
-var Tab = "  → "
-
 func (lw levelWriter) Write(p []byte) (n int, err error) {
 	if lw.logger.level >= lw.level {
 		return lw.logger.writer.Write(p)

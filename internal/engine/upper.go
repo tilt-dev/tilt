@@ -302,9 +302,10 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 			return err
 		} else if engineState.WatchMounts {
 			l := logger.Get(ctx)
-			l.Infof("%s", logger.Red(l).Sprintf("build failed: %v", err))
+			p := logger.Red(l).Sprintf("Build Failed:")
+			l.Infof("%s %v", p, err)
 		} else {
-			return fmt.Errorf("build failed: %v", err)
+			return fmt.Errorf("Build Failed: %v", err)
 		}
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()
@@ -319,7 +320,8 @@ func (u Upper) handleCompletedBuild(ctx context.Context, engineState *store.Engi
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
 		if len(engineState.ManifestsToBuild) == 0 {
-			logger.Get(ctx).Infof("Awaiting changes…")
+			l := logger.Get(ctx)
+			l.Infof("%s", logger.Green(l).Sprintf("Awaiting changes…\n"))
 		}
 	}
 
@@ -617,8 +619,12 @@ func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.UR
 }
 
 func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest model.Manifest, buildState store.BuildState) {
+	l := logger.Get(ctx)
+
 	if firstBuild {
-		logger.Get(ctx).Infof("Building manifest: %s", manifest.Name)
+		p := logger.Blue(l).Sprintf("──┤ Building: ")
+		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
+		l.Infof("%s%s%s", p, manifest.Name, s)
 	} else {
 		changedFiles := buildState.FilesChanged()
 		var changedPathsToPrint []string
@@ -629,8 +635,11 @@ func (u Upper) logBuildEvent(ctx context.Context, firstBuild bool, manifest mode
 			changedPathsToPrint = changedFiles
 		}
 
-		logger.Get(ctx).Infof("  → %d changed: %v\n", len(changedFiles), ospath.TryAsCwdChildren(changedPathsToPrint))
-		logger.Get(ctx).Infof("Rebuilding manifest: %s", manifest.Name)
+		p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
+		l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
+		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
+		l.Infof("%s%s%s", rp, manifest.Name, rs)
 	}
 }
 

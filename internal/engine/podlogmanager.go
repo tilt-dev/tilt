@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -115,7 +116,8 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
 	}()
 
 	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	prefixLogWriter := logger.NewPrefixedWriter(fmt.Sprintf("[%s] ", name), logWriter)
+	prefix := logPrefix(name.String())
+	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
 	actionWriter := PodLogActionWriter{
 		store:        st,
 		manifestName: name,
@@ -128,6 +130,17 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
 	}
+}
+
+func logPrefix(n string) string {
+	max := 12
+	spaces := ""
+	if len(n) > max {
+		n = n[:max-1] + "…"
+	} else {
+		spaces = strings.Repeat(" ", max-len(n))
+	}
+	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
 type PodLogWatch struct {

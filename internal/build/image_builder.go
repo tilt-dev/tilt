@@ -248,7 +248,9 @@ func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
 func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error) {
-	logger.Get(ctx).Infof("Pushing Docker image")
+	l := logger.Get(ctx)
+	l.Infof("Pushing Docker image")
+	prefix := logger.Blue(l).Sprint("  │ ")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
 	defer span.Finish()
@@ -258,7 +260,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 		return nil, fmt.Errorf("PushImage#ParseRepositoryInfo: %s", err)
 	}
 
-	logger.Get(ctx).Infof("%sconnecting to repository", logger.Tab)
+	l.Infof("%sconnecting to repository", prefix)
 	cli := command.NewDockerCli(nil, writer, writer, true)
 
 	err = cli.Initialize(cliflags.NewClientOptions())
@@ -282,7 +284,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 		return nil, fmt.Errorf("PushImage: no domain in container name: %s", ref)
 	}
 
-	logger.Get(ctx).Infof("%spushing the image", logger.Tab)
+	l.Infof("%spushing the image", prefix)
 	imagePushResponse, err := d.dcli.ImagePush(
 		ctx,
 		ref.String(),
@@ -294,7 +296,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	defer func() {
 		err := imagePushResponse.Close()
 		if err != nil {
-			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
+			l.Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
 	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse, writer)
