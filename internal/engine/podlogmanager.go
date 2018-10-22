@@ -9,7 +9,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"k8s.io/api/core/v1"
 )
@@ -116,16 +115,9 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
 		_ = readCloser.Close()
 	}()
 
-	maxName := 12
-	n := fmt.Sprintf("%s", name)
-	spaces := ""
-	if len(n) > maxName {
-		n = n[:maxName-1] + "…"
-	} else {
-		spaces = strings.Repeat(" ", maxName-len(n))
-	}
 	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	prefixLogWriter := output.NewPrefixedWriter(fmt.Sprintf("%s%s┊ ", n, spaces), logWriter)
+	prefix := logPrefix(name.String())
+	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
 	actionWriter := PodLogActionWriter{
 		store:        st,
 		manifestName: name,
@@ -138,6 +130,17 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
 	}
+}
+
+func logPrefix(n string) string {
+	max := 12
+	spaces := ""
+	if len(n) > max {
+		n = n[:max-1] + "…"
+	} else {
+		spaces = strings.Repeat(" ", max-len(n))
+	}
+	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
 type PodLogWatch struct {
