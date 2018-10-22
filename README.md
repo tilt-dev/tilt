@@ -3,6 +3,16 @@
 [![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
 [![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
 
+Iterate on your microservice app
+
+See it when it’s happy
+
+See the problem when it isn’t
+
+Click below to see a video of Tilt in action:
+
+[![asciicast](https://asciinema.org/a/GpvT8wegPD7qkMcLhe7ekhMd2.png?zx=1)](https://asciinema.org/a/GpvT8wegPD7qkMcLhe7ekhMd2)
+
 ## Installing
 
 Run `go get -u github.com/windmilleng/tilt`
