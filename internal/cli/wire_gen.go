@@ -136,7 +136,28 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 	return upper, nil
 }
 
+func wireK8sClient(ctx context.Context) (k8s.Client, error) {
+	env, err := k8s.DetectEnv()
+	if err != nil {
+		return nil, err
+	}
+	config, err := k8s.ProvideRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	coreV1Interface, err := k8s.ProvideRESTClient(config)
+	if err != nil {
+		return nil, err
+	}
+	portForwarder := k8s.ProvidePortForwarder()
+	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
+	return k8sClient, nil
+}
+
 // wire.go:
 
-var BaseWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}), docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.ProvidePodWatcherMaker, engine.ProvideServiceWatcherMaker, engine.NewPodLogManager, engine.NewPortForwardController, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
+var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
+
+var BaseWireSet = wire.NewSet(
+	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.ProvidePodWatcherMaker, engine.ProvideServiceWatcherMaker, engine.NewPodLogManager, engine.NewPortForwardController, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
 	provideUpdateModeFlag)
