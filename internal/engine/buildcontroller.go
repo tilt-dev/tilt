@@ -23,7 +23,7 @@ type buildEntry struct {
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
 	return &BuildController{
-		b: b,
+		b:                       b,
 		lastCompletedBuildCount: -1,
 	}
 }
