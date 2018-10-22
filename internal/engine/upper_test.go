@@ -809,6 +809,7 @@ func TestPodEvent(t *testing.T) {
 		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", time.Now())
 
 		<-f.hud.Updates
+		<-f.hud.Updates
 		rv := f.hud.LastView.Resources[0]
 		assert.Equal(t, "my pod", rv.PodName)
 		assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
@@ -868,6 +869,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 		call := <-f.b.calls
 		assert.True(t, call.state.IsEmpty())
+		<-f.hud.Updates
 		<-f.hud.Updates
 
 		firstCreationTime := time.Now()
