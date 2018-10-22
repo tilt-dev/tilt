@@ -199,18 +199,13 @@ func (s Script) cleanUp(ctx context.Context, manifests []model.Manifest) {
 		return
 	}
 
-	allEntities := []k8s.K8sEntity{}
-	for _, m := range manifests {
-		entities, err := k8s.ParseYAMLFromString(m.K8sYaml)
-		if err != nil {
-			logger.Get(ctx).Infof("Parsing yaml: %v", err)
-			continue
-		}
-
-		allEntities = append(allEntities, entities...)
+	entities, err := engine.ParseYAMLFromManifests(manifests...)
+	if err != nil {
+		logger.Get(ctx).Infof("Parsing entities: %v", err)
+		return
 	}
 
-	err := s.kClient.Delete(ctx, allEntities)
+	err = s.kClient.Delete(ctx, entities)
 	if err != nil {
 		logger.Get(ctx).Infof("Deleting entities: %v", err)
 	}

@@ -349,7 +349,21 @@ func Load(filename string, out io.Writer) (*Tiltfile, error) {
 	return tiltfile, nil
 }
 
-func (tiltfile Tiltfile) GetManifestConfigs(manifestName string) ([]model.Manifest, error) {
+func (t Tiltfile) GetManifestConfigs(names ...string) ([]model.Manifest, error) {
+	var manifests []model.Manifest
+	for _, manifestName := range names {
+		curManifests, err := t.getManifestConfigsHelper(manifestName)
+		if err != nil {
+			return manifests, err
+		}
+
+		manifests = append(manifests, curManifests...)
+	}
+
+	return manifests, nil
+}
+
+func (tiltfile Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifest, error) {
 	f, ok := tiltfile.globals[manifestName]
 
 	if !ok {
