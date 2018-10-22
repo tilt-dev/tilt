@@ -148,16 +148,6 @@ func TestUpper_Up(t *testing.T) {
 	assert.Contains(t, lines, "fake building foobar")
 }
 
-func TestUpper_UpWatchZeroRepos(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	manifest := f.newManifest("foobar", nil)
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "nothing to watch")
-	}
-}
-
 func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -800,6 +790,7 @@ func TestPodEvent(t *testing.T) {
 	}()
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
 	assert.Equal(t, endToken, err)
+	time.Sleep(1 * time.Second)
 	f.assertAllBuildsConsumed()
 }
 
@@ -1030,7 +1021,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func makeFakeFsWatcherMaker(fn *fakeNotify) fsWatcherMaker {
+func makeFakeFsWatcherMaker(fn *fakeNotify) FsWatcherMaker {
 	return func() (watch.Notify, error) {
 		return fn, nil
 	}
@@ -1391,12 +1382,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	_ = os.Chdir(f.Path())
 	_ = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 
+	fswm := func() (watch.Notify, error) {
+		return watcher, nil
+	}
+	fwm := NewWatchManager(fswm)
 	pfc := NewPortForwardController(k8s)
 
-	upper := NewUpper(ctx, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, fswm, fsWatcherMaker, bc)
+	upper := NewUpper(ctx, b, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, fwm, fswm, bc)
 	upper.timerMaker = timerMaker.maker()
 	upper.hudErrorCh = make(chan error)
-	upper.fsWatcherMaker = fsWatcherMaker
 
 	go func() {
 		upper.RunHud(ctx)
