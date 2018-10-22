@@ -43,7 +43,7 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	fsWatcherMaker      fsWatcherMaker
+	b                   BuildAndDeployer
 	timerMaker          timerMaker
 	podWatcherMaker     PodWatcherMaker
 	serviceWatcherMaker ServiceWatcherMaker
@@ -54,7 +54,7 @@ type Upper struct {
 	hudErrorCh          chan error
 }
 
-type fsWatcherMaker func() (watch.Notify, error)
+type FsWatcherMaker func() (watch.Notify, error)
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
@@ -71,20 +71,30 @@ func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, k8s k8s.Client,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController, bc *BuildController) Upper {
-	fsWatcherMaker := func() (watch.Notify, error) {
+func ProvideFsWatcherMaker() FsWatcherMaker {
+	return func() (watch.Notify, error) {
 		return watch.NewWatcher()
 	}
+}
+
+func ProvideTimerMaker() timerMaker {
+	return func(t time.Duration) <-chan time.Time {
+		return time.After(t)
+	}
+}
+
+func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
 	st.AddSubscriber(pfc)
 	st.AddSubscriber(plm)
+	st.AddSubscriber(fwm)
 
 	return Upper{
-		fsWatcherMaker:      fsWatcherMaker,
+		b:                   b,
 		podWatcherMaker:     pwm,
 		serviceWatcherMaker: swm,
 		timerMaker:          time.After,
@@ -507,11 +517,6 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 
 	var err error
 	if watchMounts {
-		// TODO(nick): The watchers should be in a subscriber.
-		err = makeManifestWatcher(ctx, u.store, u.fsWatcherMaker, u.timerMaker, manifests)
-		if err != nil {
-			return err
-		}
 		err = u.podWatcherMaker(ctx, u.store)
 		if err != nil {
 			return err
