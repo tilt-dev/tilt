@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	testTiltfile = `def foobar():
+	simpleTiltfile = `def foobar():
   start_fast_build("Dockerfile", "docker-tag")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)`
@@ -420,7 +420,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.WriteFile("Tiltfile", testTiltfile)
+	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
@@ -447,7 +447,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 		// Since the manifest changed, we cleared the previous build state to force an image build
 		assert.False(t, call.state.HasImage())
 
-		f.WriteFile("Tiltfile", testTiltfile)
+		f.WriteFile("Tiltfile", simpleTiltfile)
 		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
 
 		// third call: new manifest should persist
@@ -579,7 +579,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", testTiltfile)
+	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
@@ -595,7 +595,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	assert.Empty(t, call.manifest.BaseDockerfile)
 
 	// second call: do some stuff
-	f.WriteFile("Tiltfile", testTiltfile)
+	f.WriteFile("Tiltfile", simpleTiltfile)
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	call = <-f.b.calls
@@ -612,7 +612,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	}
 
 	// fourth call: fix
-	f.WriteFile("Tiltfile", testTiltfile)
+	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}

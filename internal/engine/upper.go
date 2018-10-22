@@ -228,7 +228,6 @@ func (u Upper) maybeStartBuild(ctx context.Context, st *store.Store) {
 				return
 			}
 			ms.PendingFileChanges = mountedChangedFiles
-			fmt.Println("changed files:", mountedChangedFiles)
 
 			if len(ms.PendingFileChanges) == 0 {
 				// No mounted files changed, no need to build.
