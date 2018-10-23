@@ -813,7 +813,7 @@ func TestPodEvent(t *testing.T) {
 		assert.True(t, call.state.IsEmpty())
 		<-f.hud.Updates
 
-		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, time.Now())
+		f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
 		<-f.hud.Updates
 		<-f.hud.Updates
@@ -847,7 +847,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	pod.Status.ContainerStatuses[0].ContainerID = ""
 	pod.Spec = k8s.FakePodSpec(ref)
 
-	f.podEvents <- pod
+	f.podEvent(pod)
 
 	podState := store.Pod{}
 	f.WaitUntilManifest("container status", "foobar", func(ms store.ManifestState) bool {
@@ -895,7 +895,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return pod.ContainerReady
 	})
 
-	f.podEvents <- f.testPod("my pod", "foobar", "Running", "myfunnycontainerid", time.Now())
+	f.podEvent(f.testPod("my pod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 	f.WaitUntilManifest("CrashRebuildInProg set to True", "foobar", func(state store.ManifestState) bool {
 		return state.CrashRebuildInProg
 	})
@@ -919,10 +919,10 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 		firstCreationTime := time.Now()
 
-		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime)
+		f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
 		<-f.hud.Updates
 
-		f.podEvents <- f.testPod("my new pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2))
+		f.podEvent(f.testPod("my new pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
 
 		<-f.hud.Updates
 		rv := f.hud.LastView.Resources[0]
@@ -950,14 +950,14 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	creationTime := time.Now()
-	f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, creationTime)
+	f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 
 	f.WaitUntil("pod crashes", func(store.EngineState) bool {
 		rv := f.hud.LastView.Resources[0]
 		return rv.PodStatus == "CrashLoopBackOff"
 	})
 
-	f.podEvents <- f.testPod("my pod", "foobar", "Running", testContainer, creationTime)
+	f.podEvent(f.testPod("my pod", "foobar", "Running", testContainer, creationTime))
 
 	f.WaitUntil("pod comes back", func(store.EngineState) bool {
 		rv := f.hud.LastView.Resources[0]
@@ -992,10 +992,10 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 		<-f.hud.Updates
 
 		creationTime := time.Now()
-		f.podEvents <- f.testPod("my new pod", "foobar", "CrashLoopBackOff", testContainer, creationTime)
+		f.podEvent(f.testPod("my new pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 		<-f.hud.Updates
 
-		f.podEvents <- f.testPod("my pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1))
+		f.podEvent(f.testPod("my pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
 		<-f.hud.Updates
 
 		rv := f.hud.LastView.Resources[0]
@@ -1025,7 +1025,7 @@ func TestPodContainerStatus(t *testing.T) {
 	})
 
 	startedAt := time.Now()
-	f.podEvents <- f.testPod("pod-id", "fe", "Running", testContainer, startedAt)
+	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, startedAt))
 	f.WaitUntilManifest("pod appears", "fe", func(ms store.ManifestState) bool {
 		return ms.Pod.PodID == "pod-id"
 	})
@@ -1033,7 +1033,7 @@ func TestPodContainerStatus(t *testing.T) {
 	pod := f.testPod("pod-id", "fe", "Running", testContainer, startedAt)
 	pod.Spec = k8s.FakePodSpec(ref)
 	pod.Status = k8s.FakePodStatus(ref, "Running")
-	f.podEvents <- pod
+	f.podEvent(pod)
 
 	f.WaitUntilManifest("container is ready", "fe", func(ms store.ManifestState) bool {
 		ports := ms.Pod.ContainerPorts
@@ -1424,8 +1424,6 @@ type testFixture struct {
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeDockerClient
 	hud                   *hud.FakeHud
-	podEvents             chan *v1.Pod
-	serviceEvents         chan *v1.Service
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
 	store                 *store.Store
@@ -1437,18 +1435,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	watcher := newFakeNotify()
 	b := newFakeBuildAndDeployer(t)
 
-	podEvents := make(chan *v1.Pod)
-	fakePodWatcherMaker := makeFakePodWatcherMaker(podEvents)
-
-	serviceEvents := make(chan *v1.Service)
-	fakeServiceWatcherMaker := makeFakeServiceWatcherMaker(serviceEvents)
-
 	timerMaker := makeFakeTimerMaker(t)
 
 	docker := docker.NewFakeDockerClient()
 	reaper := build.NewImageReaper(docker)
 
 	k8s := k8s.NewFakeK8sClient()
+	pw := NewPodWatcher(k8s)
+	sw := NewServiceWatcher(k8s)
 
 	hud := hud.NewFakeHud()
 
@@ -1469,7 +1463,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 
-	upper := NewUpper(ctx, b, k8s, reaper, hud, fakePodWatcherMaker, fakeServiceWatcherMaker, st, plm, pfc, fwm, fswm, bc)
+	upper := NewUpper(ctx, b, k8s, reaper, hud, pw, sw, st, plm, pfc, fwm, fswm, bc)
 	upper.timerMaker = timerMaker.maker()
 	upper.hudErrorCh = make(chan error)
 
@@ -1487,8 +1481,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		timerMaker:     &timerMaker,
 		docker:         docker,
 		hud:            hud,
-		podEvents:      podEvents,
-		serviceEvents:  serviceEvents,
 		log:            log,
 		store:          st,
 	}
@@ -1643,8 +1635,10 @@ func (f *testFixture) LogLines() []string {
 func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
 	f.cancel()
-	close(f.podEvents)
-	close(f.serviceEvents)
+}
+
+func (f *testFixture) podEvent(pod *v1.Pod) {
+	f.store.Dispatch(NewPodChangeAction(pod))
 }
 
 func (f *testFixture) imageNameForManifest(manifestName string) reference.Named {
