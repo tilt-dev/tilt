@@ -896,31 +896,38 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
 	f.SetNextBuildFailure(errors.New("Build failed"))
-	go func() {
-		// Init Action
-		<-f.hud.Updates
+	f.Start([]model.Manifest{manifest}, true)
 
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		creationTime := time.Now()
-		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", creationTime)
+	f.waitForCompletedBuildCount(1)
 
-		<-f.hud.Updates
-		f.podEvents <- f.testPod("my pod", "foobar", "Running", creationTime)
+	creationTime := time.Now()
+	f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", creationTime)
 
-		<-f.hud.Updates
+	f.WaitUntil("pod crashes", func(store.EngineState) bool {
 		rv := f.hud.LastView.Resources[0]
-		assert.Equal(t, "my pod", rv.PodName)
-		assert.Equal(t, "Running", rv.PodStatus)
+		return rv.PodStatus == "CrashLoopBackOff"
+	})
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
-	assert.Equal(t, endToken, err)
+	f.podEvents <- f.testPod("my pod", "foobar", "Running", creationTime)
+
+	f.WaitUntil("pod comes back", func(store.EngineState) bool {
+		rv := f.hud.LastView.Resources[0]
+		return rv.PodStatus == "Running"
+	})
+
+	rv := f.hud.LastView.Resources[0]
+	assert.Equal(t, "my pod", rv.PodName)
+	assert.Equal(t, "Running", rv.PodStatus)
+
+	err := f.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	f.assertAllBuildsConsumed()
 }
 
