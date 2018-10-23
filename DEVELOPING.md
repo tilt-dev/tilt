@@ -1,6 +1,6 @@
 ## Prereqs
 - `make`
-- **[go 1.10](https://golang.org/dl/)**
+- **[go 1.11](https://golang.org/dl/)**
 - **errcheck**: `go get -u github.com/kisielk/errcheck`
 - **protobuf 3.2**: `brew install protobuf` or install `protoc-3.2.0-[your_OS]` [from Github](https://github.com/google/protobuf/releases?after=v3.2.1)
 - `wire` (`go get -u github.com/google/go-cloud/wire/cmd/wire`)
