@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"time"
@@ -436,6 +437,14 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 
+	// // <testing>
+	// b, err := json.Marshal(pod)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// log.Printf(string(b))
+	// // </testing>
+
 	// Update the status
 	ms.Pod.Phase = pod.Status.Phase
 	ms.Pod.Status = podStatusToString(*pod)
@@ -448,7 +457,16 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	} else if cStatus.Name == "" {
 		return
 	}
+
 	populateContainerStatus(ctx, ms, pod, cStatus)
+	if ms.ExpectedContainerId == "" {
+		ms.ExpectedContainerId = ms.Pod.ContainerID
+	} else if ms.ExpectedContainerId != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
+		log.Printf("EXPECTED CONTAINER %s, GOT %s -- IMAGE BUILD TIME",
+			ms.ExpectedContainerId.ShortStr(), ms.Pod.ContainerID.ShortStr())
+		// do the thing
+		ms.CrashRebuildInProg = true
+	}
 
 	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
 		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.Log...)
