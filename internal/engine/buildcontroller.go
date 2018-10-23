@@ -124,8 +124,11 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 			changedPathsToPrint = changedFiles
 		}
 
-		p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
-		l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+		if len(changedFiles) > 0 {
+			p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
+			l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+		}
+
 		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
 		l.Infof("%s%s%s", rp, manifest.Name, rs)
