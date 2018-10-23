@@ -165,7 +165,9 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
-		return handleCompletedBuild(ctx, state, action)
+		return u.handleCompletedBuild(ctx, state, action)
+	case SetContainerAction:
+		return u.setExpectedContainer(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
@@ -290,7 +292,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	state.CurrentlyBuilding = mn
 }
 
-func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
+func (u *Upper) handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -347,8 +349,33 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			l := logger.Get(ctx)
 			l.Infof("%s", logger.Green(l).Sprintf("Awaiting changes…\n"))
 		}
+
+		if cb.Result.WasImageBuild {
+			// Get the container that we deployed to (so we can know if the container goes down)
+			go func() {
+				_, _, cID, _, err := podInfoForImage(ctx, u.k8s, cb.Result.Image, cb.Result.Namespace)
+				if err != nil {
+					logger.Get(ctx).Infof("[%s] couldn't get containerId for image %s: %v",
+						ms.Manifest.Name, cb.Result, err)
+				}
+				u.store.Dispatch(SetContainerAction{
+					ContainerId:  cID,
+					ManifestName: ms.Manifest.Name,
+				})
+			}()
+		}
 	}
 
+	return nil
+}
+
+func (u *Upper) setExpectedContainer(ctx context.Context, engineState *store.EngineState, sc SetContainerAction) error {
+	ms, ok := engineState.ManifestStates[sc.ManifestName]
+	if !ok {
+		return nil
+	}
+
+	ms.ExpectedContainerID = sc.ContainerId
 	return nil
 }
 
@@ -482,7 +509,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	}
 
 	populateContainerStatus(ctx, ms, pod, cStatus)
-	if ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
+	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
 		ms.CrashRebuildInProg = true
 		// TODO(maia+dmiller): initiate an image build
 	}

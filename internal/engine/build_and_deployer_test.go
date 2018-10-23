@@ -218,7 +218,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt, nil))
+	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,6 +227,8 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
+
+	assert.True(t, result.WasImageBuild)
 
 }
 

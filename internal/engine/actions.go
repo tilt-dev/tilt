@@ -62,6 +62,13 @@ func NewBuildCompleteAction(result store.BuildResult, err error) BuildCompleteAc
 	}
 }
 
+type SetContainerAction struct {
+	ContainerId  k8s.ContainerID
+	ManifestName model.ManifestName
+}
+
+func (SetContainerAction) Action() {}
+
 type InitAction struct {
 	WatchMounts bool
 	Manifests   []model.Manifest

@@ -874,12 +874,18 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
+	// Set ExpectedContainerId
+	f.store.Dispatch(SetContainerAction{
+		ContainerId:  "expectedId",
+		ManifestName: "foobar",
+	})
+
 	f.startPod(name)
 	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
 		return pod.ContainerReady
 	})
 
-	f.pod.Status.ContainerStatuses[0].ContainerID = fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, "myfunnycontainerid")
+	f.podEvents <- f.testPod("my pod", "foobar", "Running", "myfunnycontainerid", time.Now())
 	f.WaitUntilManifest("CrashRebuildInProg set to True", "foobar", func(state store.ManifestState) bool {
 		return state.CrashRebuildInProg
 	})

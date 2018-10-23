@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -91,64 +90,71 @@ func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image referenc
 		info.markReady()
 	}()
 
+	nID, pID, cID, cName, err := podInfoForImage(ctx, d.kCli, image, ns)
+	if err != nil {
+		return err
+	}
+
+	info.nodeID = nID
+	info.podID = pID
+	info.containerID = cID
+	info.containerName = cName
+
+	return nil
+}
+
+func podInfoForImage(ctx context.Context, kCli k8s.Client, image reference.NamedTagged, ns k8s.Namespace) (k8s.NodeID, k8s.PodID, k8s.ContainerID, k8s.ContainerName, error) {
 	// get pod running the image we just deployed.
 	//
 	// We fetch the pod by the NamedTagged, to ensure we get a pod
 	// in the most recent Deployment, and not the pods in the process
 	// of being terminated from previous Deployments.
-	pods, err := d.kCli.PollForPodsWithImage(
+	pods, err := kCli.PollForPodsWithImage(
 		ctx, image, ns,
 		[]k8s.LabelPair{TiltRunLabel()}, podPollTimeoutSynclet)
 	if err != nil {
-		return errors.Wrapf(err, "PodsWithImage (img = %s)", image)
+		return "", "", "", "", errors.Wrapf(err, "PodsWithImage (img = %s)", image)
 	}
 
 	// If there's more than one pod, two possible things could be happening:
-	// 1) K8s is in a transitiion state.
+	// 1) K8s is in a transition state.
 	// 2) The user is running a configuration where they want multiple replicas
 	//    of the same pod (e.g., a cockroach developer testing primary/replica).
 	// If this happens, don't bother populating the deployInfo.
-	// We want to fallback to image builds rather than managing the complexity
+	// We want to fall back to image builds rather than managing the complexity
 	// of multiple replicas.
 	if len(pods) != 1 {
 		logger.Get(ctx).Debugf("Found too many pods (%d), skipping container updates: %s", len(pods), image)
-		return nil
+		return "", "", "", "", nil
 	}
 
 	pod := &(pods[0])
 	pID := k8s.PodIDFromPod(pod)
-	nodeID := k8s.NodeIDFromPod(pod)
+	nID := k8s.NodeIDFromPod(pod)
 
 	// Make sure that the deployed image is ready and not crashlooping.
-	cStatus, err := k8s.WaitForContainerReady(ctx, d.kCli, pod, image)
+	cStatus, err := k8s.WaitForContainerReady(ctx, kCli, pod, image)
 	if err != nil {
-		return errors.Wrapf(err, "WaitForContainerReady (pod = %s)", pID)
+		return "", "", "", "", errors.Wrapf(err, "WaitForContainerReady (pod = %s)", pID)
 	}
 
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
-		return errors.Wrapf(err, "populateDeployInfo")
+		return "", "", "", "", errors.Wrapf(err, "populateDeployInfo")
 	} else if cID == "" {
-		return fmt.Errorf("Missing container ID: %+v", cStatus)
+		return "", "", "", "", fmt.Errorf("missing container ID: %+v", cStatus)
 	}
 
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
 
-	// logger.Get(ctx).Verbosef("talking to synclet client for pod %s", pID.String())
-
-	info.podID = pID
-	info.containerID = cID
-	info.containerName = cName
-	info.nodeID = nodeID
-
-	return nil
+	return nID, pID, cID, cName, nil
 }
 
 type DeployInfo struct {
+	nodeID        k8s.NodeID
 	podID         k8s.PodID
 	containerID   k8s.ContainerID
 	containerName k8s.ContainerName
-	nodeID        k8s.NodeID
 }
 
 func (d DeployInfo) Empty() bool {

@@ -80,9 +80,10 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	}
 
 	return store.BuildResult{
-		Image:     ref,
-		Namespace: namespace,
-		Entities:  k8sEntities,
+		Image:         ref,
+		WasImageBuild: true,
+		Namespace:     namespace,
+		Entities:      k8sEntities,
 	}, nil
 }
 
