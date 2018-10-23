@@ -7,12 +7,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	logger "github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -50,6 +51,8 @@ type fakeBuildAndDeployer struct {
 
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
+
+	frozenCh chan interface{}
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -61,6 +64,12 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
+	select {
+	case <-b.frozenCh:
+		//case <-time.After(time.Second):
+		//	b.t.Fatal("fakeBuildAndDeployer was frozen for more than a second")
+	}
+
 	select {
 	case b.calls <- buildAndDeployCall{manifest, state}:
 	default:
@@ -89,12 +98,25 @@ func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, pre
 	}
 }
 
+func (b *fakeBuildAndDeployer) FreezeBuilds() {
+	b.frozenCh = make(chan interface{})
+}
+
+func (b *fakeBuildAndDeployer) UnfreezeBuilds() {
+	close(b.frozenCh)
+}
+
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
-	return &fakeBuildAndDeployer{
+	ret := &fakeBuildAndDeployer{
 		t:          t,
 		calls:      make(chan buildAndDeployCall, 5),
 		deployInfo: make(map[docker.ImgNameAndTag]k8s.ContainerID),
+		frozenCh:   make(chan interface{}),
 	}
+
+	ret.UnfreezeBuilds()
+
+	return ret
 }
 
 type fakeNotify struct {
@@ -543,6 +565,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: with the old manifests
+	f.waitForCompletedBuildCount(1)
 	call := <-f.b.calls
 	assert.Equal(t, "FROM iron/go:dev1", call.manifest.BaseDockerfile)
 	assert.Equal(t, "foobar", string(call.manifest.Name))
@@ -555,6 +578,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
 	// hasn't changed, so the manifest hasn't changed, so we can do an incremental build.
+	f.waitForCompletedBuildCount(2)
 	call = <-f.b.calls
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 	assert.ElementsMatch(t, []string{
@@ -564,10 +588,6 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.state.HasImage())
-
-	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
-		return es.CurrentlyBuilding == ""
-	})
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -657,6 +677,7 @@ func TestFilterOutNonMountedConfigFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: with the old manifests (should be image build)
+	f.waitForCompletedBuildCount(1)
 	call := <-f.b.calls
 	assert.False(t, call.state.HasImage()) // No prior build state
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
@@ -669,16 +690,14 @@ func TestFilterOutNonMountedConfigFiles(t *testing.T) {
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile, but
 	// we made a no-op change --> no change to the manifest, will do an incremental build.
+	f.waitForCompletedBuildCount(2)
 	call = <-f.b.calls
 	assert.True(t, call.state.HasImage()) // Had prior build state (i.e. this was an incremental build)
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 
 	// 'Dockerfile' didn't get passed through as a changed file b/c it's outside of our mount(s).
-	assert.ElementsMatch(t, []string{f.JoinPath("nested/random_file.go")}, call.state.FilesChanged())
-
-	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
-		return es.CurrentlyBuilding == ""
-	})
+	expected := []string{f.JoinPath("nested/random_file.go")}
+	assert.ElementsMatch(t, expected, call.state.FilesChanged(), "%v didn't match %v", expected, call.state.FilesChanged())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -729,6 +748,74 @@ func TestReapOldBuilds(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, []string{"build-id-0"}, f.docker.RemovedImageIDs)
+}
+
+func TestSuccessManifestState(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(string(name), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	f.b.FreezeBuilds()
+	f.changeFile(name, "/go/foo.go")
+
+	f.WaitUntil("build started", func(state store.EngineState) bool {
+		return state.CurrentlyBuilding == name
+	})
+
+	f.WithManifestState(name, func(state store.ManifestState) {
+		assert.Equal(t, map[string]bool{"/go/foo.go": true}, state.FileChangesSinceLastSuccessfulBuild)
+		assert.Equal(t, map[string]bool{}, state.FileChangesSinceLastBuild)
+	})
+
+	f.b.UnfreezeBuilds()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.WithManifestState(name, func(state store.ManifestState) {
+		assert.Equal(t, nil, state.LastError)
+		assert.Equal(t, map[string]bool{}, state.FileChangesSinceLastSuccessfulBuild)
+		assert.Equal(t, map[string]bool{}, state.FileChangesSinceLastBuild)
+		assert.Equal(t, []string{"/go/foo.go"}, state.LastSuccessfulDeployEdits)
+	})
+}
+
+func TestFailureManifestState(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(string(name), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	buildErr := errors.New("hooray for build failures")
+	f.SetNextBuildFailure(buildErr)
+
+	f.changeFile(name, "/go/foo.go")
+	f.waitForCompletedBuildCount(2)
+
+	f.WithManifestState(name, func(state store.ManifestState) {
+		assert.Equal(t, map[string]bool{"/go/foo.go": true}, state.FileChangesSinceLastSuccessfulBuild)
+		assert.Equal(t, map[string]bool{}, state.FileChangesSinceLastBuild)
+		assert.Equal(t, []string(nil), state.LastSuccessfulDeployEdits)
+		assert.Equal(t, buildErr, state.LastError)
+	})
+
+	f.changeFile(name, "/go/bar.go")
+	f.waitForCompletedBuildCount(3)
+
+	f.WithManifestState(name, func(state store.ManifestState) {
+		assert.Equal(t, map[string]bool{}, state.FileChangesSinceLastSuccessfulBuild)
+		assert.Equal(t, []string{"/go/bar.go"}, state.LastSuccessfulDeployEdits)
+		assert.Equal(t, nil, state.LastError)
+	})
+
 }
 
 func TestHudUpdated(t *testing.T) {
@@ -1473,6 +1560,11 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 
 		select {
 		case <-ctx.Done():
+			// dump the stacks of all goroutines
+			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+
+			fmt.Printf("state: '%+v'\n", state)
+
 			f.T().Fatalf("Timed out waiting for: %s", msg)
 			// TODO(nick): Right now we're using the HUD update channel as a proxy for
 			// "the model changed". Eventually we should have a real reactive
@@ -1490,6 +1582,21 @@ func (f *testFixture) WaitUntilManifest(msg string, name string, isDone func(sto
 		}
 		return isDone(*ms)
 	})
+}
+
+func (f *testFixture) WithManifestState(name model.ManifestName, msf func(ms store.ManifestState)) {
+	state := f.store.RLockState()
+	defer f.store.RUnlockState()
+	ms, ok := state.ManifestStates[name]
+	if !assert.True(f.T(), ok) {
+		return
+	}
+
+	msf(*ms)
+}
+
+func (f *testFixture) changeFile(mn model.ManifestName, filename string) {
+	f.store.Dispatch(manifestFilesChangedAction{mn, []string{filename}})
 }
 
 func (f *testFixture) startPod(manifestName model.ManifestName) {

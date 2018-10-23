@@ -92,7 +92,7 @@ func (m *podMonitor) OnChange(ctx context.Context, store *store.Store) {
 			m.healthy = false
 		}
 
-		if state.CurrentlyBuilding != "" || len(ms.PendingFileChanges) > 0 {
+		if state.CurrentlyBuilding != "" || len(ms.FileChangesSinceLastBuild) > 0 {
 			m.healthy = false
 		}
 	}

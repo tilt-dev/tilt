@@ -23,7 +23,7 @@ type buildEntry struct {
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
 	return &BuildController{
-		b:                       b,
+		b: b,
 		lastCompletedBuildCount: -1,
 	}
 }
@@ -44,7 +44,14 @@ func (c *BuildController) needsBuild(ctx context.Context, st *store.Store) (buil
 	ms := state.ManifestStates[state.CurrentlyBuilding]
 	manifest := ms.Manifest
 	firstBuild := !ms.HasBeenBuilt
-	buildState := store.NewBuildState(ms.LastBuild, ms.CurrentlyBuildingFileChanges)
+
+	mountedFilesChangedSinceLastSuccessfulBuild, err := ms.WithoutUnmountedConfigFiles(ctx, ms.FileChangesSinceLastSuccessfulBuild)
+	if err != nil {
+		logger.Get(ctx).Infof("error determining whether files are unmounted config files: %v", err)
+		return buildEntry{}, false
+	}
+
+	buildState := store.NewBuildState(ms.LastBuild, mountedFilesChangedSinceLastSuccessfulBuild)
 
 	// TODO(nick): This is...not great, because it modifies the build log in place.
 	// A better solution would dispatch actions (like PodLogManager does) so that

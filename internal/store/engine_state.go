@@ -36,23 +36,30 @@ type EngineState struct {
 }
 
 type ManifestState struct {
-	LastBuild                    BuildResult
-	Manifest                     model.Manifest
-	Pod                          Pod
-	LBs                          map[k8s.ServiceName]*url.URL
-	HasBeenBuilt                 bool
-	PendingFileChanges           map[string]bool
-	CurrentlyBuildingFileChanges []string
+	LastBuild    BuildResult
+	Manifest     model.Manifest
+	Pod          Pod
+	LBs          map[k8s.ServiceName]*url.URL
+	HasBeenBuilt bool
 
-	CurrentBuildStartTime     time.Time
-	CurrentBuildLog           *bytes.Buffer
+	// file changes that we've never tried to build for this manifest
+	FileChangesSinceLastBuild map[string]bool
+	// file changes that we've never successfully built for this manifest
+	// (and thus need to be copied on top of the latest image)
+	FileChangesSinceLastSuccessfulBuild map[string]bool
+	// changes that we're currently trying to build for the first time
+	NewFileChangesInCurrentBuild []string
+	// new edits that were included in the last successful deploy
 	LastSuccessfulDeployEdits []string
-	LastError                 error
-	LastBuildFinishTime       time.Time
-	LastSuccessfulDeployTime  time.Time
-	LastBuildDuration         time.Duration
-	LastBuildLog              *bytes.Buffer
-	QueueEntryTime            time.Time
+
+	CurrentBuildStartTime    time.Time
+	CurrentBuildLog          *bytes.Buffer
+	LastError                error
+	LastBuildFinishTime      time.Time
+	LastSuccessfulDeployTime time.Time
+	LastBuildDuration        time.Duration
+	LastBuildLog             *bytes.Buffer
+	QueueEntryTime           time.Time
 
 	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
 	ConfigIsDirty bool
@@ -66,11 +73,12 @@ func NewState() *EngineState {
 
 func NewManifestState(manifest model.Manifest) *ManifestState {
 	return &ManifestState{
-		LastBuild:          BuildResult{},
-		Manifest:           manifest,
-		PendingFileChanges: make(map[string]bool),
-		LBs:                make(map[k8s.ServiceName]*url.URL),
-		CurrentBuildLog:    &bytes.Buffer{},
+		LastBuild:                           BuildResult{},
+		Manifest:                            manifest,
+		FileChangesSinceLastBuild:           make(map[string]bool),
+		FileChangesSinceLastSuccessfulBuild: make(map[string]bool),
+		LBs:             make(map[k8s.ServiceName]*url.URL),
+		CurrentBuildLog: &bytes.Buffer{},
 	}
 }
 
@@ -130,19 +138,14 @@ func (s EngineState) Manifests() []model.Manifest {
 	return result
 }
 
-// Returns a set of pending file changes, without config files that don't belong
-// to mounts. (Changed config files show up in ms.PendingFileChanges and don't
-// necessarily belong to any mounts/watched directories -- we don't want to run
-// these files through a build b/c we'll pitch an error if we find un-mounted
-// files at that point.)
-func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx context.Context) (map[string]bool, error) {
+func (ms *ManifestState) WithoutUnmountedConfigFiles(ctx context.Context, fs map[string]bool) ([]string, error) {
 	matcher, err := ms.Manifest.ConfigMatcher()
 	if err != nil {
-		return nil, errors.Wrap(err, "[PendingFileChangesWithoutUnmountedConfigFiles] getting config matcher")
+		return nil, errors.Wrap(err, "[IsUnmountedConfigFile] getting config matcher")
 	}
 
-	files := make(map[string]bool)
-	for f := range ms.PendingFileChanges {
+	var files []string
+	for f := range fs {
 		matches, err := matcher.Matches(f, false)
 		if err != nil {
 			logger.Get(ctx).Infof("Error matching %s: %v", f, err)
@@ -151,7 +154,7 @@ func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx conte
 			// Filter out config files that don't belong to a mount
 			continue
 		}
-		files[f] = true
+		files = append(files, f)
 	}
 	return files, nil
 }
@@ -169,13 +172,13 @@ func StateToView(s EngineState) view.View {
 		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
 
 		var pendingBuildEdits []string
-		for f := range ms.PendingFileChanges {
+		for f := range ms.FileChangesSinceLastBuild {
 			pendingBuildEdits = append(pendingBuildEdits, f)
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
 		lastDeployEdits := shortenFileList(absWatchDirs, ms.LastSuccessfulDeployEdits)
-		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentlyBuildingFileChanges)
+		currentBuildEdits := shortenFileList(absWatchDirs, ms.NewFileChangesInCurrentBuild)
 
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)

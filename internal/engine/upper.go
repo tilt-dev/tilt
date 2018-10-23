@@ -219,14 +219,13 @@ func handleMaybeStartBuild(ctx context.Context, state *store.EngineState) {
 				ms.LastError = nil
 			}
 
-			mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
+			mountedFilesChangedSinceLastSuccessfulBuild, err := ms.WithoutUnmountedConfigFiles(ctx, ms.FileChangesSinceLastSuccessfulBuild)
 			if err != nil {
-				logger.Get(ctx).Infof(err.Error())
+				logger.Get(ctx).Infof("error determining whether files are unmounted config files: %v", err)
 				return
 			}
-			ms.PendingFileChanges = mountedChangedFiles
 
-			if len(ms.PendingFileChanges) == 0 {
+			if len(mountedFilesChangedSinceLastSuccessfulBuild) == 0 {
 				// No mounted files changed, no need to build.
 				ms.ConfigIsDirty = false
 				return
@@ -241,10 +240,10 @@ func handleMaybeStartBuild(ctx context.Context, state *store.EngineState) {
 		ms.ConfigIsDirty = false
 	}
 
-	for f := range ms.PendingFileChanges {
-		ms.CurrentlyBuildingFileChanges = append(ms.CurrentlyBuildingFileChanges, f)
+	for f := range ms.FileChangesSinceLastBuild {
+		ms.NewFileChangesInCurrentBuild = append(ms.NewFileChangesInCurrentBuild, f)
 	}
-	ms.PendingFileChanges = make(map[string]bool)
+	ms.FileChangesSinceLastBuild = make(map[string]bool)
 	ms.CurrentBuildStartTime = time.Now()
 	ms.Pod.Log = []byte{}
 
@@ -278,6 +277,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuildStartTime = time.Time{}
 	ms.LastBuildLog = ms.CurrentBuildLog
 	ms.CurrentBuildLog = &bytes.Buffer{}
+	ms.FileChangesSinceLastBuild = make(map[string]bool)
 
 	if err != nil {
 		if isPermanentError(err) {
@@ -292,11 +292,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	} else {
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
-		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
-		ms.CurrentlyBuildingFileChanges = nil
-
+		ms.LastSuccessfulDeployEdits = ms.NewFileChangesInCurrentBuild
+		ms.FileChangesSinceLastSuccessfulBuild = make(map[string]bool)
 		ms.Pod.OldRestarts = ms.Pod.ContainerRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
 	}
+
+	ms.NewFileChangesInCurrentBuild = nil
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
@@ -324,10 +325,11 @@ func handleFSEvent(
 	ms := state.ManifestStates[event.manifestName]
 
 	for _, f := range event.files {
-		ms.PendingFileChanges[f] = true
+		ms.FileChangesSinceLastBuild[f] = true
+		ms.FileChangesSinceLastSuccessfulBuild[f] = true
 	}
 
-	spurious, err := onlySpuriousChanges(ms.PendingFileChanges)
+	spurious, err := onlySpuriousChanges(ms.FileChangesSinceLastBuild)
 	if err != nil {
 		logger.Get(ctx).Infof("build watch error: %v", err)
 	}
