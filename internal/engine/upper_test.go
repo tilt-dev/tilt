@@ -770,9 +770,9 @@ func TestHudUpdated(t *testing.T) {
 }
 
 func (f *testFixture) testPod(podName string, manifestName string, phase string, cID string, creationTime time.Time) *v1.Pod {
-	var containerId string
+	var containerID string
 	if cID != "" {
-		containerId = fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, cID)
+		containerID = fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, cID)
 	}
 
 	return &v1.Pod{
@@ -788,7 +788,7 @@ func (f *testFixture) testPod(podName string, manifestName string, phase string,
 					Name:        "test container!",
 					Image:       f.imageNameForManifest(manifestName).String(),
 					Ready:       true,
-					ContainerID: containerId,
+					ContainerID: containerID,
 				},
 			},
 		},
