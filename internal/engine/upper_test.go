@@ -866,19 +866,22 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	ms := &store.ManifestState{
-		Pod: store.Pod{ContainerID: k8s.ContainerID("originalContainer")},
-	}
-	state := &store.EngineState{
-		ManifestStates: map[model.ManifestName]*store.ManifestState{
-			model.ManifestName("foobar"): ms,
-		},
-	}
-	st := store.StoreWithState(state)
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Mount{mount})
 
-	st.Dispatch(NewPodChangeAction(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, time.Now())))
-	fmt.Println(ms.Pod.ContainerID)
-	assert.True(t, ms.CrashRebuildInProg)
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	f.startPod(name)
+	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
+		return pod.ContainerReady
+	})
+
+	f.pod.Status.ContainerStatuses[0].ContainerID = "docker://myfunnycontainerid"
+	f.WaitUntilManifest("pod status change seen", "foobar", func(state store.ManifestState) bool {
+		return state.CrashRebuildInProg
+	})
 }
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
