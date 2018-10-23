@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -19,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -140,7 +138,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			if err != nil {
 				state.PermanentError = err
 			}
-			handleMaybeStartBuild(ctx, state)
 			u.store.UnlockMutableState()
 		}
 
@@ -171,6 +168,10 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		return handleCompletedBuild(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
+	case BuildStartedAction:
+		handleBuildStarted(ctx, state, action)
+	case ManifestReloadedAction:
+		handleManifestReloaded(ctx, state, action)
 	default:
 		return fmt.Errorf("Unrecognized action: %T", action)
 	}
@@ -193,69 +194,93 @@ func maybeFinished(st *store.Store) (bool, error) {
 	return finished, nil
 }
 
-func handleMaybeStartBuild(ctx context.Context, state *store.EngineState) {
-	if len(state.ManifestStates) == 0 ||
-		len(state.ManifestsToBuild) == 0 ||
-		state.CurrentlyBuilding != "" {
+func handleManifestReloaded(ctx context.Context, state *store.EngineState, action ManifestReloadedAction) {
+	state.BuildControllerActionCount++
+
+	ms, ok := state.ManifestStates[action.OldManifest.Name]
+	if !ok {
+		state.PermanentError = fmt.Errorf("handleManifestReloaded: Missing manifest state: %s", action.OldManifest.Name)
 		return
 	}
 
-	mn := state.ManifestsToBuild[0]
-	state.ManifestsToBuild = state.ManifestsToBuild[1:]
+	err := action.Error
+	if err != nil {
+		logger.Get(ctx).Infof("getting new manifest error: %v", err)
+		ms.LastError = err
+		ms.LastBuildFinishTime = time.Now()
+		ms.LastBuildDuration = 0
+
+		err := removeFromManifestsToBuild(state, ms.Manifest.Name)
+		if err != nil {
+			state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
+			return
+		}
+		return
+	}
+
+	newManifest := action.NewManifest
+	if newManifest.Equal(ms.Manifest) {
+		logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
+			ms.Manifest.Name)
+
+		if _, ok := ms.LastError.(*manifestErr); ok {
+			// Last err indicates failure to make a new manifest b/c of bad config files.
+			// Manifest is now back to normal (the new one we just got is the same as the
+			// one we previously had) so clear this error.
+			ms.LastError = nil
+		}
+
+		mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
+		if err != nil {
+			logger.Get(ctx).Infof(err.Error())
+			return
+		}
+		ms.PendingFileChanges = mountedChangedFiles
+
+		if len(ms.PendingFileChanges) == 0 {
+			ms.ConfigIsDirty = false
+			err = removeFromManifestsToBuild(state, ms.Manifest.Name)
+			if err != nil {
+				state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
+			}
+			return
+		}
+	} else {
+		// Manifest has changed, ensure we do an image build so that we apply the changes
+		ms.LastBuild = store.BuildResult{}
+		ms.Manifest = newManifest
+	}
+
+	ms.ConfigIsDirty = false
+}
+
+func removeFromManifestsToBuild(state *store.EngineState, mn model.ManifestName) error {
+	for i, n := range state.ManifestsToBuild {
+		if n == mn {
+			state.ManifestsToBuild = append(state.ManifestsToBuild[:i], state.ManifestsToBuild[i+1:]...)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Missing manifest %s", mn)
+}
+
+func handleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
+	mn := action.Manifest.Name
+	err := removeFromManifestsToBuild(state, mn)
+	if err != nil {
+		state.PermanentError = fmt.Errorf("handleBuildStarted: %v", err)
+		return
+	}
+
 	ms := state.ManifestStates[mn]
 	ms.QueueEntryTime = time.Time{}
 
-	if ms.ConfigIsDirty {
-		// TODO(nick): Move this into BuildController, so that
-		// we don't hold the write lock on store while we reevaluate
-		// the tiltfile.
-		newManifest, err := getNewManifestFromTiltfile(mn)
-		if err != nil {
-			logger.Get(ctx).Infof("getting new manifest error: %v", err)
-			ms.LastError = err
-			ms.LastBuildFinishTime = time.Now()
-			ms.LastBuildDuration = 0
-			return
-		}
-
-		if newManifest.Equal(ms.Manifest) {
-			logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
-				ms.Manifest.Name)
-
-			if _, ok := ms.LastError.(*manifestErr); ok {
-				// Last err indicates failure to make a new manifest b/c of bad config files.
-				// Manifest is now back to normal (the new one we just got is the same as the
-				// one we previously had) so clear this error.
-				ms.LastError = nil
-			}
-
-			mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
-			if err != nil {
-				logger.Get(ctx).Infof(err.Error())
-				return
-			}
-			ms.PendingFileChanges = mountedChangedFiles
-
-			if len(ms.PendingFileChanges) == 0 {
-				// No mounted files changed, no need to build.
-				ms.ConfigIsDirty = false
-				return
-			}
-
-		} else {
-			// Manifest has changed, ensure we do an image build so that we apply the changes
-			ms.LastBuild = store.BuildResult{}
-			ms.Manifest = newManifest
-		}
-
-		ms.ConfigIsDirty = false
+	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
+	for _, file := range action.FilesChanged {
+		delete(ms.PendingFileChanges, file)
 	}
-
-	for f := range ms.PendingFileChanges {
-		ms.CurrentlyBuildingFileChanges = append(ms.CurrentlyBuildingFileChanges, f)
-	}
-	ms.PendingFileChanges = make(map[string]bool)
-	ms.CurrentBuildStartTime = time.Now()
+	ms.CurrentBuildStartTime = action.StartTime
 	ms.Pod.Log = []byte{}
 
 	// TODO(nick): It would be better if we reversed the relationship
@@ -271,6 +296,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	}()
 
 	engineState.CompletedBuildCount++
+	engineState.BuildControllerActionCount++
 
 	defer func() {
 		if engineState.CompletedBuildCount == engineState.InitialBuildCount {
@@ -290,6 +316,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuildLog = &bytes.Buffer{}
 
 	if err != nil {
+		// Put the files that failed to build back into the pending queue.
+		for _, file := range ms.CurrentlyBuildingFileChanges {
+			ms.PendingFileChanges[file] = true
+		}
+		ms.CurrentlyBuildingFileChanges = nil
+
 		if isPermanentError(err) {
 			return err
 		} else if engineState.WatchMounts {
@@ -581,23 +613,6 @@ func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAct
 	}
 
 	return false
-}
-
-func getNewManifestFromTiltfile(name model.ManifestName) (model.Manifest, *manifestErr) {
-	t, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
-	if err != nil {
-		return model.Manifest{}, manifestErrf(err.Error())
-	}
-	newManifests, err := t.GetManifestConfigs(string(name))
-	if err != nil {
-		return model.Manifest{}, manifestErrf(err.Error())
-	}
-	if len(newManifests) != 1 {
-		return model.Manifest{}, manifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
-	}
-	newManifest := newManifests[0]
-
-	return newManifest, nil
 }
 
 func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
