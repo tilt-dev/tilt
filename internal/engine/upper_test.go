@@ -64,11 +64,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
-	select {
-	case <-b.frozenCh:
-		//case <-time.After(time.Second):
-		//	b.t.Fatal("fakeBuildAndDeployer was frozen for more than a second")
-	}
+	<-b.frozenCh
 
 	select {
 	case b.calls <- buildAndDeployCall{manifest, state}:
