@@ -356,7 +356,7 @@ func (u *Upper) handleCompletedBuild(ctx context.Context, engineState *store.Eng
 				_, _, cID, _, err := podInfoForImage(ctx, u.k8s, cb.Result.Image, cb.Result.Namespace)
 				if err != nil {
 					logger.Get(ctx).Infof("[%s] couldn't get containerId for image %s: %v",
-						ms.Manifest.Name, cb.Result, err)
+						ms.Manifest.Name, cb.Result.Image, err)
 				}
 				u.store.Dispatch(SetContainerAction{
 					ContainerId:  cID,
