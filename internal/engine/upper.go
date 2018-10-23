@@ -454,6 +454,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		ms.ExpectedContainerId = ms.Pod.ContainerID
 	} else if ms.ExpectedContainerId != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
 		ms.CrashRebuildInProg = true
+		// TODO(maia+dmiller): initiate an image build
 	}
 
 	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
