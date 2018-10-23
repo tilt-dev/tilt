@@ -165,7 +165,7 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
-		return u.handleCompletedBuild(ctx, state, action)
+		return handleCompletedBuild(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
@@ -173,7 +173,7 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
 	default:
-		return fmt.Errorf("Unrecognized action: %T", action)
+		return fmt.Errorf("unrecognized action: %T", action)
 	}
 	return nil
 }
@@ -290,7 +290,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	state.CurrentlyBuilding = mn
 }
 
-func (u *Upper) handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
+func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -552,7 +552,6 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
-	fmt.Println("we init'd!")
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
