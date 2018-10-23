@@ -878,7 +878,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return pod.ContainerReady
 	})
 
-	f.pod.Status.ContainerStatuses[0].ContainerID = "docker://myfunnycontainerid"
+	f.pod.Status.ContainerStatuses[0].ContainerID = fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, "myfunnycontainerid")
 	f.WaitUntilManifest("pod status change seen", "foobar", func(state store.ManifestState) bool {
 		return state.CrashRebuildInProg
 	})
