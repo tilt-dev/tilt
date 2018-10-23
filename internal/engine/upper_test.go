@@ -38,6 +38,7 @@ const (
   start_fast_build("Dockerfile", "docker-tag")
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)`
+	testContainer = "myTestContainer"
 )
 
 // represents a single call to `BuildAndDeploy`
@@ -768,7 +769,12 @@ func TestHudUpdated(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func (f *testFixture) testPod(podName string, manifestName string, phase string, creationTime time.Time) *v1.Pod {
+func (f *testFixture) testPod(podName string, manifestName string, phase string, cID string, creationTime time.Time) *v1.Pod {
+	var containerID string
+	if cID != "" {
+		containerID = fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, cID)
+	}
+
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              podName,
@@ -779,9 +785,10 @@ func (f *testFixture) testPod(podName string, manifestName string, phase string,
 			Phase: v1.PodPhase(phase),
 			ContainerStatuses: []v1.ContainerStatus{
 				{
-					Name:  "test container!",
-					Image: f.imageNameForManifest(manifestName).String(),
-					Ready: true,
+					Name:        "test container!",
+					Image:       f.imageNameForManifest(manifestName).String(),
+					Ready:       true,
+					ContainerID: containerID,
 				},
 			},
 		},
@@ -806,7 +813,7 @@ func TestPodEvent(t *testing.T) {
 		assert.True(t, call.state.IsEmpty())
 		<-f.hud.Updates
 
-		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", time.Now())
+		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, time.Now())
 
 		<-f.hud.Updates
 		<-f.hud.Updates
@@ -835,7 +842,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 		return ref != nil
 	})
 
-	pod := f.testPod("my-pod", "foobar", "Running", time.Now())
+	pod := f.testPod("my-pod", "foobar", "Running", testContainer, time.Now())
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 	pod.Status.ContainerStatuses[0].ContainerID = ""
 	pod.Spec = k8s.FakePodSpec(ref)
@@ -856,6 +863,44 @@ func TestPodEventContainerStatus(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	// Start and end a fake build to set manifestState.ExpectedContainerId
+	f.store.Dispatch(manifestFilesChangedAction{
+		manifestName: manifest.Name,
+		files:        []string{"/go/a"},
+	})
+	f.store.Dispatch(BuildStartedAction{
+		Manifest:  manifest,
+		StartTime: time.Now(),
+	})
+	f.store.Dispatch(BuildCompleteAction{
+		Result: store.BuildResult{
+			Image:       nil,
+			ContainerID: "theOriginalContainer",
+		},
+	})
+
+	f.startPod(name)
+	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
+		return pod.ContainerReady
+	})
+
+	f.podEvents <- f.testPod("my pod", "foobar", "Running", "myfunnycontainerid", time.Now())
+	f.WaitUntilManifest("CrashRebuildInProg set to True", "foobar", func(state store.ManifestState) bool {
+		return state.CrashRebuildInProg
+	})
+}
+
 func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -874,10 +919,10 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 		firstCreationTime := time.Now()
 
-		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", firstCreationTime)
+		f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime)
 		<-f.hud.Updates
 
-		f.podEvents <- f.testPod("my new pod", "foobar", "Running", firstCreationTime.Add(time.Minute*2))
+		f.podEvents <- f.testPod("my new pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2))
 
 		<-f.hud.Updates
 		rv := f.hud.LastView.Resources[0]
@@ -905,14 +950,14 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	creationTime := time.Now()
-	f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", creationTime)
+	f.podEvents <- f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, creationTime)
 
 	f.WaitUntil("pod crashes", func(store.EngineState) bool {
 		rv := f.hud.LastView.Resources[0]
 		return rv.PodStatus == "CrashLoopBackOff"
 	})
 
-	f.podEvents <- f.testPod("my pod", "foobar", "Running", creationTime)
+	f.podEvents <- f.testPod("my pod", "foobar", "Running", testContainer, creationTime)
 
 	f.WaitUntil("pod comes back", func(store.EngineState) bool {
 		rv := f.hud.LastView.Resources[0]
@@ -947,10 +992,10 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 		<-f.hud.Updates
 
 		creationTime := time.Now()
-		f.podEvents <- f.testPod("my new pod", "foobar", "CrashLoopBackOff", creationTime)
+		f.podEvents <- f.testPod("my new pod", "foobar", "CrashLoopBackOff", testContainer, creationTime)
 		<-f.hud.Updates
 
-		f.podEvents <- f.testPod("my pod", "foobar", "Running", creationTime.Add(time.Minute*-1))
+		f.podEvents <- f.testPod("my pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1))
 		<-f.hud.Updates
 
 		rv := f.hud.LastView.Resources[0]
@@ -980,12 +1025,12 @@ func TestPodContainerStatus(t *testing.T) {
 	})
 
 	startedAt := time.Now()
-	f.podEvents <- f.testPod("pod-id", "fe", "Running", startedAt)
+	f.podEvents <- f.testPod("pod-id", "fe", "Running", testContainer, startedAt)
 	f.WaitUntilManifest("pod appears", "fe", func(ms store.ManifestState) bool {
 		return ms.Pod.PodID == "pod-id"
 	})
 
-	pod := f.testPod("pod-id", "fe", "Running", startedAt)
+	pod := f.testPod("pod-id", "fe", "Running", testContainer, startedAt)
 	pod.Spec = k8s.FakePodSpec(ref)
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 	f.podEvents <- pod
@@ -1523,7 +1568,7 @@ func (f *testFixture) WaitUntilManifest(msg string, name string, isDone func(sto
 
 func (f *testFixture) startPod(manifestName model.ManifestName) {
 	pID := k8s.PodID("mypod")
-	f.pod = f.testPod(pID.String(), manifestName.String(), "Running", time.Now())
+	f.pod = f.testPod(pID.String(), manifestName.String(), "Running", testContainer, time.Now())
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
 	f.WaitUntilManifest("pod appears", manifestName.String(), func(ms store.ManifestState) bool {

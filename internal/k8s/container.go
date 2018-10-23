@@ -11,7 +11,7 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-const containerIDPrefix = "docker://"
+const ContainerIDPrefix = "docker://"
 
 func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
 	cStatus, err := waitForContainerReadyHelper(pod, ref)
@@ -119,10 +119,10 @@ func ContainerIDFromContainerStatus(status v1.ContainerStatus) (ContainerID, err
 		return "", nil
 	}
 
-	if !strings.HasPrefix(id, containerIDPrefix) {
+	if !strings.HasPrefix(id, ContainerIDPrefix) {
 		return "", fmt.Errorf("Malformed container ID: %s", id)
 	}
-	return ContainerID(id[len(containerIDPrefix):]), nil
+	return ContainerID(id[len(ContainerIDPrefix):]), nil
 }
 
 func ContainerNameFromContainerStatus(status v1.ContainerStatus) ContainerName {

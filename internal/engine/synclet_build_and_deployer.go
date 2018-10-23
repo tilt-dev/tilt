@@ -139,7 +139,9 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResult{}, err
 	}
 
-	return state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet), nil
+	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
+	res.ContainerID = deployInfo.containerID // the container we deployed on top of
+	return res, nil
 }
 
 func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {

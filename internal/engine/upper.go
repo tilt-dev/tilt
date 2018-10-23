@@ -173,7 +173,7 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
 	default:
-		return fmt.Errorf("Unrecognized action: %T", action)
+		return fmt.Errorf("unrecognized action: %T", action)
 	}
 	return nil
 }
@@ -347,6 +347,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			l := logger.Get(ctx)
 			l.Infof("%s", logger.Green(l).Sprintf("Awaiting changes…\n"))
 		}
+
+		if cb.Result.ContainerID != "" {
+			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
+				ms.ExpectedContainerID = cb.Result.ContainerID
+			}
+		}
 	}
 
 	return nil
@@ -480,7 +486,12 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	} else if cStatus.Name == "" {
 		return
 	}
+
 	populateContainerStatus(ctx, ms, pod, cStatus)
+	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
+		ms.CrashRebuildInProg = true
+		// TODO(maia+dmiller): initiate an image build
+	}
 
 	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
 		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.Log...)

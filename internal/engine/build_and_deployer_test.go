@@ -131,11 +131,11 @@ func TestNamespaceGKE(t *testing.T) {
 	assert.Equal(t, "sancho-ns", string(f.k8s.LastPodQueryNamespace))
 }
 
-func TestIncrementalBuild(t *testing.T) {
+func TestContainerBuildLocal(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop).withContainerForBuild(alreadyBuilt)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt, nil))
+	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,6 +153,30 @@ func TestIncrementalBuild(t *testing.T) {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
 	f.assertContainerRestarts(1)
+
+	assert.Equal(t, k8s.MagicTestContainerID, result.ContainerID.String())
+}
+
+func TestContainerBuildSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE).withContainerForBuild(alreadyBuilt)
+	defer f.TearDown()
+
+	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.NewBuildState(alreadyBuilt, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.sCli.UpdateContainerCount != 1 {
+		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
+	}
+
+	assert.Equal(t, k8s.MagicTestContainerID, result.ContainerID.String())
 }
 
 func TestIncrementalBuildWaitsForPostProcess(t *testing.T) {
@@ -227,7 +251,6 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
-
 }
 
 func TestNoFallbackForCertainErrors(t *testing.T) {
