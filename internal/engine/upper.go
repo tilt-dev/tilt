@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -558,7 +557,6 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
 	}
-	spew.Dump(engineState.ManifestStates)
 	engineState.WatchMounts = watchMounts
 
 	var err error
