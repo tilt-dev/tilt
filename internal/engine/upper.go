@@ -314,6 +314,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuildStartTime = time.Time{}
 	ms.LastBuildLog = ms.CurrentBuildLog
 	ms.CurrentBuildLog = &bytes.Buffer{}
+	ms.CrashRebuildInProg = false
 
 	if err != nil {
 		// Put the files that failed to build back into the pending queue.
@@ -490,7 +491,8 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	populateContainerStatus(ctx, ms, pod, cStatus)
 	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
 		ms.CrashRebuildInProg = true
-		// TODO(maia+dmiller): initiate an image build
+		ms.ExpectedContainerID = ""
+		enqueueBuild(state, ms.Manifest.Name)
 	}
 
 	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
