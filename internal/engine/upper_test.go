@@ -874,10 +874,19 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	// Set ExpectedContainerId
-	f.store.Dispatch(SetContainerAction{
-		ContainerId:  "expectedId",
-		ManifestName: "foobar",
+	// Start and end a fake build to set manifestState.ExpectedContainerId
+	f.store.Dispatch(BuildStartedAction{
+		Manifest:  manifest,
+		StartTime: time.Now(),
+	})
+
+	fakeBuildRes := store.BuildResult{
+		Image:       nil,
+		ContainerID: "theOriginalContainer",
+	}
+	f.store.Dispatch(BuildCompleteAction{
+		Result: fakeBuildRes,
+		Error:  nil,
 	})
 
 	f.startPod(name)

@@ -90,7 +90,9 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
-	return state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet), nil
+	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
+	res.ContainerID = deployInfo.containerID // the container we deployed on top of
+	return res, nil
 }
 
 func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {

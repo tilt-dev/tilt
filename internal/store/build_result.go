@@ -15,7 +15,8 @@ type BuildResult struct {
 	// The tag is derived from a content-addressable digest.
 	Image reference.NamedTagged
 
-	WasImageBuild bool
+	// If this build was a container build, containerID we built on top of
+	ContainerID k8s.ContainerID
 
 	// The namespace where the pod was deployed.
 	Namespace k8s.Namespace

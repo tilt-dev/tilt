@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
@@ -166,8 +167,6 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
 		return u.handleCompletedBuild(ctx, state, action)
-	case SetContainerAction:
-		return u.setExpectedContainer(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
@@ -350,32 +349,13 @@ func (u *Upper) handleCompletedBuild(ctx context.Context, engineState *store.Eng
 			l.Infof("%s", logger.Green(l).Sprintf("Awaiting changes…\n"))
 		}
 
-		if cb.Result.WasImageBuild {
-			// Get the container that we deployed to (so we can know if the container goes down)
-			go func() {
-				_, _, cID, _, err := podInfoForImage(ctx, u.k8s, cb.Result.Image, cb.Result.Namespace)
-				if err != nil {
-					logger.Get(ctx).Infof("[%s] couldn't get containerId for image %s: %v",
-						ms.Manifest.Name, cb.Result.Image, err)
-				}
-				u.store.Dispatch(SetContainerAction{
-					ContainerId:  cID,
-					ManifestName: ms.Manifest.Name,
-				})
-			}()
+		if cb.Result.ContainerID != "" {
+			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
+				ms.ExpectedContainerID = cb.Result.ContainerID
+			}
 		}
 	}
 
-	return nil
-}
-
-func (u *Upper) setExpectedContainer(ctx context.Context, engineState *store.EngineState, sc SetContainerAction) error {
-	ms, ok := engineState.ManifestStates[sc.ManifestName]
-	if !ok {
-		return nil
-	}
-
-	ms.ExpectedContainerID = sc.ContainerId
 	return nil
 }
 
@@ -573,10 +553,12 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
+	fmt.Println("we init'd!")
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
 	}
+	spew.Dump(engineState.ManifestStates)
 	engineState.WatchMounts = watchMounts
 
 	var err error
