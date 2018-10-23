@@ -32,16 +32,26 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
+	// For synchronizing BuildController so that it's only
+	// doing one action at a time. In the future, we might
+	// want to allow it to parallelize builds better, but that
+	// would require better tools for triaging output to different streams.
+	BuildControllerActionCount int
+
 	PermanentError error
 }
 
 type ManifestState struct {
-	LastBuild                    BuildResult
-	Manifest                     model.Manifest
-	Pod                          Pod
-	LBs                          map[k8s.ServiceName]*url.URL
-	HasBeenBuilt                 bool
-	PendingFileChanges           map[string]bool
+	LastBuild    BuildResult
+	Manifest     model.Manifest
+	Pod          Pod
+	LBs          map[k8s.ServiceName]*url.URL
+	HasBeenBuilt bool
+
+	// TODO(nick): Maybe we should keep timestamps for the most
+	// recent change to each file?
+	PendingFileChanges map[string]bool
+
 	CurrentlyBuildingFileChanges []string
 
 	CurrentBuildStartTime     time.Time

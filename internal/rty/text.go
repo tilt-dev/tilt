@@ -35,12 +35,44 @@ type stringBuilder struct {
 }
 
 func (b *stringBuilder) Text(t string) StringBuilder {
-	b.directives = append(b.directives, textDirective(t))
+	t = TranslateANSI(t)
+	colorIndices, colors, _, _, _ := decomposeString(t)
+	var colorPos int
+	var foregroundColor, backgroundColor, attributes string
+
+	var chs []rune
+
+	flush := func() {
+		if len(chs) == 0 {
+			return
+		}
+		b.directives = append(b.directives, textDirective(string(chs)))
+		chs = nil
+	}
+
+	for pos, ch := range t {
+		// Handle color tags.
+		if colorPos < len(colorIndices) && pos >= colorIndices[colorPos][0] && pos < colorIndices[colorPos][1] {
+			if pos == colorIndices[colorPos][1]-1 {
+				flush()
+				foregroundColor, backgroundColor, attributes = styleFromTag(foregroundColor, backgroundColor, attributes, colors[colorPos])
+				colorPos++
+				b.directives = append(b.directives, fgDirective(tcell.GetColor(foregroundColor)))
+				b.directives = append(b.directives, bgDirective(tcell.GetColor(backgroundColor)))
+			}
+			continue
+		}
+
+		chs = append(chs, ch)
+	}
+
+	flush()
+
 	return b
 }
 
 func (b *stringBuilder) Textf(format string, a ...interface{}) StringBuilder {
-	b.directives = append(b.directives, textDirective(fmt.Sprintf(format, a...)))
+	b.Text(fmt.Sprintf(format, a...))
 	return b
 }
 
@@ -105,6 +137,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 		default:
 			panic(fmt.Errorf("StringLayout.Render: unexpected directive %T %+v", d, d))
 		}
+
 		// now we know it's a text directive
 		for _, ch := range s {
 			// TODO(dbentley): combining characters
@@ -121,7 +154,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 			}
 			if ch == '\n' {
 				if nextX == 0 && w != nil {
-					// maked sure we take up our space
+					// make sure we take up our space
 					w.SetContent(nextY, nextY, ch, nil)
 				}
 				nextX, nextY = 0, nextY+1

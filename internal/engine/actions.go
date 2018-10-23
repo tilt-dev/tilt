@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"time"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -66,3 +68,19 @@ type InitAction struct {
 }
 
 func (InitAction) Action() {}
+
+type ManifestReloadedAction struct {
+	OldManifest model.Manifest
+	NewManifest model.Manifest
+	Error       *manifestErr
+}
+
+func (ManifestReloadedAction) Action() {}
+
+type BuildStartedAction struct {
+	Manifest     model.Manifest
+	StartTime    time.Time
+	FilesChanged []string
+}
+
+func (BuildStartedAction) Action() {}

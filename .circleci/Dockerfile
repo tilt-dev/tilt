@@ -1,4 +1,4 @@
-FROM circleci/golang:1.10
+FROM circleci/golang:1.11
 
 RUN go get -u github.com/kisielk/errcheck
 

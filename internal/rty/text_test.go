@@ -103,3 +103,14 @@ func TestLines(t *testing.T) {
 	l.Add(line)
 	f.run("lines of lines", 30, 10, l)
 }
+
+func TestANSICodes(t *testing.T) {
+	f := newLayoutTestFixture(t)
+	defer f.cleanUp()
+
+	sb := NewStringBuilder().Text("\x1b[31mhello \x1b[33mworld")
+	f.run("red hello yellow world", 20, 1, sb.Build())
+
+	sb = NewStringBuilder().Text("\x1b[44mhello \x1bcworld")
+	f.run("blue-bg hello, default-bg world", 20, 1, sb.Build())
+}
