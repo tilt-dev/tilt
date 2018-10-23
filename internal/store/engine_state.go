@@ -54,9 +54,10 @@ type ManifestState struct {
 	LastBuildLog              *bytes.Buffer
 	QueueEntryTime            time.Time
 
-	ExpectedContainerId k8s.ContainerID // if the code isn't running on this container, pod has restarted :-/
-	CrashRebuildInProg  bool
-
+	// If the pod isn't running this container then it's possible we're running stale code
+	ExpectedContainerId k8s.ContainerID
+	// We detected stale code and are currently doing an image build
+	CrashRebuildInProg bool
 	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
 	ConfigIsDirty bool
 }
