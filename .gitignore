@@ -23,3 +23,6 @@
 
 .synclet-dev-image-tag
 .#*
+
+# goreleaser binaries
+dist

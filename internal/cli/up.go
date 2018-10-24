@@ -71,7 +71,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
-	logOutput(fmt.Sprintf("Starting Tilt (built %s)…\n", buildDateStamp()))
+	logOutput(fmt.Sprintf("Starting Tilt (%s)…\n", buildStamp()))
 
 	if trace {
 		traceID, err := tracer.TraceID(ctx)

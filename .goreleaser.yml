@@ -1,0 +1,23 @@
+builds:
+- env:
+  - CGO_ENABLED=0
+  main: ./cmd/tilt/main.go
+  goos:
+  - linux
+archive:
+  name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
+  replacements:
+    darwin: mac
+    linux: linux
+    386: i386
+    amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'

@@ -95,3 +95,6 @@ synclet-release:
 	docker build -t $(SYNCLET_IMAGE):$(TAG) -f synclet/Dockerfile .
 	docker push $(SYNCLET_IMAGE):$(TAG)
 	sed -i 's/var SyncletTag = ".*"/var SyncletTag = "$(TAG)"/' internal/synclet/sidecar/sidecar.go
+
+release:
+	goreleaser --rm-dist
