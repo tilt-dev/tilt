@@ -899,6 +899,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.WaitUntilManifest("CrashRebuildInProg set to True", "foobar", func(state store.ManifestState) bool {
 		return state.CrashRebuildInProg
 	})
+	f.waitForCompletedBuildCount(3)
 }
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
