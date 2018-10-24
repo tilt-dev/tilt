@@ -154,6 +154,12 @@ type TextScrollController struct {
 	state *TextScrollState
 }
 
+func (s *TextScrollController) Top() {
+	st := s.state
+	st.canvasIdx = 0
+	st.lineIdx = 0
+}
+
 func (s *TextScrollController) Up() {
 	st := s.state
 	if st.lineIdx != 0 {
@@ -170,6 +176,11 @@ func (s *TextScrollController) Up() {
 
 func (s *TextScrollController) Down() {
 	st := s.state
+
+	if len(st.canvasLengths) == 0 {
+		return
+	}
+
 	canvasLength := st.canvasLengths[st.canvasIdx]
 	if st.lineIdx < canvasLength-1 {
 		// we can just go down in this canvas
@@ -343,7 +354,7 @@ func (s *ElementScrollController) GetSelectedChild() string {
 	return s.state.children[s.state.elementIdx]
 }
 
-func (s *ElementScrollController) UpElement() {
+func (s *ElementScrollController) Up() {
 	if s.state.elementIdx == 0 {
 		return
 	}
@@ -351,7 +362,7 @@ func (s *ElementScrollController) UpElement() {
 	s.state.elementIdx--
 }
 
-func (s *ElementScrollController) DownElement() {
+func (s *ElementScrollController) Down() {
 	if s.state.elementIdx == len(s.state.children)-1 {
 		return
 	}

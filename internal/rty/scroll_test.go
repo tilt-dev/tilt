@@ -78,13 +78,11 @@ func (f *elementScrollTestFixture) run(name string) {
 }
 
 func (f *elementScrollTestFixture) down() {
-	f.fixture.render(20, 10, f.layout())
-	f.fixture.r.ElementScroller("items").DownElement()
+	f.fixture.r.ElementScroller("items").Down()
 }
 
 func (f *elementScrollTestFixture) up() {
-	f.fixture.render(20, 10, f.layout())
-	f.fixture.r.ElementScroller("items").UpElement()
+	f.fixture.r.ElementScroller("items").Up()
 }
 
 func (f *elementScrollTestFixture) cleanUp() {
