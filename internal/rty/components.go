@@ -20,8 +20,8 @@ type RTY interface {
 }
 
 type ElementScroller interface {
-	UpElement()
-	DownElement()
+	UpElement() error
+	DownElement() error
 	GetSelectedIndex() int
 }
 

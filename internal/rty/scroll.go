@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"errors"
 	"strings"
 )
 
@@ -218,7 +219,10 @@ type ElementScrollState struct {
 	width  int
 	height int
 
-	children []string
+	firstVisibleElement int
+
+	children        []string
+	childrenHeights []int
 
 	elementIdx int
 }
@@ -234,10 +238,12 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 		prev = &ElementScrollState{}
 	}
 	next := &ElementScrollState{
-		width:      width,
-		height:     height,
-		children:   prev.children,
-		elementIdx: prev.elementIdx,
+		width:               width,
+		height:              height,
+		children:            prev.children,
+		childrenHeights:     prev.childrenHeights,
+		elementIdx:          prev.elementIdx,
+		firstVisibleElement: prev.firstVisibleElement,
 	}
 
 	if len(l.children) == 0 {
@@ -245,15 +251,20 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	}
 
 	y := 0
-	for _, c := range l.children {
+	next.childrenHeights = make([]int, len(l.children))
+	for i, c := range l.children {
 		canvas := w.RenderChildInTemp(c)
 		_, childHeight := canvas.Size()
 		numLines := childHeight
-		if numLines > height-y {
-			numLines = height - y
+		next.childrenHeights[i] = numLines
+
+		if i >= next.firstVisibleElement {
+			if numLines > height-y {
+				numLines = height - y
+			}
+			w.Divide(0, y, width, numLines).Embed(canvas, 0, numLines)
+			y += numLines
 		}
-		w.Divide(0, y, width, numLines).Embed(canvas, 0, numLines)
-		y += numLines
 	}
 
 	return next, nil
@@ -270,12 +281,18 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 	}
 
 	next := &ElementScrollState{
-		width:    prev.width,
-		height:   prev.height,
-		children: newChildren,
+		width:               prev.width,
+		height:              prev.height,
+		children:            newChildren,
+		childrenHeights:     prev.childrenHeights,
+		firstVisibleElement: prev.firstVisibleElement,
 	}
 	if len(prev.children) == 0 {
-		return next, ""
+		sel := ""
+		if len(next.children) > 0 {
+			sel = next.children[0]
+		}
+		return next, sel
 	}
 	prevChild := prev.children[prev.elementIdx]
 	for i, child := range newChildren {
@@ -284,7 +301,7 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 			return next, child
 		}
 	}
-	return next, ""
+	return next, next.children[0]
 }
 
 func (s *ElementScrollController) GetSelectedIndex() int {
@@ -298,17 +315,53 @@ func (s *ElementScrollController) GetSelectedChild() string {
 	return s.state.children[s.state.elementIdx]
 }
 
-func (s *ElementScrollController) UpElement() {
+func (s *ElementScrollController) UpElement() error {
 	if s.state.elementIdx == 0 {
-		return
+		return nil
+	}
+
+	if len(s.state.childrenHeights) != len(s.state.children) {
+		return errors.New("UpElement() called before Render()")
 	}
 
 	s.state.elementIdx--
+
+	if s.state.elementIdx < s.state.firstVisibleElement {
+		s.state.firstVisibleElement = s.state.elementIdx
+	}
+
+	return nil
 }
 
-func (s *ElementScrollController) DownElement() {
+func (s *ElementScrollController) DownElement() error {
 	if s.state.elementIdx == len(s.state.children)-1 {
-		return
+		return nil
 	}
 	s.state.elementIdx++
+
+	if len(s.state.childrenHeights) != len(s.state.children) {
+		return errors.New("DownElement() called before Render()")
+	}
+	var lastLineOfSelectedElement int
+	for _, h := range s.state.childrenHeights[:s.state.elementIdx+1] {
+		lastLineOfSelectedElement += h
+	}
+
+	// the selected element isn't fully visible, so start from that element and work backwards, adding previous elements
+	// as long as they'll fit on the screen
+	if lastLineOfSelectedElement > s.state.height {
+		firstVisibleElement := s.state.elementIdx
+		heightUsed := s.state.childrenHeights[firstVisibleElement]
+		for firstVisibleElement > 0 {
+			prevHeight := s.state.childrenHeights[firstVisibleElement-1]
+			if heightUsed+prevHeight > s.state.height {
+				break
+			}
+			firstVisibleElement--
+			heightUsed += prevHeight
+		}
+		s.state.firstVisibleElement = firstVisibleElement
+	}
+
+	return nil
 }

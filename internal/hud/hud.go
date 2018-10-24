@@ -132,10 +132,18 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				}
 			}
 		case tcell.KeyUp:
-			h.r.rty.ElementScroller("resources").UpElement()
+			err := h.r.rty.ElementScroller("resources").UpElement()
+			if err != nil {
+				logger.Get(ctx).Infof("bug in scrolling: %v", err)
+				return
+			}
 			h.refresh(ctx)
 		case tcell.KeyDown:
-			h.r.rty.ElementScroller("resources").DownElement()
+			err := h.r.rty.ElementScroller("resources").DownElement()
+			if err != nil {
+				logger.Get(ctx).Infof("bug in scrolling: %v", err)
+				return
+			}
 			h.refresh(ctx)
 		case tcell.KeyEnter:
 			selectedIdx, _ := h.selectedResource()

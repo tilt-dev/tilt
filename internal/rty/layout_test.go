@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tcell"
@@ -20,12 +22,19 @@ var usedNames = make(map[string]bool)
 const testDataDir = "testdata"
 
 type fixture struct {
-	t *testing.T
+	t  *testing.T
+	r  RTY
+	sc tcell.SimulationScreen
 }
 
 func newLayoutTestFixture(t *testing.T) *fixture {
+	sc := tcell.NewSimulationScreen("")
+	err := sc.Init()
+	assert.NoError(t, err)
 	return &fixture{
-		t: t,
+		t:  t,
+		r:  NewRTY(sc),
+		sc: sc,
 	}
 }
 
@@ -39,6 +48,18 @@ func (f *fixture) run(name string, width int, height int, c Component) {
 	}
 }
 
+func (f *fixture) render(width int, height int, c Component) (Canvas, error) {
+	actual := newScreenCanvas(f.sc)
+	f.sc.SetSize(width, height)
+	defer func() {
+		if e := recover(); e != nil {
+			f.t.Errorf("panic rendering: %v %s", e, debug.Stack())
+		}
+	}()
+	err := f.r.Render(c)
+	return actual, err
+}
+
 // Returns an error if rendering failed.
 // If any other failure is encountered, fails via `f.t`'s `testing.T` and returns `nil`.
 func (f *fixture) runCaptureError(name string, width int, height int, c Component) error {
@@ -46,21 +67,12 @@ func (f *fixture) runCaptureError(name string, width int, height int, c Componen
 	if ok {
 		f.t.Fatalf("test name '%s' was already used", name)
 	}
-	actual := newTempCanvas(width, height, tcell.StyleDefault)
-	g := &renderGlobals{prev: make(renderState), next: make(renderState)}
-	r := renderFrame{
-		canvas:  actual,
-		globals: g,
+
+	actual, err := f.render(width, height, c)
+	if err != nil {
+		return errors.Wrapf(err, "error rendering %s", name)
 	}
-	defer func() {
-		if e := recover(); e != nil {
-			f.t.Errorf("panic rendering %s: %v %s", name, e, debug.Stack())
-		}
-	}()
-	r.RenderChild(c)
-	if g.err != nil {
-		return g.err
-	}
+
 	expected := f.loadGoldenFile(name)
 
 	if !f.canvasesEqual(actual, expected) {
