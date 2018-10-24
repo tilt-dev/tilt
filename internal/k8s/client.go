@@ -249,8 +249,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	if len(mutable) > 0 {
 		_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, mutable)
 		if err != nil {
-			isImmutableFieldError := strings.Contains(stderr, validation.FieldImmutableErrorMsg)
-			if !isImmutableFieldError {
+			shouldTryReplace := maybeImmutableFieldStderr(stderr)
+
+			if !shouldTryReplace {
 				return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
 			}
 
@@ -263,6 +264,17 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 		}
 	}
 	return nil
+}
+
+// We're using kubectl, so we only get stderr, not structured errors.
+//
+// Take a wild guess if the update is failing due to immutable field errors.
+//
+// This should bias towards false positives (i.e., we think something is an
+// immutable field error when it's not).
+func maybeImmutableFieldStderr(stderr string) bool {
+	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) ||
+		strings.Contains(stderr, "Forbidden")
 }
 
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {

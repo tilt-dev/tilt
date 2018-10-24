@@ -17,8 +17,33 @@ import (
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
+
+func TestUpsert(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
+	assert.Nil(t, err)
+	err = f.client.Upsert(f.ctx, postgres)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(f.runner.calls))
+	assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
+}
+
+func TestUpsertStatefulsetForbidden(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
+	assert.Nil(t, err)
+
+	f.setStderr(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
+	err = f.client.Upsert(f.ctx, postgres)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(f.runner.calls))
+	assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
+	assert.Equal(t, []string{"replace", "--force", "-f", "-"}, f.runner.calls[1].argv)
+}
 
 type call struct {
 	argv  []string
@@ -39,11 +64,22 @@ func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, st
 		return "", "", fmt.Errorf("reading stdin: %v", err)
 	}
 	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
+
+	defer func() {
+		f.stdout = ""
+		f.stderr = ""
+		f.err = nil
+	}()
 	return f.stdout, f.stderr, f.err
 }
 
 func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
 	f.calls = append(f.calls, call{argv: args})
+	defer func() {
+		f.stdout = ""
+		f.stderr = ""
+		f.err = nil
+	}()
 	return f.stdout, f.stderr, f.err
 }
 
@@ -114,6 +150,11 @@ func (c clientTestFixture) updatePod(pod *v1.Pod) {
 
 func (c clientTestFixture) setOutput(s string) {
 	c.runner.stdout = s
+}
+
+func (c clientTestFixture) setStderr(stderr string) {
+	c.runner.stderr = stderr
+	c.runner.err = fmt.Errorf("exit status 1")
 }
 
 func (c clientTestFixture) setError(err error) {
