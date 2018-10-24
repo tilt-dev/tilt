@@ -218,6 +218,8 @@ type ElementScrollState struct {
 	width  int
 	height int
 
+	firstVisibleElement int
+
 	children []string
 
 	elementIdx int
@@ -233,30 +235,70 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	if !ok {
 		prev = &ElementScrollState{}
 	}
-	next := &ElementScrollState{
-		width:      width,
-		height:     height,
-		children:   prev.children,
-		elementIdx: prev.elementIdx,
-	}
+
+	next := *prev
+	next.width = width
+	next.height = height
 
 	if len(l.children) == 0 {
-		return next, nil
+		return &next, nil
 	}
 
-	y := 0
+	var canvases []Canvas
+	var heights []int
 	for _, c := range l.children {
 		canvas := w.RenderChildInTemp(c)
+		canvases = append(canvases, canvas)
 		_, childHeight := canvas.Size()
-		numLines := childHeight
-		if numLines > height-y {
-			numLines = height - y
-		}
-		w.Divide(0, y, width, numLines).Embed(canvas, 0, numLines)
-		y += numLines
+		heights = append(heights, childHeight)
 	}
 
-	return next, nil
+	next.firstVisibleElement = calculateFirstVisibleElement(next, heights, height)
+
+	y := 0
+	for i, h := range heights {
+		if i >= next.firstVisibleElement {
+			if h > height-y {
+				h = height - y
+			}
+			w.Divide(0, y, width, h).Embed(canvases[i], 0, h)
+			y += h
+		}
+	}
+
+	return &next, nil
+}
+
+func calculateFirstVisibleElement(state ElementScrollState, heights []int, height int) int {
+	if state.elementIdx < state.firstVisibleElement {
+		// if we've scrolled back above the old first visible element, just make the selected element the first visible
+		return state.elementIdx
+	} else if state.elementIdx > state.firstVisibleElement {
+		var lastLineOfSelectedElement int
+		for _, h := range heights[state.firstVisibleElement : state.elementIdx+1] {
+			lastLineOfSelectedElement += h
+		}
+
+		if lastLineOfSelectedElement > height {
+			// the selected element isn't fully visible, so start from that element and work backwards, adding previous elements
+			// as long as they'll fit on the screen
+			if lastLineOfSelectedElement > state.height {
+				firstVisibleElement := state.elementIdx
+				heightUsed := heights[firstVisibleElement]
+				for firstVisibleElement > 0 {
+					prevHeight := heights[firstVisibleElement-1]
+					if heightUsed+prevHeight > state.height {
+						break
+					}
+					firstVisibleElement--
+					heightUsed += prevHeight
+				}
+				return firstVisibleElement
+			}
+		}
+	}
+
+	return state.firstVisibleElement
 }
 
 type ElementScrollController struct {
@@ -269,13 +311,16 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 		prev = &ElementScrollState{}
 	}
 
-	next := &ElementScrollState{
-		width:    prev.width,
-		height:   prev.height,
-		children: newChildren,
-	}
+	clone := *prev
+	next := &clone
+	next.children = newChildren
+
 	if len(prev.children) == 0 {
-		return next, ""
+		sel := ""
+		if len(next.children) > 0 {
+			sel = next.children[0]
+		}
+		return next, sel
 	}
 	prevChild := prev.children[prev.elementIdx]
 	for i, child := range newChildren {
@@ -284,7 +329,7 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 			return next, child
 		}
 	}
-	return next, ""
+	return next, next.children[0]
 }
 
 func (s *ElementScrollController) GetSelectedIndex() int {
