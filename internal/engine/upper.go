@@ -492,6 +492,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
 		ms.CrashRebuildInProg = true
 		ms.ExpectedContainerID = ""
+		logger.Get(ctx).Infof("Detected a container change for %s. We could be running state code. Rebuilding and deploying a new image.", ms.Manifest.Name)
 		enqueueBuild(state, ms.Manifest.Name)
 	}
 
