@@ -230,6 +230,8 @@ func (i *InteractiveTester) writeGoldenFile(name string, actual Canvas) error {
 	return enc.Encode(d)
 }
 
+// unfortunately, tcell misbehaves if we try to make a new Screen for every test
+// this function is intended for use from a `TestMain`, so that we can have a global Screen across all tests in the package
 func InitScreenAndRun(m *testing.M, screen *tcell.Screen) {
 	if s := os.Getenv("RTY_INTERACTIVE"); s != "" {
 		var err error
