@@ -18,7 +18,10 @@ Click below to see a video of Tilt in action:
 Run `go get -u github.com/windmilleng/tilt`
 
 ## Using Tilt
-`tilt up <service_name>` starts a service once; `tilt up --watch <service_name>` starts it and watches for changes.
+
+`tilt up <service_name>` starts a service and watches for changes.
+
+`tilt up --watch=false <service_name>` starts the service once.
 
 Tilt reads from a Tiltfile. A simple Tiltfile is below:
 
