@@ -206,6 +206,18 @@ func StateToView(s EngineState) view.View {
 			}
 		}
 
+		lastBuildLog := ""
+		if ms.LastBuildLog != nil {
+			lastBuildLog = string(append([]byte{}, ms.LastBuildLog.Bytes()...))
+		}
+
+		var podLog string
+		if ms.Pod.ContainerReady {
+			podLog = string(ms.Pod.PreRestartLog) + string(ms.Pod.Log)
+		} else {
+			podLog = string(append([]byte{}, ms.Pod.Log...))
+		}
+
 		r := view.Resource{
 			Name:                  name.String(),
 			DirectoriesWatched:    relWatchDirs,
@@ -214,6 +226,7 @@ func StateToView(s EngineState) view.View {
 			LastBuildError:        lastBuildError,
 			LastBuildFinishTime:   ms.LastBuildFinishTime,
 			LastBuildDuration:     ms.LastBuildDuration,
+			LastBuildLog:          lastBuildLog,
 			PendingBuildEdits:     pendingBuildEdits,
 			PendingBuildSince:     ms.QueueEntryTime,
 			CurrentBuildEdits:     currentBuildEdits,
@@ -222,6 +235,7 @@ func StateToView(s EngineState) view.View {
 			PodCreationTime:       ms.Pod.StartedAt,
 			PodStatus:             ms.Pod.Status,
 			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
+			PodLog:                podLog,
 			Endpoints:             endpoints,
 		}
 
