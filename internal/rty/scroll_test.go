@@ -78,10 +78,10 @@ func (f *elementScrollTestFixture) run(name string) {
 
 func (f *elementScrollTestFixture) down() {
 	f.i.render(20, 10, f.layout())
-	f.i.rty.ElementScroller("items").DownElement()
+	f.i.rty.ElementScroller("items").Down()
 }
 
 func (f *elementScrollTestFixture) up() {
 	f.i.render(20, 10, f.layout())
-	f.i.rty.ElementScroller("items").UpElement()
+	f.i.rty.ElementScroller("items").Up()
 }

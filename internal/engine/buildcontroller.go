@@ -13,8 +13,9 @@ import (
 )
 
 type BuildController struct {
-	b               BuildAndDeployer
-	lastActionCount int
+	b                  BuildAndDeployer
+	lastActionCount    int
+	disabledForTesting bool
 }
 
 type buildEntry struct {
@@ -76,7 +77,14 @@ func (c *BuildController) needsBuild(ctx context.Context, st *store.Store) (buil
 	}, true
 }
 
+func (c *BuildController) DisableForTesting() {
+	c.disabledForTesting = true
+}
+
 func (c *BuildController) OnChange(ctx context.Context, st *store.Store) {
+	if c.disabledForTesting {
+		return
+	}
 	entry, ok := c.needsBuild(ctx, st)
 	if !ok {
 		return
@@ -124,8 +132,11 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 			changedPathsToPrint = changedFiles
 		}
 
-		p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
-		l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+		if len(changedFiles) > 0 {
+			p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
+			l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+		}
+
 		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
 		l.Infof("%s%s%s", rp, manifest.Name, rs)
