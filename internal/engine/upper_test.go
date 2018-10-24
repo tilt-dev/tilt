@@ -1584,7 +1584,7 @@ func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 	})
 
 	f.WaitUntilManifest("pod log seen", string(manifestName), func(ms store.ManifestState) bool {
-		return strings.Contains(string(ms.Pod.Log), s)
+		return strings.Contains(string(ms.Pod.CurrentLog), s)
 	})
 }
 
