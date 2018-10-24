@@ -142,6 +142,27 @@ func spinner() string {
 	return spinnerChars[time.Now().Second()%len(spinnerChars)]
 }
 
+const abbreivatedLogLineCount = 6
+
+func abbreviateLog(s string) []string {
+	lines := strings.Split(s, "\n")
+	start := len(lines) - abbreivatedLogLineCount
+	if start < 0 {
+		start = 0
+	}
+
+	// skip past leading empty lines
+	for {
+		if start < len(lines) && len(strings.TrimSpace(lines[start])) == 0 {
+			start++
+		} else {
+			break
+		}
+	}
+
+	return lines[start:]
+}
+
 func renderResource(r view.Resource, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 
@@ -221,8 +242,15 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 		buildComponents = append(buildComponents, sb.Build())
 
 		if r.LastBuildError != "" {
-			s := fmt.Sprintf("Error: %s", r.LastBuildError)
-			buildComponents = append(buildComponents, rty.TextString(s))
+			abbrevLog := abbreviateLog(r.LastBuildLog)
+			for _, logLine := range abbrevLog {
+				buildComponents = append(buildComponents, rty.TextString(logLine))
+			}
+
+			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
+			if len(abbrevLog) == 0 {
+				buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", r.LastBuildError)))
+			}
 		}
 	}
 
@@ -260,6 +288,16 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 		}
 
 		layout.Add(sb.Build())
+
+		if r.PodRestarts > 0 {
+			logLines := abbreviateLog(r.PodLog)
+			if len(logLines) > 0 {
+				layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+				for _, logLine := range logLines[1:] {
+					layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+				}
+			}
+		}
 	}
 
 	if len(r.Endpoints) != 0 {

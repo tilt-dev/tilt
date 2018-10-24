@@ -269,7 +269,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		delete(ms.PendingFileChanges, file)
 	}
 	ms.CurrentBuildStartTime = action.StartTime
-	ms.Pod.Log = []byte{}
+	ms.Pod.CurrentLog = []byte{}
 
 	// TODO(nick): It would be better if we reversed the relationship
 	// between CurrentlyBuilding and BuildController. BuildController should dispatch
@@ -482,8 +482,8 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	}
 
 	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
-		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.Log...)
-		ms.Pod.Log = []byte{}
+		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.CurrentLog...)
+		ms.Pod.CurrentLog = []byte{}
 	}
 	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
 }
@@ -512,7 +512,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	ms.Pod.Log = append(ms.Pod.Log, action.Log...)
+	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
@@ -651,17 +651,7 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 	} else {
 		logger.Get(ctx).Infof("%s pod log:", mn)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-
-		// attempting to include at most one crash:
-		// if the current pod has crashed, then just print the current pod
-		// if the current pod is live, print the current pod plus the last pod
-		var s string
-		if ms.Pod.ContainerReady {
-			s = string(ms.Pod.PreRestartLog) + string(ms.Pod.Log)
-		} else {
-			s = string(ms.Pod.Log)
-		}
-		logger.Get(ctx).Infof("%s", s)
+		logger.Get(ctx).Infof("%s", ms.Pod.Log())
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
 }
