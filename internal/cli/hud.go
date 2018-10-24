@@ -38,7 +38,7 @@ func (c *hudCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
-	logOutput(fmt.Sprintf("Starting the HUD (built %s)…\n", buildDateStamp()))
+	logOutput(fmt.Sprintf("Starting the HUD (%s)…\n", buildStamp()))
 
 	err := client.ConnectHud(ctx)
 	if err == context.Canceled {
