@@ -196,7 +196,7 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 	if !r.LastDeployTime.Equal(time.Time{}) {
 		if len(r.LastDeployEdits) > 0 {
 			sb := rty.NewStringBuilder()
-			sb.Fg(cLightText).Text(" Last Deployed Edits: ").Fg(tcell.ColorDefault)
+			sb.Fg(cLightText).Text("  Last Deployed Edits: ").Fg(tcell.ColorDefault)
 			sb.Text(formatFileList(r.LastDeployEdits))
 			layout.Add(sb.Build())
 		}
@@ -289,6 +289,12 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 
 		layout.Add(sb.Build())
 
+		if len(r.Endpoints) != 0 {
+			sb := rty.NewStringBuilder()
+			sb.Textf("         %s", strings.Join(r.Endpoints, " "))
+			layout.Add(sb.Build())
+		}
+
 		if r.PodRestarts > 0 {
 			logLines := abbreviateLog(r.PodLog)
 			if len(logLines) > 0 {
@@ -298,12 +304,6 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 				}
 			}
 		}
-	}
-
-	if len(r.Endpoints) != 0 {
-		sb := rty.NewStringBuilder()
-		sb.Textf("         %s", strings.Join(r.Endpoints, " "))
-		layout.Add(sb.Build())
 	}
 
 	layout.Add(rty.NewLine())
