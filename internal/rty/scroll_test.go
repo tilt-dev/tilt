@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestElementScroll(t *testing.T) {
@@ -81,14 +79,12 @@ func (f *elementScrollTestFixture) run(name string) {
 
 func (f *elementScrollTestFixture) down() {
 	f.fixture.render(20, 10, f.layout())
-	err := f.fixture.r.ElementScroller("items").DownElement()
-	assert.NoError(f.fixture.t, err)
+	f.fixture.r.ElementScroller("items").DownElement()
 }
 
 func (f *elementScrollTestFixture) up() {
 	f.fixture.render(20, 10, f.layout())
-	err := f.fixture.r.ElementScroller("items").UpElement()
-	assert.NoError(f.fixture.t, err)
+	f.fixture.r.ElementScroller("items").UpElement()
 }
 
 func (f *elementScrollTestFixture) cleanUp() {

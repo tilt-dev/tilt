@@ -1,7 +1,6 @@
 package rty
 
 import (
-	"errors"
 	"strings"
 )
 
@@ -221,8 +220,7 @@ type ElementScrollState struct {
 
 	firstVisibleElement int
 
-	children        []string
-	childrenHeights []int
+	children []string
 
 	elementIdx int
 }
@@ -237,37 +235,70 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	if !ok {
 		prev = &ElementScrollState{}
 	}
-	next := &ElementScrollState{
-		width:               width,
-		height:              height,
-		children:            prev.children,
-		childrenHeights:     prev.childrenHeights,
-		elementIdx:          prev.elementIdx,
-		firstVisibleElement: prev.firstVisibleElement,
-	}
+
+	next := *prev
+	next.width = width
+	next.height = height
 
 	if len(l.children) == 0 {
-		return next, nil
+		return &next, nil
 	}
 
-	y := 0
-	next.childrenHeights = make([]int, len(l.children))
-	for i, c := range l.children {
+	var canvases []Canvas
+	var heights []int
+	for _, c := range l.children {
 		canvas := w.RenderChildInTemp(c)
+		canvases = append(canvases, canvas)
 		_, childHeight := canvas.Size()
-		numLines := childHeight
-		next.childrenHeights[i] = numLines
+		heights = append(heights, childHeight)
+	}
 
+	next.firstVisibleElement = calculateFirstVisibleElement(next, heights, height)
+
+	y := 0
+	for i, h := range heights {
 		if i >= next.firstVisibleElement {
-			if numLines > height-y {
-				numLines = height - y
+			if h > height-y {
+				h = height - y
 			}
-			w.Divide(0, y, width, numLines).Embed(canvas, 0, numLines)
-			y += numLines
+			w.Divide(0, y, width, h).Embed(canvases[i], 0, h)
+			y += h
 		}
 	}
 
-	return next, nil
+	return &next, nil
+}
+
+func calculateFirstVisibleElement(state ElementScrollState, heights []int, height int) int {
+	if state.elementIdx < state.firstVisibleElement {
+		// if we've scrolled back above the old first visible element, just make the selected element the first visible
+		return state.elementIdx
+	} else if state.elementIdx > state.firstVisibleElement {
+		var lastLineOfSelectedElement int
+		for _, h := range heights[state.firstVisibleElement : state.elementIdx+1] {
+			lastLineOfSelectedElement += h
+		}
+
+		if lastLineOfSelectedElement > height {
+			// the selected element isn't fully visible, so start from that element and work backwards, adding previous elements
+			// as long as they'll fit on the screen
+			if lastLineOfSelectedElement > state.height {
+				firstVisibleElement := state.elementIdx
+				heightUsed := heights[firstVisibleElement]
+				for firstVisibleElement > 0 {
+					prevHeight := heights[firstVisibleElement-1]
+					if heightUsed+prevHeight > state.height {
+						break
+					}
+					firstVisibleElement--
+					heightUsed += prevHeight
+				}
+				return firstVisibleElement
+			}
+		}
+	}
+
+	return state.firstVisibleElement
 }
 
 type ElementScrollController struct {
@@ -280,13 +311,10 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 		prev = &ElementScrollState{}
 	}
 
-	next := &ElementScrollState{
-		width:               prev.width,
-		height:              prev.height,
-		children:            newChildren,
-		childrenHeights:     prev.childrenHeights,
-		firstVisibleElement: prev.firstVisibleElement,
-	}
+	clone := *prev
+	next := &clone
+	next.children = newChildren
+
 	if len(prev.children) == 0 {
 		sel := ""
 		if len(next.children) > 0 {
@@ -315,53 +343,17 @@ func (s *ElementScrollController) GetSelectedChild() string {
 	return s.state.children[s.state.elementIdx]
 }
 
-func (s *ElementScrollController) UpElement() error {
+func (s *ElementScrollController) UpElement() {
 	if s.state.elementIdx == 0 {
-		return nil
-	}
-
-	if len(s.state.childrenHeights) != len(s.state.children) {
-		return errors.New("UpElement() called before Render()")
+		return
 	}
 
 	s.state.elementIdx--
-
-	if s.state.elementIdx < s.state.firstVisibleElement {
-		s.state.firstVisibleElement = s.state.elementIdx
-	}
-
-	return nil
 }
 
-func (s *ElementScrollController) DownElement() error {
+func (s *ElementScrollController) DownElement() {
 	if s.state.elementIdx == len(s.state.children)-1 {
-		return nil
+		return
 	}
 	s.state.elementIdx++
-
-	if len(s.state.childrenHeights) != len(s.state.children) {
-		return errors.New("DownElement() called before Render()")
-	}
-	var lastLineOfSelectedElement int
-	for _, h := range s.state.childrenHeights[:s.state.elementIdx+1] {
-		lastLineOfSelectedElement += h
-	}
-
-	// the selected element isn't fully visible, so start from that element and work backwards, adding previous elements
-	// as long as they'll fit on the screen
-	if lastLineOfSelectedElement > s.state.height {
-		firstVisibleElement := s.state.elementIdx
-		heightUsed := s.state.childrenHeights[firstVisibleElement]
-		for firstVisibleElement > 0 {
-			prevHeight := s.state.childrenHeights[firstVisibleElement-1]
-			if heightUsed+prevHeight > s.state.height {
-				break
-			}
-			firstVisibleElement--
-			heightUsed += prevHeight
-		}
-		s.state.firstVisibleElement = firstVisibleElement
-	}
-
-	return nil
 }
