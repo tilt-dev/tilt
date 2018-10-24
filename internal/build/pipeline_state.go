@@ -68,6 +68,7 @@ func (ps *PipelineState) StartPipelineStep(ctx context.Context, format string, a
 
 func (ps *PipelineState) EndPipelineStep(ctx context.Context) {
 	elapsed := time.Now().Sub(ps.curPipelineStepStart)
+	logger.Get(ctx).Infof("")
 	ps.pipelineStepDurations = append(ps.pipelineStepDurations, elapsed)
 }
 

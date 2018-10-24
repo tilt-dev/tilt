@@ -123,7 +123,7 @@ func (p Pod) Log() string {
 		podLog = string(p.PreRestartLog) + string(p.CurrentLog)
 	} else {
 		// otherwise, the most recent pod has the crash itself, so just return itself
-		podLog = string(append([]byte{}, p.CurrentLog...))
+		podLog = string(p.CurrentLog)
 	}
 
 	return podLog
@@ -225,7 +225,7 @@ func StateToView(s EngineState) view.View {
 
 		lastBuildLog := ""
 		if ms.LastBuildLog != nil {
-			lastBuildLog = string(append([]byte{}, ms.LastBuildLog.Bytes()...))
+			lastBuildLog = ms.LastBuildLog.String()
 		}
 
 		r := view.Resource{
