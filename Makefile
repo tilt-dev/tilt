@@ -47,7 +47,7 @@ test:
 
 # skip some tests that are slow and not always relevant
 shorttest:
-	./hide_tbd_warning go test -short -timeout 60s ./...
+	./hide_tbd_warning go test -tags 'skipcontainertests' -timeout 60s ./...
 
 integration:
 	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration

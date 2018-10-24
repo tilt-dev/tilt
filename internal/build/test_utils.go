@@ -39,10 +39,6 @@ type dockerBuildFixture struct {
 }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	if testing.Short() {
-		t.Skip("skipping test due to short mode")
-	}
-
 	ctx := output.CtxForTest()
 	dcli, err := docker.DefaultDockerClient(ctx, k8s.EnvGKE)
 	if err != nil {
