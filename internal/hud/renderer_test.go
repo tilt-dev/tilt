@@ -2,10 +2,10 @@ package hud
 
 import (
 	"testing"
-
-	"github.com/windmilleng/tilt/internal/rty"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/rty"
 
 	"github.com/windmilleng/tcell"
 )
@@ -21,8 +21,74 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
+	rtf.run("one undeployed resource", 70, 20, v)
 
-	rtf.run("one undeployed resource", 60, 20, v)
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "a-a-a-aaaaabe vigoda",
+				LastBuildFinishTime: time.Now(),
+				LastBuildError:      "oh no the build failed",
+				LastBuildLog:        "1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n",
+			},
+		},
+	}
+	rtf.run("inline build log", 70, 20, v)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:           "a-a-a-aaaaabe vigoda",
+				LastBuildError: "oh no the build failed",
+				LastBuildLog:   "1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n",
+			},
+		},
+		ViewState: view.ViewState{
+			DisplayedLogNumber: 1,
+		},
+	}
+	rtf.run("modal build log displayed", 70, 20, v)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:        "a-a-a-aaaaabe vigoda",
+				PodName:     "vigoda-pod",
+				PodStatus:   "Running",
+				PodRestarts: 1,
+				Endpoints:   []string{"1.2.3.4:8080"},
+				PodLog:      "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+			},
+		},
+	}
+	rtf.run("pod log displayed inline", 70, 20, v)
+
+	ts := time.Now().Add(-5 * time.Minute)
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "a-a-a-aaaaabe vigoda",
+				DirectoriesWatched:    []string{"foo", "bar"},
+				LastDeployTime:        ts,
+				LastDeployEdits:       []string{"main.go", "cli.go"},
+				LastBuildError:        "the build failed!",
+				LastBuildFinishTime:   ts,
+				LastBuildDuration:     1400 * time.Millisecond,
+				LastBuildLog:          "",
+				PendingBuildEdits:     []string{"main.go", "cli.go", "vigoda.go"},
+				PendingBuildSince:     ts,
+				CurrentBuildEdits:     []string{"main.go"},
+				CurrentBuildStartTime: ts,
+				PodName:               "vigoda-pod",
+				PodCreationTime:       ts,
+				PodStatus:             "Running",
+				PodRestarts:           1,
+				Endpoints:             []string{"1.2.3.4:8080"},
+				PodLog:                "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+			},
+		},
+	}
+	rtf.run("all the data at once", 70, 20, v)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
