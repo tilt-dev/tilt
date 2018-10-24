@@ -866,18 +866,21 @@ func TestPodEventContainerStatus(t *testing.T) {
 func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.bc.DisableForTesting()
 
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String(), []model.Mount{mount})
 
 	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(manifestFilesChangedAction{
 		manifestName: manifest.Name,
 		files:        []string{"/go/a"},
+	})
+	f.WaitUntil("waiting for manifestToBuild > 0", func(st store.EngineState) bool {
+		return len(st.ManifestsToBuild) > 0
 	})
 	f.store.Dispatch(BuildStartedAction{
 		Manifest:  manifest,
@@ -890,15 +893,13 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		},
 	})
 
-	f.startPod(name)
-	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
-		return pod.ContainerReady
-	})
+	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 
-	f.podEvent(f.testPod("my pod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 	f.WaitUntilManifest("CrashRebuildInProg set to True", "foobar", func(state store.ManifestState) bool {
 		return state.CrashRebuildInProg
 	})
+	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
+	f.waitForCompletedBuildCount(1)
 }
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
@@ -1428,6 +1429,7 @@ type testFixture struct {
 	log                   *bufsync.ThreadSafeBuffer
 	store                 *store.Store
 	pod                   *v1.Pod
+	bc                    *BuildController
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -1483,6 +1485,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		hud:            hud,
 		log:            log,
 		store:          st,
+		bc:             bc,
 	}
 }
 
