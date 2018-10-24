@@ -77,7 +77,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st *store.Store) (buil
 	}, true
 }
 
-func (c *BuildController) disableForTesting() {
+func (c *BuildController) DisableForTesting() {
 	c.disabledForTesting = true
 }
 

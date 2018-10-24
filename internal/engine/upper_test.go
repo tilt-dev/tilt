@@ -866,7 +866,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.bc.disableForTesting()
+	f.bc.DisableForTesting()
 
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
