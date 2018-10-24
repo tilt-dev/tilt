@@ -180,7 +180,12 @@ func (i *InteractiveTester) loadGoldenFile(name string) Canvas {
 	if err != nil {
 		return newTempCanvas(1, 1, tcell.StyleDefault)
 	}
-	defer fi.Close()
+	defer func() {
+		err := fi.Close()
+		if err != nil {
+			log.Printf("error closing file %s\n", fi.Name())
+		}
+	}()
 
 	dec := gob.NewDecoder(fi)
 	var d caseData
@@ -191,7 +196,12 @@ func (i *InteractiveTester) loadGoldenFile(name string) Canvas {
 
 	c := newTempCanvas(d.Width, d.Height, tcell.StyleDefault)
 	for i, cell := range d.Cells {
-		c.SetContent(i%d.Width, i/d.Width, cell.Ch, nil, cell.Style)
+		x := i % d.Width
+		y := i / d.Width
+		err := c.SetContent(x, y, cell.Ch, nil, cell.Style)
+		if err != nil {
+			log.Printf("error setting content at %d, %d\n", x, y)
+		}
 	}
 
 	return c
@@ -239,7 +249,10 @@ func InitScreenAndRun(m *testing.M, screen *tcell.Screen) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		(*screen).Init()
+		err = (*screen).Init()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	r := m.Run()
