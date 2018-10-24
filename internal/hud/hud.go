@@ -43,9 +43,6 @@ var _ HeadsUpDisplay = (*Hud)(nil)
 func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
 	return &Hud{
 		r: NewRenderer(),
-		viewState: view.ViewState{
-			DisplayedLog: -1,
-		},
 	}, nil
 }
 
@@ -148,12 +145,12 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			h.selectedScroller(h.r.rty).Down()
 			h.refresh(ctx)
 		case tcell.KeyEnter:
-			if h.viewState.DisplayedLog == -1 {
+			if h.viewState.DisplayedLogNumber == 0 {
 				selectedIdx, _ := h.selectedResource()
-				h.viewState.DisplayedLog = selectedIdx
+				h.viewState.DisplayedLogNumber = selectedIdx + 1
 				logModal(h.r.rty).Top()
 			} else {
-				h.viewState.DisplayedLog = -1
+				h.viewState.DisplayedLogNumber = 0
 			}
 			h.refresh(ctx)
 		}
@@ -217,7 +214,7 @@ const resourcesScollerName = "resources"
 const logScrollerName = "logmodal"
 
 func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
-	if h.viewState.DisplayedLog == -1 {
+	if h.viewState.DisplayedLogNumber == 0 {
 		return h.r.rty.ElementScroller(resourcesScollerName)
 	} else {
 		return h.r.rty.TextScroller(logScrollerName)

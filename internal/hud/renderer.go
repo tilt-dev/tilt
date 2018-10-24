@@ -106,8 +106,8 @@ func (r *Renderer) layout(v view.View) rty.Component {
 	split.Add(r.renderResources(v.Resources))
 	l.Add(split)
 
-	if v.ViewState.DisplayedLog != -1 {
-		return r.renderLogModal(v.Resources[v.ViewState.DisplayedLog], l)
+	if v.ViewState.DisplayedLogNumber != 0 {
+		return r.renderLogModal(v.Resources[v.ViewState.DisplayedLogNumber-1], l)
 	} else {
 		return l
 	}
