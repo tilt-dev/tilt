@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"time"
 
@@ -353,7 +352,6 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		if cb.Result.ContainerID != "" {
 			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
 				ms.ExpectedContainerID = cb.Result.ContainerID
-				log.Printf("got expectedCID: %s", ms.ExpectedContainerID.ShortStr())
 			}
 		}
 	}
@@ -492,7 +490,6 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 
 	populateContainerStatus(ctx, ms, pod, cStatus)
 	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
-		log.Printf("should start image build")
 		ms.CrashRebuildInProg = true
 		ms.ExpectedContainerID = ""
 		enqueueBuild(state, ms.Manifest.Name)
