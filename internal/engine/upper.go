@@ -57,18 +57,6 @@ type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
-	return func(ctx context.Context, store *store.Store) error {
-		return makePodWatcher(ctx, kCli, store)
-	}
-}
-
-func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
-	return func(ctx context.Context, store *store.Store) error {
-		return makeServiceWatcher(ctx, kCli, store)
-	}
-}
-
 func ProvideFsWatcherMaker() FsWatcherMaker {
 	return func() (watch.Notify, error) {
 		return watch.NewWatcher()
@@ -82,7 +70,7 @@ func ProvideTimerMaker() timerMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {
 
 	st.AddSubscriber(bc)
@@ -90,17 +78,17 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	st.AddSubscriber(pfc)
 	st.AddSubscriber(plm)
 	st.AddSubscriber(fwm)
+	st.AddSubscriber(pw)
+	st.AddSubscriber(sw)
 
 	return Upper{
-		b:                   b,
-		podWatcherMaker:     pwm,
-		serviceWatcherMaker: swm,
-		timerMaker:          time.After,
-		k8s:                 k8s,
-		reaper:              reaper,
-		hud:                 hud,
-		store:               st,
-		hudErrorCh:          make(chan error),
+		b:          b,
+		timerMaker: time.After,
+		k8s:        k8s,
+		reaper:     reaper,
+		hud:        hud,
+		store:      st,
+		hudErrorCh: make(chan error),
 	}
 }
 
@@ -558,17 +546,7 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 	}
 	engineState.WatchMounts = watchMounts
 
-	var err error
 	if watchMounts {
-		err = u.podWatcherMaker(ctx, u.store)
-		if err != nil {
-			return err
-		}
-		err = u.serviceWatcherMaker(ctx, u.store)
-		if err != nil {
-			return err
-		}
-
 		go func() {
 			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
 			if err != nil {
