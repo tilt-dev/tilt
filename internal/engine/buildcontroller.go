@@ -13,8 +13,9 @@ import (
 )
 
 type BuildController struct {
-	b               BuildAndDeployer
-	lastActionCount int
+	b                  BuildAndDeployer
+	lastActionCount    int
+	disabledForTesting bool
 }
 
 type buildEntry struct {
@@ -76,7 +77,14 @@ func (c *BuildController) needsBuild(ctx context.Context, st *store.Store) (buil
 	}, true
 }
 
+func (c *BuildController) disableForTesting() {
+	c.disabledForTesting = true
+}
+
 func (c *BuildController) OnChange(ctx context.Context, st *store.Store) {
+	if c.disabledForTesting {
+		return
+	}
 	entry, ok := c.needsBuild(ctx, st)
 	if !ok {
 		return
