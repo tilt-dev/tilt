@@ -10,86 +10,86 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tcell"
 )
 
-var usedNames = make(map[string]bool)
-
 const testDataDir = "testdata"
 
-type fixture struct {
-	t  *testing.T
-	r  RTY
-	sc tcell.SimulationScreen
+type InteractiveTester struct {
+	usedNames         map[string]bool
+	dummyScreen       tcell.SimulationScreen
+	interactiveScreen tcell.Screen
+	rty               RTY
+	t                 *testing.T
 }
 
-func newLayoutTestFixture(t *testing.T) *fixture {
-	sc := tcell.NewSimulationScreen("")
-	err := sc.Init()
+func NewInteractiveTester(t *testing.T, screen tcell.Screen) InteractiveTester {
+	t.Name()
+	dummyScreen := tcell.NewSimulationScreen("")
+	err := dummyScreen.Init()
 	assert.NoError(t, err)
-	return &fixture{
-		t:  t,
-		r:  NewRTY(sc),
-		sc: sc,
+
+	return InteractiveTester{
+		usedNames:         make(map[string]bool),
+		dummyScreen:       dummyScreen,
+		interactiveScreen: screen,
+		rty:               NewRTY(dummyScreen),
+		t:                 t,
 	}
 }
 
-func (f *fixture) cleanUp() {
-}
-
-func (f *fixture) run(name string, width int, height int, c Component) {
-	err := f.runCaptureError(name, width, height, c)
+func (i *InteractiveTester) Run(name string, width int, height int, c Component) {
+	err := i.runCaptureError(name, width, height, c)
 	if err != nil {
-		f.t.Errorf("error rendering %s: %v", name, err)
+		i.t.Errorf("error rendering %s: %v", name, err)
 	}
 }
 
-func (f *fixture) render(width int, height int, c Component) (Canvas, error) {
-	actual := newScreenCanvas(f.sc)
-	f.sc.SetSize(width, height)
+func (i *InteractiveTester) render(width int, height int, c Component) (Canvas, error) {
+	actual := newScreenCanvas(i.dummyScreen)
+	i.dummyScreen.SetSize(width, height)
 	defer func() {
 		if e := recover(); e != nil {
-			f.t.Errorf("panic rendering: %v %s", e, debug.Stack())
+			i.t.Errorf("panic rendering: %v %s", e, debug.Stack())
 		}
 	}()
-	err := f.r.Render(c)
+	err := i.rty.Render(c)
 	return actual, err
 }
 
 // Returns an error if rendering failed.
-// If any other failure is encountered, fails via `f.t`'s `testing.T` and returns `nil`.
-func (f *fixture) runCaptureError(name string, width int, height int, c Component) error {
-	_, ok := usedNames[name]
+// If any other failure is encountered, fails via `i.t`'s `testing.T` and returns `nil`.
+func (i *InteractiveTester) runCaptureError(name string, width int, height int, c Component) error {
+	_, ok := i.usedNames[name]
 	if ok {
-		f.t.Fatalf("test name '%s' was already used", name)
+		i.t.Fatalf("test name '%s' was already used", name)
 	}
 
-	actual, err := f.render(width, height, c)
+	actual, err := i.render(width, height, c)
 	if err != nil {
 		return errors.Wrapf(err, "error rendering %s", name)
 	}
 
-	expected := f.loadGoldenFile(name)
+	expected := i.loadGoldenFile(name)
 
-	if !f.canvasesEqual(actual, expected) {
-		updated, err := f.displayAndMaybeWrite(name, actual, expected)
+	if !canvasesEqual(actual, expected) {
+		updated, err := i.displayAndMaybeWrite(name, actual, expected)
 		if err == nil {
 			if !updated {
 				err = errors.New("actual rendering didn't match expected")
 			}
 		}
 		if err != nil {
-			f.t.Errorf("%s: %v", name, err)
+			i.t.Errorf("%s: %v", name, err)
 		}
 	}
 	return nil
 }
 
-func (f *fixture) canvasesEqual(actual, expected Canvas) bool {
+func canvasesEqual(actual, expected Canvas) bool {
 	actualWidth, actualHeight := actual.Size()
 	expectedWidth, expectedHeight := expected.Size()
 	if actualWidth != expectedWidth || actualHeight != expectedHeight {
@@ -109,9 +109,8 @@ func (f *fixture) canvasesEqual(actual, expected Canvas) bool {
 	return true
 }
 
-var screen tcell.Screen
-
-func (f *fixture) displayAndMaybeWrite(name string, actual, expected Canvas) (updated bool, err error) {
+func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected Canvas) (updated bool, err error) {
+	screen := i.interactiveScreen
 	if screen == nil {
 		return false, nil
 	}
@@ -147,7 +146,7 @@ func (f *fixture) displayAndMaybeWrite(name string, actual, expected Canvas) (up
 		case *tcell.EventKey:
 			switch ev.Rune() {
 			case 'y':
-				return true, f.writeGoldenFile(name, actual)
+				return true, i.writeGoldenFile(name, actual)
 			case 'n':
 				return false, errors.New("user indicated expected output was not as desired")
 			}
@@ -172,12 +171,12 @@ type caseCell struct {
 	Style tcell.Style
 }
 
-func (f *fixture) filename(name string) string {
+func (i *InteractiveTester) filename(name string) string {
 	return filepath.Join(testDataDir, strings.Replace(name, "/", "_", -1)+".gob")
 }
 
-func (f *fixture) loadGoldenFile(name string) Canvas {
-	fi, err := os.Open(f.filename(name))
+func (i *InteractiveTester) loadGoldenFile(name string) Canvas {
+	fi, err := os.Open(i.filename(name))
 	if err != nil {
 		return newTempCanvas(1, 1, tcell.StyleDefault)
 	}
@@ -198,7 +197,7 @@ func (f *fixture) loadGoldenFile(name string) Canvas {
 	return c
 }
 
-func (f *fixture) writeGoldenFile(name string, actual Canvas) error {
+func (i *InteractiveTester) writeGoldenFile(name string, actual Canvas) error {
 	_, err := os.Stat(testDataDir)
 	if os.IsNotExist(err) {
 		err := os.Mkdir(testDataDir, os.FileMode(0755))
@@ -208,7 +207,7 @@ func (f *fixture) writeGoldenFile(name string, actual Canvas) error {
 	} else if err != nil {
 		return err
 	}
-	fi, err := os.Create(f.filename(name))
+	fi, err := os.Create(i.filename(name))
 	if err != nil {
 		return err
 	}
@@ -231,21 +230,22 @@ func (f *fixture) writeGoldenFile(name string, actual Canvas) error {
 	return enc.Encode(d)
 }
 
-func TestMain(m *testing.M) {
+func InitScreenAndRun(m *testing.M, screen *tcell.Screen) {
 	if s := os.Getenv("RTY_INTERACTIVE"); s != "" {
 		var err error
-		screen, err = tcell.NewTerminfoScreen()
+		*screen, err = tcell.NewTerminfoScreen()
 		if err != nil {
 			log.Fatal(err)
 		}
-		screen.Init()
-		defer screen.Fini()
+		(*screen).Init()
 	}
+
 	r := m.Run()
-	if screen != nil {
-		screen.Fini()
+	if *screen != nil {
+		(*screen).Fini()
 	}
-	if r != 0 && screen == nil {
+
+	if r != 0 && *screen != nil {
 		log.Printf("To update golden files, run with env variable RTY_INTERACTIVE=1 and hit y/n on each case to overwrite (or not)")
 	}
 	os.Exit(r)

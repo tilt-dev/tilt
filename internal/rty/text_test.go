@@ -9,81 +9,78 @@ import (
 )
 
 func TestTextString(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
-	f.run("one-line text string", 20, 1, TextString("hello world"))
-	f.run("two-line text string", 20, 2, TextString("hello\nworld"))
-	f.run("two-line text string in one-line container", 20, 1, TextString("hello\nworld"))
-	f.run("overflowed text string", 2, 1, TextString("hello world"))
+	i.Run("one-line text string", 20, 1, TextString("hello world"))
+	i.Run("two-line text string", 20, 2, TextString("hello\nworld"))
+	i.Run("two-line text string in one-line container", 20, 1, TextString("hello\nworld"))
+	i.Run("overflowed text string", 2, 1, TextString("hello world"))
 }
 
 func TestStyledText(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
-	f.run("blue string", 20, 1, ColoredString("hello world", tcell.ColorBlue))
-	f.run("black on white string", 20, 1, BgColoredString("hello world", tcell.ColorBlack, tcell.ColorWhite))
+	i.Run("blue string", 20, 1, ColoredString("hello world", tcell.ColorBlue))
+	i.Run("black on white string", 20, 1, BgColoredString("hello world", tcell.ColorBlack, tcell.ColorWhite))
 	c := NewStringBuilder().Text("hello ").Fg(tcell.ColorBlue).Text("world").Build()
-	f.run("multi-color string", 20, 1, c)
+	i.Run("multi-color string", 20, 1, c)
 }
 
 func TestBoxes(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
-	f.run("10x10 box", 10, 10, NewBox())
+	i.Run("10x10 box", 10, 10, NewBox())
 	b := NewBox()
 	b.SetFocused(true)
-	f.run("focused box", 10, 10, b)
+	i.Run("focused box", 10, 10, b)
 	b = NewBox()
 	b.SetInner(TextString("hello world"))
-	f.run("text in box", 20, 10, b)
-	f.run("wrapped text in box", 10, 10, b)
+	i.Run("text in box", 20, 10, b)
+	i.Run("wrapped text in box", 10, 10, b)
 }
 
 func TestStyles(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
 	var c Component
 	c = NewBox()
 	c = Fg(c, tcell.ColorGreen)
 	c = Bg(c, tcell.ColorWhite)
-	f.run("green on white box", 10, 10, c)
+	i.Run("green on white box", 10, 10, c)
+
 	b := NewBox()
 	b.SetInner(TextString("hello world"))
 	c = Fg(b, tcell.ColorGreen)
 	c = Bg(c, tcell.ColorWhite)
-	f.run("green on white box with text inside", 10, 10, c)
+	i.Run("green on white box with text inside", 10, 10, c)
+
 	b = NewBox()
 	b.SetInner(BgColoredString("hello world", tcell.ColorBlue, tcell.ColorGreen))
 	c = Fg(b, tcell.ColorGreen)
 	c = Bg(c, tcell.ColorWhite)
-	f.run("green on white box with blue on green text inside", 10, 10, c)
+	i.Run("green on white box with blue on green text inside", 10, 10, c)
 
 	l := NewFlexLayout(DirHor)
 	l.Add(Bg(NewBox(), tcell.ColorBlue))
 	l.Add(Bg(NewBox(), tcell.ColorWhite))
 	l.Add(Bg(NewBox(), tcell.ColorRed))
-	f.run("blue, white, red boxes horizontally", 30, 30, l)
+	i.Run("blue, white, red boxes horizontally", 30, 30, l)
 
 	l = NewFlexLayout(DirVert)
 	l.Add(Bg(NewBox(), tcell.ColorBlue))
 	l.Add(Bg(NewBox(), tcell.ColorWhite))
 	l.Add(Bg(NewBox(), tcell.ColorRed))
-	f.run("blue, white, red boxes vertically", 30, 30, l)
+	i.Run("blue, white, red boxes vertically", 30, 30, l)
 }
 
 func TestLines(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
 	fl := NewFlexLayout(DirHor)
 	for j := 0; j < 10; j++ {
 		fl.Add(TextString("x"))
 	}
-	err := f.runCaptureError("overflowed multi-string line", 3, 1, fl)
+	err := i.runCaptureError("overflowed multi-string line", 3, 1, fl)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "can't render in 3 columns")
 	}
@@ -91,7 +88,7 @@ func TestLines(t *testing.T) {
 	l := NewLines()
 	l.Add(NewStringBuilder().Text("hello").Build())
 	l.Add(NewStringBuilder().Text("hello").Text("goodbye").Build())
-	f.run("lines of stringbuilders", 10, 10, l)
+	i.Run("lines of stringbuilders", 10, 10, l)
 
 	l = NewLines()
 	line := NewLine()
@@ -101,16 +98,15 @@ func TestLines(t *testing.T) {
 	line.Add(TextString("hello"))
 	line.Add(TextString("goodbye"))
 	l.Add(line)
-	f.run("lines of lines", 30, 10, l)
+	i.Run("lines of lines", 30, 10, l)
 }
 
 func TestANSICodes(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
 	sb := NewStringBuilder().Text("\x1b[31mhello \x1b[33mworld")
-	f.run("red hello yellow world", 20, 1, sb.Build())
+	i.Run("red hello yellow world", 20, 1, sb.Build())
 
 	sb = NewStringBuilder().Text("\x1b[44mhello \x1bcworld")
-	f.run("blue-bg hello, default-bg world", 20, 1, sb.Build())
+	i.Run("blue-bg hello, default-bg world", 20, 1, sb.Build())
 }
