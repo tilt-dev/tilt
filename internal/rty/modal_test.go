@@ -8,14 +8,13 @@ import (
 )
 
 func TestModal(t *testing.T) {
-	f := newLayoutTestFixture(t)
-	defer f.cleanUp()
+	i := NewInteractiveTester(t, screen)
 
 	{
 		bg := Bg(NewBox(), tcell.ColorRed)
 		fg := Bg(NewBox(), tcell.ColorBlue)
 		l := NewModalLayout(bg, fg, 0.8)
-		f.run("modal blue box on red box", 20, 20, l)
+		i.Run("modal blue box on red box", 20, 20, l)
 	}
 
 	{
@@ -27,6 +26,6 @@ func TestModal(t *testing.T) {
 		fg := NewBox()
 		fg.SetInner(TextString("hello world"))
 		l := NewModalLayout(bg, fg, 0.5)
-		f.run("modal text on top of text", 10, 10, l)
+		i.Run("modal text on top of text", 10, 10, l)
 	}
 }
