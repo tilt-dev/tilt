@@ -106,7 +106,32 @@ func (r *Renderer) layout(v view.View) rty.Component {
 	split.Add(r.renderResources(v.Resources))
 	l.Add(split)
 
-	return l
+	if v.ViewState.DisplayedLogNumber != 0 {
+		return r.renderLogModal(v.Resources[v.ViewState.DisplayedLogNumber-1], l)
+	} else {
+		return l
+	}
+}
+
+func (r *Renderer) renderLogModal(res view.Resource, background rty.Component) rty.Component {
+	var s string
+	if res.LastBuildError != "" && len(strings.TrimSpace(res.LastBuildLog)) > 0 {
+		s = res.LastBuildLog
+	} else if len(strings.TrimSpace(res.PodLog)) > 0 {
+		s = res.PodLog
+	} else {
+		s = fmt.Sprintf("No log output for %s", res.Name)
+	}
+	sl := rty.NewTextScrollLayout(logScrollerName)
+	sl.Add(rty.TextString(s))
+	box := rty.NewBox()
+	box.SetInner(sl)
+	l := rty.NewFlexLayout(rty.DirVert)
+	l.Add(box)
+	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("Press <Enter> to stop viewing log").Build())
+
+	ml := rty.NewModalLayout(background, l, .9)
+	return ml
 }
 
 func renderNarration(msg string) rty.Component {
@@ -127,7 +152,7 @@ func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
 		childNames[i] = r.Name
 	}
 
-	l, selectedResource := r.rty.RegisterElementScroll("resources", childNames)
+	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
 
 	for _, r := range rs {
 		l.Add(renderResource(r, selectedResource == r.Name))

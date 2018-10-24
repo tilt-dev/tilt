@@ -37,6 +37,9 @@ type Resource struct {
 type ViewState struct {
 	ShowNarration    bool
 	NarrationMessage string
+
+	// if non-0, which resource's log is currently shown in a modal (1-based index)
+	DisplayedLogNumber int
 }
 
 type View struct {

@@ -318,3 +318,40 @@ func (l *FixedSizeLayout) Render(w Writer, width int, height int) error {
 	w.RenderChild(l.del)
 	return nil
 }
+
+type ModalLayout struct {
+	bg       Component
+	fg       Component
+	fraction float64
+}
+
+// fg will be rendered on top of bg, using fraction/1 of the height and width of the screen
+func NewModalLayout(bg Component, fg Component, fraction float64) *ModalLayout {
+	return &ModalLayout{fg: fg, bg: bg, fraction: fraction}
+}
+
+func (l *ModalLayout) Size(width int, height int) (int, int) {
+	w, h := l.bg.Size(width, height)
+	fgw, fgh := l.fg.Size(width, height)
+	if fgw > w {
+		w = fgw
+	}
+	if fgh > h {
+		h = fgh
+	}
+
+	return w, h
+}
+
+func (l *ModalLayout) Render(w Writer, width int, height int) error {
+	w.RenderChild(l.bg)
+
+	f := (1 - l.fraction) / 2
+	mx := int(f * float64(width))
+	my := int(f * float64(height))
+	mh := int((1 - 2*f) * float64(width))
+	mw := int((1 - 2*f) * float64(height))
+	w = w.Divide(mx, my, mh, mw)
+	w.RenderChild(l.fg)
+	return nil
+}
