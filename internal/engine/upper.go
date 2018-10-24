@@ -57,18 +57,6 @@ type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
-func ProvidePodWatcherMaker(kCli k8s.Client) PodWatcherMaker {
-	return func(ctx context.Context, store *store.Store) error {
-		return makePodWatcher(ctx, kCli, store)
-	}
-}
-
-func ProvideServiceWatcherMaker(kCli k8s.Client) ServiceWatcherMaker {
-	return func(ctx context.Context, store *store.Store) error {
-		return makeServiceWatcher(ctx, kCli, store)
-	}
-}
-
 func ProvideFsWatcherMaker() FsWatcherMaker {
 	return func() (watch.Notify, error) {
 		return watch.NewWatcher()
@@ -82,7 +70,7 @@ func ProvideTimerMaker() timerMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pwm PodWatcherMaker, swm ServiceWatcherMaker,
+	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {
 
 	st.AddSubscriber(bc)
@@ -90,17 +78,17 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	st.AddSubscriber(pfc)
 	st.AddSubscriber(plm)
 	st.AddSubscriber(fwm)
+	st.AddSubscriber(pw)
+	st.AddSubscriber(sw)
 
 	return Upper{
-		b:                   b,
-		podWatcherMaker:     pwm,
-		serviceWatcherMaker: swm,
-		timerMaker:          time.After,
-		k8s:                 k8s,
-		reaper:              reaper,
-		hud:                 hud,
-		store:               st,
-		hudErrorCh:          make(chan error),
+		b:          b,
+		timerMaker: time.After,
+		k8s:        k8s,
+		reaper:     reaper,
+		hud:        hud,
+		store:      st,
+		hudErrorCh: make(chan error),
 	}
 }
 
@@ -281,7 +269,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		delete(ms.PendingFileChanges, file)
 	}
 	ms.CurrentBuildStartTime = action.StartTime
-	ms.Pod.Log = []byte{}
+	ms.Pod.CurrentLog = []byte{}
 
 	// TODO(nick): It would be better if we reversed the relationship
 	// between CurrentlyBuilding and BuildController. BuildController should dispatch
@@ -497,8 +485,8 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	}
 
 	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
-		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.Log...)
-		ms.Pod.Log = []byte{}
+		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.CurrentLog...)
+		ms.Pod.CurrentLog = []byte{}
 	}
 	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
 }
@@ -527,7 +515,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	ms.Pod.Log = append(ms.Pod.Log, action.Log...)
+	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
@@ -561,17 +549,7 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 	}
 	engineState.WatchMounts = watchMounts
 
-	var err error
 	if watchMounts {
-		err = u.podWatcherMaker(ctx, u.store)
-		if err != nil {
-			return err
-		}
-		err = u.serviceWatcherMaker(ctx, u.store)
-		if err != nil {
-			return err
-		}
-
 		go func() {
 			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
 			if err != nil {
@@ -676,17 +654,7 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 	} else {
 		logger.Get(ctx).Infof("%s pod log:", mn)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-
-		// attempting to include at most one crash:
-		// if the current pod has crashed, then just print the current pod
-		// if the current pod is live, print the current pod plus the last pod
-		var s string
-		if ms.Pod.ContainerReady {
-			s = string(ms.Pod.PreRestartLog) + string(ms.Pod.Log)
-		} else {
-			s = string(ms.Pod.Log)
-		}
-		logger.Get(ctx).Infof("%s", s)
+		logger.Get(ctx).Infof("%s", ms.Pod.Log())
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
 }

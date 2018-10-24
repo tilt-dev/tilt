@@ -10,15 +10,36 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-func makePodWatcher(ctx context.Context, kCli k8s.Client, st *store.Store) error {
-	ch, err := kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
+type PodWatcher struct {
+	kCli     k8s.Client
+	watching bool
+}
+
+func NewPodWatcher(kCli k8s.Client) *PodWatcher {
+	return &PodWatcher{
+		kCli: kCli,
+	}
+}
+
+func (w *PodWatcher) needsWatch(st *store.Store) bool {
+	state := st.RLockState()
+	defer st.RUnlockState()
+	return state.WatchMounts && !w.watching
+}
+
+func (w *PodWatcher) OnChange(ctx context.Context, st *store.Store) {
+	if !w.needsWatch(st) {
+		return
+	}
+	w.watching = true
+
+	ch, err := w.kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
 	if err != nil {
-		return err
+		st.Dispatch(NewErrorAction(err))
+		return
 	}
 
 	go dispatchPodChangesLoop(ctx, ch, st)
-
-	return nil
 }
 
 func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st *store.Store) {

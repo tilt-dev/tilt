@@ -11,6 +11,7 @@ type Resource struct {
 	LastBuildError      string
 	LastBuildFinishTime time.Time
 	LastBuildDuration   time.Duration
+	LastBuildLog        string
 
 	PendingBuildEdits []string
 	PendingBuildSince time.Time
@@ -23,6 +24,7 @@ type Resource struct {
 	PodStatus       string
 	PodRestarts     int
 	Endpoints       []string
+	PodLog          string
 }
 
 // State of the current view that's not expressed in the underlying model state.

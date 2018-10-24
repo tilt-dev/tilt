@@ -98,7 +98,7 @@ type Pod struct {
 	// The log for the previously active pod, if any
 	PreRestartLog []byte
 	// The log for the currently active pod, if any
-	Log []byte
+	CurrentLog []byte
 
 	// Corresponds to the deployed container.
 	ContainerName  k8s.ContainerName
@@ -110,6 +110,23 @@ type Pod struct {
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
+}
+
+// attempting to include the most recent crash, but no preceding crashes
+// (e.g., we don't want to show the same panic 20x in a crash loop)
+// if the current pod has crashed, then just print the current pod
+// if the current pod is live, print the current pod plus the last pod
+func (p Pod) Log() string {
+	var podLog string
+	// if the most recent pod is up, then we want the log from the last run (if any), since it crashed
+	if p.ContainerReady {
+		podLog = string(p.PreRestartLog) + string(p.CurrentLog)
+	} else {
+		// otherwise, the most recent pod has the crash itself, so just return itself
+		podLog = string(p.CurrentLog)
+	}
+
+	return podLog
 }
 
 func shortenFile(baseDirs []string, f string) string {
@@ -206,6 +223,11 @@ func StateToView(s EngineState) view.View {
 			}
 		}
 
+		lastBuildLog := ""
+		if ms.LastBuildLog != nil {
+			lastBuildLog = ms.LastBuildLog.String()
+		}
+
 		r := view.Resource{
 			Name:                  name.String(),
 			DirectoriesWatched:    relWatchDirs,
@@ -214,6 +236,7 @@ func StateToView(s EngineState) view.View {
 			LastBuildError:        lastBuildError,
 			LastBuildFinishTime:   ms.LastBuildFinishTime,
 			LastBuildDuration:     ms.LastBuildDuration,
+			LastBuildLog:          lastBuildLog,
 			PendingBuildEdits:     pendingBuildEdits,
 			PendingBuildSince:     ms.QueueEntryTime,
 			CurrentBuildEdits:     currentBuildEdits,
@@ -222,6 +245,7 @@ func StateToView(s EngineState) view.View {
 			PodCreationTime:       ms.Pod.StartedAt,
 			PodStatus:             ms.Pod.Status,
 			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
+			PodLog:                ms.Pod.Log(),
 			Endpoints:             endpoints,
 		}
 

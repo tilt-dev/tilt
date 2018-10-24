@@ -34,11 +34,11 @@ var BaseWireSet = wire.NewSet(
 
 	engine.DeployerWireSet,
 	engine.DefaultShouldFallBack,
-	engine.ProvidePodWatcherMaker,
-	engine.ProvideServiceWatcherMaker,
 	engine.NewPodLogManager,
 	engine.NewPortForwardController,
 	engine.NewBuildController,
+	engine.NewPodWatcher,
+	engine.NewServiceWatcher,
 
 	hud.NewDefaultHeadsUpDisplay,
 
