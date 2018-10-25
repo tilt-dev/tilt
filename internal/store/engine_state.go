@@ -39,6 +39,11 @@ type EngineState struct {
 	BuildControllerActionCount int
 
 	PermanentError error
+
+	// GlobalYAML is a special manifest that has no images, but has dependencies
+	// and a bunch of YAML that is deployed when those dependencies change.
+	// TODO(dmiller) in the future we may have many of these manifsts, but for now it's a special case.
+	GlobalYAML model.YAMLManifest
 }
 
 type ManifestState struct {

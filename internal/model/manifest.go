@@ -199,6 +199,28 @@ func (m1 Manifest) stepsEqual(s2 []Step) bool {
 	return true
 }
 
+func (m Manifest) ManifestName() ManifestName {
+	return m.Name
+}
+
+func (m Manifest) Dependencies() []string {
+	// TODO(dmiller) we can know the length of this slice
+	deps := []string{}
+
+	for _, p := range m.LocalPaths() {
+		deps = append(deps, p)
+	}
+	for _, f := range m.ConfigFiles {
+		deps = append(deps, f)
+	}
+
+	return deps
+}
+
+func (m Manifest) LocalRepos() []LocalGithubRepo {
+	return m.Repos
+}
+
 type Mount struct {
 	LocalPath     string
 	ContainerPath string
