@@ -46,10 +46,15 @@ func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
 	return model.NewCompositeMatcher(matchers)
 }
 
+type IgnorableManifest interface {
+	ConfigMatcher() (model.PathMatcher, error)
+	LocalRepos() []model.LocalGithubRepo
+}
+
 // Filter out files that should not trigger new builds.
-func CreateFileChangeFilter(m model.Manifest) (model.PathMatcher, error) {
+func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
-	for _, r := range m.Repos {
+	for _, r := range m.LocalRepos() {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {
 			matchers = append(matchers, gim)
