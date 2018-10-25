@@ -103,7 +103,7 @@ func (r *Renderer) layout(v view.View) rty.Component {
 
 	split := rty.NewFlexLayout(rty.DirHor)
 
-	split.Add(r.renderResources(v.Resources))
+	split.Add(r.renderResources(v))
 	l.Add(split)
 
 	return l
@@ -121,7 +121,8 @@ func renderNarration(msg string) rty.Component {
 	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
-func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
+func (r *Renderer) renderResources(v view.View) rty.Component {
+	rs := v.Resources
 	childNames := make([]string, len(rs))
 	for i, r := range rs {
 		childNames[i] = r.Name
@@ -129,8 +130,8 @@ func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
 
 	l, selectedResource := r.rty.RegisterElementScroll("resources", childNames)
 
-	for _, r := range rs {
-		l.Add(renderResource(r, selectedResource == r.Name))
+	for i, r := range rs {
+		l.Add(renderResource(r, v.ViewState.Resources[i], selectedResource == r.Name))
 	}
 
 	return l
@@ -163,7 +164,7 @@ func abbreviateLog(s string) []string {
 	return lines[start:]
 }
 
-func renderResource(r view.Resource, selected bool) rty.Component {
+func renderResource(r view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 
 	sb := rty.NewStringBuilder()
@@ -241,15 +242,17 @@ func renderResource(r view.Resource, selected bool) rty.Component {
 
 		buildComponents = append(buildComponents, sb.Build())
 
-		if r.LastBuildError != "" {
-			abbrevLog := abbreviateLog(r.LastBuildLog)
-			for _, logLine := range abbrevLog {
-				buildComponents = append(buildComponents, rty.TextString(logLine))
-			}
+		if rv.IsExpanded {
+			if r.LastBuildError != "" {
+				abbrevLog := abbreviateLog(r.LastBuildLog)
+				for _, logLine := range abbrevLog {
+					buildComponents = append(buildComponents, rty.TextString(logLine))
+				}
 
-			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
-			if len(abbrevLog) == 0 {
-				buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", r.LastBuildError)))
+				// if the build log is non-empty, it will contain the error, so we don't need to show this separately
+				if len(abbrevLog) == 0 {
+					buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", r.LastBuildError)))
+				}
 			}
 		}
 	}

@@ -37,6 +37,11 @@ type Resource struct {
 type ViewState struct {
 	ShowNarration    bool
 	NarrationMessage string
+	Resources        []ResourceViewState
+}
+
+type ResourceViewState struct {
+	IsExpanded bool
 }
 
 type View struct {

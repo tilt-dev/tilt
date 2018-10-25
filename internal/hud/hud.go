@@ -116,6 +116,9 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
 				st.Dispatch(NewShowErrorAction(int(r - '0')))
+			case r == 'o':
+				i, _ := h.selectedResource()
+				h.viewState.Resources[i].IsExpanded = !h.viewState.Resources[i].IsExpanded
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to
@@ -175,6 +178,17 @@ func (h *Hud) setViewState(ctx context.Context, viewState view.ViewState) {
 // Must hold the lock
 func (h *Hud) refresh(ctx context.Context) {
 	h.currentView.ViewState = h.viewState
+
+	// TODO: We don't handle the order of resources changing
+	vr := h.currentView.ViewState.Resources
+	r := h.currentView.Resources
+	if len(vr) < len(r) {
+		diff := len(r) - len(vr)
+		for i := 0; i < diff; i++ {
+			vr = append(vr, view.ResourceViewState{})
+		}
+	}
+	h.viewState.Resources = vr
 
 	err := h.Update(h.currentView)
 	if err != nil {
