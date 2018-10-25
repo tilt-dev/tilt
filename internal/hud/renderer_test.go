@@ -117,7 +117,7 @@ func newRendererTestFixture(t *testing.T) rendererTestFixture {
 }
 
 func (rtf rendererTestFixture) run(name string, w int, h int, v view.View) {
-	t := time.Now()
+	t := time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC)
 	r := NewRenderer(func() time.Time { return t })
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
 	c := r.layout(v)
