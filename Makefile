@@ -11,6 +11,7 @@ proto:
 	docker run --name tilt-protogen tilt-protogen
 	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/synclet/proto/synclet.pb.go internal/synclet/proto
 	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/hud/proto/hud.pb.go internal/hud/proto
+	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/stream/proto/stream.pb.go internal/stream/proto
 	docker rm tilt-protogen
 
 # Build a binary that uses synclet:latest

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package stream;
+
+option go_package = "github.com/windmilleng/tilt/internal/stream/proto;proto";
+
+service Stream {
+    rpc Connect (ConnectRequest) returns (stream StreamMessage) {}
+}
+
+message ConnectRequest {}
+message StreamMessage {
+    string s = 1;
+}

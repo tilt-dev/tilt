@@ -37,7 +37,7 @@ func (m *HudControl) Reset()         { *m = HudControl{} }
 func (m *HudControl) String() string { return proto.CompactTextString(m) }
 func (*HudControl) ProtoMessage()    {}
 func (*HudControl) Descriptor() ([]byte, []int) {
-	return fileDescriptor_hud_3f69539e855cb026, []int{0}
+	return fileDescriptor_hud_bb4128daf03700cd, []int{0}
 }
 func (m *HudControl) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_HudControl.Unmarshal(m, b)
@@ -179,7 +179,7 @@ func (m *ConnectRequest) Reset()         { *m = ConnectRequest{} }
 func (m *ConnectRequest) String() string { return proto.CompactTextString(m) }
 func (*ConnectRequest) ProtoMessage()    {}
 func (*ConnectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_hud_3f69539e855cb026, []int{1}
+	return fileDescriptor_hud_bb4128daf03700cd, []int{1}
 }
 func (m *ConnectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConnectRequest.Unmarshal(m, b)
@@ -216,7 +216,7 @@ func (m *WindowChange) Reset()         { *m = WindowChange{} }
 func (m *WindowChange) String() string { return proto.CompactTextString(m) }
 func (*WindowChange) ProtoMessage()    {}
 func (*WindowChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_hud_3f69539e855cb026, []int{2}
+	return fileDescriptor_hud_bb4128daf03700cd, []int{2}
 }
 func (m *WindowChange) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_WindowChange.Unmarshal(m, b)
@@ -246,7 +246,7 @@ func (m *DoneReply) Reset()         { *m = DoneReply{} }
 func (m *DoneReply) String() string { return proto.CompactTextString(m) }
 func (*DoneReply) ProtoMessage()    {}
 func (*DoneReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_hud_3f69539e855cb026, []int{3}
+	return fileDescriptor_hud_bb4128daf03700cd, []int{3}
 }
 func (m *DoneReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DoneReply.Unmarshal(m, b)
@@ -379,9 +379,9 @@ var _Hud_serviceDesc = grpc.ServiceDesc{
 	Metadata: "internal/hud/proto/hud.proto",
 }
 
-func init() { proto.RegisterFile("internal/hud/proto/hud.proto", fileDescriptor_hud_3f69539e855cb026) }
+func init() { proto.RegisterFile("internal/hud/proto/hud.proto", fileDescriptor_hud_bb4128daf03700cd) }
 
-var fileDescriptor_hud_3f69539e855cb026 = []byte{
+var fileDescriptor_hud_bb4128daf03700cd = []byte{
 	// 263 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xcf, 0x4b, 0xc3, 0x30,
 	0x14, 0xc7, 0x57, 0x07, 0xce, 0xbe, 0xcd, 0x8a, 0xf5, 0x32, 0xc5, 0x83, 0xf4, 0x34, 0x10, 0x1a,

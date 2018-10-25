@@ -45,6 +45,7 @@ func Execute() {
 	addCommand(rootCmd, &downCmd{})
 	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, &hudCmd{})
+	addCommand(rootCmd, &streamCmd{})
 	addCommand(rootCmd, &versionCmd{})
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")

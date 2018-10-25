@@ -2,11 +2,12 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"time"
+
+	errors "github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -104,6 +105,12 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 			logger.Get(ctx).Infof("error in hud: %v", err)
 		}
 	}()
+
+	ctx, closeStreamServer, err := ContextWithStreamServerLogger(ctx)
+	if err != nil {
+		return errors.Wrap(err, "error starting stream server logger")
+	}
+	defer closeStreamServer()
 
 	err = upper.CreateManifests(ctx, manifests, c.watch)
 	s, ok := status.FromError(err)
