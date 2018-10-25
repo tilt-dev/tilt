@@ -16,7 +16,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	container2 "github.com/windmilleng/tilt/internal/container"
+	wmcontainer "github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -35,7 +35,7 @@ type dockerBuildFixture struct {
 	b            *dockerImageBuilder
 	registry     *exec.Cmd
 	reaper       ImageReaper
-	containerIDs []container2.ContainerID
+	containerIDs []wmcontainer.ID
 	ps           *PipelineState
 }
 
@@ -161,7 +161,7 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 }
 
 func (f *dockerBuildFixture) assertFilesInContainer(
-	ctx context.Context, cID container2.ContainerID, expectedFiles []expectedFile) {
+	ctx context.Context, cID wmcontainer.ID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
 		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.Path)
 		if expectedFile.Missing {
@@ -187,7 +187,7 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 }
 
 // startContainer starts a container from the given config
-func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) container2.ContainerID {
+func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) wmcontainer.ID {
 	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
@@ -199,7 +199,7 @@ func (f *dockerBuildFixture) startContainer(ctx context.Context, config *contain
 		f.t.Fatalf("startContainer: %v", err)
 	}
 
-	result := container2.ContainerID(cID)
+	result := wmcontainer.ID(cID)
 	f.containerIDs = append(f.containerIDs, result)
 	return result
 }

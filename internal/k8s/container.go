@@ -114,7 +114,7 @@ func ContainerMatching(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, er
 	return v1.ContainerStatus{}, nil
 }
 
-func ContainerIDFromContainerStatus(status v1.ContainerStatus) (container.ContainerID, error) {
+func ContainerIDFromContainerStatus(status v1.ContainerStatus) (container.ID, error) {
 	id := status.ContainerID
 	if id == "" {
 		return "", nil
@@ -123,11 +123,11 @@ func ContainerIDFromContainerStatus(status v1.ContainerStatus) (container.Contai
 	if !strings.HasPrefix(id, ContainerIDPrefix) {
 		return "", fmt.Errorf("Malformed container ID: %s", id)
 	}
-	return container.ContainerID(id[len(ContainerIDPrefix):]), nil
+	return container.ID(id[len(ContainerIDPrefix):]), nil
 }
 
-func ContainerNameFromContainerStatus(status v1.ContainerStatus) container.ContainerName {
-	return container.ContainerName(status.Name)
+func ContainerNameFromContainerStatus(status v1.ContainerStatus) container.Name {
+	return container.Name(status.Name)
 }
 
 func ContainerSpecOf(pod *v1.Pod, status v1.ContainerStatus) v1.Container {

@@ -25,7 +25,7 @@ func NewFakeSyncletClient() *FakeSyncletClient {
 	return &FakeSyncletClient{}
 }
 
-func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID container.ContainerID,
+func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID container.ID,
 	tarArchive []byte, filesToDelete []string, commands []model.Cmd) error {
 	if c.UpdateContainerErrorToReturn != nil {
 		ret := c.UpdateContainerErrorToReturn
@@ -36,8 +36,8 @@ func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID con
 	return nil
 }
 
-func (c *FakeSyncletClient) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ContainerID, error) {
-	return container.ContainerID("foobar"), nil
+func (c *FakeSyncletClient) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ID, error) {
+	return container.ID("foobar"), nil
 }
 
 func (c *FakeSyncletClient) Close() error {

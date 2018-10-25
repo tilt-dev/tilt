@@ -22,9 +22,9 @@ const containerIdTimeout = time.Second * 10
 const containerIdRetryDelay = time.Millisecond * 100
 
 type SyncletClient interface {
-	UpdateContainer(ctx context.Context, containerID container.ContainerID, tarArchive []byte,
+	UpdateContainer(ctx context.Context, containerID container.ID, tarArchive []byte,
 		filesToDelete []string, commands []model.Cmd) error
-	ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ContainerID, error)
+	ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ID, error)
 
 	Close() error
 }
@@ -42,7 +42,7 @@ func NewGRPCClient(conn *grpc.ClientConn) *SyncletCli {
 
 func (s *SyncletCli) UpdateContainer(
 	ctx context.Context,
-	containerId container.ContainerID,
+	containerId container.ID,
 	tarArchive []byte,
 	filesToDelete []string,
 	commands []model.Cmd) error {
@@ -85,7 +85,7 @@ func (s *SyncletCli) UpdateContainer(
 	}
 }
 
-func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID container.ContainerID, err error) {
+func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID container.ID, err error) {
 	timeout := time.After(containerIdTimeout)
 	for {
 		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
@@ -108,7 +108,7 @@ func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, ima
 	}
 }
 
-func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ContainerID, error) {
+func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ID, error) {
 	logStyle, err := newLogStyle(ctx)
 	if err != nil {
 		return "", err
@@ -127,14 +127,14 @@ func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, ima
 		reply, err := stream.Recv()
 
 		if err == io.EOF {
-			return container.ContainerID(""), errors.New("internal error: GetContainerIdForPod reached eof without returning either an error or a container id")
+			return container.ID(""), errors.New("internal error: GetContainerIdForPod reached eof without returning either an error or a container id")
 		} else if err != nil {
-			return container.ContainerID(""), errors.Wrap(err, "error returned from synclet.GetContainerIdForPod")
+			return container.ID(""), errors.Wrap(err, "error returned from synclet.GetContainerIdForPod")
 		}
 
 		switch x := reply.Content.(type) {
 		case *proto.GetContainerIdForPodReply_ContainerId:
-			return container.ContainerID(x.ContainerId), nil
+			return container.ID(x.ContainerId), nil
 		case *proto.GetContainerIdForPodReply_Message:
 			level := protoLogLevelToLevel(x.Message.Level)
 

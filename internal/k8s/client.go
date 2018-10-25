@@ -69,7 +69,7 @@ type Client interface {
 	WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error)
 
 	// Streams the container logs
-	ContainerLogs(ctx context.Context, podID PodID, cName container.ContainerName, n Namespace) (io.ReadCloser, error)
+	ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace) (io.ReadCloser, error)
 
 	// Gets the ID for the Node on which the specified Pod is running
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)

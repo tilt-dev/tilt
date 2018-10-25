@@ -35,7 +35,7 @@ type DockerClient interface {
 
 	// Execute a command in a container, streaming the command output to `out`.
 	// Returns an ExitError if the command exits with a non-zero exit code.
-	ExecInContainer(ctx context.Context, cID container.ContainerID, cmd model.Cmd, out io.Writer) error
+	ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error
 
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
@@ -158,7 +158,7 @@ func (d *DockerCli) ContainerRestartNoWait(ctx context.Context, containerID stri
 	return d.ContainerRestart(ctx, containerID, &dur)
 }
 
-func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ContainerID, cmd model.Cmd, out io.Writer) error {
+func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer")
 	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
 	defer span.Finish()

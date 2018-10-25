@@ -151,13 +151,13 @@ type PodLogWatch struct {
 	name      model.ManifestName
 	podID     k8s.PodID
 	namespace k8s.Namespace
-	cID       container.ContainerID
-	cName     container.ContainerName
+	cID       container.ID
+	cName     container.Name
 }
 
 type podLogKey struct {
 	podID k8s.PodID
-	cID   container.ContainerID
+	cID   container.ID
 }
 
 type PodLogActionWriter struct {

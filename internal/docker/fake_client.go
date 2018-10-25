@@ -125,7 +125,7 @@ func (c *FakeDockerClient) ContainerRestartNoWait(ctx context.Context, container
 	return nil
 }
 
-func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID container.ContainerID, cmd model.Cmd, out io.Writer) error {
+func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
 	execCall := ExecCall{
 		Container: cID.String(),
 		Cmd:       cmd,
