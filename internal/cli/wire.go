@@ -5,6 +5,7 @@ package cli
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
@@ -40,6 +41,8 @@ var BaseWireSet = wire.NewSet(
 	engine.NewPodWatcher,
 	engine.NewServiceWatcher,
 
+	provideClock,
+	hud.NewRenderer,
 	hud.NewDefaultHeadsUpDisplay,
 
 	engine.NewUpper,
@@ -63,4 +66,8 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	wire.Build(K8sWireSet)
 	return nil, nil
+}
+
+func provideClock() func() time.Time {
+	return time.Now
 }

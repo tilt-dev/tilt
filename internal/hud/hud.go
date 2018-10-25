@@ -40,9 +40,9 @@ type Hud struct {
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
+func NewDefaultHeadsUpDisplay(renderer *Renderer) (HeadsUpDisplay, error) {
 	return &Hud{
-		r: NewRenderer(),
+		r: renderer,
 	}, nil
 }
 
