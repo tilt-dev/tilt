@@ -48,7 +48,7 @@ RUN apt-get -qqy update && apt-get install -qqy \
 
 # Install cluster script, which downloads the necessary containers.
 # The dind-based kubernetes cluster uses socat to do port-forwarding
-ENV KUBEADM_SHA=b090face029034eddfd914ebc2fbc26fa5d8dbff
+ENV KUBEADM_SHA=eb8bcc0d84c0c8990c966a2ab94e1f52e92c00a4
 ADD https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/fixed/dind-cluster-v1.11.sh ./dind-cluster.sh
 ADD https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/build/portforward.sh .
 RUN apt install -y curl ca-certificates git liblz4-tool rsync socat tzdata \
