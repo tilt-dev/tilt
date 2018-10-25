@@ -11,6 +11,16 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
+// Logger with better controls for levels and colors.
+//
+// Note that our loggers often serve as both traditional loggers (where each
+// call to Log() is a discrete log entry that may be emitted as JSON or with
+// newlines) and as Writers (where each call to Write() may be part of a larger
+// output stream, and each message may not end in a newline).
+//
+// Logger implementations that bridge these two worlds should have discrete
+// messages (like Infof) append a newline to the string before passing it to
+// Write().
 type Logger interface {
 	// log information that we always want to show
 	Infof(format string, a ...interface{})
@@ -84,15 +94,15 @@ func (l logger) Level() Level {
 }
 
 func (l logger) Infof(format string, a ...interface{}) {
-	l.writef(InfoLvl, format, a...)
+	l.writef(InfoLvl, format+"\n", a...)
 }
 
 func (l logger) Verbosef(format string, a ...interface{}) {
-	l.writef(VerboseLvl, format, a...)
+	l.writef(VerboseLvl, format+"\n", a...)
 }
 
 func (l logger) Debugf(format string, a ...interface{}) {
-	l.writef(DebugLvl, format, a...)
+	l.writef(DebugLvl, format+"\n", a...)
 }
 
 func (l logger) writef(level Level, format string, a ...interface{}) {
@@ -102,7 +112,6 @@ func (l logger) writef(level Level, format string, a ...interface{}) {
 		// 2) a logger interface that returns error becomes really distracting at call sites,
 		//    increasing friction and reducing logging
 		_, _ = fmt.Fprintf(l.writer, format, a...)
-		_, _ = fmt.Fprintln(l.writer, "")
 	}
 }
 
@@ -113,7 +122,6 @@ func (l logger) Write(level Level, s string) {
 		// 2) a logger interface that returns error becomes really distracting at call sites,
 		//    increasing friction and reducing logging
 		_, _ = fmt.Fprintf(l.writer, s)
-		_, _ = fmt.Fprintln(l.writer, "")
 	}
 }
 
@@ -162,7 +170,6 @@ func CtxWithForkedOutput(ctx context.Context, writer io.Writer) context.Context 
 		l.Write(level, string(b))
 		if l.Level() >= level {
 			b = append([]byte{}, b...)
-			b = append(b, '\n')
 			_, err := writer.Write(b)
 			if err != nil {
 				return err

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/rty"
+
 	"github.com/pkg/browser"
 	"github.com/windmilleng/tcell"
 
@@ -38,9 +40,9 @@ type Hud struct {
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewDefaultHeadsUpDisplay() (HeadsUpDisplay, error) {
+func NewDefaultHeadsUpDisplay(renderer *Renderer) (HeadsUpDisplay, error) {
 	return &Hud{
-		r: NewRenderer(),
+		r: renderer,
 	}, nil
 }
 
@@ -51,6 +53,10 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 	viewState.ShowNarration = true
 	viewState.NarrationMessage = msg
 	h.setViewState(ctx, viewState)
+}
+
+func logModal(r rty.RTY) rty.TextScroller {
+	return r.TextScroller("logmodal")
 }
 
 func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error {
@@ -82,6 +88,7 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 			if err != nil {
 				return err
 			}
+			h.Refresh(ctx)
 		case <-a.winchCh:
 			h.Refresh(ctx)
 		case <-a.streamClosedCh:
@@ -136,12 +143,20 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				}
 			}
 		case tcell.KeyUp:
-			h.r.rty.ElementScroller("resources").UpElement()
+			h.selectedScroller(h.r.rty).Up()
+			h.refresh(ctx)
 		case tcell.KeyDown:
-			h.r.rty.ElementScroller("resources").DownElement()
+			h.selectedScroller(h.r.rty).Down()
+			h.refresh(ctx)
 		case tcell.KeyEnter:
-			selectedIdx, _ := h.selectedResource()
-			st.Dispatch(NewShowErrorAction(selectedIdx + 1))
+			if h.viewState.DisplayedLogNumber == 0 {
+				selectedIdx, _ := h.selectedResource()
+				h.viewState.DisplayedLogNumber = selectedIdx + 1
+				logModal(h.r.rty).Top()
+			} else {
+				h.viewState.DisplayedLogNumber = 0
+			}
+			h.refresh(ctx)
 		}
 	}
 	h.refresh(ctx)
@@ -210,3 +225,19 @@ func (h *Hud) selectedResource() (i int, resource view.Resource) {
 }
 
 var _ store.Subscriber = &Hud{}
+
+const resourcesScollerName = "resources"
+const logScrollerName = "logmodal"
+
+func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
+	if h.viewState.DisplayedLogNumber == 0 {
+		return h.r.rty.ElementScroller(resourcesScollerName)
+	} else {
+		return h.r.rty.TextScroller(logScrollerName)
+	}
+}
+
+type Scroller interface {
+	Up()
+	Down()
+}

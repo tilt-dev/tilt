@@ -20,14 +20,15 @@ type RTY interface {
 }
 
 type ElementScroller interface {
-	UpElement()
-	DownElement()
+	Up()
+	Down()
 	GetSelectedIndex() int
 }
 
 type TextScroller interface {
 	Up()
 	Down()
+	Top()
 	// PgUp()
 	// PgDn()
 	// Home()

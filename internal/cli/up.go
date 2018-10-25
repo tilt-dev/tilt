@@ -36,7 +36,7 @@ func (c *upCmd) register() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 	}
 
-	cmd.Flags().BoolVar(&c.watch, "watch", false, "any started manifests will be automatically rebuilt and redeployed when files in their repos change")
+	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&c.browserMode, "browser", "", "deprecated. TODO(nick): remove this flag")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
@@ -71,7 +71,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
-	logOutput(fmt.Sprintf("Starting Tilt (built %s)…\n", buildDateStamp()))
+	logOutput(fmt.Sprintf("Starting Tilt (%s)…\n", buildStamp()))
 
 	if trace {
 		traceID, err := tracer.TraceID(ctx)

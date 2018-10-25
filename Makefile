@@ -45,6 +45,10 @@ build:
 test:
 	./hide_tbd_warning go test -timeout 60s ./...
 
+# skip some tests that are slow and not always relevant
+shorttest:
+	./hide_tbd_warning go test -tags 'skipcontainertests' -timeout 60s ./...
+
 integration:
 	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration
 
@@ -95,3 +99,6 @@ synclet-release:
 	docker build -t $(SYNCLET_IMAGE):$(TAG) -f synclet/Dockerfile .
 	docker push $(SYNCLET_IMAGE):$(TAG)
 	sed -i 's/var SyncletTag = ".*"/var SyncletTag = "$(TAG)"/' internal/synclet/sidecar/sidecar.go
+
+release:
+	goreleaser --rm-dist

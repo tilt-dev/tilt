@@ -8,7 +8,6 @@ import (
 
 func TestElementScroll(t *testing.T) {
 	f := newElementScrollTestFixture(t)
-	defer f.cleanUp()
 
 	f.run("initial scroll state")
 
@@ -37,12 +36,12 @@ func TestElementScroll(t *testing.T) {
 }
 
 type elementScrollTestFixture struct {
-	fixture *fixture
+	i InteractiveTester
 }
 
 func newElementScrollTestFixture(t *testing.T) *elementScrollTestFixture {
 	return &elementScrollTestFixture{
-		fixture: newLayoutTestFixture(t),
+		i: NewInteractiveTester(t, screen),
 	}
 }
 
@@ -52,7 +51,7 @@ func (f *elementScrollTestFixture) layout() Component {
 		childrenNames = append(childrenNames, strconv.FormatInt(int64(i+1), 10))
 	}
 
-	l, selectedName := f.fixture.r.RegisterElementScroll("items", childrenNames)
+	l, selectedName := f.i.rty.RegisterElementScroll("items", childrenNames)
 
 	var components []Component
 	for _, n := range childrenNames {
@@ -74,19 +73,15 @@ func (f *elementScrollTestFixture) layout() Component {
 }
 
 func (f *elementScrollTestFixture) run(name string) {
-	f.fixture.run(name, 20, 10, f.layout())
+	f.i.Run(name, 20, 10, f.layout())
 }
 
 func (f *elementScrollTestFixture) down() {
-	f.fixture.render(20, 10, f.layout())
-	f.fixture.r.ElementScroller("items").DownElement()
+	f.i.render(20, 10, f.layout())
+	f.i.rty.ElementScroller("items").Down()
 }
 
 func (f *elementScrollTestFixture) up() {
-	f.fixture.render(20, 10, f.layout())
-	f.fixture.r.ElementScroller("items").UpElement()
-}
-
-func (f *elementScrollTestFixture) cleanUp() {
-	f.fixture.cleanUp()
+	f.i.render(20, 10, f.layout())
+	f.i.rty.ElementScroller("items").Up()
 }

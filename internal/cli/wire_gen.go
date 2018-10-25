@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -63,7 +64,9 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
-	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay()
+	v := provideClock()
+	renderer := hud.NewRenderer(v)
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -128,7 +131,9 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	imageReaper := build.NewImageReaper(dockerCli)
-	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay()
+	v := provideClock()
+	renderer := hud.NewRenderer(v)
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer)
 	if err != nil {
 		return engine.Upper{}, err
 	}
@@ -167,6 +172,10 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
+	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
 	provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker,
 )
+
+func provideClock() func() time.Time {
+	return time.Now
+}
