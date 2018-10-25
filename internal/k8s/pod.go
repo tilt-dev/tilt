@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -27,7 +28,7 @@ func (k K8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, 
 	return podAPI.Watch(watchOptions)
 }
 
-func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName ContainerName, n Namespace) (io.ReadCloser, error) {
+func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.ContainerName, n Namespace) (io.ReadCloser, error) {
 	options := &v1.PodLogOptions{
 		Container: cName.String(),
 		Follow:    true,

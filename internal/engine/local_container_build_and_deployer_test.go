@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ import (
 
 const pod1 = k8s.PodID("pod1")
 
-var image1 = k8s.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
+var image1 = container.MustParseNamedTagged("re.po/project/myapp:tilt-936a185caaa266bb")
 
 const digest1 = "sha256:936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af"
 
@@ -39,7 +40,7 @@ func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 	f.kCli.SetPodsWithImageResp(pod1)
 
 	entry := newDeployInfoEntry()
-	entry.containerID = k8s.ContainerID("ohai")
+	entry.containerID = container.ContainerID("ohai")
 	entry.markReady()
 	f.cbad.dd.deployInfo[docker.ToImgNameAndTag(image1)] = entry
 
@@ -48,7 +49,7 @@ func TestPostProcessBuildNoopIfAlreadyHaveInfo(t *testing.T) {
 
 	info, err := f.cbad.dd.DeployInfoForImageBlocking(f.ctx, image1)
 	assert.Nil(t, err)
-	assert.Equal(t, k8s.ContainerID("ohai"), info.containerID,
+	assert.Equal(t, container.ContainerID("ohai"), info.containerID,
 		"Getting info again for same image -- contents should not have changed")
 }
 

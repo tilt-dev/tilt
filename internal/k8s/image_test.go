@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 
 	"k8s.io/api/core/v1"
@@ -214,7 +215,7 @@ func TestInjectSyncletImage(t *testing.T) {
 	assert.Equal(t, 1, len(entities))
 	entity := entities[0]
 	name := "gcr.io/windmill-public-containers/synclet"
-	namedTagged, _ := ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
+	namedTagged, _ := container.ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
 	newEntity, replaced, err := InjectImageDigest(entity, namedTagged, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)

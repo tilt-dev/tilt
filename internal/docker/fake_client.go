@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -125,7 +125,7 @@ func (c *FakeDockerClient) ContainerRestartNoWait(ctx context.Context, container
 	return nil
 }
 
-func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID k8s.ContainerID, cmd model.Cmd, out io.Writer) error {
+func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID container.ContainerID, cmd model.Cmd, out io.Writer) error {
 	execCall := ExecCall{
 		Container: cID.String(),
 		Cmd:       cmd,

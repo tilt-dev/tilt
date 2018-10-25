@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -21,9 +22,9 @@ const containerIdTimeout = time.Second * 10
 const containerIdRetryDelay = time.Millisecond * 100
 
 type SyncletClient interface {
-	UpdateContainer(ctx context.Context, containerID k8s.ContainerID, tarArchive []byte,
+	UpdateContainer(ctx context.Context, containerID container.ContainerID, tarArchive []byte,
 		filesToDelete []string, commands []model.Cmd) error
-	ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error)
+	ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ContainerID, error)
 
 	Close() error
 }
@@ -41,7 +42,7 @@ func NewGRPCClient(conn *grpc.ClientConn) *SyncletCli {
 
 func (s *SyncletCli) UpdateContainer(
 	ctx context.Context,
-	containerId k8s.ContainerID,
+	containerId container.ContainerID,
 	tarArchive []byte,
 	filesToDelete []string,
 	commands []model.Cmd) error {
@@ -84,7 +85,7 @@ func (s *SyncletCli) UpdateContainer(
 	}
 }
 
-func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID k8s.ContainerID, err error) {
+func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (cID container.ContainerID, err error) {
 	timeout := time.After(containerIdTimeout)
 	for {
 		// TODO(maia): better distinction between errs meaning "couldn't connect yet"
@@ -107,7 +108,7 @@ func (s *SyncletCli) ContainerIDForPod(ctx context.Context, podID k8s.PodID, ima
 	}
 }
 
-func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (k8s.ContainerID, error) {
+func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ContainerID, error) {
 	logStyle, err := newLogStyle(ctx)
 	if err != nil {
 		return "", err
@@ -126,14 +127,14 @@ func (s *SyncletCli) containerIDForPod(ctx context.Context, podID k8s.PodID, ima
 		reply, err := stream.Recv()
 
 		if err == io.EOF {
-			return k8s.ContainerID(""), errors.New("internal error: GetContainerIdForPod reached eof without returning either an error or a container id")
+			return container.ContainerID(""), errors.New("internal error: GetContainerIdForPod reached eof without returning either an error or a container id")
 		} else if err != nil {
-			return k8s.ContainerID(""), errors.Wrap(err, "error returned from synclet.GetContainerIdForPod")
+			return container.ContainerID(""), errors.Wrap(err, "error returned from synclet.GetContainerIdForPod")
 		}
 
 		switch x := reply.Content.(type) {
 		case *proto.GetContainerIdForPodReply_ContainerId:
-			return k8s.ContainerID(x.ContainerId), nil
+			return container.ContainerID(x.ContainerId), nil
 		case *proto.GetContainerIdForPodReply_Message:
 			level := protoLogLevelToLevel(x.Message.Level)
 
