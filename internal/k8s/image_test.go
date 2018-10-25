@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 
@@ -230,4 +230,32 @@ func TestInjectSyncletImage(t *testing.T) {
 	if !strings.Contains(result, namedTagged.String()) {
 		t.Errorf("could not find image in yaml (%s):\n%s", namedTagged, result)
 	}
+}
+
+func TestEntityHasImage(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	img := MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
+	wrongImg := MustParseNamed("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
+
+	match, err := entities[0].HasImage(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, match, "service yaml should not match (does not contain image)")
+
+	match, err = entities[1].HasImage(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "deployment yaml should match image %s", img.Name())
+
+	match, err = entities[1].HasImage(wrongImg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, match, "deployment yaml should not match image %s", img.Name())
 }
