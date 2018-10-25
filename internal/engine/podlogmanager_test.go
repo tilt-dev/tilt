@@ -93,6 +93,39 @@ func TestLogsFailed(t *testing.T) {
 	assert.Contains(t, f.out.String(), "my-error")
 }
 
+func TestLogsCanceledUnexpectedly(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	f.kClient.PodLogs = "hello world!\n"
+
+	state := f.store.LockMutableState()
+	state.WatchMounts = true
+	state.ManifestStates["server"] = &store.ManifestState{
+		Manifest: model.Manifest{Name: "server"},
+		Pod: store.Pod{
+			PodID:         "pod-id",
+			ContainerName: "cname",
+			ContainerID:   "cid",
+			Phase:         v1.PodRunning,
+		},
+	}
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
+	err := f.out.WaitUntilContains("hello world!\n", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.kClient.PodLogs = "goodbye world!\n"
+	f.plm.OnChange(f.ctx, f.store)
+	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context

@@ -28,10 +28,13 @@ func (k K8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, 
 	return podAPI.Watch(watchOptions)
 }
 
-func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace) (io.ReadCloser, error) {
+func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startWatchTime time.Time) (io.ReadCloser, error) {
 	options := &v1.PodLogOptions{
 		Container: cName.String(),
 		Follow:    true,
+		SinceTime: &metav1.Time{
+			Time: startWatchTime,
+		},
 	}
 	req := k.core.Pods(n.String()).GetLogs(pID.String(), options)
 	return req.Stream()
