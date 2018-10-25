@@ -609,8 +609,10 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 	call = <-f.b.calls
 	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
-	// TODO(maia): any way to assert that manifestState.LastError got cleared?
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
+	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
+		return state.LastError == nil
+	})
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -655,7 +657,10 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 		t.Errorf("Expected build to not get called, but it did: %+v", call)
 	case <-time.After(100 * time.Millisecond):
 	}
-	// TODO(maia): any way to assert that manifestState.LastError got cleared?
+
+	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
+		return state.LastError == nil
+	})
 }
 
 func TestFilterOutNonMountedConfigFiles(t *testing.T) {
