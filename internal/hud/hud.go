@@ -119,6 +119,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			case r == 'o':
 				i, _ := h.selectedResource()
 				h.viewState.Resources[i].IsExpanded = !h.viewState.Resources[i].IsExpanded
+
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to
@@ -136,15 +137,14 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			}
 		case tcell.KeyUp:
 			h.r.rty.ElementScroller("resources").UpElement()
-			h.refresh(ctx)
 		case tcell.KeyDown:
 			h.r.rty.ElementScroller("resources").DownElement()
-			h.refresh(ctx)
 		case tcell.KeyEnter:
 			selectedIdx, _ := h.selectedResource()
 			st.Dispatch(NewShowErrorAction(selectedIdx + 1))
 		}
 	}
+	h.refresh(ctx)
 }
 
 func (h *Hud) OnChange(ctx context.Context, st *store.Store) {
