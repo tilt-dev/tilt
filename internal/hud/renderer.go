@@ -142,11 +142,11 @@ func spinner() string {
 	return spinnerChars[time.Now().Second()%len(spinnerChars)]
 }
 
-const abbreivatedLogLineCount = 6
+const abbrevatedLogLineCount = 6
 
 func abbreviateLog(s string) []string {
 	lines := strings.Split(s, "\n")
-	start := len(lines) - abbreivatedLogLineCount
+	start := len(lines) - abbrevatedLogLineCount
 	if start < 0 {
 		start = 0
 	}
