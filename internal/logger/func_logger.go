@@ -23,15 +23,15 @@ func (l funcLogger) Level() Level {
 }
 
 func (l funcLogger) Infof(format string, a ...interface{}) {
-	l.Write(InfoLvl, fmt.Sprintf(format, a...))
+	l.Write(InfoLvl, fmt.Sprintf(format+"\n", a...))
 }
 
 func (l funcLogger) Verbosef(format string, a ...interface{}) {
-	l.Write(VerboseLvl, fmt.Sprintf(format, a...))
+	l.Write(VerboseLvl, fmt.Sprintf(format+"\n", a...))
 }
 
 func (l funcLogger) Debugf(format string, a ...interface{}) {
-	l.Write(DebugLvl, fmt.Sprintf(format, a...))
+	l.Write(DebugLvl, fmt.Sprintf(format+"\n", a...))
 }
 
 func (l funcLogger) Write(level Level, s string) {
