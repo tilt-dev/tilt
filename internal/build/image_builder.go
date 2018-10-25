@@ -391,8 +391,8 @@ func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Rea
 			return nil, fmt.Errorf("decoding docker output: %v", err)
 		}
 
-		if len(message.Stream) > 0 && message.Stream != "\n" {
-			msg := strings.TrimSuffix(message.Stream, "\n")
+		if len(message.Stream) > 0 {
+			msg := message.Stream
 			_, err = writer.Write([]byte(msg))
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to write docker output")
