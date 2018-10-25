@@ -144,11 +144,15 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 		case tcell.KeyDown:
 			h.selectedScroller(h.r.rty).Down()
 			h.refresh(ctx)
+		case tcell.KeyHome:
+			h.selectedScroller(h.r.rty).Top()
+		case tcell.KeyEnd:
+			h.selectedScroller(h.r.rty).Bottom()
 		case tcell.KeyEnter:
 			if h.viewState.DisplayedLogNumber == 0 {
 				selectedIdx, _ := h.selectedResource()
 				h.viewState.DisplayedLogNumber = selectedIdx + 1
-				logModal(h.r.rty).Top()
+				logModal(h.r.rty).Bottom()
 			} else {
 				h.viewState.DisplayedLogNumber = 0
 			}
@@ -224,4 +228,6 @@ func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
 type Scroller interface {
 	Up()
 	Down()
+	Top()
+	Bottom()
 }
