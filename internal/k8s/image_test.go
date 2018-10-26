@@ -239,8 +239,8 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	img := MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
-	wrongImg := MustParseNamed("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
+	img := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
+	wrongImg := container.MustParseNamed("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
 
 	match, err := entities[0].HasImage(img)
 	if err != nil {
