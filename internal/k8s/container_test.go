@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 )
 
 func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	f := newClientTestFixture(t)
 
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	podData := fakePod(expectedPod, blorgDevImgStr)
 	podData.Status = v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
@@ -52,7 +53,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
@@ -92,7 +93,7 @@ func TestWaitForContainerFailure(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
@@ -135,7 +136,7 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
