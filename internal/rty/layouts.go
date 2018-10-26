@@ -220,6 +220,7 @@ func (l *ColorLayout) Render(w Writer, width int, height int) error {
 
 type Box struct {
 	focused bool
+	title   string
 	inner   Component
 }
 
@@ -233,6 +234,10 @@ func (b *Box) SetInner(c Component) {
 
 func (b *Box) SetFocused(focused bool) {
 	b.focused = focused
+}
+
+func (b *Box) SetTitle(title string) {
+	b.title = title
 }
 
 func (b *Box) Size(width int, height int) (int, int) {
@@ -272,6 +277,20 @@ func (b *Box) Render(w Writer, width int, height int) error {
 	for i := 1; i < width-1; i++ {
 		w.SetContent(i, 0, hor, nil)
 		w.SetContent(i, height-1, hor, nil)
+	}
+
+	if len(b.title) > 0 {
+		middle := width / 2
+		maxLength := width - 4
+		renderedTitle := b.title
+		if len(b.title) > maxLength {
+			renderedTitle = renderedTitle[0:maxLength]
+		}
+
+		start := middle - len(renderedTitle)/2
+		for i, c := range renderedTitle {
+			w.SetContent(start+i, 0, c, nil)
+		}
 	}
 
 	for i := 1; i < height-1; i++ {
