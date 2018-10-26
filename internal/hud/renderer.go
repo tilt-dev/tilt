@@ -50,7 +50,13 @@ func formatPreciseDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", minutes)
 	}
 
-	return fmt.Sprintf("%ds", int(d.Seconds()))
+	seconds := int(d.Seconds())
+	if seconds > 10 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+
+	fractionalSeconds := float64(d.Nanoseconds()) / (1000 * 1000 * 1000)
+	return fmt.Sprintf("%0.2fs", fractionalSeconds)
 }
 
 func formatDuration(d time.Duration) string {
@@ -255,9 +261,9 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	if !res.LastBuildFinishTime.Equal(time.Time{}) {
 		sb := rty.NewStringBuilder()
 
-		sb.Textf("Last build (done in %s) ended %s ago — ",
-			formatPreciseDuration(res.LastBuildDuration),
-			formatDuration(time.Since(res.LastBuildFinishTime)))
+		sb.Textf("Last build ended %s ago (took %s) — ",
+			formatDuration(time.Since(res.LastBuildFinishTime)),
+			formatPreciseDuration(res.LastBuildDuration))
 
 		if res.LastBuildError != "" {
 			sb.Fg(cBad).Text("ERR")
