@@ -43,7 +43,7 @@ type ViewState struct {
 }
 
 type ResourceViewState struct {
-	IsExpanded bool
+	IsCollapsed bool
 }
 
 type View struct {

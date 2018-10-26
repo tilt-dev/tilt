@@ -197,10 +197,10 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	sb := rty.NewStringBuilder()
 	p := "  "
 	if selected {
-		p = "▶ "
-	}
-	if selected && rv.IsExpanded {
 		p = "▼ "
+	}
+	if selected && rv.IsCollapsed {
+		p = "▶ "
 	}
 	sb.Text(p)
 
@@ -273,7 +273,7 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 
 		buildComponents = append(buildComponents, sb.Build())
 
-		if rv.IsExpanded {
+		if !rv.IsCollapsed {
 			if res.LastBuildError != "" {
 				abbrevLog := abbreviateLog(res.LastBuildLog)
 				for _, logLine := range abbrevLog {

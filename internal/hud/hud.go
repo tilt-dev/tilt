@@ -125,7 +125,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				st.Dispatch(NewShowErrorAction(int(r - '0')))
 			case r == 'o':
 				i, _ := h.selectedResource()
-				h.viewState.Resources[i].IsExpanded = !h.viewState.Resources[i].IsExpanded
+				h.viewState.Resources[i].IsCollapsed = !h.viewState.Resources[i].IsCollapsed
 
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
