@@ -156,13 +156,21 @@ type TextScrollController struct {
 
 func (s *TextScrollController) Top() {
 	st := s.state
+	if st.canvasIdx != 0 || st.lineIdx != 0 {
+		s.SetFollow(false)
+	}
 	st.canvasIdx = 0
 	st.lineIdx = 0
+}
+
+func (s *TextScrollController) Bottom() {
+	s.SetFollow(true)
 }
 
 func (s *TextScrollController) Up() {
 	st := s.state
 	if st.lineIdx != 0 {
+		s.SetFollow(false)
 		st.lineIdx--
 		return
 	}
@@ -170,6 +178,7 @@ func (s *TextScrollController) Up() {
 	if st.canvasIdx == 0 {
 		return
 	}
+	s.SetFollow(false)
 	st.canvasIdx--
 	st.lineIdx = st.canvasLengths[st.canvasIdx] - 1
 }
@@ -189,6 +198,7 @@ func (s *TextScrollController) Down() {
 	}
 	if st.canvasIdx == len(st.canvasLengths)-1 {
 		// we're at the end of the last canvas
+		s.SetFollow(true)
 		return
 	}
 	st.canvasIdx++
@@ -197,6 +207,10 @@ func (s *TextScrollController) Down() {
 
 func (s *TextScrollController) ToggleFollow() {
 	s.state.following = !s.state.following
+}
+
+func (s *TextScrollController) SetFollow(follow bool) {
+	s.state.following = follow
 }
 
 func NewScrollingWrappingTextArea(name string, text string) Component {
@@ -367,4 +381,12 @@ func (s *ElementScrollController) Down() {
 		return
 	}
 	s.state.elementIdx++
+}
+
+func (s *ElementScrollController) Top() {
+	s.state.elementIdx = 0
+}
+
+func (s *ElementScrollController) Bottom() {
+	s.state.elementIdx = len(s.state.children)
 }

@@ -18,5 +18,22 @@ func TestCtxWithForkedOutput(t *testing.T) {
 	l.Infof("test %s", "abcd")
 	l.Debugf("test2 %d", 5)
 
-	assert.Equal(t, out1.String(), out2.String())
+	assert.Equal(t, "test abcd\ntest2 5\n", out1.String())
+	assert.Equal(t, "test abcd\ntest2 5\n", out2.String())
+}
+
+func TestWriteAcrossNestedLoggers(t *testing.T) {
+	out1 := bytes.NewBuffer(nil)
+	out2 := bytes.NewBuffer(nil)
+	prefixedOut1 := NewPrefixedWriter("|", out1)
+	ctx := WithLogger(context.Background(), NewLogger(DebugLvl, prefixedOut1))
+	l := Get(CtxWithForkedOutput(ctx, out2))
+	w := NewPrefixedWriter(">", l.Writer(InfoLvl))
+
+	w.Write([]byte("a"))
+	w.Write([]byte("b\nc"))
+	w.Write([]byte("d\ne\n"))
+
+	assert.Equal(t, "|>ab\n|>cd\n|>e\n", out1.String())
+	assert.Equal(t, ">ab\n>cd\n>e\n", out2.String())
 }
