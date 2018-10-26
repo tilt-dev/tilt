@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -182,8 +181,8 @@ func TestOldMountSyntax(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	if !strings.Contains(err.Error(), oldMountSyntaxError) {
-		t.Errorf("Expected error message to contain %s, got %v", oldMountSyntaxError, err)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), oldMountSyntaxError)
 	}
 }
 
@@ -197,8 +196,8 @@ func TestStopBuildBeforeStartBuild(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	if !strings.Contains(err.Error(), noActiveBuildError) {
-		t.Errorf("Expected error message to contain %s, got %v", noActiveBuildError, err)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), noActiveBuildError)
 	}
 }
 
@@ -215,10 +214,9 @@ func TestGetManifestConfigMissingDockerFile(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	if assert.NotNil(t, err, "expected error from missing dockerfile") {
+	if assert.Error(t, err) {
 		for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
-			assert.True(t, strings.Contains(err.Error(), s),
-				"expected string '%s' not found in error: %v", s, err)
+			assert.Contains(t, err.Error(), s)
 		}
 	}
 }
@@ -261,89 +259,89 @@ def blorgly_frontend():
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {
-	tf := newGitRepoFixture(t)
-	defer tf.TearDown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
-	tf.WriteFile("Tiltfile", `def blorgly():
+	f.WriteFile("Tiltfile", `def blorgly():
   return "yaaaaaaaml"
 `)
 
-	err := tf.LoadManifestForError("blorgly2")
+	err := f.LoadManifestForError("blorgly2")
 
 	for _, s := range []string{"does not define", "blorgly2"} {
-		assert.True(t, strings.Contains(err.Error(), s))
+		assert.Contains(t, err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigNonFunction(t *testing.T) {
-	tf := newGitRepoFixture(t)
-	defer tf.TearDown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
-	tf.WriteFile("Tiltfile", "blorgly2 = 3")
+	f.WriteFile("Tiltfile", "blorgly2 = 3")
 
-	err := tf.LoadManifestForError("blorgly2")
+	err := f.LoadManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "function", "int"} {
-		assert.True(t, strings.Contains(err.Error(), s))
+		assert.Contains(t, err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigTakesArgs(t *testing.T) {
-	tf := newGitRepoFixture(t)
-	defer tf.TearDown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
-	tf.WriteFile("Tiltfile", `def blorgly2(x):
+	f.WriteFile("Tiltfile", `def blorgly2(x):
       return "foo"
 `)
 
-	err := tf.LoadManifestForError("blorgly2")
+	err := f.LoadManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "0 arguments"} {
-		assert.True(t, strings.Contains(err.Error(), s))
+		assert.Contains(t, err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigRaisesError(t *testing.T) {
-	tf := newGitRepoFixture(t)
-	defer tf.TearDown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
-	tf.WriteFile("Tiltfile", `def blorgly2():
+	f.WriteFile("Tiltfile", `def blorgly2():
       "foo"[10]`) // index out of range
 
-	err := tf.LoadManifestForError("blorgly2")
+	err := f.LoadManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "string index", "out of range"} {
-		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
+		assert.Contains(t, err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigReturnsWrongType(t *testing.T) {
-	tf := newGitRepoFixture(t)
-	defer tf.TearDown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
-	tf.WriteFile("Tiltfile", `def blorgly2():
+	f.WriteFile("Tiltfile", `def blorgly2():
       return "foo"`)
 
-	err := tf.LoadManifestForError("blorgly2")
+	err := f.LoadManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
-		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
+		assert.Contains(t, err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigLocalReturnsNon0(t *testing.T) {
-	tf := newGitRepoFixture(t)
-	defer tf.TearDown()
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
 
-	tf.WriteFile("Tiltfile", `def blorgly2():
+	f.WriteFile("Tiltfile", `def blorgly2():
       local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`)
 
-	err := tf.LoadManifestForError("blorgly2")
+	err := f.LoadManifestForError("blorgly2")
 
 	// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
 	// not in the command
 	for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
-		assert.True(t, strings.Contains(err.Error(), s), "error message '%v' did not contain '%v'", err.Error(), s)
+		assert.Contains(t, err.Error(), s)
 	}
 }
 
@@ -450,9 +448,8 @@ func TestInvalidDockerTag(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `)
 	err := f.LoadManifestForError("blorgly")
-	msg := "invalid reference format"
-	if err == nil || !strings.Contains(err.Error(), msg) {
-		t.Errorf("Expected error message to contain %v, got %v", msg, err)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "invalid reference format")
 	}
 }
 
@@ -486,9 +483,8 @@ func TestAddMissingDir(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	expected := "Reading path ./garbage"
-	if err == nil || !strings.Contains(err.Error(), expected) {
-		t.Fatalf("expected error message %q, actual: %v", expected, err)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Reading path ./garbage")
 	}
 }
 
@@ -622,9 +618,8 @@ func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	expected := "invalid type for src. Got string want gitRepo OR localPath"
-	if !strings.Contains(err.Error(), expected) {
-		t.Errorf("Expected %s to contain %s", err.Error(), expected)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "invalid type for src. Got string want gitRepo OR localPath")
 	}
 }
 
@@ -669,10 +664,8 @@ def blorgly():
 		t.Fatal("loading tiltconfig:", err)
 	}
 	_, err = tiltconfig.GetManifestConfigs("blorgly")
-	if err == nil {
-		t.Error("Expected error")
-	} else if !strings.Contains(err.Error(), "isn't a valid git repo") {
-		t.Errorf("Expected error to be an invalid git repo error, got %s", err.Error())
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "isn't a valid git repo")
 	}
 }
 
