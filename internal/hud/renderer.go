@@ -50,7 +50,13 @@ func formatPreciseDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", minutes)
 	}
 
-	return fmt.Sprintf("%ds", int(d.Seconds()))
+	seconds := int(d.Seconds())
+	if seconds > 10 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+
+	fractionalSeconds := float64(d) / float64(time.Second)
+	return fmt.Sprintf("%0.2fs", fractionalSeconds)
 }
 
 func formatDuration(d time.Duration) string {
@@ -128,6 +134,7 @@ func (r *Renderer) renderLogModal(res view.Resource, background rty.Component) r
 	sl.Add(rty.TextString(s))
 	box := rty.NewBox()
 	box.SetInner(sl)
+	box.SetTitle(fmt.Sprintf("%s pod log", res.Name))
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
 	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("Press <Enter> to stop viewing log").Build())
@@ -255,9 +262,9 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	if !res.LastBuildFinishTime.Equal(time.Time{}) {
 		sb := rty.NewStringBuilder()
 
-		sb.Textf("Last build (done in %s) ended %s ago — ",
-			formatPreciseDuration(res.LastBuildDuration),
-			formatDuration(time.Since(res.LastBuildFinishTime)))
+		sb.Textf("Last build ended %s ago (took %s) — ",
+			formatDuration(time.Since(res.LastBuildFinishTime)),
+			formatPreciseDuration(res.LastBuildDuration))
 
 		if res.LastBuildError != "" {
 			sb.Fg(cBad).Text("ERR")
