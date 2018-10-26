@@ -329,12 +329,14 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 			layout.Add(sb.Build())
 		}
 
-		if res.PodRestarts > 0 {
-			logLines := abbreviateLog(res.PodLog)
-			if len(logLines) > 0 {
-				layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
-				for _, logLine := range logLines[1:] {
-					layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+		if !rv.IsCollapsed {
+			if res.PodRestarts > 0 {
+				logLines := abbreviateLog(res.PodLog)
+				if len(logLines) > 0 {
+					layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+					for _, logLine := range logLines[1:] {
+						layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+					}
 				}
 			}
 		}

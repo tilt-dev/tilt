@@ -192,18 +192,12 @@ func (h *Hud) setViewState(ctx context.Context, viewState view.ViewState) {
 
 // Must hold the lock
 func (h *Hud) refresh(ctx context.Context) {
-	h.currentView.ViewState = h.viewState
-
 	// TODO: We don't handle the order of resources changing
-	vr := h.currentView.ViewState.Resources
-	r := h.currentView.Resources
-	if len(vr) < len(r) {
-		diff := len(r) - len(vr)
-		for i := 0; i < diff; i++ {
-			vr = append(vr, view.ResourceViewState{})
-		}
+	for len(h.currentView.ViewState.Resources) < len(h.currentView.Resources) {
+		h.currentView.ViewState.Resources = append(h.currentView.ViewState.Resources, view.ResourceViewState{})
 	}
-	h.viewState.Resources = vr
+
+	h.currentView.ViewState = h.viewState
 
 	err := h.Update(h.currentView)
 	if err != nil {
