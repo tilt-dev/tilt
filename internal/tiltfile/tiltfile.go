@@ -1,12 +1,14 @@
 package tiltfile
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"sort"
+
+	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/pkg/errors"
 
@@ -308,10 +310,10 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 	return skylark.String(yaml), nil
 }
 
-func Load(filename string, out io.Writer) (*Tiltfile, error) {
+func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
-			_, _ = fmt.Fprintln(out, msg)
+			logger.Get(ctx).Infof("%s", msg)
 		},
 	}
 

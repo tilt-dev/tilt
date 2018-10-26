@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/windmilleng/tilt/internal/testutils/output"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -32,6 +35,8 @@ func tempFile(content string) string {
 type gitRepoFixture struct {
 	*tempdir.TempDirFixture
 	oldWD string
+	ctx   context.Context
+	out   *bytes.Buffer
 }
 
 func newGitRepoFixture(t *testing.T) *gitRepoFixture {
@@ -48,9 +53,14 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	out := new(bytes.Buffer)
+	ctx := output.ForkedCtxForTest(out)
 	return &gitRepoFixture{
 		TempDirFixture: td,
 		oldWD:          oldWD,
+		ctx:            ctx,
+		out:            out,
 	}
 }
 
@@ -58,7 +68,7 @@ func (f *gitRepoFixture) LoadManifests(name string) []model.Manifest {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
-	tiltconfig, err := Load(FileName, os.Stdout)
+	tiltconfig, err := Load(f.ctx, FileName)
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
@@ -79,7 +89,7 @@ func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
 }
 
 func (f *gitRepoFixture) LoadManifestForError(name string) error {
-	tiltconfig, err := Load(f.JoinPath("Tiltfile"), os.Stdout)
+	tiltconfig, err := Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
@@ -105,7 +115,10 @@ func (f *gitRepoFixture) TearDown() {
 }
 
 func TestSyntax(t *testing.T) {
-	file := tempFile(`
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
 def hello():
   a = lambda: print("hello")
   def b():
@@ -115,15 +128,12 @@ def hello():
 
 hello()
 `)
-	defer os.Remove(file)
-
-	out := bytes.NewBuffer(nil)
-	_, err := Load(file, out)
+	_, err := Load(f.ctx, "Tiltfile")
 	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
+		t.Fatal(err)
 	}
 
-	s := out.String()
+	s := f.out.String()
 	expected := "hello\n"
 	assert.Equal(t, expected, s)
 }
@@ -213,29 +223,6 @@ func TestGetManifestConfigMissingDockerFile(t *testing.T) {
 	}
 }
 
-func TestLoadFunctions(t *testing.T) {
-	file := tempFile(
-		`def blorgly():
-  return "blorgly"
-
-def blorgly_backend():
-  return "blorgly_backend"
-
-def blorgly_frontend():
-  return "blorgly_frontend"
-`)
-	defer os.Remove(file)
-
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
-
-	for _, s := range []string{"blorgly", "blorgly_backend", "blorgly_frontend"} {
-		assert.Contains(t, tiltConfig.globals, s)
-	}
-}
-
 func TestCompositeFunction(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
@@ -274,21 +261,14 @@ def blorgly_frontend():
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {
-	file := tempFile(
-		`def blorgly():
+	tf := newGitRepoFixture(t)
+	defer tf.TearDown()
+
+	tf.WriteFile("Tiltfile", `def blorgly():
   return "yaaaaaaaml"
 `)
-	defer os.Remove(file)
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
-
-	_, err = tiltConfig.GetManifestConfigs("blorgly2")
-	if err == nil {
-		t.Fatal("expected error b/c of undefined manifest config:")
-	}
+	err := tf.LoadManifestForError("blorgly2")
 
 	for _, s := range []string{"does not define", "blorgly2"} {
 		assert.True(t, strings.Contains(err.Error(), s))
@@ -296,98 +276,74 @@ func TestGetManifestConfigUndefined(t *testing.T) {
 }
 
 func TestGetManifestConfigNonFunction(t *testing.T) {
-	file := tempFile("blorgly2 = 3")
-	defer os.Remove(file)
+	tf := newGitRepoFixture(t)
+	defer tf.TearDown()
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
+	tf.WriteFile("Tiltfile", "blorgly2 = 3")
 
-	_, err = tiltConfig.GetManifestConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
-		for _, s := range []string{"blorgly2", "function", "int"} {
-			assert.True(t, strings.Contains(err.Error(), s))
-		}
+	err := tf.LoadManifestForError("blorgly2")
+
+	for _, s := range []string{"blorgly2", "function", "int"} {
+		assert.True(t, strings.Contains(err.Error(), s))
 	}
 }
 
 func TestGetManifestConfigTakesArgs(t *testing.T) {
-	file := tempFile(
-		`def blorgly2(x):
+	tf := newGitRepoFixture(t)
+	defer tf.TearDown()
+
+	tf.WriteFile("Tiltfile", `def blorgly2(x):
       return "foo"
 `)
-	defer os.Remove(file)
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
+	err := tf.LoadManifestForError("blorgly2")
 
-	_, err = tiltConfig.GetManifestConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
-		for _, s := range []string{"blorgly2", "0 arguments"} {
-			assert.True(t, strings.Contains(err.Error(), s))
-		}
+	for _, s := range []string{"blorgly2", "0 arguments"} {
+		assert.True(t, strings.Contains(err.Error(), s))
 	}
 }
 
 func TestGetManifestConfigRaisesError(t *testing.T) {
-	file := tempFile(
-		`def blorgly2():
+	tf := newGitRepoFixture(t)
+	defer tf.TearDown()
+
+	tf.WriteFile("Tiltfile", `def blorgly2():
       "foo"[10]`) // index out of range
-	defer os.Remove(file)
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
+	err := tf.LoadManifestForError("blorgly2")
 
-	_, err = tiltConfig.GetManifestConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
-		for _, s := range []string{"blorgly2", "string index", "out of range"} {
-			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
-		}
+	for _, s := range []string{"blorgly2", "string index", "out of range"} {
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigReturnsWrongType(t *testing.T) {
-	file := tempFile(
-		`def blorgly2():
-      return "foo"`) // index out of range
-	defer os.Remove(file)
+	tf := newGitRepoFixture(t)
+	defer tf.TearDown()
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
+	tf.WriteFile("Tiltfile", `def blorgly2():
+      return "foo"`)
 
-	_, err = tiltConfig.GetManifestConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
-		for _, s := range []string{"blorgly2", "string", "k8s_service"} {
-			assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
-		}
+	err := tf.LoadManifestForError("blorgly2")
+
+	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%V' did not contain '%V'", err.Error(), s)
 	}
 }
 
 func TestGetManifestConfigLocalReturnsNon0(t *testing.T) {
-	file := tempFile(
-		`def blorgly2():
-      local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`) // index out of range
-	defer os.Remove(file)
+	tf := newGitRepoFixture(t)
+	defer tf.TearDown()
 
-	tiltConfig, err := Load(file, os.Stdout)
-	if err != nil {
-		t.Fatal("loading tiltconfig:", err)
-	}
+	tf.WriteFile("Tiltfile", `def blorgly2():
+      local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`)
 
-	_, err = tiltConfig.GetManifestConfigs("blorgly2")
-	if assert.NotNil(t, err, "GetManifestConfigs did not return an error") {
-		// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
-		// not in the command
-		for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
-			assert.True(t, strings.Contains(err.Error(), s), "error message '%v' did not contain '%v'", err.Error(), s)
-		}
+	err := tf.LoadManifestForError("blorgly2")
+
+	// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
+	// not in the command
+	for _, s := range []string{"blorgly2", "exit status 1", "foo bar", "baz quu"} {
+		assert.True(t, strings.Contains(err.Error(), s), "error message '%v' did not contain '%v'", err.Error(), s)
 	}
 }
 
@@ -706,7 +662,9 @@ def blorgly():
   image = stop_build()
   return k8s_service("yaaaaaaaaml", image)
 `)
-	tiltconfig, err := Load(f.JoinPath("Tiltfile"), os.Stdout)
+
+	ctx := output.CtxForTest()
+	tiltconfig, err := Load(ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -961,7 +919,8 @@ def blorgly():
 	_ = os.Mkdir(f.JoinPath("real", ".git"), os.FileMode(0777))
 	_ = os.Symlink(f.JoinPath("real"), f.JoinPath("fake"))
 
-	tiltconfig, err := Load(filepath.Join("fake", FileName), os.Stdout)
+	ctx := output.CtxForTest()
+	tiltconfig, err := Load(ctx, filepath.Join("fake", FileName))
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}

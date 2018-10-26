@@ -145,8 +145,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 
 func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, *manifestErr) {
 	// Sends any output to the CurrentBuildLog
-	writer := logger.Get(ctx).Writer(logger.InfoLvl)
-	t, err := tiltfile.Load(tiltfile.FileName, writer)
+	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return model.Manifest{}, manifestErrf(err.Error())
 	}

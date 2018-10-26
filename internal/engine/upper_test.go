@@ -1682,7 +1682,7 @@ func (f *testFixture) consumeAllHudUpdates() {
 }
 
 func (f *testFixture) loadManifest(name string) model.Manifest {
-	tf, err := tiltfile.Load(f.JoinPath("Tiltfile"), os.Stdout)
+	tf, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.T().Fatal(err)
 	}

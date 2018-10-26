@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -81,7 +80,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("TraceID: %s", traceID)
 	}
 
-	tf, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return err
 	}
