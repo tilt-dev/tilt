@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
+
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -39,6 +41,12 @@ type EngineState struct {
 	BuildControllerActionCount int
 
 	PermanentError error
+
+	// The user has indicated they want to exit
+	Exit bool
+
+	// The full log stream for tilt. This might deserve gc or file storage at some point.
+	Log *bufsync.ThreadSafeBuffer
 
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
@@ -80,6 +88,7 @@ type ManifestState struct {
 func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	ret.Log = bufsync.NewThreadSafeBuffer()
 	return ret
 }
 
@@ -256,6 +265,8 @@ func StateToView(s EngineState) view.View {
 
 		ret.Resources = append(ret.Resources, r)
 	}
+
+	ret.Log = s.Log.String()
 
 	return ret
 }

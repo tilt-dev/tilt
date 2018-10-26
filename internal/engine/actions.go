@@ -48,6 +48,12 @@ type PodLogAction struct {
 
 func (PodLogAction) Action() {}
 
+type LogAction struct {
+	Log []byte
+}
+
+func (LogAction) Action() {}
+
 type BuildCompleteAction struct {
 	Result store.BuildResult
 	Error  error

@@ -96,9 +96,15 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	l := upper.LogActionLogger(ctx)
+	origCtx := ctx
+	ctx = logger.WithLogger(ctx, l)
+
 	// Run the HUD in the background
 	go func() {
 		err := upper.RunHud(ctx)
+		// restore the logger
+		ctx = origCtx
 		if err != nil {
 			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
 			logger.Get(ctx).Infof("error in hud: %v", err)

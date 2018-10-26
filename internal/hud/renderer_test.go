@@ -44,7 +44,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 		ViewState: view.ViewState{
-			DisplayedLogNumber: 1,
+			LogModal: view.LogModal{ResourceLogNumber: 1},
 		},
 	}
 	rtf.run("modal build log displayed", 70, 20, v)

@@ -2,7 +2,6 @@ package hud
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -108,14 +107,20 @@ func (r *Renderer) layout(v view.View) rty.Component {
 	split.Add(r.renderResources(v.Resources))
 	l.Add(split)
 
-	if v.ViewState.DisplayedLogNumber != 0 {
-		return r.renderLogModal(v.Resources[v.ViewState.DisplayedLogNumber-1], l)
+	if v.ViewState.LogModal.TiltLog {
+		return r.renderFullLogModal(v, l)
+	} else if v.ViewState.LogModal.ResourceLogNumber != 0 {
+		return r.renderResourceLogModal(v.Resources[v.ViewState.LogModal.ResourceLogNumber-1], l)
 	} else {
 		return l
 	}
 }
 
-func (r *Renderer) renderLogModal(res view.Resource, background rty.Component) rty.Component {
+func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty.Component {
+	return r.renderLogModal(v.Log, background)
+}
+
+func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
 	var s string
 	if res.LastBuildError != "" && len(strings.TrimSpace(res.LastBuildLog)) > 0 {
 		s = res.LastBuildLog
@@ -124,13 +129,18 @@ func (r *Renderer) renderLogModal(res view.Resource, background rty.Component) r
 	} else {
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
+
+	return r.renderLogModal(s, background)
+}
+
+func (r *Renderer) renderLogModal(s string, background rty.Component) rty.Component {
 	sl := rty.NewTextScrollLayout(logScrollerName)
 	sl.Add(rty.TextString(s))
 	box := rty.NewBox()
 	box.SetInner(sl)
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
-	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("Press <Enter> to stop viewing log").Build())
+	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("<Esc> to stop viewing log").Build())
 
 	ml := rty.NewModalLayout(background, l, .9)
 	return ml
@@ -338,13 +348,13 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	return layout
 }
 
-func (r *Renderer) SetUp(event ReadyEvent, sigwinch chan os.Signal) (chan tcell.Event, error) {
+func (r *Renderer) SetUp() (chan tcell.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	// TODO(maia): pass term name along with ttyPath via RPC. Temporary hack:
 	// get termName from current terminal, assume it's the same 🙈
-	screen, err := tcell.NewScreenFromTty(event.ttyPath, sigwinch, os.Getenv("TERM"))
+	screen, err := tcell.NewScreen()
 	if err != nil {
 		return nil, err
 	}

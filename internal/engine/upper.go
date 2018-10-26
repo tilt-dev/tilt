@@ -92,6 +92,14 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	}
 }
 
+func (u Upper) LogActionLogger(ctx context.Context) logger.Logger {
+	l := logger.Get(ctx)
+	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
+		u.store.Dispatch(LogAction{b})
+		return nil
+	})
+}
+
 func (u Upper) RunHud(ctx context.Context) error {
 	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
 	u.hudErrorCh <- err
@@ -144,6 +152,8 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		return u.handleInitAction(ctx, state, action)
 	case ErrorAction:
 		return action.Error
+	case hud.ExitAction:
+		handleExitAction(state)
 	case manifestFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
@@ -160,6 +170,8 @@ func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, actio
 		handleBuildStarted(ctx, state, action)
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
+	case LogAction:
+		handleLogAction(state, action)
 	default:
 		return fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -178,7 +190,8 @@ func maybeFinished(st *store.Store) (bool, error) {
 		return true, state.PermanentError
 	}
 
-	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
+	finished := state.Exit || (!state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == "")
+
 	return finished, nil
 }
 
@@ -518,6 +531,10 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
 }
 
+func handleLogAction(state *store.EngineState, action LogAction) {
+	state.Log.Write(action.Log)
+}
+
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
@@ -563,6 +580,10 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 	}
 	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
 	return nil
+}
+
+func handleExitAction(state *store.EngineState) {
+	state.Exit = true
 }
 
 // Check if the filesChangedSet only contains spurious changes that

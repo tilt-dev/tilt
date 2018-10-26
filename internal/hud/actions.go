@@ -10,3 +10,7 @@ func (ShowErrorAction) Action() {}
 func NewShowErrorAction(resourceNumber int) ShowErrorAction {
 	return ShowErrorAction{resourceNumber}
 }
+
+type ExitAction struct{}
+
+func (ExitAction) Action() {}

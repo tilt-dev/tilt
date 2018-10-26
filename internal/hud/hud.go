@@ -2,8 +2,12 @@ package hud
 
 import (
 	"context"
+	"os"
+	"os/signal"
 	"sync"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/windmilleng/tilt/internal/rty"
 
@@ -30,7 +34,6 @@ type HeadsUpDisplay interface {
 }
 
 type Hud struct {
-	a *ServerAdapter
 	r *Renderer
 
 	currentView view.View
@@ -56,23 +59,23 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 }
 
 func logModal(r rty.RTY) rty.TextScroller {
-	return r.TextScroller("logmodal")
+	return r.TextScroller(logScrollerName)
 }
 
 func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error {
-	a, err := NewServer(ctx)
+	screenEvents, err := h.r.SetUp()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error initializing renderer")
 	}
 
-	h.a = a
+	sigwinchCh := make(chan os.Signal)
+	signal.Notify(sigwinchCh, unix.SIGWINCH)
 
 	if refreshRate == 0 {
 		refreshRate = DefaultRefreshInterval
 	}
 	ticker := time.NewTicker(refreshRate)
 
-	var screenEvents chan tcell.Event
 	for {
 		select {
 		case <-ctx.Done():
@@ -83,20 +86,13 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 			} else {
 				return nil
 			}
-		case ready := <-a.readyCh:
-			screenEvents, err = h.r.SetUp(ready, a.winchCh)
-			if err != nil {
-				return err
-			}
+		case <-sigwinchCh:
 			h.Refresh(ctx)
-		case <-a.winchCh:
-			h.Refresh(ctx)
-		case <-a.streamClosedCh:
-			h.r.Reset()
 		case e := <-screenEvents:
-			h.handleScreenEvent(ctx, st, e)
-		case <-a.serverClosed:
-			return nil
+			done := h.handleScreenEvent(ctx, st, e)
+			if done {
+				return nil
+			}
 		case <-ticker.C:
 			h.Refresh(ctx)
 		}
@@ -104,13 +100,10 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 }
 
 func (h *Hud) Close() {
-	if h.a != nil {
-		h.a.Close()
-	}
 	h.r.Reset()
 }
 
-func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) {
+func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) (done bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -118,7 +111,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyEscape:
-			h.Close()
+			h.viewState.LogModal = view.LogModal{}
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
@@ -137,28 +130,36 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				} else {
 					logger.Get(ctx).Infof("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
+			case r == 'q': // [Q]uit
+				h.Close()
+				st.Dispatch(ExitAction{})
+				return true
+			case r == 'l': // [L]og
+				if !h.viewState.LogModal.IsActive() {
+					h.viewState.LogModal = view.LogModal{TiltLog: true}
+				}
+				logModal(h.r.rty).Bottom()
 			}
 		case tcell.KeyUp:
 			h.selectedScroller(h.r.rty).Up()
-			h.refresh(ctx)
 		case tcell.KeyDown:
 			h.selectedScroller(h.r.rty).Down()
-			h.refresh(ctx)
 		case tcell.KeyHome:
 			h.selectedScroller(h.r.rty).Top()
 		case tcell.KeyEnd:
 			h.selectedScroller(h.r.rty).Bottom()
 		case tcell.KeyEnter:
-			if h.viewState.DisplayedLogNumber == 0 {
+			if !h.viewState.LogModal.IsActive() {
 				selectedIdx, _ := h.selectedResource()
-				h.viewState.DisplayedLogNumber = selectedIdx + 1
+				h.viewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
 				logModal(h.r.rty).Bottom()
-			} else {
-				h.viewState.DisplayedLogNumber = 0
 			}
-			h.refresh(ctx)
 		}
 	}
+
+	h.refresh(ctx)
+
+	return false
 }
 
 func (h *Hud) OnChange(ctx context.Context, st *store.Store) {
@@ -215,10 +216,10 @@ func (h *Hud) selectedResource() (i int, resource view.Resource) {
 var _ store.Subscriber = &Hud{}
 
 const resourcesScollerName = "resources"
-const logScrollerName = "logmodal"
+const logScrollerName = "log modal"
 
 func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
-	if h.viewState.DisplayedLogNumber == 0 {
+	if !h.viewState.LogModal.IsActive() {
 		return h.r.rty.ElementScroller(resourcesScollerName)
 	} else {
 		return h.r.rty.TextScroller(logScrollerName)
