@@ -55,7 +55,7 @@ func formatPreciseDuration(d time.Duration) string {
 		return fmt.Sprintf("%ds", seconds)
 	}
 
-	fractionalSeconds := float64(d.Nanoseconds()) / (1000 * 1000 * 1000)
+	fractionalSeconds := float64(d) / float64(time.Second)
 	return fmt.Sprintf("%0.2fs", fractionalSeconds)
 }
 
