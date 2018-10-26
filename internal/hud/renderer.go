@@ -134,6 +134,7 @@ func (r *Renderer) renderLogModal(res view.Resource, background rty.Component) r
 	sl.Add(rty.TextString(s))
 	box := rty.NewBox()
 	box.SetInner(sl)
+	box.SetTitle(fmt.Sprintf("%s pod log", res.Name))
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
 	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("Press <Enter> to stop viewing log").Build())

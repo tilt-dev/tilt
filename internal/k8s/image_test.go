@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/docker/distribution/reference"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 
 	"k8s.io/api/core/v1"
@@ -214,7 +215,7 @@ func TestInjectSyncletImage(t *testing.T) {
 	assert.Equal(t, 1, len(entities))
 	entity := entities[0]
 	name := "gcr.io/windmill-public-containers/synclet"
-	namedTagged, _ := ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
+	namedTagged, _ := container.ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
 	newEntity, replaced, err := InjectImageDigest(entity, namedTagged, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
@@ -230,4 +231,32 @@ func TestInjectSyncletImage(t *testing.T) {
 	if !strings.Contains(result, namedTagged.String()) {
 		t.Errorf("could not find image in yaml (%s):\n%s", namedTagged, result)
 	}
+}
+
+func TestEntityHasImage(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	img := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
+	wrongImg := container.MustParseNamed("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
+
+	match, err := entities[0].HasImage(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, match, "service yaml should not match (does not contain image)")
+
+	match, err = entities[1].HasImage(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "deployment yaml should match image %s", img.Name())
+
+	match, err = entities[1].HasImage(wrongImg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, match, "deployment yaml should not match image %s", img.Name())
 }

@@ -74,3 +74,39 @@ func TestInjectLabelDeployment(t *testing.T) {
 	assert.Equal(t, 2, strings.Count(result, fmt.Sprintf("tier: test")))
 	assert.Equal(t, 2, strings.Count(result, fmt.Sprintf("owner: me")))
 }
+
+func TestEntityMatchesLabels(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entities) != 2 {
+		t.Fatal("expected exactly two entities")
+	}
+	if entities[0].Kind.Kind != "Service" {
+		t.Fatal("expected first entity to be a Service")
+	}
+	if entities[1].Kind.Kind != "Deployment" {
+		t.Fatal("expected second entity to be a Deployment")
+	}
+
+	svc := entities[0]
+	dep := entities[1]
+
+	labels := map[string]string{
+		"app":         "blorg",
+		"owner":       "nick",
+		"environment": "devel",
+		"tier":        "backend",
+		"foo":         "bar", // an extra label on the pod shouldn't affect the match
+	}
+	assert.True(t, svc.MatchesLabels(labels))
+
+	assert.False(t, dep.MatchesLabels(labels), "kind Deployment does not support MatchesLabels")
+
+	labels["app"] = "not-blorg"
+	assert.False(t, svc.MatchesLabels(labels), "wrong value for an expected key")
+
+	delete(labels, "app")
+	assert.False(t, svc.MatchesLabels(labels), "expected key missing")
+}

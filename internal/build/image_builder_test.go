@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
@@ -36,7 +36,7 @@ func TestDigestMatchesRef(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ref, _ := k8s.ParseNamedTagged("windmill.build/image:" + tag)
+	ref, _ := container.ParseNamedTagged("windmill.build/image:" + tag)
 	if !digestMatchesRef(ref, dig) {
 		t.Errorf("Expected digest %s to match ref %s", dig, ref)
 	}
@@ -44,7 +44,7 @@ func TestDigestMatchesRef(t *testing.T) {
 
 func TestDigestNotMatchesRef(t *testing.T) {
 	dig := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	ref, _ := k8s.ParseNamedTagged("windmill.build/image:tilt-deadbeef")
+	ref, _ := container.ParseNamedTagged("windmill.build/image:tilt-deadbeef")
 	if digestMatchesRef(ref, dig) {
 		t.Errorf("Expected digest %s to not match ref %s", dig, ref)
 	}

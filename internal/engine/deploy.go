@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -103,7 +104,7 @@ func (d *DeployDiscovery) populateDeployInfo(ctx context.Context, image referenc
 	return nil
 }
 
-func podInfoForImage(ctx context.Context, kCli k8s.Client, image reference.NamedTagged, ns k8s.Namespace) (k8s.NodeID, k8s.PodID, k8s.ContainerID, k8s.ContainerName, error) {
+func podInfoForImage(ctx context.Context, kCli k8s.Client, image reference.NamedTagged, ns k8s.Namespace) (k8s.NodeID, k8s.PodID, container.ID, container.Name, error) {
 	// get pod running the image we just deployed.
 	//
 	// We fetch the pod by the NamedTagged, to ensure we get a pod
@@ -153,8 +154,8 @@ func podInfoForImage(ctx context.Context, kCli k8s.Client, image reference.Named
 type DeployInfo struct {
 	nodeID        k8s.NodeID
 	podID         k8s.PodID
-	containerID   k8s.ContainerID
-	containerName k8s.ContainerName
+	containerID   container.ID
+	containerName container.Name
 }
 
 func (d DeployInfo) Empty() bool {
