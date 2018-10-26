@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
@@ -16,7 +17,7 @@ type BuildResult struct {
 	Image reference.NamedTagged
 
 	// If this build was a container build, containerID we built on top of
-	ContainerID k8s.ContainerID
+	ContainerID container.ID
 
 	// The namespace where the pod was deployed.
 	Namespace k8s.Namespace

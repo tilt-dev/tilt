@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	logger "github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -54,7 +55,7 @@ type fakeBuildAndDeployer struct {
 	buildCount int
 
 	// where we store container info for each manifest
-	deployInfo map[docker.ImgNameAndTag]k8s.ContainerID
+	deployInfo map[docker.ImgNameAndTag]container.ID
 
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
@@ -93,7 +94,7 @@ func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) 
 
 func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	if result.HasImage() && !b.haveContainerForImage(result.Image) {
-		b.deployInfo[docker.ToImgNameAndTag(result.Image)] = k8s.ContainerID("testcontainer")
+		b.deployInfo[docker.ToImgNameAndTag(result.Image)] = container.ID("testcontainer")
 	}
 }
 
@@ -101,7 +102,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:          t,
 		calls:      make(chan buildAndDeployCall, 5),
-		deployInfo: make(map[docker.ImgNameAndTag]k8s.ContainerID),
+		deployInfo: make(map[docker.ImgNameAndTag]container.ID),
 	}
 }
 

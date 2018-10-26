@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 var equalitytests = []struct {
@@ -269,7 +269,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	manifest := Manifest{
 		Name:           "test",
 		K8sYaml:        "yamlll",
-		DockerRef:      k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
+		DockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
 		BaseDockerfile: "FROM node",
 		Mounts:         mounts,
 	}
