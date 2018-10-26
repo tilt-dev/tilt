@@ -25,6 +25,23 @@ func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
 	return result, nil
 }
 
+func extractPodTemplateSpec(obj interface{}) ([]*v1.PodTemplateSpec, error) {
+	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.PodTemplateSpec{}))
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*v1.PodTemplateSpec, len(extracted))
+	for i, e := range extracted {
+		c, ok := e.(*v1.PodTemplateSpec)
+		if !ok {
+			return nil, fmt.Errorf("extractPods: expected Pod, actual %T", e)
+		}
+		result[i] = c
+	}
+	return result, nil
+}
+
 func extractObjectMetas(obj interface{}) ([]*metav1.ObjectMeta, error) {
 	extracted, err := extractPointersOf(obj, reflect.TypeOf(metav1.ObjectMeta{}))
 	if err != nil {

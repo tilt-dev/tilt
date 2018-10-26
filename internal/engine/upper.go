@@ -92,7 +92,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	}
 }
 
-func (u Upper) LogActionLogger(ctx context.Context) logger.Logger {
+func (u Upper) NewLogActionLogger(ctx context.Context) logger.Logger {
 	l := logger.Get(ctx)
 	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
 		u.store.Dispatch(LogAction{b})
@@ -101,8 +101,12 @@ func (u Upper) LogActionLogger(ctx context.Context) logger.Logger {
 }
 
 func (u Upper) RunHud(ctx context.Context) error {
+	state := u.store.LockMutableState()
+	state.HudRunning = true
+	u.store.UnlockMutableState()
 	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
 	u.hudErrorCh <- err
+	state.HudRunning = false
 	close(u.hudErrorCh)
 	return err
 }
@@ -533,6 +537,11 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 
 func handleLogAction(state *store.EngineState, action LogAction) {
 	_, _ = state.Log.Write(action.Log)
+
+	// if the hud isn't running, we need to make sure the text is visible somewhere
+	if !state.HudRunning {
+		fmt.Println(string(action.Log))
+	}
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {

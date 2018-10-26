@@ -49,7 +49,13 @@ func formatPreciseDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", minutes)
 	}
 
-	return fmt.Sprintf("%ds", int(d.Seconds()))
+	seconds := int(d.Seconds())
+	if seconds > 10 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+
+	fractionalSeconds := float64(d) / float64(time.Second)
+	return fmt.Sprintf("%0.2fs", fractionalSeconds)
 }
 
 func formatDuration(d time.Duration) string {
@@ -117,7 +123,7 @@ func (r *Renderer) layout(v view.View) rty.Component {
 }
 
 func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty.Component {
-	return r.renderLogModal(v.Log, background)
+	return r.renderLogModal("tilt log", v.Log, background)
 }
 
 func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
@@ -130,14 +136,15 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
 
-	return r.renderLogModal(s, background)
+	return r.renderLogModal(fmt.Sprintf("%s pod log", res.Name), s, background)
 }
 
-func (r *Renderer) renderLogModal(s string, background rty.Component) rty.Component {
+func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
 	sl := rty.NewTextScrollLayout(logScrollerName)
 	sl.Add(rty.TextString(s))
 	box := rty.NewBox()
 	box.SetInner(sl)
+	box.SetTitle(title)
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
 	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("<Esc> to stop viewing log").Build())
@@ -265,9 +272,9 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	if !res.LastBuildFinishTime.Equal(time.Time{}) {
 		sb := rty.NewStringBuilder()
 
-		sb.Textf("Last build (done in %s) ended %s ago — ",
-			formatPreciseDuration(res.LastBuildDuration),
-			formatDuration(time.Since(res.LastBuildFinishTime)))
+		sb.Textf("Last build ended %s ago (took %s) — ",
+			formatDuration(time.Since(res.LastBuildFinishTime)),
+			formatPreciseDuration(res.LastBuildDuration))
 
 		if res.LastBuildError != "" {
 			sb.Fg(cBad).Text("ERR")
@@ -352,8 +359,6 @@ func (r *Renderer) SetUp() (chan tcell.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// TODO(maia): pass term name along with ttyPath via RPC. Temporary hack:
-	// get termName from current terminal, assume it's the same 🙈
 	screen, err := tcell.NewScreen()
 	if err != nil {
 		return nil, err

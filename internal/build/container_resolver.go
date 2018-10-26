@@ -9,7 +9,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/opencontainers/go-digest"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -26,7 +27,7 @@ func NewContainerResolver(dcli docker.DockerClient) *ContainerResolver {
 }
 
 // containerIdForPod looks for the container ID associated with the pod and image ID
-func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.PodID, image reference.NamedTagged) (k8s.ContainerID, error) {
+func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.PodID, image reference.NamedTagged) (container.ID, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ContainerResolver-containerIdForPod")
 	defer span.Finish()
 
@@ -58,7 +59,7 @@ func (r *ContainerResolver) ContainerIDForPod(ctx context.Context, podName k8s.P
 	return "", ctx.Err()
 }
 
-func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName k8s.PodID, image reference.NamedTagged) (k8s.ContainerID, error) {
+func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName k8s.PodID, image reference.NamedTagged) (container.ID, error) {
 
 	a := filters.NewArgs()
 	a.Add("name", string(podName))
@@ -77,7 +78,7 @@ func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName
 
 	for _, c := range containers {
 		if c.ID == k8s.MagicTestContainerID {
-			return k8s.ContainerID(c.ID), nil
+			return container.ID(c.ID), nil
 		}
 
 		dig, err := digest.Parse(c.ImageID)
@@ -86,7 +87,7 @@ func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName
 			continue
 		}
 		if digestMatchesRef(image, dig) {
-			return k8s.ContainerID(c.ID), nil
+			return container.ID(c.ID), nil
 		}
 	}
 

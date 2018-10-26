@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -81,7 +80,16 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("TraceID: %s", traceID)
 	}
 
-	tf, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	upper, err := wireUpper(ctx)
+	if err != nil {
+		return err
+	}
+
+	origLogger := logger.Get(ctx)
+	l := upper.NewLogActionLogger(ctx)
+	ctx = logger.WithLogger(ctx, l)
+
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return err
 	}
@@ -91,23 +99,12 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	upper, err := wireUpper(ctx)
-	if err != nil {
-		return err
-	}
-
-	l := upper.LogActionLogger(ctx)
-	origCtx := ctx
-	ctx = logger.WithLogger(ctx, l)
-
 	// Run the HUD in the background
 	go func() {
 		err := upper.RunHud(ctx)
-		// restore the logger
-		ctx = origCtx
 		if err != nil {
 			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-			logger.Get(ctx).Infof("error in hud: %v", err)
+			origLogger.Infof("error in hud: %v", err)
 		}
 	}()
 

@@ -69,6 +69,26 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 	return entity, replaced, nil
 }
 
+// HasImage indicates whether the given entity is tagged with the given image.
+func (e K8sEntity) HasImage(image reference.Named) (bool, error) {
+	containers, err := extractContainers(&e)
+	if err != nil {
+		return false, err
+	}
+
+	for _, container := range containers {
+		existingRef, err := reference.ParseNormalizedNamed(container.Image)
+		if err != nil {
+			return false, err
+		}
+
+		if existingRef.Name() == image.Name() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func PodContainsRef(pod *v1.PodSpec, ref reference.Named) (bool, error) {
 	for _, container := range pod.Containers {
 		existingRef, err := reference.ParseNormalizedNamed(container.Image)
@@ -81,33 +101,4 @@ func PodContainsRef(pod *v1.PodSpec, ref reference.Named) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func ParseNamedTagged(s string) (reference.NamedTagged, error) {
-	ref, err := reference.Parse(s)
-	if err != nil {
-		return nil, fmt.Errorf("parsing %s: %v", s, err)
-	}
-
-	nt, ok := ref.(reference.NamedTagged)
-	if !ok {
-		return nil, fmt.Errorf("could not parse ref %s as NamedTagged", ref)
-	}
-	return nt, nil
-}
-
-func MustParseNamedTagged(s string) reference.NamedTagged {
-	nt, err := ParseNamedTagged(s)
-	if err != nil {
-		panic(err)
-	}
-	return nt
-}
-
-func MustParseNamed(s string) reference.Named {
-	n, err := reference.ParseNamed(s)
-	if err != nil {
-		panic(err)
-	}
-	return n
 }
