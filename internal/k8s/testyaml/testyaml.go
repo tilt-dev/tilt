@@ -1,8 +1,6 @@
 package testyaml
 
 const BlorgBackendYAML = `
-# Template should be populated using populate_config_template.py
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -53,6 +51,21 @@ spec:
         ]
         ports:
         - containerPort: 8080
+`
+
+const BlorgJobYAML = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: blorg-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: blorg-job
+        image: gcr.io/blorg-dev/blorg-backend:devel-nick
+        command: ["/app/server",  "-job=clean"]
+      restartPolicy: Never
+  backoffLimit: 4
 `
 
 const SanchoYAML = `

@@ -153,3 +153,19 @@ func ToLoadBalancerSpec(entity K8sEntity) (LoadBalancerSpec, bool) {
 
 	return result, true
 }
+
+// Filter returns two slices of entities: those passing the given test, and the remainder of the input.
+func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing, rest []K8sEntity, err error) {
+	for _, e := range entities {
+		pass, err := test(e)
+		if err != nil {
+			return nil, nil, err
+		}
+		if pass {
+			passing = append(passing, e)
+		} else {
+			rest = append(rest, e)
+		}
+	}
+	return passing, rest, nil
+}

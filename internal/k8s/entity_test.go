@@ -79,3 +79,54 @@ func TestLoadBalancerSpecs(t *testing.T) {
 		t.Fatalf("Unexpected loadbalancer: %+v", lbs[0])
 	}
 }
+
+func TestFilter(t *testing.T) {
+	entities, err := parseYAMLFromStrings(testyaml.BlorgBackendYAML, testyaml.BlorgJobYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	test := func(e K8sEntity) (bool, error) {
+		if e.Kind.Kind == "Deployment" || e.Kind.Kind == "Job" {
+			return true, nil
+		}
+		return false, nil
+	}
+
+	popped, rest, err := Filter(entities, test)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedPopped := []K8sEntity{entities[1], entities[2]} // deployment, job
+	expectedRest := []K8sEntity{entities[0]}                // service
+	assert.Equal(t, popped, expectedPopped)
+	assert.Equal(t, rest, expectedRest)
+
+	returnFalse := func(e K8sEntity) (bool, error) { return false, nil }
+	popped, rest, err = Filter(entities, returnFalse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Empty(t, popped)
+	assert.Equal(t, rest, entities)
+
+	returnErr := func(e K8sEntity) (bool, error) {
+		return false, fmt.Errorf("omgwtfbbq")
+	}
+	popped, rest, err = Filter(entities, returnErr)
+	if assert.Error(t, err, "expected Filter to propagate err from test func") {
+		assert.Equal(t, err.Error(), "omgwtfbbq")
+	}
+}
+
+func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {
+	var res []K8sEntity
+	for _, s := range yaml {
+		entities, err := ParseYAMLFromString(s)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, entities...)
+	}
+	return res, nil
+}
