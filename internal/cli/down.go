@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -31,7 +30,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	tf, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return err
 	}
