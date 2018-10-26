@@ -170,11 +170,11 @@ func (r *Renderer) spinner() string {
 	return spinnerChars[r.clock().Second()%len(spinnerChars)]
 }
 
-const abbrevatedLogLineCount = 6
+const abbreviatedLogLineCount = 6
 
 func abbreviateLog(s string) []string {
 	lines := strings.Split(s, "\n")
-	start := len(lines) - abbrevatedLogLineCount
+	start := len(lines) - abbreviatedLogLineCount
 	if start < 0 {
 		start = 0
 	}
