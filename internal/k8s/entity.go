@@ -154,19 +154,18 @@ func ToLoadBalancerSpec(entity K8sEntity) (LoadBalancerSpec, bool) {
 	return result, true
 }
 
-// PopMatching pops entities passing the given test, returning the popped
-// entries and the remainder of the slice.
-func PopEntities(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (popped, rest []K8sEntity, err error) {
+// Filter returns two slices of entities: those passing the given test, and the remainder of the input.
+func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing, rest []K8sEntity, err error) {
 	for _, e := range entities {
 		pass, err := test(e)
 		if err != nil {
 			return nil, nil, err
 		}
 		if pass {
-			popped = append(popped, e.DeepCopy())
+			passing = append(passing, e)
 		} else {
-			rest = append(rest, e.DeepCopy())
+			rest = append(rest, e)
 		}
 	}
-	return popped, rest, nil
+	return passing, rest, nil
 }

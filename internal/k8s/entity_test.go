@@ -80,7 +80,7 @@ func TestLoadBalancerSpecs(t *testing.T) {
 	}
 }
 
-func TestPopEntities(t *testing.T) {
+func TestFilter(t *testing.T) {
 	entities, err := parseYAMLFromStrings(testyaml.BlorgBackendYAML, testyaml.BlorgJobYAML)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestPopEntities(t *testing.T) {
 		return false, nil
 	}
 
-	popped, rest, err := PopEntities(entities, test)
+	popped, rest, err := Filter(entities, test)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestPopEntities(t *testing.T) {
 	assert.Equal(t, rest, expectedRest)
 
 	returnFalse := func(e K8sEntity) (bool, error) { return false, nil }
-	popped, rest, err = PopEntities(entities, returnFalse)
+	popped, rest, err = Filter(entities, returnFalse)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,8 +113,8 @@ func TestPopEntities(t *testing.T) {
 	returnErr := func(e K8sEntity) (bool, error) {
 		return false, fmt.Errorf("omgwtfbbq")
 	}
-	popped, rest, err = PopEntities(entities, returnErr)
-	if assert.Error(t, err, "expected PopEntities to propagate err from test func") {
+	popped, rest, err = Filter(entities, returnErr)
+	if assert.Error(t, err, "expected Filter to propagate err from test func") {
 		assert.Equal(t, err.Error(), "omgwtfbbq")
 	}
 }
