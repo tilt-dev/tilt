@@ -532,7 +532,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
-	state.Log.Write(action.Log)
+	_, _ = state.Log.Write(action.Log)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
