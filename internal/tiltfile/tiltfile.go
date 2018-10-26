@@ -28,6 +28,10 @@ type Tiltfile struct {
 
 	// The filename we're executing. Must be absolute.
 	filename string
+
+	// ** comment
+	globalYamlStr  string
+	globalYamlDeps []string
 }
 
 func init() {
@@ -310,6 +314,28 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 	return skylark.String(yaml), nil
 }
 
+func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	if t.globalYamlStr != "" {
+		return nil, fmt.Errorf("`global_yaml` can be called only once per Tiltfile")
+	}
+
+	var yaml string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml)
+	if err != nil {
+		return nil, err
+	}
+
+	deps, err := getReadFiles(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	t.globalYamlStr = yaml
+	t.globalYamlDeps = deps
+
+	return skylark.None, nil
+}
+
 func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
@@ -340,6 +366,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 		"add":               skylark.NewBuiltin("add", addMount),
 		"run":               skylark.NewBuiltin("run", tiltfile.runDockerImageCmd),
 		"kustomize":         skylark.NewBuiltin("kustomize", tiltfile.callKustomize),
+		"global_yaml":       skylark.NewBuiltin("global_yaml", tiltfile.globalYaml),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -351,25 +378,28 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	return tiltfile, nil
 }
 
-func (t Tiltfile) GetManifestConfigs(names ...string) ([]model.Manifest, error) {
+// GetManifestConfigsAndGlobalYaml executes the Tiltfile to create manifests for all resources and
+// a manifest representing the global yaml
+func (t Tiltfile) GetManifestConfigsAndGlobalYaml(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(manifestName)
 		if err != nil {
-			return manifests, err
+			return manifests, model.YAMLManifest{}, err
 		}
 
 		manifests = append(manifests, curManifests...)
 	}
 
-	return manifests, nil
+	// TODO(maia): return GlobalYaml here (be sure to put its deps onto all of the resource manifests)
+	return manifests, model.YAMLManifest{}, nil
 }
 
-func (tiltfile Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifest, error) {
-	f, ok := tiltfile.globals[manifestName]
+func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifest, error) {
+	f, ok := t.globals[manifestName]
 
 	if !ok {
-		return nil, fmt.Errorf("%v does not define a global named '%v'", tiltfile.filename, manifestName)
+		return nil, fmt.Errorf("%v does not define a global named '%v'", t.filename, manifestName)
 	}
 
 	manifestFunction, ok := f.(*skylark.Function)
@@ -382,15 +412,15 @@ func (tiltfile Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.
 		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", manifestName)
 	}
 
-	thread := tiltfile.thread
+	thread := t.thread
 	thread.SetLocal(readFilesKey, []string{})
 
-	err := tiltfile.recordReadToTiltFile(thread)
+	err := t.recordReadToTiltFile(thread)
 	if err != nil {
 		return nil, err
 	}
 
-	val, err := manifestFunction.Call(tiltfile.thread, nil, nil)
+	val, err := manifestFunction.Call(t.thread, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running '%v': %v", manifestName, err.Error())
 	}
