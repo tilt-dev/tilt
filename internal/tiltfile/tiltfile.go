@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -367,7 +368,15 @@ func (tiltfile Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.
 	f, ok := tiltfile.globals[manifestName]
 
 	if !ok {
-		return nil, fmt.Errorf("%v does not define a global named '%v'", tiltfile.filename, manifestName)
+		var globalNames []string
+		for name := range tiltfile.globals {
+			globalNames = append(globalNames, name)
+		}
+
+		return nil, fmt.Errorf(
+			"Tiltfile does not define a global named '%v'. perhaps you want one of: %s",
+			manifestName,
+			strings.Join(globalNames, " "))
 	}
 
 	manifestFunction, ok := f.(*skylark.Function)
