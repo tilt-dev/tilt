@@ -2,6 +2,8 @@ package model
 
 import "github.com/docker/distribution/reference"
 
+const GlobalYAMLManifestName = ManifestName("GlobalYAML")
+
 type YAMLManifest struct {
 	name    ManifestName
 	k8sYAML string

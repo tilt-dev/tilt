@@ -382,17 +382,27 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 // a manifest representing the global yaml
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
+
+	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, t.globalYAMLStr, t.globalYAMLDeps)
+
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(manifestName)
 		if err != nil {
 			return manifests, model.YAMLManifest{}, err
 		}
 
+		// All manifests depend on global YAML, therefore all depend on its dependencies.
+		// TODO(maia): there's probs a better thread-magic way for each individual manifest to
+		// about files opened in the global scope, i.e. files opened when getting global YAML.
+		for i, m := range curManifests {
+			deps := append(m.ConfigFiles, globalYAML.Dependencies()...)
+			curManifests[i] = m.WithDependencies(deps)
+		}
+
 		manifests = append(manifests, curManifests...)
 	}
 
-	// TODO(maia): return GlobalYAML here (be sure to put its deps onto all of the resource manifests)
-	return manifests, model.YAMLManifest{}, nil
+	return manifests, globalYAML, nil
 }
 
 func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifest, error) {
