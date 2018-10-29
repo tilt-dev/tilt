@@ -109,9 +109,10 @@ func (r *Renderer) layout(v view.View) rty.Component {
 		l.Add(rty.NewLine())
 	}
 
-	split := rty.NewFlexLayout(rty.DirHor)
+	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v.Resources))
+	split.Add(r.renderStatusBar(v))
 	l.Add(split)
 
 	if v.ViewState.DisplayedLogNumber != 0 {
@@ -119,6 +120,32 @@ func (r *Renderer) layout(v view.View) rty.Component {
 	} else {
 		return l
 	}
+}
+
+func (r *Renderer) renderStatusBar(v view.View) rty.Component {
+	errorCount := 0
+	for _, res := range v.Resources {
+		if isInError(res) {
+			errorCount++
+		}
+	}
+	sb := rty.NewStringBuilder()
+	if errorCount == 0 {
+		sb.Fg(cGood).Text("✓").Fg(tcell.ColorBlack).Text(" OK")
+	} else {
+		s := "error"
+		if errorCount > 1 {
+			s = "errors"
+		}
+		sb.Fg(cBad).Text("✖").Fg(tcell.ColorBlack).Textf(" [%d] %s", errorCount, s)
+	}
+	line := rty.NewLine()
+	line.Add(sb.Build())
+	return rty.NewFixedSize(rty.Bg(line, tcell.ColorWhiteSmoke), rty.GROW, 1)
+}
+
+func isInError(res view.Resource) bool {
+	return res.LastBuildError != "" || podStatusColors[res.PodStatus] == cBad
 }
 
 func (r *Renderer) renderLogModal(res view.Resource, background rty.Component) rty.Component {
