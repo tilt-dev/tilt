@@ -109,38 +109,72 @@ func canvasesEqual(actual, expected Canvas) bool {
 	return true
 }
 
+func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual, expected Canvas, highlightDiff bool) {
+	screen.Clear()
+	actualWidth, actualHeight := actual.Size()
+	expectedWidth, expectedHeight := expected.Size()
+
+	curHeight := 0
+
+	printForTest(screen, curHeight, "y to accept, n to decline, d to highlight diff")
+	curHeight++
+
+	printForTest(screen, curHeight, fmt.Sprintf("test: %s", name))
+	curHeight++
+
+	printForTest(screen, curHeight, "actual:")
+	curHeight++
+
+	for y := 0; y < actualHeight; y++ {
+		for x := 0; x < actualWidth; x++ {
+			ch, _, style, _ := actual.GetContent(x, y)
+			if highlightDiff {
+				expectedCh, _, expectedStyle, _ := expected.GetContent(x, y)
+				if ch != expectedCh || style != expectedStyle {
+					style = style.Reverse(true)
+				}
+			}
+
+			screen.SetContent(x, y+curHeight, ch, nil, style)
+		}
+		curHeight++
+	}
+
+	curHeight++
+
+	printForTest(screen, curHeight, "expected:")
+
+	curHeight++
+
+	for y := 0; y < expectedHeight; y++ {
+		for x := 0; x < expectedWidth; x++ {
+			ch, _, style, _ := expected.GetContent(x, y)
+			if highlightDiff {
+				actualCh, _, actualStyle, _ := actual.GetContent(x, y)
+				if ch != actualCh || style != actualStyle {
+					style = style.Reverse(true)
+				}
+			}
+
+			screen.SetContent(x, y+curHeight, ch, nil, style)
+		}
+		curHeight++
+	}
+
+	screen.Show()
+}
+
 func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected Canvas) (updated bool, err error) {
 	screen := i.interactiveScreen
 	if screen == nil {
 		return false, nil
 	}
 
-	screen.Clear()
-	actualWidth, actualHeight := actual.Size()
-	expectedWidth, expectedHeight := expected.Size()
-
-	printForTest(screen, 0, fmt.Sprintf("test %s", name))
-	printForTest(screen, 1, "actual:")
-
-	for x := 0; x < actualWidth; x++ {
-		for y := 0; y < actualHeight; y++ {
-			ch, _, style, _ := actual.GetContent(x, y)
-			screen.SetContent(x, y+2, ch, nil, style)
-		}
-	}
-
-	printForTest(screen, actualHeight+3, "expected:")
-
-	for x := 0; x < expectedWidth; x++ {
-		for y := 0; y < expectedHeight; y++ {
-			ch, _, style, _ := expected.GetContent(x, y)
-			screen.SetContent(x, y+actualHeight+4, ch, nil, style)
-		}
-	}
-
-	screen.Show()
+	highlightDiff := false
 
 	for {
+		i.renderDiff(screen, name, actual, expected, highlightDiff)
+
 		ev := screen.PollEvent()
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
@@ -149,6 +183,8 @@ func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected C
 				return true, i.writeGoldenFile(name, actual)
 			case 'n':
 				return false, errors.New("user indicated expected output was not as desired")
+			case 'd':
+				highlightDiff = !highlightDiff
 			}
 		}
 	}
