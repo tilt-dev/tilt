@@ -50,6 +50,7 @@ type EngineState struct {
 type ManifestState struct {
 	LastBuild    BuildResult
 	Manifest     model.Manifest
+	GlobalYAML   model.YAMLManifest
 	Pod          Pod
 	LBs          map[k8s.ServiceName]*url.URL
 	HasBeenBuilt bool
@@ -92,6 +93,20 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		LBs:                make(map[k8s.ServiceName]*url.URL),
 		CurrentBuildLog:    &bytes.Buffer{},
 	}
+}
+
+func NewGlobalYAMLManifestState(manifest model.YAMLManifest) *ManifestState {
+	return &ManifestState{
+		LastBuild:          BuildResult{},
+		GlobalYAML:         manifest,
+		PendingFileChanges: make(map[string]bool),
+		LBs:                make(map[k8s.ServiceName]*url.URL),
+		CurrentBuildLog:    &bytes.Buffer{},
+	}
+}
+
+func (ms *ManifestState) IsGlobalYAMLManifestState() bool {
+	return ms.GlobalYAML.K8sYAML() != ""
 }
 
 type Pod struct {

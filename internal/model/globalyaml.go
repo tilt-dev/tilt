@@ -9,10 +9,10 @@ type YAMLManifest struct {
 	configFiles []string
 }
 
-func NewYAMLManifest(name ManifestName, k8sYaml string, configFiles []string) YAMLManifest {
+func NewYAMLManifest(name ManifestName, k8sYAML string, configFiles []string) YAMLManifest {
 	return YAMLManifest{
 		name:        name,
-		k8sYAML:     k8sYaml,
+		k8sYAML:     k8sYAML,
 		configFiles: configFiles,
 	}
 }
@@ -43,10 +43,14 @@ func (y YAMLManifest) K8sYAML() string {
 
 // TODO(dmiller): not sure if this is right
 func (YAMLManifest) DockerRef() reference.Named {
-	n, err := reference.ParseNamed("")
+	n, err := reference.ParseNamed("windmill.build/fakeimage:tilt-11cd0b38bc3ce")
 	if err != nil {
 		// This space intentionally left blank
 	}
 
 	return n
+}
+
+func (y YAMLManifest) Empty() bool {
+	return y.k8sYAML == ""
 }

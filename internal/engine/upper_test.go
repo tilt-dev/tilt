@@ -1369,6 +1369,25 @@ func TestCompletingUpperClosesHud(t *testing.T) {
 	assert.True(t, f.hud.Closed)
 }
 
+func TestInitWithGlobalYAML(t *testing.T) {
+	f := newTestFixture(t)
+	state := f.store.RLockState()
+	ym := model.NewYAMLManifest(model.ManifestName("global"), "this is the global yaml", []string{})
+	state.GlobalYAML = ym
+	f.store.RUnlockState()
+
+	f.Start([]model.Manifest{}, true)
+
+	f.store.Dispatch(InitAction{
+		Manifests:          []model.Manifest{},
+		GlobalYAMLManifest: ym,
+	})
+
+	f.WaitUntil("huh", func(st store.EngineState) bool {
+		return len(st.ManifestsToBuild) > 0
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex

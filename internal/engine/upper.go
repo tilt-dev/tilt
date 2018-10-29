@@ -549,6 +549,11 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
 	}
+
+	if !engineState.GlobalYAML.Empty() {
+		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, engineState.GlobalYAML.ManifestName())
+		engineState.ManifestStates[engineState.GlobalYAML.ManifestName()] = store.NewGlobalYAMLManifestState(engineState.GlobalYAML)
+	}
 	engineState.WatchMounts = watchMounts
 
 	if watchMounts {
@@ -558,6 +563,10 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
 			}
 		}()
+	}
+
+	if !engineState.GlobalYAML.Empty() {
+		enqueueBuild(engineState, engineState.GlobalYAML.ManifestName())
 	}
 
 	for _, m := range manifests {
