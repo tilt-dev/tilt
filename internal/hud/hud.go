@@ -2,12 +2,8 @@ package hud
 
 import (
 	"context"
-	"os"
-	"os/signal"
 	"sync"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/windmilleng/tilt/internal/rty"
 
@@ -68,9 +64,6 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 		return errors.Wrap(err, "error initializing renderer")
 	}
 
-	sigwinchCh := make(chan os.Signal)
-	signal.Notify(sigwinchCh, unix.SIGWINCH)
-
 	if refreshRate == 0 {
 		refreshRate = DefaultRefreshInterval
 	}
@@ -86,8 +79,6 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 			} else {
 				return nil
 			}
-		case <-sigwinchCh:
-			h.Refresh(ctx)
 		case e := <-screenEvents:
 			done := h.handleScreenEvent(ctx, st, e)
 			if done {
@@ -140,6 +131,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				}
 				logModal(h.r.rty).Bottom()
 			}
+		case tcell.KeyCtrlC:
+			h.Close()
+			st.Dispatch(ExitAction{})
+			return true
 		case tcell.KeyUp:
 			h.selectedScroller(h.r.rty).Up()
 		case tcell.KeyDown:
@@ -155,6 +150,9 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				logModal(h.r.rty).Bottom()
 			}
 		}
+	case *tcell.EventResize:
+		// since we already refresh after the switch, don't need to do anything here
+		// just marking this as where sigwinch gets handled
 	}
 
 	h.refresh(ctx)
