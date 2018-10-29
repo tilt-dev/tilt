@@ -468,7 +468,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	ms.Pod.Status = podStatusToString(*pod)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef)
+	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef())
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return
@@ -617,7 +617,7 @@ func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.UR
 func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
 	refs := make([]reference.Named, len(manifests))
 	for i, s := range manifests {
-		refs[i] = s.DockerRef
+		refs[i] = s.DockerRef()
 	}
 
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)

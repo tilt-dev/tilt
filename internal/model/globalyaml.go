@@ -1,8 +1,10 @@
 package model
 
+import "github.com/docker/distribution/reference"
+
 type YAMLManifest struct {
 	name    ManifestName
-	k8sYaml string
+	k8sYAML string
 
 	configFiles []string
 }
@@ -10,7 +12,7 @@ type YAMLManifest struct {
 func NewYAMLManifest(name ManifestName, k8sYaml string, configFiles []string) YAMLManifest {
 	return YAMLManifest{
 		name:        name,
-		k8sYaml:     k8sYaml,
+		k8sYAML:     k8sYaml,
 		configFiles: configFiles,
 	}
 }
@@ -33,4 +35,18 @@ func (y YAMLManifest) ConfigMatcher() (PathMatcher, error) {
 
 func (YAMLManifest) LocalRepos() []LocalGithubRepo {
 	return []LocalGithubRepo{}
+}
+
+func (y YAMLManifest) K8sYAML() string {
+	return y.k8sYAML
+}
+
+// TODO(dmiller): not sure if this is right
+func (YAMLManifest) DockerRef() reference.Named {
+	n, err := reference.ParseNamed("")
+	if err != nil {
+		// This space intentionally left blank
+	}
+
+	return n
 }

@@ -20,6 +20,26 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+type imageManifest interface {
+	Validate() error
+}
+
+type buildableImageManifest interface {
+	DockerRef() reference.Named
+	IsStaticBuild() bool
+	StaticDockerfile() string
+	StaticBuildPath() string
+	Mounts() []model.Mount
+	Steps() []model.Cmd
+	Entrypoint() model.Cmd
+}
+
+type deployableImageManifest interface {
+	K8sYAML() string
+	ManifestName() model.ManifestName
+	DockerRef() reference.Named
+}
+
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
@@ -89,7 +109,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	name := manifest.DockerRef
+	name := manifest.DockerRef()
 	if manifest.IsStaticBuild() {
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
@@ -150,7 +170,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest model.Manifest, n reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest deployableImageManifest, n reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -158,7 +178,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
 	// It doesn't make much sense to re-parse it and inject labels on every deploy.
-	entities, err := k8s.ParseYAMLFromString(manifest.K8sYaml)
+	entities, err := k8s.ParseYAMLFromString(manifest.K8sYAML())
 	if err != nil {
 		return nil, "", err
 	}
@@ -167,7 +187,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 	newK8sEntities := []k8s.K8sEntity{}
 	namespace := k8s.DefaultNamespace
 	for _, e := range entities {
-		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: manifest.Name.String()}})
+		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: manifest.ManifestName().String()}})
 		if err != nil {
 			return nil, "", errors.Wrap(err, "deploy")
 		}
@@ -208,7 +228,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 	}
 
 	if !didReplace {
-		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef)
+		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef())
 	}
 
 	err = ibd.k8sClient.Upsert(ctx, newK8sEntities)
