@@ -102,32 +102,3 @@ func PodContainsRef(pod *v1.PodSpec, ref reference.Named) (bool, error) {
 	}
 	return false, nil
 }
-
-func ParseNamedTagged(s string) (reference.NamedTagged, error) {
-	ref, err := reference.Parse(s)
-	if err != nil {
-		return nil, fmt.Errorf("parsing %s: %v", s, err)
-	}
-
-	nt, ok := ref.(reference.NamedTagged)
-	if !ok {
-		return nil, fmt.Errorf("could not parse ref %s as NamedTagged", ref)
-	}
-	return nt, nil
-}
-
-func MustParseNamedTagged(s string) reference.NamedTagged {
-	nt, err := ParseNamedTagged(s)
-	if err != nil {
-		panic(err)
-	}
-	return nt
-}
-
-func MustParseNamed(s string) reference.Named {
-	n, err := reference.ParseNamed(s)
-	if err != nil {
-		panic(err)
-	}
-	return n
-}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -83,7 +84,7 @@ func (c clientTestFixture) AssertCallExistsWithArg(expectedArg string) {
 func TestPodsWithImage(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
 	if err != nil {
 		f.t.Fatal(err)
@@ -102,7 +103,7 @@ func TestPodsWithImageLabels(t *testing.T) {
 
 	f.addObject(&pod1)
 	f.addObject(&pod2)
-	nt := MustParseNamedTagged("cockroachdb/cockroach:v2.0.5")
+	nt := container.MustParseNamedTagged("cockroachdb/cockroach:v2.0.5")
 
 	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []LabelPair{{"type", "primary"}})
 	if err != nil {
@@ -130,7 +131,7 @@ func TestPollForPodsWithImage(t *testing.T) {
 		f.addObject(&fakePodList)
 	}()
 
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	pods, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 2*time.Second)
 	if err != nil {
 		f.t.Fatal(err)
@@ -146,7 +147,7 @@ func TestPollForPodsWithImageTimesOut(t *testing.T) {
 		f.addObject(&fakePodList)
 	}()
 
-	nt := MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseNamedTagged(blorgDevImgStr)
 	_, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 500*time.Millisecond)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "timed out polling for pod running image")

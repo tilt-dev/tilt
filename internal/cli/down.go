@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -31,16 +30,17 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	tf, err := tiltfile.Load(tiltfile.FileName, os.Stdout)
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return err
 	}
 
-	manifests, err := tf.GetManifestConfigs(args...)
+	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(args...)
 	if err != nil {
 		return err
 	}
 
+	// TODO(maia): k8s.delete entities from global yaml as well
 	entities, err := engine.ParseYAMLFromManifests(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing YAML")

@@ -66,6 +66,11 @@ func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 		}
 	}
 
+	// Ignore temp files created by GoLand on save
+	// TODO(matt) do this in a more principled way
+	// https://app.clubhouse.io/windmill/story/691/filter-out-ephemeral-file-changes
+	matchers = append(matchers, model.NewGlobMatcher("*___jb_old___", "*___jb_tmp___"))
+
 	ignoreMatcher := model.NewCompositeMatcher(matchers)
 	configMatcher, err := m.ConfigMatcher()
 	if err != nil {
