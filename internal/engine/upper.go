@@ -543,6 +543,8 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
+	engineState.GlobalYAML = action.GlobalYAMLManifest
+
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
