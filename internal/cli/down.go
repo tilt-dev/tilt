@@ -35,11 +35,12 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, err := tf.GetManifestConfigs(args...)
+	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(args...)
 	if err != nil {
 		return err
 	}
 
+	// TODO(maia): k8s.delete entities from global yaml as well
 	entities, err := engine.ParseYAMLFromManifests(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing YAML")
