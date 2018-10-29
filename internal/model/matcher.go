@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+
+	"github.com/gobwas/glob"
 )
 
 type PathMatcher interface {
@@ -39,6 +41,29 @@ func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
 		pathMap[path] = true
 	}
 	return fileMatcher{paths: pathMap}, nil
+}
+
+type globMatcher struct {
+	globs []glob.Glob
+}
+
+func (gm globMatcher) Matches(f string, isDir bool) (bool, error) {
+	for _, g := range gm.globs {
+		if g.Match(f) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func NewGlobMatcher(globs ...string) PathMatcher {
+	ret := globMatcher{}
+	for _, g := range globs {
+		ret.globs = append(ret.globs, glob.MustCompile(g))
+	}
+
+	return ret
 }
 
 type PatternMatcher interface {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -150,13 +151,13 @@ type PodLogWatch struct {
 	name      model.ManifestName
 	podID     k8s.PodID
 	namespace k8s.Namespace
-	cID       k8s.ContainerID
-	cName     k8s.ContainerName
+	cID       container.ID
+	cName     container.Name
 }
 
 type podLogKey struct {
 	podID k8s.PodID
-	cID   k8s.ContainerID
+	cID   container.ID
 }
 
 type PodLogActionWriter struct {

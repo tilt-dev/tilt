@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,8 +28,6 @@ import (
 
 type Namespace string
 type PodID string
-type ContainerID string
-type ContainerName string
 type NodeID string
 type ServiceName string
 
@@ -36,17 +35,6 @@ const DefaultNamespace = Namespace("default")
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
-
-func (cID ContainerID) Empty() bool    { return cID.String() == "" }
-func (cID ContainerID) String() string { return string(cID) }
-func (cID ContainerID) ShortStr() string {
-	if len(string(cID)) > 10 {
-		return string(cID)[:10]
-	}
-	return string(cID)
-}
-
-func (n ContainerName) String() string { return string(n) }
 
 func (nID NodeID) String() string { return string(nID) }
 
@@ -81,7 +69,7 @@ type Client interface {
 	WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error)
 
 	// Streams the container logs
-	ContainerLogs(ctx context.Context, podID PodID, cName ContainerName, n Namespace) (io.ReadCloser, error)
+	ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace) (io.ReadCloser, error)
 
 	// Gets the ID for the Node on which the specified Pod is running
 	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
