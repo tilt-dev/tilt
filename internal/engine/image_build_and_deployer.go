@@ -20,20 +20,6 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-type imageManifest interface {
-	Validate() error
-}
-
-type buildableImageManifest interface {
-	DockerRef() reference.Named
-	IsStaticBuild() bool
-	StaticDockerfile() string
-	StaticBuildPath() string
-	Mounts() []model.Mount
-	Steps() []model.Cmd
-	Entrypoint() model.Cmd
-}
-
 type deployableImageManifest interface {
 	K8sYAML() string
 	ManifestName() model.ManifestName
