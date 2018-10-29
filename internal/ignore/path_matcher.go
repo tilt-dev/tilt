@@ -22,16 +22,21 @@ func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
 	return fcf.ignoreMatchers.Matches(f, isDir)
 }
 
+type repoManifest interface {
+	LocalRepos() []model.LocalGithubRepo
+	TiltFilename() string
+}
+
 // Filter out files that should not be included in the build context.
-func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
+func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 	matchers := []model.PathMatcher{}
-	if m.TiltFilename != "" {
-		m, err := model.NewSimpleFileMatcher(m.TiltFilename)
+	if m.TiltFilename() != "" {
+		m, err := model.NewSimpleFileMatcher(m.TiltFilename())
 		if err == nil {
 			matchers = append(matchers, m)
 		}
 	}
-	for _, r := range m.Repos {
+	for _, r := range m.LocalRepos() {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {
 			matchers = append(matchers, gim)

@@ -17,7 +17,7 @@ type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
 	K8sYaml      string
-	TiltFilename string
+	tiltFilename string
 	DockerRef    reference.Named
 	portForwards []PortForward
 
@@ -106,7 +106,7 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
@@ -228,6 +228,15 @@ func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
 
 func (m Manifest) PortForwards() []PortForward {
 	return m.portForwards
+}
+
+func (m Manifest) TiltFilename() string {
+	return m.tiltFilename
+}
+
+func (m Manifest) WithTiltFilename(f string) Manifest {
+	m.tiltFilename = f
+	return m
 }
 
 type Mount struct {
