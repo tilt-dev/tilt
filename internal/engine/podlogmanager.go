@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -61,20 +62,32 @@ func (m *PodLogManager) diff(ctx context.Context, st *store.Store) (setup []PodL
 		}
 		stateWatches[key] = true
 
-		_, isActive := m.watches[key]
+		existing, isActive := m.watches[key]
+		startWatchTime := time.Unix(0, 0)
 		if isActive {
-			continue
+			if existing.ctx.Err() == nil {
+				// The active pod watcher is still tailing the logs,
+				// so just skip it.
+				continue
+			}
+
+			// The active pod watcher got cancelled somehow,
+			// so we need to create a new one that picks up
+			// where it left off.
+			startWatchTime = <-existing.terminationTime
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
 		w := PodLogWatch{
-			ctx:       ctx,
-			cancel:    cancel,
-			name:      ms.Manifest.Name,
-			podID:     pod.PodID,
-			cID:       pod.ContainerID,
-			cName:     pod.ContainerName,
-			namespace: pod.Namespace,
+			ctx:             ctx,
+			cancel:          cancel,
+			name:            ms.Manifest.Name,
+			podID:           pod.PodID,
+			cID:             pod.ContainerID,
+			cName:           pod.ContainerName,
+			namespace:       pod.Namespace,
+			startWatchTime:  startWatchTime,
+			terminationTime: make(chan time.Time, 1),
 		}
 		m.watches[key] = w
 		setup = append(setup, w)
@@ -103,11 +116,17 @@ func (m *PodLogManager) OnChange(ctx context.Context, st *store.Store) {
 }
 
 func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
+	defer func() {
+		watch.terminationTime <- time.Now()
+		watch.cancel()
+	}()
+
 	name := watch.name
 	pID := watch.podID
 	containerName := watch.cName
 	ns := watch.namespace
-	readCloser, err := m.kClient.ContainerLogs(watch.ctx, pID, containerName, ns)
+	startTime := watch.startWatchTime
+	readCloser, err := m.kClient.ContainerLogs(watch.ctx, pID, containerName, ns, startTime)
 	if err != nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
@@ -148,11 +167,13 @@ type PodLogWatch struct {
 	ctx    context.Context
 	cancel func()
 
-	name      model.ManifestName
-	podID     k8s.PodID
-	namespace k8s.Namespace
-	cID       container.ID
-	cName     container.Name
+	name            model.ManifestName
+	podID           k8s.PodID
+	namespace       k8s.Namespace
+	cID             container.ID
+	cName           container.Name
+	startWatchTime  time.Time
+	terminationTime chan time.Time
 }
 
 type podLogKey struct {
