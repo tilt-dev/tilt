@@ -490,7 +490,7 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		}
 	}
 
-	return model.Manifest{
+	m := model.Manifest{
 		K8sYaml:        k8sYaml,
 		BaseDockerfile: string(baseDockerfileBytes),
 		Mounts:         skylarkMountsToDomain(image.mounts),
@@ -498,16 +498,17 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
-		TiltFilename:   image.tiltFilename,
 		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath.path),
 
-		Repos:        SkylarkReposToDomain(image),
-		PortForwards: manifest.portForwards,
-	}, nil
+		Repos: SkylarkReposToDomain(image),
+	}
 
+	m = m.WithPortForwards(manifest.portForwards).WithTiltFilename(image.tiltFilename)
+
+	return m, nil
 }
 
 func SkylarkConfigFilesToDomain(cf []string) []string {

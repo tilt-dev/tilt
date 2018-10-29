@@ -431,8 +431,7 @@ func TestIgnoredFiles(t *testing.T) {
 			GitignoreContents:    "",
 		},
 	}
-	manifest.TiltFilename = filepath.Join(f.Path(), "Tiltfile")
-
+	manifest = manifest.WithTiltFilename(filepath.Join(f.Path(), "Tiltfile"))
 	f.WriteFile("Tiltfile", "# hello world")
 	f.WriteFile("a.txt", "a")
 	f.WriteFile(".git/index", "garbage")

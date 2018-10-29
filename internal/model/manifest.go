@@ -17,9 +17,9 @@ type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
 	K8sYaml      string
-	TiltFilename string
+	tiltFilename string
 	DockerRef    reference.Named
-	PortForwards []PortForward
+	portForwards []PortForward
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
@@ -106,7 +106,7 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
@@ -172,12 +172,12 @@ func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
 }
 
 func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
-	if len(m1.PortForwards) != len(m2.PortForwards) {
+	if len(m1.portForwards) != len(m2.portForwards) {
 		return false
 	}
 
-	for i := range m2.PortForwards {
-		if m1.PortForwards[i] != m2.PortForwards[i] {
+	for i := range m2.portForwards {
+		if m1.portForwards[i] != m2.portForwards[i] {
 			return false
 		}
 	}
@@ -219,6 +219,24 @@ func (m Manifest) Dependencies() []string {
 
 func (m Manifest) LocalRepos() []LocalGithubRepo {
 	return m.Repos
+}
+
+func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
+	m.portForwards = pf
+	return m
+}
+
+func (m Manifest) PortForwards() []PortForward {
+	return m.portForwards
+}
+
+func (m Manifest) TiltFilename() string {
+	return m.tiltFilename
+}
+
+func (m Manifest) WithTiltFilename(f string) Manifest {
+	m.tiltFilename = f
+	return m
 }
 
 type Mount struct {
