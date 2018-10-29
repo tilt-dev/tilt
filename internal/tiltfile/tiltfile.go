@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -398,7 +399,16 @@ func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifes
 	f, ok := t.globals[manifestName]
 
 	if !ok {
-		return nil, fmt.Errorf("%v does not define a global named '%v'", t.filename, manifestName)
+		var globalNames []string
+		for name := range t.globals {
+			globalNames = append(globalNames, name)
+		}
+
+		return nil, fmt.Errorf(
+			"%s does not define a global named '%v'. perhaps you want one of:\n  %s",
+			t.filename,
+			manifestName,
+			strings.Join(globalNames, "\n  "))
 	}
 
 	manifestFunction, ok := f.(*skylark.Function)
