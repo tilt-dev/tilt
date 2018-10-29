@@ -374,9 +374,9 @@ func (tiltfile Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.
 		}
 
 		return nil, fmt.Errorf(
-			"Tiltfile does not define a global named '%v'. perhaps you want one of: %s",
+			"Tiltfile does not define a global named '%v'. perhaps you want one of:\n  %s",
 			manifestName,
-			strings.Join(globalNames, " "))
+			strings.Join(globalNames, "\n  "))
 	}
 
 	manifestFunction, ok := f.(*skylark.Function)
