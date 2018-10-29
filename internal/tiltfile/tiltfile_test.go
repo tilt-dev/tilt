@@ -894,7 +894,7 @@ def blorgly():
 			LocalPort:     8001,
 			ContainerPort: 443,
 		},
-	}, manifest.PortForwards)
+	}, manifest.PortForwards())
 }
 
 func TestSymlinkInPath(t *testing.T) {

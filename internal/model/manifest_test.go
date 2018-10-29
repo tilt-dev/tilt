@@ -91,14 +91,14 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8080,
 				},
 			},
 		},
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8081,
 				},
@@ -108,14 +108,14 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8080,
 				},
 			},
 		},
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8080,
 				},
@@ -283,4 +283,18 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	err = manifest.Validate()
 	assert.Nil(t, err)
 
+}
+
+func TestSetPortForwards(t *testing.T) {
+	m := Manifest{
+		Name: "test",
+	}
+
+	m2 := m.WithPortForwards([]PortForward{
+		PortForward{
+			LocalPort: 8080,
+		},
+	})
+
+	assert.Equal(t, 8080, m2.PortForwards()[0].LocalPort)
 }

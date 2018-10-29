@@ -19,7 +19,7 @@ type Manifest struct {
 	K8sYaml      string
 	TiltFilename string
 	DockerRef    reference.Named
-	PortForwards []PortForward
+	portForwards []PortForward
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
@@ -172,12 +172,12 @@ func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
 }
 
 func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
-	if len(m1.PortForwards) != len(m2.PortForwards) {
+	if len(m1.portForwards) != len(m2.portForwards) {
 		return false
 	}
 
-	for i := range m2.PortForwards {
-		if m1.PortForwards[i] != m2.PortForwards[i] {
+	for i := range m2.portForwards {
+		if m1.portForwards[i] != m2.portForwards[i] {
 			return false
 		}
 	}
@@ -219,6 +219,15 @@ func (m Manifest) Dependencies() []string {
 
 func (m Manifest) LocalRepos() []LocalGithubRepo {
 	return m.Repos
+}
+
+func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
+	m.portForwards = pf
+	return m
+}
+
+func (m Manifest) PortForwards() []PortForward {
+	return m.portForwards
 }
 
 type Mount struct {
