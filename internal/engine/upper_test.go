@@ -84,7 +84,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		return store.BuildResult{}, err
 	}
 
-	return b.nextBuildResult(manifest.DockerRef), nil
+	return b.nextBuildResult(manifest.DockerRef()), nil
 }
 
 func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) bool {
@@ -434,7 +434,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 		// Second call: new manifest!
 		call = <-f.b.calls
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYaml)
+		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYAML())
 
 		// Since the manifest changed, we cleared the previous build state to force an image build
 		assert.False(t, call.state.HasImage())
@@ -1660,7 +1660,7 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
 	ref := f.imageNameForManifest(name)
-	return model.Manifest{Name: model.ManifestName(name), DockerRef: ref, Mounts: mounts}
+	return model.Manifest{Name: model.ManifestName(name), Mounts: mounts}.WithDockerRef(ref)
 }
 
 func (f *testFixture) assertAllBuildsConsumed() {

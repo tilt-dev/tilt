@@ -267,9 +267,9 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		},
 	}
 	manifest := Manifest{
+		k8sYaml:        "yamlll",
 		Name:           "test",
-		K8sYaml:        "yamlll",
-		DockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
+		dockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
 		BaseDockerfile: "FROM node",
 		Mounts:         mounts,
 	}

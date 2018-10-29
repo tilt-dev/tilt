@@ -153,8 +153,8 @@ func TestGetManifestConfig(t *testing.T) {
 
 	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "docker text", manifest.BaseDockerfile)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
-	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYaml)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
+	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYAML())
 	assert.Equal(t, 1, len(manifest.Mounts), "number of mounts")
 	assert.Equal(t, "/mount_points/1", manifest.Mounts[0].ContainerPath)
 	assert.Equal(t, f.Path(), manifest.Mounts[0].LocalPath, "mount path")
@@ -361,8 +361,8 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
 
 	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "docker text", manifest.BaseDockerfile)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
-	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYaml)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
+	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYAML())
 	assert.Equal(t, 2, len(manifest.Steps))
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv)
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv)
@@ -502,7 +502,7 @@ func TestReadFile(t *testing.T) {
 `)
 
 	manifest := f.LoadManifest("blorgly")
-	assert.Equal(t, manifest.K8sYaml, "hello world")
+	assert.Equal(t, "hello world", manifest.K8sYAML())
 }
 
 func TestConfigMatcherWithFastBuild(t *testing.T) {
@@ -868,7 +868,7 @@ def blorgly():
 	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
-	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef.String())
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 }
 
 func TestPortForward(t *testing.T) {
