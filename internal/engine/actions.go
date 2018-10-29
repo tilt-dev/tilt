@@ -65,7 +65,7 @@ func NewBuildCompleteAction(result store.BuildResult, err error) BuildCompleteAc
 type InitAction struct {
 	WatchMounts        bool
 	Manifests          []model.Manifest
-	GlobalYamlManifest model.YAMLManifest
+	GlobalYAMLManifest model.YAMLManifest
 }
 
 func (InitAction) Action() {}

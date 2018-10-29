@@ -72,7 +72,7 @@ func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYaml(names...)
+	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(names...)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
@@ -93,7 +93,7 @@ func (f *gitRepoFixture) LoadManifestForError(name string) error {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYaml(name)
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(name)
 	if err == nil {
 		f.T().Fatal("Expected manifest load error")
 	}
@@ -663,7 +663,7 @@ def blorgly():
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYaml("blorgly")
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "isn't a valid git repo")
 	}
@@ -918,7 +918,7 @@ def blorgly():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYaml("blorgly")
+	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML("blorgly")
 	if err != nil {
 		t.Fatal("getting manifest config:", err)
 	}
@@ -1023,7 +1023,7 @@ def blorgly():
 	assert.Equal(t, expected, manifest.ConfigFiles)
 }
 
-func TestGlobalYaml(t *testing.T) {
+func TestGlobalYAML(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 
@@ -1035,11 +1035,11 @@ global_yaml(yaml)`)
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
-	assert.Equal(t, tiltconfig.globalYamlStr, "this is the global yaml")
-	assert.Equal(t, tiltconfig.globalYamlDeps, []string{f.JoinPath("global.yaml")})
+	assert.Equal(t, tiltconfig.globalYAMLStr, "this is the global yaml")
+	assert.Equal(t, tiltconfig.globalYAMLDeps, []string{f.JoinPath("global.yaml")})
 }
 
-func TestGlobalYamlMultipleCallsThrowsError(t *testing.T) {
+func TestGlobalYAMLMultipleCallsThrowsError(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 

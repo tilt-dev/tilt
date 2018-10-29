@@ -1687,7 +1687,7 @@ func (f *testFixture) loadManifest(name string) model.Manifest {
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYaml("foobar")
+	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML("foobar")
 	if err != nil {
 		f.T().Fatal(err)
 	}

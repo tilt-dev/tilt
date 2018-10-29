@@ -181,7 +181,7 @@ func (s Script) Run(ctx context.Context) error {
 			return err
 		}
 
-		manifests, _, err := tf.GetManifestConfigsAndGlobalYaml("tiltdemo")
+		manifests, _, err := tf.GetManifestConfigsAndGlobalYAML("tiltdemo")
 		if err != nil {
 			return err
 		}

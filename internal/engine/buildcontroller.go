@@ -149,7 +149,7 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	if err != nil {
 		return model.Manifest{}, manifestErrf(err.Error())
 	}
-	newManifests, _, err := t.GetManifestConfigsAndGlobalYaml(string(name))
+	newManifests, _, err := t.GetManifestConfigsAndGlobalYAML(string(name))
 	if err != nil {
 		return model.Manifest{}, manifestErrf(err.Error())
 	}

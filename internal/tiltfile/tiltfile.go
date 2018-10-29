@@ -29,9 +29,8 @@ type Tiltfile struct {
 	// The filename we're executing. Must be absolute.
 	filename string
 
-	// ** comment
-	globalYamlStr  string
-	globalYamlDeps []string
+	globalYAMLStr  string
+	globalYAMLDeps []string
 }
 
 func init() {
@@ -315,7 +314,7 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 }
 
 func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	if t.globalYamlStr != "" {
+	if t.globalYAMLStr != "" {
 		return nil, fmt.Errorf("`global_yaml` can be called only once per Tiltfile")
 	}
 
@@ -330,8 +329,8 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 		return nil, err
 	}
 
-	t.globalYamlStr = yaml
-	t.globalYamlDeps = deps
+	t.globalYAMLStr = yaml
+	t.globalYAMLDeps = deps
 
 	return skylark.None, nil
 }
@@ -378,9 +377,9 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	return tiltfile, nil
 }
 
-// GetManifestConfigsAndGlobalYaml executes the Tiltfile to create manifests for all resources and
+// GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
 // a manifest representing the global yaml
-func (t Tiltfile) GetManifestConfigsAndGlobalYaml(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
+func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(manifestName)
@@ -391,7 +390,7 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYaml(names ...string) ([]model.Mani
 		manifests = append(manifests, curManifests...)
 	}
 
-	// TODO(maia): return GlobalYaml here (be sure to put its deps onto all of the resource manifests)
+	// TODO(maia): return GlobalYAML here (be sure to put its deps onto all of the resource manifests)
 	return manifests, model.YAMLManifest{}, nil
 }
 
