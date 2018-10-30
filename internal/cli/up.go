@@ -85,7 +85,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(args...)
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(args...)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}()
 
 	// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-	err = upper.CreateManifests(ctx, manifests, c.watch)
+	err = upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
