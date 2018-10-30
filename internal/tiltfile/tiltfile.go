@@ -29,9 +29,6 @@ type Tiltfile struct {
 
 	// The filename we're executing. Must be absolute.
 	filename string
-
-	globalYAMLStr  string
-	globalYAMLDeps []string
 }
 
 func init() {
@@ -315,12 +312,15 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 }
 
 func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	if t.globalYAMLStr != "" {
+	yaml, err := getGlobalYAML(thread)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking if globalYAML already set")
+	}
+	if yaml != "" {
 		return nil, fmt.Errorf("`global_yaml` can be called only once per Tiltfile")
 	}
 
-	var yaml string
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml)
+	err = skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml)
 	if err != nil {
 		return nil, err
 	}
@@ -330,8 +330,8 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 		return nil, err
 	}
 
-	t.globalYAMLStr = yaml
-	t.globalYAMLDeps = deps
+	thread.SetLocal(globalYAMLKey, yaml)
+	thread.SetLocal(globalYAMLDepsKey, deps)
 
 	return skylark.None, nil
 }
@@ -383,7 +383,15 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 
-	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, t.globalYAMLStr, t.globalYAMLDeps)
+	gYAML, err := getGlobalYAML(t.thread)
+	if err != nil {
+		return nil, model.YAMLManifest{}, err
+	}
+	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
+	if err != nil {
+		return nil, model.YAMLManifest{}, err
+	}
+	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(manifestName)
