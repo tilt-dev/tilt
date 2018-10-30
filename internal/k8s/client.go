@@ -116,12 +116,18 @@ func NewK8sClient(
 	}
 }
 
-func ServiceURL(service *v1.Service) (*url.URL, error) {
+func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	status := service.Status
 
 	lbStatus := status.LoadBalancer
 
-	port := service.Spec.Ports[0].Port
+	if len(service.Spec.Ports) == 0 {
+		return nil, nil
+	}
+
+	portSpec := service.Spec.Ports[0]
+	port := portSpec.Port
+	nodePort := portSpec.NodePort
 
 	// Documentation here is helpful:
 	// https://godoc.org/k8s.io/api/core/v1#LoadBalancerIngress
@@ -142,6 +148,16 @@ func ServiceURL(service *v1.Service) (*url.URL, error) {
 		}
 
 		url, err := url.Parse(urlString)
+		if err != nil {
+			return nil, fmt.Errorf("ServiceURL: malformed url: %v", err)
+		}
+		return url, nil
+	}
+
+	// If the node has an IP that we can hit, we can also look
+	// at the NodePort. This is mostly useful for Minikube.
+	if ip != "" && nodePort != 0 {
+		url, err := url.Parse(fmt.Sprintf("http://%s:%d/", ip, nodePort))
 		if err != nil {
 			return nil, fmt.Errorf("ServiceURL: malformed url: %v", err)
 		}

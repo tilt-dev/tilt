@@ -18,6 +18,7 @@ import (
 
 var K8sWireSet = wire.NewSet(
 	k8s.DetectEnv,
+	k8s.DetectNodeIP,
 
 	k8s.ProvidePortForwarder,
 	k8s.ProvideRESTClient,
