@@ -52,3 +52,7 @@ func (YAMLManifest) DockerRef() reference.Named {
 
 	return n
 }
+
+func (y YAMLManifest) Empty() bool {
+	return y.k8sYAML == ""
+}

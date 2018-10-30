@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -143,7 +144,7 @@ func TestUpper_Up(t *testing.T) {
 	manifest := f.newManifest("foobar", nil)
 
 	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
-		"some great yaml", []string{"foo", "bar"})
+		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, gYaml, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
@@ -1378,6 +1379,31 @@ func TestCompletingUpperClosesHud(t *testing.T) {
 	assert.True(t, f.hud.Closed)
 }
 
+func TestInitWithGlobalYAML(t *testing.T) {
+	f := newTestFixture(t)
+	state := f.store.RLockState()
+	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{})
+	state.GlobalYAML = ym
+	f.store.RUnlockState()
+	f.Start([]model.Manifest{}, true)
+	f.store.Dispatch(InitAction{
+		Manifests:          []model.Manifest{},
+		GlobalYAMLManifest: ym,
+	})
+	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
+		return st.GlobalYAML.K8sYAML() == testyaml.BlorgBackendYAML
+	})
+
+	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{})
+	f.store.Dispatch(GlobalYAMLManifestReloadedAction{
+		GlobalYAML: newYM,
+	})
+
+	f.WaitUntil("global YAML manifest gets updated", func(st store.EngineState) bool {
+		return st.GlobalYAML.K8sYAML() == testyaml.BlorgJobYAML
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -1481,7 +1507,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 
-	upper := NewUpper(ctx, b, hud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic)
+	gybc := NewGlobalYAMLBuildController(k8s)
+	upper := NewUpper(ctx, b, hud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
 	upper.hudErrorCh = make(chan error)
 
 	go func() {

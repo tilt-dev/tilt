@@ -65,7 +65,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -75,6 +75,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(pw)
 	st.AddSubscriber(sw)
 	st.AddSubscriber(ic)
+	st.AddSubscriber(gybc)
 
 	return Upper{
 		b:          b,
@@ -134,6 +135,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildStarted(ctx, state, action)
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
+	case GlobalYAMLManifestReloadedAction:
+		handleGlobalYAMLManifestReloaded(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -345,6 +348,14 @@ func handleFSEvent(
 	enqueueBuild(state, event.manifestName)
 }
 
+func handleGlobalYAMLManifestReloaded(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLManifestReloadedAction,
+) {
+	state.GlobalYAML = event.GlobalYAML
+}
+
 func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
@@ -481,7 +492,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
-	if manifestName == "" {
+	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
 	}
 
@@ -545,7 +556,11 @@ func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
 	return true, nil
 }
 
-func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAction) bool {
+type configFilesManifest interface {
+	ConfigMatcher() (model.PathMatcher, error)
+}
+
+func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChangedAction) bool {
 	matcher, err := manifest.ConfigMatcher()
 	if err != nil {
 		return false
