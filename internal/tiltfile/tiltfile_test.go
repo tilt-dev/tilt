@@ -63,7 +63,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifests(names ...string) ([]model.Manifest, model.YAMLManifest) {
+func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest) {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -79,12 +79,22 @@ func (f *gitRepoFixture) LoadManifests(names ...string) ([]model.Manifest, model
 	return manifests, globalYAML
 }
 
-func (f *gitRepoFixture) LoadManifest(name string) (model.Manifest, model.YAMLManifest) {
-	manifests, globalYAML := f.LoadManifests(name)
+func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
+	manifests, _ := f.LoadManifestsAndGlobalYAML(names...)
+	return manifests
+}
+
+func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
+	manifests := f.LoadManifests(name)
 	if len(manifests) != 1 {
 		f.T().Fatalf("expected 1 manifest, actual: %d", len(manifests))
 	}
-	return manifests[0], globalYAML
+	return manifests[0]
+}
+
+func (f *gitRepoFixture) LoadGlobalYAML() model.YAMLManifest {
+	_, globalYAML := f.LoadManifestsAndGlobalYAML()
+	return globalYAML
 }
 
 func (f *gitRepoFixture) LoadManifestForError(name string) error {
@@ -151,7 +161,7 @@ func TestGetManifestConfig(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "docker text", manifest.BaseDockerfile)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYAML())
@@ -247,7 +257,7 @@ def blorgly_frontend():
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifests, _ := f.LoadManifests("blorgly")
+	manifests := f.LoadManifests("blorgly")
 	assert.Equal(t, "blorgly_backend", manifests[0].Name.String())
 	assert.Equal(t, 1, len(manifests[0].Repos))
 	assert.Equal(t, "", manifests[0].Repos[0].DockerignoreContents)
@@ -359,7 +369,7 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
   return k8s_service(yaml, image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "docker text", manifest.BaseDockerfile)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYAML())
@@ -384,7 +394,7 @@ func TestRunTrigger(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifest, _ := f.LoadManifest("yarnly")
+	manifest := f.LoadManifest("yarnly")
 	step0 := manifest.Steps[0]
 	step1 := manifest.Steps[1]
 	step2 := manifest.Steps[2]
@@ -465,7 +475,7 @@ ENTRYPOINT echo hi`)
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, []string(nil), manifest.Entrypoint.Argv)
 	assert.True(t, manifest.Entrypoint.Empty())
 }
@@ -501,7 +511,7 @@ func TestReadFile(t *testing.T) {
   return k8s_service(yaml, image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "hello world", manifest.K8sYAML())
 }
 
@@ -517,7 +527,7 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
   image = stop_build()
   return k8s_service(yaml, image)
 `)
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	matches := func(p string) bool {
 		matcher, err := manifest.ConfigMatcher()
 		if err != nil {
@@ -542,7 +552,7 @@ func TestConfigMatcherWithStaticBuild(t *testing.T) {
 	f.WriteFile("Tiltfile", `def blorgly():
   yaml = local('echo yaaaaaaaaml')
   return k8s_service(yaml, static_build("Dockerfile", "docker-tag"))`)
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	matches := func(p string) bool {
 		matcher, err := manifest.ConfigMatcher()
 		if err != nil {
@@ -574,7 +584,7 @@ func TestRepoPath(t *testing.T) {
   return k8s_service(yaml, image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, []string{"sh", "-c", f.JoinPath("subpath")}, manifest.Entrypoint.Argv)
 }
 
@@ -596,7 +606,7 @@ func TestAddRepoPath(t *testing.T) {
   return k8s_service("", image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.True(t, f.FiltersPath(manifest, "src/b.txt", false), "Expected to filter b.txt")
 	assert.True(t, f.FiltersPath(manifest, "src/b/c.txt", false), "Expected to filter c.txt")
 	assert.False(t, f.FiltersPath(manifest, "src/b/d.go", false), "Expected not to filter d.txt")
@@ -639,7 +649,7 @@ func TestAddOneFileByPath(t *testing.T) {
   return k8s_service(yaml, image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, manifest.Mounts[0].LocalPath, f.JoinPath("package.json"))
 	assert.Equal(t, manifest.Mounts[0].ContainerPath, "/app/package.json")
 }
@@ -684,7 +694,7 @@ func TestReadsIgnoreFiles(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
 	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
@@ -703,7 +713,7 @@ func TestReadsIgnoreFilesStaticBuild(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
 	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
@@ -723,7 +733,7 @@ func TestReadsIgnoreFilesStaticBuildSubdir(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
 	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
@@ -760,7 +770,7 @@ func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
   return k8s_service("yaaaaaaaaml", image)
 `, f1.Path(), f2.Path()))
 
-	manifest, _ := fMain.LoadManifest("blorgly")
+	manifest := fMain.LoadManifest("blorgly")
 
 	assert.Truef(t, f1.FiltersPath(manifest, "cmd.exe", false), "Expected to match cmd.exe")
 	assert.Truef(t, f1.FiltersPath(manifest, "node_modules", true), "Expected to match node_modules")
@@ -865,7 +875,7 @@ def blorgly():
   return k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
@@ -885,7 +895,7 @@ def blorgly():
   return s
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	assert.Equal(t, []model.PortForward{
 		{
 			LocalPort:     8000,
@@ -1011,7 +1021,7 @@ def blorgly():
   return s
 `)
 
-	manifest, _ := f.LoadManifest("blorgly")
+	manifest := f.LoadManifest("blorgly")
 	expected := f.JoinPaths([]string{
 		"Dockerfile",
 		"Tiltfile",
@@ -1031,7 +1041,7 @@ func TestGlobalYAML(t *testing.T) {
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
 global_yaml(yaml)`)
 
-	_, globalYAML := f.LoadManifests()
+	globalYAML := f.LoadGlobalYAML()
 	assert.Equal(t, globalYAML.K8sYAML(), "this is the global yaml")
 	assert.Equal(t, globalYAML.Dependencies(), []string{f.JoinPath("global.yaml")})
 }
@@ -1072,7 +1082,7 @@ def manifestB():
   return k8s_service("yamlB", image)
 `)
 
-	manifests, _ := f.LoadManifests("manifestA", "manifestB")
+	manifests := f.LoadManifests("manifestA", "manifestB")
 
 	expectedDepsA := []string{"fileA", "Dockerfile", "Tiltfile", "global.yaml"}
 	expectedDepsB := []string{"fileB", "Dockerfile", "Tiltfile", "global.yaml"}

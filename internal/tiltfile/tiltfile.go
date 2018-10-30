@@ -396,7 +396,7 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Mani
 		// about files opened in the global scope, i.e. files opened when getting global YAML.
 		for i, m := range curManifests {
 			deps := append(m.ConfigFiles, globalYAML.Dependencies()...)
-			curManifests[i] = m.WithDependencies(deps)
+			curManifests[i] = m.WithConfigFiles(deps)
 		}
 
 		manifests = append(manifests, curManifests...)

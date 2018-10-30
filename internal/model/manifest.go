@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
-	"github.com/windmilleng/tilt/internal/utils/sliceutils"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ManifestName string
@@ -218,8 +218,8 @@ func (m Manifest) Dependencies() []string {
 	return sliceutils.DedupeStringSlice(deps)
 }
 
-func (m Manifest) WithDependencies(deps []string) Manifest {
-	m.ConfigFiles = deps
+func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
+	m.ConfigFiles = confFiles
 	return m
 }
 
