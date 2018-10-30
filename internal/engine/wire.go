@@ -39,6 +39,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
 	store.NewStore,
+	NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(

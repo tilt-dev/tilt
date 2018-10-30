@@ -65,7 +65,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -75,7 +75,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(pw)
 	st.AddSubscriber(sw)
 	st.AddSubscriber(ic)
-	gybc := NewGlobalYAMLBuildController()
 	st.AddSubscriber(gybc)
 
 	return Upper{
@@ -493,7 +492,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
-	if manifestName == "" {
+	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
 	}
 
