@@ -16,7 +16,7 @@ func TestPortForward(t *testing.T) {
 	f := newPLCFixture(t)
 	defer f.TearDown()
 
-	state := f.st.LockMutableState()
+	state := f.st.LockMutableStateForTesting()
 	m := model.Manifest{
 		Name: "fe",
 	}
@@ -34,7 +34,7 @@ func TestPortForward(t *testing.T) {
 	f.plc.OnChange(f.ctx, f.st)
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
-	state = f.st.LockMutableState()
+	state = f.st.LockMutableStateForTesting()
 	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id", Phase: v1.PodRunning}
 	f.st.UnlockMutableState()
 
@@ -42,7 +42,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID.String())
 
-	state = f.st.LockMutableState()
+	state = f.st.LockMutableStateForTesting()
 	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id2", Phase: v1.PodRunning}
 	f.st.UnlockMutableState()
 
@@ -50,7 +50,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID.String())
 
-	state = f.st.LockMutableState()
+	state = f.st.LockMutableStateForTesting()
 	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id2", Phase: v1.PodPending}
 	f.st.UnlockMutableState()
 
@@ -62,7 +62,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f := newPLCFixture(t)
 	defer f.TearDown()
 
-	state := f.st.LockMutableState()
+	state := f.st.LockMutableStateForTesting()
 	m := model.Manifest{
 		Name: "fe",
 	}
@@ -80,7 +80,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f.plc.OnChange(f.ctx, f.st)
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
-	state = f.st.LockMutableState()
+	state = f.st.LockMutableStateForTesting()
 	state.ManifestStates["fe"].Pod.ContainerPorts = []int32{8000}
 	f.st.UnlockMutableState()
 
@@ -99,7 +99,7 @@ type plcFixture struct {
 
 func newPLCFixture(t *testing.T) *plcFixture {
 	f := tempdir.NewTempDirFixture(t)
-	st := store.NewStore()
+	st := store.NewStoreForTesting()
 	kCli := k8s.NewFakeK8sClient()
 	plc := NewPortForwardController(kCli)
 	return &plcFixture{

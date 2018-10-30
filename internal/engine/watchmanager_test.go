@@ -12,8 +12,9 @@ import (
 
 func TestOneActionDispatched(t *testing.T) {
 	f := newWatchManagerFixture(t)
+	defer f.TearDown()
 
-	state := f.store.LockMutableState()
+	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.ManifestStates["blorgly"] = &store.ManifestState{
 		Manifest: model.Manifest{
@@ -34,8 +35,9 @@ func TestOneActionDispatched(t *testing.T) {
 
 func TestNoChange(t *testing.T) {
 	f := newWatchManagerFixture(t)
+	defer f.TearDown()
 
-	state := f.store.LockMutableState()
+	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.ManifestStates["blorgly"] = &store.ManifestState{
 		Manifest: model.Manifest{
@@ -58,7 +60,7 @@ func TestNoChange(t *testing.T) {
 // func TestMultipleManifestsEvents(t *testing.T) {
 // 	f := newWatchManagerFixture(t)
 
-// 	state := f.store.LockMutableState()
+// 	state := f.store.LockMutableStateForTesting()
 // 	state.WatchMounts = true
 // 	state.ManifestStates["blorgly"] = &store.ManifestState{
 // 		Manifest: model.Manifest{
@@ -82,16 +84,16 @@ func TestNoChange(t *testing.T) {
 // }
 
 type watchManagerFixture struct {
-	t      *testing.T
-	ctx    context.Context
-	cancel func()
-	store  *store.Store
-	fswm   *WatchManager
-	notify *fakeNotify
+	t         *testing.T
+	ctx       context.Context
+	cancel    func()
+	store     *store.Store
+	fswm      *WatchManager
+	notify    *fakeNotify
+	pathsSeen []string
 }
 
 func newWatchManagerFixture(t *testing.T) *watchManagerFixture {
-	st := store.NewStore()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	notify := newFakeNotify()
@@ -100,58 +102,54 @@ func newWatchManagerFixture(t *testing.T) *watchManagerFixture {
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
-		store:  st,
 		notify: notify,
 	}
+
+	reducer := func(ctx context.Context, state *store.EngineState, action store.Action) {
+		fileChange, ok := action.(manifestFilesChangedAction)
+		if !ok {
+			t.Errorf("Expected action type manifestFilesChangedAction. Actual: %T", action)
+		}
+		f.pathsSeen = append(f.pathsSeen, fileChange.files...)
+	}
+	st := store.NewStore(store.Reducer(reducer))
+	f.store = st
 
 	timerMaker := makeFakeTimerMaker(t)
 
 	fswm := NewWatchManager(f.provideFakeFsWatcher, timerMaker.maker())
 	f.fswm = fswm
 
+	go st.Loop(ctx)
 	return f
 }
 
 func (f *watchManagerFixture) ConsumeFSEventsUntil(expectedPath string) {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
-	defer cancel()
-
-	pathsSeen := []string{}
-
-	for {
-		select {
-		case <-ctx.Done():
-			f.t.Fatalf("Timeout. Collected paths: %v", pathsSeen)
-		case action := <-f.store.Actions():
-			fileChange, ok := action.(manifestFilesChangedAction)
-			if !ok {
-				f.t.Errorf("Expected action type manifestFilesChangedAction. Actual: %T", action)
+	start := time.Now()
+	done := false
+	for time.Since(start) < time.Second {
+		f.store.RLockState()
+		for _, path := range f.pathsSeen {
+			if path == expectedPath {
+				done = true
 			}
-			if fileChange.files[0] != expectedPath {
-				pathsSeen = append(pathsSeen, fileChange.files...)
-				continue
-			}
+		}
+		f.store.RUnlockState()
 
-			// we're done!
+		if done {
 			return
 		}
-	}
-}
 
-func (f *watchManagerFixture) assertNoActions() {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
-	defer cancel()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case action := <-f.store.Actions():
-			f.t.Errorf("Expected no actions but got %v", action)
-		}
+		time.Sleep(10 * time.Millisecond)
 	}
+
+	f.t.Fatalf("Timeout. Collected paths: %v", f.pathsSeen)
 }
 
 func (f *watchManagerFixture) provideFakeFsWatcher() (watch.Notify, error) {
 	return f.notify, nil
+}
+
+func (f *watchManagerFixture) TearDown() {
+	f.cancel()
 }

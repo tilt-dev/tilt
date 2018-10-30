@@ -35,7 +35,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
-	storeStore := store.NewStore()
+	reducer := _wireReducerValue
+	storeStore := store.NewStore(reducer)
 	deployDiscovery := engine.NewDeployDiscovery(k8sClient, storeStore)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
@@ -85,7 +86,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 }
 
 var (
-	_wireLabelsValue = build.Labels{}
+	_wireReducerValue = engine.UpperReducer
+	_wireLabelsValue  = build.Labels{}
 )
 
 func wireUpper(ctx context.Context) (engine.Upper, error) {
@@ -103,7 +105,8 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
-	storeStore := store.NewStore()
+	reducer := _wireReducerValue
+	storeStore := store.NewStore(reducer)
 	deployDiscovery := engine.NewDeployDiscovery(k8sClient, storeStore)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)

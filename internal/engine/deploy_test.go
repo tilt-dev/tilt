@@ -56,7 +56,7 @@ type deployFixture struct {
 func newDeployFixture(t *testing.T) *deployFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kClient := k8s.NewFakeK8sClient()
-	dd := NewDeployDiscovery(kClient, store.NewStore())
+	dd := NewDeployDiscovery(kClient, store.NewStoreForTesting())
 	return &deployFixture{
 		TempDirFixture: f,
 		ctx:            output.CtxForTest(),

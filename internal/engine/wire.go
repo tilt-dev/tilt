@@ -21,6 +21,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	build.DefaultConsole,
 	build.DefaultOut,
 	wire.Value(build.Labels{}),
+	wire.Value(UpperReducer),
 
 	build.DefaultImageBuilder,
 	build.NewDockerImageBuilder,
