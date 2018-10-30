@@ -17,16 +17,17 @@ func TestPortForward(t *testing.T) {
 	defer f.TearDown()
 
 	state := f.st.LockMutableState()
-	state.ManifestStates["fe"] = &store.ManifestState{
-		Manifest: model.Manifest{
-			Name: "fe",
-			PortForwards: []model.PortForward{
-				{
-					LocalPort:     8080,
-					ContainerPort: 8081,
-				},
-			},
+	m := model.Manifest{
+		Name: "fe",
+	}
+	m = m.WithPortForwards([]model.PortForward{
+		{
+			LocalPort:     8080,
+			ContainerPort: 8081,
 		},
+	})
+	state.ManifestStates["fe"] = &store.ManifestState{
+		Manifest: m,
 	}
 	f.st.UnlockMutableState()
 
@@ -62,15 +63,16 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	defer f.TearDown()
 
 	state := f.st.LockMutableState()
-	state.ManifestStates["fe"] = &store.ManifestState{
-		Manifest: model.Manifest{
-			Name: "fe",
-			PortForwards: []model.PortForward{
-				{
-					LocalPort: 8080,
-				},
-			},
+	m := model.Manifest{
+		Name: "fe",
+	}
+	m = m.WithPortForwards([]model.PortForward{
+		{
+			LocalPort: 8080,
 		},
+	})
+	state.ManifestStates["fe"] = &store.ManifestState{
+		Manifest: m,
 	}
 	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id", Phase: v1.PodRunning}
 	f.st.UnlockMutableState()

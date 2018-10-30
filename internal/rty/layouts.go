@@ -19,14 +19,20 @@ const (
 
 // FlexLayout lays out its sub-components.
 type FlexLayout struct {
-	dir Dir
-	cs  []Component
+	dir  Dir
+	cs   []Component
+	name string
 }
 
-func NewFlexLayout(dir Dir) *FlexLayout {
+func NewFlexLayout(name string, dir Dir) *FlexLayout {
 	return &FlexLayout{
-		dir: dir,
+		name: name,
+		dir:  dir,
 	}
+}
+
+func (l *FlexLayout) Name() string {
+	return l.name
 }
 
 func (l *FlexLayout) Add(c Component) {
@@ -105,12 +111,17 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 }
 
 type ConcatLayout struct {
-	dir Dir
-	cs  []Component
+	name string
+	dir  Dir
+	cs   []Component
 }
 
-func NewConcatLayout(dir Dir) *ConcatLayout {
-	return &ConcatLayout{dir: dir}
+func NewConcatLayout(name string, dir Dir) *ConcatLayout {
+	return &ConcatLayout{name: name, dir: dir}
+}
+
+func (l *ConcatLayout) Name() string {
+	return l.name
 }
 
 func (l *ConcatLayout) Add(c Component) {
@@ -155,16 +166,24 @@ func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 	return nil
 }
 
-func NewLines() *ConcatLayout {
-	return NewConcatLayout(DirVert)
+func NewLines(name string) *ConcatLayout {
+	return NewConcatLayout(name, DirVert)
 }
 
 type Line struct {
-	del *FlexLayout
+	del  *FlexLayout
+	name string
 }
 
-func NewLine() *Line {
-	return &Line{del: NewFlexLayout(DirHor)}
+func (l *Line) Name() string {
+	return l.name
+}
+
+func NewLine(name string) *Line {
+	return &Line{
+		del:  NewFlexLayout(name, DirHor),
+		name: name,
+	}
 }
 
 func (l *Line) Add(c Component) {
@@ -185,6 +204,12 @@ type ColorLayout struct {
 	del        Component
 	color      tcell.Color
 	foreground bool
+
+	name string
+}
+
+func (l *ColorLayout) Name() string {
+	return l.name
 }
 
 func Fg(del Component, color tcell.Color) Component {
@@ -192,6 +217,7 @@ func Fg(del Component, color tcell.Color) Component {
 		del:        del,
 		color:      color,
 		foreground: true,
+		name:       del.Name(),
 	}
 }
 
@@ -200,6 +226,7 @@ func Bg(del Component, color tcell.Color) Component {
 		del:        del,
 		color:      color,
 		foreground: false,
+		name:       del.Name(),
 	}
 }
 
@@ -226,6 +253,10 @@ type Box struct {
 
 func NewBox() *Box {
 	return &Box{}
+}
+
+func (b *Box) Name() string {
+	return b.inner.Name() + " box"
 }
 
 func (b *Box) SetInner(c Component) {
@@ -311,10 +342,15 @@ type FixedSizeLayout struct {
 	del    Component
 	width  int
 	height int
+	name   string
 }
 
-func NewFixedSize(del Component, width int, height int) *FixedSizeLayout {
-	return &FixedSizeLayout{del: del, width: width, height: height}
+func NewFixedSize(name string, del Component, width int, height int) *FixedSizeLayout {
+	return &FixedSizeLayout{name: name, del: del, width: width, height: height}
+}
+
+func (l *FixedSizeLayout) Name() string {
+	return l.name
 }
 
 func (l *FixedSizeLayout) Size(width int, height int) (int, int) {
@@ -347,6 +383,10 @@ type ModalLayout struct {
 // fg will be rendered on top of bg, using fraction/1 of the height and width of the screen
 func NewModalLayout(bg Component, fg Component, fraction float64) *ModalLayout {
 	return &ModalLayout{fg: fg, bg: bg, fraction: fraction}
+}
+
+func (l *ModalLayout) Name() string {
+	return fmt.Sprintf("modal fg: %s, bg: %s", l.fg.Name(), l.bg.Name())
 }
 
 func (l *ModalLayout) Size(width int, height int) (int, int) {

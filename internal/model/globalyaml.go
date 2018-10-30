@@ -7,6 +7,13 @@ type YAMLManifest struct {
 	configFiles []string
 }
 
+func NewYAMLManifest(name ManifestName, k8sYaml string, configFiles []string) YAMLManifest {
+	return YAMLManifest{
+		name:        name,
+		k8sYaml:     k8sYaml,
+		configFiles: configFiles,
+	}
+}
 func (y YAMLManifest) Dependencies() []string {
 	return y.configFiles
 }

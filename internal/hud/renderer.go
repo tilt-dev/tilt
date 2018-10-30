@@ -102,15 +102,16 @@ var podStatusColors = map[string]tcell.Color{
 }
 
 func (r *Renderer) layout(v view.View) rty.Component {
-	l := rty.NewFlexLayout(rty.DirVert)
+	l := rty.NewFlexLayout("full screen", rty.DirVert)
 	if v.ViewState.ShowNarration {
 		l.Add(renderNarration(v.ViewState.NarrationMessage))
-		l.Add(rty.NewLine())
+		l.Add(rty.NewLine("post-narration linebreak"))
 	}
 
-	split := rty.NewFlexLayout(rty.DirHor)
+	split := rty.NewFlexLayout("screen under narration", rty.DirVert)
 
 	split.Add(r.renderResources(v.Resources))
+	split.Add(r.renderStatusBar(v))
 	l.Add(split)
 
 	if v.ViewState.LogModal.TiltLog {
@@ -120,6 +121,32 @@ func (r *Renderer) layout(v view.View) rty.Component {
 	} else {
 		return l
 	}
+}
+
+func (r *Renderer) renderStatusBar(v view.View) rty.Component {
+	errorCount := 0
+	for _, res := range v.Resources {
+		if isInError(res) {
+			errorCount++
+		}
+	}
+	sb := rty.NewStringBuilder("status bar text")
+	if errorCount == 0 {
+		sb.Fg(cGood).Text("✓").Fg(tcell.ColorBlack).Text(" OK")
+	} else {
+		s := "error"
+		if errorCount > 1 {
+			s = "errors"
+		}
+		sb.Fg(cBad).Text("✖").Fg(tcell.ColorBlack).Textf(" [%d] %s", errorCount, s)
+	}
+	line := rty.NewLine("status bar line")
+	line.Add(sb.Build())
+	return rty.NewFixedSize("status bar fixedsize", rty.Bg(line, tcell.ColorWhiteSmoke), rty.GROW, 1)
+}
+
+func isInError(res view.Resource) bool {
+	return res.LastBuildError != "" || podStatusColors[res.PodStatus] == cBad
 }
 
 func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty.Component {
@@ -141,28 +168,28 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 
 func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
 	sl := rty.NewTextScrollLayout(logScrollerName)
-	sl.Add(rty.TextString(s))
+	sl.Add(rty.TextString("log modal content", s))
 	box := rty.NewBox()
 	box.SetInner(sl)
 	box.SetTitle(title)
-	l := rty.NewFlexLayout(rty.DirVert)
+	l := rty.NewFlexLayout("log modal layout", rty.DirVert)
 	l.Add(box)
-	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("<Esc> to stop viewing log").Build())
+	l.Add(rty.NewStringBuilder("exit log instructions").Bg(tcell.ColorBlue).Text("<Esc> to stop viewing log").Build())
 
 	ml := rty.NewModalLayout(background, l, .9)
 	return ml
 }
 
 func renderNarration(msg string) rty.Component {
-	lines := rty.NewLines()
-	l := rty.NewLine()
-	l.Add(rty.TextString(msg))
-	lines.Add(rty.NewLine())
+	lines := rty.NewLines("narration lines")
+	l := rty.NewLine("narration line")
+	l.Add(rty.TextString("narration msg", msg))
+	lines.Add(rty.NewLine("narration line 2"))
 	lines.Add(l)
-	lines.Add(rty.NewLine())
+	lines.Add(rty.NewLine("narration line 3"))
 
 	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), tcell.ColorBlack)
-	return rty.NewFixedSize(box, rty.GROW, 3)
+	return rty.NewFixedSize("narration", box, rty.GROW, 3)
 }
 
 func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
@@ -208,9 +235,9 @@ func abbreviateLog(s string) []string {
 }
 
 func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Component {
-	layout := rty.NewConcatLayout(rty.DirVert)
+	layout := rty.NewConcatLayout("resource "+res.Name, rty.DirVert)
 
-	sb := rty.NewStringBuilder()
+	sb := rty.NewStringBuilder("first line")
 	if selected {
 		sb.Text("▶ ")
 	} else {
@@ -232,14 +259,14 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 		for _, s := range res.DirectoriesWatched {
 			dirs = append(dirs, fmt.Sprintf("%s/", s))
 		}
-		sb := rty.NewStringBuilder()
+		sb := rty.NewStringBuilder("watching sb")
 		sb.Fg(cLightText).Textf("  (Watching %s)", strings.Join(dirs, " ")).Fg(tcell.ColorDefault)
 		layout.Add(sb.Build())
 	}
 
 	if !res.LastDeployTime.Equal(time.Time{}) {
 		if len(res.LastDeployEdits) > 0 {
-			sb := rty.NewStringBuilder()
+			sb := rty.NewStringBuilder("last deployed edits sb")
 			sb.Fg(cLightText).Text("  Last Deployed Edits: ").Fg(tcell.ColorDefault)
 			sb.Text(formatFileList(res.LastDeployEdits))
 			layout.Add(sb.Build())
@@ -250,7 +277,7 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	var buildComponents []rty.Component
 
 	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
-		sb := rty.NewStringBuilder()
+		sb := rty.NewStringBuilder("in progress sb")
 		sb.Fg(cPending).Textf("In Progress %s", r.spinner()).Fg(tcell.ColorDefault)
 		sb.Textf(" - For %s", formatDuration(time.Since(res.CurrentBuildStartTime)))
 		if len(res.CurrentBuildEdits) > 0 {
@@ -260,7 +287,7 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	}
 
 	if !res.PendingBuildSince.Equal(time.Time{}) {
-		sb := rty.NewStringBuilder()
+		sb := rty.NewStringBuilder("pending sb")
 		sb.Fg(cPending).Text("Pending").Fg(tcell.ColorDefault)
 		sb.Textf(" - For %s", formatDuration(time.Since(res.PendingBuildSince)))
 		if len(res.PendingBuildEdits) > 0 {
@@ -270,7 +297,7 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 	}
 
 	if !res.LastBuildFinishTime.Equal(time.Time{}) {
-		sb := rty.NewStringBuilder()
+		sb := rty.NewStringBuilder("last build sb")
 
 		sb.Textf("Last build ended %s ago (took %s) — ",
 			formatDuration(time.Since(res.LastBuildFinishTime)),
@@ -288,28 +315,28 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 		if res.LastBuildError != "" {
 			abbrevLog := abbreviateLog(res.LastBuildLog)
 			for _, logLine := range abbrevLog {
-				buildComponents = append(buildComponents, rty.TextString(logLine))
+				buildComponents = append(buildComponents, rty.TextString("log line", logLine))
 			}
 
 			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
 			if len(abbrevLog) == 0 {
-				buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
+				buildComponents = append(buildComponents, rty.TextString("build error", fmt.Sprintf("Error: %s", res.LastBuildError)))
 			}
 		}
 	}
 
 	if len(buildComponents) == 0 {
-		buildComponents = []rty.Component{rty.TextString("no build yet")}
+		buildComponents = []rty.Component{rty.TextString("no build", "no build yet")}
 	}
 
-	l := rty.NewLine()
-	l.Add(rty.ColoredString("  BUILD: ", cLightText))
+	l := rty.NewLine("build component")
+	l.Add(rty.ColoredString("build component", "  BUILD: ", cLightText))
 	l.Add(buildComponents[0])
 	layout.Add(l)
 
 	for _, c := range buildComponents[1:] {
-		l := rty.NewLine()
-		l.Add(rty.TextString("         "))
+		l := rty.NewLine("build component")
+		l.Add(rty.TextString("indent", "         "))
 		l.Add(c)
 		layout.Add(l)
 	}
@@ -321,7 +348,7 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 			podStatusColor = tcell.ColorDefault
 		}
 
-		sb := rty.NewStringBuilder()
+		sb := rty.NewStringBuilder("k8s sb")
 		sb.Fg(cLightText).Text("    K8S: ").Fg(tcell.ColorDefault)
 		sb.Textf("Pod [%s] • %s ago — ", res.PodName, formatDuration(time.Since(res.PodCreationTime)))
 		sb.Fg(podStatusColor).Text(res.PodStatus).Fg(tcell.ColorDefault)
@@ -334,7 +361,7 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 		layout.Add(sb.Build())
 
 		if len(res.Endpoints) != 0 {
-			sb := rty.NewStringBuilder()
+			sb := rty.NewStringBuilder("endpoints sb")
 			sb.Textf("         %s", strings.Join(res.Endpoints, " "))
 			layout.Add(sb.Build())
 		}
@@ -342,15 +369,15 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 		if res.PodRestarts > 0 {
 			logLines := abbreviateLog(res.PodLog)
 			if len(logLines) > 0 {
-				layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+				layout.Add(rty.NewStringBuilder("pod log sb").Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
 				for _, logLine := range logLines[1:] {
-					layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+					layout.Add(rty.TextString("pod log line", fmt.Sprintf("         %s", logLine)))
 				}
 			}
 		}
 	}
 
-	layout.Add(rty.NewLine())
+	layout.Add(rty.NewLine("new line between resources"))
 
 	return layout
 }

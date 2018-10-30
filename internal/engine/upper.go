@@ -104,6 +104,13 @@ func (u Upper) RunHud(ctx context.Context) error {
 	state := u.store.LockMutableState()
 	state.HudRunning = true
 	u.store.UnlockMutableState()
+	defer func() {
+		if r := recover(); r != nil {
+			u.hud.Close()
+			panic(r)
+		}
+	}()
+
 	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
 	u.hudErrorCh <- err
 	state.HudRunning = false
@@ -461,7 +468,7 @@ func populateContainerStatus(ctx context.Context, ms *store.ManifestState, pod *
 	ms.Pod.ContainerPorts = ports
 
 	forwards := PopulatePortForwards(ms.Manifest, ms.Pod)
-	if len(forwards) < len(ms.Manifest.PortForwards) {
+	if len(forwards) < len(ms.Manifest.PortForwards()) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			ms.Manifest.Name, ms.Pod.PodID)
@@ -568,6 +575,8 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, service *
 func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
+
+	engineState.GlobalYAML = action.GlobalYAMLManifest
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)

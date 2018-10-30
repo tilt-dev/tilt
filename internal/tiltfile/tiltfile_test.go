@@ -63,7 +63,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifests(name string) []model.Manifest {
+func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -72,7 +72,7 @@ func (f *gitRepoFixture) LoadManifests(name string) []model.Manifest {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, err := tiltconfig.GetManifestConfigs(name)
+	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(names...)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
@@ -93,7 +93,7 @@ func (f *gitRepoFixture) LoadManifestForError(name string) error {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	_, err = tiltconfig.GetManifestConfigs(name)
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(name)
 	if err == nil {
 		f.T().Fatal("Expected manifest load error")
 	}
@@ -162,7 +162,7 @@ func TestGetManifestConfig(t *testing.T) {
 	assert.Equal(t, []string{"sh", "-c", "go install github.com/windmilleng/blorgly-frontend/server/..."}, manifest.Steps[0].Cmd.Argv, "first step")
 	assert.Equal(t, []string{"sh", "-c", "echo hi"}, manifest.Steps[1].Cmd.Argv, "second step")
 	assert.Equal(t, []string{"sh", "-c", "the entrypoint"}, manifest.Entrypoint.Argv)
-	assert.Equal(t, f.JoinPath("Tiltfile"), manifest.TiltFilename)
+	assert.Equal(t, f.JoinPath("Tiltfile"), manifest.TiltFilename())
 }
 
 func TestOldMountSyntax(t *testing.T) {
@@ -663,7 +663,7 @@ def blorgly():
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
-	_, err = tiltconfig.GetManifestConfigs("blorgly")
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "isn't a valid git repo")
 	}
@@ -894,7 +894,7 @@ def blorgly():
 			LocalPort:     8001,
 			ContainerPort: 443,
 		},
-	}, manifest.PortForwards)
+	}, manifest.PortForwards())
 }
 
 func TestSymlinkInPath(t *testing.T) {
@@ -918,7 +918,7 @@ def blorgly():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, err := tiltconfig.GetManifestConfigs("blorgly")
+	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML("blorgly")
 	if err != nil {
 		t.Fatal("getting manifest config:", err)
 	}
@@ -928,7 +928,7 @@ def blorgly():
 	// but the file watchers would emit the real path, which would
 	// break systems where the directory had a symlink somewhere in the
 	// ancestor tree.
-	assert.Equal(t, f.JoinPath("real", FileName), manifest.TiltFilename)
+	assert.Equal(t, f.JoinPath("real", FileName), manifest.TiltFilename())
 	assert.Equal(t, f.JoinPath("real"), manifest.Mounts[0].LocalPath)
 }
 
@@ -1021,4 +1021,33 @@ def blorgly():
 		"service.yaml",
 	})
 	assert.Equal(t, expected, manifest.ConfigFiles)
+}
+
+func TestGlobalYAML(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("global.yaml", "this is the global yaml")
+	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
+global_yaml(yaml)`)
+
+	tiltconfig, err := Load(f.ctx, FileName)
+	if err != nil {
+		f.T().Fatal("loading tiltconfig:", err)
+	}
+	assert.Equal(t, tiltconfig.globalYAMLStr, "this is the global yaml")
+	assert.Equal(t, tiltconfig.globalYAMLDeps, []string{f.JoinPath("global.yaml")})
+}
+
+func TestGlobalYAMLMultipleCallsThrowsError(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `global_yaml('abc')
+global_yaml('def')`)
+
+	_, err := Load(f.ctx, FileName)
+	if assert.Error(t, err, "expect multiple invocations of `global_yaml` to result in error") {
+		assert.Equal(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
+	}
 }

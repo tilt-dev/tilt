@@ -123,13 +123,17 @@ type portForwardEntry struct {
 	cancel             func()
 }
 
+type portForwardableManifest interface {
+	PortForwards() []model.PortForward
+}
+
 // Extract the port-forward specs from the manifest. If any of them
 // have ContainerPort = 0, populate them with the default port in the pod spec.
 // Quietly drop forwards that we can't populate.
-func PopulatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
+func PopulatePortForwards(m portForwardableManifest, pod store.Pod) []model.PortForward {
 	cPorts := pod.ContainerPorts
-	forwards := make([]model.PortForward, 0, len(m.PortForwards))
-	for _, forward := range m.PortForwards {
+	forwards := make([]model.PortForward, 0, len(m.PortForwards()))
+	for _, forward := range m.PortForwards() {
 		if forward.ContainerPort == 0 {
 			if len(cPorts) == 0 {
 				continue

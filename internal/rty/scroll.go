@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -15,6 +16,10 @@ type TextScrollLayout struct {
 
 func NewTextScrollLayout(name string) *TextScrollLayout {
 	return &TextScrollLayout{name: name}
+}
+
+func (l *TextScrollLayout) Name() string {
+	return l.name
 }
 
 func (l *TextScrollLayout) Add(c Component) {
@@ -224,8 +229,8 @@ func (s *TextScrollController) SetFollow(follow bool) {
 func NewScrollingWrappingTextArea(name string, text string) Component {
 	l := NewTextScrollLayout(name)
 	lines := strings.Split(text, "\n")
-	for _, line := range lines {
-		l.Add(TextString(line + "\n"))
+	for i, line := range lines {
+		l.Add(TextString(fmt.Sprintf("%s line %d", name, i), line+"\n"))
 	}
 	return l
 }
@@ -237,6 +242,10 @@ type ElementScrollLayout struct {
 
 func NewElementScrollLayout(name string) *ElementScrollLayout {
 	return &ElementScrollLayout{name: name}
+}
+
+func (l *ElementScrollLayout) Name() string {
+	return l.name
 }
 
 func (l *ElementScrollLayout) Add(c Component) {

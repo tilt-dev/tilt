@@ -41,6 +41,8 @@ type TextScroller interface {
 type Component interface {
 	Size(availWidth, availHeight int) (int, int)
 	Render(w Writer, width, height int) error
+
+	Name() string
 }
 
 type Writer interface {

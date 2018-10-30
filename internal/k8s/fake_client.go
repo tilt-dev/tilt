@@ -82,7 +82,7 @@ func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interf
 	return watch.NewEmptyWatch(), nil
 }
 
-func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace) (io.ReadCloser, error) {
+func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}
