@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -41,15 +40,11 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b                   BuildAndDeployer
-	timerMaker          timerMaker
-	podWatcherMaker     PodWatcherMaker
-	serviceWatcherMaker ServiceWatcherMaker
-	k8s                 k8s.Client
-	reaper              build.ImageReaper
-	hud                 hud.HeadsUpDisplay
-	store               *store.Store
-	hudErrorCh          chan error
+	b          BuildAndDeployer
+	reaper     build.ImageReaper
+	hud        hud.HeadsUpDisplay
+	store      *store.Store
+	hudErrorCh chan error
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -69,7 +64,7 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
+func NewUpper(ctx context.Context, b BuildAndDeployer,
 	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {
 
@@ -83,8 +78,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 
 	return Upper{
 		b:          b,
-		timerMaker: time.After,
-		k8s:        k8s,
 		reaper:     reaper,
 		hud:        hud,
 		store:      st,
@@ -607,11 +600,6 @@ func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAct
 	}
 
 	return false
-}
-
-func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
-	lb, _ := u.k8s.ResolveLoadBalancer(ctx, spec)
-	return lb.URL
 }
 
 func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
