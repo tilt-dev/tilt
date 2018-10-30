@@ -92,13 +92,15 @@ func (u Upper) RunHud(ctx context.Context) error {
 	return err
 }
 
-func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
+func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
+	globalYAML model.YAMLManifest, watchMounts bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
 	defer span.Finish()
 
 	u.store.Dispatch(InitAction{
-		WatchMounts: watchMounts,
-		Manifests:   manifests,
+		WatchMounts:        watchMounts,
+		Manifests:          manifests,
+		GlobalYAMLManifest: globalYAML,
 	})
 
 	defer func() {

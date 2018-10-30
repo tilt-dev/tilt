@@ -189,7 +189,7 @@ func (s Script) Run(ctx context.Context) error {
 		defer s.cleanUp(context.Background(), manifests)
 
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-		return s.upper.CreateManifests(ctx, manifests, true)
+		return s.upper.CreateManifests(ctx, manifests, model.YAMLManifest{}, true)
 	})
 
 	return g.Wait()
