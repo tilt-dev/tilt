@@ -1466,7 +1466,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	log := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
-	st := store.NewStore()
+	st := store.NewStore(UpperReducer)
 
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)

@@ -108,36 +108,16 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
 		<-u.hudErrorCh
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-			// Reducers
-		case action := <-u.store.Actions():
-			state := u.store.LockMutableState()
-			err := reduceAction(ctx, state, action)
-			if err != nil {
-				state.PermanentError = err
-			}
-			u.store.UnlockMutableState()
-		}
-
-		// Subscribers
-		done, err := maybeFinished(u.store)
-		if done {
-			return err
-		}
-		u.store.NotifySubscribers(ctx)
-	}
+	return u.store.Loop(ctx)
 }
 
-func reduceAction(ctx context.Context, state *store.EngineState, action store.Action) error {
+var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineState, action store.Action) {
+	var err error
 	switch action := action.(type) {
 	case InitAction:
-		return handleInitAction(ctx, state, action)
+		err = handleInitAction(ctx, state, action)
 	case ErrorAction:
-		return action.Error
+		err = action.Error
 	case manifestFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
@@ -147,7 +127,7 @@ func reduceAction(ctx context.Context, state *store.EngineState, action store.Ac
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
-		return handleCompletedBuild(ctx, state, action)
+		err = handleCompletedBuild(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
@@ -155,26 +135,13 @@ func reduceAction(ctx context.Context, state *store.EngineState, action store.Ac
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
 	default:
-		return fmt.Errorf("unrecognized action: %T", action)
-	}
-	return nil
-}
-
-func maybeFinished(st *store.Store) (bool, error) {
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	if len(state.ManifestStates) == 0 {
-		return false, nil
+		err = fmt.Errorf("unrecognized action: %T", action)
 	}
 
-	if state.PermanentError != nil {
-		return true, state.PermanentError
+	if err != nil {
+		state.PermanentError = err
 	}
-
-	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
-	return finished, nil
-}
+})
 
 func handleManifestReloaded(ctx context.Context, state *store.EngineState, action ManifestReloadedAction) {
 	state.BuildControllerActionCount++

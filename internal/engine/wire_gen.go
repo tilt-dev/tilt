@@ -20,7 +20,8 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
-	storeStore := store.NewStore()
+	reducer := _wireReducerValue
+	storeStore := store.NewStore(reducer)
 	deployDiscovery := NewDeployDiscovery(k8s2, storeStore)
 	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
@@ -43,12 +44,13 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k
 }
 
 var (
-	_wireLabelsValue = build.Labels{}
+	_wireReducerValue = UpperReducer
+	_wireLabelsValue  = build.Labels{}
 )
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(build.Labels{}), build.DefaultImageBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, build.NewContainerResolver, NewSyncletBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(build.Labels{}), wire.Value(UpperReducer), build.DefaultImageBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, build.NewContainerResolver, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	DefaultBuildOrder,
 	NewDeployDiscovery, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
