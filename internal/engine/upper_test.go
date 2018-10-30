@@ -144,7 +144,7 @@ func TestUpper_Up(t *testing.T) {
 	manifest := f.newManifest("foobar", nil)
 
 	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
-		"some great yaml", []string{"foo", "bar"})
+		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
 	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, gYaml, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
