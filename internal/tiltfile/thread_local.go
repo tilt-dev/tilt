@@ -13,6 +13,14 @@ const reposKey = "repos"
 const globalYAMLKey = "globalYaml"
 const globalYAMLDepsKey = "globalYamlDeps"
 
+func setGlobalYAML(t *skylark.Thread, yaml string) {
+	t.SetLocal(globalYAMLKey, yaml)
+}
+
+func setGlobalYAMLDeps(t *skylark.Thread, deps []string) {
+	t.SetLocal(globalYAMLDepsKey, deps)
+}
+
 func getGlobalYAML(t *skylark.Thread) (string, error) {
 	obj := t.Local(globalYAMLKey)
 	if obj == nil {
