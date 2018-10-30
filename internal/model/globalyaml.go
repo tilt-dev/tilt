@@ -1,7 +1,5 @@
 package model
 
-import "github.com/docker/distribution/reference"
-
 const GlobalYAMLManifestName = ManifestName("GlobalYAML")
 
 type YAMLManifest struct {
@@ -41,18 +39,4 @@ func (YAMLManifest) LocalRepos() []LocalGithubRepo {
 
 func (y YAMLManifest) K8sYAML() string {
 	return y.k8sYAML
-}
-
-// TODO(dmiller): not sure if this is right
-func (YAMLManifest) DockerRef() reference.Named {
-	n, err := reference.ParseNamed("")
-	if err != nil {
-		// This space intentionally left blank
-	}
-
-	return n
-}
-
-func (y YAMLManifest) Empty() bool {
-	return y.k8sYAML == ""
 }
