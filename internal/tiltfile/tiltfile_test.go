@@ -63,7 +63,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
+func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest) {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -72,10 +72,15 @@ func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(names...)
+	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(names...)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
+	return manifests, globalYAML
+}
+
+func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
+	manifests, _ := f.LoadManifestsAndGlobalYAML(names...)
 	return manifests
 }
 
@@ -85,6 +90,11 @@ func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
 		f.T().Fatalf("expected 1 manifest, actual: %d", len(manifests))
 	}
 	return manifests[0]
+}
+
+func (f *gitRepoFixture) LoadGlobalYAML() model.YAMLManifest {
+	_, globalYAML := f.LoadManifestsAndGlobalYAML()
+	return globalYAML
 }
 
 func (f *gitRepoFixture) LoadManifestForError(name string) error {
@@ -1031,12 +1041,9 @@ func TestGlobalYAML(t *testing.T) {
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
 global_yaml(yaml)`)
 
-	tiltconfig, err := Load(f.ctx, FileName)
-	if err != nil {
-		f.T().Fatal("loading tiltconfig:", err)
-	}
-	assert.Equal(t, tiltconfig.globalYAMLStr, "this is the global yaml")
-	assert.Equal(t, tiltconfig.globalYAMLDeps, []string{f.JoinPath("global.yaml")})
+	globalYAML := f.LoadGlobalYAML()
+	assert.Equal(t, globalYAML.K8sYAML(), "this is the global yaml")
+	assert.Equal(t, globalYAML.Dependencies(), []string{f.JoinPath("global.yaml")})
 }
 
 func TestGlobalYAMLMultipleCallsThrowsError(t *testing.T) {
@@ -1050,4 +1057,35 @@ global_yaml('def')`)
 	if assert.Error(t, err, "expect multiple invocations of `global_yaml` to result in error") {
 		assert.Equal(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
 	}
+}
+
+func TestAllManifestsHaveGlobalYAMLDependencies(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("fileA", "apples")
+	f.WriteFile("fileB", "bananas")
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+
+	f.WriteFile("global.yaml", "this is the global yaml")
+	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
+global_yaml(yaml)
+
+def manifestA():
+  stuff = read_file('./fileA')  # this is a dependency now
+  image = static_build('Dockerfile', 'tag-a')
+  return k8s_service("yamlA", image)
+
+def manifestB():
+  stuff = read_file('./fileB')  # this is a dependency now
+  image = static_build('Dockerfile', 'tag-b')
+  return k8s_service("yamlB", image)
+`)
+
+	manifests := f.LoadManifests("manifestA", "manifestB")
+
+	expectedDepsA := []string{"fileA", "Dockerfile", "Tiltfile", "global.yaml"}
+	expectedDepsB := []string{"fileB", "Dockerfile", "Tiltfile", "global.yaml"}
+	assert.ElementsMatch(t, manifests[0].ConfigFiles, f.JoinPaths(expectedDepsA))
+	assert.ElementsMatch(t, manifests[1].ConfigFiles, f.JoinPaths(expectedDepsB))
 }

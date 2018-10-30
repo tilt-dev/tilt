@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ManifestName string
@@ -214,7 +215,12 @@ func (m Manifest) Dependencies() []string {
 		deps = append(deps, f)
 	}
 
-	return deps
+	return sliceutils.DedupeStringSlice(deps)
+}
+
+func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
+	m.ConfigFiles = confFiles
+	return m
 }
 
 func (m Manifest) LocalRepos() []LocalGithubRepo {
