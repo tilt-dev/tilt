@@ -1471,8 +1471,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 
-	upper := NewUpper(ctx, b, k8s, reaper, hud, pw, sw, st, plm, pfc, fwm, fswm, bc)
-	upper.timerMaker = timerMaker.maker()
+	upper := NewUpper(ctx, b, reaper, hud, pw, sw, st, plm, pfc, fwm, fswm, bc)
 	upper.hudErrorCh = make(chan error)
 
 	go func() {
