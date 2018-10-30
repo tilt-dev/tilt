@@ -56,10 +56,3 @@ func (YAMLManifest) DockerRef() reference.Named {
 func (y YAMLManifest) Empty() bool {
 	return y.k8sYAML == ""
 }
-
-func (y1 YAMLManifest) Equal(y2 YAMLManifest) bool {
-	// TODO(dmiller): do I neeed to check config files here?
-	// Presumably if they change but it doesn't result in a change to
-	// `k8syaml` we don't care
-	return y1.name == y2.name && y1.k8sYAML == y2.k8sYAML
-}

@@ -33,7 +33,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 	st.RUnlockState()
 
 	newK8sEntities := []k8s.K8sEntity{}
-	if !m.Equal(c.lastGlobalYAMLManifest) {
+	if m.K8sYAML() != c.lastGlobalYAMLManifest.K8sYAML() {
 		logger.Get(ctx).Debugf("Gotta rebuild/apply the global YAML!")
 		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
 		if err != nil {
