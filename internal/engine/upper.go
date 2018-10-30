@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -41,7 +39,6 @@ const maxChangedFilesToPrint = 5
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	b          BuildAndDeployer
-	reaper     build.ImageReaper
 	hud        hud.HeadsUpDisplay
 	store      *store.Store
 	hudErrorCh chan error
@@ -65,8 +62,10 @@ func ProvideTimerMaker() timerMaker {
 }
 
 func NewUpper(ctx context.Context, b BuildAndDeployer,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {
+	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
+	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
+	ic *ImageController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -75,10 +74,10 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(fwm)
 	st.AddSubscriber(pw)
 	st.AddSubscriber(sw)
+	st.AddSubscriber(ic)
 
 	return Upper{
 		b:          b,
-		reaper:     reaper,
 		hud:        hud,
 		store:      st,
 		hudErrorCh: make(chan error),
@@ -115,7 +114,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 			// Reducers
 		case action := <-u.store.Actions():
 			state := u.store.LockMutableState()
-			err := u.reduceAction(ctx, state, action)
+			err := reduceAction(ctx, state, action)
 			if err != nil {
 				state.PermanentError = err
 			}
@@ -131,10 +130,10 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 	}
 }
 
-func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, action store.Action) error {
+func reduceAction(ctx context.Context, state *store.EngineState, action store.Action) error {
 	switch action := action.(type) {
 	case InitAction:
-		return u.handleInitAction(ctx, state, action)
+		return handleInitAction(ctx, state, action)
 	case ErrorAction:
 		return action.Error
 	case manifestFilesChangedAction:
@@ -532,7 +531,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, service *
 	ms.LBs[k8s.ServiceName(service.Name)] = url
 }
 
-func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
+func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
@@ -543,15 +542,6 @@ func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineSt
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
 	}
 	engineState.WatchMounts = watchMounts
-
-	if watchMounts {
-		go func() {
-			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
-			if err != nil {
-				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
-			}
-		}()
-	}
 
 	for _, m := range manifests {
 		enqueueBuild(engineState, m.Name)
@@ -600,24 +590,6 @@ func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAct
 	}
 
 	return false
-}
-
-func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
-	refs := make([]reference.Named, len(manifests))
-	for i, s := range manifests {
-		refs[i] = s.DockerRef()
-	}
-
-	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
-	for _, ref := range refs {
-		nameFilter := build.FilterByRefName(ref)
-		err := u.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
-		if err != nil {
-			return fmt.Errorf("reapOldWatchBuilds: %v", err)
-		}
-	}
-
-	return nil
 }
 
 // TODO(nick): This should be in the HUD

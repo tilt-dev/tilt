@@ -40,6 +40,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewBuildController,
 	engine.NewPodWatcher,
 	engine.NewServiceWatcher,
+	engine.NewImageController,
 
 	provideClock,
 	hud.NewRenderer,

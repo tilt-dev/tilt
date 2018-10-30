@@ -741,6 +741,7 @@ go build ./...
 	f.assertAllBuildsConsumed()
 }
 
+// Checks that the image reaper kicks in and GCs old images.
 func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -748,11 +749,16 @@ func TestReapOldBuilds(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 
 	f.docker.BuildCount++
-	err := f.upper.reapOldWatchBuilds(f.ctx, []model.Manifest{manifest}, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("images reaped", func(store.EngineState) bool {
+		return len(f.docker.RemovedImageIDs) > 0
+	})
+
 	assert.Equal(t, []string{"build-id-0"}, f.docker.RemovedImageIDs)
+	err := f.Stop()
+	assert.Nil(t, err)
 }
 
 func TestHudUpdated(t *testing.T) {
@@ -1470,8 +1476,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
+	ic := NewImageController(reaper)
 
-	upper := NewUpper(ctx, b, reaper, hud, pw, sw, st, plm, pfc, fwm, fswm, bc)
+	upper := NewUpper(ctx, b, hud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic)
 	upper.hudErrorCh = make(chan error)
 
 	go func() {
