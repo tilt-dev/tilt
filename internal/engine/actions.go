@@ -85,3 +85,9 @@ type BuildStartedAction struct {
 }
 
 func (BuildStartedAction) Action() {}
+
+type GlobalYAMLManifestReloadedAction struct {
+	GlobalYAML model.YAMLManifest
+}
+
+func (GlobalYAMLManifestReloadedAction) Action() {}
