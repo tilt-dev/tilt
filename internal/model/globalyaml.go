@@ -33,10 +33,6 @@ func (y YAMLManifest) ConfigMatcher() (PathMatcher, error) {
 	return configMatcher, nil
 }
 
-func (YAMLManifest) LocalRepos() []LocalGithubRepo {
-	return []LocalGithubRepo{}
-}
-
 func (y YAMLManifest) K8sYAML() string {
 	return y.k8sYAML
 }

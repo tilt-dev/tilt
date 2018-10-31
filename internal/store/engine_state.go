@@ -44,7 +44,8 @@ type EngineState struct {
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
 	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
-	GlobalYAML model.YAMLManifest
+	GlobalYAML      model.YAMLManifest
+	GlobalYAMLState *YAMLManifestState
 }
 
 type ManifestState struct {
@@ -91,6 +92,23 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		PendingFileChanges: make(map[string]bool),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
 		CurrentBuildLog:    &bytes.Buffer{},
+	}
+}
+
+type YAMLManifestState struct {
+	Manifest        model.YAMLManifest
+	HasBeenDeployed bool
+
+	CurrentApplyStartTime   time.Time
+	LastError               error
+	LastApplyFinishTime     time.Time
+	LastSuccessfulApplyTime time.Time
+	LastApplyDuration       time.Duration
+}
+
+func NewYAMLManifestState(manifest model.YAMLManifest) *YAMLManifestState {
+	return &YAMLManifestState{
+		Manifest: manifest,
 	}
 }
 
@@ -253,6 +271,34 @@ func StateToView(s EngineState) view.View {
 			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
 			PodLog:                ms.Pod.Log(),
 			Endpoints:             endpoints,
+		}
+
+		ret.Resources = append(ret.Resources, r)
+	}
+
+	if s.GlobalYAML.K8sYAML() != "" {
+		var absWatches []string
+		for _, p := range s.GlobalYAML.Dependencies() {
+			absWatches = append(absWatches, p)
+		}
+		relWatches := ospath.TryAsCwdChildren(absWatches)
+
+		var lastError string
+
+		if s.GlobalYAMLState.LastError != nil {
+			lastError = s.GlobalYAMLState.LastError.Error()
+		} else {
+			lastError = ""
+		}
+
+		r := view.Resource{
+			Name:                  s.GlobalYAML.ManifestName().String(),
+			DirectoriesWatched:    relWatches,
+			CurrentBuildStartTime: s.GlobalYAMLState.CurrentApplyStartTime,
+			LastBuildFinishTime:   s.GlobalYAMLState.LastApplyFinishTime,
+			LastBuildDuration:     s.GlobalYAMLState.LastApplyDuration,
+			LastDeployTime:        s.GlobalYAMLState.LastSuccessfulApplyTime,
+			LastBuildError:        lastError,
 		}
 
 		ret.Resources = append(ret.Resources, r)
