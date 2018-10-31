@@ -71,7 +71,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 		return demo.Script{}, err
 	}
 	podWatcher := engine.NewPodWatcher(k8sClient)
-	serviceWatcher := engine.NewServiceWatcher(k8sClient)
+	nodeIP, err := k8s.DetectNodeIP(ctx, env)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -142,7 +146,11 @@ func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
 	podWatcher := engine.NewPodWatcher(k8sClient)
-	serviceWatcher := engine.NewServiceWatcher(k8sClient)
+	nodeIP, err := k8s.DetectNodeIP(ctx, env)
+	if err != nil {
+		return HudAndUpper{}, err
+	}
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -177,7 +185,7 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
+var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.DetectNodeIP, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,

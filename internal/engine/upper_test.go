@@ -1301,7 +1301,8 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	f.upper.store.Dispatch(NewServiceChangeAction(testService("myservice", "foobar", "1.2.3.4", 8080)))
+	svc := testService("myservice", "foobar", "1.2.3.4", 8080)
+	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifest("lb updated", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.LBs) > 0
@@ -1320,6 +1321,42 @@ func TestUpper_ServiceEvent(t *testing.T) {
 		t.Fatalf("%v did not contain key 'myservice'", ms.LBs)
 	}
 	assert.Equal(t, "http://1.2.3.4:8080/", url.String())
+}
+
+func TestUpper_ServiceEventRemovesURL(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	svc := testService("myservice", "foobar", "1.2.3.4", 8080)
+	dispatchServiceChange(f.store, svc, "")
+
+	f.WaitUntilManifest("lb url added", "foobar", func(ms store.ManifestState) bool {
+		url := ms.LBs["myservice"]
+		if url == nil {
+			return false
+		}
+		return "http://1.2.3.4:8080/" == url.String()
+	})
+
+	svc = testService("myservice", "foobar", "1.2.3.4", 8080)
+	svc.Status = v1.ServiceStatus{}
+	dispatchServiceChange(f.store, svc, "")
+
+	f.WaitUntilManifest("lb url removed", "foobar", func(ms store.ManifestState) bool {
+		url := ms.LBs["myservice"]
+		return url == nil
+	})
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
 }
 
 func TestUpper_PodLogs(t *testing.T) {
@@ -1341,25 +1378,6 @@ func TestUpper_PodLogs(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-}
-
-func TestCancelingUpperCancelsHud(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	assert.True(t, f.hud.Canceled)
 }
 
 func TestInitWithGlobalYAML(t *testing.T) {
@@ -1425,20 +1443,6 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
-func makeFakePodWatcherMaker(ch chan *v1.Pod) func(context.Context, *store.Store) error {
-	return func(ctx context.Context, st *store.Store) error {
-		go dispatchPodChangesLoop(ctx, ch, st)
-		return nil
-	}
-}
-
-func makeFakeServiceWatcherMaker(ch chan *v1.Service) func(context.Context, *store.Store) error {
-	return func(ctx context.Context, st *store.Store) error {
-		go dispatchServiceChangesLoop(ctx, ch, st)
-		return nil
-	}
-}
-
 type testFixture struct {
 	*tempdir.TempDirFixture
 	ctx                   context.Context
@@ -1468,7 +1472,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	k8s := k8s.NewFakeK8sClient()
 	pw := NewPodWatcher(k8s)
-	sw := NewServiceWatcher(k8s)
+	sw := NewServiceWatcher(k8s, "")
 
 	fakeHud := hud.NewFakeHud()
 

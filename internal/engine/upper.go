@@ -111,7 +111,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case PodChangeAction:
 		handlePodEvent(ctx, state, action.Pod)
 	case ServiceChangeAction:
-		handleServiceEvent(ctx, state, action.Service)
+		handleServiceEvent(ctx, state, action)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
@@ -477,7 +477,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
 }
 
-func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
+func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
+	service := action.Service
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
@@ -489,13 +490,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, service *
 		return
 	}
 
-	url, err := k8s.ServiceURL(service)
-	if err != nil {
-		logger.Get(ctx).Infof("error resolving service %s: %v", manifestName, err)
-		return
-	}
-
-	ms.LBs[k8s.ServiceName(service.Name)] = url
+	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {

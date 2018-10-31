@@ -51,11 +51,6 @@ func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{}
 }
 
-func (c *FakeK8sClient) ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	c.Lb = lb
-	return LoadBalancer{}, nil
-}
-
 func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	yaml, err := SerializeYAML(entities)
 	if err != nil {

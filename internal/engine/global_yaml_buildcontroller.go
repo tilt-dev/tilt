@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -34,17 +33,16 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 
 	newK8sEntities := []k8s.K8sEntity{}
 	if m.K8sYAML() != c.lastGlobalYAMLManifest.K8sYAML() {
-		logger.Get(ctx).Debugf("Gotta rebuild/apply the global YAML!")
 		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
 		if err != nil {
-			st.Dispatch(NewErrorAction(err))
+			logger.Get(ctx).Infof("Error parsing global_yaml: %v", err)
 			return
 		}
 
 		for _, e := range entities {
 			e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
 			if err != nil {
-				st.Dispatch(NewErrorAction(err))
+				logger.Get(ctx).Infof("Error injecting labels in to global_yaml: %v", err)
 				return
 			}
 
@@ -53,7 +51,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 			// set "Always" for development are shooting their own feet.
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
-				st.Dispatch(NewErrorAction(err))
+				logger.Get(ctx).Infof("Error injecting image pull policy in to global_yaml: %v", err)
 				return
 			}
 
@@ -62,7 +60,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 
 		err = c.k8sClient.Upsert(ctx, newK8sEntities)
 		if err != nil {
-			st.Dispatch(NewErrorAction(fmt.Errorf("Unable to upsert global YAML: %v", err)))
+			logger.Get(ctx).Infof("Error upserting global_yaml: %v", err)
 		} else {
 			c.lastGlobalYAMLManifest = m
 		}
