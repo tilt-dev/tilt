@@ -155,7 +155,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 			if ch == '\n' {
 				if nextX == 0 && w != nil {
 					// make sure we take up our space
-					w.SetContent(nextY, nextY, ch, nil)
+					w.SetContent(nextX, nextY, ch, nil)
 				}
 				nextX, nextY = 0, nextY+1
 				continue
