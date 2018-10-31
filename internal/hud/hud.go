@@ -23,7 +23,7 @@ const DefaultRefreshInterval = 1 * time.Second
 type HeadsUpDisplay interface {
 	store.Subscriber
 
-	Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error
+	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
 	Update(v view.View) error
 	Close()
 	SetNarrationMessage(ctx context.Context, msg string)
@@ -58,7 +58,7 @@ func logModal(r rty.RTY) rty.TextScroller {
 	return r.TextScroller(logScrollerName)
 }
 
-func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error {
+func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
 	screenEvents, err := h.r.SetUp()
 	if err != nil {
 		return errors.Wrap(err, "error initializing renderer")
@@ -80,7 +80,7 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 				return nil
 			}
 		case e := <-screenEvents:
-			done := h.handleScreenEvent(ctx, st, e)
+			done := h.handleScreenEvent(ctx, dispatch, e)
 			if done {
 				return nil
 			}
@@ -94,7 +94,7 @@ func (h *Hud) Close() {
 	h.r.Reset()
 }
 
-func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) (done bool) {
+func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.Action), ev tcell.Event) (done bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -106,7 +106,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
-				st.Dispatch(NewShowErrorAction(int(r - '0')))
+				dispatch(NewShowErrorAction(int(r - '0')))
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to
@@ -123,7 +123,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 				}
 			case r == 'q': // [Q]uit
 				h.Close()
-				st.Dispatch(ExitAction{})
+				dispatch(ExitAction{})
 				return true
 			case r == 'l': // [L]og
 				if !h.viewState.LogModal.IsActive() {
@@ -133,7 +133,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 			}
 		case tcell.KeyCtrlC:
 			h.Close()
-			st.Dispatch(ExitAction{})
+			dispatch(ExitAction{})
 			return true
 		case tcell.KeyUp:
 			h.selectedScroller(h.r.rty).Up()

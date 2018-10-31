@@ -38,10 +38,8 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b          BuildAndDeployer
-	hud        hud.HeadsUpDisplay
-	store      *store.Store
-	hudErrorCh chan error
+	b     BuildAndDeployer
+	store *store.Store
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -78,10 +76,8 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(gybc)
 
 	return Upper{
-		b:          b,
-		hud:        hud,
-		store:      st,
-		hudErrorCh: make(chan error),
+		b:     b,
+		store: st,
 	}
 }
 
@@ -93,17 +89,8 @@ func (u Upper) NewLogActionLogger(ctx context.Context) logger.Logger {
 	})
 }
 
-func (u Upper) RunHud(ctx context.Context) {
-	state.HudRunning = true
-	defer func() {
-		if r := recover(); r != nil {
-			u.hud.Close()
-			panic(r)
-		}
-	}()
-
-	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
-	u.store.Dispatch(NewHudStoppedAction(err))
+func (u Upper) Dispatch(action store.Action) {
+	u.store.Dispatch(action)
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
@@ -116,10 +103,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 	})
-
-	defer func() {
-		u.hud.Close()
-	}()
 
 	return u.store.Loop(ctx)
 }
@@ -536,7 +519,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, service *
 	ms.LBs[k8s.ServiceName(service.Name)] = url
 }
 
-func (u *Upper) handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
+func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
@@ -553,12 +536,6 @@ func (u *Upper) handleInitAction(ctx context.Context, engineState *store.EngineS
 	}
 	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
 	return nil
-}
-
-func (u Upper) handleHudStoppedAction(state *store.EngineState, err error) {
-	u.hudErrorCh <- err
-	state.HudRunning = false
-	close(u.hudErrorCh)
 }
 
 func handleExitAction(state *store.EngineState) {
