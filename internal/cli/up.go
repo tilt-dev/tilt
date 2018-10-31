@@ -85,7 +85,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(args...)
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
 	if err != nil {
 		return err
 	}

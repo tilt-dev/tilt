@@ -137,7 +137,31 @@ def doggos_with_secret():
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosServiceYaml)
 }
 
-func assertYAMLEqual(t *testing.T, y1, y2 string) {
+func TestExtractedYAMLAssociatesViaImageAndSelector(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	gYAMLStr := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml, testyaml.SecretYaml)
+	f.WriteFile("global.yaml", gYAMLStr)
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
+
+def doggos():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
+  return k8s_service("", image)
+`)
+
+	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos")
+
+	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosDeploymentYaml,
+		"expected Deployment yaml on Doggos manifest")
+	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosServiceYaml,
+		"expected Service yaml on Doggos manifest")
+	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML(),
+		"expected global YAML to only contain SecretYaml (all else extracted)")
+}
+
+func assertYAMLEqual(t *testing.T, y1, y2 string, msgAndArgs ...interface{}) {
 	// Obviously equal
 	if y1 == y2 {
 		return
@@ -154,10 +178,10 @@ func assertYAMLEqual(t *testing.T, y1, y2 string) {
 		t.Fatal("parsing y2 to assert equality:", err)
 	}
 
-	assert.ElementsMatch(t, e1, e2)
+	assert.ElementsMatch(t, e1, e2, msgAndArgs...)
 }
 
-func assertYAMLContains(t *testing.T, yaml, check string) {
+func assertYAMLContains(t *testing.T, yaml, check string, msgAndArgs ...interface{}) {
 	entities, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatal("parsing yaml to assert YAML-contains:", err)
@@ -168,6 +192,6 @@ func assertYAMLContains(t *testing.T, yaml, check string) {
 	}
 
 	for _, chk := range checkEntities {
-		assert.Contains(t, entities, chk)
+		assert.Contains(t, entities, chk, msgAndArgs...)
 	}
 }
