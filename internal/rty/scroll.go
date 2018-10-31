@@ -68,7 +68,7 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 	canvases := make([]Canvas, len(l.cs))
 
 	for i, c := range l.cs {
-		childCanvas := w.RenderChildInTemp(c)
+		childCanvas := w.Divide(1, 0, width-1, height).RenderChildInTemp(c)
 		canvases[i] = childCanvas
 		_, childHeight := childCanvas.Size()
 		next.canvasLengths[i] = childHeight
