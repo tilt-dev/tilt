@@ -23,7 +23,7 @@ func TestLogs(t *testing.T) {
 
 	f.kClient.PodLogs = "hello world!"
 
-	state := f.store.LockMutableState()
+	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
@@ -49,7 +49,7 @@ func TestLogActions(t *testing.T) {
 
 	f.kClient.PodLogs = "hello world!\ngoodbye world!\n"
 
-	state := f.store.LockMutableState()
+	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
@@ -72,7 +72,7 @@ func TestLogsFailed(t *testing.T) {
 
 	f.kClient.ContainerLogsError = fmt.Errorf("my-error")
 
-	state := f.store.LockMutableState()
+	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
@@ -99,7 +99,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	f.kClient.PodLogs = "hello world!\n"
 
-	state := f.store.LockMutableState()
+	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
@@ -139,13 +139,23 @@ type plmFixture struct {
 func newPLMFixture(t *testing.T) *plmFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kClient := k8s.NewFakeK8sClient()
-	st := store.NewStore()
-	plm := NewPodLogManager(kClient)
 
 	out := bufsync.NewThreadSafeBuffer()
+	reducer := func(ctx context.Context, state *store.EngineState, action store.Action) {
+		podLog, ok := action.(PodLogAction)
+		if !ok {
+			t.Errorf("Expected action type PodLogAction. Actual: %T", action)
+		}
+		out.Write(podLog.Log)
+	}
+
+	st := store.NewStore(store.Reducer(reducer))
+	plm := NewPodLogManager(kClient)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
+	go st.Loop(ctx)
 
 	return &plmFixture{
 		TempDirFixture: f,
@@ -159,28 +169,20 @@ func newPLMFixture(t *testing.T) *plmFixture {
 }
 
 func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
-	out := []byte{}
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
-	defer cancel()
+	start := time.Now()
+	for time.Since(start) < time.Second {
+		f.store.RLockState()
+		done := strings.Contains(f.out.String(), expected)
+		f.store.RUnlockState()
 
-	for {
-		select {
-		case <-ctx.Done():
-			f.T().Fatalf("Timeout. Collected output: %s", string(out))
-		case action := <-f.store.Actions():
-			podLog, ok := action.(PodLogAction)
-			if !ok {
-				f.T().Errorf("Expected action type PodLogAction. Actual: %T", action)
-			}
-			out = append(out, podLog.Log...)
-			if !strings.Contains(string(out), expected) {
-				continue
-			}
-
-			// we're done!
+		if done {
 			return
 		}
+
+		time.Sleep(10 * time.Millisecond)
 	}
+
+	f.T().Fatalf("Timeout. Collected output: %s", f.out.String())
 }
 
 func (f *plmFixture) TearDown() {

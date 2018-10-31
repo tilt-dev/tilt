@@ -29,9 +29,6 @@ type Tiltfile struct {
 
 	// The filename we're executing. Must be absolute.
 	filename string
-
-	globalYAMLStr  string
-	globalYAMLDeps []string
 }
 
 func init() {
@@ -315,12 +312,15 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 }
 
 func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	if t.globalYAMLStr != "" {
+	yaml, err := getGlobalYAML(thread)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking if globalYAML already set")
+	}
+	if yaml != "" {
 		return nil, fmt.Errorf("`global_yaml` can be called only once per Tiltfile")
 	}
 
-	var yaml string
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml)
+	err = skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml)
 	if err != nil {
 		return nil, err
 	}
@@ -330,8 +330,8 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 		return nil, err
 	}
 
-	t.globalYAMLStr = yaml
-	t.globalYAMLDeps = deps
+	thread.SetLocal(globalYAMLKey, yaml)
+	thread.SetLocal(globalYAMLDepsKey, deps)
 
 	return skylark.None, nil
 }
@@ -382,17 +382,35 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 // a manifest representing the global yaml
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
+
+	gYAML, err := getGlobalYAML(t.thread)
+	if err != nil {
+		return nil, model.YAMLManifest{}, err
+	}
+	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
+	if err != nil {
+		return nil, model.YAMLManifest{}, err
+	}
+	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
+
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(manifestName)
 		if err != nil {
 			return manifests, model.YAMLManifest{}, err
 		}
 
+		// All manifests depend on global YAML, therefore all depend on its dependencies.
+		// TODO(maia): there's probs a better thread-magic way for each individual manifest to
+		// about files opened in the global scope, i.e. files opened when getting global YAML.
+		for i, m := range curManifests {
+			deps := append(m.ConfigFiles, globalYAML.Dependencies()...)
+			curManifests[i] = m.WithConfigFiles(deps)
+		}
+
 		manifests = append(manifests, curManifests...)
 	}
 
-	// TODO(maia): return GlobalYAML here (be sure to put its deps onto all of the resource manifests)
-	return manifests, model.YAMLManifest{}, nil
+	return manifests, globalYAML, nil
 }
 
 func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifest, error) {
@@ -491,12 +509,10 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 	}
 
 	m := model.Manifest{
-		K8sYaml:        k8sYaml,
 		BaseDockerfile: string(baseDockerfileBytes),
 		Mounts:         skylarkMountsToDomain(image.mounts),
 		Steps:          image.steps,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
-		DockerRef:      image.ref,
 		Name:           model.ManifestName(manifest.name),
 		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
@@ -506,7 +522,7 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		Repos: SkylarkReposToDomain(image),
 	}
 
-	m = m.WithPortForwards(manifest.portForwards).WithTiltFilename(image.tiltFilename)
+	m = m.WithPortForwards(manifest.portForwards).WithTiltFilename(image.tiltFilename).WithK8sYAML(k8sYaml).WithDockerRef(image.ref)
 
 	return m, nil
 }

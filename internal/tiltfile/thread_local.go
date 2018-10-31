@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/skylark"
 )
@@ -9,6 +10,36 @@ import (
 const buildContextKey = "buildContext"
 const readFilesKey = "readFiles"
 const reposKey = "repos"
+const globalYAMLKey = "globalYaml"
+const globalYAMLDepsKey = "globalYamlDeps"
+
+func getGlobalYAML(t *skylark.Thread) (string, error) {
+	obj := t.Local(globalYAMLKey)
+	if obj == nil {
+		return "", nil
+	}
+
+	yaml, ok := obj.(string)
+	if !ok {
+		return "", fmt.Errorf(
+			"internal error: %s thread local was not of type string", globalYAMLKey)
+	}
+	return yaml, nil
+}
+
+func getGlobalYAMLDeps(t *skylark.Thread) ([]string, error) {
+	obj := t.Local(globalYAMLDepsKey)
+	if obj == nil {
+		return nil, nil
+	}
+
+	deps, ok := obj.([]string)
+	if !ok {
+		return nil, fmt.Errorf(
+			"internal error: %s thread local was not of type []string", globalYAMLDepsKey)
+	}
+	return deps, nil
+}
 
 func getAndClearBuildContext(t *skylark.Thread) (*dockerImage, error) {
 	obj := t.Local(buildContextKey)

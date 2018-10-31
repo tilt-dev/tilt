@@ -67,7 +67,7 @@ func newContainerBadFixture() *containerBaDFixture {
 
 	cu := build.NewContainerUpdater(fakeDocker)
 	a := analytics.NewMemoryAnalytics()
-	dd := NewDeployDiscovery(fakeK8s, store.NewStore())
+	dd := NewDeployDiscovery(fakeK8s, store.NewStoreForTesting())
 
 	cbad := NewLocalContainerBuildAndDeployer(cu, a, dd)
 

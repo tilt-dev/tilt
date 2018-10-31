@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -85,7 +86,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		return store.BuildResult{}, err
 	}
 
-	return b.nextBuildResult(manifest.DockerRef), nil
+	return b.nextBuildResult(manifest.DockerRef()), nil
 }
 
 func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) bool {
@@ -143,7 +144,9 @@ func TestUpper_Up(t *testing.T) {
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
 
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
+	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
+		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, gYaml, false)
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedManifests []model.Manifest
@@ -156,6 +159,7 @@ func TestUpper_Up(t *testing.T) {
 	defer f.upper.store.RUnlockState()
 	lines := strings.Split(state.ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
 	assert.Contains(t, lines, "fake building foobar")
+	assert.Equal(t, gYaml, state.GlobalYAML)
 }
 
 func TestUpper_UpWatchError(t *testing.T) {
@@ -166,7 +170,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
@@ -196,7 +200,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -235,7 +239,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -275,7 +279,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -302,7 +306,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -320,7 +324,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 		assert.True(t, call.state.IsEmpty())
 		close(closeCh)
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, context.Canceled, err)
 	<-closeCh
 	f.assertAllBuildsConsumed()
@@ -334,7 +338,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, false)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false)
 	expected := fmt.Errorf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
@@ -405,7 +409,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -435,7 +439,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 		// Second call: new manifest!
 		call = <-f.b.calls
 		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYaml)
+		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYAML())
 
 		// Since the manifest changed, we cleared the previous build state to force an image build
 		assert.False(t, call.state.HasImage())
@@ -452,7 +456,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -737,11 +741,12 @@ go build ./...
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
 
+// Checks that the image reaper kicks in and GCs old images.
 func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -749,11 +754,16 @@ func TestReapOldBuilds(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 
 	f.docker.BuildCount++
-	err := f.upper.reapOldWatchBuilds(f.ctx, []model.Manifest{manifest}, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("images reaped", func(store.EngineState) bool {
+		return len(f.docker.RemovedImageIDs) > 0
+	})
+
 	assert.Equal(t, []string{"build-id-0"}, f.docker.RemovedImageIDs)
+	err := f.Stop()
+	assert.Nil(t, err)
 }
 
 func TestHudUpdated(t *testing.T) {
@@ -830,7 +840,7 @@ func TestPodEvent(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	time.Sleep(1 * time.Second)
 	f.assertAllBuildsConsumed()
@@ -939,7 +949,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -1012,7 +1022,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -1076,7 +1086,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		f.fsWatcher.errors <- errors.New("done")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "done", err.Error())
 	}
@@ -1103,7 +1113,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		f.fsWatcher.errors <- errors.New("done")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, true)
+	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "done", err.Error())
 	}
@@ -1370,6 +1380,31 @@ func TestCompletingUpperClosesHud(t *testing.T) {
 	assert.True(t, f.hud.Closed)
 }
 
+func TestInitWithGlobalYAML(t *testing.T) {
+	f := newTestFixture(t)
+	state := f.store.RLockState()
+	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{})
+	state.GlobalYAML = ym
+	f.store.RUnlockState()
+	f.Start([]model.Manifest{}, true)
+	f.store.Dispatch(InitAction{
+		Manifests:          []model.Manifest{},
+		GlobalYAMLManifest: ym,
+	})
+	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
+		return st.GlobalYAML.K8sYAML() == testyaml.BlorgBackendYAML
+	})
+
+	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{})
+	f.store.Dispatch(GlobalYAMLManifestReloadedAction{
+		GlobalYAML: newYM,
+	})
+
+	f.WaitUntil("global YAML manifest gets updated", func(st store.EngineState) bool {
+		return st.GlobalYAML.K8sYAML() == testyaml.BlorgJobYAML
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -1458,7 +1493,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	log := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
-	st := store.NewStore()
+	st := store.NewStore(UpperReducer)
 
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)
@@ -1471,9 +1506,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
+	ic := NewImageController(reaper)
 
-	upper := NewUpper(ctx, b, k8s, reaper, hud, pw, sw, st, plm, pfc, fwm, fswm, bc)
-	upper.timerMaker = timerMaker.maker()
+	gybc := NewGlobalYAMLBuildController(k8s)
+	upper := NewUpper(ctx, b, hud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
 	upper.hudErrorCh = make(chan error)
 
 	go func() {
@@ -1500,7 +1536,7 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	f.createManifestsResult = make(chan error)
 
 	go func() {
-		err := f.upper.CreateManifests(f.ctx, manifests, watchMounts)
+		err := f.upper.CreateManifests(f.ctx, manifests, model.YAMLManifest{}, watchMounts)
 		if err != nil && err != context.Canceled {
 			// Print this out here in case the test never completes
 			log.Printf("CreateManifests failed: %v", err)
@@ -1666,7 +1702,7 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
 	ref := f.imageNameForManifest(name)
-	return model.Manifest{Name: model.ManifestName(name), DockerRef: ref, Mounts: mounts}
+	return model.Manifest{Name: model.ManifestName(name), Mounts: mounts}.WithDockerRef(ref)
 }
 
 func (f *testFixture) assertAllBuildsConsumed() {

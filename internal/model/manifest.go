@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ManifestName string
@@ -16,9 +17,9 @@ func (m ManifestName) String() string { return string(m) }
 type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
-	K8sYaml      string
+	k8sYaml      string
 	tiltFilename string
-	DockerRef    reference.Named
+	dockerRef    reference.Named
 	portForwards []PortForward
 
 	// Local files read while reading the Tilt configuration.
@@ -77,11 +78,11 @@ func (m Manifest) validate() *ValidateErr {
 		return validateErrf("[validate] manifest missing name: %+v", m)
 	}
 
-	if m.DockerRef == nil {
+	if m.dockerRef == nil {
 		return validateErrf("[validate] manifest %q missing image ref", m.Name)
 	}
 
-	if m.K8sYaml == "" {
+	if m.K8sYAML() == "" {
 		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
 	}
 
@@ -106,7 +107,7 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
@@ -214,7 +215,12 @@ func (m Manifest) Dependencies() []string {
 		deps = append(deps, f)
 	}
 
-	return deps
+	return sliceutils.DedupeStringSlice(deps)
+}
+
+func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
+	m.ConfigFiles = confFiles
+	return m
 }
 
 func (m Manifest) LocalRepos() []LocalGithubRepo {
@@ -236,6 +242,24 @@ func (m Manifest) TiltFilename() string {
 
 func (m Manifest) WithTiltFilename(f string) Manifest {
 	m.tiltFilename = f
+	return m
+}
+
+func (m Manifest) K8sYAML() string {
+	return m.k8sYaml
+}
+
+func (m Manifest) WithK8sYAML(y string) Manifest {
+	m.k8sYaml = y
+	return m
+}
+
+func (m Manifest) DockerRef() reference.Named {
+	return m.dockerRef
+}
+
+func (m Manifest) WithDockerRef(ref reference.Named) Manifest {
+	m.dockerRef = ref
 	return m
 }
 

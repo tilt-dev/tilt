@@ -7,8 +7,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -47,7 +45,7 @@ type EngineState struct {
 	Exit bool
 
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
-	Log *bufsync.ThreadSafeBuffer
+	Log *bytes.Buffer
 
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
@@ -91,7 +89,7 @@ type ManifestState struct {
 func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
-	ret.Log = bufsync.NewThreadSafeBuffer()
+	ret.Log = &bytes.Buffer{}
 	return ret
 }
 

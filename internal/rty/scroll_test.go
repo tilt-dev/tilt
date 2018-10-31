@@ -35,6 +35,14 @@ func TestElementScroll(t *testing.T) {
 	f.run("scrolled all the way back up")
 }
 
+func TestTextScroll(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+
+	sl := NewTextScrollLayout("foo")
+	sl.Add(TextString(strings.Repeat("hiaeiurhgeiugheriuhgrtiuhgrtgn\n", 200)))
+	i.Run("vertically overflowed box", 10, 10, sl)
+}
+
 type elementScrollTestFixture struct {
 	i InteractiveTester
 }

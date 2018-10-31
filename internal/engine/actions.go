@@ -91,3 +91,19 @@ type BuildStartedAction struct {
 }
 
 func (BuildStartedAction) Action() {}
+
+type GlobalYAMLManifestReloadedAction struct {
+	GlobalYAML model.YAMLManifest
+}
+
+func (GlobalYAMLManifestReloadedAction) Action() {}
+
+type HudStoppedAction struct {
+	err error
+}
+
+func (HudStoppedAction) Action() {}
+
+func NewHudStoppedAction(err error) HudStoppedAction {
+	return HudStoppedAction{err}
+}

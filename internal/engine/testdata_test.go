@@ -41,10 +41,8 @@ FROM go:1.10
 var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
 
 func NewSanchoManifest() model.Manifest {
-	return model.Manifest{
+	m := model.Manifest{
 		Name:           "sancho",
-		DockerRef:      SanchoRef,
-		K8sYaml:        SanchoYAML,
 		BaseDockerfile: SanchoBaseDockerfile,
 		Mounts: []model.Mount{
 			model.Mount{
@@ -57,6 +55,10 @@ func NewSanchoManifest() model.Manifest {
 		}),
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
 	}
+
+	m = m.WithDockerRef(SanchoRef).WithK8sYAML(SanchoYAML)
+
+	return m
 }
 
 var SanchoManifest = NewSanchoManifest()

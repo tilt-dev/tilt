@@ -7,7 +7,7 @@ import (
 )
 
 func TestSubscriber(t *testing.T) {
-	st := NewStore()
+	st := NewStore(EmptyReducer)
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(s)
@@ -18,7 +18,7 @@ func TestSubscriber(t *testing.T) {
 }
 
 func TestSubscriberInterleavedCalls(t *testing.T) {
-	st := NewStore()
+	st := NewStore(EmptyReducer)
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(s)

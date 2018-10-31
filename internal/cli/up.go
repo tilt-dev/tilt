@@ -70,7 +70,20 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
+	upper, err := wireUpper(ctx)
+	if err != nil {
+		return err
+	}
+
+	l := upper.NewLogActionLogger(ctx)
+	ctx = logger.WithLogger(ctx, l)
+
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…\n", buildStamp()))
+
+	// Run the HUD in the background
+	go func() {
+		upper.RunHud(ctx)
+	}()
 
 	if trace {
 		traceID, err := tracer.TraceID(ctx)
@@ -80,36 +93,18 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("TraceID: %s", traceID)
 	}
 
-	upper, err := wireUpper(ctx)
-	if err != nil {
-		return err
-	}
-
-	origLogger := logger.Get(ctx)
-	l := upper.NewLogActionLogger(ctx)
-	ctx = logger.WithLogger(ctx, l)
-
 	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return err
 	}
 
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(args...)
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(args...)
 	if err != nil {
 		return err
 	}
 
-	// Run the HUD in the background
-	go func() {
-		err := upper.RunHud(ctx)
-		if err != nil {
-			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-			origLogger.Infof("error in hud: %v", err)
-		}
-	}()
-
 	// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-	err = upper.CreateManifests(ctx, manifests, c.watch)
+	err = upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
 	s, ok := status.FromError(err)
 	if ok && s.Code() == codes.Unknown {
 		return errors.New(s.Message())
