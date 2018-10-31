@@ -1379,7 +1379,7 @@ func TestCompletingUpperClosesHud(t *testing.T) {
 	assert.True(t, f.hud.Closed)
 }
 
-func TestInitWithGlobalYAML(t *testing.T) {
+func TestSubsequentUpdateOfGlobalYAML(t *testing.T) {
 	f := newTestFixture(t)
 	state := f.store.RLockState()
 	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{})
