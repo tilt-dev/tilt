@@ -1097,7 +1097,7 @@ func TestPerManifestYAMLExtractedFromGlobalYAML(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 
-	multiManifestYAML := yaml.ConcatYaml(testyaml.DoggosYaml, testyaml.SnackYaml, testyaml.SecretYaml)
+	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosYaml, testyaml.SnackYaml, testyaml.SecretYaml)
 	f.WriteFile("global.yaml", multiManifestYAML)
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
@@ -1122,7 +1122,7 @@ func TestExtractedGlobalYAMLStacksWithExplicitYaml(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 
-	multiManifestYAML := yaml.ConcatYaml(testyaml.DoggosYaml, testyaml.SnackYaml, testyaml.SecretYaml)
+	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosYaml, testyaml.SnackYaml, testyaml.SecretYaml)
 	f.WriteFile("global.yaml", multiManifestYAML)
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", fmt.Sprintf(`global_yaml(read_file('./global.yaml'))

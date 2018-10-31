@@ -27,7 +27,7 @@ someMap:
 ---
 this: is
 some: yaml`
-	assert.Equal(t, expected, ConcatYaml(startSep, noSep))
+	assert.Equal(t, expected, ConcatYAML(startSep, noSep))
 }
 
 func TestConcatYamlBothSeparators(t *testing.T) {
@@ -37,7 +37,7 @@ betterThanXml: true
 someMap:
     stuff: yes
     things: also yes`
-	assert.Equal(t, expected, ConcatYaml(endSep, startSep))
+	assert.Equal(t, expected, ConcatYAML(endSep, startSep))
 }
 
 func TestConcatYamlEndSep(t *testing.T) {
@@ -46,7 +46,7 @@ betterThanXml: true
 ---
 this: is
 some: yaml`
-	assert.Equal(t, expected, ConcatYaml(endSep, noSep))
+	assert.Equal(t, expected, ConcatYAML(endSep, noSep))
 }
 
 func TestConcatYamlStartSep(t *testing.T) {
@@ -58,7 +58,7 @@ someMap:
 someMap:
     stuff: yes
     things: also yes`
-	assert.Equal(t, expected, ConcatYaml(startSep, startSep))
+	assert.Equal(t, expected, ConcatYAML(startSep, startSep))
 }
 
 func TestConcatManyYamls(t *testing.T) {
@@ -74,11 +74,11 @@ iLoveYaml: meh
 betterThanXml: true
 ---`
 
-	assert.Equal(t, expected, ConcatYaml(startSep, noSep, endSep))
+	assert.Equal(t, expected, ConcatYAML(startSep, noSep, endSep))
 }
 
 func TestNoopConcatYaml(t *testing.T) {
-	assert.Equal(t, "", ConcatYaml())
+	assert.Equal(t, "", ConcatYAML())
 
-	assert.Equal(t, noSep, ConcatYaml(noSep))
+	assert.Equal(t, noSep, ConcatYAML(noSep))
 }

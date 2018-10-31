@@ -258,7 +258,7 @@ func (m Manifest) AppendK8sYAML(y string) Manifest {
 		return m
 	}
 
-	return m.WithK8sYAML(yaml.ConcatYaml(m.k8sYaml, y))
+	return m.WithK8sYAML(yaml.ConcatYAML(m.k8sYaml, y))
 }
 
 func (m Manifest) WithK8sYAML(y string) Manifest {
