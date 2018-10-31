@@ -111,6 +111,7 @@ func canvasesEqual(actual, expected Canvas) bool {
 
 func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual, expected Canvas, highlightDiff bool) {
 	screen.Clear()
+
 	actualWidth, actualHeight := actual.Size()
 	expectedWidth, expectedHeight := expected.Size()
 
@@ -135,7 +136,7 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 				}
 			}
 
-			screen.SetContent(x, y+curHeight, ch, nil, style)
+			screen.SetContent(x, curHeight, ch, nil, style)
 		}
 		curHeight++
 	}
@@ -156,7 +157,7 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 				}
 			}
 
-			screen.SetContent(x, y+curHeight, ch, nil, style)
+			screen.SetContent(x, curHeight, ch, nil, style)
 		}
 		curHeight++
 	}
