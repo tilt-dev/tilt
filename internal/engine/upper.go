@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/url"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -41,15 +38,10 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b                   BuildAndDeployer
-	timerMaker          timerMaker
-	podWatcherMaker     PodWatcherMaker
-	serviceWatcherMaker ServiceWatcherMaker
-	k8s                 k8s.Client
-	reaper              build.ImageReaper
-	hud                 hud.HeadsUpDisplay
-	store               *store.Store
-	hudErrorCh          chan error
+	b          BuildAndDeployer
+	hud        hud.HeadsUpDisplay
+	store      *store.Store
+	hudErrorCh chan error
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -69,9 +61,11 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
-	reaper build.ImageReaper, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController) Upper {
+func NewUpper(ctx context.Context, b BuildAndDeployer,
+	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
+	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
+	ic *ImageController, gybc *GlobalYAMLBuildController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -80,12 +74,11 @@ func NewUpper(ctx context.Context, b BuildAndDeployer, k8s k8s.Client,
 	st.AddSubscriber(fwm)
 	st.AddSubscriber(pw)
 	st.AddSubscriber(sw)
+	st.AddSubscriber(ic)
+	st.AddSubscriber(gybc)
 
 	return Upper{
 		b:          b,
-		timerMaker: time.After,
-		k8s:        k8s,
-		reaper:     reaper,
 		hud:        hud,
 		store:      st,
 		hudErrorCh: make(chan error),
@@ -99,13 +92,15 @@ func (u Upper) RunHud(ctx context.Context) error {
 	return err
 }
 
-func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, watchMounts bool) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-Up")
+func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
+	globalYAML model.YAMLManifest, watchMounts bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
 	defer span.Finish()
 
 	u.store.Dispatch(InitAction{
-		WatchMounts: watchMounts,
-		Manifests:   manifests,
+		WatchMounts:        watchMounts,
+		Manifests:          manifests,
+		GlobalYAMLManifest: globalYAML,
 	})
 
 	defer func() {
@@ -114,73 +109,42 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest, 
 		<-u.hudErrorCh
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-			// Reducers
-		case action := <-u.store.Actions():
-			state := u.store.LockMutableState()
-			err := u.reduceAction(ctx, state, action)
-			if err != nil {
-				state.PermanentError = err
-			}
-			u.store.UnlockMutableState()
-		}
-
-		// Subscribers
-		done, err := maybeFinished(u.store)
-		if done {
-			return err
-		}
-		u.store.NotifySubscribers(ctx)
-	}
+	return u.store.Loop(ctx)
 }
 
-func (u Upper) reduceAction(ctx context.Context, state *store.EngineState, action store.Action) error {
+var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineState, action store.Action) {
+	var err error
 	switch action := action.(type) {
 	case InitAction:
-		return u.handleInitAction(ctx, state, action)
+		err = handleInitAction(ctx, state, action)
 	case ErrorAction:
-		return action.Error
+		err = action.Error
 	case manifestFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
 		handlePodEvent(ctx, state, action.Pod)
 	case ServiceChangeAction:
-		handleServiceEvent(ctx, state, action.Service)
+		handleServiceEvent(ctx, state, action)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
-		return handleCompletedBuild(ctx, state, action)
+		err = handleCompletedBuild(ctx, state, action)
 	case hud.ShowErrorAction:
 		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
+	case GlobalYAMLManifestReloadedAction:
+		handleGlobalYAMLManifestReloaded(ctx, state, action)
 	default:
-		return fmt.Errorf("unrecognized action: %T", action)
-	}
-	return nil
-}
-
-func maybeFinished(st *store.Store) (bool, error) {
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	if len(state.ManifestStates) == 0 {
-		return false, nil
+		err = fmt.Errorf("unrecognized action: %T", action)
 	}
 
-	if state.PermanentError != nil {
-		return true, state.PermanentError
+	if err != nil {
+		state.PermanentError = err
 	}
-
-	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
-	return finished, nil
-}
+})
 
 func handleManifestReloaded(ctx context.Context, state *store.EngineState, action ManifestReloadedAction) {
 	state.BuildControllerActionCount++
@@ -384,6 +348,14 @@ func handleFSEvent(
 	enqueueBuild(state, event.manifestName)
 }
 
+func handleGlobalYAMLManifestReloaded(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLManifestReloadedAction,
+) {
+	state.GlobalYAML = event.GlobalYAML
+}
+
 func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
@@ -444,7 +416,7 @@ func populateContainerStatus(ctx context.Context, ms *store.ManifestState, pod *
 	ms.Pod.ContainerPorts = ports
 
 	forwards := PopulatePortForwards(ms.Manifest, ms.Pod)
-	if len(forwards) < len(ms.Manifest.PortForwards) {
+	if len(forwards) < len(ms.Manifest.PortForwards()) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			ms.Manifest.Name, ms.Pod.PodID)
@@ -468,7 +440,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	ms.Pod.Status = podStatusToString(*pod)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef)
+	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef())
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return
@@ -518,9 +490,10 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
 }
 
-func handleServiceEvent(ctx context.Context, state *store.EngineState, service *v1.Service) {
+func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
+	service := action.Service
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
-	if manifestName == "" {
+	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
 	}
 
@@ -530,33 +503,20 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, service *
 		return
 	}
 
-	url, err := k8s.ServiceURL(service)
-	if err != nil {
-		logger.Get(ctx).Infof("error resolving service %s: %v", manifestName, err)
-		return
-	}
-
-	ms.LBs[k8s.ServiceName(service.Name)] = url
+	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
-func (u Upper) handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
+func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
+
+	engineState.GlobalYAML = action.GlobalYAMLManifest
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
 	}
 	engineState.WatchMounts = watchMounts
-
-	if watchMounts {
-		go func() {
-			err := u.reapOldWatchBuilds(ctx, manifests, time.Now())
-			if err != nil {
-				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
-			}
-		}()
-	}
 
 	for _, m := range manifests {
 		enqueueBuild(engineState, m.Name)
@@ -591,7 +551,11 @@ func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
 	return true, nil
 }
 
-func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAction) bool {
+type configFilesManifest interface {
+	ConfigMatcher() (model.PathMatcher, error)
+}
+
+func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChangedAction) bool {
 	matcher, err := manifest.ConfigMatcher()
 	if err != nil {
 		return false
@@ -605,29 +569,6 @@ func eventContainsConfigFiles(manifest model.Manifest, e manifestFilesChangedAct
 	}
 
 	return false
-}
-
-func (u Upper) resolveLB(ctx context.Context, spec k8s.LoadBalancerSpec) *url.URL {
-	lb, _ := u.k8s.ResolveLoadBalancer(ctx, spec)
-	return lb.URL
-}
-
-func (u Upper) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
-	refs := make([]reference.Named, len(manifests))
-	for i, s := range manifests {
-		refs[i] = s.DockerRef
-	}
-
-	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
-	for _, ref := range refs {
-		nameFilter := build.FilterByRefName(ref)
-		err := u.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
-		if err != nil {
-			return fmt.Errorf("reapOldWatchBuilds: %v", err)
-		}
-	}
-
-	return nil
 }
 
 // TODO(nick): This should be in the HUD

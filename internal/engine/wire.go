@@ -21,6 +21,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	build.DefaultConsole,
 	build.DefaultOut,
 	wire.Value(build.Labels{}),
+	wire.Value(UpperReducer),
 
 	build.DefaultImageBuilder,
 	build.NewDockerImageBuilder,
@@ -38,6 +39,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
 	store.NewStore,
+	NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(

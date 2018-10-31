@@ -336,14 +336,14 @@ type localPath struct {
 	repo gitRepo
 }
 
-func (tf *Tiltfile) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
+func (t *Tiltfile) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
 	switch v := v.(type) {
 	case localPath:
 		return v, nil
 	case gitRepo:
 		return v.makeLocalPath("."), nil
 	case skylark.String:
-		return tf.localPathFromString(string(v))
+		return t.localPathFromString(string(v))
 	default:
 		return localPath{}, fmt.Errorf(" Expected local path. Actual type: %T", v)
 	}
@@ -380,8 +380,8 @@ func (t *Tiltfile) localPathFromString(path string) (localPath, error) {
 
 var _ skylark.Value = localPath{}
 
-func (l localPath) String() string {
-	return l.path
+func (lp localPath) String() string {
+	return lp.path
 }
 
 func (localPath) Type() string {
@@ -394,8 +394,8 @@ func (localPath) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: localPath")
 }
 
-func (p localPath) Truth() skylark.Bool {
-	return p != localPath{}
+func (lp localPath) Truth() skylark.Bool {
+	return lp != localPath{}
 }
 
 func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {

@@ -22,16 +22,21 @@ func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
 	return fcf.ignoreMatchers.Matches(f, isDir)
 }
 
+type repoManifest interface {
+	LocalRepos() []model.LocalGithubRepo
+	TiltFilename() string
+}
+
 // Filter out files that should not be included in the build context.
-func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
+func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 	matchers := []model.PathMatcher{}
-	if m.TiltFilename != "" {
-		m, err := model.NewSimpleFileMatcher(m.TiltFilename)
+	if m.TiltFilename() != "" {
+		m, err := model.NewSimpleFileMatcher(m.TiltFilename())
 		if err == nil {
 			matchers = append(matchers, m)
 		}
 	}
-	for _, r := range m.Repos {
+	for _, r := range m.LocalRepos() {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {
 			matchers = append(matchers, gim)
@@ -46,10 +51,15 @@ func CreateBuildContextFilter(m model.Manifest) model.PathMatcher {
 	return model.NewCompositeMatcher(matchers)
 }
 
+type IgnorableManifest interface {
+	ConfigMatcher() (model.PathMatcher, error)
+	LocalRepos() []model.LocalGithubRepo
+}
+
 // Filter out files that should not trigger new builds.
-func CreateFileChangeFilter(m model.Manifest) (model.PathMatcher, error) {
+func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
-	for _, r := range m.Repos {
+	for _, r := range m.LocalRepos() {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
 		if err == nil {
 			matchers = append(matchers, gim)
@@ -60,6 +70,11 @@ func CreateFileChangeFilter(m model.Manifest) (model.PathMatcher, error) {
 			matchers = append(matchers, dim)
 		}
 	}
+
+	// Ignore temp files created by GoLand on save
+	// TODO(matt) do this in a more principled way
+	// https://app.clubhouse.io/windmill/story/691/filter-out-ephemeral-file-changes
+	matchers = append(matchers, model.NewGlobMatcher("*___jb_old___", "*___jb_tmp___"))
 
 	ignoreMatcher := model.NewCompositeMatcher(matchers)
 	configMatcher, err := m.ConfigMatcher()

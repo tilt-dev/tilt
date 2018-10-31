@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -31,12 +32,13 @@ func NewPodChangeAction(pod *v1.Pod) PodChangeAction {
 
 type ServiceChangeAction struct {
 	Service *v1.Service
+	URL     *url.URL
 }
 
 func (ServiceChangeAction) Action() {}
 
-func NewServiceChangeAction(service *v1.Service) ServiceChangeAction {
-	return ServiceChangeAction{Service: service}
+func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeAction {
+	return ServiceChangeAction{Service: service, URL: url}
 }
 
 type PodLogAction struct {
@@ -63,8 +65,9 @@ func NewBuildCompleteAction(result store.BuildResult, err error) BuildCompleteAc
 }
 
 type InitAction struct {
-	WatchMounts bool
-	Manifests   []model.Manifest
+	WatchMounts        bool
+	Manifests          []model.Manifest
+	GlobalYAMLManifest model.YAMLManifest
 }
 
 func (InitAction) Action() {}
@@ -84,3 +87,9 @@ type BuildStartedAction struct {
 }
 
 func (BuildStartedAction) Action() {}
+
+type GlobalYAMLManifestReloadedAction struct {
+	GlobalYAML model.YAMLManifest
+}
+
+func (GlobalYAMLManifestReloadedAction) Action() {}

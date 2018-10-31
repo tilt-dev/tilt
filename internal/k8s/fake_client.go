@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -50,11 +51,6 @@ func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{}
 }
 
-func (c *FakeK8sClient) ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	c.Lb = lb
-	return LoadBalancer{}, nil
-}
-
 func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	yaml, err := SerializeYAML(entities)
 	if err != nil {
@@ -81,7 +77,7 @@ func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interf
 	return watch.NewEmptyWatch(), nil
 }
 
-func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName ContainerName, n Namespace) (io.ReadCloser, error) {
+func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}

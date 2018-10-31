@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -39,6 +40,11 @@ type EngineState struct {
 	BuildControllerActionCount int
 
 	PermanentError error
+
+	// GlobalYAML is a special manifest that has no images, but has dependencies
+	// and a bunch of YAML that is deployed when those dependencies change.
+	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
+	GlobalYAML model.YAMLManifest
 }
 
 type ManifestState struct {
@@ -65,7 +71,7 @@ type ManifestState struct {
 	QueueEntryTime            time.Time
 
 	// If the pod isn't running this container then it's possible we're running stale code
-	ExpectedContainerID k8s.ContainerID
+	ExpectedContainerID container.ID
 	// We detected stale code and are currently doing an image build
 	CrashRebuildInProg bool
 	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
@@ -101,8 +107,8 @@ type Pod struct {
 	CurrentLog []byte
 
 	// Corresponds to the deployed container.
-	ContainerName  k8s.ContainerName
-	ContainerID    k8s.ContainerID
+	ContainerName  container.Name
+	ContainerID    container.ID
 	ContainerPorts []int32
 	ContainerReady bool
 

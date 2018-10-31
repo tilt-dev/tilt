@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/docker/docker/api/types"
@@ -26,7 +27,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-var imageID = k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
+var imageID = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
 var alreadyBuilt = store.BuildResult{Image: imageID}
 
 type expectedFile = testutils.ExpectedFile
@@ -430,8 +431,7 @@ func TestIgnoredFiles(t *testing.T) {
 			GitignoreContents:    "",
 		},
 	}
-	manifest.TiltFilename = filepath.Join(f.Path(), "Tiltfile")
-
+	manifest = manifest.WithTiltFilename(filepath.Join(f.Path(), "Tiltfile"))
 	f.WriteFile("Tiltfile", "# hello world")
 	f.WriteFile("a.txt", "a")
 	f.WriteFile(".git/index", "garbage")

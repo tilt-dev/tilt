@@ -35,7 +35,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
-	storeStore := store.NewStore()
+	reducer := _wireReducerValue
+	storeStore := store.NewStore(reducer)
 	deployDiscovery := engine.NewDeployDiscovery(k8sClient, storeStore)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
@@ -63,7 +64,6 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
-	imageReaper := build.NewImageReaper(dockerCli)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer)
@@ -71,20 +71,28 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 		return demo.Script{}, err
 	}
 	podWatcher := engine.NewPodWatcher(k8sClient)
-	serviceWatcher := engine.NewServiceWatcher(k8sClient)
+	nodeIP, err := k8s.DetectNodeIP(ctx, env)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController)
+	imageReaper := build.NewImageReaper(dockerCli)
+	imageController := engine.NewImageController(imageReaper)
+	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController, imageController, globalYAMLBuildController)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch)
 	return script, nil
 }
 
 var (
-	_wireLabelsValue = build.Labels{}
+	_wireReducerValue = engine.UpperReducer
+	_wireLabelsValue  = build.Labels{}
 )
 
 func wireUpper(ctx context.Context) (engine.Upper, error) {
@@ -102,7 +110,8 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 	}
 	portForwarder := k8s.ProvidePortForwarder()
 	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
-	storeStore := store.NewStore()
+	reducer := _wireReducerValue
+	storeStore := store.NewStore(reducer)
 	deployDiscovery := engine.NewDeployDiscovery(k8sClient, storeStore)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
@@ -130,7 +139,6 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
-	imageReaper := build.NewImageReaper(dockerCli)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer)
@@ -138,14 +146,21 @@ func wireUpper(ctx context.Context) (engine.Upper, error) {
 		return engine.Upper{}, err
 	}
 	podWatcher := engine.NewPodWatcher(k8sClient)
-	serviceWatcher := engine.NewServiceWatcher(k8sClient)
+	nodeIP, err := k8s.DetectNodeIP(ctx, env)
+	if err != nil {
+		return engine.Upper{}, err
+	}
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, k8sClient, imageReaper, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController)
+	imageReaper := build.NewImageReaper(dockerCli)
+	imageController := engine.NewImageController(imageReaper)
+	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController, imageController, globalYAMLBuildController)
 	return upper, nil
 }
 
@@ -169,10 +184,10 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
+var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.DetectNodeIP, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
+	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), build.NewImageReaper, engine.DeployerWireSet, engine.DefaultShouldFallBack, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, engine.NewUpper, provideAnalytics,
 	provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker,
 )
 

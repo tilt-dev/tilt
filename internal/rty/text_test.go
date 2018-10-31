@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,8 @@ func TestTextString(t *testing.T) {
 	i.Run("one-line text string", 20, 1, TextString("hello world"))
 	i.Run("two-line text string", 20, 2, TextString("hello\nworld"))
 	i.Run("two-line text string in one-line container", 20, 1, TextString("hello\nworld"))
-	i.Run("overflowed text string", 2, 1, TextString("hello world"))
+	i.Run("horizontally overflowed text string", 2, 1, TextString("hello world"))
+	i.Run("vertically overflowed text string", 10, 10, TextString(strings.Repeat("hi\n", 20)))
 }
 
 func TestStyledText(t *testing.T) {

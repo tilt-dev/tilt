@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 type ManifestName string
@@ -16,10 +18,10 @@ func (m ManifestName) String() string { return string(m) }
 type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
-	K8sYaml      string
-	TiltFilename string
-	DockerRef    reference.Named
-	PortForwards []PortForward
+	k8sYaml      string
+	tiltFilename string
+	dockerRef    reference.Named
+	portForwards []PortForward
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
@@ -77,11 +79,11 @@ func (m Manifest) validate() *ValidateErr {
 		return validateErrf("[validate] manifest missing name: %+v", m)
 	}
 
-	if m.DockerRef == nil {
+	if m.dockerRef == nil {
 		return validateErrf("[validate] manifest %q missing image ref", m.Name)
 	}
 
-	if m.K8sYaml == "" {
+	if m.K8sYAML() == "" {
 		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
 	}
 
@@ -106,7 +108,7 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.K8sYaml == m2.K8sYaml && m1.DockerRef == m2.DockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.TiltFilename == m2.TiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
@@ -172,12 +174,12 @@ func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
 }
 
 func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
-	if len(m1.PortForwards) != len(m2.PortForwards) {
+	if len(m1.portForwards) != len(m2.portForwards) {
 		return false
 	}
 
-	for i := range m2.PortForwards {
-		if m1.PortForwards[i] != m2.PortForwards[i] {
+	for i := range m2.portForwards {
+		if m1.portForwards[i] != m2.portForwards[i] {
 			return false
 		}
 	}
@@ -197,6 +199,80 @@ func (m1 Manifest) stepsEqual(s2 []Step) bool {
 	}
 
 	return true
+}
+
+func (m Manifest) ManifestName() ManifestName {
+	return m.Name
+}
+
+func (m Manifest) Dependencies() []string {
+	// TODO(dmiller) we can know the length of this slice
+	deps := []string{}
+
+	for _, p := range m.LocalPaths() {
+		deps = append(deps, p)
+	}
+	for _, f := range m.ConfigFiles {
+		deps = append(deps, f)
+	}
+
+	return sliceutils.DedupeStringSlice(deps)
+}
+
+func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
+	m.ConfigFiles = confFiles
+	return m
+}
+
+func (m Manifest) LocalRepos() []LocalGithubRepo {
+	return m.Repos
+}
+
+func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
+	m.portForwards = pf
+	return m
+}
+
+func (m Manifest) PortForwards() []PortForward {
+	return m.portForwards
+}
+
+func (m Manifest) TiltFilename() string {
+	return m.tiltFilename
+}
+
+func (m Manifest) WithTiltFilename(f string) Manifest {
+	m.tiltFilename = f
+	return m
+}
+
+func (m Manifest) K8sYAML() string {
+	return m.k8sYaml
+}
+
+func (m Manifest) AppendK8sYAML(y string) Manifest {
+	if m.k8sYaml == "" {
+		return m.WithK8sYAML(y)
+	}
+	if y == "" {
+		return m
+	}
+
+	return m.WithK8sYAML(yaml.ConcatYAML(m.k8sYaml, y))
+}
+
+func (m Manifest) WithK8sYAML(y string) Manifest {
+	m.k8sYaml = y
+	return m
+}
+
+func (m Manifest) DockerRef() reference.Named {
+	return m.dockerRef
+}
+
+func (m Manifest) WithDockerRef(ref reference.Named) Manifest {
+	m.dockerRef = ref
+	return m
 }
 
 type Mount struct {

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 var equalitytests = []struct {
@@ -91,14 +91,14 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8080,
 				},
 			},
 		},
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8081,
 				},
@@ -108,14 +108,14 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8080,
 				},
 			},
 		},
 		Manifest{
-			PortForwards: []PortForward{
+			portForwards: []PortForward{
 				{
 					LocalPort: 8080,
 				},
@@ -267,9 +267,9 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		},
 	}
 	manifest := Manifest{
+		k8sYaml:        "yamlll",
 		Name:           "test",
-		K8sYaml:        "yamlll",
-		DockerRef:      k8s.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
+		dockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
 		BaseDockerfile: "FROM node",
 		Mounts:         mounts,
 	}
@@ -283,4 +283,18 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	err = manifest.Validate()
 	assert.Nil(t, err)
 
+}
+
+func TestSetPortForwards(t *testing.T) {
+	m := Manifest{
+		Name: "test",
+	}
+
+	m2 := m.WithPortForwards([]PortForward{
+		PortForward{
+			LocalPort: 8080,
+		},
+	})
+
+	assert.Equal(t, 8080, m2.PortForwards()[0].LocalPort)
 }

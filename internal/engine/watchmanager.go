@@ -11,6 +11,13 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+type WatchableManifest interface {
+	Dependencies() []string
+	ManifestName() model.ManifestName
+	ConfigMatcher() (model.PathMatcher, error)
+	LocalRepos() []model.LocalGithubRepo
+}
+
 type manifestFilesChangedAction struct {
 	manifestName model.ManifestName
 	files        []string
@@ -19,7 +26,7 @@ type manifestFilesChangedAction struct {
 func (manifestFilesChangedAction) Action() {}
 
 type manifestNotifyCancel struct {
-	manifest model.Manifest
+	manifest WatchableManifest
 	notify   watch.Notify
 	cancel   func()
 }
@@ -38,13 +45,13 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchM
 	}
 }
 
-func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []model.Manifest, teardown []model.Manifest) {
+func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	setup = []model.Manifest{}
-	teardown = []model.Manifest{}
-	manifestsToProcess := make(map[model.ManifestName]model.Manifest, len(state.ManifestStates))
+	setup = []WatchableManifest{}
+	teardown = []WatchableManifest{}
+	manifestsToProcess := make(map[model.ManifestName]WatchableManifest, len(state.ManifestStates))
 	for i, m := range state.ManifestStates {
 		manifestsToProcess[i] = m.Manifest
 	}
@@ -67,7 +74,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 	setup, teardown := w.diff(ctx, st)
 
 	for _, m := range teardown {
-		p, ok := w.watches[m.Name]
+		p, ok := w.watches[m.ManifestName()]
 		if !ok {
 			continue
 		}
@@ -76,7 +83,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 			logger.Get(ctx).Infof("Error closing watch: %v", err)
 		}
 		p.cancel()
-		delete(w.watches, m.Name)
+		delete(w.watches, m.ManifestName())
 	}
 
 	for _, manifest := range setup {
@@ -86,17 +93,8 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 			continue
 		}
 
-		localPaths := manifest.LocalPaths()
-
-		for _, localPath := range localPaths {
-			err = watcher.Add(localPath)
-			if err != nil {
-				st.Dispatch(NewErrorAction(err))
-			}
-		}
-
-		for _, cf := range manifest.ConfigFiles {
-			err = watcher.Add(cf)
+		for _, d := range manifest.Dependencies() {
+			err = watcher.Add(d)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
 			}
@@ -106,11 +104,11 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 
 		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
 
-		w.watches[manifest.Name] = manifestNotifyCancel{manifest, watcher, cancel}
+		w.watches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
 	}
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest model.Manifest, watcher watch.Notify, st *store.Store) {
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, st *store.Store) {
 	filter, err := ignore.CreateFileChangeFilter(manifest)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))
@@ -134,7 +132,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest mod
 				return
 			}
 
-			watchEvent := manifestFilesChangedAction{manifestName: manifest.Name}
+			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}
 
 			for _, e := range fsEvents {
 				path, err := filepath.Abs(e.Path)

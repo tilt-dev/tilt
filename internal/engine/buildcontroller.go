@@ -92,7 +92,10 @@ func (c *BuildController) OnChange(ctx context.Context, st *store.Store) {
 
 	go func() {
 		if entry.needsConfigReload {
-			newManifest, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
+			newManifest, globalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
+			st.Dispatch(GlobalYAMLManifestReloadedAction{
+				GlobalYAML: globalYAML,
+			})
 			st.Dispatch(ManifestReloadedAction{
 				OldManifest: entry.manifest,
 				NewManifest: newManifest,
@@ -143,23 +146,22 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	}
 }
 
-func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, *manifestErr) {
+func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, *manifestErr) {
 	// Sends any output to the CurrentBuildLog
-	writer := logger.Get(ctx).Writer(logger.InfoLvl)
-	t, err := tiltfile.Load(tiltfile.FileName, writer)
+	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
-		return model.Manifest{}, manifestErrf(err.Error())
+		return model.Manifest{}, model.YAMLManifest{}, manifestErrf(err.Error())
 	}
-	newManifests, err := t.GetManifestConfigs(string(name))
+	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(string(name))
 	if err != nil {
-		return model.Manifest{}, manifestErrf(err.Error())
+		return model.Manifest{}, model.YAMLManifest{}, manifestErrf(err.Error())
 	}
 	if len(newManifests) != 1 {
-		return model.Manifest{}, manifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+		return model.Manifest{}, model.YAMLManifest{}, manifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
 	}
 	newManifest := newManifests[0]
 
-	return newManifest, nil
+	return newManifest, globalYAML, nil
 }
 
 var _ store.Subscriber = &BuildController{}

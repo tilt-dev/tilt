@@ -1,8 +1,6 @@
 package testyaml
 
 const BlorgBackendYAML = `
-# Template should be populated using populate_config_template.py
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -53,6 +51,21 @@ spec:
         ]
         ports:
         - containerPort: 8080
+`
+
+const BlorgJobYAML = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: blorg-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: blorg-job
+        image: gcr.io/blorg-dev/blorg-backend:devel-nick
+        command: ["/app/server",  "-job=clean"]
+      restartPolicy: Never
+  backoffLimit: 4
 `
 
 const SanchoYAML = `
@@ -351,4 +364,61 @@ spec:
    - port: 5432
   selector:
    app: postgres
+`
+
+const DoggosYaml = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doggos
+  labels:
+    app: doggos
+spec:
+  selector:
+    matchLabels:
+      app: doggos
+  template:
+    metadata:
+      labels:
+        app: doggos
+        tier: web
+    spec:
+      containers:
+      - name: doggos
+        image: gcr.io/windmill-public-containers/servantes/doggos
+        command: ["/go/bin/doggos"]
+`
+
+const SnackYaml = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snack
+  labels:
+    app: snack
+spec:
+  selector:
+    matchLabels:
+      app: snack
+  template:
+    metadata:
+      labels:
+        app: snack
+        tier: web
+    spec:
+      containers:
+      - name: snack
+        image: gcr.io/windmill-public-containers/servantes/snack
+        command: ["/go/bin/snack"]
+`
+
+const SecretYaml = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: MWYyZDFlMmU2N2Rm
 `

@@ -22,6 +22,8 @@ type RTY interface {
 type ElementScroller interface {
 	Up()
 	Down()
+	Top()
+	Bottom()
 	GetSelectedIndex() int
 }
 
@@ -29,12 +31,10 @@ type TextScroller interface {
 	Up()
 	Down()
 	Top()
-	// PgUp()
-	// PgDn()
-	// Home()
-	// End()
+	Bottom()
 
 	ToggleFollow()
+	SetFollow(following bool)
 }
 
 // Component renders onto a canvas

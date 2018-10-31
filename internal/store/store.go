@@ -16,18 +16,24 @@ type Store struct {
 	actionCh    chan Action
 	mu          sync.Mutex
 	stateMu     sync.RWMutex
+	reduce      Reducer
 
 	// TODO(nick): Define Subscribers and Reducers.
 	// The actionChan is an intermediate representation to make the transition easiser.
 }
 
-func NewStore() *Store {
+func NewStore(reducer Reducer) *Store {
 	return &Store{
 		state:       NewState(),
+		reduce:      reducer,
 		actionQueue: &actionQueue{},
 		actionCh:    make(chan Action),
 		subscribers: &subscriberList{},
 	}
+}
+
+func NewStoreForTesting() *Store {
+	return NewStore(EmptyReducer)
 }
 
 func (s *Store) AddSubscriber(sub Subscriber) {
@@ -51,18 +57,13 @@ func (s *Store) RUnlockState() {
 	s.stateMu.RUnlock()
 }
 
-// TODO(nick): Phase this out. Anyone that uses this should be implemented as a reducer.
-func (s *Store) LockMutableState() *EngineState {
+func (s *Store) LockMutableStateForTesting() *EngineState {
 	s.stateMu.Lock()
 	return s.state
 }
 
 func (s *Store) UnlockMutableState() {
 	s.stateMu.Unlock()
-}
-
-func (s *Store) Actions() <-chan Action {
-	return s.actionCh
 }
 
 func (s *Store) Dispatch(action Action) {
@@ -72,6 +73,44 @@ func (s *Store) Dispatch(action Action) {
 
 func (s *Store) Close() {
 	close(s.actionCh)
+}
+
+func (s *Store) Loop(ctx context.Context) error {
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case action := <-s.actionCh:
+			s.stateMu.Lock()
+			s.reduce(ctx, s.state, action)
+			s.stateMu.Unlock()
+		}
+
+		// Subscribers
+		done, err := s.maybeFinished()
+		if done {
+			return err
+		}
+		s.NotifySubscribers(ctx)
+	}
+}
+
+func (s *Store) maybeFinished() (bool, error) {
+	state := s.RLockState()
+	defer s.RUnlockState()
+
+	if len(state.ManifestStates) == 0 {
+		return false, nil
+	}
+
+	if state.PermanentError != nil {
+		return true, state.PermanentError
+	}
+
+	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
+	return finished, nil
 }
 
 func (s *Store) drainActions() {
