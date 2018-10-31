@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"reflect"
 
+	"github.com/docker/distribution/reference"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -168,4 +169,8 @@ func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing
 		}
 	}
 	return passing, rest, nil
+}
+
+func FilterByImage(entities []K8sEntity, img reference.Named) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img) })
 }

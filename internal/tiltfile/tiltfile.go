@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/pkg/errors"
@@ -330,8 +331,8 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 		return nil, err
 	}
 
-	thread.SetLocal(globalYAMLKey, yaml)
-	thread.SetLocal(globalYAMLDepsKey, deps)
+	setGlobalYAML(thread, yaml)
+	setGlobalYAMLDeps(thread, deps)
 
 	return skylark.None, nil
 }
@@ -383,15 +384,10 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 
-	gYAML, err := getGlobalYAML(t.thread)
-	if err != nil {
-		return nil, model.YAMLManifest{}, err
-	}
 	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
 	if err != nil {
 		return nil, model.YAMLManifest{}, err
 	}
-	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(manifestName)
@@ -403,12 +399,18 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Mani
 		// TODO(maia): there's probs a better thread-magic way for each individual manifest to
 		// about files opened in the global scope, i.e. files opened when getting global YAML.
 		for i, m := range curManifests {
-			deps := append(m.ConfigFiles, globalYAML.Dependencies()...)
+			deps := append(m.ConfigFiles, gYAMLDeps...)
 			curManifests[i] = m.WithConfigFiles(deps)
 		}
 
 		manifests = append(manifests, curManifests...)
 	}
+
+	gYAML, err := getGlobalYAML(t.thread)
+	if err != nil {
+		return nil, model.YAMLManifest{}, err
+	}
+	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
 	return manifests, globalYAML, nil
 }
@@ -473,17 +475,54 @@ func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifes
 	case *k8sManifest:
 		manifest.configFiles = files
 
-		s, err := skylarkManifestToDomain(manifest)
+		m, err := skylarkManifestToDomain(manifest)
 		if err != nil {
 			return nil, err
 		}
 
-		s.Name = model.ManifestName(manifestName)
-		return []model.Manifest{s}, nil
+		m.Name = model.ManifestName(manifestName)
+
+		manifestYAMLFromGlobalYAML, err := t.extractFromGlobalYAMLForManifest(m)
+		if err != nil {
+			return nil, errors.Wrapf(err, "extracting global yaml for manifest %s", m.Name)
+		}
+		m = m.AppendK8sYAML(manifestYAMLFromGlobalYAML)
+
+		return []model.Manifest{m}, nil
 
 	default:
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
 	}
+}
+
+// extractFromGlobalYAMLForManifest finds any objects defined in the global YAML
+// that correspond to the given manifest, and extracts and returns them. (Note
+// that this operation modifies the global YAML in place!)
+func (t *Tiltfile) extractFromGlobalYAMLForManifest(m model.Manifest) (string, error) {
+	gYAML, err := getGlobalYAML(t.thread)
+	if err != nil {
+		return "", err
+	}
+	entities, err := k8s.ParseYAMLFromString(gYAML)
+	if err != nil {
+		return "", errors.Wrap(err, "parsing global yaml")
+	}
+
+	// TODO(maia): also get entities that select for any of THESE entities (services etc.)
+	matching, rest, err := k8s.FilterByImage(entities, m.DockerRef())
+
+	// GlobalYAML = GlobalYAML without any k8s entries matching this manifest
+	gYAMLWithoutMatches, err := k8s.SerializeYAML(rest)
+	if err != nil {
+		return "", errors.Wrap(err, "re-serializing global yaml")
+	}
+	setGlobalYAML(t.thread, gYAMLWithoutMatches)
+
+	matchingYAML, err := k8s.SerializeYAML(matching)
+	if err != nil {
+		return "", errors.Wrapf(err, "serializing yaml extracted for manifest %s", m.Name)
+	}
+	return matchingYAML, nil
 }
 
 func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
