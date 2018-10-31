@@ -44,7 +44,6 @@ var BaseWireSet = wire.NewSet(
 
 	provideClock,
 	hud.NewRenderer,
-	hud.NewDefaultHeadsUpDisplay,
 
 	engine.NewUpper,
 	provideAnalytics,
@@ -55,13 +54,18 @@ var BaseWireSet = wire.NewSet(
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
-	wire.Build(BaseWireSet, demo.NewScript)
+	wire.Build(BaseWireSet, demo.NewScript, hud.NewDefaultHeadsUpDisplay)
 	return demo.Script{}, nil
 }
 
-func wireUpper(ctx context.Context) (engine.Upper, error) {
+func wireUpper(ctx context.Context, hud hud.HeadsUpDisplay) (engine.Upper, error) {
 	wire.Build(BaseWireSet)
 	return engine.Upper{}, nil
+}
+
+func wireHud() (hud.HeadsUpDisplay, error) {
+	wire.Build(BaseWireSet, hud.NewDefaultHeadsUpDisplay)
+	return nil, nil
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {

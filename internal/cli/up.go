@@ -2,22 +2,21 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/logger"
-
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
@@ -90,34 +89,35 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	upper, err := wireUpper(ctx)
+	h, err := wireHud()
 	if err != nil {
 		return err
 	}
 
-	// Run the HUD in the background
-	go func() {
-		err := upper.RunHud(ctx)
-		if err != nil {
-			//TODO(matt) this might not be the best thing to do with an error - seems easy to miss
-			logger.Get(ctx).Infof("error in hud: %v", err)
-		}
-	}()
-
-	// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-	err = upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
-	s, ok := status.FromError(err)
-	if ok && s.Code() == codes.Unknown {
-		return errors.New(s.Message())
-	} else if err != nil {
-		if err == context.Canceled {
-			// Expected case, no need to be loud about it, just exit
-			return nil
-		}
+	upper, err := wireUpper(ctx, h)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+	})
+	defer func() {
+		h.Close()
+	}()
+
+	g.Go(func() error {
+		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
+		err = upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
+		if err != nil && err != context.Canceled {
+			return err
+		}
+		return nil
+	})
+
+	return g.Wait()
 }
 
 func logOutput(s string) {
