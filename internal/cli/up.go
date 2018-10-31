@@ -89,24 +89,19 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	h, err := wireHud()
+	uh, err := wireHudAndUpper(ctx)
 	if err != nil {
 		return err
 	}
 
-	upper, err := wireUpper(ctx, h)
-	if err != nil {
-		return err
-	}
+	upper, h := uh.upper, uh.hud
 
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 	})
-	defer func() {
-		h.Close()
-	}()
+	defer h.Close()
 
 	g.Go(func() error {
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
