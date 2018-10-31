@@ -81,14 +81,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	}
 }
 
-func (u Upper) NewLogActionLogger(ctx context.Context) logger.Logger {
-	l := logger.Get(ctx)
-	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
-		u.store.Dispatch(LogAction{b})
-		return nil
-	})
-}
-
 func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
