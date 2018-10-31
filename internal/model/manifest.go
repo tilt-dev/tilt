@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 type ManifestName string
@@ -247,6 +248,17 @@ func (m Manifest) WithTiltFilename(f string) Manifest {
 
 func (m Manifest) K8sYAML() string {
 	return m.k8sYaml
+}
+
+func (m Manifest) AppendK8sYAML(y string) Manifest {
+	if m.k8sYaml == "" {
+		return m.WithK8sYAML(y)
+	}
+	if y == "" {
+		return m
+	}
+
+	return m.WithK8sYAML(yaml.ConcatYAML(m.k8sYaml, y))
 }
 
 func (m Manifest) WithK8sYAML(y string) Manifest {

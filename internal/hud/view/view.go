@@ -39,6 +39,8 @@ type ViewState struct {
 	NarrationMessage string
 
 	LogModal LogModal
+
+	ProcessedLogByteCount int
 }
 
 type View struct {

@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
@@ -69,17 +71,14 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
-	h, err := wireHud()
+	uh, err := wireHudAndUpper(ctx)
 	if err != nil {
 		return err
 	}
 
-	upper, err := wireUpper(ctx, h)
-	if err != nil {
-		return err
-	}
+	upper, h := uh.upper, uh.hud
 
-	l := upper.NewLogActionLogger(ctx)
+	l := NewLogActionLogger(ctx, upper.Dispatch)
 	ctx = logger.WithLogger(ctx, l)
 
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…\n", buildStamp()))
@@ -107,9 +106,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	g.Go(func() error {
 		return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 	})
-	defer func() {
-		h.Close()
-	}()
 
 	g.Go(func() error {
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
@@ -130,4 +126,12 @@ func logOutput(s string) {
 
 func provideUpdateModeFlag() engine.UpdateModeFlag {
 	return engine.UpdateModeFlag(updateModeFlag)
+}
+
+func NewLogActionLogger(ctx context.Context, dispatch func(action store.Action)) logger.Logger {
+	l := logger.Get(ctx)
+	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
+		dispatch(engine.LogAction{b})
+		return nil
+	})
 }

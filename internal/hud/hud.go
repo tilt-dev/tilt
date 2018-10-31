@@ -2,6 +2,7 @@ package hud
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -35,6 +36,7 @@ type Hud struct {
 	currentView view.View
 	viewState   view.ViewState
 	mu          sync.RWMutex
+	isRunning   bool
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
@@ -59,10 +61,22 @@ func logModal(r rty.RTY) rty.TextScroller {
 }
 
 func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
+	h.mu.Lock()
+	h.isRunning = true
+	h.mu.Unlock()
+
+	defer func() {
+		h.mu.Lock()
+		h.isRunning = false
+		h.mu.Unlock()
+	}()
+
 	screenEvents, err := h.r.SetUp()
 	if err != nil {
 		return errors.Wrap(err, "error initializing renderer")
 	}
+
+	defer h.Close()
 
 	if refreshRate == 0 {
 		refreshRate = DefaultRefreshInterval
@@ -72,7 +86,6 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 	for {
 		select {
 		case <-ctx.Done():
-			h.Close()
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err
@@ -179,6 +192,14 @@ func (h *Hud) Refresh(ctx context.Context) {
 // Must hold the lock
 func (h *Hud) setView(ctx context.Context, view view.View) {
 	h.currentView = view
+
+	// if the hud isn't running, make sure new logs are visible on stdout
+	if !h.isRunning && h.viewState.ProcessedLogByteCount < len(view.Log) {
+		fmt.Print(view.Log[h.viewState.ProcessedLogByteCount:])
+	}
+
+	h.viewState.ProcessedLogByteCount = len(view.Log)
+
 	h.refresh(ctx)
 }
 

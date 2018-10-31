@@ -18,6 +18,7 @@ import (
 
 var K8sWireSet = wire.NewSet(
 	k8s.DetectEnv,
+	k8s.DetectNodeIP,
 
 	k8s.ProvidePortForwarder,
 	k8s.ProvideRESTClient,
@@ -44,6 +45,7 @@ var BaseWireSet = wire.NewSet(
 
 	provideClock,
 	hud.NewRenderer,
+	hud.NewDefaultHeadsUpDisplay,
 
 	engine.NewUpper,
 	provideAnalytics,
@@ -51,21 +53,27 @@ var BaseWireSet = wire.NewSet(
 	engine.NewWatchManager,
 	engine.ProvideFsWatcherMaker,
 	engine.ProvideTimerMaker,
+
+	provideHudAndUpper,
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
-	wire.Build(BaseWireSet, demo.NewScript, hud.NewDefaultHeadsUpDisplay)
+	wire.Build(BaseWireSet, demo.NewScript)
 	return demo.Script{}, nil
 }
 
-func wireUpper(ctx context.Context, hud hud.HeadsUpDisplay) (engine.Upper, error) {
+func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
 	wire.Build(BaseWireSet)
-	return engine.Upper{}, nil
+	return HudAndUpper{}, nil
 }
 
-func wireHud() (hud.HeadsUpDisplay, error) {
-	wire.Build(BaseWireSet, hud.NewDefaultHeadsUpDisplay)
-	return nil, nil
+type HudAndUpper struct {
+	hud   hud.HeadsUpDisplay
+	upper engine.Upper
+}
+
+func provideHudAndUpper(h hud.HeadsUpDisplay, upper engine.Upper) HudAndUpper {
+	return HudAndUpper{h, upper}
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
