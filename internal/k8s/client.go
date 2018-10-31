@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -77,9 +75,6 @@ type Client interface {
 	// Finds the PodID for the instance of appName running on the same node as podID
 	FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error)
 
-	// Waits for the LoadBalancerSpec to get a publicly available URL.
-	ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error)
-
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error)
 
@@ -121,47 +116,6 @@ func NewK8sClient(
 	}
 }
 
-func (k K8sClient) ResolveLoadBalancer(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	if k.env == EnvDockerDesktop && len(lb.Ports) > 0 {
-		url, err := url.Parse(fmt.Sprintf("http://localhost:%d/", lb.Ports[0]))
-		if err != nil {
-			return LoadBalancer{}, fmt.Errorf("hard-coded url failed to parse??? : %v", err)
-		}
-		return LoadBalancer{
-			URL:  url,
-			Spec: lb,
-		}, nil
-	}
-
-	if k.env == EnvMinikube {
-		return k.resolveLoadBalancerFromMinikube(ctx, lb)
-	}
-
-	return k.resolveLoadBalancerFromK8sAPI(ctx, lb)
-}
-
-func (k K8sClient) resolveLoadBalancerFromMinikube(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	logger.Get(ctx).Infof("Waiting on minikube to resolve service: %s", lb.Name)
-
-	intervalSec := "1" // 1s is the smallest polling interval we can set :raised_eyebrow:
-	cmd := exec.CommandContext(ctx, "minikube", "service", lb.Name, "--url", "--interval", intervalSec)
-
-	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
-
-	out, err := cmd.Output()
-	if err != nil {
-		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: %v", err)
-	}
-	url, err := url.Parse(strings.TrimSpace(string(out)))
-	if err != nil {
-		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
-	}
-	return LoadBalancer{
-		URL:  url,
-		Spec: lb,
-	}, nil
-}
-
 func ServiceURL(service *v1.Service) (*url.URL, error) {
 	status := service.Status
 
@@ -189,32 +143,12 @@ func ServiceURL(service *v1.Service) (*url.URL, error) {
 
 		url, err := url.Parse(urlString)
 		if err != nil {
-			return nil, fmt.Errorf("ResolveLoadBalancer: malformed url: %v", err)
+			return nil, fmt.Errorf("ServiceURL: malformed url: %v", err)
 		}
 		return url, nil
 	}
 
 	return nil, nil
-}
-
-func (k K8sClient) resolveLoadBalancerFromK8sAPI(ctx context.Context, lb LoadBalancerSpec) (LoadBalancer, error) {
-	if len(lb.Ports) == 0 {
-		return LoadBalancer{}, nil
-	}
-
-	svc, err := k.core.Services(lb.Namespace.String()).Get(lb.Name, metav1.GetOptions{})
-	if err != nil {
-		return LoadBalancer{}, fmt.Errorf("ResolveLoadBalancer#Services: %v", err)
-	}
-
-	url, err := ServiceURL(svc)
-	if err != nil {
-		return LoadBalancer{}, err
-	}
-	return LoadBalancer{
-		URL:  url,
-		Spec: lb,
-	}, nil
 }
 
 func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
@@ -324,18 +258,4 @@ func ProvideRESTConfig() (*rest.Config, error) {
 
 func ProvidePortForwarder() PortForwarder {
 	return portForwarder
-}
-
-func OpenService(ctx context.Context, client Client, lbSpec LoadBalancerSpec) error {
-	lb, err := client.ResolveLoadBalancer(ctx, lbSpec)
-	if err != nil {
-		return err
-	}
-
-	if lb.URL == nil {
-		logger.Get(ctx).Infof("Could not determine URL of service: %s", lbSpec.Name)
-		return nil
-	}
-
-	return browser.OpenURL(lb.URL.String())
 }
