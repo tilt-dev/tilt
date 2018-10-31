@@ -1362,23 +1362,6 @@ func TestCancelingUpperCancelsHud(t *testing.T) {
 	assert.True(t, f.hud.Canceled)
 }
 
-func TestCompletingUpperClosesHud(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, false)
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	assert.True(t, f.hud.Closed)
-}
-
 func TestInitWithGlobalYAML(t *testing.T) {
 	f := newTestFixture(t)
 	state := f.store.RLockState()
@@ -1509,7 +1492,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	gybc := NewGlobalYAMLBuildController(k8s)
 	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
-	upper.hudErrorCh = make(chan error)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
