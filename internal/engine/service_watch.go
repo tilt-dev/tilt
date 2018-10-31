@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -12,11 +13,13 @@ import (
 type ServiceWatcher struct {
 	kCli     k8s.Client
 	watching bool
+	nodeIP   k8s.NodeIP
 }
 
-func NewServiceWatcher(kCli k8s.Client) *ServiceWatcher {
+func NewServiceWatcher(kCli k8s.Client, nodeIP k8s.NodeIP) *ServiceWatcher {
 	return &ServiceWatcher{
-		kCli: kCli,
+		kCli:   kCli,
+		nodeIP: nodeIP,
 	}
 }
 
@@ -38,19 +41,33 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st *store.Store) {
 		return
 	}
 
-	go dispatchServiceChangesLoop(ctx, ch, st)
+	go w.dispatchServiceChangesLoop(ctx, ch, st)
 }
 
-func dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st *store.Store) {
+func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st *store.Store) {
 	for {
 		select {
 		case service, ok := <-ch:
 			if !ok {
 				return
 			}
-			st.Dispatch(NewServiceChangeAction(service))
+
+			err := dispatchServiceChange(st, service, w.nodeIP)
+			if err != nil {
+				logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
+			}
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func dispatchServiceChange(st *store.Store, service *v1.Service, ip k8s.NodeIP) error {
+	url, err := k8s.ServiceURL(service, ip)
+	if err != nil {
+		return err
+	}
+
+	st.Dispatch(NewServiceChangeAction(service, url))
+	return nil
 }
