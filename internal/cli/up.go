@@ -104,6 +104,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	if c.hud {
 		g.Go(func() error {
@@ -112,15 +114,17 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	g.Go(func() error {
+		defer cancel()
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-		err = upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
-		if err != nil && err != context.Canceled {
-			return err
-		}
-		return nil
+		return upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
 	})
 
-	return g.Wait()
+	err = g.Wait()
+	if err != context.Canceled {
+		return err
+	} else {
+		return nil
+	}
 }
 
 func logOutput(s string) {
