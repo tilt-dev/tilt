@@ -2,6 +2,7 @@ package hud
 
 import (
 	"context"
+	"testing"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -14,7 +15,7 @@ var _ HeadsUpDisplay = (*FakeHud)(nil)
 
 type FakeHud struct {
 	LastView view.View
-	Updates  chan view.View
+	updates  chan view.View
 	Canceled bool
 	Closed   bool
 	closeCh  chan interface{}
@@ -22,7 +23,7 @@ type FakeHud struct {
 
 func NewFakeHud() *FakeHud {
 	return &FakeHud{
-		Updates: make(chan view.View, 10),
+		updates: make(chan view.View, 10),
 		closeCh: make(chan interface{}),
 	}
 }
@@ -57,6 +58,23 @@ func (h *FakeHud) Close() {
 
 func (h *FakeHud) Update(v view.View) error {
 	h.LastView = v
-	h.Updates <- v
+	h.updates <- v
 	return nil
+}
+
+func (h *FakeHud) WaitUntil(t testing.TB, ctx context.Context, msg string, isDone func(view.View) bool) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("Timed out waiting for: %s", msg)
+		case view := <-h.updates:
+			done := isDone(view)
+			if done {
+				return
+			}
+		}
+	}
 }

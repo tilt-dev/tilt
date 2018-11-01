@@ -6,8 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-
 	"github.com/fatih/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
@@ -17,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
