@@ -757,7 +757,7 @@ func TestReapOldBuilds(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	f.WaitUntil("images reaped", func(store.EngineState) bool {
+	f.PollUntil("images reaped", func() bool {
 		return len(f.docker.RemovedImageIDs) > 0
 	})
 
@@ -1581,6 +1581,27 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 			// "the model changed". Eventually we should have a real reactive
 			// subscription mechanism.
 		case <-f.hud.Updates:
+		}
+	}
+}
+
+// Poll until the given state passes. This should be used for checking things outside
+// the state loop. Don't use this to check state inside the state loop.
+func (f *testFixture) PollUntil(msg string, isDone func() bool) {
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	for {
+		done := isDone()
+		if done {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.T().Fatalf("Timed out waiting for: %s", msg)
+		case <-ticker.C:
 		}
 	}
 }
