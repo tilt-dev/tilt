@@ -25,7 +25,7 @@ func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
 	return result, nil
 }
 
-func extractPodTemplateSpec(obj interface{}) ([]*v1.PodTemplateSpec, error) {
+func ExtractPodTemplateSpec(obj interface{}) ([]*v1.PodTemplateSpec, error) {
 	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.PodTemplateSpec{}))
 	if err != nil {
 		return nil, err

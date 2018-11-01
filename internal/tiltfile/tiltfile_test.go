@@ -72,7 +72,7 @@ func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...string) ([]model.Ma
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(names...)
+	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, names...)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
@@ -103,7 +103,7 @@ func (f *gitRepoFixture) LoadManifestForError(name string) error {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(name)
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, name)
 	if err == nil {
 		f.T().Fatal("Expected manifest load error")
 	}
@@ -673,7 +673,7 @@ def blorgly():
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML("blorgly")
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(output.CtxForTest(), "blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "isn't a valid git repo")
 	}
@@ -928,7 +928,7 @@ def blorgly():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML("blorgly")
+	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, "blorgly")
 	if err != nil {
 		t.Fatal("getting manifest config:", err)
 	}

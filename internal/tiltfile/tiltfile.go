@@ -381,7 +381,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 
 // GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
 // a manifest representing the global yaml
-func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest, error) {
+func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 
 	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
@@ -390,7 +390,7 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Mani
 	}
 
 	for _, manifestName := range names {
-		curManifests, err := t.getManifestConfigsHelper(manifestName)
+		curManifests, err := t.getManifestConfigsHelper(ctx, manifestName)
 		if err != nil {
 			return manifests, model.YAMLManifest{}, err
 		}
@@ -415,7 +415,7 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(names ...string) ([]model.Mani
 	return manifests, globalYAML, nil
 }
 
-func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifest, error) {
+func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName string) ([]model.Manifest, error) {
 	f, ok := t.globals[manifestName]
 
 	if !ok {
@@ -482,7 +482,7 @@ func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifes
 
 		m.Name = model.ManifestName(manifestName)
 
-		manifestYAMLFromGlobalYAML, err := t.extractFromGlobalYAMLForManifest(m)
+		manifestYAMLFromGlobalYAML, err := t.extractFromGlobalYAMLForManifest(ctx, m)
 		if err != nil {
 			return nil, errors.Wrapf(err, "extracting global yaml for manifest %s", m.Name)
 		}
@@ -498,7 +498,7 @@ func (t Tiltfile) getManifestConfigsHelper(manifestName string) ([]model.Manifes
 // extractFromGlobalYAMLForManifest finds any objects defined in the global YAML
 // that correspond to the given manifest, and extracts and returns them. (Note
 // that this operation modifies the global YAML in place!)
-func (t *Tiltfile) extractFromGlobalYAMLForManifest(m model.Manifest) (string, error) {
+func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model.Manifest) (string, error) {
 	gYAML, err := getGlobalYAML(t.thread)
 	if err != nil {
 		return "", err
@@ -508,11 +508,36 @@ func (t *Tiltfile) extractFromGlobalYAMLForManifest(m model.Manifest) (string, e
 		return "", errors.Wrap(err, "parsing global yaml")
 	}
 
+	var matchingSelector []k8s.K8sEntity
 	// TODO(maia): also get entities that select for any of THESE entities (services etc.)
-	matching, rest, err := k8s.FilterByImage(entities, m.DockerRef())
+	matchingImg, allRest, err := k8s.FilterByImage(entities, m.DockerRef())
+	for _, e := range matchingImg {
+		podTemplates, err := k8s.ExtractPodTemplateSpec(e)
+		if err != nil {
+			return "", errors.Wrap(err, "extracting pod template spec")
+		}
+		if len(podTemplates) == 0 {
+			continue
+		}
+
+		if len(podTemplates) > 1 {
+			logger.Get(ctx).Infof("Found multiple pod templates on your %s for manifest %s, "+
+				"looking for services that match the first one", e.Kind.Kind, m.Name)
+		}
+		template := podTemplates[0]
+
+		match, rest, err := k8s.FilterByLabels(allRest, template.Labels)
+		if err != nil {
+			return "", errors.Wrap(err, "filtering entities by label")
+		}
+		matchingSelector = append(matchingSelector, match...)
+		allRest = rest
+	}
+
+	matching := append(matchingImg, matchingSelector...)
 
 	// GlobalYAML = GlobalYAML without any k8s entries matching this manifest
-	gYAMLWithoutMatches, err := k8s.SerializeYAML(rest)
+	gYAMLWithoutMatches, err := k8s.SerializeYAML(allRest)
 	if err != nil {
 		return "", errors.Wrap(err, "re-serializing global yaml")
 	}

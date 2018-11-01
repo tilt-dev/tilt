@@ -35,7 +35,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(args...)
+	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
 	if err != nil {
 		return err
 	}
