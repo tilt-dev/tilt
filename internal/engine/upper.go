@@ -137,6 +137,12 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleManifestReloaded(ctx, state, action)
 	case GlobalYAMLManifestReloadedAction:
 		handleGlobalYAMLManifestReloaded(ctx, state, action)
+	case GlobalYAMLApplyStartedAction:
+		handleGlobalYAMLApplyStarted(ctx, state, action)
+	case GlobalYAMLApplyCompleteAction:
+		handleGlobalYAMLApplyComplete(ctx, state, action)
+	case GlobalYAMLApplyError:
+		handleGlobalYAMLApplyError(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -356,6 +362,38 @@ func handleGlobalYAMLManifestReloaded(
 	state.GlobalYAML = event.GlobalYAML
 }
 
+func handleGlobalYAMLApplyStarted(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLApplyStartedAction,
+) {
+	state.GlobalYAMLState.CurrentApplyStartTime = time.Now()
+	state.GlobalYAMLState.LastError = nil
+}
+
+func handleGlobalYAMLApplyComplete(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLApplyCompleteAction,
+) {
+	ms := state.GlobalYAMLState
+	ms.HasBeenDeployed = true
+	ms.LastApplyFinishTime = time.Now()
+	ms.LastApplyDuration = time.Since(ms.CurrentApplyStartTime)
+	ms.CurrentApplyStartTime = time.Time{}
+
+	ms.LastSuccessfulApplyTime = time.Now()
+	ms.LastError = nil
+}
+
+func handleGlobalYAMLApplyError(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLApplyError,
+) {
+	state.GlobalYAMLState.LastError = event.Error
+}
+
 func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
@@ -511,6 +549,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	manifests := action.Manifests
 
 	engineState.GlobalYAML = action.GlobalYAMLManifest
+	engineState.GlobalYAMLState = store.NewYAMLManifestState(action.GlobalYAMLManifest)
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
