@@ -2,6 +2,7 @@ package hud
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -30,12 +31,12 @@ type HeadsUpDisplay interface {
 }
 
 type Hud struct {
-	a *ServerAdapter
 	r *Renderer
 
 	currentView view.View
 	viewState   view.ViewState
 	mu          sync.RWMutex
+	isRunning   bool
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
@@ -56,47 +57,46 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 }
 
 func logModal(r rty.RTY) rty.TextScroller {
-	return r.TextScroller("logmodal")
+	return r.TextScroller(logScrollerName)
 }
 
 func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
-	a, err := NewServer(ctx)
+	h.mu.Lock()
+	h.isRunning = true
+	h.mu.Unlock()
+
+	defer func() {
+		h.mu.Lock()
+		h.isRunning = false
+		h.mu.Unlock()
+	}()
+
+	screenEvents, err := h.r.SetUp()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error initializing renderer")
 	}
 
-	h.a = a
+	defer h.Close()
 
 	if refreshRate == 0 {
 		refreshRate = DefaultRefreshInterval
 	}
 	ticker := time.NewTicker(refreshRate)
 
-	var screenEvents chan tcell.Event
 	for {
 		select {
 		case <-ctx.Done():
-			h.Close()
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err
 			} else {
 				return nil
 			}
-		case ready := <-a.readyCh:
-			screenEvents, err = h.r.SetUp(ready, a.winchCh)
-			if err != nil {
-				return err
-			}
-			h.Refresh(ctx)
-		case <-a.winchCh:
-			h.Refresh(ctx)
-		case <-a.streamClosedCh:
-			h.r.Reset()
 		case e := <-screenEvents:
-			h.handleScreenEvent(ctx, dispatch, e)
-		case <-a.serverClosed:
-			return nil
+			done := h.handleScreenEvent(ctx, dispatch, e)
+			if done {
+				return nil
+			}
 		case <-ticker.C:
 			h.Refresh(ctx)
 		}
@@ -104,13 +104,10 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 }
 
 func (h *Hud) Close() {
-	if h.a != nil {
-		h.a.Close()
-	}
 	h.r.Reset()
 }
 
-func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.Action), ev tcell.Event) {
+func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.Action), ev tcell.Event) (done bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -118,7 +115,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyEscape:
-			h.Close()
+			h.viewState.LogModal = view.LogModal{}
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
@@ -137,28 +134,43 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				} else {
 					logger.Get(ctx).Infof("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
+			case r == 'q': // [Q]uit
+				h.Close()
+				dispatch(ExitAction{})
+				return true
+			case r == 'l': // [L]og
+				if !h.viewState.LogModal.IsActive() {
+					h.viewState.LogModal = view.LogModal{TiltLog: true}
+				}
+				logModal(h.r.rty).Bottom()
 			}
+		case tcell.KeyCtrlC:
+			h.Close()
+			dispatch(ExitAction{})
+			return true
 		case tcell.KeyUp:
 			h.selectedScroller(h.r.rty).Up()
-			h.refresh(ctx)
 		case tcell.KeyDown:
 			h.selectedScroller(h.r.rty).Down()
-			h.refresh(ctx)
 		case tcell.KeyHome:
 			h.selectedScroller(h.r.rty).Top()
 		case tcell.KeyEnd:
 			h.selectedScroller(h.r.rty).Bottom()
 		case tcell.KeyEnter:
-			if h.viewState.DisplayedLogNumber == 0 {
+			if !h.viewState.LogModal.IsActive() {
 				selectedIdx, _ := h.selectedResource()
-				h.viewState.DisplayedLogNumber = selectedIdx + 1
+				h.viewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
 				logModal(h.r.rty).Bottom()
-			} else {
-				h.viewState.DisplayedLogNumber = 0
 			}
-			h.refresh(ctx)
 		}
+	case *tcell.EventResize:
+		// since we already refresh after the switch, don't need to do anything here
+		// just marking this as where sigwinch gets handled
 	}
+
+	h.refresh(ctx)
+
+	return false
 }
 
 func (h *Hud) OnChange(ctx context.Context, st *store.Store) {
@@ -180,6 +192,14 @@ func (h *Hud) Refresh(ctx context.Context) {
 // Must hold the lock
 func (h *Hud) setView(ctx context.Context, view view.View) {
 	h.currentView = view
+
+	// if the hud isn't running, make sure new logs are visible on stdout
+	if !h.isRunning && h.viewState.ProcessedLogByteCount < len(view.Log) {
+		fmt.Print(view.Log[h.viewState.ProcessedLogByteCount:])
+	}
+
+	h.viewState.ProcessedLogByteCount = len(view.Log)
+
 	h.refresh(ctx)
 }
 
@@ -215,10 +235,10 @@ func (h *Hud) selectedResource() (i int, resource view.Resource) {
 var _ store.Subscriber = &Hud{}
 
 const resourcesScollerName = "resources"
-const logScrollerName = "logmodal"
+const logScrollerName = "log modal"
 
 func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
-	if h.viewState.DisplayedLogNumber == 0 {
+	if !h.viewState.LogModal.IsActive() {
 		return h.r.rty.ElementScroller(resourcesScollerName)
 	} else {
 		return h.r.rty.TextScroller(logScrollerName)

@@ -109,6 +109,10 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, state.PermanentError
 	}
 
+	if state.Exit {
+		return true, nil
+	}
+
 	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
 	return finished, nil
 }

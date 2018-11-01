@@ -106,6 +106,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = handleInitAction(ctx, state, action)
 	case ErrorAction:
 		err = action.Error
+	case hud.ExitAction:
+		handleExitAction(state)
 	case manifestFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
@@ -122,6 +124,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildStarted(ctx, state, action)
 	case ManifestReloadedAction:
 		handleManifestReloaded(ctx, state, action)
+	case LogAction:
+		handleLogAction(state, action)
 	case GlobalYAMLManifestReloadedAction:
 		handleGlobalYAMLManifestReloaded(ctx, state, action)
 	case GlobalYAMLApplyStartedAction:
@@ -515,6 +519,10 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
 }
 
+func handleLogAction(state *store.EngineState, action LogAction) {
+	state.Log = append(state.Log, action.Log...)
+}
+
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
 	service := action.Service
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
@@ -549,6 +557,10 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	}
 	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
 	return nil
+}
+
+func handleExitAction(state *store.EngineState) {
+	state.Exit = true
 }
 
 // Check if the filesChangedSet only contains spurious changes that

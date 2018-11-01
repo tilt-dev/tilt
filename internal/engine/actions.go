@@ -50,6 +50,12 @@ type PodLogAction struct {
 
 func (PodLogAction) Action() {}
 
+type LogAction struct {
+	Log []byte
+}
+
+func (LogAction) Action() {}
+
 type BuildCompleteAction struct {
 	Result store.BuildResult
 	Error  error
@@ -107,3 +113,13 @@ type GlobalYAMLApplyError struct {
 }
 
 func (GlobalYAMLApplyError) Action() {}
+
+type HudStoppedAction struct {
+	err error
+}
+
+func (HudStoppedAction) Action() {}
+
+func NewHudStoppedAction(err error) HudStoppedAction {
+	return HudStoppedAction{err}
+}

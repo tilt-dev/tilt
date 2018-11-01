@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
@@ -25,6 +26,7 @@ type upCmd struct {
 	watch       bool
 	browserMode string
 	traceTags   string
+	hud         bool
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -41,6 +43,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
+	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
 	if err != nil {
 		panic(err)
@@ -69,6 +72,16 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
+	uh, err := wireHudAndUpper(ctx)
+	if err != nil {
+		return err
+	}
+
+	upper, h := uh.upper, uh.hud
+
+	l := NewLogActionLogger(ctx, upper.Dispatch)
+	ctx = logger.WithLogger(ctx, l)
+
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…\n", buildStamp()))
 
 	if trace {
@@ -89,21 +102,15 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	uh, err := wireHudAndUpper(ctx)
-	if err != nil {
-		return err
-	}
-
-	upper, h := uh.upper, uh.hud
-
 	g, ctx := errgroup.WithContext(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	g.Go(func() error {
-		return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
-	})
-	defer h.Close()
+	if c.hud {
+		g.Go(func() error {
+			return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+		})
+	}
 
 	g.Go(func() error {
 		defer cancel()
@@ -126,4 +133,12 @@ func logOutput(s string) {
 
 func provideUpdateModeFlag() engine.UpdateModeFlag {
 	return engine.UpdateModeFlag(updateModeFlag)
+}
+
+func NewLogActionLogger(ctx context.Context, dispatch func(action store.Action)) logger.Logger {
+	l := logger.Get(ctx)
+	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
+		dispatch(engine.LogAction{Log: b})
+		return nil
+	})
 }

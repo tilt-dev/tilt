@@ -38,11 +38,25 @@ type ViewState struct {
 	ShowNarration    bool
 	NarrationMessage string
 
-	// if non-0, which resource's log is currently shown in a modal (1-based index)
-	DisplayedLogNumber int
+	LogModal LogModal
+
+	ProcessedLogByteCount int
 }
 
 type View struct {
+	Log       string
 	Resources []Resource
 	ViewState ViewState
+}
+
+type LogModal struct {
+	// if non-0, which resource's log is currently shown in a modal (1-based index)
+	ResourceLogNumber int
+
+	// if we're showing the full tilt log output in a modal
+	TiltLog bool
+}
+
+func (lm LogModal) IsActive() bool {
+	return lm.TiltLog || lm.ResourceLogNumber != 0
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/client"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -154,11 +153,6 @@ func (s Script) Run(ctx context.Context) error {
 	g.Go(func() error {
 		defer cancel()
 		return s.hud.Run(ctx, s.upper.Dispatch, hud.DefaultRefreshInterval)
-	})
-
-	g.Go(func() error {
-		defer cancel()
-		return client.ConnectHud(ctx)
 	})
 
 	g.Go(func() error {
