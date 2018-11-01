@@ -23,7 +23,7 @@ const DefaultRefreshInterval = 1 * time.Second
 type HeadsUpDisplay interface {
 	store.Subscriber
 
-	Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error
+	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
 	Update(v view.View) error
 	Close()
 	SetNarrationMessage(ctx context.Context, msg string)
@@ -59,7 +59,7 @@ func logModal(r rty.RTY) rty.TextScroller {
 	return r.TextScroller("logmodal")
 }
 
-func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error {
+func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
 	a, err := NewServer(ctx)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 		case <-a.streamClosedCh:
 			h.r.Reset()
 		case e := <-screenEvents:
-			h.handleScreenEvent(ctx, st, e)
+			h.handleScreenEvent(ctx, dispatch, e)
 		case <-a.serverClosed:
 			return nil
 		case <-ticker.C:
@@ -110,7 +110,7 @@ func (h *Hud) Close() {
 	h.r.Reset()
 }
 
-func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) {
+func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.Action), ev tcell.Event) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -122,7 +122,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
-				st.Dispatch(NewShowErrorAction(int(r - '0')))
+				dispatch(NewShowErrorAction(int(r - '0')))
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to

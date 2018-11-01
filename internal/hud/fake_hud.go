@@ -28,7 +28,7 @@ func NewFakeHud() *FakeHud {
 	}
 }
 
-func (h *FakeHud) Run(ctx context.Context, st *store.Store, refreshInterval time.Duration) error {
+func (h *FakeHud) Run(ctx context.Context, dispatch func(action store.Action), refreshInterval time.Duration) error {
 	select {
 	case <-ctx.Done():
 	case <-h.closeCh:

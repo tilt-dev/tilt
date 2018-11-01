@@ -38,10 +38,8 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b          BuildAndDeployer
-	hud        hud.HeadsUpDisplay
-	store      *store.Store
-	hudErrorCh chan error
+	b     BuildAndDeployer
+	store *store.Store
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -78,18 +76,13 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(gybc)
 
 	return Upper{
-		b:          b,
-		hud:        hud,
-		store:      st,
-		hudErrorCh: make(chan error),
+		b:     b,
+		store: st,
 	}
 }
 
-func (u Upper) RunHud(ctx context.Context) error {
-	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
-	u.hudErrorCh <- err
-	close(u.hudErrorCh)
-	return err
+func (u Upper) Dispatch(action store.Action) {
+	u.store.Dispatch(action)
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
@@ -102,12 +95,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 	})
-
-	defer func() {
-		u.hud.Close()
-		// make sure the hud has had a chance to clean up
-		<-u.hudErrorCh
-	}()
 
 	return u.store.Loop(ctx)
 }

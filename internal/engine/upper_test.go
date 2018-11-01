@@ -1365,43 +1365,7 @@ func TestUpper_PodLogs(t *testing.T) {
 	}
 }
 
-func TestCancelingUpperCancelsHud(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	assert.True(t, f.hud.Canceled)
-}
-
-func TestCompletingUpperClosesHud(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, false)
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	assert.True(t, f.hud.Closed)
-}
-
-func TestSubsequentUpdateOfGlobalYAML(t *testing.T) {
+func TestInitWithGlobalYAML(t *testing.T) {
 	f := newTestFixture(t)
 	state := f.store.RLockState()
 	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{})
@@ -1497,7 +1461,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pw := NewPodWatcher(k8s)
 	sw := NewServiceWatcher(k8s, "")
 
-	hud := hud.NewFakeHud()
+	fakeHud := hud.NewFakeHud()
 
 	log := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
@@ -1520,11 +1484,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 
 	gybc := NewGlobalYAMLBuildController(k8s)
-	upper := NewUpper(ctx, b, hud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
-	upper.hudErrorCh = make(chan error)
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
 
 	go func() {
-		upper.RunHud(ctx)
+		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
 
 	return &testFixture{
@@ -1536,7 +1499,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:      watcher,
 		timerMaker:     &timerMaker,
 		docker:         docker,
-		hud:            hud,
+		hud:            fakeHud,
 		log:            log,
 		store:          st,
 		bc:             bc,
