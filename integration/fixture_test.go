@@ -41,6 +41,7 @@ type fixture struct {
 	logs          *bytes.Buffer
 	cmds          []*exec.Cmd
 	originalFiles map[string]string
+	tearingDown   bool
 }
 
 func newFixture(t *testing.T, dir string) *fixture {
@@ -197,6 +198,7 @@ func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, stri
 
 func (f *fixture) ForwardPort(name string, portMap string) {
 	outWriter := os.Stdout
+
 	cmd := exec.CommandContext(f.ctx, "kubectl", "port-forward", namespaceFlag, name, portMap)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
@@ -207,7 +209,10 @@ func (f *fixture) ForwardPort(name string, portMap string) {
 
 	f.cmds = append(f.cmds, cmd)
 	go func() {
-		_ = cmd.Wait()
+		err := cmd.Wait()
+		if err != nil && !f.tearingDown {
+			fmt.Printf("port forward failed: %v\n", err)
+		}
 	}()
 }
 
@@ -263,6 +268,8 @@ func (f *fixture) ClearNamespace() {
 }
 
 func (f *fixture) TearDown() {
+	f.tearingDown = true
+
 	for _, cmd := range f.cmds {
 		process := cmd.Process
 		if process != nil {
