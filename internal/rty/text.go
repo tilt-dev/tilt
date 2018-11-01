@@ -14,8 +14,8 @@ type StringBuilder interface {
 	Build() Component
 }
 
-func NewStringBuilder(name string) StringBuilder {
-	return &stringBuilder{name: name}
+func NewStringBuilder() StringBuilder {
+	return &stringBuilder{}
 }
 
 type directive interface {
@@ -31,7 +31,6 @@ func (fgDirective) directive()   {}
 func (bgDirective) directive()   {}
 
 type stringBuilder struct {
-	name       string
 	directives []directive
 }
 
@@ -88,31 +87,23 @@ func (b *stringBuilder) Bg(c tcell.Color) StringBuilder {
 }
 
 func (b *stringBuilder) Build() Component {
-	return &StringLayout{
-		name:       b.name,
-		directives: b.directives,
-	}
+	return &StringLayout{directives: b.directives}
 }
 
 type StringLayout struct {
 	directives []directive
-	name       string
 }
 
-func (l *StringLayout) Name() string {
-	return l.name
+func TextString(s string) Component {
+	return NewStringBuilder().Text(s).Build()
 }
 
-func TextString(name string, s string) Component {
-	return NewStringBuilder(name).Text(s).Build()
+func ColoredString(s string, fg tcell.Color) Component {
+	return NewStringBuilder().Fg(fg).Text(s).Build()
 }
 
-func ColoredString(name string, s string, fg tcell.Color) Component {
-	return NewStringBuilder(name).Fg(fg).Text(s).Build()
-}
-
-func BgColoredString(name string, s string, fg tcell.Color, bg tcell.Color) Component {
-	return NewStringBuilder(name).Fg(fg).Bg(bg).Text(s).Build()
+func BgColoredString(s string, fg tcell.Color, bg tcell.Color) Component {
+	return NewStringBuilder().Fg(fg).Bg(bg).Text(s).Build()
 }
 
 func (l *StringLayout) Size(availWidth int, availHeight int) (int, int) {

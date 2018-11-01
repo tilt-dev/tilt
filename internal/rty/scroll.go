@@ -1,7 +1,6 @@
 package rty
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -16,10 +15,6 @@ type TextScrollLayout struct {
 
 func NewTextScrollLayout(name string) *TextScrollLayout {
 	return &TextScrollLayout{name: name}
-}
-
-func (l *TextScrollLayout) Name() string {
-	return l.name
 }
 
 func (l *TextScrollLayout) Add(c Component) {
@@ -68,7 +63,7 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 	canvases := make([]Canvas, len(l.cs))
 
 	for i, c := range l.cs {
-		childCanvas := w.Divide(1, 0, width-1, height).RenderChildInTemp(c)
+		childCanvas := w.RenderChildInTemp(c)
 		canvases[i] = childCanvas
 		_, childHeight := childCanvas.Size()
 		next.canvasLengths[i] = childHeight
@@ -229,8 +224,8 @@ func (s *TextScrollController) SetFollow(follow bool) {
 func NewScrollingWrappingTextArea(name string, text string) Component {
 	l := NewTextScrollLayout(name)
 	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		l.Add(TextString(fmt.Sprintf("%s line %d", name, i), line+"\n"))
+	for _, line := range lines {
+		l.Add(TextString(line + "\n"))
 	}
 	return l
 }
@@ -242,10 +237,6 @@ type ElementScrollLayout struct {
 
 func NewElementScrollLayout(name string) *ElementScrollLayout {
 	return &ElementScrollLayout{name: name}
-}
-
-func (l *ElementScrollLayout) Name() string {
-	return l.name
 }
 
 func (l *ElementScrollLayout) Add(c Component) {
