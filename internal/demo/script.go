@@ -169,8 +169,8 @@ func (s Script) Run(ctx context.Context) error {
 			return ctx.Err()
 		}
 
-		file := filepath.Join(dir, tiltfile.FileName)
-		tf, err := tiltfile.Load(ctx, file)
+		tfPath := filepath.Join(dir, tiltfile.FileName)
+		tf, err := tiltfile.Load(ctx, tfPath)
 		if err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func (s Script) Run(ctx context.Context) error {
 		defer s.cleanUp(context.Background(), manifests)
 
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-		return s.upper.CreateManifests(ctx, manifests, model.YAMLManifest{}, true)
+		return s.upper.CreateManifests(ctx, manifests, model.YAMLManifest{}, true, tfPath)
 	})
 
 	return g.Wait()

@@ -52,6 +52,8 @@ type EngineState struct {
 	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
 	GlobalYAML      model.YAMLManifest
 	GlobalYAMLState *YAMLManifestState
+
+	TiltfilePath string
 }
 
 type ManifestState struct {

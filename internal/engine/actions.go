@@ -74,6 +74,7 @@ type InitAction struct {
 	WatchMounts        bool
 	Manifests          []model.Manifest
 	GlobalYAMLManifest model.YAMLManifest
+	TiltfilePath       string
 }
 
 func (InitAction) Action() {}
