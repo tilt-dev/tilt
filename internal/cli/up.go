@@ -135,7 +135,7 @@ func provideUpdateModeFlag() engine.UpdateModeFlag {
 func NewLogActionLogger(ctx context.Context, dispatch func(action store.Action)) logger.Logger {
 	l := logger.Get(ctx)
 	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
-		dispatch(engine.LogAction{b})
+		dispatch(engine.LogAction{Log: b})
 		return nil
 	})
 }
