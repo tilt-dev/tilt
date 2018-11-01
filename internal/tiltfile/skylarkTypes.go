@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-const oldMountSyntaxError = "The syntax for `add` has changed. Before it was `add(dest: string, src: string)`. Now it is `add(src: localPath, dest: string)`."
+const oldMountSyntaxError = "the syntax for `add` has changed. Before it was `add(dest: string, src: string)`. Now it is `add(src: localPath, dest: string)`."
 const noActiveBuildError = "No active build"
 
 type compManifest struct {

@@ -24,6 +24,9 @@ import (
 
 const FileName = "Tiltfile"
 
+const oldK8sServiceSyntaxError = "he syntax for `k8s_service` has changed. Before it was `k8s_service(yaml: string, dockerImage: Image)`. " +
+	"Now it is `k8s_service(dockerImage: Image, yaml: string = \"\")` (`yaml` is an optional arg)."
+
 type Tiltfile struct {
 	globals skylark.StringDict
 	thread  *skylark.Thread
@@ -132,12 +135,16 @@ func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, a
 }
 
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var yaml skylark.String
 	var dockerImage *dockerImage
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yaml", &yaml, "dockerImage", &dockerImage)
+	var yaml skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "dockerImage", &dockerImage, "yaml?", &yaml)
 	if err != nil {
+		if strings.Contains(err.Error(), "got string, want dockerImage") {
+			return nil, fmt.Errorf(oldK8sServiceSyntaxError)
+		}
 		return nil, err
 	}
+
 	// Name will be initialized later
 	return &k8sManifest{
 		k8sYaml:     yaml,
