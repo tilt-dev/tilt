@@ -153,7 +153,7 @@ func (s Script) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return s.upper.RunHud(ctx)
+		return s.hud.Run(ctx, s.upper.Dispatch, hud.DefaultRefreshInterval)
 	})
 
 	g.Go(func() error {

@@ -366,27 +366,51 @@ spec:
    app: postgres
 `
 
-const DoggosYaml = `
+const DoggosDeploymentYaml = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: doggos
   labels:
     app: doggos
+    breed: corgi
+    whosAGoodBoy: imAGoodBoy
 spec:
   selector:
     matchLabels:
       app: doggos
+      breed: corgi
+      whosAGoodBoy: imAGoodBoy
   template:
     metadata:
       labels:
         app: doggos
+        breed: corgi
+        whosAGoodBoy: imAGoodBoy
         tier: web
     spec:
       containers:
       - name: doggos
         image: gcr.io/windmill-public-containers/servantes/doggos
         command: ["/go/bin/doggos"]
+`
+
+const DoggosServiceYaml = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: doggos
+  labels:
+    app: doggos
+    whosAGoodBoy: imAGoodBoy
+spec:
+  ports:
+    - port: 80
+      targetPort: 8083
+      protocol: TCP
+  selector:
+    app: doggos
+    whosAGoodBoy: imAGoodBoy
 `
 
 const SnackYaml = `

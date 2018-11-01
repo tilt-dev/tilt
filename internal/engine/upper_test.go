@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -756,7 +757,7 @@ func TestReapOldBuilds(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	f.WaitUntil("images reaped", func(store.EngineState) bool {
+	f.PollUntil("images reaped", func() bool {
 		return len(f.docker.RemovedImageIDs) > 0
 	})
 
@@ -820,28 +821,22 @@ func TestPodEvent(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
-	go func() {
-		// Init Action
-		<-f.hud.Updates
+	f.Start([]model.Manifest{manifest}, true)
 
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
+	f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
-		<-f.hud.Updates
-		<-f.hud.Updates
-		rv := f.hud.LastView.Resources[0]
-		assert.Equal(t, "my pod", rv.PodName)
-		assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
+	f.WaitUntilHUD("hud update", func(v view.View) bool {
+		return len(v.Resources) > 0 && v.Resources[0].PodName == "my pod"
+	})
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
-	assert.Equal(t, endToken, err)
-	time.Sleep(1 * time.Second)
+	rv := f.hud.LastView.Resources[0]
+	assert.Equal(t, "my pod", rv.PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
+
+	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
 }
 
@@ -923,33 +918,28 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
 	f.SetNextBuildFailure(errors.New("Build failed"))
-	go func() {
-		// Init Action
-		<-f.hud.Updates
+	f.Start([]model.Manifest{manifest}, true)
 
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
-		<-f.hud.Updates
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		firstCreationTime := time.Now()
+	firstCreationTime := time.Now()
+	f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
+	f.WaitUntilHUD("hud update", func(v view.View) bool {
+		return len(v.Resources) > 0 && v.Resources[0].PodStatus == "CrashLoopBackOff"
+	})
 
-		f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
-		<-f.hud.Updates
+	f.podEvent(f.testPod("my new pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
+	f.WaitUntilHUD("hud update", func(v view.View) bool {
+		return len(v.Resources) > 0 && v.Resources[0].PodStatus == "Running"
+	})
 
-		f.podEvent(f.testPod("my new pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
+	rv := f.hud.LastView.Resources[0]
+	assert.Equal(t, "my new pod", rv.PodName)
+	assert.Equal(t, "Running", rv.PodStatus)
 
-		<-f.hud.Updates
-		rv := f.hud.LastView.Resources[0]
-		assert.Equal(t, "my new pod", rv.PodName)
-		assert.Equal(t, "Running", rv.PodStatus)
-
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
-	assert.Equal(t, endToken, err)
+	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
 }
 
@@ -969,15 +959,15 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 
-	f.WaitUntil("pod crashes", func(store.EngineState) bool {
-		rv := f.hud.LastView.Resources[0]
+	f.WaitUntilHUD("pod crashes", func(view view.View) bool {
+		rv := view.Resources[0]
 		return rv.PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my pod", "foobar", "Running", testContainer, creationTime))
 
-	f.WaitUntil("pod comes back", func(store.EngineState) bool {
-		rv := f.hud.LastView.Resources[0]
+	f.WaitUntilHUD("pod comes back", func(view view.View) bool {
+		rv := view.Resources[0]
 		return rv.PodStatus == "Running"
 	})
 
@@ -998,32 +988,27 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
 	f.SetNextBuildFailure(errors.New("Build failed"))
-	go func() {
-		// Init Action
-		<-f.hud.Updates
+	f.Start([]model.Manifest{manifest}, true)
 
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
-		<-f.hud.Updates
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		creationTime := time.Now()
-		f.podEvent(f.testPod("my new pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
-		<-f.hud.Updates
+	creationTime := time.Now()
+	f.podEvent(f.testPod("my new pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
+	f.WaitUntilHUD("hud update", func(v view.View) bool {
+		return len(v.Resources) > 0 && v.Resources[0].PodStatus == "CrashLoopBackOff"
+	})
 
-		f.podEvent(f.testPod("my pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
-		<-f.hud.Updates
+	f.podEvent(f.testPod("my pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
+	time.Sleep(10 * time.Millisecond)
 
-		rv := f.hud.LastView.Resources[0]
-		assert.Equal(t, "my new pod", rv.PodName)
-		assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
-
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
-	assert.Equal(t, endToken, err)
+	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
+
+	rv := f.hud.LastView.Resources[0]
+	assert.Equal(t, "my new pod", rv.PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
 }
 
 func TestPodContainerStatus(t *testing.T) {
@@ -1380,43 +1365,7 @@ func TestUpper_PodLogs(t *testing.T) {
 	}
 }
 
-func TestCancelingUpperCancelsHud(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	assert.True(t, f.hud.Canceled)
-}
-
-func TestCompletingUpperClosesHud(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, false)
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	assert.True(t, f.hud.Closed)
-}
-
-func TestSubsequentUpdateOfGlobalYAML(t *testing.T) {
+func TestInitWithGlobalYAML(t *testing.T) {
 	f := newTestFixture(t)
 	state := f.store.RLockState()
 	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{})
@@ -1494,6 +1443,8 @@ type testFixture struct {
 	store                 *store.Store
 	pod                   *v1.Pod
 	bc                    *BuildController
+
+	onchangeCh chan bool
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -1510,12 +1461,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	pw := NewPodWatcher(k8s)
 	sw := NewServiceWatcher(k8s, "")
 
-	hud := hud.NewFakeHud()
+	fakeHud := hud.NewFakeHud()
 
 	log := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
+	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer)
+	st.AddSubscriber(fSub)
 
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)
@@ -1531,11 +1484,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 
 	gybc := NewGlobalYAMLBuildController(k8s)
-	upper := NewUpper(ctx, b, hud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
-	upper.hudErrorCh = make(chan error)
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
 
 	go func() {
-		upper.RunHud(ctx)
+		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
 
 	return &testFixture{
@@ -1547,10 +1499,11 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:      watcher,
 		timerMaker:     &timerMaker,
 		docker:         docker,
-		hud:            hud,
+		hud:            fakeHud,
 		log:            log,
 		store:          st,
 		bc:             bc,
+		onchangeCh:     fSub.ch,
 	}
 }
 
@@ -1567,8 +1520,9 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 		f.createManifestsResult <- err
 	}()
 
-	// Init Action
-	<-f.hud.Updates
+	f.WaitUntil("manifests appear", func(st store.EngineState) bool {
+		return len(st.ManifestStates) == len(manifests) && st.WatchMounts == watchMounts
+	})
 }
 
 func (f *testFixture) Stop() error {
@@ -1592,6 +1546,11 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 	f.store.RUnlockState()
 }
 
+// Wait until the given view test passes.
+func (f *testFixture) WaitUntilHUD(msg string, isDone func(view.View) bool) {
+	f.hud.WaitUntil(f.T(), f.ctx, msg, isDone)
+}
+
 // Wait until the given engine state test passes.
 func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
@@ -1608,10 +1567,28 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 		select {
 		case <-ctx.Done():
 			f.T().Fatalf("Timed out waiting for: %s", msg)
-			// TODO(nick): Right now we're using the HUD update channel as a proxy for
-			// "the model changed". Eventually we should have a real reactive
-			// subscription mechanism.
-		case <-f.hud.Updates:
+		case <-f.onchangeCh:
+		}
+	}
+}
+
+// Poll until the given state passes. This should be used for checking things outside
+// the state loop. Don't use this to check state inside the state loop.
+func (f *testFixture) PollUntil(msg string, isDone func() bool) {
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	for {
+		done := isDone()
+		if done {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.T().Fatalf("Timed out waiting for: %s", msg)
+		case <-ticker.C:
 		}
 	}
 }
@@ -1730,17 +1707,6 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) consumeAllHudUpdates() {
-	done := false
-	for !done {
-		select {
-		case <-f.hud.Updates:
-		default:
-			done = true
-		}
-	}
-}
-
 func (f *testFixture) loadManifest(name string) model.Manifest {
 	tf, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
@@ -1752,4 +1718,12 @@ func (f *testFixture) loadManifest(name string) model.Manifest {
 	}
 	assert.Equal(f.T(), 1, len(manifests))
 	return manifests[0]
+}
+
+type fixtureSub struct {
+	ch chan bool
+}
+
+func (s fixtureSub) OnChange(ctx context.Context, store *store.Store) {
+	s.ch <- true
 }

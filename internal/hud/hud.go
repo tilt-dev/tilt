@@ -23,7 +23,7 @@ const DefaultRefreshInterval = 1 * time.Second
 type HeadsUpDisplay interface {
 	store.Subscriber
 
-	Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error
+	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
 	Update(v view.View) error
 	Close()
 	SetNarrationMessage(ctx context.Context, msg string)
@@ -59,7 +59,7 @@ func logModal(r rty.RTY) rty.TextScroller {
 	return r.TextScroller("logmodal")
 }
 
-func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duration) error {
+func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
 	a, err := NewServer(ctx)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func (h *Hud) Run(ctx context.Context, st *store.Store, refreshRate time.Duratio
 		case <-a.streamClosedCh:
 			h.r.Reset()
 		case e := <-screenEvents:
-			h.handleScreenEvent(ctx, st, e)
+			h.handleScreenEvent(ctx, dispatch, e)
 		case <-a.serverClosed:
 			return nil
 		case <-ticker.C:
@@ -110,7 +110,7 @@ func (h *Hud) Close() {
 	h.r.Reset()
 }
 
-func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.Event) {
+func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.Action), ev tcell.Event) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -122,11 +122,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, st *store.Store, ev tcell.E
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
-				st.Dispatch(NewShowErrorAction(int(r - '0')))
+				dispatch(NewShowErrorAction(int(r - '0')))
 			case r == 'o':
 				i, _ := h.selectedResource()
 				h.viewState.Resources[i].IsCollapsed = !h.viewState.Resources[i].IsCollapsed
-
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to
@@ -196,12 +195,14 @@ func (h *Hud) setViewState(ctx context.Context, viewState view.ViewState) {
 
 // Must hold the lock
 func (h *Hud) refresh(ctx context.Context) {
+	h.currentView.ViewState = h.viewState
+
 	// TODO: We don't handle the order of resources changing
 	for len(h.currentView.ViewState.Resources) < len(h.currentView.Resources) {
 		h.currentView.ViewState.Resources = append(h.currentView.ViewState.Resources, view.ResourceViewState{})
 	}
 
-	h.currentView.ViewState = h.viewState
+	h.viewState.Resources = h.currentView.ViewState.Resources
 
 	err := h.Update(h.currentView)
 	if err != nil {

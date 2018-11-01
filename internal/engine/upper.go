@@ -38,10 +38,8 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b          BuildAndDeployer
-	hud        hud.HeadsUpDisplay
-	store      *store.Store
-	hudErrorCh chan error
+	b     BuildAndDeployer
+	store *store.Store
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -78,18 +76,13 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(gybc)
 
 	return Upper{
-		b:          b,
-		hud:        hud,
-		store:      st,
-		hudErrorCh: make(chan error),
+		b:     b,
+		store: st,
 	}
 }
 
-func (u Upper) RunHud(ctx context.Context) error {
-	err := u.hud.Run(ctx, u.store, hud.DefaultRefreshInterval)
-	u.hudErrorCh <- err
-	close(u.hudErrorCh)
-	return err
+func (u Upper) Dispatch(action store.Action) {
+	u.store.Dispatch(action)
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
@@ -102,12 +95,6 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 	})
-
-	defer func() {
-		u.hud.Close()
-		// make sure the hud has had a chance to clean up
-		<-u.hudErrorCh
-	}()
 
 	return u.store.Loop(ctx)
 }
@@ -137,6 +124,12 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleManifestReloaded(ctx, state, action)
 	case GlobalYAMLManifestReloadedAction:
 		handleGlobalYAMLManifestReloaded(ctx, state, action)
+	case GlobalYAMLApplyStartedAction:
+		handleGlobalYAMLApplyStarted(ctx, state, action)
+	case GlobalYAMLApplyCompleteAction:
+		handleGlobalYAMLApplyComplete(ctx, state, action)
+	case GlobalYAMLApplyError:
+		handleGlobalYAMLApplyError(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -356,6 +349,38 @@ func handleGlobalYAMLManifestReloaded(
 	state.GlobalYAML = event.GlobalYAML
 }
 
+func handleGlobalYAMLApplyStarted(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLApplyStartedAction,
+) {
+	state.GlobalYAMLState.CurrentApplyStartTime = time.Now()
+	state.GlobalYAMLState.LastError = nil
+}
+
+func handleGlobalYAMLApplyComplete(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLApplyCompleteAction,
+) {
+	ms := state.GlobalYAMLState
+	ms.HasBeenDeployed = true
+	ms.LastApplyFinishTime = time.Now()
+	ms.LastApplyDuration = time.Since(ms.CurrentApplyStartTime)
+	ms.CurrentApplyStartTime = time.Time{}
+
+	ms.LastSuccessfulApplyTime = time.Now()
+	ms.LastError = nil
+}
+
+func handleGlobalYAMLApplyError(
+	ctx context.Context,
+	state *store.EngineState,
+	event GlobalYAMLApplyError,
+) {
+	state.GlobalYAMLState.LastError = event.Error
+}
+
 func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
@@ -511,6 +536,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	manifests := action.Manifests
 
 	engineState.GlobalYAML = action.GlobalYAMLManifest
+	engineState.GlobalYAMLState = store.NewYAMLManifestState(action.GlobalYAMLManifest)
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)

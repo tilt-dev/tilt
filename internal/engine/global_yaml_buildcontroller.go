@@ -36,13 +36,18 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
 		if err != nil {
 			logger.Get(ctx).Infof("Error parsing global_yaml: %v", err)
+			c.lastGlobalYAMLManifest = model.YAMLManifest{}
+			st.Dispatch(GlobalYAMLApplyError{Error: err})
 			return
 		}
+		st.Dispatch(GlobalYAMLApplyStartedAction{})
 
 		for _, e := range entities {
 			e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
 			if err != nil {
 				logger.Get(ctx).Infof("Error injecting labels in to global_yaml: %v", err)
+				c.lastGlobalYAMLManifest = model.YAMLManifest{}
+				st.Dispatch(GlobalYAMLApplyError{Error: err})
 				return
 			}
 
@@ -52,6 +57,8 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
 				logger.Get(ctx).Infof("Error injecting image pull policy in to global_yaml: %v", err)
+				st.Dispatch(GlobalYAMLApplyError{Error: err})
+				c.lastGlobalYAMLManifest = model.YAMLManifest{}
 				return
 			}
 
@@ -61,8 +68,11 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 		err = c.k8sClient.Upsert(ctx, newK8sEntities)
 		if err != nil {
 			logger.Get(ctx).Infof("Error upserting global_yaml: %v", err)
+			c.lastGlobalYAMLManifest = model.YAMLManifest{}
+			st.Dispatch(GlobalYAMLApplyError{Error: err})
 		} else {
 			c.lastGlobalYAMLManifest = m
+			st.Dispatch(GlobalYAMLApplyCompleteAction{})
 		}
 	}
 }
