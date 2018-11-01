@@ -100,6 +100,20 @@ type GlobalYAMLManifestReloadedAction struct {
 
 func (GlobalYAMLManifestReloadedAction) Action() {}
 
+type GlobalYAMLApplyStartedAction struct{}
+
+func (GlobalYAMLApplyStartedAction) Action() {}
+
+type GlobalYAMLApplyCompleteAction struct{}
+
+func (GlobalYAMLApplyCompleteAction) Action() {}
+
+type GlobalYAMLApplyError struct {
+	Error error
+}
+
+func (GlobalYAMLApplyError) Action() {}
+
 type HudStoppedAction struct {
 	err error
 }
