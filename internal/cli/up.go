@@ -27,6 +27,7 @@ type upCmd struct {
 	watch       bool
 	browserMode string
 	traceTags   string
+	hud         bool
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -43,6 +44,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
+	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
 	if err != nil {
 		panic(err)
@@ -103,9 +105,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
-		return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
-	})
+	if c.hud {
+		g.Go(func() error {
+			return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+		})
+	}
 
 	g.Go(func() error {
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
