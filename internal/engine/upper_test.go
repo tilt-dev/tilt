@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
@@ -1566,6 +1567,11 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 
 		select {
 		case <-ctx.Done():
+			// dump the stacks of all goroutines
+			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+
+			fmt.Printf("state: '%+v'\n", state)
+
 			f.T().Fatalf("Timed out waiting for: %s", msg)
 		case <-f.onchangeCh:
 		}
@@ -1712,7 +1718,7 @@ func (f *testFixture) loadManifest(name string) model.Manifest {
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML("foobar")
+	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
 	if err != nil {
 		f.T().Fatal(err)
 	}

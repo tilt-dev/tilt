@@ -34,19 +34,33 @@ type Resource struct {
 //
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
+type View struct {
+	Log       string
+	Resources []Resource
+	ViewState ViewState
+}
+
 type ViewState struct {
 	ShowNarration    bool
 	NarrationMessage string
 	Resources        []ResourceViewState
-	// if non-0, which resource's log is currently shown in a modal (1-based index)
-	DisplayedLogNumber int
+	LogModal         LogModal
+
+	ProcessedLogByteCount int
 }
 
 type ResourceViewState struct {
 	IsCollapsed bool
 }
 
-type View struct {
-	Resources []Resource
-	ViewState ViewState
+type LogModal struct {
+	// if non-0, which resource's log is currently shown in a modal (1-based index)
+	ResourceLogNumber int
+
+	// if we're showing the full tilt log output in a modal
+	TiltLog bool
+}
+
+func (lm LogModal) IsActive() bool {
+	return lm.TiltLog || lm.ResourceLogNumber != 0
 }

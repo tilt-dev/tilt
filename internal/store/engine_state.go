@@ -41,6 +41,12 @@ type EngineState struct {
 
 	PermanentError error
 
+	// The user has indicated they want to exit
+	Exit bool
+
+	// The full log stream for tilt. This might deserve gc or file storage at some point.
+	Log []byte
+
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
 	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
@@ -303,6 +309,8 @@ func StateToView(s EngineState) view.View {
 
 		ret.Resources = append(ret.Resources, r)
 	}
+
+	ret.Log = string(s.Log)
 
 	return ret
 }

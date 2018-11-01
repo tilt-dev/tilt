@@ -41,6 +41,7 @@ type fixture struct {
 	logs          *bytes.Buffer
 	cmds          []*exec.Cmd
 	originalFiles map[string]string
+	tearingDown   bool
 }
 
 func newFixture(t *testing.T, dir string) *fixture {
@@ -120,7 +121,7 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 
 func (f *fixture) TiltUp(name string) {
 	out := bytes.NewBuffer(nil)
-	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--image-tag-prefix=" + imageTagPrefix}, out)
+	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--image-tag-prefix=" + imageTagPrefix}, out)
 	err := cmd.Run()
 	if err != nil {
 		f.t.Fatalf("Failed to up service: %v. Logs:\n%s", err, out.String())
@@ -128,7 +129,7 @@ func (f *fixture) TiltUp(name string) {
 }
 
 func (f *fixture) TiltWatch(name string) {
-	cmd := f.tiltCmd([]string{"up", name, "--debug"}, os.Stdout)
+	cmd := f.tiltCmd([]string{"up", name, "--debug", "--hud=false"}, os.Stdout)
 	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)
@@ -197,6 +198,7 @@ func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, stri
 
 func (f *fixture) ForwardPort(name string, portMap string) {
 	outWriter := os.Stdout
+
 	cmd := exec.CommandContext(f.ctx, "kubectl", "port-forward", namespaceFlag, name, portMap)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
@@ -207,7 +209,10 @@ func (f *fixture) ForwardPort(name string, portMap string) {
 
 	f.cmds = append(f.cmds, cmd)
 	go func() {
-		_ = cmd.Wait()
+		err := cmd.Wait()
+		if err != nil && !f.tearingDown {
+			fmt.Printf("port forward failed: %v\n", err)
+		}
 	}()
 }
 
@@ -263,6 +268,8 @@ func (f *fixture) ClearNamespace() {
 }
 
 func (f *fixture) TearDown() {
+	f.tearingDown = true
+
 	for _, cmd := range f.cmds {
 		process := cmd.Process
 		if process != nil {

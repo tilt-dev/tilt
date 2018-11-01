@@ -60,7 +60,7 @@ func TestExtractSanchoPodTemplateSpecs(t *testing.T) {
 	}
 
 	entity := entities[0]
-	tempSpecs, err := extractPodTemplateSpec(&entity)
+	tempSpecs, err := ExtractPodTemplateSpec(&entity)
 	if err != nil {
 		t.Fatal(err)
 	}
