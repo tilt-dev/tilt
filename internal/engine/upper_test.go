@@ -777,6 +777,10 @@ func TestHudUpdated(t *testing.T) {
 	call := <-f.b.calls
 	assert.True(t, call.state.IsEmpty())
 
+	f.WaitUntilHUD("hud update", func(v view.View) bool {
+		return len(v.Resources) > 0
+	})
+
 	err := f.Stop()
 	assert.Equal(t, nil, err)
 
