@@ -83,7 +83,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("manifest error and build error", 70, 20, v)
+	rtf.run("manifest error and build error", 70, 20, v, vs)
 
 	ts := time.Now().Add(-5 * time.Minute)
 	v = view.View{
