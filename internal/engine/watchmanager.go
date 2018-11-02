@@ -87,7 +87,10 @@ func (w *WatchManager) maybeSetupTFWatch(st *store.Store) error {
 	if err != nil {
 		return err
 	}
-	watcher.Add(state.TiltfilePath)
+	err = watcher.Add(state.TiltfilePath)
+	if err != nil {
+		return err
+	}
 
 	w.tiltfileWatch = watcher
 
