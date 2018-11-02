@@ -24,7 +24,7 @@ import (
 
 const FileName = "Tiltfile"
 
-const oldK8sServiceSyntaxError = "he syntax for `k8s_service` has changed. Before it was `k8s_service(yaml: string, dockerImage: Image)`. " +
+const oldK8sServiceSyntaxError = "the syntax for `k8s_service` has changed. Before it was `k8s_service(yaml: string, dockerImage: Image)`. " +
 	"Now it is `k8s_service(dockerImage: Image, yaml: string = \"\")` (`yaml` is an optional arg)."
 
 type Tiltfile struct {

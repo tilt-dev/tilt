@@ -147,7 +147,7 @@ class Service
 ```
 
 #### global_yaml
-Call this _on the top level of your Tiltfile_ on a string of YAML.
+Call this _on the top level of your Tiltfile_ with a string of YAML.
 
 We will infer what (if any) of the k8s resources defined in your YAML correspond to `Services` defined elsewhere in your Tiltfile (matching based on the DockerImage ref and on pod selectors). Any remaining YAML is _global YAML_, i.e. YAML that Tilt applies to your k8s cluster independently of any `Service` you define. 
 ```python
