@@ -178,10 +178,6 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 			if !ok {
 				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
 			}
-			err = t.recordReadToTiltFile(thread)
-			if err != nil {
-				return nil, err
-			}
 
 			files, err := getAndClearReadFiles(thread)
 			if err != nil {
@@ -387,7 +383,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 }
 
 // GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
-// a manifest representing the global yaml
+// a manifest representing the global yaml. If no names are given, all manifests are returned
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 
@@ -450,11 +446,6 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 	thread := t.thread
 	thread.SetLocal(readFilesKey, []string{})
-
-	err := t.recordReadToTiltFile(thread)
-	if err != nil {
-		return nil, err
-	}
 
 	val, err := manifestFunction.Call(t.thread, nil, nil)
 	if err != nil {
@@ -645,13 +636,4 @@ func skylarkMountsToDomain(sMounts []mount) []model.Mount {
 		}
 	}
 	return dMounts
-}
-
-func (t *Tiltfile) recordReadToTiltFile(thread *skylark.Thread) error {
-	err := t.recordReadFile(thread, FileName)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

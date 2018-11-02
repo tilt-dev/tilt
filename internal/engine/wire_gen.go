@@ -6,23 +6,23 @@
 package engine
 
 import (
-	"context"
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	docker "github.com/windmilleng/tilt/internal/docker"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	store "github.com/windmilleng/tilt/internal/store"
+	synclet "github.com/windmilleng/tilt/internal/synclet"
+	analytics "github.com/windmilleng/wmclient/pkg/analytics"
+	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
 	reducer := _wireReducerValue
-	storeStore := store.NewStore(reducer)
-	deployDiscovery := NewDeployDiscovery(k8s2, storeStore)
+	store2 := store.NewStore(reducer)
+	deployDiscovery := NewDeployDiscovery(k8s2, store2)
 	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
@@ -33,12 +33,12 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env)
+	updateMode2, err := ProvideUpdateMode(updateMode, env)
 	if err != nil {
 		return nil, err
 	}
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env, memoryAnalytics, engineUpdateMode)
-	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, engineUpdateMode)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, k8s2, env, memoryAnalytics, updateMode2)
+	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode2)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder, shouldFallBackToImgBuild)
 	return compositeBuildAndDeployer, nil
 }

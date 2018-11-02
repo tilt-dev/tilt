@@ -1573,6 +1573,7 @@ type testFixture struct {
 	store                 *store.Store
 	pod                   *v1.Pod
 	bc                    *BuildController
+	fwm                   *WatchManager
 
 	onchangeCh chan bool
 }
@@ -1614,7 +1615,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 
 	gybc := NewGlobalYAMLBuildController(k8s)
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
+	tfw := NewTiltfileWatcher(fswm)
+	tfw.EnableForTesting(false)
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, tfw)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
@@ -1634,6 +1637,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		store:          st,
 		bc:             bc,
 		onchangeCh:     fSub.ch,
+		fwm:            fwm,
 	}
 }
 

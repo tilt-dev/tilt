@@ -557,7 +557,6 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
 		return ok
 	}
 	assert.True(t, matches(f.JoinPath("Dockerfile.base")))
-	assert.True(t, matches(f.JoinPath("Tiltfile")))
 	assert.True(t, matches(f.JoinPath("a.txt")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
@@ -581,7 +580,6 @@ func TestConfigMatcherWithStaticBuild(t *testing.T) {
 		return ok
 	}
 	assert.True(t, matches(f.JoinPath("Dockerfile")))
-	assert.True(t, matches(f.JoinPath("Tiltfile")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
 
@@ -1039,7 +1037,6 @@ def blorgly():
 	manifest := f.LoadManifest("blorgly")
 	expected := f.JoinPaths([]string{
 		"Dockerfile",
-		"Tiltfile",
 		"configMap.yaml",
 		"deployment.yaml",
 		"kustomization.yaml",

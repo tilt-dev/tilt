@@ -54,6 +54,9 @@ type EngineState struct {
 	GlobalYAMLState *YAMLManifestState
 
 	TiltfilePath string
+
+	// InitManifests is the list of manifest names that we were told to init from the CLI.
+	InitManifests []string
 }
 
 type ManifestState struct {
