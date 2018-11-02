@@ -50,7 +50,7 @@ func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.S
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	err := w.maybeSetupTFWatch(st)
+	err := w.maybeSetupTFWatch(state)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))
 	}
@@ -76,9 +76,7 @@ func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.S
 	return setup, teardown
 }
 
-func (w *WatchManager) maybeSetupTFWatch(st *store.Store) error {
-	state := st.RLockState()
-	defer st.RUnlockState()
+func (w *WatchManager) maybeSetupTFWatch(state store.EngineState) error {
 	if w.tiltfileWatch != nil {
 		return nil
 	}
