@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -15,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -85,10 +87,37 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
-	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
+
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	if err != nil {
+		return err
+	}
+
+	absTfPath, err := filepath.Abs(tiltfile.FileName)
+	if err != nil {
+		return err
+	}
+
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
+	if err != nil {
+		return err
+	}
+
+	u.store.Dispatch(InitAction{
+		WatchMounts:        watchMounts,
+		Manifests:          manifests,
+		GlobalYAMLManifest: globalYAML,
+		TiltfilePath:       absTfPath,
+	})
+
+	return u.store.Loop(ctx)
+}
+
+func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
+	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,

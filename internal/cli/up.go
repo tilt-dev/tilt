@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	"github.com/fatih/color"
@@ -17,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
 
@@ -93,21 +91,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("TraceID: %s", traceID)
 	}
 
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return err
-	}
-
-	absTfPath, err := filepath.Abs(tiltfile.FileName)
-	if err != nil {
-		return err
-	}
-
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
-	if err != nil {
-		return err
-	}
-
 	g, ctx := errgroup.WithContext(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -120,8 +103,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-		return upper.CreateManifests(ctx, manifests, globalYAML, c.watch, absTfPath)
+		return upper.Start(ctx, args, c.watch)
 	})
 
 	err = g.Wait()
