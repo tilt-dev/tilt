@@ -634,7 +634,7 @@ func TestBreakManifest(t *testing.T) {
 	start_fast_build("Dockerfile", "docker-tag1")
 	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
 	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)`
+	return k8s_service(image)`
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
