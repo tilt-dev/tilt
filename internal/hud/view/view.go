@@ -37,7 +37,6 @@ type Resource struct {
 type View struct {
 	Log       string
 	Resources []Resource
-	ViewState ViewState
 }
 
 type ViewState struct {

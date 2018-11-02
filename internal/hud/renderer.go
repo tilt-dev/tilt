@@ -25,11 +25,11 @@ func NewRenderer(clock func() time.Time) *Renderer {
 	}
 }
 
-func (r *Renderer) Render(v view.View) error {
+func (r *Renderer) Render(v view.View, vs view.ViewState) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.rty != nil {
-		layout := r.layout(v)
+		layout := r.layout(v, vs)
 		err := r.rty.Render(layout)
 		if err != nil {
 			return err
@@ -101,23 +101,23 @@ var podStatusColors = map[string]tcell.Color{
 	"CrashLoopBackOff":  cBad,
 }
 
-func (r *Renderer) layout(v view.View) rty.Component {
+func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
-	if v.ViewState.ShowNarration {
-		l.Add(renderNarration(v.ViewState.NarrationMessage))
+	if vs.ShowNarration {
+		l.Add(renderNarration(vs.NarrationMessage))
 		l.Add(rty.NewLine())
 	}
 
 	split := rty.NewFlexLayout(rty.DirVert)
 
-	split.Add(r.renderResources(v))
+	split.Add(r.renderResources(v, vs))
 	split.Add(r.renderStatusBar(v))
 	l.Add(split)
 
-	if v.ViewState.LogModal.TiltLog {
+	if vs.LogModal.TiltLog {
 		return r.renderFullLogModal(v, l)
-	} else if v.ViewState.LogModal.ResourceLogNumber != 0 {
-		return r.renderResourceLogModal(v.Resources[v.ViewState.LogModal.ResourceLogNumber-1], l)
+	} else if vs.LogModal.ResourceLogNumber != 0 {
+		return r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], l)
 	} else {
 		return l
 	}
@@ -192,7 +192,7 @@ func renderNarration(msg string) rty.Component {
 	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
-func (r *Renderer) renderResources(v view.View) rty.Component {
+func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component {
 	rs := v.Resources
 	childNames := make([]string, len(rs))
 	for i, r := range rs {
@@ -201,8 +201,10 @@ func (r *Renderer) renderResources(v view.View) rty.Component {
 
 	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
 
-	for i, res := range rs {
-		l.Add(r.renderResource(res, v.ViewState.Resources[i], selectedResource == res.Name))
+	if len(rs) > 0 {
+		for i, res := range rs {
+			l.Add(r.renderResource(res, vs.Resources[i], selectedResource == res.Name))
+		}
 	}
 
 	return l
