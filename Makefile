@@ -6,12 +6,7 @@ SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
 proto:
-	docker build -t tilt-protogen -f Dockerfile.protogen .
-	docker rm tilt-protogen || exit 0
-	docker run --name tilt-protogen tilt-protogen
-	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/synclet/proto/synclet.pb.go internal/synclet/proto
-	docker cp tilt-protogen:/go/src/github.com/windmilleng/tilt/internal/hud/proto/hud.pb.go internal/hud/proto
-	docker rm tilt-protogen
+	python3 scripts/protocc/protocc.py --out go
 
 # Build a binary that uses synclet:latest
 # TODO(nick): We should have a release build that bakes in a particular

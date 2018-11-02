@@ -1,0 +1,3 @@
+[submodule "scripts/protocc"]
+	path = scripts/protocc
+	url = https://github.com/windmilleng/protocc
