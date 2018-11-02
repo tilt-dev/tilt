@@ -76,14 +76,14 @@ func TestRender(t *testing.T) {
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "a-a-a-aaaaabe vigoda",
+				Name: "a-a-a-aaaaabe vigoda",
 				LastManifestLoadError: "broken tiltfile!",
 				LastBuildError:        "broken go code!",
 				LastBuildLog:          "mashing keys is not a good way to generate code",
 			},
 		},
 	}
-	rtf.run("manifest error and build error", 70, 20, v)
+	rtf.run("manifest error and build error", 70, 20, v, vs)
 
 	ts := time.Now().Add(-5 * time.Minute)
 	v = view.View{
