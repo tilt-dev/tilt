@@ -147,7 +147,7 @@ func TestUpper_Up(t *testing.T) {
 
 	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
 		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, gYaml, false, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, gYaml, false, "")
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedManifests []model.Manifest
@@ -171,7 +171,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
@@ -201,7 +201,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -240,7 +240,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -280,7 +280,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -307,7 +307,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -325,7 +325,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 		assert.True(t, call.state.IsEmpty())
 		close(closeCh)
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, context.Canceled, err)
 	<-closeCh
 	f.assertAllBuildsConsumed()
@@ -339,7 +339,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false, "")
 	expected := fmt.Errorf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
@@ -410,7 +410,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -457,7 +457,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -794,7 +794,7 @@ go build ./...
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -1127,7 +1127,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		f.fsWatcher.errors <- errors.New("done")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "done", err.Error())
 	}
@@ -1154,7 +1154,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		f.fsWatcher.errors <- errors.New("done")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "done", err.Error())
 	}
@@ -1580,7 +1580,7 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	f.createManifestsResult = make(chan error)
 
 	go func() {
-		err := f.upper.CreateManifests(f.ctx, manifests, model.YAMLManifest{}, watchMounts, "")
+		err := f.upper.StartForTesting(f.ctx, manifests, model.YAMLManifest{}, watchMounts, "")
 		if err != nil && err != context.Canceled {
 			// Print this out here in case the test never completes
 			log.Printf("CreateManifests failed: %v", err)
