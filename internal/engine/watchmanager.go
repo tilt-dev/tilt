@@ -46,9 +46,14 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchM
 	}
 }
 
-func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
+func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
 	state := st.RLockState()
 	defer st.RUnlockState()
+
+	err := w.maybeSetupTFWatch(st)
+	if err != nil {
+		st.Dispatch(NewErrorAction(err))
+	}
 
 	setup = []WatchableManifest{}
 	teardown = []WatchableManifest{}
@@ -90,11 +95,7 @@ func (w *WatchManager) maybeSetupTFWatch(st *store.Store) error {
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
-	setup, teardown := w.diff(ctx, st)
-	err := w.maybeSetupTFWatch(st)
-	if err != nil {
-		st.Dispatch(NewErrorAction(err))
-	}
+	setup, teardown := w.diffAndMaybeSetupTFWatch(ctx, st)
 
 	for _, m := range teardown {
 		p, ok := w.manifestWatches[m.ManifestName()]
