@@ -182,12 +182,9 @@ func handleManifestReloaded(ctx context.Context, state *store.EngineState, actio
 		return
 	}
 
-	err := action.Error
-	if err != nil {
-		logger.Get(ctx).Infof("getting new manifest error: %v", err)
-		ms.LastError = err
-		ms.LastBuildFinishTime = time.Now()
-		ms.LastBuildDuration = 0
+	ms.LastManifestLoadError = action.Error
+	if ms.LastManifestLoadError != nil {
+		logger.Get(ctx).Infof("getting new manifest error: %v", ms.LastManifestLoadError)
 
 		err := removeFromManifestsToBuild(state, ms.Manifest.Name)
 		if err != nil {
@@ -201,13 +198,6 @@ func handleManifestReloaded(ctx context.Context, state *store.EngineState, actio
 	if newManifest.Equal(ms.Manifest) {
 		logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
 			ms.Manifest.Name)
-
-		if _, ok := ms.LastError.(*manifestErr); ok {
-			// Last err indicates failure to make a new manifest b/c of bad config files.
-			// Manifest is now back to normal (the new one we just got is the same as the
-			// one we previously had) so clear this error.
-			ms.LastError = nil
-		}
 
 		mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
 		if err != nil {
@@ -287,7 +277,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
 	ms.HasBeenBuilt = true
-	ms.LastError = err
+	ms.LastBuildError = err
 	ms.LastBuildFinishTime = time.Now()
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
 	ms.CurrentBuildStartTime = time.Time{}
@@ -656,7 +646,12 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		return
 	}
 
-	if ms.LastError != nil {
+	if ms.LastManifestLoadError != nil {
+		logger.Get(ctx).Infof("Last %s manifest load error:", mn)
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+		logger.Get(ctx).Infof("%s", ms.LastManifestLoadError.Error())
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+	} else if ms.LastBuildError != nil {
 		logger.Get(ctx).Infof("Last %s build log:", mn)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 		logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
@@ -667,16 +662,4 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		logger.Get(ctx).Infof("%s", ms.Pod.Log())
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
-}
-
-type manifestErr struct {
-	s string
-}
-
-func (e *manifestErr) Error() string { return e.s }
-
-var _ error = &manifestErr{}
-
-func manifestErrf(format string, a ...interface{}) *manifestErr {
-	return &manifestErr{s: fmt.Sprintf(format, a...)}
 }

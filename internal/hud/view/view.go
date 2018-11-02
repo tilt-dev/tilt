@@ -8,6 +8,8 @@ type Resource struct {
 	LastDeployTime     time.Time
 	LastDeployEdits    []string
 
+	LastManifestLoadError string
+
 	LastBuildError      string
 	LastBuildFinishTime time.Time
 	LastBuildDuration   time.Duration

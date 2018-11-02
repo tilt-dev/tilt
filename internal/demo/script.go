@@ -86,7 +86,7 @@ func (m *podMonitor) OnChange(ctx context.Context, store *store.Store) {
 			m.healthy = false
 		}
 
-		if ms.LastError != nil {
+		if ms.LastBuildError != nil {
 			m.hasBuildError = true
 			m.healthy = false
 		}

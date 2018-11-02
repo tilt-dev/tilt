@@ -303,7 +303,14 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 		buildComponents = append(buildComponents, sb.Build())
 	}
 
-	if !res.LastBuildFinishTime.Equal(time.Time{}) {
+	if res.LastManifestLoadError != "" {
+		sb := rty.NewStringBuilder()
+		sb.Textf("Failed to load manifest - ").Fg(cBad).Text("ERR").Fg(tcell.ColorDefault)
+		buildComponents = append(buildComponents, sb.Build())
+
+		sb = rty.NewStringBuilder().Text(res.LastManifestLoadError)
+		buildComponents = append(buildComponents, sb.Build())
+	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
 		sb := rty.NewStringBuilder()
 
 		sb.Textf("Last build ended %s ago (took %s) — ",

@@ -618,7 +618,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
-		return state.LastError == nil
+		return state.LastBuildError == nil
 	})
 
 	err := f.Stop()
@@ -657,11 +657,12 @@ func TestBreakManifest(t *testing.T) {
 	}
 
 	f.WaitUntilManifest("error set", name, func(ms store.ManifestState) bool {
-		return ms.LastError != nil
+		return ms.LastManifestLoadError != nil
 	})
 
 	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, ms.QueueEntryTime, time.Time{})
+		assert.Contains(t, ms.LastManifestLoadError.Error(), "borken")
 	})
 
 	f.withState(func(es store.EngineState) {
@@ -710,7 +711,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	}
 
 	f.WaitUntilManifest("state is restored", "foobar", func(state store.ManifestState) bool {
-		return state.LastError == nil
+		return state.LastManifestLoadError == nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -719,6 +720,66 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 
 	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
+	})
+}
+
+func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	tiltfileString := func(cmd string) string {
+		return fmt.Sprintf(`def foobar():
+	start_fast_build("Dockerfile", "docker-tag1")
+	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	run('%s')
+	image = stop_build()
+	return k8s_service("yaaaaaaaaml", image)`, cmd)
+	}
+
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.WriteFile("Tiltfile", tiltfileString("original"))
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	name := "foobar"
+	manifest := f.loadManifest(name)
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("first build finished", func(state store.EngineState) bool {
+		return state.CompletedBuildCount == 1
+	})
+
+	// Second call: change Tiltfile, break manifest
+	f.WriteFile("Tiltfile", "borken")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WaitUntilManifest("manifest load error", name, func(ms store.ManifestState) bool {
+		return ms.LastManifestLoadError != nil
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, 1, state.CompletedBuildCount)
+	})
+
+	// Third call: put Tiltfile back. manifest changed, so expect a build
+	f.WriteFile("Tiltfile", tiltfileString("changed"))
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+
+	f.WaitUntil("second build finished", func(state store.EngineState) bool {
+		return state.CompletedBuildCount == 2
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.NotContains(t, state.ManifestsToBuild, model.ManifestName(name))
+	})
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
+		assert.NoError(t, ms.LastManifestLoadError)
+		expectedSteps := []model.Step{{
+			Cmd:           model.ToShellCmd("changed"),
+			BaseDirectory: f.Path(),
+		}}
+		assert.Equal(t, expectedSteps, ms.Manifest.Steps)
 	})
 }
 
