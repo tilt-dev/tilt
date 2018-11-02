@@ -41,7 +41,7 @@ const (
 	simpleTiltfile = `def foobar():
   start_fast_build("Dockerfile", "docker-tag")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)`
+  return k8s_service(image, yaml="yaaaaaaaaml")`
 	testContainer = "myTestContainer"
 )
 
@@ -469,12 +469,12 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f.WriteFile("Tiltfile", `def foobar():
   start_fast_build("Dockerfile1", "docker-tag1")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image, yaml="yaaaaaaaaml")
 
   def bazqux():
     start_fast_build("Dockerfile2", "docker-tag2")
     image = stop_build()
-    return k8s_service("yaaaaaaaaml", image)
+    return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
@@ -533,7 +533,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
   start_fast_build("Dockerfile", "docker-tag1")
   add(local_git_repo('.'), '.')
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)`)
+  return k8s_service(image, yaml="yaaaaaaaaml")`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
 	manifest := f.loadManifest("foobar")
@@ -677,7 +677,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	start_fast_build("Dockerfile", "docker-tag1")
 	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
 	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)`
+	return k8s_service(image, yaml="yaaaaaaaaml")`
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
@@ -730,7 +730,7 @@ func TestFilterOutNonMountedConfigFiles(t *testing.T) {
   start_fast_build("Dockerfile", "docker-tag1")
   add(local_git_repo('./nested'), '.')
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.

@@ -9,4 +9,4 @@ def onewatch():
   add(path, '/go/src/github.com/windmilleng/tilt/integration/onewatch')
   run('go install github.com/windmilleng/tilt/integration/onewatch')
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image, yaml=yaml)
