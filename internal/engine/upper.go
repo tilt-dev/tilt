@@ -208,6 +208,7 @@ func removeFromManifestsToBuild(state *store.EngineState, mn model.ManifestName)
 	for i, n := range state.ManifestsToBuild {
 		if n == mn {
 			state.ManifestsToBuild = append(state.ManifestsToBuild[:i], state.ManifestsToBuild[i+1:]...)
+			state.ManifestStates[mn].QueueEntryTime = time.Time{}
 			return nil
 		}
 	}
@@ -224,7 +225,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	ms := state.ManifestStates[mn]
-	ms.QueueEntryTime = time.Time{}
 
 	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
 	for _, file := range action.FilesChanged {

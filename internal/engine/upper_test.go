@@ -626,6 +626,49 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestBreakManifest(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	origTiltfile := `def foobar():
+	start_fast_build("Dockerfile", "docker-tag1")
+	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	image = stop_build()
+	return k8s_service("yaaaaaaaaml", image)`
+
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.WriteFile("Tiltfile", origTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	name := "foobar"
+	manifest := f.loadManifest(name)
+	f.Start([]model.Manifest{manifest}, true)
+
+	// First call: all is well
+	_ = <-f.b.calls
+
+	// Second call: change Tiltfile, break manifest
+	f.WriteFile("Tiltfile", "borken")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	select {
+	case call := <-f.b.calls:
+		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	f.WaitUntilManifest("error set", name, func(ms store.ManifestState) bool {
+		return ms.LastError != nil
+	})
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, ms.QueueEntryTime, time.Time{})
+	})
+
+	f.withState(func(es store.EngineState) {
+		assert.NotContains(t, es.ManifestsToBuild, model.ManifestName(name))
+	})
+}
+
 func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -640,7 +683,8 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	manifest := f.loadManifest("foobar")
+	name := "foobar"
+	manifest := f.loadManifest(name)
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: all is well
@@ -665,8 +709,16 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
+	f.WaitUntilManifest("state is restored", "foobar", func(state store.ManifestState) bool {
 		return state.LastError == nil
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.NotContains(t, state.ManifestsToBuild, model.ManifestName(name))
+	})
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
 	})
 }
 
@@ -1592,6 +1644,22 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 		case <-f.onchangeCh:
 		}
 	}
+}
+
+func (f *testFixture) withState(tf func(store.EngineState)) {
+	state := f.upper.store.RLockState()
+	defer f.upper.store.RUnlockState()
+	tf(state)
+}
+
+func (f *testFixture) withManifestState(name string, tf func(ms store.ManifestState)) {
+	f.withState(func(es store.EngineState) {
+		ms, ok := es.ManifestStates[model.ManifestName(name)]
+		if !ok {
+			f.T().Fatalf("no manifest state for name %s", name)
+		}
+		tf(*ms)
+	})
 }
 
 // Poll until the given state passes. This should be used for checking things outside
