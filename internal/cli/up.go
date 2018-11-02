@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 	"time"
 
 	"github.com/fatih/color"
@@ -97,6 +98,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	absTfPath, err := filepath.Abs(tiltfile.FileName)
+	if err != nil {
+		return err
+	}
+
 	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
 	if err != nil {
 		return err
@@ -115,7 +121,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	g.Go(func() error {
 		defer cancel()
 		// TODO(maia): send along globalYamlManifest (returned by GetManifest...Yaml above)
-		return upper.CreateManifests(ctx, manifests, globalYAML, c.watch)
+		return upper.CreateManifests(ctx, manifests, globalYAML, c.watch, absTfPath)
 	})
 
 	err = g.Wait()

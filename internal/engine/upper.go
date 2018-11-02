@@ -86,7 +86,7 @@ func (u Upper) Dispatch(action store.Action) {
 }
 
 func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
-	globalYAML model.YAMLManifest, watchMounts bool) error {
+	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
 	defer span.Finish()
 
@@ -94,6 +94,7 @@ func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
 		WatchMounts:        watchMounts,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
+		TiltfilePath:       tiltfilePath,
 	})
 
 	return u.store.Loop(ctx)
@@ -540,6 +541,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
+	engineState.TiltfilePath = action.TiltfilePath
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
