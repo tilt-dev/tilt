@@ -733,7 +733,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
 	run('%s')
 	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)`, cmd)
+	return k8s_service(image, "yaaaaaaaaml")`, cmd)
 	}
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
