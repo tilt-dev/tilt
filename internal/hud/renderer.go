@@ -25,11 +25,11 @@ func NewRenderer(clock func() time.Time) *Renderer {
 	}
 }
 
-func (r *Renderer) Render(v view.View) error {
+func (r *Renderer) Render(v view.View, vs view.ViewState) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.rty != nil {
-		layout := r.layout(v)
+		layout := r.layout(v, vs)
 		err := r.rty.Render(layout)
 		if err != nil {
 			return err
@@ -101,23 +101,23 @@ var podStatusColors = map[string]tcell.Color{
 	"CrashLoopBackOff":  cBad,
 }
 
-func (r *Renderer) layout(v view.View) rty.Component {
+func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
-	if v.ViewState.ShowNarration {
-		l.Add(renderNarration(v.ViewState.NarrationMessage))
+	if vs.ShowNarration {
+		l.Add(renderNarration(vs.NarrationMessage))
 		l.Add(rty.NewLine())
 	}
 
 	split := rty.NewFlexLayout(rty.DirVert)
 
-	split.Add(r.renderResources(v.Resources))
+	split.Add(r.renderResources(v, vs))
 	split.Add(r.renderStatusBar(v))
 	l.Add(split)
 
-	if v.ViewState.LogModal.TiltLog {
+	if vs.LogModal.TiltLog {
 		return r.renderFullLogModal(v, l)
-	} else if v.ViewState.LogModal.ResourceLogNumber != 0 {
-		return r.renderResourceLogModal(v.Resources[v.ViewState.LogModal.ResourceLogNumber-1], l)
+	} else if vs.LogModal.ResourceLogNumber != 0 {
+		return r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], l)
 	} else {
 		return l
 	}
@@ -192,7 +192,8 @@ func renderNarration(msg string) rty.Component {
 	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
-func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
+func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component {
+	rs := v.Resources
 	childNames := make([]string, len(rs))
 	for i, r := range rs {
 		childNames[i] = r.Name
@@ -200,8 +201,10 @@ func (r *Renderer) renderResources(rs []view.Resource) rty.Component {
 
 	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
 
-	for _, res := range rs {
-		l.Add(r.renderResource(res, selectedResource == res.Name))
+	if len(rs) > 0 {
+		for i, res := range rs {
+			l.Add(r.renderResource(res, vs.Resources[i], selectedResource == res.Name))
+		}
 	}
 
 	return l
@@ -213,11 +216,11 @@ func (r *Renderer) spinner() string {
 	return spinnerChars[r.clock().Second()%len(spinnerChars)]
 }
 
-const abbreivatedLogLineCount = 6
+const abbreviatedLogLineCount = 6
 
 func abbreviateLog(s string) []string {
 	lines := strings.Split(s, "\n")
-	start := len(lines) - abbreivatedLogLineCount
+	start := len(lines) - abbreviatedLogLineCount
 	if start < 0 {
 		start = 0
 	}
@@ -234,15 +237,19 @@ func abbreviateLog(s string) []string {
 	return lines[start:]
 }
 
-func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Component {
+func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 
 	sb := rty.NewStringBuilder()
+	p := "  "
 	if selected {
-		sb.Text("▶ ")
-	} else {
-		sb.Text("  ")
+		p = "▼ "
 	}
+	if selected && rv.IsCollapsed {
+		p = "▶ "
+	}
+	sb.Text(p)
+
 	sb.Text(res.Name)
 	const dashSize = 35
 	sb.Fg(cLightText).Textf(" %s ", strings.Repeat("┄", dashSize-len(res.Name))).Fg(tcell.ColorDefault)
@@ -312,15 +319,17 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 
 		buildComponents = append(buildComponents, sb.Build())
 
-		if res.LastBuildError != "" {
-			abbrevLog := abbreviateLog(res.LastBuildLog)
-			for _, logLine := range abbrevLog {
-				buildComponents = append(buildComponents, rty.TextString(logLine))
-			}
+		if !rv.IsCollapsed {
+			if res.LastBuildError != "" {
+				abbrevLog := abbreviateLog(res.LastBuildLog)
+				for _, logLine := range abbrevLog {
+					buildComponents = append(buildComponents, rty.TextString(logLine))
+				}
 
-			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
-			if len(abbrevLog) == 0 {
-				buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
+				// if the build log is non-empty, it will contain the error, so we don't need to show this separately
+				if len(abbrevLog) == 0 {
+					buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
+				}
 			}
 		}
 	}
@@ -366,12 +375,14 @@ func (r *Renderer) renderResource(res view.Resource, selected bool) rty.Componen
 			layout.Add(sb.Build())
 		}
 
-		if res.PodRestarts > 0 {
-			logLines := abbreviateLog(res.PodLog)
-			if len(logLines) > 0 {
-				layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
-				for _, logLine := range logLines[1:] {
-					layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+		if !rv.IsCollapsed {
+			if res.PodRestarts > 0 {
+				logLines := abbreviateLog(res.PodLog)
+				if len(logLines) > 0 {
+					layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+					for _, logLine := range logLines[1:] {
+						layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+					}
 				}
 			}
 		}

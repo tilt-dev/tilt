@@ -21,7 +21,16 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("one undeployed resource", 70, 20, v)
+
+	vs := view.ViewState{
+		Resources: []view.ResourceViewState{
+			{
+				IsCollapsed: false,
+			},
+		},
+	}
+
+	rtf.run("one undeployed resource", 70, 20, v, vs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -33,7 +42,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("inline build log", 70, 20, v)
+	rtf.run("inline build log", 70, 20, v, vs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -43,11 +52,11 @@ func TestRender(t *testing.T) {
 				LastBuildLog:   "1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n",
 			},
 		},
-		ViewState: view.ViewState{
-			LogModal: view.LogModal{ResourceLogNumber: 1},
-		},
 	}
-	rtf.run("modal build log displayed", 70, 20, v)
+
+	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+
+	rtf.run("modal build log displayed", 70, 20, v, vs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -61,7 +70,8 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("pod log displayed inline", 70, 20, v)
+	vs.LogModal = view.LogModal{}
+	rtf.run("pod log displayed inline", 70, 20, v, vs)
 
 	ts := time.Now().Add(-5 * time.Minute)
 	v = view.View{
@@ -88,20 +98,19 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("all the data at once", 70, 20, v)
+	rtf.run("all the data at once", 70, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
-	v := view.View{
-		ViewState: view.ViewState{
-			ShowNarration:    true,
-			NarrationMessage: "hi mom",
-		},
+	v := view.View{}
+	vs := view.ViewState{
+		ShowNarration:    true,
+		NarrationMessage: "hi mom",
 	}
 
-	rtf.run("narration message", 60, 20, v)
+	rtf.run("narration message", 60, 20, v, vs)
 }
 
 type rendererTestFixture struct {
@@ -116,11 +125,11 @@ func newRendererTestFixture(t *testing.T) rendererTestFixture {
 	}
 }
 
-func (rtf rendererTestFixture) run(name string, w int, h int, v view.View) {
+func (rtf rendererTestFixture) run(name string, w int, h int, v view.View, vs view.ViewState) {
 	t := time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC)
 	r := NewRenderer(func() time.Time { return t })
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
-	c := r.layout(v)
+	c := r.layout(v, vs)
 	rtf.i.Run(name, w, h, c)
 }
 

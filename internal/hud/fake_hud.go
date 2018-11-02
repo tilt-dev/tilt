@@ -14,11 +14,12 @@ import (
 var _ HeadsUpDisplay = (*FakeHud)(nil)
 
 type FakeHud struct {
-	LastView view.View
-	updates  chan view.View
-	Canceled bool
-	Closed   bool
-	closeCh  chan interface{}
+	LastView  view.View
+	viewState view.ViewState
+	updates   chan view.View
+	Canceled  bool
+	Closed    bool
+	closeCh   chan interface{}
 }
 
 func NewFakeHud() *FakeHud {
@@ -45,7 +46,7 @@ func (h *FakeHud) OnChange(ctx context.Context, st *store.Store) {
 	view := store.StateToView(state)
 	st.RUnlockState()
 
-	err := h.Update(view)
+	err := h.Update(view, h.viewState)
 	if err != nil {
 		logger.Get(ctx).Infof("Error updating HUD: %v", err)
 	}
@@ -56,7 +57,7 @@ func (h *FakeHud) Close() {
 	close(h.closeCh)
 }
 
-func (h *FakeHud) Update(v view.View) error {
+func (h *FakeHud) Update(v view.View, vs view.ViewState) error {
 	h.LastView = v
 	h.updates <- v
 	return nil

@@ -34,19 +34,22 @@ type Resource struct {
 //
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
+type View struct {
+	Log       string
+	Resources []Resource
+}
+
 type ViewState struct {
 	ShowNarration    bool
 	NarrationMessage string
-
-	LogModal LogModal
+	Resources        []ResourceViewState
+	LogModal         LogModal
 
 	ProcessedLogByteCount int
 }
 
-type View struct {
-	Log       string
-	Resources []Resource
-	ViewState ViewState
+type ResourceViewState struct {
+	IsCollapsed bool
 }
 
 type LogModal struct {
