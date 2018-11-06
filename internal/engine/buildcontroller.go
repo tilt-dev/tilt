@@ -153,7 +153,7 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	if err != nil {
 		return model.Manifest{}, model.YAMLManifest{}, err
 	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, string(name))
+	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, name)
 	if err != nil {
 		return model.Manifest{}, model.YAMLManifest{}, err
 	}
@@ -165,7 +165,7 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	return newManifest, globalYAML, nil
 }
 
-func getNewManifestsFromTiltfile(ctx context.Context, names []string) ([]model.Manifest, model.YAMLManifest, error) {
+func getNewManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
 	// Sends any output to the CurrentBuildLog
 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {

@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -59,7 +60,7 @@ func (t *TiltfileWatcher) setupWatch(path string) error {
 	return nil
 }
 
-func (t *TiltfileWatcher) watchLoop(ctx context.Context, st *store.Store, initManifests []string) {
+func (t *TiltfileWatcher) watchLoop(ctx context.Context, st *store.Store, initManifests []model.ManifestName) {
 	watcher := t.tiltfileWatcher
 	for {
 		select {

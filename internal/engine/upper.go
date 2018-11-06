@@ -102,7 +102,13 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
+	manifestNames := make([]model.ManifestName, len(args))
+
+	for i, a := range args {
+		manifestNames[i] = model.ManifestName(a)
+	}
+
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 	if err != nil {
 		return err
 	}
@@ -112,7 +118,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
-		ManifestNames:      args,
+		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -121,10 +127,10 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
 	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 
-	manifestNames := make([]string, len(manifests))
+	manifestNames := make([]model.ManifestName, len(manifests))
 
 	for i, m := range manifests {
-		manifestNames[i] = m.ManifestName().String()
+		manifestNames[i] = m.ManifestName()
 	}
 
 	u.store.Dispatch(InitAction{

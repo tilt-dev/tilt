@@ -56,7 +56,7 @@ type EngineState struct {
 	TiltfilePath string
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
-	InitManifests []string
+	InitManifests []model.ManifestName
 }
 
 type ManifestState struct {
