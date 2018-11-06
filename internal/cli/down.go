@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
@@ -35,16 +36,21 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
+	manifests, gYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
 	if err != nil {
 		return err
 	}
 
-	// TODO(maia): k8s.delete entities from global yaml as well
 	entities, err := engine.ParseYAMLFromManifests(manifests...)
 	if err != nil {
-		return errors.Wrap(err, "Parsing YAML")
+		return errors.Wrap(err, "Parsing manifest YAML")
 	}
+
+	globalEntities, err := k8s.ParseYAMLFromString(gYAML.K8sYAML())
+	if err != nil {
+		return errors.Wrap(err, "Parsing global YAML")
+	}
+	entities = append(entities, globalEntities...)
 
 	kClient, err := wireK8sClient(ctx)
 	if err != nil {

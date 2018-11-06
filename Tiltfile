@@ -7,7 +7,7 @@ def test():
   run('cd src/github.com/windmilleng/tilt && go build ./...')
   image = stop_build()
 
-  return k8s_service(read_file('tilt-test.yaml'), image)
+  return k8s_service(image, yaml=read_file('tilt-test.yaml'))
 
 def synclet():
   username = local('whoami').rstrip('\n')
@@ -18,5 +18,5 @@ def synclet():
   local('synclet/populate_config_template.py devel')
   image = stop_build()
 
-  return k8s_service(read_file('synclet/synclet-conf.generated.yaml'), image)
+  return k8s_service(image, yaml=read_file('synclet/synclet-conf.generated.yaml'))
 

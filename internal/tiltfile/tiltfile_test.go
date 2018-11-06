@@ -158,7 +158,7 @@ func TestGetManifestConfig(t *testing.T) {
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -187,12 +187,29 @@ func TestOldMountSyntax(t *testing.T) {
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), oldMountSyntaxError)
+	}
+}
+
+func TestOldK8sServiceSyntax(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "docker text")
+	f.WriteFile("Tiltfile", `def blorgly():
+  image = static_build("Dockerfile", "docker-tag")
+  yaml = "this is some yaml"
+  return k8s_service(yaml, image)
+`)
+
+	err := f.LoadManifestForError("blorgly")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), oldK8sServiceSyntaxError)
 	}
 }
 
@@ -220,7 +237,7 @@ func TestGetManifestConfigMissingDockerFile(t *testing.T) {
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
@@ -246,7 +263,7 @@ def blorgly_backend():
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaml", image)
+  return k8s_service(image)
 
 def blorgly_frontend():
   start_fast_build("Dockerfile", "docker-tag", "the entrypoint")
@@ -254,7 +271,7 @@ def blorgly_frontend():
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	manifests := f.LoadManifests("blorgly")
@@ -366,7 +383,7 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
   run("echo hi")
   yaml = local('echo yaaaaaaaaml')
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image, yaml=yaml)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -391,7 +408,7 @@ func TestRunTrigger(t *testing.T) {
   run('npm install', trigger=['package.json', 'yarn.lock'])
   run('echo hi')
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("yarnly")
@@ -455,7 +472,7 @@ func TestInvalidDockerTag(t *testing.T) {
 	f.WriteFile("Tiltfile", `def blorgly():
   start_fast_build("Dockerfile.base", "**invalid**", "the entrypoint")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
@@ -472,7 +489,7 @@ ENTRYPOINT echo hi`)
 	f.WriteFile("Tiltfile", `def blorgly():
   start_fast_build("Dockerfile.base", "docker-tag")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -489,7 +506,7 @@ func TestAddMissingDir(t *testing.T) {
   start_fast_build("Dockerfile.base", "docker-tag")
   add(local_git_repo('./garbage'), '/garbage')
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
@@ -508,7 +525,7 @@ func TestReadFile(t *testing.T) {
   yaml = read_file("a.txt")
   start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image, yaml=yaml)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -525,7 +542,7 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
   yaml = read_file("a.txt")
   start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image)
 `)
 	manifest := f.LoadManifest("blorgly")
 	matches := func(p string) bool {
@@ -550,8 +567,7 @@ func TestConfigMatcherWithStaticBuild(t *testing.T) {
 	defer f.TearDown()
 	f.WriteFile("Dockerfile", "dockerfile text")
 	f.WriteFile("Tiltfile", `def blorgly():
-  yaml = local('echo yaaaaaaaaml')
-  return k8s_service(yaml, static_build("Dockerfile", "docker-tag"))`)
+  return k8s_service(static_build("Dockerfile", "docker-tag"))`)
 	manifest := f.LoadManifest("blorgly")
 	matches := func(p string) bool {
 		matcher, err := manifest.ConfigMatcher()
@@ -581,7 +597,7 @@ func TestRepoPath(t *testing.T) {
   yaml = read_file("a.txt")
   start_fast_build("Dockerfile.base", "docker-tag", str(repo.path('subpath')))
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -603,7 +619,7 @@ func TestAddRepoPath(t *testing.T) {
   start_fast_build("Dockerfile.base", "docker-tag")
   add(repo.path('src'), '/src')
   image = stop_build()
-  return k8s_service("", image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -624,7 +640,7 @@ func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
   start_fast_build("Dockerfile.base", "docker-tag", str(repo.path('subpath')))
   add("package.json", "/app/package.json")
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
@@ -646,7 +662,7 @@ func TestAddOneFileByPath(t *testing.T) {
   start_fast_build("Dockerfile.base", "docker-tag", str(repo.path('subpath')))
   add(repo.path('package.json'), '/app/package.json')
   image = stop_build()
-  return k8s_service(yaml, image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -665,7 +681,7 @@ def blorgly():
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	ctx := output.CtxForTest()
@@ -691,7 +707,7 @@ func TestReadsIgnoreFiles(t *testing.T) {
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -710,7 +726,7 @@ func TestReadsIgnoreFilesStaticBuild(t *testing.T) {
 	f.WriteFile("Dockerfile", "docker text")
 	f.WriteFile("Tiltfile", `def blorgly():
   image = static_build("Dockerfile", "docker-tag")
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -730,7 +746,7 @@ func TestReadsIgnoreFilesStaticBuildSubdir(t *testing.T) {
 	f.WriteFile("Tiltfile", `def blorgly():
   repo = local_git_repo(".")
   image = static_build(repo.path("subdir/Dockerfile"), "docker-tag", context=repo)
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -767,7 +783,7 @@ func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   run("echo hi")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `, f1.Path(), f2.Path()))
 
 	manifest := fMain.LoadManifest("blorgly")
@@ -793,7 +809,7 @@ func TestBuildContextAddError(t *testing.T) {
   run("echo hi")
   image = stop_build()
   add(local_git_repo('.'), '/mount_points/2')
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
@@ -814,7 +830,7 @@ func TestBuildContextRunError(t *testing.T) {
   run("echo hi")
   image = stop_build()
   run("echo hi2")
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
@@ -834,7 +850,7 @@ func TestBuildContextStartTwice(t *testing.T) {
   add(local_git_repo('.'), '/mount_points/1')
   run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 
 	err := f.LoadManifestForError("blorgly")
@@ -855,7 +871,7 @@ func TestSlowBuildIsNotImplemented(t *testing.T) {
   image.add(local_git_repo('.'), '/mount_points/1')
   image.run("go install github.com/windmilleng/blorgly-frontend/server/...")
   image.run("echo hi")
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image)
 `)
 	err := f.LoadManifestForError("blorgly")
 	expected := "error running 'blorgly': start_slow_build not implemented"
@@ -872,7 +888,7 @@ func TestStaticBuild(t *testing.T) {
 	f.WriteFile("Tiltfile", `
 def blorgly():
   yaml = local('echo yaaaaaaaaml')
-  return k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
+  return k8s_service(static_build("Dockerfile", "docker-tag"))
 `)
 
 	manifest := f.LoadManifest("blorgly")
@@ -889,7 +905,7 @@ func TestPortForward(t *testing.T) {
 	f.WriteFile("Tiltfile", `
 def blorgly():
   yaml = local('echo yaaaaaaaaml')
-  s = k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
+  s = k8s_service(static_build("Dockerfile", "docker-tag"))
   s.port_forward(8000)
   s.port_forward(8001, 443)
   return s
@@ -914,10 +930,9 @@ func TestSymlinkInPath(t *testing.T) {
 	f.WriteFile("real/Dockerfile", "dockerfile text")
 	f.WriteFile("real/Tiltfile", `
 def blorgly():
-  yaml = local('echo yaaaaaaaaml')
   start_fast_build("Dockerfile", "docker-tag")
   add(local_git_repo('.'), '/src')
-  return k8s_service(yaml, stop_build())
+  return k8s_service(stop_build())
 `)
 	_ = os.Mkdir(f.JoinPath("real", ".git"), os.FileMode(0777))
 	_ = os.Symlink(f.JoinPath("real"), f.JoinPath("fake"))
@@ -1017,7 +1032,7 @@ spec:
 	f.WriteFile("Tiltfile", `
 def blorgly():
   yaml = kustomize(".")
-  s = k8s_service(yaml, static_build("Dockerfile", "docker-tag"))
+  s = k8s_service(static_build("Dockerfile", "docker-tag"), yaml=yaml)
   return s
 `)
 

@@ -71,8 +71,9 @@ type ManifestState struct {
 
 	CurrentBuildStartTime     time.Time
 	CurrentBuildLog           *bytes.Buffer
+	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
-	LastError                 error
+	LastBuildError            error
 	LastBuildFinishTime       time.Time
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
@@ -244,8 +245,13 @@ func StateToView(s EngineState) view.View {
 		sort.Strings(pendingBuildEdits)
 
 		lastBuildError := ""
-		if ms.LastError != nil {
-			lastBuildError = ms.LastError.Error()
+		if ms.LastBuildError != nil {
+			lastBuildError = ms.LastBuildError.Error()
+		}
+
+		lastManifestLoadError := ""
+		if ms.LastManifestLoadError != nil {
+			lastManifestLoadError = ms.LastManifestLoadError.Error()
 		}
 
 		var endpoints []string
@@ -265,6 +271,7 @@ func StateToView(s EngineState) view.View {
 			DirectoriesWatched:    relWatchDirs,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
+			LastManifestLoadError: lastManifestLoadError,
 			LastBuildError:        lastBuildError,
 			LastBuildFinishTime:   ms.LastBuildFinishTime,
 			LastBuildDuration:     ms.LastBuildDuration,

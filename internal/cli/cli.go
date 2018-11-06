@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log"
@@ -63,7 +64,12 @@ type tiltCmd interface {
 
 func preCommand(ctx context.Context) (context.Context, func() error) {
 	cleanup := func() error { return nil }
-	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
+	f, err := os.Create("./tilt.log")
+	if err != nil {
+		panic(err)
+	}
+	writer := bufio.NewWriter(f)
+	l := logger.NewLogger(logLevel(verbose, debug), writer)
 	ctx = logger.WithLogger(ctx, l)
 
 	if trace {

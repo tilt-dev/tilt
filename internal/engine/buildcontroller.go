@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -146,18 +147,18 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	}
 }
 
-func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, *manifestErr) {
+func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
 	// Sends any output to the CurrentBuildLog
 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, manifestErrf(err.Error())
+		return model.Manifest{}, model.YAMLManifest{}, err
 	}
 	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, string(name))
 	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, manifestErrf(err.Error())
+		return model.Manifest{}, model.YAMLManifest{}, err
 	}
 	if len(newManifests) != 1 {
-		return model.Manifest{}, model.YAMLManifest{}, manifestErrf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+		return model.Manifest{}, model.YAMLManifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
 	}
 	newManifest := newManifests[0]
 
