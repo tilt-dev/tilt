@@ -92,6 +92,7 @@ var cLightText = tcell.Color241
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
+var indent = "    "
 
 var podStatusColors = map[string]tcell.Color{
 	"Running":           cGood,
@@ -240,7 +241,7 @@ func abbreviateLog(s string) []string {
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 	renderResourceSummary(selected, rv, res, layout)
-	renderResourcesK8s(res, layout, rv)
+	renderResourcesK8s(res, r, layout, rv)
 	renderResourceBuild(res, r, rv, layout)
 	return layout
 }
@@ -356,43 +357,56 @@ func renderResourceSummary(selected bool, rv view.ResourceViewState, res view.Re
 	layout.Add(l)
 }
 
-func renderResourcesK8s(res view.Resource, layout *rty.ConcatLayout, rv view.ResourceViewState) {
+func renderResourcesK8s(res view.Resource, r *Renderer, layout *rty.ConcatLayout, rv view.ResourceViewState) {
+	l := rty.NewLine()
+	prefix := rty.NewStringBuilder()
+	status := rty.NewStringBuilder()
+	spacer := rty.NewFillerString(' ')
+	suffix := rty.NewStringBuilder()
+
 	if res.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[res.PodStatus]
 		if !ok {
 			podStatusColor = tcell.ColorDefault
 		}
-
-		sb := rty.NewStringBuilder()
-		sb.Fg(cLightText).Text("    K8S: ").Fg(tcell.ColorDefault)
-		sb.Textf("%s ago — ", formatDuration(time.Since(res.PodCreationTime)))
-		sb.Fg(podStatusColor).Text(res.PodStatus).Fg(tcell.ColorDefault)
+		prefix.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
+		status.Text(res.PodStatus)
 
 		// TODO(maia): show # restarts even if == 0 (in gray or green)?
 		if res.PodRestarts > 0 {
-			sb.Fg(cBad).Textf(" [%d restart(s)]", res.PodRestarts).Fg(tcell.ColorDefault)
+			suffix.Fg(cBad).Textf("[%d restart(s)] • ", res.PodRestarts).Fg(tcell.ColorDefault)
 		}
-
-		layout.Add(sb.Build())
 
 		if len(res.Endpoints) != 0 {
-			sb := rty.NewStringBuilder()
-			sb.Textf("         %s", strings.Join(res.Endpoints, " "))
-			layout.Add(sb.Build())
+			suffix.Textf("%s • ", strings.Join(res.Endpoints, " "))
 		}
 
+		suffix.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
+
+		// K8s Log
 		if !rv.IsCollapsed {
 			if res.PodRestarts > 0 {
 				logLines := abbreviateLog(res.PodLog)
 				if len(logLines) > 0 {
-					layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+					layout.Add(rty.NewStringBuilder().Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
 					for _, logLine := range logLines[1:] {
-						layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+						layout.Add(rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
 					}
 				}
 			}
 		}
+	} else {
+		prefix.Fg(cLightText).Textf("%s● ", indent).Fg(tcell.ColorDefault)
+		status.Text(r.spinner())
 	}
+
+	prefix.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault)
+
+	l.Add(prefix.Build())
+	l.Add(status.Build())
+	l.Add(spacer)
+	l.Add(suffix.Build())
+	layout.Add(l)
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {
