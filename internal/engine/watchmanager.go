@@ -51,8 +51,7 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-// TODO(dmiller) rename this
-func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
+func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -78,7 +77,7 @@ func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.S
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
-	setup, teardown := w.diffAndMaybeSetupTFWatch(ctx, st)
+	setup, teardown := w.diff(ctx, st)
 
 	for _, m := range teardown {
 		p, ok := w.manifestWatches[m.ManifestName()]

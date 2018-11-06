@@ -171,7 +171,6 @@ func getNewManifestsFromTiltfile(ctx context.Context, names []string) ([]model.M
 	if err != nil {
 		return []model.Manifest{}, model.YAMLManifest{}, err
 	}
-	// TODO(dmiller): make this be passed through from CLI
 	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
 	if err != nil {
 		return []model.Manifest{}, model.YAMLManifest{}, err

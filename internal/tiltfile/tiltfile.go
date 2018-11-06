@@ -383,7 +383,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 }
 
 // GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
-// a manifest representing the global yaml. If no names are given, all manifests are returned
+// a manifest representing the global yaml.
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...string) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 
