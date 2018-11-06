@@ -32,22 +32,28 @@ type manifestNotifyCancel struct {
 }
 
 type WatchManager struct {
-	watches        map[model.ManifestName]manifestNotifyCancel
-	fsWatcherMaker FsWatcherMaker
-	timerMaker     timerMaker
+	manifestWatches map[model.ManifestName]manifestNotifyCancel
+	fsWatcherMaker  FsWatcherMaker
+	timerMaker      timerMaker
+	tiltfileWatch   watch.Notify
 }
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchManager {
 	return &WatchManager{
-		watches:        make(map[model.ManifestName]manifestNotifyCancel),
-		fsWatcherMaker: watcherMaker,
-		timerMaker:     timerMaker,
+		manifestWatches: make(map[model.ManifestName]manifestNotifyCancel),
+		fsWatcherMaker:  watcherMaker,
+		timerMaker:      timerMaker,
 	}
 }
 
-func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
+func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
 	state := st.RLockState()
 	defer st.RUnlockState()
+
+	err := w.maybeSetupTFWatch(state)
+	if err != nil {
+		st.Dispatch(NewErrorAction(err))
+	}
 
 	setup = []WatchableManifest{}
 	teardown = []WatchableManifest{}
@@ -56,7 +62,7 @@ func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []Watch
 		manifestsToProcess[i] = m.Manifest
 	}
 	for n, state := range state.ManifestStates {
-		_, ok := w.watches[n]
+		_, ok := w.manifestWatches[n]
 		if !ok {
 			setup = append(setup, state.Manifest)
 		}
@@ -70,11 +76,30 @@ func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []Watch
 	return setup, teardown
 }
 
+func (w *WatchManager) maybeSetupTFWatch(state store.EngineState) error {
+	if w.tiltfileWatch != nil {
+		return nil
+	}
+
+	watcher, err := w.fsWatcherMaker()
+	if err != nil {
+		return err
+	}
+	err = watcher.Add(state.TiltfilePath)
+	if err != nil {
+		return err
+	}
+
+	w.tiltfileWatch = watcher
+
+	return nil
+}
+
 func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
-	setup, teardown := w.diff(ctx, st)
+	setup, teardown := w.diffAndMaybeSetupTFWatch(ctx, st)
 
 	for _, m := range teardown {
-		p, ok := w.watches[m.ManifestName()]
+		p, ok := w.manifestWatches[m.ManifestName()]
 		if !ok {
 			continue
 		}
@@ -83,7 +108,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 			logger.Get(ctx).Infof("Error closing watch: %v", err)
 		}
 		p.cancel()
-		delete(w.watches, m.ManifestName())
+		delete(w.manifestWatches, m.ManifestName())
 	}
 
 	for _, manifest := range setup {
@@ -104,7 +129,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 
 		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
 
-		w.watches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
+		w.manifestWatches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
 	}
 }
 
@@ -153,6 +178,26 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if len(watchEvent.files) > 0 {
 				st.Dispatch(watchEvent)
 			}
+		}
+	}
+}
+
+func (w *WatchManager) dispatchTiltfileChangesLoop(ctx context.Context, st *store.Store) {
+	watcher := w.tiltfileWatch
+	for {
+		select {
+		case err, ok := <-watcher.Errors():
+			if !ok {
+				return
+			}
+			st.Dispatch(NewErrorAction(err))
+		case <-ctx.Done():
+			return
+		case _, ok := <-watcher.Events():
+			if !ok {
+				return
+			}
+			// TODO(dmiller) dispatch action that tells us that the tiltfile has changed
 		}
 	}
 }

@@ -25,7 +25,7 @@ type HeadsUpDisplay interface {
 	store.Subscriber
 
 	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
-	Update(v view.View) error
+	Update(v view.View, vs view.ViewState) error
 	Close()
 	SetNarrationMessage(ctx context.Context, msg string)
 }
@@ -33,10 +33,10 @@ type HeadsUpDisplay interface {
 type Hud struct {
 	r *Renderer
 
-	currentView view.View
-	viewState   view.ViewState
-	mu          sync.RWMutex
-	isRunning   bool
+	currentView      view.View
+	currentViewState view.ViewState
+	mu               sync.RWMutex
+	isRunning        bool
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
@@ -50,10 +50,10 @@ func NewDefaultHeadsUpDisplay(renderer *Renderer) (HeadsUpDisplay, error) {
 func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	viewState := h.viewState
-	viewState.ShowNarration = true
-	viewState.NarrationMessage = msg
-	h.setViewState(ctx, viewState)
+	currentViewState := h.currentViewState
+	currentViewState.ShowNarration = true
+	currentViewState.NarrationMessage = msg
+	h.setViewState(ctx, currentViewState)
 }
 
 func logModal(r rty.RTY) rty.TextScroller {
@@ -115,11 +115,14 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyEscape:
-			h.viewState.LogModal = view.LogModal{}
+			h.currentViewState.LogModal = view.LogModal{}
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r >= '1' && r <= '9':
 				dispatch(NewShowErrorAction(int(r - '0')))
+			case r == 'o':
+				i, _ := h.selectedResource()
+				h.currentViewState.Resources[i].IsCollapsed = !h.currentViewState.Resources[i].IsCollapsed
 			case r == 'b': // "[B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to
@@ -139,8 +142,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				dispatch(ExitAction{})
 				return true
 			case r == 'l': // [L]og
-				if !h.viewState.LogModal.IsActive() {
-					h.viewState.LogModal = view.LogModal{TiltLog: true}
+				if !h.currentViewState.LogModal.IsActive() {
+					h.currentViewState.LogModal = view.LogModal{TiltLog: true}
 				}
 				logModal(h.r.rty).Bottom()
 			}
@@ -157,9 +160,9 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		case tcell.KeyEnd:
 			h.selectedScroller(h.r.rty).Bottom()
 		case tcell.KeyEnter:
-			if !h.viewState.LogModal.IsActive() {
+			if !h.currentViewState.LogModal.IsActive() {
 				selectedIdx, _ := h.selectedResource()
-				h.viewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
+				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
 				logModal(h.r.rty).Bottom()
 			}
 		}
@@ -194,33 +197,41 @@ func (h *Hud) setView(ctx context.Context, view view.View) {
 	h.currentView = view
 
 	// if the hud isn't running, make sure new logs are visible on stdout
-	if !h.isRunning && h.viewState.ProcessedLogByteCount < len(view.Log) {
-		fmt.Print(view.Log[h.viewState.ProcessedLogByteCount:])
+	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < len(view.Log) {
+		fmt.Print(view.Log[h.currentViewState.ProcessedLogByteCount:])
 	}
 
-	h.viewState.ProcessedLogByteCount = len(view.Log)
+	h.currentViewState.ProcessedLogByteCount = len(view.Log)
 
 	h.refresh(ctx)
 }
 
 // Must hold the lock
-func (h *Hud) setViewState(ctx context.Context, viewState view.ViewState) {
-	h.viewState = viewState
+func (h *Hud) setViewState(ctx context.Context, currentViewState view.ViewState) {
+	h.currentViewState = currentViewState
 	h.refresh(ctx)
 }
 
 // Must hold the lock
 func (h *Hud) refresh(ctx context.Context) {
-	h.currentView.ViewState = h.viewState
+	// TODO: We don't handle the order of resources changing
+	for len(h.currentViewState.Resources) < len(h.currentView.Resources) {
+		h.currentViewState.Resources = append(h.currentViewState.Resources, view.ResourceViewState{})
+	}
 
-	err := h.Update(h.currentView)
+	vs := h.currentViewState
+	for _, r := range h.currentViewState.Resources {
+		vs.Resources = append(vs.Resources, r)
+	}
+
+	err := h.Update(h.currentView, h.currentViewState)
 	if err != nil {
 		logger.Get(ctx).Infof("Error updating HUD: %v", err)
 	}
 }
 
-func (h *Hud) Update(v view.View) error {
-	err := h.r.Render(v)
+func (h *Hud) Update(v view.View, vs view.ViewState) error {
+	err := h.r.Render(v, vs)
 	return errors.Wrap(err, "error rendering hud")
 }
 
@@ -238,7 +249,7 @@ const resourcesScollerName = "resources"
 const logScrollerName = "log modal"
 
 func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
-	if !h.viewState.LogModal.IsActive() {
+	if !h.currentViewState.LogModal.IsActive() {
 		return h.r.rty.ElementScroller(resourcesScollerName)
 	} else {
 		return h.r.rty.TextScroller(logScrollerName)

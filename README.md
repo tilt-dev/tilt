@@ -11,7 +11,7 @@ See the problem when it isn’t
 
 Click below to see a video of Tilt in action:
 
-[![asciicast](https://asciinema.org/a/GpvT8wegPD7qkMcLhe7ekhMd2.png?zx=1)](https://asciinema.org/a/GpvT8wegPD7qkMcLhe7ekhMd2)
+[![asciicast](https://asciinema.org/a/209622.png)](https://asciinema.org/a/209622)
 
 ## Installing
 
@@ -29,7 +29,7 @@ Tilt reads from a Tiltfile. A simple Tiltfile is below:
 def backend():
   img = static_build('Dockerfile', 'gcr.io/companyname/backend')
   yaml = read_file('backend.yaml')
-  return k8s_service(yaml, img)
+  return k8s_service(img, yaml=yaml)
 ```
 
 ## Optimizing Tilt
@@ -50,7 +50,7 @@ def backend():
   img = stop_build()
 
   yaml = read_file('backend.yaml')
-  s = k8s_service(yaml, img)
+  s = k8s_service(img, yaml=yaml)
   s.port_forward(8080, 80)
   return s
 ```
@@ -146,12 +146,20 @@ class Service
     """
 ```
 
+#### global_yaml
+Call this _on the top level of your Tiltfile_ with a string of YAML.
+
+We will infer what (if any) of the k8s resources defined in your YAML correspond to `Services` defined elsewhere in your Tiltfile (matching based on the DockerImage ref and on pod selectors). Any remaining YAML is _global YAML_, i.e. YAML that Tilt applies to your k8s cluster independently of any `Service` you define. 
+```python
+def global_yaml(yaml: string) -> None
+```
+
 #### k8s_service
 
-Creates a kubernetes service that tilt can deploy using the yaml text and the image passed in.
+Creates a kubernetes service that tilt can deploy using the the image passed in. Optionally, you may also pass the Kubernetes resource YAML. If the YAML is not passed, we expect to be able to extract it from `global_yaml` (see above).
 
 ```python
-def k8s_service(yaml_text: str, img: Image) -> Service
+def k8s_service(img: Image, yaml: string="") -> Service
 ```
 
 #### Image

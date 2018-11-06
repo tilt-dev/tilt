@@ -51,12 +51,12 @@ global_yaml(yaml)
 def manifestA():
   stuff = read_file('./fileA')  # this is a dependency of manifestA now
   image = static_build('Dockerfile', 'tag-a')
-  return k8s_service("yamlA", image)
+  return k8s_service(image, yaml="yamlA")
 
 def manifestB():
   stuff = read_file('./fileB')  # this is a dependency of manifestB now
   image = static_build('Dockerfile', 'tag-b')
-  return k8s_service("yamlB", image)
+  return k8s_service(image, yaml="yamlB")
 `)
 
 	manifests := f.LoadManifests("manifestA", "manifestB")
@@ -78,11 +78,11 @@ func TestPerManifestYAMLExtractedFromGlobalYAML(t *testing.T) {
 
 def doggos():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
-  return k8s_service("", image)
+  return k8s_service(image)
 
 def snack():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/snack')
-  return k8s_service("", image)
+  return k8s_service(image)
 `)
 
 	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos", "snack")
@@ -103,11 +103,11 @@ func TestAllYAMLExtractedFromGlobalYAML(t *testing.T) {
 
 def doggos():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
-  return k8s_service("", image)
+  return k8s_service(image)
 
 def snack():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/snack')
-  return k8s_service("", image)
+  return k8s_service(image)
 `)
 
 	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos", "snack")
@@ -128,7 +128,7 @@ func TestExtractedGlobalYAMLStacksWithExplicitYaml(t *testing.T) {
 
 def doggos_with_secret():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
-  return k8s_service("""%s""", image)
+  return k8s_service(image, yaml="""%s""")
 `, testyaml.DoggosServiceYaml))
 
 	manifests, _ := f.LoadManifestsAndGlobalYAML("doggos_with_secret")
@@ -148,7 +148,7 @@ func TestExtractedYAMLAssociatesViaImageAndSelector(t *testing.T) {
 
 def doggos():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
-  return k8s_service("", image)
+  return k8s_service(image)
 `)
 
 	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos")

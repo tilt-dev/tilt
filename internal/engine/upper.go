@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -15,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -85,15 +87,43 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) CreateManifests(ctx context.Context, manifests []model.Manifest,
-	globalYAML model.YAMLManifest, watchMounts bool) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
+
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	if err != nil {
+		return err
+	}
+
+	absTfPath, err := filepath.Abs(tiltfile.FileName)
+	if err != nil {
+		return err
+	}
+
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
+	if err != nil {
+		return err
+	}
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
+		TiltfilePath:       absTfPath,
+	})
+
+	return u.store.Loop(ctx)
+}
+
+func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
+	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
+
+	u.store.Dispatch(InitAction{
+		WatchMounts:        watchMounts,
+		Manifests:          manifests,
+		GlobalYAMLManifest: globalYAML,
+		TiltfilePath:       tiltfilePath,
 	})
 
 	return u.store.Loop(ctx)
@@ -152,12 +182,9 @@ func handleManifestReloaded(ctx context.Context, state *store.EngineState, actio
 		return
 	}
 
-	err := action.Error
-	if err != nil {
-		logger.Get(ctx).Infof("getting new manifest error: %v", err)
-		ms.LastError = err
-		ms.LastBuildFinishTime = time.Now()
-		ms.LastBuildDuration = 0
+	ms.LastManifestLoadError = action.Error
+	if ms.LastManifestLoadError != nil {
+		logger.Get(ctx).Infof("getting new manifest error: %v", ms.LastManifestLoadError)
 
 		err := removeFromManifestsToBuild(state, ms.Manifest.Name)
 		if err != nil {
@@ -171,13 +198,6 @@ func handleManifestReloaded(ctx context.Context, state *store.EngineState, actio
 	if newManifest.Equal(ms.Manifest) {
 		logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
 			ms.Manifest.Name)
-
-		if _, ok := ms.LastError.(*manifestErr); ok {
-			// Last err indicates failure to make a new manifest b/c of bad config files.
-			// Manifest is now back to normal (the new one we just got is the same as the
-			// one we previously had) so clear this error.
-			ms.LastError = nil
-		}
 
 		mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
 		if err != nil {
@@ -207,6 +227,7 @@ func removeFromManifestsToBuild(state *store.EngineState, mn model.ManifestName)
 	for i, n := range state.ManifestsToBuild {
 		if n == mn {
 			state.ManifestsToBuild = append(state.ManifestsToBuild[:i], state.ManifestsToBuild[i+1:]...)
+			state.ManifestStates[mn].QueueEntryTime = time.Time{}
 			return nil
 		}
 	}
@@ -223,7 +244,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	ms := state.ManifestStates[mn]
-	ms.QueueEntryTime = time.Time{}
 
 	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
 	for _, file := range action.FilesChanged {
@@ -257,7 +277,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
 	ms.HasBeenBuilt = true
-	ms.LastError = err
+	ms.LastBuildError = err
 	ms.LastBuildFinishTime = time.Now()
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
 	ms.CurrentBuildStartTime = time.Time{}
@@ -540,6 +560,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
+	engineState.TiltfilePath = action.TiltfilePath
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
@@ -625,7 +646,12 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		return
 	}
 
-	if ms.LastError != nil {
+	if ms.LastManifestLoadError != nil {
+		logger.Get(ctx).Infof("Last %s manifest load error:", mn)
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+		logger.Get(ctx).Infof("%s", ms.LastManifestLoadError.Error())
+		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
+	} else if ms.LastBuildError != nil {
 		logger.Get(ctx).Infof("Last %s build log:", mn)
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 		logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
@@ -636,16 +662,4 @@ func showError(ctx context.Context, state *store.EngineState, resourceNumber int
 		logger.Get(ctx).Infof("%s", ms.Pod.Log())
 		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
 	}
-}
-
-type manifestErr struct {
-	s string
-}
-
-func (e *manifestErr) Error() string { return e.s }
-
-var _ error = &manifestErr{}
-
-func manifestErrf(format string, a ...interface{}) *manifestErr {
-	return &manifestErr{s: fmt.Sprintf(format, a...)}
 }

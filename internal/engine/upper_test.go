@@ -41,7 +41,7 @@ const (
 	simpleTiltfile = `def foobar():
   start_fast_build("Dockerfile", "docker-tag")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)`
+  return k8s_service(image, yaml="yaaaaaaaaml")`
 	testContainer = "myTestContainer"
 )
 
@@ -147,7 +147,7 @@ func TestUpper_Up(t *testing.T) {
 
 	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
 		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, gYaml, false)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, gYaml, false, "")
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedManifests []model.Manifest
@@ -171,7 +171,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	go func() {
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
@@ -201,7 +201,7 @@ func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
 		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -240,7 +240,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -280,7 +280,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
 		f.fsWatcher.errors <- errors.New("bazquu")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -307,7 +307,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -325,7 +325,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 		assert.True(t, call.state.IsEmpty())
 		close(closeCh)
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, context.Canceled, err)
 	<-closeCh
 	f.assertAllBuildsConsumed()
@@ -339,7 +339,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false, "")
 	expected := fmt.Errorf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expected, err)
 }
@@ -410,7 +410,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -457,7 +457,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -469,12 +469,12 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f.WriteFile("Tiltfile", `def foobar():
   start_fast_build("Dockerfile1", "docker-tag1")
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image, yaml="yaaaaaaaaml")
 
   def bazqux():
     start_fast_build("Dockerfile2", "docker-tag2")
     image = stop_build()
-    return k8s_service("yaaaaaaaaml", image)
+    return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
@@ -533,7 +533,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
   start_fast_build("Dockerfile", "docker-tag1")
   add(local_git_repo('.'), '.')
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)`)
+  return k8s_service(image, yaml="yaaaaaaaaml")`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
 	manifest := f.loadManifest("foobar")
@@ -618,12 +618,56 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
-		return state.LastError == nil
+		return state.LastBuildError == nil
 	})
 
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestBreakManifest(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	origTiltfile := `def foobar():
+	start_fast_build("Dockerfile", "docker-tag1")
+	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	image = stop_build()
+	return k8s_service(image)`
+
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.WriteFile("Tiltfile", origTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	name := "foobar"
+	manifest := f.loadManifest(name)
+	f.Start([]model.Manifest{manifest}, true)
+
+	// First call: all is well
+	_ = <-f.b.calls
+
+	// Second call: change Tiltfile, break manifest
+	f.WriteFile("Tiltfile", "borken")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	select {
+	case call := <-f.b.calls:
+		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	f.WaitUntilManifest("error set", name, func(ms store.ManifestState) bool {
+		return ms.LastManifestLoadError != nil
+	})
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, ms.QueueEntryTime, time.Time{})
+		assert.Contains(t, ms.LastManifestLoadError.Error(), "borken")
+	})
+
+	f.withState(func(es store.EngineState) {
+		assert.NotContains(t, es.ManifestsToBuild, model.ManifestName(name))
+	})
 }
 
 func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
@@ -634,13 +678,14 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	start_fast_build("Dockerfile", "docker-tag1")
 	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
 	image = stop_build()
-	return k8s_service("yaaaaaaaaml", image)`
+	return k8s_service(image, yaml="yaaaaaaaaml")`
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	manifest := f.loadManifest("foobar")
+	name := "foobar"
+	manifest := f.loadManifest(name)
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: all is well
@@ -665,8 +710,76 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
-		return state.LastError == nil
+	f.WaitUntilManifest("state is restored", "foobar", func(state store.ManifestState) bool {
+		return state.LastManifestLoadError == nil
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.NotContains(t, state.ManifestsToBuild, model.ManifestName(name))
+	})
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
+	})
+}
+
+func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	tiltfileString := func(cmd string) string {
+		return fmt.Sprintf(`def foobar():
+	start_fast_build("Dockerfile", "docker-tag1")
+	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	run('%s')
+	image = stop_build()
+	return k8s_service(image, "yaaaaaaaaml")`, cmd)
+	}
+
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.WriteFile("Tiltfile", tiltfileString("original"))
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+
+	name := "foobar"
+	manifest := f.loadManifest(name)
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("first build finished", func(state store.EngineState) bool {
+		return state.CompletedBuildCount == 1
+	})
+
+	// Second call: change Tiltfile, break manifest
+	f.WriteFile("Tiltfile", "borken")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WaitUntilManifest("manifest load error", name, func(ms store.ManifestState) bool {
+		return ms.LastManifestLoadError != nil
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, 1, state.CompletedBuildCount)
+	})
+
+	// Third call: put Tiltfile back. manifest changed, so expect a build
+	f.WriteFile("Tiltfile", tiltfileString("changed"))
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+
+	f.WaitUntil("second build finished", func(state store.EngineState) bool {
+		return state.CompletedBuildCount == 2
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.NotContains(t, state.ManifestsToBuild, model.ManifestName(name))
+	})
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
+		assert.NoError(t, ms.LastManifestLoadError)
+		expectedSteps := []model.Step{{
+			Cmd:           model.ToShellCmd("changed"),
+			BaseDirectory: f.Path(),
+		}}
+		assert.Equal(t, expectedSteps, ms.Manifest.Steps)
 	})
 }
 
@@ -678,7 +791,7 @@ func TestFilterOutNonMountedConfigFiles(t *testing.T) {
   start_fast_build("Dockerfile", "docker-tag1")
   add(local_git_repo('./nested'), '.')
   image = stop_build()
-  return k8s_service("yaaaaaaaaml", image)
+  return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
@@ -742,7 +855,7 @@ go build ./...
 
 		f.fsWatcher.errors <- endToken
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	assert.Equal(t, endToken, err)
 	f.assertAllBuildsConsumed()
 }
@@ -776,6 +889,10 @@ func TestHudUpdated(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	call := <-f.b.calls
 	assert.True(t, call.state.IsEmpty())
+
+	f.WaitUntilHUD("hud update", func(v view.View) bool {
+		return len(v.Resources) > 0
+	})
 
 	err := f.Stop()
 	assert.Equal(t, nil, err)
@@ -1071,7 +1188,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		f.fsWatcher.errors <- errors.New("done")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "done", err.Error())
 	}
@@ -1098,7 +1215,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		f.fsWatcher.errors <- errors.New("done")
 	}()
-	err := f.upper.CreateManifests(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true)
+	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "done", err.Error())
 	}
@@ -1391,6 +1508,18 @@ func TestInitWithGlobalYAML(t *testing.T) {
 	})
 }
 
+func TestInitSetsTiltfilePath(t *testing.T) {
+	f := newTestFixture(t)
+	f.Start([]model.Manifest{}, true)
+	f.store.Dispatch(InitAction{
+		Manifests:    []model.Manifest{},
+		TiltfilePath: "/Tiltfile",
+	})
+	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
+		return st.TiltfilePath == "/Tiltfile"
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -1512,7 +1641,7 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	f.createManifestsResult = make(chan error)
 
 	go func() {
-		err := f.upper.CreateManifests(f.ctx, manifests, model.YAMLManifest{}, watchMounts)
+		err := f.upper.StartForTesting(f.ctx, manifests, model.YAMLManifest{}, watchMounts, "")
 		if err != nil && err != context.Canceled {
 			// Print this out here in case the test never completes
 			log.Printf("CreateManifests failed: %v", err)
@@ -1576,6 +1705,22 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 		case <-f.onchangeCh:
 		}
 	}
+}
+
+func (f *testFixture) withState(tf func(store.EngineState)) {
+	state := f.upper.store.RLockState()
+	defer f.upper.store.RUnlockState()
+	tf(state)
+}
+
+func (f *testFixture) withManifestState(name string, tf func(ms store.ManifestState)) {
+	f.withState(func(es store.EngineState) {
+		ms, ok := es.ManifestStates[model.ManifestName(name)]
+		if !ok {
+			f.T().Fatalf("no manifest state for name %s", name)
+		}
+		tf(*ms)
+	})
 }
 
 // Poll until the given state passes. This should be used for checking things outside
