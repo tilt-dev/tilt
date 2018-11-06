@@ -248,27 +248,29 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 
 func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
 	l := rty.NewLine()
-	sb := rty.NewStringBuilder()
-	p := "  "
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+	spacer := rty.NewFillerString('╌')
+
+	p := " "
 	if selected {
-		p = "▼ "
+		p = "▼"
 	}
 	if selected && rv.IsCollapsed {
-		p = "▶ "
+		p = "▶"
 	}
 
-	sb.Text(p)
-	sb.Textf("%s ", res.Name)
+	sbLeft.Textf("%s %s ", p, res.Name)
 
-	l.Add(sb.Build())
-	l.Add(rty.NewFillerString('╌'))
-	sb2 := rty.NewStringBuilder()
 	if res.LastDeployTime.Equal(time.Time{}) {
-		sb2.Text("  Not Deployed • —  ")
+		sbRight.Text(" Not Deployed •  —      ")
 	} else {
-		sb2.Textf("  OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
+		sbRight.Textf(" OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
 	}
-	l.Add(sb2.Build())
+
+	l.Add(sbLeft.Build())
+	l.Add(spacer)
+	l.Add(sbRight.Build())
 	layout.Add(l)
 }
 
