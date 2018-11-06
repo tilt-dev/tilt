@@ -165,16 +165,16 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	return newManifest, globalYAML, nil
 }
 
-func getNewManifestsFromTiltfile(ctx context.Context, names []string) ([]model.Manifest, model.YAMLManifest, *manifestErr) {
+func getNewManifestsFromTiltfile(ctx context.Context, names []string) ([]model.Manifest, model.YAMLManifest, error) {
 	// Sends any output to the CurrentBuildLog
 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
-		return []model.Manifest{}, model.YAMLManifest{}, manifestErrf(err.Error())
+		return []model.Manifest{}, model.YAMLManifest{}, err
 	}
 	// TODO(dmiller): make this be passed through from CLI
 	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
 	if err != nil {
-		return []model.Manifest{}, model.YAMLManifest{}, manifestErrf(err.Error())
+		return []model.Manifest{}, model.YAMLManifest{}, err
 	}
 
 	return newManifests, globalYAML, nil
