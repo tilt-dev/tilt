@@ -247,7 +247,6 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 }
 
 func renderRsrcTilt(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
-
 	// Last Deployed Edits
 	if !res.LastDeployTime.Equal(time.Time{}) {
 		if len(res.LastDeployEdits) > 0 {
@@ -372,13 +371,13 @@ func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, la
 		prefix.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
 		status.Text(res.PodStatus)
 
-		// TODO(maia): show # restarts even if == 0 (in gray or green)?
-		if res.PodRestarts > 0 {
-			suffix.Fg(cBad).Textf("[%d restart(s)] • ", res.PodRestarts).Fg(tcell.ColorDefault)
-		}
-
 		if len(res.Endpoints) != 0 {
 			suffix.Textf("%s • ", strings.Join(res.Endpoints, " "))
+		}
+
+		// TODO(maia): show # restarts even if == 0 (in gray or green)?
+		if res.PodRestarts > 0 {
+			suffix.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
 		}
 
 		suffix.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
