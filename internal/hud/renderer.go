@@ -246,6 +246,84 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	return layout
 }
 
+func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
+	l := rty.NewLine()
+	sb := rty.NewStringBuilder()
+	p := "  "
+	if selected {
+		p = "▼ "
+	}
+	if selected && rv.IsCollapsed {
+		p = "▶ "
+	}
+
+	sb.Text(p)
+	sb.Textf("%s ", res.Name)
+
+	l.Add(sb.Build())
+	l.Add(rty.NewFillerString('╌'))
+	sb2 := rty.NewStringBuilder()
+	if res.LastDeployTime.Equal(time.Time{}) {
+		sb2.Text("  Not Deployed • —  ")
+	} else {
+		sb2.Textf("  OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
+	}
+	l.Add(sb2.Build())
+	layout.Add(l)
+}
+
+func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
+	l := rty.NewLine()
+	prefix := rty.NewStringBuilder()
+	status := rty.NewStringBuilder()
+	spacer := rty.NewFillerString(' ')
+	suffix := rty.NewStringBuilder()
+
+	if res.PodStatus != "" {
+		podStatusColor, ok := podStatusColors[res.PodStatus]
+		if !ok {
+			podStatusColor = tcell.ColorDefault
+		}
+		prefix.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
+		status.Text(res.PodStatus)
+
+		if len(res.Endpoints) != 0 {
+			suffix.Textf("%s • ", strings.Join(res.Endpoints, " "))
+		}
+
+		// TODO(maia): show # restarts even if == 0 (in gray or green)?
+		if res.PodRestarts > 0 {
+			suffix.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
+		}
+
+		suffix.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
+
+		// K8s Log
+		if !rv.IsCollapsed {
+			if res.PodRestarts > 0 {
+				logLines := abbreviateLog(res.PodLog)
+				if len(logLines) > 0 {
+					layout.Add(rty.NewStringBuilder().Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+					for _, logLine := range logLines[1:] {
+						layout.Add(rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
+					}
+				}
+			}
+		}
+	} else {
+		prefix.Fg(cLightText).Textf("%s● ", indent).Fg(tcell.ColorDefault)
+		status.Text(r.spinner())
+	}
+
+	prefix.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault)
+
+	l.Add(prefix.Build())
+	l.Add(status.Build())
+	l.Add(spacer)
+	l.Add(suffix.Build())
+	layout.Add(l)
+}
+
 func renderRsrcTilt(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
 	// Last Deployed Edits
 	if !res.LastDeployTime.Equal(time.Time{}) {
@@ -328,84 +406,6 @@ func renderRsrcTilt(res view.Resource, r *Renderer, rv view.ResourceViewState, l
 		layout.Add(l)
 	}
 	layout.Add(rty.NewLine())
-}
-
-func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
-	l := rty.NewLine()
-	sb := rty.NewStringBuilder()
-	p := "  "
-	if selected {
-		p = "▼ "
-	}
-	if selected && rv.IsCollapsed {
-		p = "▶ "
-	}
-
-	sb.Text(p)
-	sb.Textf("%s ", res.Name)
-
-	l.Add(sb.Build())
-	l.Add(rty.NewFillerString('╌'))
-	sb2 := rty.NewStringBuilder()
-	if res.LastDeployTime.Equal(time.Time{}) {
-		sb2.Text("  Not Deployed • —  ")
-	} else {
-		sb2.Textf("  OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
-	}
-	l.Add(sb2.Build())
-	layout.Add(l)
-}
-
-func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
-	l := rty.NewLine()
-	prefix := rty.NewStringBuilder()
-	status := rty.NewStringBuilder()
-	spacer := rty.NewFillerString(' ')
-	suffix := rty.NewStringBuilder()
-
-	if res.PodStatus != "" {
-		podStatusColor, ok := podStatusColors[res.PodStatus]
-		if !ok {
-			podStatusColor = tcell.ColorDefault
-		}
-		prefix.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
-		status.Text(res.PodStatus)
-
-		if len(res.Endpoints) != 0 {
-			suffix.Textf("%s • ", strings.Join(res.Endpoints, " "))
-		}
-
-		// TODO(maia): show # restarts even if == 0 (in gray or green)?
-		if res.PodRestarts > 0 {
-			suffix.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
-		}
-
-		suffix.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
-
-		// K8s Log
-		if !rv.IsCollapsed {
-			if res.PodRestarts > 0 {
-				logLines := abbreviateLog(res.PodLog)
-				if len(logLines) > 0 {
-					layout.Add(rty.NewStringBuilder().Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
-					for _, logLine := range logLines[1:] {
-						layout.Add(rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
-					}
-				}
-			}
-		}
-	} else {
-		prefix.Fg(cLightText).Textf("%s● ", indent).Fg(tcell.ColorDefault)
-		status.Text(r.spinner())
-	}
-
-	prefix.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault)
-
-	l.Add(prefix.Build())
-	l.Add(status.Build())
-	l.Add(spacer)
-	l.Add(suffix.Build())
-	layout.Add(l)
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {
