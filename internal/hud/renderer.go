@@ -240,13 +240,13 @@ func abbreviateLog(s string) []string {
 
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
-	renderResourceSummary(selected, rv, res, layout)
-	renderResourcesK8s(res, r, layout, rv)
-	renderResourceBuild(res, r, rv, layout)
+	renderRsrcSummary(selected, rv, res, layout)
+	renderRsrcK8s(res, r, rv, layout)
+	renderRsrcTilt(res, r, rv, layout)
 	return layout
 }
 
-func renderResourceBuild(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
+func renderRsrcTilt(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
 
 	// Last Deployed Edits
 	if !res.LastDeployTime.Equal(time.Time{}) {
@@ -331,7 +331,7 @@ func renderResourceBuild(res view.Resource, r *Renderer, rv view.ResourceViewSta
 	layout.Add(rty.NewLine())
 }
 
-func renderResourceSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
+func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
 	l := rty.NewLine()
 	sb := rty.NewStringBuilder()
 	p := "  "
@@ -357,7 +357,7 @@ func renderResourceSummary(selected bool, rv view.ResourceViewState, res view.Re
 	layout.Add(l)
 }
 
-func renderResourcesK8s(res view.Resource, r *Renderer, layout *rty.ConcatLayout, rv view.ResourceViewState) {
+func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
 	l := rty.NewLine()
 	prefix := rty.NewStringBuilder()
 	status := rty.NewStringBuilder()
