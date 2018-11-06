@@ -274,29 +274,29 @@ func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resour
 
 func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
 	l := rty.NewLine()
-	prefix := rty.NewStringBuilder()
-	status := rty.NewStringBuilder()
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+	status := r.spinner()
 	spacer := rty.NewFillerString(' ')
-	suffix := rty.NewStringBuilder()
 
 	if res.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[res.PodStatus]
 		if !ok {
 			podStatusColor = tcell.ColorDefault
 		}
-		prefix.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
-		status.Text(res.PodStatus)
+		sbLeft.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
+		status = res.PodStatus
 
 		if len(res.Endpoints) != 0 {
-			suffix.Textf("%s • ", strings.Join(res.Endpoints, " "))
+			sbRight.Textf("%s • ", strings.Join(res.Endpoints, " "))
 		}
 
 		// TODO(maia): show # restarts even if == 0 (in gray or green)?
 		if res.PodRestarts > 0 {
-			suffix.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
+			sbRight.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
 		}
 
-		suffix.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
+		sbRight.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
 
 		// K8s Log
 		if !rv.IsCollapsed {
@@ -311,16 +311,14 @@ func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, la
 			}
 		}
 	} else {
-		prefix.Fg(cLightText).Textf("%s● ", indent).Fg(tcell.ColorDefault)
-		status.Text(r.spinner())
+		sbLeft.Fg(cLightText).Textf("%s● ", indent).Fg(tcell.ColorDefault)
 	}
 
-	prefix.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault)
+	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
 
-	l.Add(prefix.Build())
-	l.Add(status.Build())
+	l.Add(sbLeft.Build())
 	l.Add(spacer)
-	l.Add(suffix.Build())
+	l.Add(sbRight.Build())
 	layout.Add(l)
 }
 
