@@ -174,7 +174,7 @@ func (r *Renderer) renderLogModal(title string, s string, background rty.Compone
 	box.SetTitle(title)
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
-	l.Add(rty.NewStringBuilder().Bg(tcell.ColorBlue).Text("<Esc> to stop viewing log").Build())
+	l.Add(rty.NewStringBuilder().Bg(tcell.ColorDarkBlue).Text("<Esc> to stop viewing log").Build())
 
 	ml := rty.NewModalLayout(background, l, .9)
 	return ml
