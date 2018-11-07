@@ -432,6 +432,7 @@ func handleTiltfileReloaded(
 	err := event.Err
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
+		return
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
