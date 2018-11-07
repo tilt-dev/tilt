@@ -11,6 +11,9 @@ const (
 
 	// Label when an image is created by a test.
 	TestImage = "tilt.test"
+
+	// Label when an image is for path caching.
+	CacheImage = "tilt.cache"
 )
 
 const (
