@@ -21,8 +21,8 @@ func NewTiltfileWatcher(watcherMaker FsWatcherMaker) *TiltfileWatcher {
 	}
 }
 
-func (t *TiltfileWatcher) EnableForTesting(enabled bool) {
-	t.disabledForTesting = !enabled
+func (t *TiltfileWatcher) DisableForTesting(disabled bool) {
+	t.disabledForTesting = disabled
 }
 
 func (t *TiltfileWatcher) OnChange(ctx context.Context, st *store.Store) {

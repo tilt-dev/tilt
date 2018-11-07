@@ -628,7 +628,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 func TestBreakManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.tfw.EnableForTesting(true)
+	f.tfw.DisableForTesting(false)
 
 	origTiltfile := `def foobar():
 	start_fast_build("Dockerfile", "docker-tag1")
@@ -672,7 +672,7 @@ func TestBreakManifest(t *testing.T) {
 func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.tfw.EnableForTesting(true)
+	f.tfw.DisableForTesting(false)
 
 	origTiltfile := `def foobar():
 	start_fast_build("Dockerfile", "docker-tag1")
@@ -717,7 +717,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.tfw.EnableForTesting(true)
+	f.tfw.DisableForTesting(false)
 
 	tiltfileString := func(cmd string) string {
 		return fmt.Sprintf(`def foobar():
@@ -1614,7 +1614,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	gybc := NewGlobalYAMLBuildController(k8s)
 	tfw := NewTiltfileWatcher(tfwm)
-	tfw.EnableForTesting(false)
+	tfw.DisableForTesting(true)
 	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, tfw)
 
 	go func() {
