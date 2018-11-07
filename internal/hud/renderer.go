@@ -149,10 +149,10 @@ func (r *Renderer) renderFooter(v view.View) rty.Component {
 		}
 		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Textf(" %d %s", errorCount, s)
 	}
+	sbLeft.Text("                       ")
 	sbRight.Text(keys)
 
 	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
 	l.Add(sbRight.Build())
 
 	return rty.NewFixedSize(rty.Bg(l, tcell.ColorWhiteSmoke), rty.GROW, 1)
