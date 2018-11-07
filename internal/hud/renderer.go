@@ -88,7 +88,7 @@ func formatFileList(files []string) string {
 	return strings.Join(ret, ", ")
 }
 
-var cLightText = tcell.Color241
+var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
