@@ -181,6 +181,28 @@ func (l *Line) Render(w Writer, width int, height int) error {
 	return nil
 }
 
+// Fills a space by repeating a string
+type FillerString struct {
+	ch rune
+}
+
+var _ Component = &FillerString{}
+
+func NewFillerString(ch rune) *FillerString {
+	return &FillerString{ch: ch}
+}
+
+func (f *FillerString) Size(width int, height int) (int, int) {
+	return GROW, height
+}
+
+func (f *FillerString) Render(w Writer, width int, height int) error {
+	for i := 0; i < width; i++ {
+		w.SetContent(i, 0, f.ch, nil)
+	}
+	return nil
+}
+
 type ColorLayout struct {
 	del        Component
 	color      tcell.Color
