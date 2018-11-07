@@ -56,12 +56,13 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
+	cacheBuilder := build.NewCacheBuilder(dockerCli)
 	engineUpdateModeFlag := provideUpdateModeFlag()
 	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, k8sClient, env, analytics, updateMode)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)
@@ -138,12 +139,13 @@ func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
+	cacheBuilder := build.NewCacheBuilder(dockerCli)
 	engineUpdateModeFlag := provideUpdateModeFlag()
 	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
 		return HudAndUpper{}, err
 	}
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, k8sClient, env, analytics, updateMode)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
 	fallbackTester := engine.DefaultShouldFallBack()
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, fallbackTester)

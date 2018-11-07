@@ -111,11 +111,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
 	}
 
-	df, err = d.addMounts(ctx, df, paths)
-	if err != nil {
-		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
-	}
-
+	df = df.AddAll()
 	df = d.addRemainingSteps(df, steps)
 	if hasEntrypoint {
 		df = df.Entrypoint(entrypoint)
@@ -135,7 +131,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 
 	// Don't worry about conditional steps on incremental builds, they've
 	// already handled by the watch loop.
-	df, err := d.addMounts(ctx, df, paths)
+	df, err := d.addMountsAndRemovedFiles(ctx, df, paths)
 	if err != nil {
 		return nil, fmt.Errorf("BuildImageFromExisting: %v", err)
 	}
@@ -201,7 +197,7 @@ func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps
 	return df, remainingSteps, nil
 }
 
-func (d *dockerImageBuilder) addMounts(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping) (dockerfile.Dockerfile, error) {
+func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping) (dockerfile.Dockerfile, error) {
 	df = df.AddAll()
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
