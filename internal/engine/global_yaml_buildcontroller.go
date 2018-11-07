@@ -36,7 +36,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
 		if err != nil {
 			logger.Get(ctx).Infof("Error parsing global_yaml: %v", err)
-			c.lastGlobalYAMLManifest = model.YAMLManifest{}
+			c.lastGlobalYAMLManifest = m
 			st.Dispatch(GlobalYAMLApplyError{Error: err})
 			return
 		}
