@@ -92,6 +92,8 @@ var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
+var defaultKeys = "(↓) next, (↑) prev ┊ (enter) toggle, (p)od log, open in (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
+var keys = defaultKeys
 
 var podStatusColors = map[string]tcell.Color{
 	"Running":           cGood,
@@ -111,38 +113,49 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v, vs))
-	split.Add(r.renderStatusBar(v))
+	split.Add(r.renderFooter(v))
 	l.Add(split)
 
 	if vs.LogModal.TiltLog {
+		keys = "(esc) to exit view "
 		return r.renderFullLogModal(v, l)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
+		keys = "(esc) to exit view "
 		return r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], l)
 	} else {
+		keys = defaultKeys
 		return l
 	}
 }
 
-func (r *Renderer) renderStatusBar(v view.View) rty.Component {
+func (r *Renderer) renderFooter(v view.View) rty.Component {
+	l := rty.NewLine()
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+
+	sbLeft.Text(" ") // Indent
 	errorCount := 0
 	for _, res := range v.Resources {
 		if isInError(res) {
 			errorCount++
 		}
 	}
-	sb := rty.NewStringBuilder()
 	if errorCount == 0 {
-		sb.Fg(cGood).Text("✓").Fg(tcell.ColorBlack).Text(" OK")
+		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Text(" OK")
 	} else {
 		s := "error"
 		if errorCount > 1 {
 			s = "errors"
 		}
-		sb.Fg(cBad).Text("✖").Fg(tcell.ColorBlack).Textf(" [%d] %s", errorCount, s)
+		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Textf(" %d %s", errorCount, s)
 	}
-	line := rty.NewLine()
-	line.Add(sb.Build())
-	return rty.NewFixedSize(rty.Bg(line, tcell.ColorWhiteSmoke), rty.GROW, 1)
+	sbRight.Text(keys)
+
+	l.Add(sbLeft.Build())
+	l.Add(rty.NewFillerString(' '))
+	l.Add(sbRight.Build())
+
+	return rty.NewFixedSize(rty.Bg(l, tcell.ColorWhiteSmoke), rty.GROW, 1)
 }
 
 func isInError(res view.Resource) bool {
@@ -150,7 +163,7 @@ func isInError(res view.Resource) bool {
 }
 
 func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty.Component {
-	return r.renderLogModal("tilt log", v.Log, background)
+	return r.renderLogModal("TILT LOG", v.Log, background)
 }
 
 func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
@@ -174,8 +187,6 @@ func (r *Renderer) renderLogModal(title string, s string, background rty.Compone
 	box.SetTitle(title)
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
-	l.Add(rty.NewStringBuilder().Bg(tcell.ColorDarkBlue).Text("<Esc> to stop viewing log").Build())
-
 	ml := rty.NewModalLayout(background, l, .9)
 	return ml
 }
