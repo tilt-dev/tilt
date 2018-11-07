@@ -186,6 +186,8 @@ type FillerString struct {
 	ch rune
 }
 
+var _ Component = &FillerString{}
+
 func NewFillerString(ch rune) *FillerString {
 	return &FillerString{ch: ch}
 }
@@ -200,8 +202,6 @@ func (f *FillerString) Render(w Writer, width int, height int) error {
 	}
 	return nil
 }
-
-var _ Component = &FillerString{}
 
 type ColorLayout struct {
 	del        Component

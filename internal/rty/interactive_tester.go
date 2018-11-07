@@ -48,15 +48,15 @@ func (i *InteractiveTester) Run(name string, width int, height int, c Component)
 	}
 }
 
-func (i *InteractiveTester) render(width int, height int, c Component) (Canvas, error) {
+func (i *InteractiveTester) render(width int, height int, c Component) (canvas Canvas, err error) {
 	actual := newScreenCanvas(i.dummyScreen)
 	i.dummyScreen.SetSize(width, height)
 	defer func() {
 		if e := recover(); e != nil {
-			i.t.Errorf("panic rendering: %v %s", e, debug.Stack())
+			err = fmt.Errorf("panic rendering: %v %s", e, debug.Stack())
 		}
 	}()
-	err := i.rty.Render(c)
+	err = i.rty.Render(c)
 	return actual, err
 }
 

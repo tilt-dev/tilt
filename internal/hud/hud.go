@@ -118,12 +118,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.currentViewState.LogModal = view.LogModal{}
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
-			case r >= '1' && r <= '9':
-				dispatch(NewShowErrorAction(int(r - '0')))
-			case r == 'o':
-				i, _ := h.selectedResource()
-				h.currentViewState.Resources[i].IsCollapsed = !h.currentViewState.Resources[i].IsCollapsed
-			case r == 'b': // "[B]rowser
+			case r == 'b': // [B]rowser
 				// If we have an endpoint(s), open the first one
 				// TODO(nick): We might need some hints on what load balancer to
 				// open if we have multiple, or what path to default to on the opened manifest.
@@ -137,35 +132,39 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				} else {
 					logger.Get(ctx).Infof("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
-			case r == 'q': // [Q]uit
-				h.Close()
-				dispatch(ExitAction{})
-				return true
-			case r == 'l': // [L]og
+			case r == 'p': // [P]od log
+				if !h.currentViewState.LogModal.IsActive() {
+					selectedIdx, _ := h.selectedResource()
+					h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
+					logModal(h.r.rty).Bottom()
+				}
+			case r == 'l': // [L]og for Tilt
 				if !h.currentViewState.LogModal.IsActive() {
 					h.currentViewState.LogModal = view.LogModal{TiltLog: true}
 				}
 				logModal(h.r.rty).Bottom()
+			case r == 'q': // [Q]uit
+				h.Close()
+				dispatch(ExitAction{})
+				return true
 			}
-		case tcell.KeyCtrlC:
-			h.Close()
-			dispatch(ExitAction{})
-			return true
 		case tcell.KeyUp:
 			h.selectedScroller(h.r.rty).Up()
 		case tcell.KeyDown:
 			h.selectedScroller(h.r.rty).Down()
+		case tcell.KeyEnter:
+			i, _ := h.selectedResource()
+			h.currentViewState.Resources[i].IsCollapsed = !h.currentViewState.Resources[i].IsCollapsed
 		case tcell.KeyHome:
 			h.selectedScroller(h.r.rty).Top()
 		case tcell.KeyEnd:
 			h.selectedScroller(h.r.rty).Bottom()
-		case tcell.KeyEnter:
-			if !h.currentViewState.LogModal.IsActive() {
-				selectedIdx, _ := h.selectedResource()
-				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
-				logModal(h.r.rty).Bottom()
-			}
+		case tcell.KeyCtrlC:
+			h.Close()
+			dispatch(ExitAction{})
+			return true
 		}
+
 	case *tcell.EventResize:
 		// since we already refresh after the switch, don't need to do anything here
 		// just marking this as where sigwinch gets handled
