@@ -22,7 +22,7 @@ func NewTiltfileWatcher(watcherMaker FsWatcherMaker) *TiltfileWatcher {
 }
 
 func (t *TiltfileWatcher) EnableForTesting(enabled bool) {
-	t.disabledForTesting = enabled
+	t.disabledForTesting = !enabled
 }
 
 func (t *TiltfileWatcher) OnChange(ctx context.Context, st *store.Store) {
@@ -33,7 +33,7 @@ func (t *TiltfileWatcher) OnChange(ctx context.Context, st *store.Store) {
 	defer st.RUnlockState()
 	initManifests := state.InitManifests
 
-	if t.tiltfilePath != state.TiltfilePath {
+	if t.tiltfilePath != state.TiltfilePath || t.tiltfilePath == "" {
 		err := t.setupWatch(state.TiltfilePath)
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))

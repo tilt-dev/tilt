@@ -604,8 +604,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.WriteFile("Tiltfile", "borken")
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	select {
-	case call := <-f.b.calls:
-		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-f.b.calls:
 	case <-time.After(100 * time.Millisecond):
 	}
 
@@ -629,6 +628,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 func TestBreakManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.tfw.EnableForTesting(true)
 
 	origTiltfile := `def foobar():
 	start_fast_build("Dockerfile", "docker-tag1")
@@ -649,10 +649,9 @@ func TestBreakManifest(t *testing.T) {
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteFile("Tiltfile", "borken")
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	select {
-	case call := <-f.b.calls:
-		t.Errorf("Expected build to not get called, but it did: %+v", call)
+	case <-f.b.calls:
 	case <-time.After(100 * time.Millisecond):
 	}
 
@@ -673,6 +672,7 @@ func TestBreakManifest(t *testing.T) {
 func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.tfw.EnableForTesting(true)
 
 	origTiltfile := `def foobar():
 	start_fast_build("Dockerfile", "docker-tag1")
@@ -693,23 +693,14 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteFile("Tiltfile", "borken")
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
-	select {
-	case call := <-f.b.calls:
-		t.Errorf("Expected build to not get called, but it did: %+v", call)
-	case <-time.After(100 * time.Millisecond):
-	}
+	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WaitUntilManifest("state is broken", "foobar", func(state store.ManifestState) bool {
+		return state.LastManifestLoadError != nil
+	})
 
 	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
 	f.WriteFile("Tiltfile", origTiltfile)
-
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
-	select {
-	case call := <-f.b.calls:
-		t.Errorf("Expected build to not get called, but it did: %+v", call)
-	case <-time.After(100 * time.Millisecond):
-	}
-
+	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	f.WaitUntilManifest("state is restored", "foobar", func(state store.ManifestState) bool {
 		return state.LastManifestLoadError == nil
 	})
@@ -726,6 +717,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.tfw.EnableForTesting(true)
 
 	tiltfileString := func(cmd string) string {
 		return fmt.Sprintf(`def foobar():
@@ -750,7 +742,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteFile("Tiltfile", "borken")
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	f.WaitUntilManifest("manifest load error", name, func(ms store.ManifestState) bool {
 		return ms.LastManifestLoadError != nil
 	})
@@ -762,7 +754,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	// Third call: put Tiltfile back. manifest changed, so expect a build
 	f.WriteFile("Tiltfile", tiltfileString("changed"))
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 
 	f.WaitUntil("second build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 2
@@ -1565,6 +1557,7 @@ type testFixture struct {
 	upper                 Upper
 	b                     *fakeBuildAndDeployer
 	fsWatcher             *fakeNotify
+	tfWatcher             *fakeNotify
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeDockerClient
 	hud                   *hud.FakeHud
@@ -1574,6 +1567,7 @@ type testFixture struct {
 	pod                   *v1.Pod
 	bc                    *BuildController
 	fwm                   *WatchManager
+	tfw                   *TiltfileWatcher
 
 	onchangeCh chan bool
 }
@@ -1581,6 +1575,7 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 	watcher := newFakeNotify()
+	tfWatcher := newFakeNotify()
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
@@ -1610,12 +1605,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	fswm := func() (watch.Notify, error) {
 		return watcher, nil
 	}
+	tfwm := func() (watch.Notify, error) {
+		return tfWatcher, nil
+	}
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 
 	gybc := NewGlobalYAMLBuildController(k8s)
-	tfw := NewTiltfileWatcher(fswm)
+	tfw := NewTiltfileWatcher(tfwm)
 	tfw.EnableForTesting(false)
 	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, tfw)
 
@@ -1630,6 +1628,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		upper:          upper,
 		b:              b,
 		fsWatcher:      watcher,
+		tfWatcher:      tfWatcher,
 		timerMaker:     &timerMaker,
 		docker:         docker,
 		hud:            fakeHud,
@@ -1638,6 +1637,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		bc:             bc,
 		onchangeCh:     fSub.ch,
 		fwm:            fwm,
+		tfw:            tfw,
 	}
 }
 

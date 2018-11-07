@@ -432,15 +432,21 @@ func handleTiltfileReloaded(
 	err := event.Err
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
+
+		for _, ms := range state.ManifestStates {
+			ms.LastManifestLoadError = err
+		}
 		return
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
+		state.ManifestStates[m.ManifestName()].LastManifestLoadError = nil
 		oldManifest := state.ManifestStates[m.ManifestName()].Manifest
 
 		newDefOrder[i] = m.ManifestName()
 		if !oldManifest.Equal(m) {
-			state.ManifestStates[m.ManifestName()] = store.NewManifestState(m)
+			newManifestState := store.NewManifestState(m)
+			state.ManifestStates[m.ManifestName()] = newManifestState
 			enqueueBuild(state, m.ManifestName())
 		}
 	}
