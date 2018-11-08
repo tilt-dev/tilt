@@ -13,6 +13,8 @@ type TextScrollLayout struct {
 	cs   []Component
 }
 
+var _ Component = &TextScrollLayout{}
+
 func NewTextScrollLayout(name string) *TextScrollLayout {
 	return &TextScrollLayout{name: name}
 }
@@ -234,6 +236,8 @@ type ElementScrollLayout struct {
 	name     string
 	children []Component
 }
+
+var _ Component = &ElementScrollLayout{}
 
 func NewElementScrollLayout(name string) *ElementScrollLayout {
 	return &ElementScrollLayout{name: name}

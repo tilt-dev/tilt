@@ -23,6 +23,8 @@ type FlexLayout struct {
 	cs  []Component
 }
 
+var _ Component = &FlexLayout{}
+
 func NewFlexLayout(dir Dir) *FlexLayout {
 	return &FlexLayout{
 		dir: dir,
@@ -109,6 +111,8 @@ type ConcatLayout struct {
 	cs  []Component
 }
 
+var _ Component = &ConcatLayout{}
+
 func NewConcatLayout(dir Dir) *ConcatLayout {
 	return &ConcatLayout{dir: dir}
 }
@@ -163,6 +167,8 @@ type Line struct {
 	del *FlexLayout
 }
 
+var _ Component = &Line{}
+
 func NewLine() *Line {
 	return &Line{del: NewFlexLayout(DirHor)}
 }
@@ -209,6 +215,8 @@ type ColorLayout struct {
 	foreground bool
 }
 
+var _ Component = &ColorLayout{}
+
 func Fg(del Component, color tcell.Color) Component {
 	return &ColorLayout{
 		del:        del,
@@ -245,6 +253,8 @@ type Box struct {
 	title   string
 	inner   Component
 }
+
+var _ Component = &Box{}
 
 func NewBox() *Box {
 	return &Box{}
@@ -335,6 +345,8 @@ type FixedSizeLayout struct {
 	height int
 }
 
+var _ Component = &FixedSizeLayout{}
+
 func NewFixedSize(del Component, width int, height int) *FixedSizeLayout {
 	return &FixedSizeLayout{del: del, width: width, height: height}
 }
@@ -365,6 +377,8 @@ type ModalLayout struct {
 	fg       Component
 	fraction float64
 }
+
+var _ Component = &ModalLayout{}
 
 // fg will be rendered on top of bg, using fraction/1 of the height and width of the screen
 func NewModalLayout(bg Component, fg Component, fraction float64) *ModalLayout {
