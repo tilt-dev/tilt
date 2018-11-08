@@ -149,7 +149,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 			if nextX+1 > maxWidth {
 				maxWidth = nextX + 1
 			}
-			if nextY > height {
+			if nextY >= height {
 				return maxWidth, height
 			}
 			if ch == '\n' {

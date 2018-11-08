@@ -16,7 +16,8 @@ func TestTextString(t *testing.T) {
 	i.Run("two-line text string", 20, 2, TextString("hello\nworld"))
 	i.Run("two-line text string in one-line container", 20, 1, TextString("hello\nworld"))
 	i.Run("horizontally overflowed text string", 2, 1, TextString("hello world"))
-	i.Run("vertically overflowed text string", 10, 10, TextString(strings.Repeat("hi\n", 20)))
+	i.Run("vertically overflowed via newlines text string", 10, 10, TextString(strings.Repeat("hi\n", 20)))
+	i.Run("vertically overflowed via wrap text string", 5, 5, TextString(strings.Repeat("xxxxxxxxxx\n", 200)))
 }
 
 func TestStyledText(t *testing.T) {
@@ -120,6 +121,12 @@ func TestStringBuilder(t *testing.T) {
 	w, h = sb.Build().Size(5, 10)
 	assert.Equal(t, 5, w)
 	assert.Equal(t, 5, h)
+
+	sb = NewStringBuilder()
+	sb.Text("hello world")
+	w, h = sb.Build().Size(3, 3)
+	assert.Equal(t, 3, w)
+	assert.Equal(t, 3, h)
 }
 
 func TestANSICodes(t *testing.T) {
