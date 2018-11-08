@@ -253,13 +253,14 @@ func abbreviateLog(s string) []string {
 
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
-	renderRsrcSummary(selected, rv, res, layout)
-	renderRsrcK8s(res, r, rv, layout)
-	renderRsrcTilt(res, r, rv, layout)
+	layout.Add(resourceTitle(selected, rv, res))
+	layout.Add(r.resourceK8s(res, rv))
+	layout.Add(r.resourceTilt(res, rv))
+	layout.Add(rty.NewLine())
 	return layout
 }
 
-func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
+func resourceTitle(selected bool, rv view.ResourceViewState, res view.Resource) rty.Component {
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
@@ -283,16 +284,16 @@ func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resour
 	l.Add(sbLeft.Build())
 	l.Add(rty.Fg(rty.NewFillerString('╌'), cLightText))
 	l.Add(sbRight.Build())
-	layout.Add(l)
+	return l
 }
 
-func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
-	var indent = "    "
-
+func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty.Component {
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
+	sbDetail := rty.NewStringBuilder()
 	status := r.spinner()
+	indent := "    "
 
 	if res.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[res.PodStatus]
@@ -334,10 +335,10 @@ func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, la
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
 	l.Add(sbRight.Build())
-	layout.Add(l)
+	return l
 }
 
-func renderRsrcTilt(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
+func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	// Last Deployed Edits
 	if !res.LastDeployTime.Equal(time.Time{}) {
 		if len(res.LastDeployEdits) > 0 {
@@ -419,6 +420,7 @@ func renderRsrcTilt(res view.Resource, r *Renderer, rv view.ResourceViewState, l
 		layout.Add(l)
 	}
 	layout.Add(rty.NewLine())
+	return l
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {
