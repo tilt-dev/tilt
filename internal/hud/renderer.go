@@ -92,8 +92,6 @@ var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
-var defaultKeys = "(↓) next, (↑) prev ┊ (enter) toggle, (p)od log, open in (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
-var keys = defaultKeys
 
 var podStatusColors = map[string]tcell.Color{
 	"Running":           cGood,
@@ -113,22 +111,27 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v, vs))
-	split.Add(r.renderFooter(v))
+	split.Add(r.renderFooter(v, showKeyLegend(vs)))
 	l.Add(split)
 
 	if vs.LogModal.TiltLog {
-		keys = "(esc) to exit view "
 		return r.renderFullLogModal(v, l)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
-		keys = "(esc) to exit view "
 		return r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], l)
 	} else {
-		keys = defaultKeys
 		return l
 	}
 }
 
-func (r *Renderer) renderFooter(v view.View) rty.Component {
+func showKeyLegend(vs view.ViewState) string {
+	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (v)iew log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
+	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
+		return "SCROLL: (↓) (↑) ┊ (esc) to exit view "
+	}
+	return defaultKeys
+}
+
+func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
