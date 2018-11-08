@@ -281,7 +281,7 @@ func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resour
 	}
 
 	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString('╌'))
+	l.Add(rty.Fg(rty.NewFillerString('╌'), cLightText))
 	l.Add(sbRight.Build())
 	layout.Add(l)
 }
