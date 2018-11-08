@@ -101,6 +101,25 @@ func TestLines(t *testing.T) {
 	line.Add(TextString("goodbye"))
 	l.Add(line)
 	i.Run("lines of lines", 30, 10, l)
+
+	l = NewLines()
+	l.Add(TextString("the quick brown fox\njumped over the lazy dog"))
+	l.Add(TextString("here is another line"))
+	i.Run("wrapped line followed by another line", 10, 20, l)
+}
+
+func TestStringBuilder(t *testing.T) {
+	sb := NewStringBuilder()
+	sb.Text("hello")
+	w, h := sb.Build().Size(10, 1)
+	assert.Equal(t, 5, w)
+	assert.Equal(t, 1, h)
+
+	sb = NewStringBuilder()
+	sb.Text("hello world\ngoodbye")
+	w, h = sb.Build().Size(5, 10)
+	assert.Equal(t, 5, w)
+	assert.Equal(t, 5, h)
 }
 
 func TestANSICodes(t *testing.T) {
