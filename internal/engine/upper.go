@@ -65,7 +65,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, tfw *TiltfileWatcher) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -76,6 +76,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(sw)
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
+	st.AddSubscriber(tfw)
 
 	return Upper{
 		b:     b,
@@ -101,7 +102,13 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
+	manifestNames := make([]model.ManifestName, len(args))
+
+	for i, a := range args {
+		manifestNames[i] = model.ManifestName(a)
+	}
+
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 	if err != nil {
 		return err
 	}
@@ -111,6 +118,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
+		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -119,11 +127,18 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
 	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 
+	manifestNames := make([]model.ManifestName, len(manifests))
+
+	for i, m := range manifests {
+		manifestNames[i] = m.ManifestName()
+	}
+
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       tiltfilePath,
+		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -164,6 +179,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleGlobalYAMLApplyComplete(ctx, state, action)
 	case GlobalYAMLApplyError:
 		handleGlobalYAMLApplyError(ctx, state, action)
+	case TiltfileReloadedAction:
+		handleTiltfileReloaded(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -405,6 +422,38 @@ func handleGlobalYAMLApplyError(
 	state.GlobalYAMLState.LastError = event.Error
 }
 
+func handleTiltfileReloaded(
+	ctx context.Context,
+	state *store.EngineState,
+	event TiltfileReloadedAction,
+) {
+	manifests := event.Manifests
+	globalYAML := event.GlobalYAML
+	err := event.Err
+	if err != nil {
+		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
+
+		for _, ms := range state.ManifestStates {
+			ms.LastManifestLoadError = err
+		}
+		return
+	}
+	newDefOrder := make([]model.ManifestName, len(manifests))
+	for i, m := range manifests {
+		state.ManifestStates[m.ManifestName()].LastManifestLoadError = nil
+		oldManifest := state.ManifestStates[m.ManifestName()].Manifest
+
+		newDefOrder[i] = m.ManifestName()
+		if !oldManifest.Equal(m) {
+			state.ManifestStates[m.ManifestName()].Manifest = m
+			enqueueBuild(state, m.ManifestName())
+		}
+	}
+	// TODO(dmiller) handle deleting manifests
+	state.ManifestDefinitionOrder = newDefOrder
+	state.GlobalYAML = globalYAML
+}
+
 func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
@@ -561,6 +610,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	engineState.TiltfilePath = action.TiltfilePath
+	engineState.InitManifests = action.ManifestNames
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 

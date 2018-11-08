@@ -63,7 +63,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...string) ([]model.Manifest, model.YAMLManifest) {
+func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest) {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -79,12 +79,12 @@ func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...string) ([]model.Ma
 	return manifests, globalYAML
 }
 
-func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
+func (f *gitRepoFixture) LoadManifests(names ...model.ManifestName) []model.Manifest {
 	manifests, _ := f.LoadManifestsAndGlobalYAML(names...)
 	return manifests
 }
 
-func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
+func (f *gitRepoFixture) LoadManifest(name model.ManifestName) model.Manifest {
 	manifests := f.LoadManifests(name)
 	if len(manifests) != 1 {
 		f.T().Fatalf("expected 1 manifest, actual: %d", len(manifests))
@@ -97,7 +97,7 @@ func (f *gitRepoFixture) LoadGlobalYAML() model.YAMLManifest {
 	return globalYAML
 }
 
-func (f *gitRepoFixture) LoadManifestForError(name string) error {
+func (f *gitRepoFixture) LoadManifestForError(name model.ManifestName) error {
 	tiltconfig, err := Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
@@ -557,7 +557,6 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
 		return ok
 	}
 	assert.True(t, matches(f.JoinPath("Dockerfile.base")))
-	assert.True(t, matches(f.JoinPath("Tiltfile")))
 	assert.True(t, matches(f.JoinPath("a.txt")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
@@ -581,7 +580,6 @@ func TestConfigMatcherWithStaticBuild(t *testing.T) {
 		return ok
 	}
 	assert.True(t, matches(f.JoinPath("Dockerfile")))
-	assert.True(t, matches(f.JoinPath("Tiltfile")))
 	assert.False(t, matches(f.JoinPath("b.txt")))
 }
 
@@ -1039,7 +1037,6 @@ def blorgly():
 	manifest := f.LoadManifest("blorgly")
 	expected := f.JoinPaths([]string{
 		"Dockerfile",
-		"Tiltfile",
 		"configMap.yaml",
 		"deployment.yaml",
 		"kustomization.yaml",
