@@ -297,7 +297,7 @@ func InitScreenAndRun(m *testing.M, screen *tcell.Screen) {
 		(*screen).Fini()
 	}
 
-	if r != 0 && *screen != nil {
+	if r != 0 && *screen == nil {
 		log.Printf("To update golden files, run with env variable RTY_INTERACTIVE=1 and hit y/n on each case to overwrite (or not)")
 	}
 	os.Exit(r)
