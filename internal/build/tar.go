@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 
@@ -186,5 +187,14 @@ func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths 
 		return nil, fmt.Errorf("archiveDf: %v", err)
 	}
 
+	return ab.BytesBuffer()
+}
+
+func tarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (*bytes.Buffer, error) {
+	ab := NewArchiveBuilder(model.EmptyMatcher)
+	err := ab.archiveDf(ctx, df)
+	if err != nil {
+		return nil, errors.Wrap(err, "tarDfOnly")
+	}
 	return ab.BytesBuffer()
 }

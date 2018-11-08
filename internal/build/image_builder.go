@@ -347,7 +347,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := d.readDockerOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
+	result, err := readDockerOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "ImageBuild")
 	}
@@ -377,7 +377,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func (d *dockerImageBuilder) readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (*json.RawMessage, error) {
+func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (*json.RawMessage, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
@@ -475,7 +475,7 @@ func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 }
 
 func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
-	aux, err := d.readDockerOutput(ctx, reader, writer)
+	aux, err := readDockerOutput(ctx, reader, writer)
 	if err != nil {
 		return "", err
 	}
@@ -486,7 +486,7 @@ func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reade
 }
 
 func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
-	aux, err := d.readDockerOutput(ctx, reader, writer)
+	aux, err := readDockerOutput(ctx, reader, writer)
 	if err != nil {
 		return "", err
 	}
