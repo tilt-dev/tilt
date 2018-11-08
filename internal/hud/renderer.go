@@ -179,7 +179,7 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
 
-	return r.renderLogModal(fmt.Sprintf(" POD LOG: %s ", res.Name), s, background)
+	return r.renderLogModal(fmt.Sprintf("POD LOG: %s", res.Name), s, background)
 }
 
 func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
@@ -187,7 +187,7 @@ func (r *Renderer) renderLogModal(title string, s string, background rty.Compone
 	sl.Add(rty.TextString(s))
 	box := rty.NewBox()
 	box.SetInner(sl)
-	box.SetTitle(fmt.Sprintf(" %s ", title))
+	box.SetTitle(title)
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
 	ml := rty.NewModalLayout(background, l, .9)
