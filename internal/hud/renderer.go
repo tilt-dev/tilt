@@ -124,7 +124,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 }
 
 func showKeyLegend(vs view.ViewState) string {
-	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (v)iew log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
+	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
 	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
 		return "SCROLL: (↓) (↑) ┊ (esc) to exit view "
 	}
