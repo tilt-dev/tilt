@@ -59,7 +59,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 			// set "Always" for development are shooting their own feet.
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
-				errors.Wrap(err, "Error injecting image pull policy in to global_yaml")
+				err = errors.Wrap(err, "Error injecting image pull policy in to global_yaml")
 				logger.Get(ctx).Infof(err.Error())
 				st.Dispatch(GlobalYAMLApplyError{Error: err})
 				c.lastGlobalYAMLManifest = model.YAMLManifest{}
