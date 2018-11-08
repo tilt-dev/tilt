@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -20,7 +21,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	// dockerImageBuilder ( = ImageBuilder)
 	build.DefaultConsole,
 	build.DefaultOut,
-	wire.Value(build.Labels{}),
+	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
 	build.DefaultImageBuilder,

@@ -1,4 +1,4 @@
-package build
+package dockerfile
 
 import "testing"
 

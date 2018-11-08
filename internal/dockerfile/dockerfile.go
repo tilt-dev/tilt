@@ -1,4 +1,4 @@
-package build
+package dockerfile
 
 import (
 	"bytes"
@@ -19,31 +19,31 @@ type Dockerfile string
 // DockerfileFromExisting creates a new Dockerfile that uses the supplied image
 // as its base image with a FROM statement. This is necessary for iterative
 // Docker builds.
-func DockerfileFromExisting(existing reference.NamedTagged) Dockerfile {
+func FromExisting(existing reference.NamedTagged) Dockerfile {
 	return Dockerfile(fmt.Sprintf("FROM %s", existing.String()))
 }
 
-func (d Dockerfile) join(s string) Dockerfile {
+func (d Dockerfile) Join(s string) Dockerfile {
 	return Dockerfile(fmt.Sprintf("%s\n%s", d, s))
 }
 
 func (d Dockerfile) WithLabel(label Label, val LabelValue) Dockerfile {
-	return d.join(fmt.Sprintf("LABEL %q=%q", label, val))
+	return d.Join(fmt.Sprintf("LABEL %q=%q", label, val))
 }
 
 func (d Dockerfile) AddAll() Dockerfile {
-	return d.join("ADD . /")
+	return d.Join("ADD . /")
 }
 
 func (d Dockerfile) Run(cmd model.Cmd) Dockerfile {
-	return d.join(cmd.RunStr())
+	return d.Join(cmd.RunStr())
 }
 
 func (d Dockerfile) Entrypoint(cmd model.Cmd) Dockerfile {
-	return d.join(cmd.EntrypointStr())
+	return d.Join(cmd.EntrypointStr())
 }
 
-func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
+func (d Dockerfile) RmPaths(pathsToRm []string) Dockerfile {
 	if len(pathsToRm) == 0 {
 		return d
 	}
@@ -52,9 +52,9 @@ func (d Dockerfile) RmPaths(pathsToRm []pathMapping) Dockerfile {
 	rmCmd := strings.Builder{}
 	rmCmd.WriteString("rm -rf")
 	for _, p := range pathsToRm {
-		rmCmd.WriteString(fmt.Sprintf(" %s", p.ContainerPath))
+		rmCmd.WriteString(fmt.Sprintf(" %s", p))
 	}
-	return d.join(fmt.Sprintf("RUN %s", rmCmd.String()))
+	return d.Join(fmt.Sprintf("RUN %s", rmCmd.String()))
 }
 
 func (d Dockerfile) ValidateBaseDockerfile() error {

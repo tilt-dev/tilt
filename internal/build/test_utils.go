@@ -18,6 +18,7 @@ import (
 	"github.com/docker/docker/client"
 	wmcontainer "github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -48,7 +49,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 
 	ps := NewPipelineState(ctx, 3)
 
-	labels := Labels(map[Label]LabelValue{
+	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",
 	})
 	return &dockerBuildFixture{
@@ -65,7 +66,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
 	dcli := docker.NewFakeDockerClient()
-	labels := Labels(map[Label]LabelValue{
+	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",
 	})
 
