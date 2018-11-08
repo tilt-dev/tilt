@@ -5,18 +5,11 @@ import (
 	"sync"
 )
 
-type Dispatcher interface {
+// Read-only store
+type RStore interface {
 	Dispatch(action Action)
-}
-
-type StateReader interface {
 	RLockState() EngineState
 	RUnlockState()
-}
-
-type DispatchingStateReader interface {
-	Dispatcher
-	StateReader
 }
 
 // A central state store, modeled after the Reactive programming UX pattern.

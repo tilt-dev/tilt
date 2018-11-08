@@ -25,21 +25,21 @@ func (t *TiltfileWatcher) DisableForTesting(disabled bool) {
 	t.disabledForTesting = disabled
 }
 
-func (t *TiltfileWatcher) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
+func (t *TiltfileWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if t.disabledForTesting {
 		return
 	}
-	state := dsr.RLockState()
-	defer dsr.RUnlockState()
+	state := st.RLockState()
+	defer st.RUnlockState()
 	initManifests := state.InitManifests
 
 	if t.tiltfilePath != state.TiltfilePath || t.tiltfilePath == "" {
 		err := t.setupWatch(state.TiltfilePath)
 		if err != nil {
-			dsr.Dispatch(NewErrorAction(err))
+			st.Dispatch(NewErrorAction(err))
 			return
 		}
-		go t.watchLoop(ctx, dsr, initManifests)
+		go t.watchLoop(ctx, st, initManifests)
 	}
 }
 
@@ -60,7 +60,7 @@ func (t *TiltfileWatcher) setupWatch(path string) error {
 	return nil
 }
 
-func (t *TiltfileWatcher) watchLoop(ctx context.Context, d store.Dispatcher, initManifests []model.ManifestName) {
+func (t *TiltfileWatcher) watchLoop(ctx context.Context, st store.RStore, initManifests []model.ManifestName) {
 	watcher := t.tiltfileWatcher
 	for {
 		select {
@@ -68,7 +68,7 @@ func (t *TiltfileWatcher) watchLoop(ctx context.Context, d store.Dispatcher, ini
 			if !ok {
 				return
 			}
-			d.Dispatch(NewErrorAction(err))
+			st.Dispatch(NewErrorAction(err))
 		case <-ctx.Done():
 			return
 		case _, ok := <-watcher.Events():
@@ -77,7 +77,7 @@ func (t *TiltfileWatcher) watchLoop(ctx context.Context, d store.Dispatcher, ini
 			}
 
 			manifests, globalYAML, err := getNewManifestsFromTiltfile(ctx, initManifests)
-			d.Dispatch(TiltfileReloadedAction{
+			st.Dispatch(TiltfileReloadedAction{
 				Manifests:  manifests,
 				GlobalYAML: globalYAML,
 				Err:        err,

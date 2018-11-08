@@ -41,10 +41,10 @@ func (h *FakeHud) Run(ctx context.Context, dispatch func(action store.Action), r
 func (h *FakeHud) SetNarrationMessage(ctx context.Context, msg string) {}
 func (h *FakeHud) Refresh(ctx context.Context)                         {}
 
-func (h *FakeHud) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
-	state := dsr.RLockState()
+func (h *FakeHud) OnChange(ctx context.Context, st store.RStore) {
+	state := st.RLockState()
 	view := store.StateToView(state)
-	dsr.RUnlockState()
+	st.RUnlockState()
 
 	err := h.Update(view, h.viewState)
 	if err != nil {

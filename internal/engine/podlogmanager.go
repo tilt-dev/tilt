@@ -32,9 +32,9 @@ func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 // Diff the current watches against the state store of what
 // we're supposed to be watching, returning the changes
 // we need to make.
-func (m *PodLogManager) diff(ctx context.Context, dsr store.DispatchingStateReader) (setup []PodLogWatch, teardown []PodLogWatch) {
-	state := dsr.RLockState()
-	defer dsr.RUnlockState()
+func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodLogWatch, teardown []PodLogWatch) {
+	state := st.RLockState()
+	defer st.RUnlockState()
 
 	// If we're not watching the mounts, then don't bother watching logs.
 	if !state.WatchMounts {
@@ -104,18 +104,18 @@ func (m *PodLogManager) diff(ctx context.Context, dsr store.DispatchingStateRead
 	return setup, teardown
 }
 
-func (m *PodLogManager) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
-	setup, teardown := m.diff(ctx, dsr)
+func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore) {
+	setup, teardown := m.diff(ctx, st)
 	for _, watch := range teardown {
 		watch.cancel()
 	}
 
 	for _, watch := range setup {
-		go m.consumeLogs(watch, dsr)
+		go m.consumeLogs(watch, st)
 	}
 }
 
-func (m *PodLogManager) consumeLogs(watch PodLogWatch, dsr store.DispatchingStateReader) {
+func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	defer func() {
 		watch.terminationTime <- time.Now()
 		watch.cancel()
@@ -139,7 +139,7 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, dsr store.DispatchingStat
 	prefix := logPrefix(name.String())
 	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
 	actionWriter := PodLogActionWriter{
-		dispatcher:   dsr,
+		store:        st,
 		manifestName: name,
 		podID:        pID,
 	}
@@ -182,13 +182,13 @@ type podLogKey struct {
 }
 
 type PodLogActionWriter struct {
-	dispatcher   store.Dispatcher
+	store        store.RStore
 	podID        k8s.PodID
 	manifestName model.ManifestName
 }
 
 func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
-	w.dispatcher.Dispatch(PodLogAction{
+	w.store.Dispatch(PodLogAction{
 		PodID:        w.podID,
 		ManifestName: w.manifestName,
 		Log:          append([]byte{}, p...),

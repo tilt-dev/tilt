@@ -35,9 +35,9 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 	}
 }
 
-func (c *BuildController) needsBuild(ctx context.Context, dsr store.DispatchingStateReader) (buildEntry, bool) {
-	state := dsr.RLockState()
-	defer dsr.RUnlockState()
+func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
+	state := st.RLockState()
+	defer st.RUnlockState()
 
 	if len(state.ManifestsToBuild) == 0 {
 		return buildEntry{}, false
@@ -82,11 +82,11 @@ func (c *BuildController) DisableForTesting() {
 	c.disabledForTesting = true
 }
 
-func (c *BuildController) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
+func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	if c.disabledForTesting {
 		return
 	}
-	entry, ok := c.needsBuild(ctx, dsr)
+	entry, ok := c.needsBuild(ctx, st)
 	if !ok {
 		return
 	}
@@ -94,10 +94,10 @@ func (c *BuildController) OnChange(ctx context.Context, dsr store.DispatchingSta
 	go func() {
 		if entry.needsConfigReload {
 			newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
-			dsr.Dispatch(GlobalYAMLManifestReloadedAction{
+			st.Dispatch(GlobalYAMLManifestReloadedAction{
 				GlobalYAML: newGlobalYAML,
 			})
-			dsr.Dispatch(ManifestReloadedAction{
+			st.Dispatch(ManifestReloadedAction{
 				OldManifest: entry.manifest,
 				NewManifest: newManifest,
 				Error:       err,
@@ -105,14 +105,14 @@ func (c *BuildController) OnChange(ctx context.Context, dsr store.DispatchingSta
 			return
 		}
 
-		dsr.Dispatch(BuildStartedAction{
+		st.Dispatch(BuildStartedAction{
 			Manifest:     entry.manifest,
 			StartTime:    time.Now(),
 			FilesChanged: entry.filesChanged,
 		})
 		c.logBuildEntry(entry.ctx, entry)
 		result, err := c.b.BuildAndDeploy(entry.ctx, entry.manifest, entry.buildState)
-		dsr.Dispatch(NewBuildCompleteAction(result, err))
+		st.Dispatch(NewBuildCompleteAction(result, err))
 	}()
 }
 

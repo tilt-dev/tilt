@@ -24,9 +24,9 @@ func NewImageController(reaper build.ImageReaper) *ImageController {
 	}
 }
 
-func (c *ImageController) manifestsToReap(sr store.StateReader) []model.Manifest {
-	state := sr.RLockState()
-	defer sr.RUnlockState()
+func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
+	state := st.RLockState()
+	defer st.RUnlockState()
 	if !state.WatchMounts || len(state.ManifestStates) == 0 {
 		return nil
 	}
@@ -44,8 +44,8 @@ func (c *ImageController) manifestsToReap(sr store.StateReader) []model.Manifest
 	return manifests
 }
 
-func (c *ImageController) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
-	manifestsToReap := c.manifestsToReap(dsr)
+func (c *ImageController) OnChange(ctx context.Context, st store.RStore) {
+	manifestsToReap := c.manifestsToReap(st)
 	if len(manifestsToReap) > 0 {
 		go func() {
 			err := c.reapOldWatchBuilds(ctx, manifestsToReap, time.Now())
