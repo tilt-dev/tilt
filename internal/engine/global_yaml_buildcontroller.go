@@ -22,14 +22,14 @@ func NewGlobalYAMLBuildController(k8sClient k8s.Client) *GlobalYAMLBuildControll
 	}
 }
 
-func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Store) {
+func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
 	if c.disabledForTesting {
 		return
 	}
 
-	state := st.RLockState()
+	state := dsr.RLockState()
 	m := state.GlobalYAML
-	st.RUnlockState()
+	dsr.RUnlockState()
 
 	newK8sEntities := []k8s.K8sEntity{}
 	if m.K8sYAML() != c.lastGlobalYAMLManifest.K8sYAML() {
@@ -37,17 +37,17 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 		if err != nil {
 			logger.Get(ctx).Infof("Error parsing global_yaml: %v", err)
 			c.lastGlobalYAMLManifest = model.YAMLManifest{}
-			st.Dispatch(GlobalYAMLApplyError{Error: err})
+			dsr.Dispatch(GlobalYAMLApplyError{Error: err})
 			return
 		}
-		st.Dispatch(GlobalYAMLApplyStartedAction{})
+		dsr.Dispatch(GlobalYAMLApplyStartedAction{})
 
 		for _, e := range entities {
 			e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
 			if err != nil {
 				logger.Get(ctx).Infof("Error injecting labels in to global_yaml: %v", err)
 				c.lastGlobalYAMLManifest = model.YAMLManifest{}
-				st.Dispatch(GlobalYAMLApplyError{Error: err})
+				dsr.Dispatch(GlobalYAMLApplyError{Error: err})
 				return
 			}
 
@@ -57,7 +57,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
 				logger.Get(ctx).Infof("Error injecting image pull policy in to global_yaml: %v", err)
-				st.Dispatch(GlobalYAMLApplyError{Error: err})
+				dsr.Dispatch(GlobalYAMLApplyError{Error: err})
 				c.lastGlobalYAMLManifest = model.YAMLManifest{}
 				return
 			}
@@ -69,10 +69,10 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 		if err != nil {
 			logger.Get(ctx).Infof("Error upserting global_yaml: %v", err)
 			c.lastGlobalYAMLManifest = model.YAMLManifest{}
-			st.Dispatch(GlobalYAMLApplyError{Error: err})
+			dsr.Dispatch(GlobalYAMLApplyError{Error: err})
 		} else {
 			c.lastGlobalYAMLManifest = m
-			st.Dispatch(GlobalYAMLApplyCompleteAction{})
+			dsr.Dispatch(GlobalYAMLApplyCompleteAction{})
 		}
 	}
 }

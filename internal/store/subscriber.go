@@ -13,7 +13,7 @@ import (
 // Subscribers are only allowed to read state. If they want to
 // modify state, they should call store.Dispatch()
 type Subscriber interface {
-	OnChange(ctx context.Context, store *Store)
+	OnChange(ctx context.Context, dsr DispatchingStateReader)
 }
 
 type subscriberEntry struct {

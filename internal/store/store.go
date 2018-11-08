@@ -5,6 +5,20 @@ import (
 	"sync"
 )
 
+type Dispatcher interface {
+	Dispatch(action Action)
+}
+
+type StateReader interface {
+	RLockState() EngineState
+	RUnlockState()
+}
+
+type DispatchingStateReader interface {
+	Dispatcher
+	StateReader
+}
+
 // A central state store, modeled after the Reactive programming UX pattern.
 // Terminology is borrowed liberally from Redux. These docs in particular are helpful:
 // https://redux.js.org/introduction/threeprinciples

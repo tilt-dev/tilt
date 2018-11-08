@@ -55,7 +55,7 @@ type onChangeCall struct {
 	done chan bool
 }
 
-func (f fakeSubscriber) OnChange(ctx context.Context, store *Store) {
+func (f fakeSubscriber) OnChange(ctx context.Context, dsr DispatchingStateReader) {
 	call := onChangeCall{done: make(chan bool)}
 	f.onChange <- call
 	<-call.done

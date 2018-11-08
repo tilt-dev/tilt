@@ -23,28 +23,28 @@ func NewServiceWatcher(kCli k8s.Client, nodeIP k8s.NodeIP) *ServiceWatcher {
 	}
 }
 
-func (w *ServiceWatcher) needsWatch(st *store.Store) bool {
-	state := st.RLockState()
-	defer st.RUnlockState()
+func (w *ServiceWatcher) needsWatch(sr store.StateReader) bool {
+	state := sr.RLockState()
+	defer sr.RUnlockState()
 	return state.WatchMounts && !w.watching
 }
 
-func (w *ServiceWatcher) OnChange(ctx context.Context, st *store.Store) {
-	if !w.needsWatch(st) {
+func (w *ServiceWatcher) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
+	if !w.needsWatch(dsr) {
 		return
 	}
 	w.watching = true
 
 	ch, err := w.kCli.WatchServices(ctx, []k8s.LabelPair{TiltRunLabel()})
 	if err != nil {
-		st.Dispatch(NewErrorAction(err))
+		dsr.Dispatch(NewErrorAction(err))
 		return
 	}
 
-	go w.dispatchServiceChangesLoop(ctx, ch, st)
+	go w.dispatchServiceChangesLoop(ctx, ch, dsr)
 }
 
-func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st *store.Store) {
+func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, d store.Dispatcher) {
 	for {
 		select {
 		case service, ok := <-ch:
@@ -52,7 +52,7 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 				return
 			}
 
-			err := dispatchServiceChange(st, service, w.nodeIP)
+			err := dispatchServiceChange(d, service, w.nodeIP)
 			if err != nil {
 				logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 			}
@@ -62,12 +62,12 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 	}
 }
 
-func dispatchServiceChange(st *store.Store, service *v1.Service, ip k8s.NodeIP) error {
+func dispatchServiceChange(d store.Dispatcher, service *v1.Service, ip k8s.NodeIP) error {
 	url, err := k8s.ServiceURL(service, ip)
 	if err != nil {
 		return err
 	}
 
-	st.Dispatch(NewServiceChangeAction(service, url))
+	d.Dispatch(NewServiceChangeAction(service, url))
 	return nil
 }

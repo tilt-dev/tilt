@@ -61,12 +61,12 @@ type podMonitor struct {
 	mu            sync.Mutex
 }
 
-func (m *podMonitor) OnChange(ctx context.Context, store *store.Store) {
+func (m *podMonitor) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	state := store.RLockState()
-	defer store.RUnlockState()
+	state := dsr.RLockState()
+	defer dsr.RUnlockState()
 
 	m.hasPodRestart = false
 	m.hasBuildError = false

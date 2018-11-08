@@ -46,13 +46,13 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchM
 	}
 }
 
-func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
-	state := st.RLockState()
-	defer st.RUnlockState()
+func (w *WatchManager) diffAndMaybeSetupTFWatch(ctx context.Context, dsr store.DispatchingStateReader) (setup []WatchableManifest, teardown []WatchableManifest) {
+	state := dsr.RLockState()
+	defer dsr.RUnlockState()
 
 	err := w.maybeSetupTFWatch(state)
 	if err != nil {
-		st.Dispatch(NewErrorAction(err))
+		dsr.Dispatch(NewErrorAction(err))
 	}
 
 	setup = []WatchableManifest{}
@@ -95,8 +95,8 @@ func (w *WatchManager) maybeSetupTFWatch(state store.EngineState) error {
 	return nil
 }
 
-func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
-	setup, teardown := w.diffAndMaybeSetupTFWatch(ctx, st)
+func (w *WatchManager) OnChange(ctx context.Context, dsr store.DispatchingStateReader) {
+	setup, teardown := w.diffAndMaybeSetupTFWatch(ctx, dsr)
 
 	for _, m := range teardown {
 		p, ok := w.manifestWatches[m.ManifestName()]
@@ -114,29 +114,29 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 	for _, manifest := range setup {
 		watcher, err := w.fsWatcherMaker()
 		if err != nil {
-			st.Dispatch(NewErrorAction(err))
+			dsr.Dispatch(NewErrorAction(err))
 			continue
 		}
 
 		for _, d := range manifest.Dependencies() {
 			err = watcher.Add(d)
 			if err != nil {
-				st.Dispatch(NewErrorAction(err))
+				dsr.Dispatch(NewErrorAction(err))
 			}
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
+		go w.dispatchFileChangesLoop(ctx, manifest, watcher, dsr)
 
 		w.manifestWatches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
 	}
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, st *store.Store) {
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, dsr store.DispatchingStateReader) {
 	filter, err := ignore.CreateFileChangeFilter(manifest)
 	if err != nil {
-		st.Dispatch(NewErrorAction(err))
+		dsr.Dispatch(NewErrorAction(err))
 		return
 	}
 
@@ -148,7 +148,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if !ok {
 				return
 			}
-			st.Dispatch(NewErrorAction(err))
+			dsr.Dispatch(NewErrorAction(err))
 		case <-ctx.Done():
 			return
 
@@ -162,12 +162,12 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			for _, e := range fsEvents {
 				path, err := filepath.Abs(e.Path)
 				if err != nil {
-					st.Dispatch(NewErrorAction(err))
+					dsr.Dispatch(NewErrorAction(err))
 					continue
 				}
 				isIgnored, err := filter.Matches(path, false)
 				if err != nil {
-					st.Dispatch(NewErrorAction(err))
+					dsr.Dispatch(NewErrorAction(err))
 					continue
 				}
 				if !isIgnored {
@@ -176,7 +176,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			}
 
 			if len(watchEvent.files) > 0 {
-				st.Dispatch(watchEvent)
+				dsr.Dispatch(watchEvent)
 			}
 		}
 	}
