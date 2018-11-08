@@ -88,6 +88,7 @@ func formatFileList(files []string) string {
 	return strings.Join(ret, ", ")
 }
 
+var cText = tcell.Color232
 var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
@@ -144,15 +145,15 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 		}
 	}
 	if errorCount == 0 {
-		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Text(" OK")
+		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
 	} else {
 		s := "error"
 		if errorCount > 1 {
 			s = "errors"
 		}
-		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Textf(" %d %s", errorCount, s)
+		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" %d %s", errorCount, s).Fg(tcell.ColorDefault)
 	}
-	sbRight.Text(keys)
+	sbRight.Fg(cText).Text(keys).Fg(tcell.ColorDefault)
 
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
