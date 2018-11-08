@@ -23,13 +23,13 @@ func NewServiceWatcher(kCli k8s.Client, nodeIP k8s.NodeIP) *ServiceWatcher {
 	}
 }
 
-func (w *ServiceWatcher) needsWatch(st *store.Store) bool {
+func (w *ServiceWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
 	return state.WatchMounts && !w.watching
 }
 
-func (w *ServiceWatcher) OnChange(ctx context.Context, st *store.Store) {
+func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if !w.needsWatch(st) {
 		return
 	}
@@ -44,7 +44,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st *store.Store) {
 	go w.dispatchServiceChangesLoop(ctx, ch, st)
 }
 
-func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st *store.Store) {
+func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st store.RStore) {
 	for {
 		select {
 		case service, ok := <-ch:
@@ -62,7 +62,7 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 	}
 }
 
-func dispatchServiceChange(st *store.Store, service *v1.Service, ip k8s.NodeIP) error {
+func dispatchServiceChange(st store.RStore, service *v1.Service, ip k8s.NodeIP) error {
 	url, err := k8s.ServiceURL(service, ip)
 	if err != nil {
 		return err

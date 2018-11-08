@@ -25,7 +25,7 @@ func NewPortForwardController(kClient k8s.Client) *PortForwardController {
 
 // Figure out the diff between what's in the data store and
 // what port-forwarding is currently active.
-func (m *PortForwardController) diff(ctx context.Context, st *store.Store) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
+func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -84,7 +84,7 @@ func (m *PortForwardController) diff(ctx context.Context, st *store.Store) (toSt
 	return toStart, toShutdown
 }
 
-func (m *PortForwardController) OnChange(ctx context.Context, st *store.Store) {
+func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 	toStart, toShutdown := m.diff(ctx, st)
 	for _, entry := range toShutdown {
 		entry.cancel()

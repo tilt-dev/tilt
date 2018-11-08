@@ -25,7 +25,7 @@ func (t *TiltfileWatcher) DisableForTesting(disabled bool) {
 	t.disabledForTesting = disabled
 }
 
-func (t *TiltfileWatcher) OnChange(ctx context.Context, st *store.Store) {
+func (t *TiltfileWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if t.disabledForTesting {
 		return
 	}
@@ -60,7 +60,7 @@ func (t *TiltfileWatcher) setupWatch(path string) error {
 	return nil
 }
 
-func (t *TiltfileWatcher) watchLoop(ctx context.Context, st *store.Store, initManifests []model.ManifestName) {
+func (t *TiltfileWatcher) watchLoop(ctx context.Context, st store.RStore, initManifests []model.ManifestName) {
 	watcher := t.tiltfileWatcher
 	for {
 		select {

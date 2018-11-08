@@ -35,7 +35,7 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 	}
 }
 
-func (c *BuildController) needsBuild(ctx context.Context, st *store.Store) (buildEntry, bool) {
+func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -82,7 +82,7 @@ func (c *BuildController) DisableForTesting() {
 	c.disabledForTesting = true
 }
 
-func (c *BuildController) OnChange(ctx context.Context, st *store.Store) {
+func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	if c.disabledForTesting {
 		return
 	}

@@ -22,7 +22,7 @@ func NewGlobalYAMLBuildController(k8sClient k8s.Client) *GlobalYAMLBuildControll
 	}
 }
 
-func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Store) {
+func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStore) {
 	if c.disabledForTesting {
 		return
 	}
@@ -38,7 +38,6 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st *store.Stor
 			logger.Get(ctx).Infof("Error parsing global_yaml: %v", err)
 			c.lastGlobalYAMLManifest = m
 			st.Dispatch(GlobalYAMLApplyError{Error: err})
-			return
 		}
 		st.Dispatch(GlobalYAMLApplyStartedAction{})
 

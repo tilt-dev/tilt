@@ -51,7 +51,7 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []WatchableManifest, teardown []WatchableManifest) {
+func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []WatchableManifest) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -76,7 +76,7 @@ func (w *WatchManager) diff(ctx context.Context, st *store.Store) (setup []Watch
 	return setup, teardown
 }
 
-func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
+func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
 	for _, m := range teardown {
@@ -114,7 +114,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st *store.Store) {
 	}
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, st *store.Store) {
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, st store.RStore) {
 	filter, err := ignore.CreateFileChangeFilter(manifest)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))

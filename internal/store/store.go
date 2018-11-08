@@ -5,6 +5,13 @@ import (
 	"sync"
 )
 
+// Read-only store
+type RStore interface {
+	Dispatch(action Action)
+	RLockState() EngineState
+	RUnlockState()
+}
+
 // A central state store, modeled after the Reactive programming UX pattern.
 // Terminology is borrowed liberally from Redux. These docs in particular are helpful:
 // https://redux.js.org/introduction/threeprinciples

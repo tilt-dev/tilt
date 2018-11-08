@@ -21,13 +21,13 @@ func NewPodWatcher(kCli k8s.Client) *PodWatcher {
 	}
 }
 
-func (w *PodWatcher) needsWatch(st *store.Store) bool {
+func (w *PodWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
 	return state.WatchMounts && !w.watching
 }
 
-func (w *PodWatcher) OnChange(ctx context.Context, st *store.Store) {
+func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if !w.needsWatch(st) {
 		return
 	}
@@ -42,7 +42,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st *store.Store) {
 	go dispatchPodChangesLoop(ctx, ch, st)
 }
 
-func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st *store.Store) {
+func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
 	for {
 		select {
 		case pod, ok := <-ch:
