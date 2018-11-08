@@ -75,6 +75,7 @@ type InitAction struct {
 	Manifests          []model.Manifest
 	GlobalYAMLManifest model.YAMLManifest
 	TiltfilePath       string
+	ManifestNames      []model.ManifestName
 }
 
 func (InitAction) Action() {}
@@ -124,3 +125,11 @@ func (HudStoppedAction) Action() {}
 func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
+
+type TiltfileReloadedAction struct {
+	Manifests  []model.Manifest
+	GlobalYAML model.YAMLManifest
+	Err        error
+}
+
+func (TiltfileReloadedAction) Action() {}

@@ -23,6 +23,8 @@ type FlexLayout struct {
 	cs  []Component
 }
 
+var _ Component = &FlexLayout{}
+
 func NewFlexLayout(dir Dir) *FlexLayout {
 	return &FlexLayout{
 		dir: dir,
@@ -109,6 +111,8 @@ type ConcatLayout struct {
 	cs  []Component
 }
 
+var _ Component = &ConcatLayout{}
+
 func NewConcatLayout(dir Dir) *ConcatLayout {
 	return &ConcatLayout{dir: dir}
 }
@@ -163,6 +167,8 @@ type Line struct {
 	del *FlexLayout
 }
 
+var _ Component = &Line{}
+
 func NewLine() *Line {
 	return &Line{del: NewFlexLayout(DirHor)}
 }
@@ -181,11 +187,35 @@ func (l *Line) Render(w Writer, width int, height int) error {
 	return nil
 }
 
+// Fills a space by repeating a string
+type FillerString struct {
+	ch rune
+}
+
+var _ Component = &FillerString{}
+
+func NewFillerString(ch rune) *FillerString {
+	return &FillerString{ch: ch}
+}
+
+func (f *FillerString) Size(width int, height int) (int, int) {
+	return GROW, height
+}
+
+func (f *FillerString) Render(w Writer, width int, height int) error {
+	for i := 0; i < width; i++ {
+		w.SetContent(i, 0, f.ch, nil)
+	}
+	return nil
+}
+
 type ColorLayout struct {
 	del        Component
 	color      tcell.Color
 	foreground bool
 }
+
+var _ Component = &ColorLayout{}
 
 func Fg(del Component, color tcell.Color) Component {
 	return &ColorLayout{
@@ -223,6 +253,8 @@ type Box struct {
 	title   string
 	inner   Component
 }
+
+var _ Component = &Box{}
 
 func NewBox() *Box {
 	return &Box{}
@@ -281,12 +313,15 @@ func (b *Box) Render(w Writer, width int, height int) error {
 
 	if len(b.title) > 0 {
 		middle := width / 2
-		maxLength := width - 4
+		titleMargin := 3
+		maxLength := width - (titleMargin * 2)
 		renderedTitle := b.title
-		if len(b.title) > maxLength {
+		if maxLength <= 0 {
+			renderedTitle = ""
+		} else if len(b.title) > maxLength {
 			renderedTitle = renderedTitle[0:maxLength]
+			renderedTitle = fmt.Sprintf(" %s ", renderedTitle)
 		}
-
 		start := middle - len(renderedTitle)/2
 		for i, c := range renderedTitle {
 			w.SetContent(start+i, 0, c, nil)
@@ -312,6 +347,8 @@ type FixedSizeLayout struct {
 	width  int
 	height int
 }
+
+var _ Component = &FixedSizeLayout{}
 
 func NewFixedSize(del Component, width int, height int) *FixedSizeLayout {
 	return &FixedSizeLayout{del: del, width: width, height: height}
@@ -343,6 +380,8 @@ type ModalLayout struct {
 	fg       Component
 	fraction float64
 }
+
+var _ Component = &ModalLayout{}
 
 // fg will be rendered on top of bg, using fraction/1 of the height and width of the screen
 func NewModalLayout(bg Component, fg Component, fraction float64) *ModalLayout {

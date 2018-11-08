@@ -13,9 +13,18 @@ Click below to see a video of Tilt in action:
 
 [![asciicast](https://asciinema.org/a/209622.png)](https://asciinema.org/a/209622)
 
-## Installing
+## Installing Tilt
 
-Run `go get -u github.com/windmilleng/tilt`
+Tilt binaries are available for MacOS and Linux
+
+[Download the latest Tilt command for your platform](https://github.com/windmilleng/tilt/releases/latest)
+
+### Compiling from source
+
+If you'd prefer to install Tilt from source,
+
+- Install [go 1.11](https://golang.org/dl/)
+- Run `go get -u github.com/windmilleng/tilt`
 
 ## Using Tilt
 

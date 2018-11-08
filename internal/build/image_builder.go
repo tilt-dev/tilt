@@ -11,6 +11,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -37,12 +38,12 @@ type dockerImageBuilder struct {
 	// created by this image builder.
 	//
 	// By default, all builds are labeled with a build mode.
-	extraLabels Labels
+	extraLabels dockerfile.Labels
 }
 
 type ImageBuilder interface {
-	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
 	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
@@ -71,7 +72,7 @@ type pushOutput struct {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, out io.Writer, extraLabels Labels) *dockerImageBuilder {
+func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, out io.Writer, extraLabels dockerfile.Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{
 		dcli:        dcli,
 		console:     console,
@@ -80,7 +81,7 @@ func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, ou
 	}
 }
 
-func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildDockerfile")
 	defer span.Finish()
 
@@ -93,7 +94,7 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 	return d.buildFromDf(ctx, ps, df, paths, filter, ref)
 }
 
-func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile Dockerfile,
+func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
 	mounts []model.Mount, filter model.PathMatcher,
 	steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
@@ -134,7 +135,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
 
-	df := d.applyLabels(DockerfileFromExisting(existing), BuildModeExisting)
+	df := d.applyLabels(dockerfile.FromExisting(existing), BuildModeExisting)
 
 	// Don't worry about conditional steps on incremental builds, they've
 	// already handled by the watch loop.
@@ -147,7 +148,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 	return d.buildFromDf(ctx, ps, df, paths, filter, existing)
 }
 
-func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Dockerfile {
+func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {
 	df = df.WithLabel(BuildMode, buildMode)
 	for k, v := range d.extraLabels {
 		df = df.WithLabel(k, v)
@@ -157,7 +158,7 @@ func (d *dockerImageBuilder) applyLabels(df Dockerfile, buildMode LabelValue) Do
 
 // If the build starts with conditional steps, add the dependent files first,
 // then add the runs, before we add the majority of the source.
-func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.Step, paths []pathMapping) (Dockerfile, []model.Step, error) {
+func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps []model.Step, paths []pathMapping) (dockerfile.Dockerfile, []model.Step, error) {
 	consumed := 0
 	for _, step := range steps {
 		if step.Triggers == nil {
@@ -187,7 +188,7 @@ func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.St
 		for _, p := range pathsToAdd {
 			// The tarball root is the same as the container root, so the src and dest
 			// are the same.
-			df = df.join(fmt.Sprintf("COPY %s %s", p.ContainerPath, p.ContainerPath))
+			df = df.Join(fmt.Sprintf("COPY %s %s", p.ContainerPath, p.ContainerPath))
 		}
 
 		// After adding the inputs, run the step.
@@ -204,18 +205,23 @@ func (d *dockerImageBuilder) addConditionalSteps(df Dockerfile, steps []model.St
 	return df, remainingSteps, nil
 }
 
-func (d *dockerImageBuilder) addMounts(ctx context.Context, df Dockerfile, paths []pathMapping) (Dockerfile, error) {
+func (d *dockerImageBuilder) addMounts(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping) (dockerfile.Dockerfile, error) {
 	df = df.AddAll()
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
 		return "", fmt.Errorf("addMounts: %v", err)
 	}
 
-	df = df.RmPaths(toRemove)
+	toRemovePaths := make([]string, len(toRemove))
+	for i, p := range toRemove {
+		toRemovePaths[i] = p.ContainerPath
+	}
+
+	df = df.RmPaths(toRemovePaths)
 	return df, nil
 }
 
-func (d *dockerImageBuilder) addRemainingSteps(df Dockerfile, remaining []model.Step) Dockerfile {
+func (d *dockerImageBuilder) addRemainingSteps(df dockerfile.Dockerfile, remaining []model.Step) dockerfile.Dockerfile {
 	for _, step := range remaining {
 		df = df.Run(step.Cmd)
 	}
@@ -307,7 +313,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 

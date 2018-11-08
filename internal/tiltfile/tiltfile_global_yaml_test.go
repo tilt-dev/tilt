@@ -16,7 +16,13 @@ func TestGlobalYAML(t *testing.T) {
 
 	f.WriteFile("global.yaml", "this is the global yaml")
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
-global_yaml(yaml)`)
+global_yaml(yaml)
+
+def manifestA():
+  stuff = read_file('./fileA')
+  image = static_build('Dockerfile', 'tag-a')
+  return k8s_service("yamlA", image)
+	`)
 
 	globalYAML := f.LoadGlobalYAML()
 	assert.Equal(t, globalYAML.K8sYAML(), "this is the global yaml")
@@ -32,7 +38,7 @@ global_yaml('def')`)
 
 	_, err := Load(f.ctx, FileName)
 	if assert.Error(t, err, "expect multiple invocations of `global_yaml` to result in error") {
-		assert.Equal(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
+		assert.Contains(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
 	}
 }
 
@@ -61,8 +67,8 @@ def manifestB():
 
 	manifests := f.LoadManifests("manifestA", "manifestB")
 
-	expectedDepsA := []string{"fileA", "Dockerfile", "Tiltfile", "global.yaml"}
-	expectedDepsB := []string{"fileB", "Dockerfile", "Tiltfile", "global.yaml"}
+	expectedDepsA := []string{"fileA", "Dockerfile", "global.yaml"}
+	expectedDepsB := []string{"fileB", "Dockerfile", "global.yaml"}
 	assert.ElementsMatch(t, manifests[0].ConfigFiles, f.JoinPaths(expectedDepsA))
 	assert.ElementsMatch(t, manifests[1].ConfigFiles, f.JoinPaths(expectedDepsB))
 }

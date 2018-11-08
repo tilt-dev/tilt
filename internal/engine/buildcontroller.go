@@ -93,9 +93,9 @@ func (c *BuildController) OnChange(ctx context.Context, dsr store.DispatchingSta
 
 	go func() {
 		if entry.needsConfigReload {
-			newManifest, globalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
+			newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
 			dsr.Dispatch(GlobalYAMLManifestReloadedAction{
-				GlobalYAML: globalYAML,
+				GlobalYAML: newGlobalYAML,
 			})
 			dsr.Dispatch(ManifestReloadedAction{
 				OldManifest: entry.manifest,
@@ -153,7 +153,7 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	if err != nil {
 		return model.Manifest{}, model.YAMLManifest{}, err
 	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, string(name))
+	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, name)
 	if err != nil {
 		return model.Manifest{}, model.YAMLManifest{}, err
 	}
@@ -163,6 +163,20 @@ func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (m
 	newManifest := newManifests[0]
 
 	return newManifest, globalYAML, nil
+}
+
+func getNewManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
+	// Sends any output to the CurrentBuildLog
+	t, err := tiltfile.Load(ctx, tiltfile.FileName)
+	if err != nil {
+		return []model.Manifest{}, model.YAMLManifest{}, err
+	}
+	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
+	if err != nil {
+		return []model.Manifest{}, model.YAMLManifest{}, err
+	}
+
+	return newManifests, globalYAML, nil
 }
 
 var _ store.Subscriber = &BuildController{}
