@@ -12,11 +12,10 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 
-	"github.com/pkg/errors"
-
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -82,12 +81,37 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 	return skylark.None, nil
 }
 
+func skylarkStringDictToGoMap(d *skylark.Dict) (map[string]string, error) {
+	r := map[string]string{}
+
+	for _, tuple := range d.Items() {
+		kV, ok := tuple[0].(skylark.String)
+		if !ok {
+			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
+		}
+
+		k := string(kV)
+
+		vV, ok := tuple[1].(skylark.String)
+		if !ok {
+			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
+		}
+
+		v := string(vV)
+
+		r[k] = v
+	}
+
+	return r, nil
+}
+
 func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var dockerRef string
-	var dockerfilePath, buildPath skylark.Value
+	var dockerfilePath, buildPath, buildArgs skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"dockerfile", &dockerfilePath,
 		"ref", &dockerRef,
+		"build_args?", &buildArgs,
 		"context?", &buildPath,
 	)
 	if err != nil {
@@ -104,6 +128,19 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		return nil, fmt.Errorf("Argument 0 (dockerfile): %v", err)
 	}
 
+	var sba map[string]string
+	if buildArgs != nil {
+		d, ok := buildArgs.(*skylark.Dict)
+		if !ok {
+			return nil, fmt.Errorf("Argument 2 (build_args): expected dict, got %T", buildArgs)
+		}
+
+		sba, err = skylarkStringDictToGoMap(d)
+		if err != nil {
+			return nil, fmt.Errorf("Argument 2 (build_args): %v", err)
+		}
+	}
+
 	var buildLocalPath localPath
 	if buildPath == nil {
 		buildLocalPath = localPath{
@@ -113,7 +150,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 	} else {
 		buildLocalPath, err = t.localPathFromSkylarkValue(buildPath)
 		if err != nil {
-			return nil, fmt.Errorf("Argument 2 (context): %v", err)
+			return nil, fmt.Errorf("Argument 3 (context): %v", err)
 		}
 	}
 
@@ -122,6 +159,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		staticBuildPath:      buildLocalPath,
 		ref:                  ref,
 		tiltFilename:         t.filename,
+		staticBuildArgs:      sba,
 	}
 	err = t.recordReadFile(thread, dockerfileLocalPath.path)
 	if err != nil {
@@ -589,6 +627,7 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 
 		StaticDockerfile: string(staticDockerfileBytes),
 		StaticBuildPath:  string(image.staticBuildPath.path),
+		StaticBuildArgs:  image.staticBuildArgs,
 
 		Repos: SkylarkReposToDomain(image),
 	}

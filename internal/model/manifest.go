@@ -38,6 +38,7 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
+	StaticBuildArgs  map[string]string
 
 	Repos []LocalGithubRepo
 }
