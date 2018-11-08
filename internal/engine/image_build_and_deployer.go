@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/pkg/errors"
@@ -100,7 +101,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
 
-		df := build.Dockerfile(manifest.StaticDockerfile)
+		df := dockerfile.Dockerfile(manifest.StaticDockerfile)
 		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
 
 		if err != nil {
@@ -113,7 +114,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
 
-		df := build.Dockerfile(manifest.BaseDockerfile)
+		df := dockerfile.Dockerfile(manifest.BaseDockerfile)
 		steps := manifest.Steps
 		ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
 

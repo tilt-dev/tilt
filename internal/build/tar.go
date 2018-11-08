@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -36,7 +37,7 @@ func (a *ArchiveBuilder) close() error {
 	return a.tw.Close()
 }
 
-func (a *ArchiveBuilder) archiveDf(ctx context.Context, df Dockerfile) error {
+func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
 	tarHeader := &tar.Header{
@@ -170,7 +171,7 @@ func (a *ArchiveBuilder) len() int {
 	return a.buf.Len()
 }
 
-func tarContextAndUpdateDf(ctx context.Context, df Dockerfile, paths []pathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
 

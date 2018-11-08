@@ -10,11 +10,12 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
-const simpleDockerfile = Dockerfile("FROM alpine")
+const simpleDockerfile = dockerfile.Dockerfile("FROM alpine")
 
 func TestDigestAsTag(t *testing.T) {
 	dig := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")

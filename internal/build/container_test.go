@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -20,7 +21,7 @@ func TestStaticDockerfile(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	df := Dockerfile(`
+	df := dockerfile.Dockerfile(`
 FROM alpine
 WORKDIR /src
 ADD a.txt .
@@ -299,7 +300,7 @@ func TestDockerfileWithEntrypointPermitted(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	df := Dockerfile(`FROM alpine
+	df := dockerfile.Dockerfile(`FROM alpine
 ENTRYPOINT ["sleep", "100000"]`)
 
 	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df, nil, model.EmptyMatcher, nil, model.Cmd{})
@@ -523,7 +524,7 @@ func TestReapOneImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	label := Label("tilt.reaperTest")
+	label := dockerfile.Label("tilt.reaperTest")
 	f.b.extraLabels[label] = "1"
 	df2 := simpleDockerfile.Run(model.ToShellCmd("echo hi >> hi.txt"))
 	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df2, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})

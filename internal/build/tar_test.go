@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -19,7 +20,7 @@ func TestArchiveDf(t *testing.T) {
 	defer f.tearDown()
 
 	dfText := "FROM alpine"
-	df := Dockerfile(dfText)
+	df := dockerfile.Dockerfile(dfText)
 	err := ab.archiveDf(f.ctx, df)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +65,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 func TestLen(t *testing.T) {
 	ab := NewArchiveBuilder(model.EmptyMatcher)
 	dfText := "FROM alpine"
-	df := Dockerfile(dfText)
+	df := dockerfile.Dockerfile(dfText)
 	err := ab.archiveDf(context.Background(), df)
 	if err != nil {
 		t.Fatal(err)
