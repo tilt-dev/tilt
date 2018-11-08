@@ -313,12 +313,15 @@ func (b *Box) Render(w Writer, width int, height int) error {
 
 	if len(b.title) > 0 {
 		middle := width / 2
-		maxLength := width - 4
+		titleMargin := 3
+		maxLength := width - (titleMargin * 2)
 		renderedTitle := b.title
-		if len(b.title) > maxLength {
+		if maxLength <= 0 {
+			renderedTitle = ""
+		} else if len(b.title) > maxLength {
 			renderedTitle = renderedTitle[0:maxLength]
+			renderedTitle = fmt.Sprintf(" %s ", renderedTitle)
 		}
-
 		start := middle - len(renderedTitle)/2
 		for i, c := range renderedTitle {
 			w.SetContent(start+i, 0, c, nil)
