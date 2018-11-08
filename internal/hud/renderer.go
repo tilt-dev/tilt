@@ -263,7 +263,6 @@ func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resour
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
-	spacer := rty.NewFillerString('╌')
 
 	p := " "
 	if selected {
@@ -282,7 +281,7 @@ func renderRsrcSummary(selected bool, rv view.ResourceViewState, res view.Resour
 	}
 
 	l.Add(sbLeft.Build())
-	l.Add(spacer)
+	l.Add(rty.NewFillerString('╌'))
 	l.Add(sbRight.Build())
 	layout.Add(l)
 }
@@ -294,7 +293,6 @@ func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, la
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
 	status := r.spinner()
-	spacer := rty.NewFillerString(' ')
 
 	if res.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[res.PodStatus]
@@ -334,7 +332,7 @@ func renderRsrcK8s(res view.Resource, r *Renderer, rv view.ResourceViewState, la
 	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
 
 	l.Add(sbLeft.Build())
-	l.Add(spacer)
+	l.Add(rty.NewFillerString(' '))
 	l.Add(sbRight.Build())
 	layout.Add(l)
 }
