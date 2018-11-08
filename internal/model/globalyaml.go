@@ -16,6 +16,7 @@ func NewYAMLManifest(name ManifestName, k8sYaml string, configFiles []string) YA
 		configFiles: configFiles,
 	}
 }
+
 func (y YAMLManifest) Dependencies() []string {
 	return y.configFiles
 }
