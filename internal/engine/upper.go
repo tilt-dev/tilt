@@ -445,8 +445,7 @@ func handleTiltfileReloaded(
 
 		newDefOrder[i] = m.ManifestName()
 		if !oldManifest.Equal(m) {
-			newManifestState := store.NewManifestState(m)
-			state.ManifestStates[m.ManifestName()] = newManifestState
+			state.ManifestStates[m.ManifestName()].Manifest = m
 			enqueueBuild(state, m.ManifestName())
 		}
 	}
