@@ -94,6 +94,8 @@ type StringLayout struct {
 	directives []directive
 }
 
+var _ Component = &StringLayout{}
+
 func TextString(s string) Component {
 	return NewStringBuilder().Text(s).Build()
 }
