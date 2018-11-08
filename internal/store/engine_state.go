@@ -317,6 +317,7 @@ func StateToView(s EngineState) view.View {
 			LastBuildDuration:     s.GlobalYAMLState.LastApplyDuration,
 			LastDeployTime:        s.GlobalYAMLState.LastSuccessfulApplyTime,
 			LastBuildError:        lastError,
+			IsYAMLManifest:        true,
 		}
 
 		ret.Resources = append(ret.Resources, r)

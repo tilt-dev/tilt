@@ -27,6 +27,8 @@ type Resource struct {
 	PodRestarts     int
 	Endpoints       []string
 	PodLog          string
+
+	IsYAMLManifest bool
 }
 
 // State of the current view that's not expressed in the underlying model state.

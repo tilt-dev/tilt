@@ -161,8 +161,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.selectedScroller(h.r.rty).Bottom()
 		case tcell.KeyEnter:
 			if !h.currentViewState.LogModal.IsActive() {
-				selectedIdx, _ := h.selectedResource()
-				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
+				selectedIdx, r := h.selectedResource()
+				if !r.IsYAMLManifest {
+					h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
+				}
 				logModal(h.r.rty).Bottom()
 			}
 		}
