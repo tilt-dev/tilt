@@ -193,6 +193,7 @@ func TestOldMountSyntax(t *testing.T) {
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), oldMountSyntaxError)
+		assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
 	}
 }
 
@@ -210,6 +211,7 @@ func TestOldK8sServiceSyntax(t *testing.T) {
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), oldK8sServiceSyntaxError)
+		assert.Contains(t, err.Error(), "Tiltfile:4: in blorgly")
 	}
 }
 
@@ -225,6 +227,7 @@ func TestStopBuildBeforeStartBuild(t *testing.T) {
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), noActiveBuildError)
+		assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
 	}
 }
 
@@ -244,6 +247,7 @@ func TestGetManifestConfigMissingDockerFile(t *testing.T) {
 	if assert.Error(t, err) {
 		for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
 			assert.Contains(t, err.Error(), s)
+			assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
 		}
 	}
 }
@@ -339,6 +343,7 @@ func TestGetManifestConfigRaisesError(t *testing.T) {
 
 	for _, s := range []string{"blorgly2", "string index", "out of range"} {
 		assert.Contains(t, err.Error(), s)
+		assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly2")
 	}
 }
 
@@ -477,6 +482,7 @@ func TestInvalidDockerTag(t *testing.T) {
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "invalid reference format")
+		assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
 	}
 }
 
@@ -512,6 +518,7 @@ func TestAddMissingDir(t *testing.T) {
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Reading path ./garbage")
+		assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
 	}
 }
 
@@ -644,6 +651,7 @@ func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "invalid type for src. Got string want gitRepo OR localPath")
+		assert.Contains(t, err.Error(), "Tiltfile:5: in blorgly")
 	}
 }
 
@@ -690,6 +698,7 @@ def blorgly():
 	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(output.CtxForTest(), "blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "isn't a valid git repo")
+		assert.Contains(t, err.Error(), "Tiltfile:4: in blorgly")
 	}
 }
 
@@ -811,10 +820,9 @@ func TestBuildContextAddError(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	expected := "error running 'blorgly': add called without a build context"
-	if err.Error() != expected {
-		t.Errorf("Expected %s to equal %s", err.Error(), expected)
-	}
+	expected := "add called without a build context"
+	assert.Contains(t, err.Error(), expected)
+	assert.Contains(t, err.Error(), "Tiltfile:7: in blorgly")
 }
 
 func TestBuildContextRunError(t *testing.T) {
@@ -832,10 +840,9 @@ func TestBuildContextRunError(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	expected := "error running 'blorgly': run called without a build context"
-	if err.Error() != expected {
-		t.Errorf("Expected %s to equal %s", err.Error(), expected)
-	}
+	expected := "run called without a build context"
+	assert.Contains(t, err.Error(), expected)
+	assert.Contains(t, err.Error(), "Tiltfile:7: in blorgly")
 }
 
 func TestBuildContextStartTwice(t *testing.T) {
@@ -852,10 +859,9 @@ func TestBuildContextStartTwice(t *testing.T) {
 `)
 
 	err := f.LoadManifestForError("blorgly")
-	expected := "error running 'blorgly': tried to start a build context while another build context was already open"
-	if err.Error() != expected {
-		t.Errorf("Expected %s to equal %s", err.Error(), expected)
-	}
+	expected := "tried to start a build context while another build context was already open"
+	assert.Contains(t, err.Error(), expected)
+	assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
 }
 
 func TestSlowBuildIsNotImplemented(t *testing.T) {
@@ -872,10 +878,9 @@ func TestSlowBuildIsNotImplemented(t *testing.T) {
   return k8s_service(image)
 `)
 	err := f.LoadManifestForError("blorgly")
-	expected := "error running 'blorgly': start_slow_build not implemented"
-	if err.Error() != expected {
-		t.Errorf("Expected %s to equal %s", err.Error(), expected)
-	}
+	expected := "start_slow_build not implemented"
+	assert.Contains(t, err.Error(), expected)
+	assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
 }
 
 func TestStaticBuild(t *testing.T) {

@@ -38,7 +38,7 @@ global_yaml('def')`)
 
 	_, err := Load(f.ctx, FileName)
 	if assert.Error(t, err, "expect multiple invocations of `global_yaml` to result in error") {
-		assert.Equal(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
+		assert.Contains(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
 	}
 }
 

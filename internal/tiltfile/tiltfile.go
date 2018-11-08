@@ -172,7 +172,7 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 			thread.SetLocal(readFilesKey, []string{})
 			r, err := v.Call(thread, nil, nil)
 			if err != nil {
-				return nil, err
+				return nil, handleSkylarkErr(t.thread, err)
 			}
 			s, ok := r.(*k8sManifest)
 			if !ok {
@@ -375,11 +375,20 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
 	if err != nil {
-		return nil, err
+		return nil, handleSkylarkErr(thread, err)
 	}
 
 	tiltfile.globals = globals
 	return tiltfile, nil
+}
+
+func handleSkylarkErr(thread *skylark.Thread, err error) error {
+	evalErr, isEvalErr := err.(*skylark.EvalError)
+	if isEvalErr {
+		return fmt.Errorf("%s\n\n%s", evalErr.Error(), evalErr.Backtrace())
+	}
+
+	return err
 }
 
 // GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
@@ -449,7 +458,7 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 	val, err := manifestFunction.Call(t.thread, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error running '%v': %v", manifestName, err.Error())
+		return nil, handleSkylarkErr(t.thread, err)
 	}
 
 	files, err := getAndClearReadFiles(thread)
