@@ -1049,3 +1049,20 @@ def blorgly():
 	})
 	assert.Equal(t, expected, manifest.ConfigFiles)
 }
+
+func TestValidateBaseDockerfile(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile.base", `FROM golang:10
+ADD . .
+`)
+	f.WriteFile("Tiltfile", `def blorgly():
+  start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
+  image = stop_build()
+  return k8s_service(image, yaml="yaaaaaaaaml")
+`)
+
+	err := f.LoadManifestForError("blorgly")
+	assert.Contains(t, err.Error(), "base Dockerfile contains an ADD/COPY")
+}

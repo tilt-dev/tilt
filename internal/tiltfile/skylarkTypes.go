@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -111,6 +112,7 @@ type mount struct {
 // See model.Manifest for more information on what all these fields mean.
 type dockerImage struct {
 	baseDockerfilePath localPath
+	baseDockerfile     dockerfile.Dockerfile
 	ref                reference.Named
 	mounts             []mount
 	steps              []model.Step
@@ -118,6 +120,7 @@ type dockerImage struct {
 	tiltFilename       string
 
 	staticDockerfilePath localPath
+	staticDockerfile     dockerfile.Dockerfile
 	staticBuildPath      localPath
 }
 

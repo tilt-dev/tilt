@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -68,15 +69,22 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
+	df, err := t.readDockerfile(thread, dockerfileLocalPath.path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = df.ValidateBaseDockerfile()
+	if err != nil {
+		return nil, err
+	}
+
 	buildContext := &dockerImage{
 		baseDockerfilePath: dockerfileLocalPath,
+		baseDockerfile:     df,
 		ref:                ref,
 		entrypoint:         entrypoint,
 		tiltFilename:       t.filename,
-	}
-	err = t.recordReadFile(thread, dockerfileLocalPath.path)
-	if err != nil {
-		return skylark.None, err
 	}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
@@ -117,17 +125,34 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 		}
 	}
 
+	df, err := t.readDockerfile(thread, dockerfileLocalPath.path)
+	if err != nil {
+		return nil, err
+	}
+
 	buildContext := &dockerImage{
 		staticDockerfilePath: dockerfileLocalPath,
+		staticDockerfile:     df,
 		staticBuildPath:      buildLocalPath,
 		ref:                  ref,
 		tiltFilename:         t.filename,
 	}
-	err = t.recordReadFile(thread, dockerfileLocalPath.path)
-	if err != nil {
-		return skylark.None, err
-	}
+
 	return buildContext, nil
+}
+
+func (t *Tiltfile) readDockerfile(thread *skylark.Thread, path string) (dockerfile.Dockerfile, error) {
+	err := t.recordReadFile(thread, path)
+	if err != nil {
+		return "", err
+	}
+
+	dfBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to open dockerfile '%v': %v", path, err)
+	}
+
+	return dockerfile.Dockerfile(dfBytes), nil
 }
 
 func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -563,31 +588,16 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
 	}
 
-	var err error
 	image := manifest.dockerImage
-	baseDockerfileBytes := []byte{}
-	staticDockerfileBytes := []byte{}
-	if image.staticDockerfilePath.Truth() {
-		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath.path)
-		if err != nil {
-			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath.path, err)
-		}
-	} else {
-		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath.path)
-		if err != nil {
-			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath.path, err)
-		}
-	}
-
 	m := model.Manifest{
-		BaseDockerfile: string(baseDockerfileBytes),
+		BaseDockerfile: image.baseDockerfile.String(),
 		Mounts:         skylarkMountsToDomain(image.mounts),
 		Steps:          image.steps,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		Name:           model.ManifestName(manifest.name),
 		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
-		StaticDockerfile: string(staticDockerfileBytes),
+		StaticDockerfile: image.staticDockerfile.String(),
 		StaticBuildPath:  string(image.staticBuildPath.path),
 
 		Repos: SkylarkReposToDomain(image),
