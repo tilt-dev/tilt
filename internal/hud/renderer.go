@@ -111,7 +111,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v, vs))
-	split.Add(r.renderFooter(v, showKeyLegend(vs)))
+	split.Add(r.renderFooter(v, keyLegend(vs)))
 	l.Add(split)
 
 	if vs.LogModal.TiltLog {
@@ -123,7 +123,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	}
 }
 
-func showKeyLegend(vs view.ViewState) string {
+func keyLegend(vs view.ViewState) string {
 	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
 	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
 		return "SCROLL: (↓) (↑) ┊ (esc) to exit view "
