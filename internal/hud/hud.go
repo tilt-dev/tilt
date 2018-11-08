@@ -132,12 +132,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				} else {
 					logger.Get(ctx).Infof("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
-			case r == 'v': // [v]iew log
-				if !h.currentViewState.LogModal.IsActive() {
-					selectedIdx, _ := h.selectedResource()
-					h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
-					logModal(h.r.rty).Bottom()
-				}
 			case r == 'l': // Tilt [L]og
 				if !h.currentViewState.LogModal.IsActive() {
 					h.currentViewState.LogModal = view.LogModal{TiltLog: true}
@@ -157,8 +151,11 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		case tcell.KeyDown:
 			h.selectedScroller(h.r.rty).Down()
 		case tcell.KeyEnter:
-			i, _ := h.selectedResource()
-			h.currentViewState.Resources[i].IsCollapsed = !h.currentViewState.Resources[i].IsCollapsed
+			if !h.currentViewState.LogModal.IsActive() {
+				selectedIdx, _ := h.selectedResource()
+				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
+				logModal(h.r.rty).Bottom()
+			}
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()
 			h.currentViewState.Resources[i].IsCollapsed = false

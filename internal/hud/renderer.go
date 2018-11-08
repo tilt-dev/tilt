@@ -111,7 +111,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v, vs))
-	split.Add(r.renderFooter(v, showKeyLegend(vs)))
+	split.Add(r.renderFooter(v, keyLegend(vs)))
 	l.Add(split)
 
 	if vs.LogModal.TiltLog {
@@ -123,8 +123,8 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	}
 }
 
-func showKeyLegend(vs view.ViewState) string {
-	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (v)iew log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
+func keyLegend(vs view.ViewState) string {
+	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
 	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
 		return "SCROLL: (↓) (↑) ┊ (esc) to exit view "
 	}
@@ -179,7 +179,7 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
 
-	return r.renderLogModal(fmt.Sprintf(" POD LOG: %s ", res.Name), s, background)
+	return r.renderLogModal(fmt.Sprintf("POD LOG: %s", res.Name), s, background)
 }
 
 func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
@@ -187,7 +187,7 @@ func (r *Renderer) renderLogModal(title string, s string, background rty.Compone
 	sl.Add(rty.TextString(s))
 	box := rty.NewBox()
 	box.SetInner(sl)
-	box.SetTitle(fmt.Sprintf(" %s ", title))
+	box.SetTitle(title)
 	l := rty.NewFlexLayout(rty.DirVert)
 	l.Add(box)
 	ml := rty.NewModalLayout(background, l, .9)
