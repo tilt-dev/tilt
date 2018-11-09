@@ -149,6 +149,9 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		},
 	}
 	rtf.run("global yaml manifest", 70, 20, v, vs)
+
+	vs.AlertMessage = "this is only a test"
+	rtf.run("alert message", 70, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {

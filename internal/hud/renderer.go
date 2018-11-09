@@ -114,13 +114,25 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split.Add(r.renderFooter(v, keyLegend(vs)))
 	l.Add(split)
 
+	var ret rty.Component = l
 	if vs.LogModal.TiltLog {
-		return r.renderFullLogModal(v, l)
+		ret = r.renderFullLogModal(v, ret)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
-		return r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], l)
-	} else {
-		return l
+		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
 	}
+
+	ret = r.maybeAddAlertModal(vs, ret)
+
+	return ret
+}
+
+func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) rty.Component {
+	if vs.AlertMessage != "" {
+		b := rty.NewBox(rty.Fg(rty.TextString(vs.AlertMessage), tcell.ColorDefault))
+		b.SetTitle("! Alert !")
+		layout = r.renderModal(rty.Fg(b, tcell.ColorRed), layout, false)
+	}
+	return layout
 }
 
 func keyLegend(vs view.ViewState) string {
@@ -185,13 +197,15 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
 	sl := rty.NewTextScrollLayout(logScrollerName)
 	sl.Add(rty.TextString(s))
-	box := rty.NewBox()
+	box := rty.NewGrowingBox()
 	box.SetInner(sl)
 	box.SetTitle(title)
-	l := rty.NewFlexLayout(rty.DirVert)
-	l.Add(box)
-	ml := rty.NewModalLayout(background, l, .9)
-	return ml
+
+	return r.renderModal(box, background, true)
+}
+
+func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {
+	return rty.NewModalLayout(bg, fg, .9, fixed)
 }
 
 func renderNarration(msg string) rty.Component {
