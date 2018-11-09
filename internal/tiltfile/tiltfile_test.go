@@ -946,6 +946,24 @@ def blorgly():
 	}, manifest.PortForwards())
 }
 
+func TestCachePaths(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  img = static_build("Dockerfile", "docker-tag")
+  img.cache("/app/node_modules")
+  img.cache("/app/yarn.lock")
+  return k8s_service(img)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, []string{"/app/node_modules", "/app/yarn.lock"}, manifest.CachePaths())
+}
+
 func TestSymlinkInPath(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()

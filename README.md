@@ -57,6 +57,7 @@ def backend():
       trigger=['package.json'])
   run('go install github.com/companyname/backend/server')
   img = stop_build()
+  img.cache('/root/.cache/go-cache')
 
   yaml = read_file('backend.yaml')
   s = k8s_service(img, yaml=yaml)
@@ -178,6 +179,16 @@ Represents a built Docker image
 
 ```python
 class Image
+  def cache(path: string) -> None:
+    """Caches the given path between image builds.
+
+    Popular directories to cache include:
+    - Go projects: /root/.cache/go-cache
+    - NodeJS projects: /src/node_modules, /src/yarn.lock
+
+    Args:
+      path: The path to cache. May be a file or a directory.
+    """
 ```
 
 #### composite_service

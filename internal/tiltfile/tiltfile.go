@@ -644,7 +644,11 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		Repos: SkylarkReposToDomain(image),
 	}
 
-	m = m.WithPortForwards(manifest.portForwards).WithTiltFilename(image.tiltFilename).WithK8sYAML(k8sYaml).WithDockerRef(image.ref)
+	m = m.WithPortForwards(manifest.portForwards).
+		WithTiltFilename(image.tiltFilename).
+		WithK8sYAML(k8sYaml).
+		WithDockerRef(image.ref).
+		WithCachePaths(image.cachePaths)
 
 	return m, nil
 }
