@@ -1610,7 +1610,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
-	st := store.NewStore(UpperReducer)
+	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	st.AddSubscriber(fSub)
 
 	plm := NewPodLogManager(k8s)

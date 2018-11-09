@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
@@ -56,7 +55,7 @@ type deployFixture struct {
 func newDeployFixture(t *testing.T) *deployFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kClient := k8s.NewFakeK8sClient()
-	dd := NewDeployDiscovery(kClient, store.NewStoreForTesting())
+	dd := NewDeployDiscovery(kClient)
 	return &deployFixture{
 		TempDirFixture: f,
 		ctx:            output.CtxForTest(),

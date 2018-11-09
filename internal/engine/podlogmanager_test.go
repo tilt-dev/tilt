@@ -149,7 +149,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		out.Write(podLog.Log)
 	}
 
-	st := store.NewStore(store.Reducer(reducer))
+	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
 	plm := NewPodLogManager(kClient)
 
 	ctx, cancel := context.WithCancel(context.Background())
