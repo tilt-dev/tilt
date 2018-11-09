@@ -1512,6 +1512,23 @@ func TestInitSetsTiltfilePath(t *testing.T) {
 	})
 }
 
+func TestHudExitNoError(t *testing.T) {
+	f := newTestFixture(t)
+	f.Start([]model.Manifest{}, true)
+	f.store.Dispatch(hud.NewExitAction(nil))
+	err := f.WaitForExit()
+	assert.NoError(t, err)
+}
+
+func TestHudExitWithError(t *testing.T) {
+	f := newTestFixture(t)
+	f.Start([]model.Manifest{}, true)
+	e := errors.New("helllllo")
+	f.store.Dispatch(hud.NewExitAction(e))
+	err := f.WaitForExit()
+	assert.Equal(t, e, err)
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -1665,6 +1682,19 @@ func (f *testFixture) Stop() error {
 	if err == context.Canceled {
 		return nil
 	} else {
+		return err
+	}
+}
+
+func (f *testFixture) WaitForExit() error {
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	select {
+	case <-ctx.Done():
+		f.T().Fatalf("Timed out waiting for upper to exit")
+		return nil
+	case err := <-f.createManifestsResult:
 		return err
 	}
 }

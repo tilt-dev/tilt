@@ -65,19 +65,22 @@ func TestLines(t *testing.T) {
 func TestStringBuilder(t *testing.T) {
 	sb := NewStringBuilder()
 	sb.Text("hello")
-	w, h := sb.Build().Size(10, 1)
+	w, h, err := sb.Build().Size(10, 1)
+	assert.NoError(t, err)
 	assert.Equal(t, 5, w)
 	assert.Equal(t, 1, h)
 
 	sb = NewStringBuilder()
 	sb.Text("hello world\ngoodbye")
-	w, h = sb.Build().Size(5, 10)
+	w, h, err = sb.Build().Size(5, 10)
+	assert.NoError(t, err)
 	assert.Equal(t, 5, w)
 	assert.Equal(t, 5, h)
 
 	sb = NewStringBuilder()
 	sb.Text("hello world")
-	w, h = sb.Build().Size(3, 3)
+	w, h, err = sb.Build().Size(3, 3)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, w)
 	assert.Equal(t, 3, h)
 }

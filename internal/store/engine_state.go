@@ -42,7 +42,7 @@ type EngineState struct {
 	PermanentError error
 
 	// The user has indicated they want to exit
-	Exit bool
+	UserExited bool
 
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
 	Log []byte
