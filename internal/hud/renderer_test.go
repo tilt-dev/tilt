@@ -111,6 +111,21 @@ func TestRender(t *testing.T) {
 		},
 	}
 	rtf.run("all the data at once", 70, 20, v, vs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "GlobalYAML",
+				CurrentBuildStartTime: ts,
+				LastBuildFinishTime:   ts,
+				LastBuildDuration:     1400 * time.Millisecond,
+				LastDeployTime:        ts,
+				LastBuildError:        "",
+				IsYAMLManifest:        true,
+			},
+		},
+	}
+	rtf.run("global yaml manifest", 70, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
