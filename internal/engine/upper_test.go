@@ -1687,11 +1687,8 @@ func (f *testFixture) Stop() error {
 }
 
 func (f *testFixture) WaitForExit() error {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
-	defer cancel()
-
 	select {
-	case <-ctx.Done():
+	case <-time.After(time.Second):
 		f.T().Fatalf("Timed out waiting for upper to exit")
 		return nil
 	case err := <-f.createManifestsResult:
