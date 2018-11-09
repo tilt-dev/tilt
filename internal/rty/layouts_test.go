@@ -4,8 +4,29 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tcell"
 )
+
+func TestFlexLayoutOverflow(t *testing.T) {
+	sc := tcell.NewSimulationScreen("")
+	err := sc.Init()
+	assert.NoError(t, err)
+	sc.SetSize(8, 1)
+
+	r := NewRTY(sc)
+
+	f := NewFlexLayout(DirHor)
+	f.Add(TextString("hello"))
+	f.Add(TextString("world"))
+	err = r.Render(f)
+
+	// this is maybe not the behavior we want long-term, but at least this test will tell us if we accidentally fix it?
+	// (and test error propagation in the meantime)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "FlexLayout can't render in 8 columns")
+	}
+}
 
 func TestBoxes(t *testing.T) {
 	i := NewInteractiveTester(t, screen)
