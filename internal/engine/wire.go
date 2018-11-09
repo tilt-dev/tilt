@@ -25,6 +25,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(UpperReducer),
 
 	build.DefaultImageBuilder,
+	build.NewCacheBuilder,
 	build.NewDockerImageBuilder,
 
 	// BuildOrder
@@ -66,6 +67,22 @@ func provideBuildAndDeployer(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
+	)
+
+	return nil, nil
+}
+
+func provideImageBuildAndDeployer(
+	ctx context.Context,
+	docker docker.DockerClient,
+	kClient k8s.Client,
+	dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
+	wire.Build(
+		DeployerWireSetTest,
+		analytics.NewMemoryAnalytics,
+		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
+		wire.Value(k8s.Env(k8s.EnvDockerDesktop)),
+		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 	)
 
 	return nil, nil

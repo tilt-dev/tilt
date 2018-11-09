@@ -277,6 +277,16 @@ var equalitytests = []struct {
 		},
 		true,
 	},
+	{
+		Manifest{cachePaths: []string{"foo"}},
+		Manifest{},
+		false,
+	},
+	{
+		Manifest{cachePaths: []string{"foo"}},
+		Manifest{cachePaths: []string{"foo"}},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

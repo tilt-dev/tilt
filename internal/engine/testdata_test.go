@@ -38,6 +38,13 @@ const SanchoBaseDockerfile = `
 FROM go:1.10
 `
 
+const SanchoStaticDockerfile = `
+FROM go:1.10
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`
+
 var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
 
 func NewSanchoManifest() model.Manifest {
@@ -61,4 +68,16 @@ func NewSanchoManifest() model.Manifest {
 	return m
 }
 
+func NewSanchoStaticManifest() model.Manifest {
+	m := model.Manifest{
+		Name:             "sancho",
+		StaticDockerfile: SanchoStaticDockerfile,
+		StaticBuildPath:  "/path/to/build",
+	}
+
+	m = m.WithDockerRef(SanchoRef).WithK8sYAML(SanchoYAML)
+	return m
+}
+
 var SanchoManifest = NewSanchoManifest()
+var SanchoStaticManifest = NewSanchoStaticManifest()
