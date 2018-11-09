@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -35,16 +36,19 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 	if m.K8sYAML() != c.lastGlobalYAMLManifest.K8sYAML() {
 		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
 		if err != nil {
-			logger.Get(ctx).Infof("Error parsing global_yaml: %v", err)
+			err = errors.Wrap(err, "Error parsing global_yaml")
+			logger.Get(ctx).Infof(err.Error())
 			c.lastGlobalYAMLManifest = m
 			st.Dispatch(GlobalYAMLApplyError{Error: err})
+			return
 		}
 		st.Dispatch(GlobalYAMLApplyStartedAction{})
 
 		for _, e := range entities {
 			e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
 			if err != nil {
-				logger.Get(ctx).Infof("Error injecting labels in to global_yaml: %v", err)
+				err = errors.Wrap(err, "Error injecting labels in to global_yaml")
+				logger.Get(ctx).Infof(err.Error())
 				c.lastGlobalYAMLManifest = model.YAMLManifest{}
 				st.Dispatch(GlobalYAMLApplyError{Error: err})
 				return
@@ -55,7 +59,8 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 			// set "Always" for development are shooting their own feet.
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
-				logger.Get(ctx).Infof("Error injecting image pull policy in to global_yaml: %v", err)
+				err = errors.Wrap(err, "Error injecting image pull policy in to global_yaml")
+				logger.Get(ctx).Infof(err.Error())
 				st.Dispatch(GlobalYAMLApplyError{Error: err})
 				c.lastGlobalYAMLManifest = model.YAMLManifest{}
 				return
@@ -66,12 +71,14 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 
 		err = c.k8sClient.Upsert(ctx, newK8sEntities)
 		if err != nil {
-			logger.Get(ctx).Infof("Error upserting global_yaml: %v", err)
+			err = errors.Wrap(err, "Error upserting global_yaml")
+			logger.Get(ctx).Infof(err.Error())
 			c.lastGlobalYAMLManifest = model.YAMLManifest{}
 			st.Dispatch(GlobalYAMLApplyError{Error: err})
-		} else {
-			c.lastGlobalYAMLManifest = m
-			st.Dispatch(GlobalYAMLApplyCompleteAction{})
+			return
 		}
+
+		c.lastGlobalYAMLManifest = m
+		st.Dispatch(GlobalYAMLApplyCompleteAction{})
 	}
 }
