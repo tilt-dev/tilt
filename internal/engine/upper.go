@@ -108,7 +108,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, globalYAML, err := tf.GetAllManifests(ctx, manifestNames)
 	if err != nil {
 		return err
 	}

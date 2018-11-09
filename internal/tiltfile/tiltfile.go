@@ -454,9 +454,10 @@ func handleSkylarkErr(thread *skylark.Thread, err error) error {
 	return err
 }
 
-// GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
-// a manifest representing the global yaml.
-func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
+// GetAllManifests executes the Tiltfile to create manifests for all resources and
+// a manifest representing the global yaml. NOTE: If you try to call this on only
+// a subset of available manifests, your GlobalYAML may compute incorrectly!
+func (t Tiltfile) GetAllManifests(ctx context.Context, allManifestNames []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
 	var manifests []model.Manifest
 
 	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
@@ -464,7 +465,7 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 		return nil, model.YAMLManifest{}, err
 	}
 
-	for _, manifestName := range names {
+	for _, manifestName := range allManifestNames {
 		curManifests, err := t.getManifestConfigsHelper(ctx, manifestName.String())
 		if err != nil {
 			return manifests, model.YAMLManifest{}, err
@@ -488,6 +489,26 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
 	return manifests, globalYAML, nil
+}
+
+// GetOneManifest loads the specified manifest from the Tiltfile, as well as the GlobalYAML. Note that
+// you still need to pass the superset of manifest names so that GlobalYAML can be parsed correctly.
+func (t Tiltfile) GetOneManifest(ctx context.Context, name model.ManifestName, allManifestNames []model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
+	// Need to GetAllManifests first so that we extract all manifest-specific YAML from GlobalYAML
+	allManifests, globalYAML, err := t.GetAllManifests(ctx, allManifestNames)
+	if err != nil {
+		return model.Manifest{}, model.YAMLManifest{}, err
+	}
+
+	actualManifestNames := make([]model.ManifestName, len(allManifestNames))
+	for _, m := range allManifests {
+		if m.Name == name {
+			return m, globalYAML, nil
+		}
+		actualManifestNames = append(actualManifestNames, m.Name)
+	}
+
+	return model.Manifest{}, model.YAMLManifest{}, fmt.Errorf("did not find manifest %s among loaded manifests: %v", name, actualManifestNames)
 }
 
 func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName string) ([]model.Manifest, error) {

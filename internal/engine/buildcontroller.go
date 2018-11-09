@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -83,6 +82,10 @@ func (c *BuildController) DisableForTesting() {
 }
 
 func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
+	state := st.RLockState()
+	allManifestNames := state.InitManifests
+	st.RUnlockState()
+
 	if c.disabledForTesting {
 		return
 	}
@@ -93,7 +96,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 
 	go func() {
 		if entry.needsConfigReload {
-			newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
+			newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name, allManifestNames)
 			st.Dispatch(GlobalYAMLManifestReloadedAction{
 				GlobalYAML: newGlobalYAML,
 			})
@@ -147,31 +150,22 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	}
 }
 
-func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
-	// Sends any output to the CurrentBuildLog
+func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName, allManifestNames []model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return model.Manifest{}, model.YAMLManifest{}, err
 	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, name)
-	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, err
-	}
-	if len(newManifests) != 1 {
-		return model.Manifest{}, model.YAMLManifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
-	}
-	newManifest := newManifests[0]
 
-	return newManifest, globalYAML, nil
+	return t.GetOneManifest(ctx, name, allManifestNames)
 }
 
-func getNewManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
-	// Sends any output to the CurrentBuildLog
+func getAllManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		return []model.Manifest{}, model.YAMLManifest{}, err
 	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
+
+	newManifests, globalYAML, err := t.GetAllManifests(ctx, names)
 	if err != nil {
 		return []model.Manifest{}, model.YAMLManifest{}, err
 	}

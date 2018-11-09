@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/yaml"
 )
 
@@ -17,14 +18,9 @@ func TestGlobalYAML(t *testing.T) {
 	f.WriteFile("global.yaml", "this is the global yaml")
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
 global_yaml(yaml)
+`)
 
-def manifestA():
-  stuff = read_file('./fileA')
-  image = static_build('Dockerfile', 'tag-a')
-  return k8s_service("yamlA", image)
-	`)
-
-	globalYAML := f.LoadGlobalYAML()
+	_, globalYAML := f.LoadAllManifestsAndGlobalYAML(nil)
 	assert.Equal(t, globalYAML.K8sYAML(), "this is the global yaml")
 	assert.Equal(t, globalYAML.Dependencies(), []string{f.JoinPath("global.yaml")})
 }
@@ -65,7 +61,7 @@ def manifestB():
   return k8s_service(image, yaml="yamlB")
 `)
 
-	manifests := f.LoadManifests("manifestA", "manifestB")
+	manifests := f.LoadManifests([]model.ManifestName{"manifestA", "manifestB"})
 
 	expectedDepsA := []string{"fileA", "Dockerfile", "global.yaml"}
 	expectedDepsB := []string{"fileB", "Dockerfile", "global.yaml"}
@@ -91,7 +87,7 @@ def snack():
   return k8s_service(image)
 `)
 
-	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos", "snack")
+	manifests, gYAML := f.LoadAllManifestsAndGlobalYAML([]model.ManifestName{"doggos", "snack"})
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
@@ -119,10 +115,42 @@ def snack():
   return k8s_service(image)
 `)
 
-	manifests, gYAML := f.LoadManifestsAndGlobalYAML("compserv")
+	manifests, gYAML := f.LoadAllManifestsAndGlobalYAML([]model.ManifestName{"compserv"})
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
+	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML())
+}
+
+func TestPerManifestYAMLExtractedFromGlobalYAMLWhenLoadingOneManifest(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml, testyaml.SecretYaml)
+	f.WriteFile("global.yaml", multiManifestYAML)
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
+
+def doggos():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
+  return k8s_service(image)
+
+def snack():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/snack')
+  return k8s_service(image)
+`)
+
+	tf, err := Load(f.ctx, FileName)
+	if err != nil {
+		f.T().Fatal("loading Tiltfile:", err)
+	}
+
+	allManifests := []model.ManifestName{"doggos", "snack"}
+	doggosManifest, gYAML, err := tf.GetOneManifest(f.ctx, "doggos", allManifests)
+
+	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, doggosManifest.K8sYAML())
+
+	// Snacks yaml should have been removed from gYAML even tho we only asked for the Doggos manifest
 	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML())
 }
 
@@ -144,7 +172,7 @@ def snack():
   return k8s_service(image)
 `)
 
-	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos", "snack")
+	manifests, gYAML := f.LoadAllManifestsAndGlobalYAML([]model.ManifestName{"doggos", "snack"})
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
@@ -165,7 +193,7 @@ def doggos_with_secret():
   return k8s_service(image, yaml="""%s""")
 `, testyaml.DoggosServiceYaml))
 
-	manifests, _ := f.LoadManifestsAndGlobalYAML("doggos_with_secret")
+	manifests, _ := f.LoadAllManifestsAndGlobalYAML([]model.ManifestName{"doggos_with_secret"})
 
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosDeploymentYaml)
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosServiceYaml)
@@ -185,7 +213,7 @@ def doggos():
   return k8s_service(image)
 `)
 
-	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos")
+	manifests, gYAML := f.LoadAllManifestsAndGlobalYAML([]model.ManifestName{"doggos"})
 
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosDeploymentYaml,
 		"expected Deployment yaml on Doggos manifest")

@@ -63,7 +63,7 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest) {
+func (f *gitRepoFixture) LoadAllManifestsAndGlobalYAML(allManifestNames []model.ManifestName) ([]model.Manifest, model.YAMLManifest) {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -72,38 +72,37 @@ func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...model.ManifestName)
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, names...)
+	manifests, globalYAML, err := tiltconfig.GetAllManifests(f.ctx, allManifestNames)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
 	return manifests, globalYAML
 }
 
-func (f *gitRepoFixture) LoadManifests(names ...model.ManifestName) []model.Manifest {
-	manifests, _ := f.LoadManifestsAndGlobalYAML(names...)
+func (f *gitRepoFixture) LoadManifests(allManifestNames []model.ManifestName) []model.Manifest {
+	manifests, _ := f.LoadAllManifestsAndGlobalYAML(allManifestNames)
 	return manifests
 }
 
-func (f *gitRepoFixture) LoadManifest(name model.ManifestName) model.Manifest {
-	manifests := f.LoadManifests(name)
+// NOTE: use this if the Tiltfile defines only a single manifest. If you want to load a manifest
+// from a Tiltfile that defines more than one manifest and/or your test relies on accurate
+// GlobalYAML, write a new test util that takes an allManifestNames arg.
+func (f *gitRepoFixture) LoadTheOnlyManifest(name model.ManifestName) model.Manifest {
+	manifests := f.LoadManifests([]model.ManifestName{name})
 	if len(manifests) != 1 {
 		f.T().Fatalf("expected 1 manifest, actual: %d", len(manifests))
 	}
 	return manifests[0]
 }
 
-func (f *gitRepoFixture) LoadGlobalYAML() model.YAMLManifest {
-	_, globalYAML := f.LoadManifestsAndGlobalYAML()
-	return globalYAML
-}
-
-func (f *gitRepoFixture) LoadManifestForError(name model.ManifestName) error {
+// NOTE: use this if the Tiltfile defines only a single manifest.
+func (f *gitRepoFixture) LoadOnlyManifestForError(name model.ManifestName) error {
 	tiltconfig, err := Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, name)
+	_, _, err = tiltconfig.GetAllManifests(f.ctx, []model.ManifestName{name})
 	if err == nil {
 		f.T().Fatal("Expected manifest load error")
 	}
@@ -161,7 +160,7 @@ func TestGetManifestConfig(t *testing.T) {
   return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, "docker text", manifest.BaseDockerfile)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 	assert.Equal(t, "yaaaaaaaaml", manifest.K8sYAML())
@@ -190,7 +189,7 @@ func TestOldMountSyntax(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), oldMountSyntaxError)
 		assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
@@ -208,7 +207,7 @@ func TestOldK8sServiceSyntax(t *testing.T) {
   return k8s_service(yaml, image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), oldK8sServiceSyntaxError)
 		assert.Contains(t, err.Error(), "Tiltfile:4: in blorgly")
@@ -224,7 +223,7 @@ func TestStopBuildBeforeStartBuild(t *testing.T) {
   return stop_build()
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), noActiveBuildError)
 		assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
@@ -243,7 +242,7 @@ func TestGetManifestConfigMissingDockerFile(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		for _, s := range []string{"asfaergiuhaeriguhaergiu", "no such file or directory"} {
 			assert.Contains(t, err.Error(), s)
@@ -278,7 +277,7 @@ def blorgly_frontend():
   return k8s_service(image)
 `)
 
-	manifests := f.LoadManifests("blorgly")
+	manifests := f.LoadManifests([]model.ManifestName{"blorgly"})
 	assert.Equal(t, "blorgly_backend", manifests[0].Name.String())
 	assert.Equal(t, 1, len(manifests[0].Repos))
 	assert.Equal(t, "", manifests[0].Repos[0].DockerignoreContents)
@@ -297,7 +296,7 @@ func TestGetManifestConfigUndefined(t *testing.T) {
   return "yaaaaaaaml"
 `)
 
-	err := f.LoadManifestForError("blorgly2")
+	err := f.LoadOnlyManifestForError("blorgly2")
 
 	for _, s := range []string{"does not define", "blorgly2"} {
 		assert.Contains(t, err.Error(), s)
@@ -310,7 +309,7 @@ func TestGetManifestConfigNonFunction(t *testing.T) {
 
 	f.WriteFile("Tiltfile", "blorgly2 = 3")
 
-	err := f.LoadManifestForError("blorgly2")
+	err := f.LoadOnlyManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "function", "int"} {
 		assert.Contains(t, err.Error(), s)
@@ -325,7 +324,7 @@ func TestGetManifestConfigTakesArgs(t *testing.T) {
       return "foo"
 `)
 
-	err := f.LoadManifestForError("blorgly2")
+	err := f.LoadOnlyManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "0 arguments"} {
 		assert.Contains(t, err.Error(), s)
@@ -339,7 +338,7 @@ func TestGetManifestConfigRaisesError(t *testing.T) {
 	f.WriteFile("Tiltfile", `def blorgly2():
       "foo"[10]`) // index out of range
 
-	err := f.LoadManifestForError("blorgly2")
+	err := f.LoadOnlyManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "string index", "out of range"} {
 		assert.Contains(t, err.Error(), s)
@@ -354,7 +353,7 @@ func TestGetManifestConfigReturnsWrongType(t *testing.T) {
 	f.WriteFile("Tiltfile", `def blorgly2():
       return "foo"`)
 
-	err := f.LoadManifestForError("blorgly2")
+	err := f.LoadOnlyManifestForError("blorgly2")
 
 	for _, s := range []string{"blorgly2", "string", "k8s_service"} {
 		assert.Contains(t, err.Error(), s)
@@ -368,7 +367,7 @@ func TestGetManifestConfigLocalReturnsNon0(t *testing.T) {
 	f.WriteFile("Tiltfile", `def blorgly2():
       local('echo "foo" "bar" && echo "baz" "quu" >&2 && exit 1')`)
 
-	err := f.LoadManifestForError("blorgly2")
+	err := f.LoadOnlyManifestForError("blorgly2")
 
 	// "foo bar" and "baz quu" are separated above so that the match below only matches the strings in the output,
 	// not in the command
@@ -391,7 +390,7 @@ func TestGetManifestConfigWithLocalCmd(t *testing.T) {
   return k8s_service(image, yaml=yaml)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, "docker text", manifest.BaseDockerfile)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 	assert.Equal(t, "yaaaaaaaaml\n", manifest.K8sYAML())
@@ -416,7 +415,7 @@ func TestRunTrigger(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("yarnly")
+	manifest := f.LoadTheOnlyManifest("yarnly")
 	step0 := manifest.Steps[0]
 	step1 := manifest.Steps[1]
 	step2 := manifest.Steps[2]
@@ -479,7 +478,7 @@ func TestInvalidDockerTag(t *testing.T) {
   image = stop_build()
   return k8s_service(image)
 `)
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "invalid reference format")
 		assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
@@ -498,7 +497,7 @@ ENTRYPOINT echo hi`)
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, []string(nil), manifest.Entrypoint.Argv)
 	assert.True(t, manifest.Entrypoint.Empty())
 }
@@ -515,7 +514,7 @@ func TestAddMissingDir(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Reading path ./garbage")
 		assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
@@ -535,7 +534,7 @@ func TestReadFile(t *testing.T) {
   return k8s_service(image, yaml=yaml)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, "hello world", manifest.K8sYAML())
 }
 
@@ -551,7 +550,7 @@ func TestConfigMatcherWithFastBuild(t *testing.T) {
   image = stop_build()
   return k8s_service(image)
 `)
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	matches := func(p string) bool {
 		matcher, err := manifest.ConfigMatcher()
 		if err != nil {
@@ -574,7 +573,7 @@ func TestConfigMatcherWithStaticBuild(t *testing.T) {
 	f.WriteFile("Dockerfile", "dockerfile text")
 	f.WriteFile("Tiltfile", `def blorgly():
   return k8s_service(static_build("Dockerfile", "docker-tag"))`)
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	matches := func(p string) bool {
 		matcher, err := manifest.ConfigMatcher()
 		if err != nil {
@@ -605,7 +604,7 @@ func TestRepoPath(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, []string{"sh", "-c", f.JoinPath("subpath")}, manifest.Entrypoint.Argv)
 }
 
@@ -627,7 +626,7 @@ func TestAddRepoPath(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.True(t, f.FiltersPath(manifest, "src/b.txt", false), "Expected to filter b.txt")
 	assert.True(t, f.FiltersPath(manifest, "src/b/c.txt", false), "Expected to filter c.txt")
 	assert.False(t, f.FiltersPath(manifest, "src/b/d.go", false), "Expected not to filter d.txt")
@@ -648,7 +647,7 @@ func TestAddErorrsIfStringPassedInsteadOfRepoPath(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "invalid type for src. Got string want gitRepo OR localPath")
 		assert.Contains(t, err.Error(), "Tiltfile:5: in blorgly")
@@ -671,7 +670,7 @@ func TestAddOneFileByPath(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, manifest.Mounts[0].LocalPath, f.JoinPath("package.json"))
 	assert.Equal(t, manifest.Mounts[0].ContainerPath, "/app/package.json")
 }
@@ -695,7 +694,7 @@ def blorgly():
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(output.CtxForTest(), "blorgly")
+	_, _, err = tiltconfig.GetAllManifests(output.CtxForTest(), []model.ManifestName{"blorgly"})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "isn't a valid git repo")
 		assert.Contains(t, err.Error(), "Tiltfile:4: in blorgly")
@@ -717,7 +716,7 @@ func TestReadsIgnoreFiles(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
 	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
@@ -736,7 +735,7 @@ func TestReadsIgnoreFilesStaticBuild(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
 	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
@@ -756,7 +755,7 @@ func TestReadsIgnoreFilesStaticBuildSubdir(t *testing.T) {
   return k8s_service(image)
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Truef(t, f.FiltersPath(manifest, "Tiltfile", true), "Expected to filter Tiltfile")
 	assert.True(t, f.FiltersPath(manifest, "cmd.exe", false), "Expected to filter cmd.exe")
 	assert.True(t, f.FiltersPath(manifest, ".git", true), "Expected to filter .git")
@@ -793,7 +792,7 @@ func TestReadsIgnoreFilesMultipleGitRepos(t *testing.T) {
   return k8s_service(image)
 `, f1.Path(), f2.Path()))
 
-	manifest := fMain.LoadManifest("blorgly")
+	manifest := fMain.LoadTheOnlyManifest("blorgly")
 
 	assert.Truef(t, f1.FiltersPath(manifest, "cmd.exe", false), "Expected to match cmd.exe")
 	assert.Truef(t, f1.FiltersPath(manifest, "node_modules", true), "Expected to match node_modules")
@@ -819,7 +818,7 @@ func TestBuildContextAddError(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	expected := "add called without a build context"
 	assert.Contains(t, err.Error(), expected)
 	assert.Contains(t, err.Error(), "Tiltfile:7: in blorgly")
@@ -839,7 +838,7 @@ func TestBuildContextRunError(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	expected := "run called without a build context"
 	assert.Contains(t, err.Error(), expected)
 	assert.Contains(t, err.Error(), "Tiltfile:7: in blorgly")
@@ -858,7 +857,7 @@ func TestBuildContextStartTwice(t *testing.T) {
   return k8s_service(image)
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	expected := "tried to start a build context while another build context was already open"
 	assert.Contains(t, err.Error(), expected)
 	assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
@@ -877,7 +876,7 @@ func TestSlowBuildIsNotImplemented(t *testing.T) {
   image.run("echo hi")
   return k8s_service(image)
 `)
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	expected := "start_slow_build not implemented"
 	assert.Contains(t, err.Error(), expected)
 	assert.Contains(t, err.Error(), "Tiltfile:2: in blorgly")
@@ -894,7 +893,7 @@ def blorgly():
   return k8s_service(static_build("Dockerfile", "docker-tag"))
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
@@ -911,7 +910,7 @@ def blorgly():
   return k8s_service(static_build("Dockerfile", "docker-tag", {"foo": "bar", "baz": "qux"}))
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
 	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
@@ -934,7 +933,7 @@ def blorgly():
   return s
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	assert.Equal(t, []model.PortForward{
 		{
 			LocalPort:     8000,
@@ -966,7 +965,7 @@ def blorgly():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, "blorgly")
+	manifests, _, err := tiltconfig.GetAllManifests(f.ctx, []model.ManifestName{"blorgly"})
 	if err != nil {
 		t.Fatal("getting manifest config:", err)
 	}
@@ -1059,7 +1058,7 @@ def blorgly():
   return s
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	manifest := f.LoadTheOnlyManifest("blorgly")
 	expected := f.JoinPaths([]string{
 		"Dockerfile",
 		"configMap.yaml",
@@ -1083,6 +1082,6 @@ ADD . .
   return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 
-	err := f.LoadManifestForError("blorgly")
+	err := f.LoadOnlyManifestForError("blorgly")
 	assert.Contains(t, err.Error(), "base Dockerfile contains an ADD/COPY")
 }
