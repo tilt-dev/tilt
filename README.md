@@ -72,16 +72,17 @@ written in a Mill, a dialect of python. It's based on [starlark](https://github.
 
 Mill comes with built-in functions.
 
-#### static_build(dockerfile, ref, context?)
+#### static_build(dockerfile, ref, build_args?, context?)
 Builds a docker image.
 
 ```python
-def static_build(dockerfile: str, ref: str, context: str = "") -> Image:
+def static_build(dockerfile: str, ref: str, build_args: Dict[str, str] = {}, context: str = "") -> Image:
       """Builds a docker image.
 
     Args:
       dockerfile: The path to a Dockerfile
       ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
+      build_args?: the build-time variables that are accessed like regular environment variables in the `RUN` instruction of the Dockerfile. See https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg
       context?: The path to use as the Docker build context. Defaults to the Dockerfile directory.
     Returns:
       Image
@@ -158,7 +159,7 @@ class Service
 #### global_yaml
 Call this _on the top level of your Tiltfile_ with a string of YAML.
 
-We will infer what (if any) of the k8s resources defined in your YAML correspond to `Services` defined elsewhere in your Tiltfile (matching based on the DockerImage ref and on pod selectors). Any remaining YAML is _global YAML_, i.e. YAML that Tilt applies to your k8s cluster independently of any `Service` you define. 
+We will infer what (if any) of the k8s resources defined in your YAML correspond to `Services` defined elsewhere in your Tiltfile (matching based on the DockerImage ref and on pod selectors). Any remaining YAML is _global YAML_, i.e. YAML that Tilt applies to your k8s cluster independently of any `Service` you define.
 ```python
 def global_yaml(yaml: string) -> None
 ```

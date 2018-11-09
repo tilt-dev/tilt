@@ -900,6 +900,26 @@ def blorgly():
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 }
 
+func TestStaticBuildWithBuildArgs(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  return k8s_service(static_build("Dockerfile", "docker-tag", {"foo": "bar", "baz": "qux"}))
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
+	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
+	buildArgs := manifest.StaticBuildArgs
+	assert.Equal(t, buildArgs["foo"], "bar")
+	assert.Equal(t, buildArgs["baz"], "qux")
+}
+
 func TestPortForward(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()

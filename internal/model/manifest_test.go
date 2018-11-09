@@ -247,6 +247,36 @@ var equalitytests = []struct {
 		},
 		false,
 	},
+	{
+		Manifest{
+			StaticBuildArgs: map[string]string{
+				"foo":  "bar",
+				"baz:": "qux",
+			},
+		},
+		Manifest{
+			StaticBuildArgs: map[string]string{
+				"foo":  "bar",
+				"baz:": "quz",
+			},
+		},
+		false,
+	},
+	{
+		Manifest{
+			StaticBuildArgs: map[string]string{
+				"foo":  "bar",
+				"baz:": "qux",
+			},
+		},
+		Manifest{
+			StaticBuildArgs: map[string]string{
+				"foo":  "bar",
+				"baz:": "qux",
+			},
+		},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

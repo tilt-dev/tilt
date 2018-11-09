@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -38,6 +39,7 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
+	StaticBuildArgs  map[string]string
 
 	Repos []LocalGithubRepo
 }
@@ -115,8 +117,9 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	reposMatch := m1.reposEqual(m2.Repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
 	portForwardsMatch := m1.portForwardsEqual(m2)
+	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 
-	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch
+	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch
 }
 
 func (m1 Manifest) configFilesEqual(c2 []string) bool {
