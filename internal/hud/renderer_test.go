@@ -99,7 +99,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name: "a-a-a-aaaaabe vigoda",
+				Name:                  "a-a-a-aaaaabe vigoda",
 				LastManifestLoadError: "broken tiltfile!",
 				LastBuildError:        "broken go code!",
 				LastBuildLog:          "mashing keys is not a good way to generate code",
@@ -138,7 +138,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name: "GlobalYAML",
+				Name:                  "GlobalYAML",
 				CurrentBuildStartTime: ts,
 				LastBuildFinishTime:   ts,
 				LastBuildDuration:     1400 * time.Millisecond,
