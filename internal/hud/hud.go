@@ -162,9 +162,13 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		case tcell.KeyEnter:
 			if !h.currentViewState.LogModal.IsActive() {
 				selectedIdx, r := h.selectedResource()
-				if !r.IsYAMLManifest {
-					h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
+
+				if r.IsYAMLManifest {
+					logger.Get(ctx).Infof("YAML Resources don't have logs")
+					break
 				}
+
+				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
 				logModal(h.r.rty).Bottom()
 			}
 		}
