@@ -106,9 +106,14 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 	return nil
 }
 
+type concatLayoutComponent struct {
+	c     Component
+	fixed bool
+}
+
 type ConcatLayout struct {
 	dir Dir
-	cs  []Component
+	cs  []concatLayoutComponent
 }
 
 var _ Component = &ConcatLayout{}
@@ -118,32 +123,80 @@ func NewConcatLayout(dir Dir) *ConcatLayout {
 }
 
 func (l *ConcatLayout) Add(c Component) {
-	l.cs = append(l.cs, c)
+	l.cs = append(l.cs, concatLayoutComponent{c, true})
 }
 
-func (l *ConcatLayout) Size(width, height int) (int, int) {
-	totalLen := 0
-	maxDepth := 0
-	for _, c := range l.cs {
-		reqWidth, reqHeight := c.Size(width, height)
+// A ConcatLayout element can be either fixed or dynamic. Fixed components are all given a chance at the full
+// canvas. If they ask for too much in sum, things will break.
+// Dynamic components get equal shares of whatever is left after the fixed components get theirs.
+// NB: There is currently a bit of a murky line between ConcatLayout and FlexLayout.
+func (l *ConcatLayout) AddDynamic(c Component) {
+	l.cs = append(l.cs, concatLayoutComponent{c, false})
+}
+
+func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int, allocatedLen int, maxDepth int) {
+	length, depth := whToLd(width, height, l.dir)
+
+	type componentAndIndex struct {
+		c     Component
+		index int
+	}
+
+	var fixedComponents, unfixedComponents []componentAndIndex
+	for i, clc := range l.cs {
+		if clc.fixed {
+			fixedComponents = append(fixedComponents, componentAndIndex{clc.c, i})
+		} else {
+			unfixedComponents = append(unfixedComponents, componentAndIndex{clc.c, i})
+		}
+	}
+
+	alloc := func(c Component, w, h int) (int, int) {
+		reqWidth, reqHeight := c.Size(w, h)
 		reqLen, reqDepth := whToLd(reqWidth, reqHeight, l.dir)
 		if reqLen == GROW {
-			totalLen = GROW
-		}
-		if totalLen != GROW {
-			totalLen += reqLen
+			allocatedLen = GROW
+		} else {
+			allocatedLen += reqLen
 		}
 		if reqDepth > maxDepth {
 			maxDepth = reqDepth
 		}
+
+		return reqWidth, reqHeight
 	}
-	return ldToWh(totalLen, maxDepth, l.dir)
+
+	widths = make([]int, len(l.cs))
+	heights = make([]int, len(l.cs))
+
+	for _, c := range fixedComponents {
+		w, h := alloc(c.c, width, height)
+		widths[c.index], heights[c.index] = w, h
+	}
+
+	if len(unfixedComponents) > 0 {
+		lenPerUnfixed := (length - allocatedLen) / len(unfixedComponents)
+		for _, c := range unfixedComponents {
+			w, h := ldToWh(lenPerUnfixed, depth, l.dir)
+			reqW, reqH := alloc(c.c, w, h)
+			widths[c.index], heights[c.index] = reqW, reqH
+		}
+	}
+
+	return widths, heights, allocatedLen, maxDepth
+}
+
+func (l *ConcatLayout) Size(width, height int) (int, int) {
+	_, _, allocatedLen, maxDepth := l.allocate(width, height)
+	return ldToWh(allocatedLen, maxDepth, l.dir)
 }
 
 func (l *ConcatLayout) Render(w Writer, width int, height int) error {
+	widths, heights, _, _ := l.allocate(width, height)
+
 	offset := 0
-	for _, c := range l.cs {
-		reqWidth, reqHeight := c.Size(width, height)
+	for i, c := range l.cs {
+		reqWidth, reqHeight := c.c.Size(widths[i], heights[i])
 
 		var subW Writer
 		if l.dir == DirHor {
@@ -154,7 +207,7 @@ func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 			offset += reqHeight
 		}
 
-		subW.RenderChild(c)
+		subW.RenderChild(c.c)
 	}
 	return nil
 }

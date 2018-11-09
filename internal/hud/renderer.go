@@ -331,15 +331,14 @@ func renderResourceBuild(res view.Resource, r *Renderer, rv view.ResourceViewSta
 	if len(buildComponents) == 0 {
 		buildComponents = []rty.Component{rty.TextString("no build yet")}
 	}
-	l := rty.NewLine()
-	l.Add(rty.ColoredString("  BUILD: ", cLightText))
-	l.Add(buildComponents[0])
+	l := rty.NewConcatLayout(rty.DirHor)
 	layout.Add(l)
-	for _, c := range buildComponents[1:] {
-		l := rty.NewLine()
-		l.Add(rty.TextString("         "))
-		l.Add(c)
-		layout.Add(l)
+	intro := "  BUILD: "
+	l.Add(rty.ColoredString(intro, cLightText))
+	cl := rty.NewConcatLayout(rty.DirVert)
+	l.AddDynamic(cl)
+	for _, c := range buildComponents {
+		cl.Add(c)
 	}
 	layout.Add(rty.NewLine())
 }
