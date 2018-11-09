@@ -27,7 +27,7 @@ type HeadsUpDisplay interface {
 	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
 	Update(v view.View, vs view.ViewState) error
 	Close()
-	SetNarrationMessage(ctx context.Context, msg string)
+	SetNarrationMessage(ctx context.Context, msg string) error
 }
 
 type Hud struct {
@@ -47,13 +47,13 @@ func NewDefaultHeadsUpDisplay(renderer *Renderer) (HeadsUpDisplay, error) {
 	}, nil
 }
 
-func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
+func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	currentViewState := h.currentViewState
 	currentViewState.ShowNarration = true
 	currentViewState.NarrationMessage = msg
-	h.setViewState(ctx, currentViewState)
+	return h.setViewState(ctx, currentViewState)
 }
 
 func logModal(r rty.RTY) rty.TextScroller {
@@ -98,7 +98,10 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 				return nil
 			}
 		case <-ticker.C:
-			h.Refresh(ctx)
+			err := h.Refresh(ctx)
+			if err != nil {
+				return err
+			}
 		}
 	}
 }
@@ -143,7 +146,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				h.selectedScroller(h.r.rty).Down()
 			case r == 'q': // [Q]uit
 				h.Close()
-				dispatch(ExitAction{})
+				dispatch(NewExitAction(nil))
 				return true
 			}
 		case tcell.KeyUp:
@@ -174,7 +177,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.selectedScroller(h.r.rty).Bottom()
 		case tcell.KeyCtrlC:
 			h.Close()
-			dispatch(ExitAction{})
+			dispatch(NewExitAction(nil))
 			return true
 		}
 
@@ -183,7 +186,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		// just marking this as where sigwinch gets handled
 	}
 
-	h.refresh(ctx)
+	err := h.refresh(ctx)
+	if err != nil {
+		dispatch(NewExitAction(err))
+	}
 
 	return false
 }
@@ -195,17 +201,20 @@ func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.setView(ctx, view)
+	err := h.setView(ctx, view)
+	if err != nil {
+		st.Dispatch(NewExitAction(err))
+	}
 }
 
-func (h *Hud) Refresh(ctx context.Context) {
+func (h *Hud) Refresh(ctx context.Context) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.refresh(ctx)
+	return h.refresh(ctx)
 }
 
 // Must hold the lock
-func (h *Hud) setView(ctx context.Context, view view.View) {
+func (h *Hud) setView(ctx context.Context, view view.View) error {
 	h.currentView = view
 
 	// if the hud isn't running, make sure new logs are visible on stdout
@@ -215,17 +224,17 @@ func (h *Hud) setView(ctx context.Context, view view.View) {
 
 	h.currentViewState.ProcessedLogByteCount = len(view.Log)
 
-	h.refresh(ctx)
+	return h.refresh(ctx)
 }
 
 // Must hold the lock
-func (h *Hud) setViewState(ctx context.Context, currentViewState view.ViewState) {
+func (h *Hud) setViewState(ctx context.Context, currentViewState view.ViewState) error {
 	h.currentViewState = currentViewState
-	h.refresh(ctx)
+	return h.refresh(ctx)
 }
 
 // Must hold the lock
-func (h *Hud) refresh(ctx context.Context) {
+func (h *Hud) refresh(ctx context.Context) error {
 	// TODO: We don't handle the order of resources changing
 	for len(h.currentViewState.Resources) < len(h.currentView.Resources) {
 		h.currentViewState.Resources = append(h.currentViewState.Resources, view.ResourceViewState{})
@@ -236,10 +245,7 @@ func (h *Hud) refresh(ctx context.Context) {
 		vs.Resources = append(vs.Resources, r)
 	}
 
-	err := h.Update(h.currentView, h.currentViewState)
-	if err != nil {
-		logger.Get(ctx).Infof("Error updating HUD: %v", err)
-	}
+	return h.Update(h.currentView, h.currentViewState)
 }
 
 func (h *Hud) Update(v view.View, vs view.ViewState) error {

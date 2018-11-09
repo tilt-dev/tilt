@@ -219,7 +219,10 @@ func (s Script) runSteps(ctx context.Context, out io.Writer) error {
 			continue
 		}
 
-		s.hud.SetNarrationMessage(ctx, step.Narration)
+		err := s.hud.SetNarrationMessage(ctx, step.Narration)
+		if err != nil {
+			return err
+		}
 
 		if step.Command != "" {
 			cmd := exec.CommandContext(ctx, "sh", "-c", step.Command)

@@ -20,7 +20,7 @@ type rty struct {
 
 type renderState map[string]interface{}
 
-func (r *rty) Render(c Component) error {
+func (r *rty) Render(c Component) (err error) {
 	r.screen.Clear()
 	g := &renderGlobals{
 		prev: r.state,
@@ -93,21 +93,31 @@ type renderFrame struct {
 	globals *renderGlobals
 }
 
+var _ Writer = renderFrame{}
+
 func (f renderFrame) SetContent(x int, y int, mainc rune, combc []rune) {
 	if err := f.canvas.SetContent(x, y, mainc, combc, f.style); err != nil {
 		f.error(err)
 	}
 }
 
-func (f renderFrame) Fill() Writer {
+func (f renderFrame) Fill() (Writer, error) {
 	width, height := f.canvas.Size()
-	f.canvas = newSubCanvas(f.canvas, 0, 0, width, height, f.style)
-	return f
+	var err error
+	f.canvas, err = newSubCanvas(f.canvas, 0, 0, width, height, f.style)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
-func (f renderFrame) Divide(x, y, width, height int) Writer {
-	f.canvas = newSubCanvas(f.canvas, x, y, width, height, f.style)
-	return f
+func (f renderFrame) Divide(x, y, width, height int) (Writer, error) {
+	var err error
+	f.canvas, err = newSubCanvas(f.canvas, x, y, width, height, f.style)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func (f renderFrame) Foreground(c tcell.Color) Writer {
@@ -130,10 +140,14 @@ func (f renderFrame) RenderChild(c Component) int {
 	return height
 }
 
-func (f renderFrame) Style(style tcell.Style) Writer {
+func (f renderFrame) Style(style tcell.Style) (Writer, error) {
 	width, height := f.canvas.Size()
-	f.canvas = newSubCanvas(f.canvas, 0, 0, width, height, style)
-	return f
+	var err error
+	f.canvas, err = newSubCanvas(f.canvas, 0, 0, width, height, style)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func (f renderFrame) RenderChildInTemp(c Component) Canvas {
@@ -148,7 +162,7 @@ func (f renderFrame) RenderChildInTemp(c Component) Canvas {
 	return tmp
 }
 
-func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
+func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) error {
 	width, destLines := f.canvas.Size()
 
 	numLines := destLines
@@ -158,12 +172,17 @@ func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) {
 
 	for i := 0; i < numLines; i++ {
 		for j := 0; j < width; j++ {
-			mainc, combc, style, _ := src.GetContent(j, srcY+i)
+			mainc, combc, style, _, err := src.GetContent(j, srcY+i)
+			if err != nil {
+				return err
+			}
 			if err := f.canvas.SetContent(j, i, mainc, combc, style); err != nil {
 				f.error(err)
 			}
 		}
 	}
+
+	return nil
 }
 
 func (f renderFrame) RenderStateful(c StatefulComponent, name string) {
