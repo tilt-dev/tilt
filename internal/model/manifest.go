@@ -86,7 +86,7 @@ func (m Manifest) validate() *ValidateErr {
 	}
 
 	if m.K8sYAML() == "" {
-		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
+		return validateErrf("[validate] manifest %q missing k8s YAML", m.Name)
 	}
 
 	for _, m := range m.Mounts {

@@ -529,10 +529,10 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		return nil, err
 	}
 
+	var manifests []model.Manifest
+
 	switch manifest := val.(type) {
 	case compManifest:
-		var manifests []model.Manifest
-
 		for _, cMan := range manifest.cManifest {
 			m, err := skylarkManifestToDomain(cMan)
 			if err != nil {
@@ -541,7 +541,6 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 			manifests = append(manifests, m)
 		}
-		return manifests, nil
 	case *k8sManifest:
 		manifest.configFiles = files
 
@@ -551,18 +550,22 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		}
 
 		m.Name = model.ManifestName(manifestName)
+		manifests = append(manifests, m)
 
+	default:
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+	}
+
+	// Pull out Global YAML corresponding to manifest(s)
+	for i, m := range manifests {
 		manifestYAMLFromGlobalYAML, err := t.extractFromGlobalYAMLForManifest(ctx, m)
 		if err != nil {
 			return nil, errors.Wrapf(err, "extracting global yaml for manifest %s", m.Name)
 		}
 		m = m.AppendK8sYAML(manifestYAMLFromGlobalYAML)
-
-		return []model.Manifest{m}, nil
-
-	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+		manifests[i] = m
 	}
+	return manifests, nil
 }
 
 // extractFromGlobalYAMLForManifest finds any objects defined in the global YAML
@@ -579,7 +582,6 @@ func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model
 	}
 
 	var matchingSelector []k8s.K8sEntity
-	// TODO(maia): also get entities that select for any of THESE entities (services etc.)
 	matchingImg, allRest, err := k8s.FilterByImage(entities, m.DockerRef())
 	for _, e := range matchingImg {
 		podTemplates, err := k8s.ExtractPodTemplateSpec(e)
@@ -606,7 +608,7 @@ func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model
 
 	matching := append(matchingImg, matchingSelector...)
 
-	// GlobalYAML = GlobalYAML without any k8s entries matching this manifest
+	// GlobalYAML -= k8s entries matching this manifest
 	gYAMLWithoutMatches, err := k8s.SerializeYAML(allRest)
 	if err != nil {
 		return "", errors.Wrap(err, "re-serializing global yaml")
