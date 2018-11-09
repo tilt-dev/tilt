@@ -125,19 +125,19 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 
 	dockerfileLocalPath, err := t.localPathFromSkylarkValue(dockerfilePath)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (dockerfile): %v", err)
+		return nil, fmt.Errorf("Argument 1 (dockerfile): %v", err)
 	}
 
 	var sba map[string]string
 	if buildArgs != nil {
 		d, ok := buildArgs.(*skylark.Dict)
 		if !ok {
-			return nil, fmt.Errorf("Argument 2 (build_args): expected dict, got %T", buildArgs)
+			return nil, fmt.Errorf("Argument 3 (build_args): expected dict, got %T", buildArgs)
 		}
 
 		sba, err = skylarkStringDictToGoMap(d)
 		if err != nil {
-			return nil, fmt.Errorf("Argument 2 (build_args): %v", err)
+			return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
 		}
 	}
 
@@ -150,7 +150,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 	} else {
 		buildLocalPath, err = t.localPathFromSkylarkValue(buildPath)
 		if err != nil {
-			return nil, fmt.Errorf("Argument 3 (context): %v", err)
+			return nil, fmt.Errorf("Argument 4 (context): %v", err)
 		}
 	}
 
