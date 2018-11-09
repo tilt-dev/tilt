@@ -47,6 +47,29 @@ func TestRender(t *testing.T) {
 	v = view.View{
 		Resources: []view.Resource{
 			{
+				Name:                "a-a-a-aaaaabe vigoda",
+				LastBuildFinishTime: time.Now(),
+				LastBuildError:      "oh no the build failed",
+				LastBuildLog: `STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+    ╎ RUNNING: go install github.com/windmilleng/servantes/snack
+
+    ╎ ERROR IN: go install github.com/windmilleng/servantes/snack
+    ╎   → # github.com/windmilleng/servantes/snack
+src/github.com/windmilleng/servantes/snack/main.go:16:36: syntax error: unexpected newline, expecting comma or }
+
+ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code 2`,
+			},
+		},
+	}
+	rtf.run("inline build log with wrapping", 117, 20, v, vs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
 				Name:           "a-a-a-aaaaabe vigoda",
 				LastBuildError: "oh no the build failed",
 				LastBuildLog:   "1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n",
@@ -76,7 +99,7 @@ func TestRender(t *testing.T) {
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "a-a-a-aaaaabe vigoda",
+				Name: "a-a-a-aaaaabe vigoda",
 				LastManifestLoadError: "broken tiltfile!",
 				LastBuildError:        "broken go code!",
 				LastBuildLog:          "mashing keys is not a good way to generate code",
@@ -115,7 +138,7 @@ func TestRender(t *testing.T) {
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "GlobalYAML",
+				Name: "GlobalYAML",
 				CurrentBuildStartTime: ts,
 				LastBuildFinishTime:   ts,
 				LastBuildDuration:     1400 * time.Millisecond,

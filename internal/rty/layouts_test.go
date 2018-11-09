@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/windmilleng/tcell"
@@ -54,4 +55,18 @@ func TestStyles(t *testing.T) {
 	l.Add(Bg(NewBox(), tcell.ColorWhite))
 	l.Add(Bg(NewBox(), tcell.ColorRed))
 	i.Run("blue, white, red boxes vertically", 30, 30, l)
+}
+
+func TestConcatLayout(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+
+	cl := NewConcatLayout(DirVert)
+	cl.Add(TextString("hello"))
+	cl.Add(TextString("goodbye"))
+	i.Run("two strings in ConcatLayout", 15, 15, cl)
+
+	cl = NewConcatLayout(DirHor)
+	cl.Add(TextString("HEADER"))
+	cl.AddDynamic(TextString(strings.Repeat("helllllo", 20)))
+	i.Run("wrapping on right of ConcatLayout", 20, 20, cl)
 }
