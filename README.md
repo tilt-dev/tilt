@@ -82,7 +82,7 @@ def static_build(dockerfile: str, ref: str, build_args: Dict[str, str] = {}, con
     Args:
       dockerfile: The path to a Dockerfile
       ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
-      build_args?: the build-time variables that are accessed like regular environment variables in the `RUN` instruction of the Dockerfile.
+      build_args?: the build-time variables that are accessed like regular environment variables in the `RUN` instruction of the Dockerfile. See https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg
       context?: The path to use as the Docker build context. Defaults to the Dockerfile directory.
     Returns:
       Image
