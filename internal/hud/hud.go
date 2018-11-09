@@ -6,15 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/rty"
-
 	"github.com/pkg/browser"
 	"github.com/windmilleng/tcell"
 
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -54,10 +51,6 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) error {
 	currentViewState.ShowNarration = true
 	currentViewState.NarrationMessage = msg
 	return h.setViewState(ctx, currentViewState)
-}
-
-func logModal(r rty.RTY) rty.TextScroller {
-	return r.TextScroller(logScrollerName)
 }
 
 func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
@@ -118,7 +111,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyEscape:
-			h.currentViewState.LogModal = view.LogModal{}
+			am := h.activeModal()
+			if am != nil {
+				h.activeModal().Close(&h.currentViewState)
+			}
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r == 'b': // [B]rowser
@@ -129,41 +125,41 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				if len(selected.Endpoints) > 0 {
 					err := browser.OpenURL(selected.Endpoints[0])
 					if err != nil {
-						logger.Get(ctx).Infof("error opening url '%s' for resource '%s': %v",
+						h.currentViewState.AlertMessage = fmt.Sprintf("error opening url '%s' for resource '%s': %v",
 							selected.Endpoints[0], selected.Name, err)
 					}
 				} else {
-					logger.Get(ctx).Infof("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
+					h.currentViewState.AlertMessage = fmt.Sprintf("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
 			case r == 'l': // Tilt [L]og
-				if !h.currentViewState.LogModal.IsActive() {
+				if h.activeModal() == nil {
 					h.currentViewState.LogModal = view.LogModal{TiltLog: true}
+					h.activeModal().Bottom()
 				}
-				logModal(h.r.rty).Bottom()
 			case r == 'k':
-				h.selectedScroller(h.r.rty).Up()
+				h.activeScroller().Up()
 			case r == 'j':
-				h.selectedScroller(h.r.rty).Down()
+				h.activeScroller().Down()
 			case r == 'q': // [Q]uit
 				h.Close()
 				dispatch(NewExitAction(nil))
 				return true
 			}
 		case tcell.KeyUp:
-			h.selectedScroller(h.r.rty).Up()
+			h.activeScroller().Up()
 		case tcell.KeyDown:
-			h.selectedScroller(h.r.rty).Down()
+			h.activeScroller().Down()
 		case tcell.KeyEnter:
-			if !h.currentViewState.LogModal.IsActive() {
+			if h.activeModal() == nil {
 				selectedIdx, r := h.selectedResource()
 
 				if r.IsYAMLManifest {
-					logger.Get(ctx).Infof("YAML Resources don't have logs")
+					h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
 					break
 				}
 
 				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
-				logModal(h.r.rty).Bottom()
+				h.activeModal().Bottom()
 			}
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()
@@ -172,9 +168,9 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			i, _ := h.selectedResource()
 			h.currentViewState.Resources[i].IsCollapsed = true
 		case tcell.KeyHome:
-			h.selectedScroller(h.r.rty).Top()
+			h.activeScroller().Top()
 		case tcell.KeyEnd:
-			h.selectedScroller(h.r.rty).Bottom()
+			h.activeScroller().Bottom()
 		case tcell.KeyCtrlC:
 			h.Close()
 			dispatch(NewExitAction(nil))
@@ -262,21 +258,3 @@ func (h *Hud) selectedResource() (i int, resource view.Resource) {
 }
 
 var _ store.Subscriber = &Hud{}
-
-const resourcesScollerName = "resources"
-const logScrollerName = "log modal"
-
-func (h *Hud) selectedScroller(rty rty.RTY) Scroller {
-	if !h.currentViewState.LogModal.IsActive() {
-		return h.r.rty.ElementScroller(resourcesScollerName)
-	} else {
-		return h.r.rty.TextScroller(logScrollerName)
-	}
-}
-
-type Scroller interface {
-	Up()
-	Down()
-	Top()
-	Bottom()
-}

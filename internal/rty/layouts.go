@@ -350,12 +350,19 @@ type Box struct {
 	focused bool
 	title   string
 	inner   Component
+	grow    bool
 }
 
 var _ Component = &Box{}
 
-func NewBox() *Box {
-	return &Box{}
+// makes a box that will grow to fill its canvas
+func NewGrowingBox() *Box {
+	return &Box{grow: true}
+}
+
+// makes a new box that tightly wraps its inner component
+func NewBox(inner Component) *Box {
+	return &Box{inner: inner}
 }
 
 func (b *Box) SetInner(c Component) {
@@ -371,12 +378,26 @@ func (b *Box) SetTitle(title string) {
 }
 
 func (b *Box) Size(width int, height int) (int, int, error) {
-	return width, height, nil
+	if b.grow {
+		return width, height, nil
+	} else {
+		// +/-2 to account for the box chars themselves
+		w, h, err := b.inner.Size(width-2, height-2)
+		if err != nil {
+			return 0, 0, err
+		}
+		return w + 2, h + 2, nil
+	}
 }
 
 func (b *Box) Render(w Writer, width int, height int) error {
 	if height == GROW && b.inner == nil {
 		return fmt.Errorf("box must have either fixed height or a child")
+	}
+
+	width, height, err := b.Size(width, height)
+	if err != nil {
+		return err
 	}
 
 	if b.inner != nil {
@@ -485,13 +506,16 @@ type ModalLayout struct {
 	bg       Component
 	fg       Component
 	fraction float64
+	fixed    bool
 }
 
 var _ Component = &ModalLayout{}
 
-// fg will be rendered on top of bg, using fraction/1 of the height and width of the screen
-func NewModalLayout(bg Component, fg Component, fraction float64) *ModalLayout {
-	return &ModalLayout{fg: fg, bg: bg, fraction: fraction}
+// fg will be rendered on top of bg
+// if fixed is true, it will use using fraction/1 of the height and width of the screen
+// if fixed is false, it will use whatever `fg` asks for, up to fraction/1 of width and height
+func NewModalLayout(bg Component, fg Component, fraction float64, fixed bool) *ModalLayout {
+	return &ModalLayout{fg: fg, bg: bg, fraction: fraction, fixed: fixed}
 }
 
 func (l *ModalLayout) Size(width int, height int) (int, int, error) {
@@ -499,15 +523,9 @@ func (l *ModalLayout) Size(width int, height int) (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	fgw, fgh, err := l.fg.Size(width, height)
-	if err != nil {
-		return 0, 0, err
-	}
-	if fgw > w {
-		w = fgw
-	}
-	if fgh > h {
-		h = fgh
+	if l.fraction > 1 {
+		w = int(l.fraction * float64(w))
+		h = int(l.fraction * float64(h))
 	}
 
 	return w, h, nil
@@ -516,12 +534,22 @@ func (l *ModalLayout) Size(width int, height int) (int, int, error) {
 func (l *ModalLayout) Render(w Writer, width int, height int) error {
 	w.RenderChild(l.bg)
 
-	f := (1 - l.fraction) / 2
-	mx := int(f * float64(width))
-	my := int(f * float64(height))
-	mh := int((1 - 2*f) * float64(width))
-	mw := int((1 - 2*f) * float64(height))
-	w, err := w.Divide(mx, my, mh, mw)
+	var mw, mh int
+	if !l.fixed {
+		var err error
+		mw, mh, err = l.fg.Size(int(l.fraction*float64(width)), int(l.fraction*float64(height)))
+		if err != nil {
+			return err
+		}
+	} else {
+		f := (1 - l.fraction) / 2
+		mw = int((1 - 2*f) * float64(width))
+		mh = int((1 - 2*f) * float64(height))
+	}
+
+	mx := width/2 - mw/2
+	my := height/2 - mh/2
+	w, err := w.Divide(mx, my, mw, mh)
 	if err != nil {
 		return err
 	}

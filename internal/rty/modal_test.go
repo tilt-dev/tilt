@@ -11,9 +11,9 @@ func TestModal(t *testing.T) {
 	i := NewInteractiveTester(t, screen)
 
 	{
-		bg := Bg(NewBox(), tcell.ColorRed)
-		fg := Bg(NewBox(), tcell.ColorBlue)
-		l := NewModalLayout(bg, fg, 0.8)
+		bg := Bg(NewGrowingBox(), tcell.ColorRed)
+		fg := Bg(NewGrowingBox(), tcell.ColorBlue)
+		l := NewModalLayout(bg, fg, 0.8, true)
 		i.Run("modal blue box on red box", 20, 20, l)
 	}
 
@@ -23,9 +23,16 @@ func TestModal(t *testing.T) {
 			bg.Add(TextString(strings.Repeat("i", 20)))
 		}
 
-		fg := NewBox()
+		fg := NewGrowingBox()
 		fg.SetInner(TextString("hello world"))
-		l := NewModalLayout(bg, fg, 0.5)
+		l := NewModalLayout(bg, fg, 0.5, true)
 		i.Run("modal text on top of text", 10, 10, l)
+	}
+
+	{
+		bg := Bg(NewGrowingBox(), tcell.ColorRed)
+		fg := NewFixedSize(Bg(NewGrowingBox(), tcell.ColorBlue), 3, 3)
+		l := NewModalLayout(bg, fg, 0.8, false)
+		i.Run("non-fixed modal blue box on red box", 20, 20, l)
 	}
 }
