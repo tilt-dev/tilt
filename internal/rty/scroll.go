@@ -85,7 +85,7 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 			numLines = height
 		}
 
-		w, err := w.Divide(1, 0, width-1, numLines)
+		w, err := w.Divide(0, 0, width-1, numLines)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 		if numLines > height-y {
 			numLines = height - y
 		}
-		w, err := w.Divide(1, y, width-1, numLines)
+		w, err := w.Divide(0, y, width-1, numLines)
 		if err != nil {
 			return nil, err
 		}
@@ -116,11 +116,11 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 	}
 
 	if next.lineIdx > 0 || next.canvasIdx > 0 {
-		w.SetContent(0, 0, '↑', nil)
+		w.SetContent(width-1, 0, '↑', nil)
 	}
 
 	if y >= height && !next.following {
-		w.SetContent(0, height-1, '↓', nil)
+		w.SetContent(width-1, height-1, '↓', nil)
 	}
 
 	return next, nil
@@ -314,7 +314,7 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 			if h > height-y {
 				h = height - y
 			}
-			w, err := w.Divide(1, y, width-1, h)
+			w, err := w.Divide(0, y, width-1, h)
 			if err != nil {
 				return nil, err
 			}
@@ -328,11 +328,11 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	}
 
 	if next.firstVisibleElement != 0 {
-		w.SetContent(0, 0, '↑', nil)
+		w.SetContent(width-1, 0, '↑', nil)
 	}
 
 	if y >= height {
-		w.SetContent(0, height-1, '↓', nil)
+		w.SetContent(width-1, height-1, '↓', nil)
 	}
 
 	return &next, nil
