@@ -23,8 +23,8 @@ func (l *TextScrollLayout) Add(c Component) {
 	l.cs = append(l.cs, c)
 }
 
-func (l *TextScrollLayout) Size(width int, height int) (int, int) {
-	return width, height
+func (l *TextScrollLayout) Size(width int, height int) (int, int, error) {
+	return width, height, nil
 }
 
 type TextScrollState struct {
@@ -85,7 +85,15 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 			numLines = height
 		}
 
-		w.Divide(1, 0, width-1, numLines).Embed(firstCanvas, next.lineIdx, numLines)
+		w, err := w.Divide(1, 0, width-1, numLines)
+		if err != nil {
+			return nil, err
+		}
+
+		err = w.Embed(firstCanvas, next.lineIdx, numLines)
+		if err != nil {
+			return nil, err
+		}
 		y += numLines
 	}
 
@@ -95,7 +103,15 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 		if numLines > height-y {
 			numLines = height - y
 		}
-		w.Divide(1, y, width-1, numLines).Embed(canvas, 0, numLines)
+		w, err := w.Divide(1, y, width-1, numLines)
+		if err != nil {
+			return nil, err
+		}
+
+		err = w.Embed(canvas, 0, numLines)
+		if err != nil {
+			return nil, err
+		}
 		y += numLines
 	}
 
@@ -247,8 +263,8 @@ func (l *ElementScrollLayout) Add(c Component) {
 	l.children = append(l.children, c)
 }
 
-func (l *ElementScrollLayout) Size(width int, height int) (int, int) {
-	return width, height
+func (l *ElementScrollLayout) Size(width int, height int) (int, int, error) {
+	return width, height, nil
 }
 
 type ElementScrollState struct {
@@ -298,7 +314,15 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 			if h > height-y {
 				h = height - y
 			}
-			w.Divide(1, y, width-1, h).Embed(canvases[i], 0, h)
+			w, err := w.Divide(1, y, width-1, h)
+			if err != nil {
+				return nil, err
+			}
+
+			err = w.Embed(canvases[i], 0, h)
+			if err != nil {
+				return nil, err
+			}
 			y += h
 		}
 	}

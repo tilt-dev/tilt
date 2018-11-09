@@ -39,22 +39,22 @@ type TextScroller interface {
 
 // Component renders onto a canvas
 type Component interface {
-	Size(availWidth, availHeight int) (int, int)
+	Size(availWidth, availHeight int) (int, int, error)
 	Render(w Writer, width, height int) error
 }
 
 type Writer interface {
 	SetContent(x int, y int, mainc rune, combc []rune)
 
-	Divide(x, y, width, height int) Writer
+	Divide(x, y, width, height int) (Writer, error)
 	Foreground(c tcell.Color) Writer
 	Background(c tcell.Color) Writer
-	Fill() Writer
+	Fill() (Writer, error)
 
 	RenderChild(c Component) int
 
 	RenderChildInTemp(c Component) Canvas
-	Embed(src Canvas, srcY, srcHeight int)
+	Embed(src Canvas, srcY, srcHeight int) error
 
 	RenderStateful(c StatefulComponent, name string)
 }

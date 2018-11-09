@@ -108,16 +108,16 @@ func (s *Store) maybeFinished() (bool, error) {
 	state := s.RLockState()
 	defer s.RUnlockState()
 
-	if len(state.ManifestStates) == 0 {
-		return false, nil
-	}
-
 	if state.PermanentError != nil {
 		return true, state.PermanentError
 	}
 
-	if state.Exit {
+	if state.UserExited {
 		return true, nil
+	}
+
+	if len(state.ManifestStates) == 0 {
+		return false, nil
 	}
 
 	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""

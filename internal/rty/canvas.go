@@ -12,7 +12,7 @@ type Canvas interface {
 	Size() (int, int)
 	SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error
 	Close() (int, int)
-	GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int)
+	GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int, err error)
 }
 
 func totalHeight(canvases []Canvas) int {
@@ -36,6 +36,8 @@ type TempCanvas struct {
 	cells  [][]cell
 	style  tcell.Style
 }
+
+var _ Canvas = &TempCanvas{}
 
 type lineRange struct {
 	start int
@@ -74,7 +76,7 @@ func (c *TempCanvas) makeRow() []cell {
 
 func (c *TempCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
 	if x < 0 || x >= c.width || y < 0 || y >= c.height {
-		panic(fmt.Errorf("cell %v,%v outside canvas %v,%v", x, y, c.width, c.height))
+		return fmt.Errorf("cell %v,%v outside canvas %v,%v", x, y, c.width, c.height)
 	}
 
 	for y >= len(c.cells) {
@@ -85,17 +87,17 @@ func (c *TempCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tc
 	return nil
 }
 
-func (c *TempCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int) {
+func (c *TempCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int, err error) {
 	if x < 0 || x >= c.width || y < 0 || y >= c.height {
-		panic(fmt.Errorf("cell %d, %d outside bounds %d, %d", x, y, c.width, c.height))
+		return 0, nil, 0, 0, fmt.Errorf("cell %d, %d outside bounds %d, %d", x, y, c.width, c.height)
 	}
 
 	if y >= len(c.cells) {
-		return 0, nil, tcell.StyleDefault, 1
+		return 0, nil, tcell.StyleDefault, 1, nil
 	}
 
 	cell := c.cells[y][x]
-	return cell.ch, nil, cell.style, 1
+	return cell.ch, nil, cell.style, 1, nil
 }
 
 type SubCanvas struct {
@@ -108,10 +110,10 @@ type SubCanvas struct {
 	style     tcell.Style
 }
 
-func newSubCanvas(del Canvas, startX int, startY int, width int, height int, style tcell.Style) *SubCanvas {
+func newSubCanvas(del Canvas, startX int, startY int, width int, height int, style tcell.Style) (*SubCanvas, error) {
 	_, delHeight := del.Size()
 	if height == GROW && delHeight != GROW {
-		panic(fmt.Errorf("can't create a growing subcanvas from a non-growing subcanvas"))
+		return nil, fmt.Errorf("can't create a growing subcanvas from a non-growing subcanvas")
 	}
 	r := &SubCanvas{
 		del:       del,
@@ -122,8 +124,11 @@ func newSubCanvas(del Canvas, startX int, startY int, width int, height int, sty
 		highWater: -1,
 		style:     style,
 	}
-	r.fill(-1)
-	return r
+	err := r.fill(-1)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func (c *SubCanvas) Size() (int, int) {
@@ -145,12 +150,15 @@ func (c *SubCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tce
 	if c.height == GROW && y > c.highWater {
 		oldHighWater := c.highWater
 		c.highWater = y
-		c.fill(oldHighWater)
+		err := c.fill(oldHighWater)
+		if err != nil {
+			return err
+		}
 	}
 	return c.del.SetContent(c.startX+x, c.startY+y, mainc, combc, style)
 }
 
-func (c *SubCanvas) fill(lastFilled int) {
+func (c *SubCanvas) fill(lastFilled int) error {
 	startY := lastFilled + 1
 	maxY := c.height
 	if maxY == GROW {
@@ -159,19 +167,23 @@ func (c *SubCanvas) fill(lastFilled int) {
 	for y := startY; y < maxY; y++ {
 		for x := 0; x < c.width; x++ {
 			if err := c.del.SetContent(c.startX+x, c.startY+y, 0, nil, c.style); err != nil {
-				panic(err)
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
-func (c *SubCanvas) GetContent(x int, y int) (rune, []rune, tcell.Style, int) {
+func (c *SubCanvas) GetContent(x int, y int) (rune, []rune, tcell.Style, int, error) {
 	return c.del.GetContent(x, y)
 }
 
 type ScreenCanvas struct {
 	del tcell.Screen
 }
+
+var _ Canvas = &ScreenCanvas{}
 
 func newScreenCanvas(del tcell.Screen) *ScreenCanvas {
 	return &ScreenCanvas{del: del}
@@ -190,6 +202,7 @@ func (c *ScreenCanvas) Close() (int, int) {
 	return c.del.Size()
 }
 
-func (c *ScreenCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int) {
-	return c.del.GetContent(x, y)
+func (c *ScreenCanvas) GetContent(x, y int) (mainc rune, combc []rune, style tcell.Style, width int, err error) {
+	mainc, combc, style, width = c.del.GetContent(x, y)
+	return mainc, combc, style, width, nil
 }
