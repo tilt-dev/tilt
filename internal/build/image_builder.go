@@ -102,16 +102,11 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
 	defer span.Finish()
 
-	err := baseDockerfile.ValidateBaseDockerfile()
-	if err != nil {
-		return nil, err
-	}
-
 	hasEntrypoint := !entrypoint.Empty()
 
 	paths := MountsToPathMappings(mounts)
 	df := baseDockerfile
-	df, steps, err = d.addConditionalSteps(df, steps, paths)
+	df, steps, err := d.addConditionalSteps(df, steps, paths)
 	if err != nil {
 		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
 	}
