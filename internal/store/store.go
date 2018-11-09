@@ -3,6 +3,11 @@ package store
 import (
 	"context"
 	"sync"
+
+	"gopkg.in/d4l3k/messagediff.v1"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 // Read-only store
@@ -24,23 +29,25 @@ type Store struct {
 	mu          sync.Mutex
 	stateMu     sync.RWMutex
 	reduce      Reducer
+	logActions  bool
 
 	// TODO(nick): Define Subscribers and Reducers.
 	// The actionChan is an intermediate representation to make the transition easiser.
 }
 
-func NewStore(reducer Reducer) *Store {
+func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
 	return &Store{
 		state:       NewState(),
 		reduce:      reducer,
 		actionQueue: &actionQueue{},
 		actionCh:    make(chan Action),
 		subscribers: &subscriberList{},
+		logActions:  bool(logActions),
 	}
 }
 
 func NewStoreForTesting() *Store {
-	return NewStore(EmptyReducer)
+	return NewStore(EmptyReducer, false)
 }
 
 func (s *Store) AddSubscriber(sub Subscriber) {
@@ -91,7 +98,20 @@ func (s *Store) Loop(ctx context.Context) error {
 
 		case action := <-s.actionCh:
 			s.stateMu.Lock()
+			var oldState EngineState
+			if s.logActions {
+				oldState = *s.state
+			}
 			s.reduce(ctx, s.state, action)
+			if s.logActions {
+				newState := *s.state
+				go func() {
+					diff, equal := messagediff.PrettyDiff(oldState, newState)
+					if !equal {
+						logger.Get(ctx).Infof("action %T:\n%s\ncaused state change:\n%s\n", action, spew.Sdump(action), diff)
+					}
+				}()
+			}
 			s.stateMu.Unlock()
 		}
 
@@ -158,3 +178,5 @@ func (q *actionQueue) drain() []Action {
 	q.actions = nil
 	return result
 }
+
+type LogActionsFlag bool

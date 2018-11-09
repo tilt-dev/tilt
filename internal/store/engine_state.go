@@ -45,7 +45,7 @@ type EngineState struct {
 	UserExited bool
 
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
-	Log []byte
+	Log []byte `testdiff:"ignore"`
 
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
@@ -73,14 +73,14 @@ type ManifestState struct {
 	CurrentlyBuildingFileChanges []string
 
 	CurrentBuildStartTime     time.Time
-	CurrentBuildLog           *bytes.Buffer
+	CurrentBuildLog           *bytes.Buffer `testdiff:"ignore"`
 	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
 	LastBuildFinishTime       time.Time
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
-	LastBuildLog              *bytes.Buffer
+	LastBuildLog              *bytes.Buffer `testdiff:"ignore"`
 	QueueEntryTime            time.Time
 
 	// If the pod isn't running this container then it's possible we're running stale code
@@ -132,9 +132,9 @@ type Pod struct {
 	Phase     v1.PodPhase
 
 	// The log for the previously active pod, if any
-	PreRestartLog []byte
+	PreRestartLog []byte `testdiff:"ignore"`
 	// The log for the currently active pod, if any
-	CurrentLog []byte
+	CurrentLog []byte `testdiff:"ignore"`
 
 	// Corresponds to the deployed container.
 	ContainerName  container.Name

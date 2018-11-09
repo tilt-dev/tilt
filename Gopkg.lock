@@ -1157,6 +1157,14 @@
   version = "v1.14.0"
 
 [[projects]]
+  digest = "1:653e04c4515b37169ef5874d752f4254e63b4aedb5c8b3a4118e9e3a4e3503e1"
+  name = "gopkg.in/d4l3k/messagediff.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "29f32d820d112dbd66e58492a6ffb7cc3106312b"
+  version = "v1.2.1"
+
+[[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
   name = "gopkg.in/inf.v0"
   packages = ["."]
@@ -1426,6 +1434,7 @@
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/status",
+    "gopkg.in/d4l3k/messagediff.v1",
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
