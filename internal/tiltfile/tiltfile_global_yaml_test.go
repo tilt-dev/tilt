@@ -98,6 +98,34 @@ def snack():
 	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML())
 }
 
+func TestPerManifestYAMLExtractedFromGlobalYAMLForCompositeService(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml, testyaml.SecretYaml)
+	f.WriteFile("global.yaml", multiManifestYAML)
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
+
+def compserv():
+  return composite_service([doggos, snack])
+
+def doggos():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
+  return k8s_service(image)
+
+def snack():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/snack')
+  return k8s_service(image)
+`)
+
+	manifests, gYAML := f.LoadManifestsAndGlobalYAML("compserv")
+
+	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
+	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
+	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML())
+}
+
 func TestAllYAMLExtractedFromGlobalYAML(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
