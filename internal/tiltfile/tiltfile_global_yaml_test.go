@@ -195,6 +195,26 @@ def doggos():
 		"expected global YAML to only contain SecretYaml (all else extracted)")
 }
 
+func TestTwinsInGlobalYAML(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	yaml := yaml.ConcatYAML(testyaml.SanchoYAML, testyaml.SanchoTwinYAML)
+	f.WriteFile("global.yaml", yaml)
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
+
+def sancho():
+  image = static_build('Dockerfile', 'gcr.io/some-project-162817/sancho')
+  return k8s_service(image)
+`)
+
+	manifests, gYAML := f.LoadManifestsAndGlobalYAML("sancho")
+
+	assertYAMLEqual(t, yaml, manifests[0].K8sYAML())
+	assertYAMLEqual(t, "", gYAML.K8sYAML())
+}
+
 func assertYAMLEqual(t *testing.T, y1, y2 string, msgAndArgs ...interface{}) {
 	// Obviously equal
 	if y1 == y2 {
