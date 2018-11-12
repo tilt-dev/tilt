@@ -168,43 +168,40 @@ func TestUpper_UpWatchError(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	go func() {
-		f.fsWatcher.errors <- errors.New("bazquu")
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
+	f.Start([]model.Manifest{manifest}, true)
 
+	f.fsWatcher.errors <- errors.New("bazquu")
+
+	err := <-f.createManifestsResult
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
 }
 
-// we can't have a test for a file change w/o error because Up doesn't return unless there's an error
-func TestUpper_UpWatchFileChangeThenError(t *testing.T) {
+func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	go func() {
-		f.timerMaker.maxTimerLock.Lock()
-		call := <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, []string{}, call.state.FilesChanged())
-		fileRelPath := "fdas"
-		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
-		call = <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
-		fileAbsPath, err := filepath.Abs(fileRelPath)
-		if err != nil {
-			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-		}
-		assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
-		f.fsWatcher.errors <- errors.New("bazquu")
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "bazquu", err.Error())
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.timerMaker.maxTimerLock.Lock()
+	call := <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, []string{}, call.state.FilesChanged())
+	fileRelPath := "fdas"
+	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+	call = <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	fileAbsPath, err := filepath.Abs(fileRelPath)
+	if err != nil {
+		t.Errorf("error making abs path of %v: %v", fileRelPath, err)
 	}
+	assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
+
+	err = f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -213,37 +210,35 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	go func() {
-		f.timerMaker.maxTimerLock.Lock()
-		call := <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, []string{}, call.state.FilesChanged())
+	f.Start([]model.Manifest{manifest}, true)
 
-		f.timerMaker.restTimerLock.Lock()
-		fileRelPaths := []string{"fdas", "giueheh"}
-		for _, fileRelPath := range fileRelPaths {
-			f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
-		}
-		f.timerMaker.restTimerLock.Unlock()
+	f.timerMaker.maxTimerLock.Lock()
+	call := <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, []string{}, call.state.FilesChanged())
 
-		call = <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
-
-		var fileAbsPaths []string
-		for _, fileRelPath := range fileRelPaths {
-			fileAbsPath, err := filepath.Abs(fileRelPath)
-			if err != nil {
-				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-			}
-			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
-		}
-		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
-		f.fsWatcher.errors <- errors.New("bazquu")
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "bazquu", err.Error())
+	f.timerMaker.restTimerLock.Lock()
+	fileRelPaths := []string{"fdas", "giueheh"}
+	for _, fileRelPath := range fileRelPaths {
+		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 	}
+	f.timerMaker.restTimerLock.Unlock()
+
+	call = <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+
+	var fileAbsPaths []string
+	for _, fileRelPath := range fileRelPaths {
+		fileAbsPath, err := filepath.Abs(fileRelPath)
+		if err != nil {
+			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+		}
+		fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+	}
+	assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
+
+	err := f.Stop()
+	assert.NoError(t, err)
 
 	f.assertAllBuildsConsumed()
 }
@@ -253,37 +248,35 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	go func() {
-		call := <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
-		assert.Equal(t, []string{}, call.state.FilesChanged())
+	f.Start([]model.Manifest{manifest}, true)
 
-		f.timerMaker.maxTimerLock.Lock()
-		f.timerMaker.restTimerLock.Lock()
-		fileRelPaths := []string{"fdas", "giueheh"}
-		for _, fileRelPath := range fileRelPaths {
-			f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
-		}
-		f.timerMaker.maxTimerLock.Unlock()
+	call := <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, []string{}, call.state.FilesChanged())
 
-		call = <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
-
-		var fileAbsPaths []string
-		for _, fileRelPath := range fileRelPaths {
-			fileAbsPath, err := filepath.Abs(fileRelPath)
-			if err != nil {
-				t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-			}
-			fileAbsPaths = append(fileAbsPaths, fileAbsPath)
-		}
-		assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
-		f.fsWatcher.errors <- errors.New("bazquu")
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "bazquu", err.Error())
+	f.timerMaker.maxTimerLock.Lock()
+	f.timerMaker.restTimerLock.Lock()
+	fileRelPaths := []string{"fdas", "giueheh"}
+	for _, fileRelPath := range fileRelPaths {
+		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 	}
+	f.timerMaker.maxTimerLock.Unlock()
+
+	call = <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+
+	var fileAbsPaths []string
+	for _, fileRelPath := range fileRelPaths {
+		fileAbsPath, err := filepath.Abs(fileRelPath)
+		if err != nil {
+			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
+		}
+		fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+	}
+	assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
+
+	err := f.Stop()
+	assert.NoError(t, err)
 
 	f.assertAllBuildsConsumed()
 }
@@ -293,22 +286,21 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
 	f.SetNextBuildFailure(errors.New("Build failed"))
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
 
-		f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+	f.Start([]model.Manifest{manifest}, true)
 
-		call = <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
-		assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	assert.Equal(t, endToken, err)
+	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+
+	call = <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
+	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -319,15 +311,13 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.SetNextBuildFailure(context.Canceled)
 
-	closeCh := make(chan struct{})
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
-		close(closeCh)
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	assert.Equal(t, context.Canceled, err)
-	<-closeCh
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
+
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -384,34 +374,32 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	endToken := errors.New("my-err-token")
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
+	f.Start([]model.Manifest{manifest}, true)
 
-		// Simulate a change to .#a.go that's a broken symlink.
-		realPath := filepath.Join(f.Path(), "a.go")
-		tmpPath := filepath.Join(f.Path(), ".#a.go")
-		_ = os.Symlink(realPath, tmpPath)
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		f.fsWatcher.events <- watch.FileEvent{Path: tmpPath}
+	// Simulate a change to .#a.go that's a broken symlink.
+	realPath := filepath.Join(f.Path(), "a.go")
+	tmpPath := filepath.Join(f.Path(), ".#a.go")
+	_ = os.Symlink(realPath, tmpPath)
 
-		select {
-		case <-f.b.calls:
-			t.Fatal("Expected to skip build")
-		case <-time.After(5 * time.Millisecond):
-		}
+	f.fsWatcher.events <- watch.FileEvent{Path: tmpPath}
 
-		f.TouchFiles([]string{realPath})
-		f.fsWatcher.events <- watch.FileEvent{Path: realPath}
+	select {
+	case <-f.b.calls:
+		t.Fatal("Expected to skip build")
+	case <-time.After(5 * time.Millisecond):
+	}
 
-		call = <-f.b.calls
-		assert.Equal(t, []string{tmpPath, realPath}, call.state.FilesChanged())
+	f.TouchFiles([]string{realPath})
+	f.fsWatcher.events <- watch.FileEvent{Path: realPath}
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	assert.Equal(t, endToken, err)
+	call = <-f.b.calls
+	assert.Equal(t, []string{tmpPath, realPath}, call.state.FilesChanged())
+
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -426,39 +414,35 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	manifest.ConfigFiles = []string{
 		f.JoinPath("Dockerfile"),
 	}
-	endToken := errors.New("my-err-token")
+	f.Start([]model.Manifest{manifest}, true)
 
-	// everything that we want to do while watch loop is running
-	go func() {
-		// First call: with the old manifest
-		call := <-f.b.calls
-		assert.Empty(t, call.manifest.BaseDockerfile)
+	// First call: with the old manifest
+	call := <-f.b.calls
+	assert.Empty(t, call.manifest.BaseDockerfile)
 
-		f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 
-		// Second call: new manifest!
-		call = <-f.b.calls
-		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-		assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYAML())
+	// Second call: new manifest!
+	call = <-f.b.calls
+	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+	assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYAML())
 
-		// Since the manifest changed, we cleared the previous build state to force an image build
-		assert.False(t, call.state.HasImage())
+	// Since the manifest changed, we cleared the previous build state to force an image build
+	assert.False(t, call.state.HasImage())
 
-		f.WriteFile("Tiltfile", simpleTiltfile)
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
 
-		// third call: new manifest should persist
-		call = <-f.b.calls
-		assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
+	// third call: new manifest should persist
+	call = <-f.b.calls
+	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 
-		// Unchanged manifest --> we do NOT clear the build state
-		assert.True(t, call.state.HasImage())
+	// Unchanged manifest --> we do NOT clear the build state
+	assert.True(t, call.state.HasImage())
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	assert.Equal(t, endToken, err)
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -831,24 +815,21 @@ ADD ./ ./
 go build ./...
 `
 	manifest.StaticBuildPath = f.Path()
+	f.Start([]model.Manifest{manifest}, true)
 
-	endToken := errors.New("my-err-token")
-	go func() {
-		call := <-f.b.calls
-		assert.True(t, call.state.IsEmpty())
+	call := <-f.b.calls
+	assert.True(t, call.state.IsEmpty())
 
-		// Simulate a change to main.go
-		mainPath := filepath.Join(f.Path(), "main.go")
-		f.fsWatcher.events <- watch.FileEvent{Path: mainPath}
+	// Simulate a change to main.go
+	mainPath := filepath.Join(f.Path(), "main.go")
+	f.fsWatcher.events <- watch.FileEvent{Path: mainPath}
 
-		// Check that this triggered a rebuild.
-		call = <-f.b.calls
-		assert.Equal(t, []string{mainPath}, call.state.FilesChanged())
+	// Check that this triggered a rebuild.
+	call = <-f.b.calls
+	assert.Equal(t, []string{mainPath}, call.state.FilesChanged())
 
-		f.fsWatcher.errors <- endToken
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	assert.Equal(t, endToken, err)
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -1172,18 +1153,16 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 		},
 	}
 
-	go func() {
-		call := <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
+	f.Start([]model.Manifest{manifest}, true)
 
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
-		time.Sleep(10 * time.Millisecond)
-		f.fsWatcher.errors <- errors.New("done")
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "done", err.Error())
-	}
+	call := <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
+	time.Sleep(10 * time.Millisecond)
+
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
@@ -1199,18 +1178,16 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 		},
 	}
 
-	go func() {
-		call := <-f.b.calls
-		assert.Equal(t, manifest, call.manifest)
+	f.Start([]model.Manifest{manifest}, true)
 
-		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
-		time.Sleep(10 * time.Millisecond)
-		f.fsWatcher.errors <- errors.New("done")
-	}()
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, true, "")
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "done", err.Error())
-	}
+	call := <-f.b.calls
+	assert.Equal(t, manifest, call.manifest)
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
+	time.Sleep(10 * time.Millisecond)
+
+	err := f.Stop()
+	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
 
