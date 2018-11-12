@@ -152,7 +152,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case ErrorAction:
 		err = action.Error
 	case hud.ExitAction:
-		handleExitAction(state)
+		handleExitAction(state, action)
 	case manifestFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
@@ -630,8 +630,12 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	return nil
 }
 
-func handleExitAction(state *store.EngineState) {
-	state.Exit = true
+func handleExitAction(state *store.EngineState, action hud.ExitAction) {
+	if action.Err != nil {
+		state.PermanentError = action.Err
+	} else {
+		state.UserExited = true
+	}
 }
 
 // Check if the filesChangedSet only contains spurious changes that

@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -111,14 +112,18 @@ type mount struct {
 // See model.Manifest for more information on what all these fields mean.
 type dockerImage struct {
 	baseDockerfilePath localPath
+	baseDockerfile     dockerfile.Dockerfile
 	ref                reference.Named
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
 	tiltFilename       string
+	cachePaths         []string
 
 	staticDockerfilePath localPath
+	staticDockerfile     dockerfile.Dockerfile
 	staticBuildPath      localPath
+	staticBuildArgs      map[string]string
 }
 
 var _ skylark.Value = &dockerImage{}
@@ -242,13 +247,30 @@ func (d *dockerImage) Attr(name string) (skylark.Value, error) {
 		}
 	case "file_tag":
 		return skylark.String(d.ref.String()), nil
+	case "cache":
+		return skylark.NewBuiltin("cache", d.cache), nil
 	default:
 		return nil, nil
 	}
 }
 
+func (d *dockerImage) cache(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var path string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("Must be an absolute path in the container: %s", path)
+	}
+
+	d.cachePaths = append(d.cachePaths, path)
+	return skylark.None, err
+}
+
 func (*dockerImage) AttrNames() []string {
-	return []string{"file_name", "file_tag"}
+	return []string{"file_name", "file_tag", "cache"}
 }
 
 type gitRepo struct {

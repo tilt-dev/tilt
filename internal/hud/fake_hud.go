@@ -38,8 +38,11 @@ func (h *FakeHud) Run(ctx context.Context, dispatch func(action store.Action), r
 	return ctx.Err()
 }
 
-func (h *FakeHud) SetNarrationMessage(ctx context.Context, msg string) {}
-func (h *FakeHud) Refresh(ctx context.Context)                         {}
+func (h *FakeHud) SetNarrationMessage(ctx context.Context, msg string) error {
+	return nil
+}
+
+func (h *FakeHud) Refresh(ctx context.Context) {}
 
 func (h *FakeHud) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()

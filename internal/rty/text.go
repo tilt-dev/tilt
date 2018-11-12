@@ -108,17 +108,17 @@ func BgColoredString(s string, fg tcell.Color, bg tcell.Color) Component {
 	return NewStringBuilder().Fg(fg).Bg(bg).Text(s).Build()
 }
 
-func (l *StringLayout) Size(availWidth int, availHeight int) (int, int) {
+func (l *StringLayout) Size(availWidth int, availHeight int) (int, int, error) {
 	return l.render(nil, availWidth, availHeight)
 }
 
 func (l *StringLayout) Render(w Writer, width int, height int) error {
-	l.render(w, width, height)
-	return nil
+	_, _, err := l.render(w, width, height)
+	return err
 }
 
 // returns width, height for laying out full string
-func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
+func (l *StringLayout) render(w Writer, width int, height int) (int, int, error) {
 	nextX, nextY := 0, 0
 	maxWidth := 0
 	for _, d := range l.directives {
@@ -137,7 +137,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 			}
 			continue
 		default:
-			panic(fmt.Errorf("StringLayout.Render: unexpected directive %T %+v", d, d))
+			return 0, 0, fmt.Errorf("StringLayout.Render: unexpected directive %T %+v", d, d)
 		}
 
 		// now we know it's a text directive
@@ -152,7 +152,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 				maxWidth = nextX + 1
 			}
 			if nextY >= height {
-				return maxWidth, height
+				return maxWidth, height, nil
 			}
 			if ch == '\n' {
 				if nextX == 0 && w != nil {
@@ -169,8 +169,5 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int) {
 			nextX = nextX + 1
 		}
 	}
-	if nextY == 0 {
-		nextY = 1
-	}
-	return maxWidth, nextY
+	return maxWidth, nextY + 1, nil
 }

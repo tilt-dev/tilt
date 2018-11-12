@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -22,6 +24,7 @@ type Manifest struct {
 	tiltFilename string
 	dockerRef    reference.Named
 	portForwards []PortForward
+	cachePaths   []string
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
@@ -38,8 +41,19 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
+	StaticBuildArgs  map[string]string
 
 	Repos []LocalGithubRepo
+}
+
+func (m Manifest) WithCachePaths(paths []string) Manifest {
+	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)
+	sort.Strings(m.cachePaths)
+	return m
+}
+
+func (m Manifest) CachePaths() []string {
+	return append([]string{}, m.cachePaths...)
 }
 
 func (m Manifest) ConfigMatcher() (PathMatcher, error) {
@@ -84,7 +98,7 @@ func (m Manifest) validate() *ValidateErr {
 	}
 
 	if m.K8sYAML() == "" {
-		return validateErrf("[validate] manifest %q missing YAML file", m.Name)
+		return validateErrf("[validate] manifest %q missing k8s YAML", m.Name)
 	}
 
 	for _, m := range m.Mounts {
@@ -110,26 +124,24 @@ func (m Manifest) validate() *ValidateErr {
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
-	configFilesMatch := m1.configFilesEqual(m2.ConfigFiles)
+	configFilesMatch := stringSlicesEqual(m1.ConfigFiles, m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
 	reposMatch := m1.reposEqual(m2.Repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
 	portForwardsMatch := m1.portForwardsEqual(m2)
+	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
+	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
 
-	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch
+	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch
 }
 
-func (m1 Manifest) configFilesEqual(c2 []string) bool {
-	if (m1.ConfigFiles == nil) != (c2 == nil) {
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
 		return false
 	}
 
-	if len(m1.ConfigFiles) != len(c2) {
-		return false
-	}
-
-	for i := range c2 {
-		if m1.ConfigFiles[i] != c2[i] {
+	for i := range b {
+		if a[i] != b[i] {
 			return false
 		}
 	}

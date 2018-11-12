@@ -27,6 +27,8 @@ type Resource struct {
 	PodRestarts     int
 	Endpoints       []string
 	PodLog          string
+
+	IsYAMLManifest bool
 }
 
 // State of the current view that's not expressed in the underlying model state.
@@ -42,12 +44,12 @@ type View struct {
 }
 
 type ViewState struct {
-	ShowNarration    bool
-	NarrationMessage string
-	Resources        []ResourceViewState
-	LogModal         LogModal
-
+	ShowNarration         bool
+	NarrationMessage      string
+	Resources             []ResourceViewState
+	LogModal              LogModal
 	ProcessedLogByteCount int
+	AlertMessage          string
 }
 
 type ResourceViewState struct {
@@ -60,8 +62,4 @@ type LogModal struct {
 
 	// if we're showing the full tilt log output in a modal
 	TiltLog bool
-}
-
-func (lm LogModal) IsActive() bool {
-	return lm.TiltLog || lm.ResourceLogNumber != 0
 }

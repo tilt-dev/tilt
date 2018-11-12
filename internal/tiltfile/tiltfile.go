@@ -9,14 +9,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
-
-	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -68,26 +68,58 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 		return skylark.None, errors.New("tried to start a build context while another build context was already open")
 	}
 
+	df, err := t.readDockerfile(thread, dockerfileLocalPath.path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = df.ValidateBaseDockerfile()
+	if err != nil {
+		return nil, err
+	}
+
 	buildContext := &dockerImage{
 		baseDockerfilePath: dockerfileLocalPath,
+		baseDockerfile:     df,
 		ref:                ref,
 		entrypoint:         entrypoint,
 		tiltFilename:       t.filename,
-	}
-	err = t.recordReadFile(thread, dockerfileLocalPath.path)
-	if err != nil {
-		return skylark.None, err
 	}
 	thread.SetLocal(buildContextKey, buildContext)
 	return skylark.None, nil
 }
 
+func skylarkStringDictToGoMap(d *skylark.Dict) (map[string]string, error) {
+	r := map[string]string{}
+
+	for _, tuple := range d.Items() {
+		kV, ok := tuple[0].(skylark.String)
+		if !ok {
+			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
+		}
+
+		k := string(kV)
+
+		vV, ok := tuple[1].(skylark.String)
+		if !ok {
+			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
+		}
+
+		v := string(vV)
+
+		r[k] = v
+	}
+
+	return r, nil
+}
+
 func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var dockerRef string
-	var dockerfilePath, buildPath skylark.Value
+	var dockerfilePath, buildPath, buildArgs skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"dockerfile", &dockerfilePath,
 		"ref", &dockerRef,
+		"build_args?", &buildArgs,
 		"context?", &buildPath,
 	)
 	if err != nil {
@@ -101,7 +133,20 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 
 	dockerfileLocalPath, err := t.localPathFromSkylarkValue(dockerfilePath)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (dockerfile): %v", err)
+		return nil, fmt.Errorf("Argument 1 (dockerfile): %v", err)
+	}
+
+	var sba map[string]string
+	if buildArgs != nil {
+		d, ok := buildArgs.(*skylark.Dict)
+		if !ok {
+			return nil, fmt.Errorf("Argument 3 (build_args): expected dict, got %T", buildArgs)
+		}
+
+		sba, err = skylarkStringDictToGoMap(d)
+		if err != nil {
+			return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
+		}
 	}
 
 	var buildLocalPath localPath
@@ -113,21 +158,39 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 	} else {
 		buildLocalPath, err = t.localPathFromSkylarkValue(buildPath)
 		if err != nil {
-			return nil, fmt.Errorf("Argument 2 (context): %v", err)
+			return nil, fmt.Errorf("Argument 4 (context): %v", err)
 		}
+	}
+
+	df, err := t.readDockerfile(thread, dockerfileLocalPath.path)
+	if err != nil {
+		return nil, err
 	}
 
 	buildContext := &dockerImage{
 		staticDockerfilePath: dockerfileLocalPath,
+		staticDockerfile:     df,
 		staticBuildPath:      buildLocalPath,
 		ref:                  ref,
 		tiltFilename:         t.filename,
+		staticBuildArgs:      sba,
 	}
-	err = t.recordReadFile(thread, dockerfileLocalPath.path)
-	if err != nil {
-		return skylark.None, err
-	}
+
 	return buildContext, nil
+}
+
+func (t *Tiltfile) readDockerfile(thread *skylark.Thread, path string) (dockerfile.Dockerfile, error) {
+	err := t.recordReadFile(thread, path)
+	if err != nil {
+		return "", err
+	}
+
+	dfBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to open dockerfile '%v': %v", path, err)
+	}
+
+	return dockerfile.Dockerfile(dfBytes), nil
 }
 
 func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -466,10 +529,10 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		return nil, err
 	}
 
+	var manifests []model.Manifest
+
 	switch manifest := val.(type) {
 	case compManifest:
-		var manifests []model.Manifest
-
 		for _, cMan := range manifest.cManifest {
 			m, err := skylarkManifestToDomain(cMan)
 			if err != nil {
@@ -478,7 +541,6 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 			manifests = append(manifests, m)
 		}
-		return manifests, nil
 	case *k8sManifest:
 		manifest.configFiles = files
 
@@ -488,18 +550,22 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		}
 
 		m.Name = model.ManifestName(manifestName)
+		manifests = append(manifests, m)
 
+	default:
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+	}
+
+	// Pull out Global YAML corresponding to manifest(s)
+	for i, m := range manifests {
 		manifestYAMLFromGlobalYAML, err := t.extractFromGlobalYAMLForManifest(ctx, m)
 		if err != nil {
 			return nil, errors.Wrapf(err, "extracting global yaml for manifest %s", m.Name)
 		}
 		m = m.AppendK8sYAML(manifestYAMLFromGlobalYAML)
-
-		return []model.Manifest{m}, nil
-
-	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+		manifests[i] = m
 	}
+	return manifests, nil
 }
 
 // extractFromGlobalYAMLForManifest finds any objects defined in the global YAML
@@ -516,7 +582,6 @@ func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model
 	}
 
 	var matchingSelector []k8s.K8sEntity
-	// TODO(maia): also get entities that select for any of THESE entities (services etc.)
 	matchingImg, allRest, err := k8s.FilterByImage(entities, m.DockerRef())
 	for _, e := range matchingImg {
 		podTemplates, err := k8s.ExtractPodTemplateSpec(e)
@@ -543,7 +608,7 @@ func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model
 
 	matching := append(matchingImg, matchingSelector...)
 
-	// GlobalYAML = GlobalYAML without any k8s entries matching this manifest
+	// GlobalYAML -= k8s entries matching this manifest
 	gYAMLWithoutMatches, err := k8s.SerializeYAML(allRest)
 	if err != nil {
 		return "", errors.Wrap(err, "re-serializing global yaml")
@@ -563,37 +628,27 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
 	}
 
-	var err error
 	image := manifest.dockerImage
-	baseDockerfileBytes := []byte{}
-	staticDockerfileBytes := []byte{}
-	if image.staticDockerfilePath.Truth() {
-		staticDockerfileBytes, err = ioutil.ReadFile(image.staticDockerfilePath.path)
-		if err != nil {
-			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.staticDockerfilePath.path, err)
-		}
-	} else {
-		baseDockerfileBytes, err = ioutil.ReadFile(image.baseDockerfilePath.path)
-		if err != nil {
-			return model.Manifest{}, fmt.Errorf("failed to open dockerfile '%v': %v", image.baseDockerfilePath.path, err)
-		}
-	}
-
 	m := model.Manifest{
-		BaseDockerfile: string(baseDockerfileBytes),
+		BaseDockerfile: image.baseDockerfile.String(),
 		Mounts:         skylarkMountsToDomain(image.mounts),
 		Steps:          image.steps,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		Name:           model.ManifestName(manifest.name),
 		ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
-		StaticDockerfile: string(staticDockerfileBytes),
+		StaticDockerfile: image.staticDockerfile.String(),
 		StaticBuildPath:  string(image.staticBuildPath.path),
+		StaticBuildArgs:  image.staticBuildArgs,
 
 		Repos: SkylarkReposToDomain(image),
 	}
 
-	m = m.WithPortForwards(manifest.portForwards).WithTiltFilename(image.tiltFilename).WithK8sYAML(k8sYaml).WithDockerRef(image.ref)
+	m = m.WithPortForwards(manifest.portForwards).
+		WithTiltFilename(image.tiltFilename).
+		WithK8sYAML(k8sYaml).
+		WithDockerRef(image.ref).
+		WithCachePaths(image.cachePaths)
 
 	return m, nil
 }

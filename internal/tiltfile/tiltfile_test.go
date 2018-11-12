@@ -900,6 +900,26 @@ def blorgly():
 	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
 }
 
+func TestStaticBuildWithBuildArgs(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  return k8s_service(static_build("Dockerfile", "docker-tag", {"foo": "bar", "baz": "qux"}))
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, "dockerfile text", manifest.StaticDockerfile)
+	assert.Equal(t, f.Path(), manifest.StaticBuildPath)
+	assert.Equal(t, "docker.io/library/docker-tag", manifest.DockerRef().String())
+	buildArgs := manifest.StaticBuildArgs
+	assert.Equal(t, buildArgs["foo"], "bar")
+	assert.Equal(t, buildArgs["baz"], "qux")
+}
+
 func TestPortForward(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
@@ -924,6 +944,24 @@ def blorgly():
 			ContainerPort: 443,
 		},
 	}, manifest.PortForwards())
+}
+
+func TestCachePaths(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", "dockerfile text")
+	f.WriteFile("Tiltfile", `
+def blorgly():
+  yaml = local('echo yaaaaaaaaml')
+  img = static_build("Dockerfile", "docker-tag")
+  img.cache("/app/node_modules")
+  img.cache("/app/yarn.lock")
+  return k8s_service(img)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, []string{"/app/node_modules", "/app/yarn.lock"}, manifest.CachePaths())
 }
 
 func TestSymlinkInPath(t *testing.T) {
@@ -1048,4 +1086,21 @@ def blorgly():
 		"service.yaml",
 	})
 	assert.Equal(t, expected, manifest.ConfigFiles)
+}
+
+func TestValidateBaseDockerfile(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile.base", `FROM golang:10
+ADD . .
+`)
+	f.WriteFile("Tiltfile", `def blorgly():
+  start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
+  image = stop_build()
+  return k8s_service(image, yaml="yaaaaaaaaml")
+`)
+
+	err := f.LoadManifestForError("blorgly")
+	assert.Contains(t, err.Error(), "base Dockerfile contains an ADD/COPY")
 }

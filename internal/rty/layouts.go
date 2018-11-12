@@ -49,8 +49,8 @@ func ldToWh(length int, depth int, dir Dir) (width int, height int) {
 	return length, depth
 }
 
-func (l *FlexLayout) Size(width int, height int) (int, int) {
-	return width, height
+func (l *FlexLayout) Size(width int, height int) (int, int, error) {
+	return width, height, nil
 }
 
 func (l *FlexLayout) Render(w Writer, width, height int) error {
@@ -61,7 +61,10 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 	var flexIdxs []int
 
 	for i, c := range l.cs {
-		reqWidth, reqHeight := c.Size(width, height)
+		reqWidth, reqHeight, err := c.Size(width, height)
+		if err != nil {
+			return err
+		}
 		reqLen, _ := whToLd(reqWidth, reqHeight, l.dir)
 		if reqLen >= length {
 			flexIdxs = append(flexIdxs, i)
@@ -94,9 +97,17 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 		var subW Writer
 
 		if l.dir == DirHor {
-			subW = w.Divide(offset, 0, allocations[i], height)
+			var err error
+			subW, err = w.Divide(offset, 0, allocations[i], height)
+			if err != nil {
+				return err
+			}
 		} else {
-			subW = w.Divide(0, offset, width, allocations[i])
+			var err error
+			subW, err = w.Divide(0, offset, width, allocations[i])
+			if err != nil {
+				return err
+			}
 		}
 
 		offset += elemLength
@@ -106,9 +117,14 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 	return nil
 }
 
+type concatLayoutComponent struct {
+	c     Component
+	fixed bool
+}
+
 type ConcatLayout struct {
 	dir Dir
-	cs  []Component
+	cs  []concatLayoutComponent
 }
 
 var _ Component = &ConcatLayout{}
@@ -118,43 +134,118 @@ func NewConcatLayout(dir Dir) *ConcatLayout {
 }
 
 func (l *ConcatLayout) Add(c Component) {
-	l.cs = append(l.cs, c)
+	l.cs = append(l.cs, concatLayoutComponent{c, true})
 }
 
-func (l *ConcatLayout) Size(width, height int) (int, int) {
-	totalLen := 0
-	maxDepth := 0
-	for _, c := range l.cs {
-		reqWidth, reqHeight := c.Size(width, height)
+// A ConcatLayout element can be either fixed or dynamic. Fixed components are all given a chance at the full
+// canvas. If they ask for too much in sum, things will break.
+// Dynamic components get equal shares of whatever is left after the fixed components get theirs.
+// NB: There is currently a bit of a murky line between ConcatLayout and FlexLayout.
+func (l *ConcatLayout) AddDynamic(c Component) {
+	l.cs = append(l.cs, concatLayoutComponent{c, false})
+}
+
+func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int, allocatedLen int, maxDepth int, err error) {
+	length, depth := whToLd(width, height, l.dir)
+
+	type componentAndIndex struct {
+		c     Component
+		index int
+	}
+
+	var fixedComponents, unfixedComponents []componentAndIndex
+	for i, clc := range l.cs {
+		if clc.fixed {
+			fixedComponents = append(fixedComponents, componentAndIndex{clc.c, i})
+		} else {
+			unfixedComponents = append(unfixedComponents, componentAndIndex{clc.c, i})
+		}
+	}
+
+	alloc := func(c Component, w, h int) (int, int, error) {
+		reqWidth, reqHeight, err := c.Size(w, h)
+		if err != nil {
+			return 0, 0, err
+		}
 		reqLen, reqDepth := whToLd(reqWidth, reqHeight, l.dir)
 		if reqLen == GROW {
-			totalLen = GROW
-		}
-		if totalLen != GROW {
-			totalLen += reqLen
+			allocatedLen = GROW
+		} else {
+			allocatedLen += reqLen
 		}
 		if reqDepth > maxDepth {
 			maxDepth = reqDepth
 		}
+
+		return reqWidth, reqHeight, nil
 	}
-	return ldToWh(totalLen, maxDepth, l.dir)
+
+	widths = make([]int, len(l.cs))
+	heights = make([]int, len(l.cs))
+
+	for _, c := range fixedComponents {
+		w, h, err := alloc(c.c, width, height)
+		if err != nil {
+			return nil, nil, 0, 0, err
+		}
+		widths[c.index], heights[c.index] = w, h
+	}
+
+	if len(unfixedComponents) > 0 {
+		lenPerUnfixed := (length - allocatedLen) / len(unfixedComponents)
+		for _, c := range unfixedComponents {
+			w, h := ldToWh(lenPerUnfixed, depth, l.dir)
+			reqW, reqH, err := alloc(c.c, w, h)
+			if err != nil {
+				return nil, nil, 0, 0, err
+			}
+			widths[c.index], heights[c.index] = reqW, reqH
+		}
+	}
+
+	return widths, heights, allocatedLen, maxDepth, nil
+}
+
+func (l *ConcatLayout) Size(width, height int) (int, int, error) {
+	_, _, allocatedLen, maxDepth, err := l.allocate(width, height)
+	if err != nil {
+		return 0, 0, err
+	}
+	len, dep := ldToWh(allocatedLen, maxDepth, l.dir)
+	return len, dep, err
 }
 
 func (l *ConcatLayout) Render(w Writer, width int, height int) error {
+	widths, heights, _, _, err := l.allocate(width, height)
+	if err != nil {
+		return err
+	}
+
 	offset := 0
-	for _, c := range l.cs {
-		reqWidth, reqHeight := c.Size(width, height)
+	for i, c := range l.cs {
+		reqWidth, reqHeight, err := c.c.Size(widths[i], heights[i])
+		if err != nil {
+			return err
+		}
 
 		var subW Writer
 		if l.dir == DirHor {
-			subW = w.Divide(offset, 0, reqWidth, reqHeight)
+			var err error
+			subW, err = w.Divide(offset, 0, reqWidth, reqHeight)
+			if err != nil {
+				return err
+			}
 			offset += reqWidth
 		} else {
-			subW = w.Divide(0, offset, reqWidth, reqHeight)
+			var err error
+			subW, err = w.Divide(0, offset, reqWidth, reqHeight)
+			if err != nil {
+				return err
+			}
 			offset += reqHeight
 		}
 
-		subW.RenderChild(c)
+		subW.RenderChild(c.c)
 	}
 	return nil
 }
@@ -177,13 +268,17 @@ func (l *Line) Add(c Component) {
 	l.del.Add(c)
 }
 
-func (l *Line) Size(width int, height int) (int, int) {
-	return width, 1
+func (l *Line) Size(width int, height int) (int, int, error) {
+	return width, 1, nil
 }
 
 func (l *Line) Render(w Writer, width int, height int) error {
 	w.SetContent(0, 0, 0, nil) // set at least one to take up our line
-	w.Divide(0, 0, width, height).RenderChild(l.del)
+	w, err := w.Divide(0, 0, width, height)
+	if err != nil {
+		return err
+	}
+	w.RenderChild(l.del)
 	return nil
 }
 
@@ -198,8 +293,8 @@ func NewFillerString(ch rune) *FillerString {
 	return &FillerString{ch: ch}
 }
 
-func (f *FillerString) Size(width int, height int) (int, int) {
-	return GROW, height
+func (f *FillerString) Size(width int, height int) (int, int, error) {
+	return GROW, height, nil
 }
 
 func (f *FillerString) Render(w Writer, width int, height int) error {
@@ -233,7 +328,7 @@ func Bg(del Component, color tcell.Color) Component {
 	}
 }
 
-func (l *ColorLayout) Size(width int, height int) (int, int) {
+func (l *ColorLayout) Size(width int, height int) (int, int, error) {
 	return l.del.Size(width, height)
 }
 
@@ -243,7 +338,10 @@ func (l *ColorLayout) Render(w Writer, width int, height int) error {
 	} else {
 		w = w.Background(l.color)
 	}
-	w = w.Fill()
+	w, err := w.Fill()
+	if err != nil {
+		return err
+	}
 	w.RenderChild(l.del)
 	return nil
 }
@@ -252,12 +350,19 @@ type Box struct {
 	focused bool
 	title   string
 	inner   Component
+	grow    bool
 }
 
 var _ Component = &Box{}
 
-func NewBox() *Box {
-	return &Box{}
+// makes a box that will grow to fill its canvas
+func NewGrowingBox() *Box {
+	return &Box{grow: true}
+}
+
+// makes a new box that tightly wraps its inner component
+func NewBox(inner Component) *Box {
+	return &Box{inner: inner}
 }
 
 func (b *Box) SetInner(c Component) {
@@ -272,13 +377,27 @@ func (b *Box) SetTitle(title string) {
 	b.title = title
 }
 
-func (b *Box) Size(width int, height int) (int, int) {
-	return width, height
+func (b *Box) Size(width int, height int) (int, int, error) {
+	if b.grow {
+		return width, height, nil
+	} else {
+		// +/-2 to account for the box chars themselves
+		w, h, err := b.inner.Size(width-2, height-2)
+		if err != nil {
+			return 0, 0, err
+		}
+		return w + 2, h + 2, nil
+	}
 }
 
 func (b *Box) Render(w Writer, width int, height int) error {
 	if height == GROW && b.inner == nil {
 		return fmt.Errorf("box must have either fixed height or a child")
+	}
+
+	width, height, err := b.Size(width, height)
+	if err != nil {
+		return err
 	}
 
 	if b.inner != nil {
@@ -287,7 +406,12 @@ func (b *Box) Render(w Writer, width int, height int) error {
 			innerHeight = GROW
 		}
 
-		childHeight := w.Divide(1, 1, width-2, innerHeight).RenderChild(b.inner)
+		w, err := w.Divide(1, 1, width-2, innerHeight)
+		if err != nil {
+			return err
+		}
+
+		childHeight := w.RenderChild(b.inner)
 		height = childHeight + 2
 	}
 
@@ -354,12 +478,15 @@ func NewFixedSize(del Component, width int, height int) *FixedSizeLayout {
 	return &FixedSizeLayout{del: del, width: width, height: height}
 }
 
-func (l *FixedSizeLayout) Size(width int, height int) (int, int) {
+func (l *FixedSizeLayout) Size(width int, height int) (int, int, error) {
 	if l.width != GROW && l.height != GROW {
-		return l.width, l.height
+		return l.width, l.height, nil
 	}
 	rWidth, rHeight := l.width, l.height
-	delWidth, delHeight := l.del.Size(width, height)
+	delWidth, delHeight, err := l.del.Size(width, height)
+	if err != nil {
+		return 0, 0, err
+	}
 	if rWidth == GROW {
 		rWidth = delWidth
 	}
@@ -367,7 +494,7 @@ func (l *FixedSizeLayout) Size(width int, height int) (int, int) {
 		rHeight = delHeight
 	}
 
-	return rWidth, rHeight
+	return rWidth, rHeight, nil
 }
 
 func (l *FixedSizeLayout) Render(w Writer, width int, height int) error {
@@ -379,37 +506,53 @@ type ModalLayout struct {
 	bg       Component
 	fg       Component
 	fraction float64
+	fixed    bool
 }
 
 var _ Component = &ModalLayout{}
 
-// fg will be rendered on top of bg, using fraction/1 of the height and width of the screen
-func NewModalLayout(bg Component, fg Component, fraction float64) *ModalLayout {
-	return &ModalLayout{fg: fg, bg: bg, fraction: fraction}
+// fg will be rendered on top of bg
+// if fixed is true, it will use using fraction/1 of the height and width of the screen
+// if fixed is false, it will use whatever `fg` asks for, up to fraction/1 of width and height
+func NewModalLayout(bg Component, fg Component, fraction float64, fixed bool) *ModalLayout {
+	return &ModalLayout{fg: fg, bg: bg, fraction: fraction, fixed: fixed}
 }
 
-func (l *ModalLayout) Size(width int, height int) (int, int) {
-	w, h := l.bg.Size(width, height)
-	fgw, fgh := l.fg.Size(width, height)
-	if fgw > w {
-		w = fgw
+func (l *ModalLayout) Size(width int, height int) (int, int, error) {
+	w, h, err := l.bg.Size(width, height)
+	if err != nil {
+		return 0, 0, err
 	}
-	if fgh > h {
-		h = fgh
+	if l.fraction > 1 {
+		w = int(l.fraction * float64(w))
+		h = int(l.fraction * float64(h))
 	}
 
-	return w, h
+	return w, h, nil
 }
 
 func (l *ModalLayout) Render(w Writer, width int, height int) error {
 	w.RenderChild(l.bg)
 
-	f := (1 - l.fraction) / 2
-	mx := int(f * float64(width))
-	my := int(f * float64(height))
-	mh := int((1 - 2*f) * float64(width))
-	mw := int((1 - 2*f) * float64(height))
-	w = w.Divide(mx, my, mh, mw)
+	var mw, mh int
+	if !l.fixed {
+		var err error
+		mw, mh, err = l.fg.Size(int(l.fraction*float64(width)), int(l.fraction*float64(height)))
+		if err != nil {
+			return err
+		}
+	} else {
+		f := (1 - l.fraction) / 2
+		mw = int((1 - 2*f) * float64(width))
+		mh = int((1 - 2*f) * float64(height))
+	}
+
+	mx := width/2 - mw/2
+	my := height/2 - mh/2
+	w, err := w.Divide(mx, my, mw, mh)
+	if err != nil {
+		return err
+	}
 	w.RenderChild(l.fg)
 	return nil
 }
