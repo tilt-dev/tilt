@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -63,7 +64,7 @@ type EngineState struct {
 type ManifestState struct {
 	LastBuild    BuildResult
 	Manifest     model.Manifest
-	Pod          Pod
+	PodSet       PodSet
 	LBs          map[k8s.ServiceName]*url.URL
 	HasBeenBuilt bool
 
@@ -108,6 +109,10 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	}
 }
 
+func (ms *ManifestState) MostRecentPod() Pod {
+	return ms.PodSet.MostRecentPod()
+}
+
 type YAMLManifestState struct {
 	Manifest        model.YAMLManifest
 	HasBeenDeployed bool
@@ -125,12 +130,67 @@ func NewYAMLManifestState(manifest model.YAMLManifest) *YAMLManifestState {
 	}
 }
 
+type PodSet struct {
+	Pods    map[k8s.PodID]*Pod
+	ImageID reference.NamedTagged
+}
+
+func NewPodSet(pods ...Pod) PodSet {
+	podMap := make(map[k8s.PodID]*Pod, len(pods))
+	for _, pod := range pods {
+		p := pod
+		podMap[p.PodID] = &p
+	}
+	return PodSet{
+		Pods: podMap,
+	}
+}
+
+func (s PodSet) Len() int {
+	return len(s.Pods)
+}
+
+func (s PodSet) ContainsID(id k8s.PodID) bool {
+	_, ok := s.Pods[id]
+	return ok
+}
+
+func (s PodSet) PodList() []Pod {
+	pods := make([]Pod, 0, len(s.Pods))
+	for _, pod := range s.Pods {
+		pods = append(pods, *pod)
+	}
+	return pods
+}
+
+// Get the "most recent pod" from the PodSet.
+// For most users, we believe there will be only one pod per manifest.
+// So most of this time, this will return the only pod.
+// And in other cases, it will return a reasonable, consistent default.
+func (s PodSet) MostRecentPod() Pod {
+	bestPod := Pod{}
+	found := false
+
+	for _, v := range s.Pods {
+		if !found || v.isAfter(bestPod) {
+			bestPod = *v
+			found = true
+		}
+	}
+
+	return bestPod
+}
+
 type Pod struct {
 	PodID     k8s.PodID
 	Namespace k8s.Namespace
 	StartedAt time.Time
 	Status    string
 	Phase     v1.PodPhase
+
+	// If a pod is being deleted, Kubernetes marks it as Running
+	// until it actually gets removed.
+	Deleting bool
 
 	// The log for the previously active pod, if any
 	PreRestartLog []byte `testdiff:"ignore"`
@@ -147,6 +207,20 @@ type Pod struct {
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
+}
+
+func (p Pod) Empty() bool {
+	return p.PodID == ""
+}
+
+// A stable sort order for pods.
+func (p Pod) isAfter(p2 Pod) bool {
+	if p.StartedAt.After(p2.StartedAt) {
+		return true
+	} else if p2.StartedAt.After(p.StartedAt) {
+		return false
+	}
+	return p.PodID > p2.PodID
 }
 
 // attempting to include the most recent crash, but no preceding crashes
@@ -288,6 +362,11 @@ func StateToView(s EngineState) view.View {
 			lastBuildLog = ms.LastBuildLog.String()
 		}
 
+		// NOTE(nick): Right now, the UX is designed to show the output exactly one
+		// pod. A better UI might summarize the pods in other ways (e.g., show the
+		// "most interesting" pod that's crash looping, or show logs from all pods
+		// at once).
+		pod := ms.MostRecentPod()
 		r := view.Resource{
 			Name:                  name.String(),
 			DirectoriesWatched:    relWatchDirs,
@@ -302,11 +381,11 @@ func StateToView(s EngineState) view.View {
 			PendingBuildSince:     ms.QueueEntryTime,
 			CurrentBuildEdits:     currentBuildEdits,
 			CurrentBuildStartTime: ms.CurrentBuildStartTime,
-			PodName:               ms.Pod.PodID.String(),
-			PodCreationTime:       ms.Pod.StartedAt,
-			PodStatus:             ms.Pod.Status,
-			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
-			PodLog:                ms.Pod.Log(),
+			PodName:               pod.PodID.String(),
+			PodCreationTime:       pod.StartedAt,
+			PodStatus:             pod.Status,
+			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
+			PodLog:                pod.Log(),
 			Endpoints:             endpoints,
 		}
 

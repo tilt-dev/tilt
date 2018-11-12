@@ -3,6 +3,7 @@ package store
 import (
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -73,6 +74,14 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	r := v.Resources[0]
 	assert.Equal(t, "", r.LastBuildError)
 	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
+}
+
+func TestMostRecentPod(t *testing.T) {
+	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
+	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
+	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
+	podSet := NewPodSet(podA, podB, podC)
+	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
