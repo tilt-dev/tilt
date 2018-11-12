@@ -5,7 +5,11 @@ all: lint errcheck verify_gofmt wire-check test
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
-proto:
+scripts/protocc/protocc.py: scripts/protocc
+	git submodule init
+	git submodule update
+
+proto: scripts/protocc/protocc.py
 	python3 scripts/protocc/protocc.py --out go
 
 # Build a binary that uses synclet:latest
@@ -32,7 +36,6 @@ build-synclet-and-install: synclet-dev install-dev
 
 lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
-	! grep --include=\*.go -rn . -e '^[^/].*defer [^ ]*EndPipeline(' # linting for improperly deferred EndPipeline calls; should be in CLOSURE, i.e. `defer func() { ...EndPipeline(err) }()`
 
 build:
 	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
