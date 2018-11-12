@@ -3,6 +3,7 @@ package engine
 import (
 	"archive/tar"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types"
@@ -60,6 +61,20 @@ ENTRYPOINT ["/go/bin/sancho"]
 LABEL "tilt.buildMode"="scratch"`,
 	}
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
+func TestDeployTwinImages(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoManifest().AppendK8sYAML(SanchoTwinYAML)
+	result, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
+	assert.NoError(t, err)
+
+	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	assert.Equal(t, expectedImage, result.Image.String())
+	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
+		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
 
 type ibdFixture struct {

@@ -2,37 +2,13 @@ package engine
 
 import (
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-const SanchoYAML = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sancho
-  namespace: sancho-ns
-  labels:
-    app: sancho
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: sancho
-  template:
-    metadata:
-      labels:
-        app: sancho
-    spec:
-      containers:
-      - name: sancho
-        image: gcr.io/some-project-162817/sancho
-        env:
-          - name: token
-            valueFrom:
-              secretKeyRef:
-                name: slacktoken
-                key: token
-`
+const SanchoYAML = testyaml.SanchoYAML
+
+const SanchoTwinYAML = testyaml.SanchoTwinYAML
 
 const SanchoBaseDockerfile = `
 FROM go:1.10
