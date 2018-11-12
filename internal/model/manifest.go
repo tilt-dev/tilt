@@ -16,6 +16,22 @@ type ManifestName string
 
 func (m ManifestName) String() string { return string(m) }
 
+func StringsToMNames(strNames []string) []ManifestName {
+	result := make([]ManifestName, len(strNames))
+	for i, s := range strNames {
+		result[i] = ManifestName(s)
+	}
+	return result
+}
+
+func MNamesToStrings(mNames []ManifestName) []string {
+	result := make([]string, len(mNames))
+	for i, m := range mNames {
+		result[i] = m.String()
+	}
+	return result
+}
+
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all builds.

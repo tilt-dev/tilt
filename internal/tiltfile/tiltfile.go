@@ -31,6 +31,10 @@ type Tiltfile struct {
 	globals skylark.StringDict
 	thread  *skylark.Thread
 
+	// All manifests defined in this Tiltfile. Regardless of what manifest the user asks
+	// for, we need to be able to parse all manifests to correctly generate Global YAML
+	allManifestNames []string
+
 	// The filename we're executing. Must be absolute.
 	filename string
 }
@@ -403,7 +407,7 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 	return skylark.None, nil
 }
 
-func Load(ctx context.Context, filename string) (*Tiltfile, error) {
+func Load(ctx context.Context, allManifestNames []string, filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
 			logger.Get(ctx).Infof("%s", msg)
@@ -416,8 +420,9 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	}
 
 	tiltfile := &Tiltfile{
-		filename: filename,
-		thread:   thread,
+		thread:           thread,
+		allManifestNames: allManifestNames,
+		filename:         filename,
 	}
 
 	predeclared := skylark.StringDict{

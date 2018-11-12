@@ -455,10 +455,10 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
   image = stop_build()
   return k8s_service(image, yaml="yaaaaaaaaml")
 
-  def bazqux():
-    start_fast_build("Dockerfile2", "docker-tag2")
-    image = stop_build()
-    return k8s_service(image, yaml="yaaaaaaaaml")
+def bazqux():
+  start_fast_build("Dockerfile2", "docker-tag2")
+  image = stop_build()
+  return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
@@ -520,7 +520,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
   return k8s_service(image, yaml="yaaaaaaaaml")`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
-	manifest := f.loadManifest("foobar")
+	manifest := f.loadTheOnlyManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: with the old manifests
@@ -625,7 +625,7 @@ func TestBreakManifest(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	name := "foobar"
-	manifest := f.loadManifest(name)
+	manifest := f.loadTheOnlyManifest(name)
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: all is well
@@ -669,7 +669,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	name := "foobar"
-	manifest := f.loadManifest(name)
+	manifest := f.loadTheOnlyManifest(name)
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: all is well
@@ -717,7 +717,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	name := "foobar"
-	manifest := f.loadManifest(name)
+	manifest := f.loadTheOnlyManifest(name)
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.WaitUntil("first build finished", func(state store.EngineState) bool {
@@ -772,7 +772,7 @@ func TestFilterOutNonMountedConfigFiles(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 
-	manifest := f.loadManifest("foobar")
+	manifest := f.loadTheOnlyManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: with the old manifests (should be image build)
@@ -1866,12 +1866,15 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadManifest(name string) model.Manifest {
-	tf, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
+// NOTE(maia): use this if the Tiltfile defines only a single manifest. If you want to load
+// a manifest from a Tiltfile that defines more than one manifest and/or your test relies
+// on accurate GlobalYAML, write a new test util that takes an allManifestNames arg.
+func (f *testFixture) loadTheOnlyManifest(name string) model.Manifest {
+	tf, err := tiltfile.Load(f.ctx, []string{name}, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
+	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(f.ctx, model.ManifestName(name))
 	if err != nil {
 		f.T().Fatal(err)
 	}

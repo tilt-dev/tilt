@@ -76,7 +76,7 @@ func (t *TiltfileWatcher) watchLoop(ctx context.Context, st store.RStore, initMa
 				return
 			}
 
-			manifests, globalYAML, err := getNewManifestsFromTiltfile(ctx, initManifests)
+			manifests, globalYAML, err := getNewManifestsFromTiltfile(ctx, model.MNamesToStrings(initManifests))
 			st.Dispatch(TiltfileReloadedAction{
 				Manifests:  manifests,
 				GlobalYAML: globalYAML,

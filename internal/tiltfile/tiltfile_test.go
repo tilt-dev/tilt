@@ -63,28 +63,31 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest) {
+// NOTE(maia): must pass the names of ALL manifests defined in your Tiltfile, or
+// global YAML will be computed incorrectly.
+func (f *gitRepoFixture) LoadAllManifestsAndGlobalYAML(allManifestNames []string) ([]model.Manifest, model.YAMLManifest) {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
-	tiltconfig, err := Load(f.ctx, FileName)
+	tiltconfig, err := Load(f.ctx, nil, FileName)
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, names...)
+	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(
+		f.ctx, model.StringsToMNames(allManifestNames)...)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
 	return manifests, globalYAML
 }
 
-func (f *gitRepoFixture) LoadManifests(names ...model.ManifestName) []model.Manifest {
-	manifests, _ := f.LoadManifestsAndGlobalYAML(names...)
+func (f *gitRepoFixture) LoadManifests(names ...string) []model.Manifest {
+	manifests, _ := f.LoadAllManifestsAndGlobalYAML(names)
 	return manifests
 }
 
-func (f *gitRepoFixture) LoadManifest(name model.ManifestName) model.Manifest {
+func (f *gitRepoFixture) LoadManifest(name string) model.Manifest {
 	manifests := f.LoadManifests(name)
 	if len(manifests) != 1 {
 		f.T().Fatalf("expected 1 manifest, actual: %d", len(manifests))
@@ -92,18 +95,13 @@ func (f *gitRepoFixture) LoadManifest(name model.ManifestName) model.Manifest {
 	return manifests[0]
 }
 
-func (f *gitRepoFixture) LoadGlobalYAML() model.YAMLManifest {
-	_, globalYAML := f.LoadManifestsAndGlobalYAML()
-	return globalYAML
-}
-
-func (f *gitRepoFixture) LoadManifestForError(name model.ManifestName) error {
-	tiltconfig, err := Load(f.ctx, f.JoinPath("Tiltfile"))
+func (f *gitRepoFixture) LoadManifestForError(name string) error {
+	tiltconfig, err := Load(f.ctx, []string{name}, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, name)
+	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, model.ManifestName(name))
 	if err == nil {
 		f.T().Fatal("Expected manifest load error")
 	}
@@ -137,7 +135,7 @@ def hello():
 
 hello()
 `)
-	_, err := Load(f.ctx, "Tiltfile")
+	_, err := Load(f.ctx, []string{"hello"}, "Tiltfile")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -723,7 +721,7 @@ def blorgly():
 `)
 
 	ctx := output.CtxForTest()
-	tiltconfig, err := Load(ctx, f.JoinPath("Tiltfile"))
+	tiltconfig, err := Load(ctx, []string{"blorgly"}, f.JoinPath("Tiltfile"))
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
@@ -1011,7 +1009,7 @@ def blorgly():
 	_ = os.Symlink(f.JoinPath("real"), f.JoinPath("fake"))
 
 	ctx := output.CtxForTest()
-	tiltconfig, err := Load(ctx, filepath.Join("fake", FileName))
+	tiltconfig, err := Load(ctx, []string{"blorgly"}, filepath.Join("fake", FileName))
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}

@@ -92,7 +92,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	tf, err := tiltfile.Load(ctx, args, tiltfile.FileName)
 	if err != nil {
 		return err
 	}
@@ -102,11 +102,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifestNames := make([]model.ManifestName, len(args))
-
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
-	}
+	manifestNames := model.StringsToMNames(args)
 
 	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 	if err != nil {

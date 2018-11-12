@@ -170,7 +170,7 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		tf, err := tiltfile.Load(ctx, tfPath)
+		tf, err := tiltfile.Load(ctx, []string{"tiltdemo"}, tfPath)
 		if err != nil {
 			return err
 		}
