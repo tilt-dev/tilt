@@ -28,7 +28,7 @@ func TestCacheBuilder(t *testing.T) {
 	ref := container.MustParseNamedTagged("gcr.io/nicks/image:source")
 	paths := []string{"/src/node_modules", "/src/yarn.lock"}
 	df := dockerfile.Dockerfile("FROM golang:10")
-	err := f.cb.CreateCacheFrom(f.ctx, df, ref, paths)
+	err := f.cb.CreateCacheFrom(f.ctx, df, ref, paths, emptyBuildArgs)
 	assert.NoError(t, err)
 
 	expected := expectedFile{

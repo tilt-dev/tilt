@@ -116,7 +116,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		}
 
 		df := ibd.staticDockerfile(manifest, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest), manifest.StaticBuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -137,7 +137,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 		df := ibd.baseDockerfile(manifest, cacheRef)
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
+		ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint, manifest.StaticBuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -160,7 +160,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		defer ps.EndPipelineStep(ctx)
 
 		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
+		ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps, manifest.StaticBuildArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -285,7 +285,7 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 		}
 	}
 
-	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef, manifest.CachePaths())
+	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef, manifest.CachePaths(), manifest.StaticBuildArgs)
 	if err != nil {
 		logger.Get(ctx).Debugf("Could not create cache: %v", err)
 	}
