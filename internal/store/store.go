@@ -4,10 +4,11 @@ import (
 	"context"
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/d4l3k/messagediff.v1"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Read-only store
@@ -100,11 +101,11 @@ func (s *Store) Loop(ctx context.Context) error {
 			s.stateMu.Lock()
 			var oldState EngineState
 			if s.logActions {
-				oldState = *s.state
+				oldState = s.cheapCopyState()
 			}
 			s.reduce(ctx, s.state, action)
 			if s.logActions {
-				newState := *s.state
+				newState := s.cheapCopyState()
 				go func() {
 					diff, equal := messagediff.PrettyDiff(oldState, newState)
 					if !equal {
@@ -180,3 +181,18 @@ func (q *actionQueue) drain() []Action {
 }
 
 type LogActionsFlag bool
+
+// This does a partial deep copy for the purposes of comparison
+// i.e., it ensures fields that will be useful in action logging get copied
+// some fields might not be copied and might still point to the same instance as s.state
+// and thus might reflect changes that happened as part of the current action or any future action
+func (s *Store) cheapCopyState() EngineState {
+	ret := *s.state
+	mStates := ret.ManifestStates
+	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	for k, v := range mStates {
+		ms := *v
+		ret.ManifestStates[k] = &ms
+	}
+	return ret
+}
