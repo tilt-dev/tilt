@@ -3,6 +3,12 @@ package store
 import (
 	"context"
 	"sync"
+
+	"github.com/davecgh/go-spew/spew"
+	"gopkg.in/d4l3k/messagediff.v1"
+
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Read-only store
@@ -24,23 +30,25 @@ type Store struct {
 	mu          sync.Mutex
 	stateMu     sync.RWMutex
 	reduce      Reducer
+	logActions  bool
 
 	// TODO(nick): Define Subscribers and Reducers.
 	// The actionChan is an intermediate representation to make the transition easiser.
 }
 
-func NewStore(reducer Reducer) *Store {
+func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
 	return &Store{
 		state:       NewState(),
 		reduce:      reducer,
 		actionQueue: &actionQueue{},
 		actionCh:    make(chan Action),
 		subscribers: &subscriberList{},
+		logActions:  bool(logActions),
 	}
 }
 
 func NewStoreForTesting() *Store {
-	return NewStore(EmptyReducer)
+	return NewStore(EmptyReducer, false)
 }
 
 func (s *Store) AddSubscriber(sub Subscriber) {
@@ -91,7 +99,20 @@ func (s *Store) Loop(ctx context.Context) error {
 
 		case action := <-s.actionCh:
 			s.stateMu.Lock()
+			var oldState EngineState
+			if s.logActions {
+				oldState = s.cheapCopyState()
+			}
 			s.reduce(ctx, s.state, action)
+			if s.logActions {
+				newState := s.cheapCopyState()
+				go func() {
+					diff, equal := messagediff.PrettyDiff(oldState, newState)
+					if !equal {
+						logger.Get(ctx).Infof("action %T:\n%s\ncaused state change:\n%s\n", action, spew.Sdump(action), diff)
+					}
+				}()
+			}
 			s.stateMu.Unlock()
 		}
 
@@ -157,4 +178,21 @@ func (q *actionQueue) drain() []Action {
 	result := append([]Action{}, q.actions...)
 	q.actions = nil
 	return result
+}
+
+type LogActionsFlag bool
+
+// This does a partial deep copy for the purposes of comparison
+// i.e., it ensures fields that will be useful in action logging get copied
+// some fields might not be copied and might still point to the same instance as s.state
+// and thus might reflect changes that happened as part of the current action or any future action
+func (s *Store) cheapCopyState() EngineState {
+	ret := *s.state
+	mStates := ret.ManifestStates
+	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	for k, v := range mStates {
+		ms := *v
+		ret.ManifestStates[k] = &ms
+	}
+	return ret
 }

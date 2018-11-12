@@ -112,7 +112,7 @@ func newWatchManagerFixture(t *testing.T) *watchManagerFixture {
 		}
 		f.pathsSeen = append(f.pathsSeen, fileChange.files...)
 	}
-	st := store.NewStore(store.Reducer(reducer))
+	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
 	f.store = st
 
 	timerMaker := makeFakeTimerMaker(t)

@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -21,9 +20,7 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
-	reducer := _wireReducerValue
-	storeStore := store.NewStore(reducer)
-	deployDiscovery := NewDeployDiscovery(k8s2, storeStore)
+	deployDiscovery := NewDeployDiscovery(k8s2)
 	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
@@ -46,8 +43,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k
 }
 
 var (
-	_wireReducerValue = UpperReducer
-	_wireLabelsValue  = dockerfile.Labels{}
+	_wireLabelsValue = dockerfile.Labels{}
 )
 
 func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, kClient k8s.Client, dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
@@ -79,7 +75,8 @@ var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wi
 	NewLocalContainerBuildAndDeployer,
 	DefaultBuildOrder,
 	NewDeployDiscovery, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
-	ProvideUpdateMode, store.NewStore, NewGlobalYAMLBuildController,
+	ProvideUpdateMode,
+	NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(

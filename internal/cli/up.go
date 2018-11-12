@@ -20,6 +20,7 @@ import (
 )
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
+var logActionsFlag bool = false
 
 type upCmd struct {
 	watch       bool
@@ -43,6 +44,8 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
+	cmd.Flags().Lookup("logactions").Hidden = true
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
 	if err != nil {
 		panic(err)
@@ -123,6 +126,10 @@ func logOutput(s string) {
 
 func provideUpdateModeFlag() engine.UpdateModeFlag {
 	return engine.UpdateModeFlag(updateModeFlag)
+}
+
+func provideLogActions() store.LogActionsFlag {
+	return store.LogActionsFlag(logActionsFlag)
 }
 
 func NewLogActionLogger(ctx context.Context, dispatch func(action store.Action)) logger.Logger {
