@@ -539,6 +539,38 @@ func TestReadFile(t *testing.T) {
 	assert.Equal(t, "hello world", manifest.K8sYAML())
 }
 
+func TestReadFilesParentDirectory(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	base := f.JoinPath("base")
+	err := os.Mkdir(base, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "hello world")
+	f.WriteFile(filepath.Join("base", "Tiltfile"), `def blorgly():
+  yaml = read_file("../a.txt")
+  start_fast_build("../Dockerfile.base", "docker-tag", "the entrypoint")
+  image = stop_build()
+  return k8s_service(image, yaml=yaml)
+`)
+
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.Chdir(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWD)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, "hello world", manifest.K8sYAML())
+}
+
 func TestConfigMatcherWithFastBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
