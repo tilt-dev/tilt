@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Cache directories are stored at the same image name, but with just the cachedir
@@ -84,7 +85,7 @@ func (b CacheBuilder) FetchCache(ctx context.Context, ref reference.Named, cache
 }
 
 // Creates a cache image.
-func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string) error {
+func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string, buildArgs model.DockerBuildArgs) error {
 	// Nothing to do if there are no cache paths
 	if len(cachePaths) == 0 {
 		return nil
@@ -103,7 +104,7 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Doc
 		return errors.Wrap(err, "CreateCacheFrom")
 	}
 
-	options := Options(dockerCtx)
+	options := Options(dockerCtx, buildArgs)
 	options.Tags = []string{cacheRef.String()}
 
 	// TODO(nick): I'm not sure if we should print this, or if it should

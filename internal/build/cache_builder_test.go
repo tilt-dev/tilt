@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
@@ -28,7 +29,7 @@ func TestCacheBuilder(t *testing.T) {
 	ref := container.MustParseNamedTagged("gcr.io/nicks/image:source")
 	paths := []string{"/src/node_modules", "/src/yarn.lock"}
 	df := dockerfile.Dockerfile("FROM golang:10")
-	err := f.cb.CreateCacheFrom(f.ctx, df, ref, paths)
+	err := f.cb.CreateCacheFrom(f.ctx, df, ref, paths, model.DockerBuildArgs{})
 	assert.NoError(t, err)
 
 	expected := expectedFile{

@@ -33,7 +33,7 @@ ADD dir/c.txt .
 	f.WriteFile("dir/c.txt", "c")
 	f.WriteFile("missing.txt", "missing")
 
-	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher)
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, model.DockerBuildArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,6 +46,31 @@ ADD dir/c.txt .
 		expectedFile{Path: "/src/missing.txt", Missing: true},
 	}
 	f.assertFilesInImage(ref, pcs)
+}
+
+func TestStaticDockerfileWithBuildArgs(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	df := dockerfile.Dockerfile(`FROM alpine
+ARG some_variable_name
+
+ADD $some_variable_name /test.txt`)
+
+	f.WriteFile("awesome_variable", "hi im an awesome variable")
+
+	ba := model.DockerBuildArgs{
+		"some_variable_name": "awesome_variable",
+	}
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, ba)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{Path: "/test.txt", Contents: "hi im an awesome variable"},
+	}
+	f.assertFilesInImage(ref, expected)
 }
 
 func TestMount(t *testing.T) {
