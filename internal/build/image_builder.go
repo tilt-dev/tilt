@@ -117,7 +117,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 	}
 
 	df = d.applyLabels(df, BuildModeScratch)
-	return d.buildFromDf(ctx, ps, df, paths, filter, ref, model.DockerArgs{})
+	return d.buildFromDf(ctx, ps, df, paths, filter, ref, model.DockerBuildArgs{})
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged,
@@ -136,7 +136,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 	}
 
 	df = d.addRemainingSteps(df, steps)
-	return d.buildFromDf(ctx, ps, df, paths, filter, existing, model.DockerArgs{})
+	return d.buildFromDf(ctx, ps, df, paths, filter, existing, model.DockerBuildArgs{})
 }
 
 func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {
@@ -304,7 +304,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerArgs) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 

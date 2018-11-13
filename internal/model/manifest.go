@@ -41,12 +41,12 @@ type Manifest struct {
 	// we do not expect the iterative build fields to be populated.
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
-	StaticBuildArgs  DockerArgs
+	StaticBuildArgs  DockerBuildArgs
 
 	Repos []LocalGithubRepo
 }
 
-type DockerArgs map[string]string
+type DockerBuildArgs map[string]string
 
 func (m Manifest) WithCachePaths(paths []string) Manifest {
 	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)

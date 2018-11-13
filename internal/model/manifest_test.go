@@ -249,13 +249,13 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			StaticBuildArgs: DockerArgs{
+			StaticBuildArgs: DockerBuildArgs{
 				"foo":  "bar",
 				"baz:": "qux",
 			},
 		},
 		Manifest{
-			StaticBuildArgs: DockerArgs{
+			StaticBuildArgs: DockerBuildArgs{
 				"foo":  "bar",
 				"baz:": "quz",
 			},
@@ -264,13 +264,13 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			StaticBuildArgs: DockerArgs{
+			StaticBuildArgs: DockerBuildArgs{
 				"foo":  "bar",
 				"baz:": "qux",
 			},
 		},
 		Manifest{
-			StaticBuildArgs: DockerArgs{
+			StaticBuildArgs: DockerBuildArgs{
 				"foo":  "bar",
 				"baz:": "qux",
 			},

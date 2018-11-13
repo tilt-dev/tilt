@@ -85,7 +85,7 @@ func (b CacheBuilder) FetchCache(ctx context.Context, ref reference.Named, cache
 }
 
 // Creates a cache image.
-func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string, buildArgs model.DockerArgs) error {
+func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string, buildArgs model.DockerBuildArgs) error {
 	// Nothing to do if there are no cache paths
 	if len(cachePaths) == 0 {
 		return nil
