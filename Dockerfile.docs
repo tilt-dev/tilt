@@ -1,0 +1,8 @@
+FROM python:3.7
+
+RUN pip install sphinx sphinx_rtd_theme
+RUN mkdir -p /src
+WORKDIR /src
+
+ADD docs .
+ENTRYPOINT make html
