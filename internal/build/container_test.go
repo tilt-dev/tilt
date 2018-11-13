@@ -33,7 +33,7 @@ ADD dir/c.txt .
 	f.WriteFile("dir/c.txt", "c")
 	f.WriteFile("missing.txt", "missing")
 
-	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, map[string]string{})
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, model.DockerArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ ADD $some_variable_name /test.txt`)
 
 	f.WriteFile("awesome_variable", "hi im an awesome variable")
 
-	ba := map[string]string{
+	ba := model.DockerArgs{
 		"some_variable_name": "awesome_variable",
 	}
 	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, ba)

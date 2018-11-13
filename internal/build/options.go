@@ -5,9 +5,10 @@ import (
 	"io"
 
 	"github.com/docker/docker/api/types"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
-func Options(archive io.Reader, args map[string]string) types.ImageBuildOptions {
+func Options(archive io.Reader, args model.DockerArgs) types.ImageBuildOptions {
 	return types.ImageBuildOptions{
 		Context:    archive,
 		Dockerfile: "Dockerfile",
@@ -24,7 +25,7 @@ func shouldRemoveImage() bool {
 	return true
 }
 
-func manifestBuildArgsToDockerBuildArgs(args map[string]string) map[string]*string {
+func manifestBuildArgsToDockerBuildArgs(args model.DockerArgs) map[string]*string {
 	r := make(map[string]*string, len(args))
 	for k, a := range args {
 		r[k] = &a
