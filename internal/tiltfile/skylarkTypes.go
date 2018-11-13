@@ -123,7 +123,7 @@ type dockerImage struct {
 	staticDockerfilePath localPath
 	staticDockerfile     dockerfile.Dockerfile
 	staticBuildPath      localPath
-	staticBuildArgs      map[string]string
+	staticBuildArgs      model.DockerArgs
 }
 
 var _ skylark.Value = &dockerImage{}
