@@ -11,7 +11,7 @@ See the problem when it isn’t
 
 Click below to see a video of Tilt in action:
 
-[![asciicast](https://asciinema.org/a/209622.png)](https://asciinema.org/a/209622)
+[![asciicast](https://asciinema.org/a/211635.png)](https://asciinema.org/a/211635)
 
 ## Installing Tilt
 
