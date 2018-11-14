@@ -20,3 +20,8 @@ def synclet():
 
   return k8s_service(image, yaml=read_file('synclet/synclet-conf.generated.yaml'))
 
+def docserver():
+  image = static_build('Dockerfile.docserver', 'gcr.io/windmill-public-containers/tilt-docserver')
+  s = k8s_service(image, yaml=read_file('docserver.yaml'))
+  s.port_forward(10000)
+  return s
