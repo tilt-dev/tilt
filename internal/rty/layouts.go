@@ -66,7 +66,7 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 			return err
 		}
 		reqLen, _ := whToLd(reqWidth, reqHeight, l.dir)
-		if reqLen >= length {
+		if allocated+reqLen >= length {
 			flexIdxs = append(flexIdxs, i)
 		} else {
 			allocations[i] = reqLen
@@ -80,6 +80,7 @@ func (l *FlexLayout) Render(w Writer, width, height int) error {
 		if l.dir == DirHor {
 			noun = "columns"
 		}
+
 		return fmt.Errorf("FlexLayout can't render in %v %s; need at least %v", length, noun, allocated)
 	}
 	numFlex := len(flexIdxs)

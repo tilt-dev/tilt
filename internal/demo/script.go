@@ -180,12 +180,17 @@ func (s Script) Run(ctx context.Context) error {
 			return err
 		}
 
-		defer s.cleanUp(context.Background(), manifests)
+		defer s.cleanUp(newBackgroundContext(ctx), manifests)
 
 		return s.upper.StartForTesting(ctx, manifests, model.YAMLManifest{}, true, tfPath)
 	})
 
 	return g.Wait()
+}
+
+func newBackgroundContext(ctx context.Context) context.Context {
+	l := logger.Get(ctx)
+	return logger.WithLogger(context.Background(), l)
 }
 
 func (s Script) cleanUp(ctx context.Context, manifests []model.Manifest) {
