@@ -217,7 +217,7 @@ func renderNarration(msg string) rty.Component {
 	lines.Add(l)
 	lines.Add(rty.NewLine())
 
-	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), tcell.ColorDefault)
+	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), cText)
 	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
