@@ -20,12 +20,10 @@ func TestFlexLayoutOverflow(t *testing.T) {
 	f.Add(TextString("hello"))
 	f.Add(TextString("world"))
 	err = r.Render(f)
+	assert.NoError(t, err)
 
-	// this is maybe not the behavior we want long-term, but at least this test will tell us if we accidentally fix it?
-	// (and test error propagation in the meantime)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "FlexLayout can't render in 8 columns")
-	}
+	i := NewInteractiveTester(t, screen)
+	i.Run("text overflow", 8, 1, f)
 }
 
 func TestBoxes(t *testing.T) {

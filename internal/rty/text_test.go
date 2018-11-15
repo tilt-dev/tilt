@@ -36,10 +36,7 @@ func TestLines(t *testing.T) {
 	for j := 0; j < 10; j++ {
 		fl.Add(TextString("x"))
 	}
-	err := i.runCaptureError("overflowed multi-string line", 3, 1, fl)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "can't render in 3 columns")
-	}
+	i.Run("overflowed multi-string line", 3, 1, fl)
 
 	l := NewLines()
 	l.Add(NewStringBuilder().Text("hello").Build())
