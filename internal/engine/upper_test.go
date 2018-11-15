@@ -600,6 +600,9 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	call = <-f.b.calls
 	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
+	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
+		return len(state.ManifestDefinitionOrder) == 1
+	})
 	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
 		return state.LastBuildError == nil
 	})
