@@ -13,11 +13,13 @@ type TiltfileWatcher struct {
 	fsWatcherMaker     FsWatcherMaker
 	disabledForTesting bool
 	tiltfileWatcher    watch.Notify
+	cancelChan         chan struct{}
 }
 
 func NewTiltfileWatcher(watcherMaker FsWatcherMaker) *TiltfileWatcher {
 	return &TiltfileWatcher{
 		fsWatcherMaker: watcherMaker,
+		cancelChan:     make(chan struct{}),
 	}
 }
 
@@ -45,7 +47,7 @@ func (t *TiltfileWatcher) OnChange(ctx context.Context, st store.RStore) {
 
 func (t *TiltfileWatcher) setupWatch(path string) error {
 	if t.tiltfileWatcher != nil {
-		close(t.tiltfileWatcher.Errors())
+		t.cancelChan <- struct{}{}
 	}
 	watcher, err := t.fsWatcherMaker()
 	if err != nil {
@@ -73,6 +75,8 @@ func (t *TiltfileWatcher) watchLoop(ctx context.Context, st store.RStore, initMa
 			}
 			st.Dispatch(NewErrorAction(err))
 		case <-ctx.Done():
+			return
+		case <-t.cancelChan:
 			return
 		case _, ok := <-watcher.Events():
 			if !ok {
