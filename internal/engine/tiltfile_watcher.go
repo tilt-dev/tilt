@@ -44,6 +44,9 @@ func (t *TiltfileWatcher) OnChange(ctx context.Context, st store.RStore) {
 }
 
 func (t *TiltfileWatcher) setupWatch(path string) error {
+	if t.tiltfileWatcher != nil {
+		close(t.tiltfileWatcher.Errors())
+	}
 	watcher, err := t.fsWatcherMaker()
 	if err != nil {
 		return err
