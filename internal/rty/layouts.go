@@ -444,8 +444,13 @@ func (b *Box) Render(w Writer, width int, height int) error {
 			renderedTitle = ""
 		} else if len(b.title) > maxLength {
 			renderedTitle = renderedTitle[0:maxLength]
+		}
+
+		// don't add spaces if we can't fit any of the actual title in
+		if len(renderedTitle) > 0 {
 			renderedTitle = fmt.Sprintf(" %s ", renderedTitle)
 		}
+
 		start := middle - len(renderedTitle)/2
 		for i, c := range renderedTitle {
 			w.SetContent(start+i, 0, c, nil)
