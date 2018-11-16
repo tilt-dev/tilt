@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/url"
 	"sort"
 	"time"
@@ -223,6 +224,29 @@ func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx conte
 	return files, nil
 }
 
+func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
+	defer func() {
+		sort.Strings(endpoints)
+	}()
+
+	// If the user specified port-forwards in the Tiltfile, we
+	// assume that's what they want to see in the UI
+	portForwards := ms.Manifest.PortForwards()
+	if len(portForwards) > 0 {
+		for _, pf := range portForwards {
+			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
+		}
+		return endpoints
+	}
+
+	for _, u := range ms.LBs {
+		if u != nil {
+			endpoints = append(endpoints, u.String())
+		}
+	}
+	return endpoints
+}
+
 func StateToView(s EngineState) view.View {
 	ret := view.View{}
 
@@ -257,12 +281,7 @@ func StateToView(s EngineState) view.View {
 			lastManifestLoadError = ms.LastManifestLoadError.Error()
 		}
 
-		var endpoints []string
-		for _, u := range ms.LBs {
-			if u != nil {
-				endpoints = append(endpoints, u.String())
-			}
-		}
+		endpoints := ManifestStateEndpoints(ms)
 
 		lastBuildLog := ""
 		if ms.LastBuildLog != nil {
