@@ -49,4 +49,6 @@ Next Steps
 
    quickstart
    first_example
+   first_config
+   fast_build
    api
