@@ -1,0 +1,332 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>A Simple Tiltfile &mdash; Tilt  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="prev" title="Running your First Tilt Project" href="first_example.html" />
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
+<script>
+ window.dataLayer = window.dataLayer || [];
+ function gtag(){dataLayer.push(arguments);}
+ gtag('js', new Date());
+
+ gtag('config', 'UA-129150759-2');
+</script>
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">A Simple Tiltfile</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Tilt</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>A Simple Tiltfile</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="a-simple-tiltfile">
+<span id="a-simple-tiltfile"></span><h1>A Simple Tiltfile<a class="headerlink" href="#a-simple-tiltfile" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial looks at a simple Tiltfile, and breaks down line-by-line what it does.</p>
+<p>We’ll be digging deeper into the <code class="docutils literal notranslate"><span class="pre">oneup</span></code> project introduced in <a class="reference external" href="first_example.html">the last tutorial</a>.</p>
+<p>Let’s look at the Tiltfile line-by-line and see what each part does.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># -*- mode: Python -*-</span>
+
+<span class="k">def</span> <span class="nf">oneup</span><span class="p">():</span>
+  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;oneup.yaml&#39;</span><span class="p">)</span>
+  <span class="n">image_name</span> <span class="o">=</span> <span class="s1">&#39;gcr.io/windmill-test-containers/integration/oneup&#39;</span>
+  <span class="n">image</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">-*-</span> <span class="pre">mode:</span> <span class="pre">Python</span> <span class="pre">-*-</span></code></li>
+</ul>
+<p>The first line of the Tiltfile tells IDEs and other tools (like Github fileview)
+to use Python syntax highlighting.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> uses a small subset of Python called
+<a class="reference external" href="https://github.com/bazelbuild/starlark#tour">Starlark</a>. Most Python editors
+will work well for editing Tiltfiles.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">def</span> <span class="pre">oneup():</span></code></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">def</span></code> line defines a function. Every time <code class="docutils literal notranslate"><span class="pre">tilt</span></code> builds your server, it
+runs this function. <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> functions can even call <code class="docutils literal notranslate"><span class="pre">print()</span></code> to help with debugging.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">yaml</span> <span class="pre">=</span> <span class="pre">read_file('oneup.yaml')</span></code></li>
+</ul>
+<p>The next line reads a Kubernetes YAML. Tilt tracks while files you read, then automatically
+rebuilds your server if those files change.</p>
+<p>At the risk of diving too deep, let’s unpack that YAML file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">Namespace</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">tilt</span><span class="o">-</span><span class="n">integration</span>
+  <span class="n">labels</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">tilt</span><span class="o">-</span><span class="n">integration</span>
+<span class="o">---</span>
+<span class="n">apiVersion</span><span class="p">:</span> <span class="n">apps</span><span class="o">/</span><span class="n">v1</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">Deployment</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">oneup</span>
+  <span class="n">namespace</span><span class="p">:</span> <span class="n">tilt</span><span class="o">-</span><span class="n">integration</span>
+  <span class="n">labels</span><span class="p">:</span>
+    <span class="n">app</span><span class="p">:</span> <span class="n">oneup</span>
+<span class="n">spec</span><span class="p">:</span>
+  <span class="n">selector</span><span class="p">:</span>
+    <span class="n">matchLabels</span><span class="p">:</span>
+      <span class="n">app</span><span class="p">:</span> <span class="n">oneup</span>
+  <span class="n">template</span><span class="p">:</span>
+    <span class="n">metadata</span><span class="p">:</span>
+      <span class="n">labels</span><span class="p">:</span>
+        <span class="n">app</span><span class="p">:</span> <span class="n">oneup</span>
+    <span class="n">spec</span><span class="p">:</span>
+      <span class="n">containers</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">oneup</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">gcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">windmill</span><span class="o">-</span><span class="n">test</span><span class="o">-</span><span class="n">containers</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
+        <span class="n">command</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;/go/bin/oneup&quot;</span><span class="p">]</span>
+        <span class="n">ports</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">containerPort</span><span class="p">:</span> <span class="mi">8000</span>
+</pre></div>
+</div>
+<p>There’s a lot of YAML here! But the idea is easy to summarize: schedule 1 server on Kubernetes.</p>
+<p>Now back to the Tiltfile.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">image_name</span> <span class="pre">=</span> <span class="pre">'gcr.io/windmill-test-containers/integration/oneup'</span></code></li>
+</ul>
+<p>This line creates a variable <code class="docutils literal notranslate"><span class="pre">image_name</span></code> and assigns it to the name of the
+Docker image that contains our server.</p>
+<p>When we’re doing local development, it doesn’t matter that much what the image name
+is, as long as it matches the name in our Kubernetes YAML.</p>
+<p>(When we’re doing remote development, the image name is a URL that tells the cluster where to upload
+and download your image).</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">image</span> <span class="pre">=</span> <span class="pre">static_build('Dockerfile',</span> <span class="pre">image_name)</span></code></li>
+</ul>
+<p>This line build the image and assigns a name to it. The steps to build the image are in the
+<code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>.</p>
+<p>If we open the Dockerfile, we see</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">golang</span><span class="p">:</span><span class="mf">1.11</span>
+<span class="n">WORKDIR</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
+<span class="n">ADD</span> <span class="o">.</span> <span class="o">.</span>
+<span class="n">RUN</span> <span class="n">go</span> <span class="n">install</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
+<span class="n">ENTRYPOINT</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">oneup</span>
+</pre></div>
+</div>
+<p>If you don’t know Go, that’s OK. These are steps to run to build a Go server.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">k8s_service(image,</span> <span class="pre">yaml=yaml)</span></code></li>
+</ul>
+<p>The last line of the Tiltfile creates the server in Kubernetes. The <code class="docutils literal notranslate"><span class="pre">k8s_service</span></code>
+function takes an image and a Kubernetes config. Tilt puts these together
+to deploy your service to a local Kubernetes cluster.</p>
+<div class="section" id="next-steps">
+<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<p>That’s it! In this guide, we’ve stepped through every line of a simple Tiltfile.</p>
+<p>A good way to learn how to use Tilt is run <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code>, then make edits to the
+Tiltfile, Kubernetes YAML, or Dockerfile. The Tilt UX will update in real-time
+in response to your changes.</p>
+<p>In the next guide, we’ll look at <a class="reference external" href="fast_build.html">optimizing a Tiltfile</a>
+to make your development loop lightning-fast.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fast_build.html" class="btn btn-neutral float-right" title="Optimizing a Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="first_example.html" class="btn btn-neutral" title="Running your First Tilt Project" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Windmill Engineering
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
