@@ -860,7 +860,14 @@ func TestReapOldBuilds(t *testing.T) {
 func TestHudUpdated(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	oldPWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldPWD)
+	os.Chdir(f.TempDirFixture.Path())
+
+	mount := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -871,13 +878,13 @@ func TestHudUpdated(t *testing.T) {
 		return len(v.Resources) > 0
 	})
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.Equal(t, nil, err)
 
 	assert.Equal(t, 1, len(f.hud.LastView.Resources))
 	rv := f.hud.LastView.Resources[0]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
-	assert.Equal(t, manifest.Mounts[0].LocalPath, rv.DirectoriesWatched[0])
+	assert.Equal(t, ".", rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
 }
 
@@ -1528,7 +1535,7 @@ func TestInitSetsTiltfilePath(t *testing.T) {
 		Manifests:    []model.Manifest{},
 		TiltfilePath: "/Tiltfile",
 	})
-	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
+	f.WaitUntil("tiltfile path gets set on init", func(st store.EngineState) bool {
 		return st.TiltfilePath == "/Tiltfile"
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"sort"
 	"time"
 
@@ -328,10 +329,18 @@ func StateToView(s EngineState) view.View {
 		ms := s.ManifestStates[name]
 
 		var absWatchDirs []string
+		var absWatchPaths []string
 		for _, p := range ms.Manifest.LocalPaths() {
-			absWatchDirs = append(absWatchDirs, p)
+			fi, err := os.Stat(p)
+			if err == nil && !fi.IsDir() {
+				absWatchPaths = append(absWatchPaths, p)
+			} else {
+				absWatchDirs = append(absWatchDirs, p)
+			}
 		}
+		absWatchPaths = append(absWatchPaths, s.TiltfilePath)
 		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
+		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
 		for f := range ms.PendingFileChanges {
@@ -370,6 +379,7 @@ func StateToView(s EngineState) view.View {
 		r := view.Resource{
 			Name:                  name.String(),
 			DirectoriesWatched:    relWatchDirs,
+			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
 			LastManifestLoadError: lastManifestLoadError,

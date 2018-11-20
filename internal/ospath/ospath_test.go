@@ -27,6 +27,8 @@ func TestChild(t *testing.T) {
 	f.assertChild("parent", "parent/child/grandchild/fileC", "child/grandchild/fileC")
 
 	f.assertChild("parent/child", "parent/child/fileB", "fileB")
+
+	f.assertChild("parent", "parent", ".")
 }
 
 func TestIsBrokenSymlink(t *testing.T) {
@@ -48,6 +50,29 @@ func TestIsBrokenSymlink(t *testing.T) {
 	f.assertBrokenSymlink("child/grandchild/fileC", false)
 	f.assertBrokenSymlink("symlinkFileA", false)
 	f.assertBrokenSymlink("symlinkFileB", true)
+}
+
+func TestTryAsCwdChildren(t *testing.T) {
+	f := NewOspathFixture(t)
+	defer f.TearDown()
+	oldPWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldPWD)
+	os.Chdir(f.Path())
+
+	results := TryAsCwdChildren([]string{f.Path()})
+
+	if len(results) == 0 {
+		t.Fatal("Expected 1 result, got 0")
+	}
+
+	r := results[0]
+
+	if r != "." {
+		t.Errorf("Expected %s to equal \".\"", r)
+	}
 }
 
 type OspathFixture struct {
