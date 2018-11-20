@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -11,31 +12,29 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+// TODO(maia): throw an error if you try to name a manifest this in your Tiltfile?
+const ConfigsManifestName = "ConfigsManifest"
+
 type WatchableManifest interface {
 	Dependencies() []string
 	ManifestName() model.ManifestName
-	// ConfigMatcher() (model.PathMatcher, error)
 	LocalRepos() []model.LocalGithubRepo
 }
 
 // configManifest makes a WatchableManifest that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
-type tiltfileManifest struct {
+type configsManifest struct {
 	dependencies []string
 }
 
-func (m *tiltfileManifest) Dependencies() []string {
+func (m *configsManifest) Dependencies() []string {
 	return m.dependencies
 }
 
-func (m *tiltfileManifest) ManifestName() model.ManifestName {
-	return "Tiltfile"
+func (m *configsManifest) ManifestName() model.ManifestName {
+	return ConfigsManifestName
 }
 
-func (m *tiltfileManifest) ConfigMatcher() (model.PathMatcher, error) {
-	return model.EmptyMatcher, nil
-}
-
-func (m *tiltfileManifest) LocalRepos() []model.LocalGithubRepo {
+func (m *configsManifest) LocalRepos() []model.LocalGithubRepo {
 	return nil
 }
 
@@ -89,7 +88,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		manifestsToProcess[i] = m.Manifest
 	}
 	if len(state.ConfigFiles) > 0 {
-		manifestsToProcess["Tiltfile"] = &tiltfileManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
+		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 	for k, v := range manifestsToProcess {
 		if _, ok := w.manifestWatches[k]; !ok {
@@ -106,6 +105,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
+	fmt.Println("[👋] let's set up some watches")
 	setup, teardown := w.diff(ctx, st)
 
 	for _, m := range teardown {
@@ -122,6 +122,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	for _, manifest := range setup {
+		fmt.Println("[👋] made a watcher")
 		watcher, err := w.fsWatcherMaker()
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
@@ -129,6 +130,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 		}
 
 		for _, d := range manifest.Dependencies() {
+			fmt.Println("[👋] watching:", d)
 			err = watcher.Add(d)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
@@ -166,7 +168,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if !ok {
 				return
 			}
-
+			fmt.Println("[👋] got some events...")
 			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}
 
 			for _, e := range fsEvents {
@@ -175,17 +177,20 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
+				fmt.Println("[👋] got path:", path)
 				isIgnored, err := filter.Matches(path, false)
 				if err != nil {
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
 				if !isIgnored {
+					fmt.Println("[👋] not ignored")
 					watchEvent.files = append(watchEvent.files, path)
 				}
 			}
 
 			if len(watchEvent.files) > 0 {
+				fmt.Println("[👋] dispatching a watch event")
 				st.Dispatch(watchEvent)
 			}
 		}

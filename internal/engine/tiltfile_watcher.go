@@ -7,20 +7,20 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
-type TiltfileWatcher struct {
+type TiltfileController struct {
 	disabledForTesting bool
 }
 
-func NewTiltfileWatcher(watcherMaker FsWatcherMaker) *TiltfileWatcher {
-	return &TiltfileWatcher{}
+func NewTiltfileController() *TiltfileController {
+	return &TiltfileController{}
 }
 
-func (t *TiltfileWatcher) DisableForTesting(disabled bool) {
-	t.disabledForTesting = disabled
+func (tc *TiltfileController) DisableForTesting(disabled bool) {
+	tc.disabledForTesting = disabled
 }
 
-func (t *TiltfileWatcher) OnChange(ctx context.Context, st store.RStore) {
-	if t.disabledForTesting {
+func (tc *TiltfileController) OnChange(ctx context.Context, st store.RStore) {
+	if tc.disabledForTesting {
 		return
 	}
 
@@ -54,52 +54,3 @@ func (t *TiltfileWatcher) OnChange(ctx context.Context, st store.RStore) {
 		})
 	}()
 }
-
-// func (t *TiltfileWatcher) setupWatch(path string) error {
-// 	if t.tiltfileWatcher != nil {
-// 		t.cancelChan <- struct{}{}
-// 	}
-// 	watcher, err := t.fsWatcherMaker()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = watcher.Add(path)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	t.tiltfileWatcher = watcher
-// 	t.tiltfilePath = path
-
-// 	return nil
-// }
-
-// func (t *TiltfileWatcher) watchLoop(ctx context.Context, st store.RStore, initManifests []model.ManifestName) {
-// 	watcher := t.tiltfileWatcher
-// 	for {
-// 		select {
-// 		case err, ok := <-watcher.Errors():
-// 			if !ok {
-// 				return
-// 			}
-// 			st.Dispatch(NewErrorAction(err))
-// 		case <-ctx.Done():
-// 			return
-// 		case <-t.cancelChan:
-// 			return
-// 		case _, ok := <-watcher.Events():
-// 			if !ok {
-// 				return
-// 			}
-
-// 			manifests, globalYAML, configWatches, err := getNewManifestsFromTiltfile(ctx, initManifests)
-// 			st.Dispatch(TiltfileReloadedAction{
-// 				Manifests:     manifests,
-// 				GlobalYAML:    globalYAML,
-// 				ConfigWatches: configWatches,
-// 				Err:           err,
-// 			})
-// 		}
-// 	}
-// }

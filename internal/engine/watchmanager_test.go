@@ -18,8 +18,8 @@ func TestOneActionDispatched(t *testing.T) {
 	state.WatchMounts = true
 	state.ManifestStates["blorgly"] = &store.ManifestState{
 		Manifest: model.Manifest{
-			Name:        "blorgly",
-			ConfigFiles: []string{"/a/b/c.conf"},
+			Name: "blorgly",
+			// ConfigFiles: []string{"/a/b/c.conf"},
 		},
 	}
 	f.store.UnlockMutableState()
@@ -41,8 +41,8 @@ func TestNoChange(t *testing.T) {
 	state.WatchMounts = true
 	state.ManifestStates["blorgly"] = &store.ManifestState{
 		Manifest: model.Manifest{
-			Name:        "blorgly",
-			ConfigFiles: []string{"/a/b/c.conf"},
+			Name: "blorgly",
+			// ConfigFiles: []string{"/a/b/c.conf"},
 		},
 	}
 	f.store.UnlockMutableState()
