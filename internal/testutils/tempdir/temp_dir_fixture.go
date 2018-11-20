@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/windmilleng/wmclient/pkg/os/temp"
@@ -15,7 +16,9 @@ type TempDirFixture struct {
 }
 
 func NewTempDirFixture(t testing.TB) *TempDirFixture {
-	dir, err := temp.NewDir(t.Name())
+	name := t.Name()
+	name = strings.Replace(name, "/", "-", -1)
+	dir, err := temp.NewDir(name)
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)
 	}
