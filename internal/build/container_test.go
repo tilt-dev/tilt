@@ -293,9 +293,10 @@ func TestBuildFailingStep(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
 
-		// Different versions of docker have3 a different error string
+		// Different versions of docker have a different error string
 		hasExitCode1 := strings.Contains(err.Error(), "exit code 1") ||
-			strings.Contains(err.Error(), "returned a non-zero code: 1")
+			strings.Contains(err.Error(), "returned a non-zero code: 1") ||
+			strings.Contains(err.Error(), "exit code: 1")
 		if !hasExitCode1 {
 			t.Errorf("Expected failure with exit code 1, actual: %v", err)
 		}
