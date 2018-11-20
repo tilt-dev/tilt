@@ -38,7 +38,7 @@ class Repo:
     Args:
       path: relative path in repository
     Returns:
-      A localPath resource, representing a local path on disk.
+      A LocalPath resource, representing a local path on disk.
     """
     pass
 
@@ -114,7 +114,7 @@ def local(cmd: str) -> str:
   """Runs cmd, waits for it to finish, and returns its stdout."""
   pass
 
-def read_file(file_path: str) -> str:
+def read_file(file_path: Union[str, LocalPath]) -> str:
   """Reads file and returns its contents.
 
   Args:

@@ -1136,3 +1136,21 @@ ADD . .
 	err := f.LoadManifestForError("blorgly")
 	assert.Contains(t, err.Error(), "base Dockerfile contains an ADD/COPY")
 }
+
+func TestReadFileRepoPath(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "hello world")
+	f.WriteFile("Tiltfile", `def blorgly():
+  repo = local_git_repo('.')
+  yaml = read_file(repo.path("a.txt"))
+  start_fast_build("Dockerfile.base", "docker-tag", str(repo.path('subpath')))
+  image = stop_build()
+  return k8s_service(image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, []string{"sh", "-c", f.JoinPath("subpath")}, manifest.Entrypoint.Argv)
+}
