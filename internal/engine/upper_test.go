@@ -1200,32 +1200,6 @@ func makeFakeFsWatcherMaker(fn *fakeNotify) FsWatcherMaker {
 	}
 }
 
-func TestUpper_ShowErrorBuildLog(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount})
-
-	f.SetNextBuildFailure(errors.New("failed!"))
-
-	f.Start([]model.Manifest{manifest}, true)
-
-	f.waitForCompletedBuildCount(1)
-
-	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
-
-	f.waitForBuildErrorReplay(manifest.Name,
-		`──┤ Building: foobar ├──────────────────────────────────────────────
-fake building foobar
-`)
-
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-}
-
 func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1248,35 +1222,10 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.podLog(name, "second string")
 
-	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
-	f.waitForPodErrorReplay(name, "second string\n")
-
-	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
-}
-
-func TestUpper_ShowErrorNonExistentResource(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount})
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	f.upper.store.Dispatch(hud.NewShowErrorAction(5))
-
-	f.WaitUntilManifest("nonexistent resource error printed", string(manifest.Name), func(state store.ManifestState) bool {
-		for _, s := range f.LogLines() {
-			if strings.Contains(s, "Resource 5 does not exist, so no log to print") {
-				return true
-			}
-		}
-		return false
+	f.WithManifest(name, func(ms store.ManifestState) {
+		assert.Equal(t, "second string\n", ms.Pod.Log())
 	})
+
 	err := f.Stop()
 	if !assert.NoError(t, err) {
 		return
@@ -1301,10 +1250,10 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f.restartPod()
 	f.podLog(name, "third string")
 
-	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
-
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
-	f.waitForPodErrorReplay(name, "second string\nthird string\n")
+	f.WithManifest(name, func(ms store.ManifestState) {
+		assert.Equal(t, "second string\nthird string\n", ms.Pod.Log())
+	})
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
@@ -1332,10 +1281,10 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 		return !pod.ContainerReady
 	})
 
-	f.upper.store.Dispatch(hud.NewShowErrorAction(1))
-
 	// The second instance is down, so we don't include the first instance's log
-	f.waitForPodErrorReplay(name, "second string\n")
+	f.WithManifest(name, func(ms store.ManifestState) {
+		assert.Equal(t, "second string\n", ms.Pod.Log())
+	})
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
@@ -1755,6 +1704,17 @@ func (f *testFixture) PollUntil(msg string, isDone func() bool) {
 	}
 }
 
+func (f *testFixture) WithManifest(name model.ManifestName, test func(store.ManifestState)) {
+	state := f.upper.store.RLockState()
+	defer f.upper.store.RUnlockState()
+
+	ms := state.ManifestStates[name]
+	if ms == nil {
+		f.T().Fatalf("Missing manifest: %s", name)
+	}
+	test(*ms)
+}
+
 func (f *testFixture) WaitUntilManifest(msg string, name string, isDone func(store.ManifestState) bool) {
 	f.WaitUntil(msg, func(es store.EngineState) bool {
 		ms, ok := es.ManifestStates[model.ManifestName(name)]
@@ -1802,30 +1762,6 @@ func (f *testFixture) notifyAndWaitForPodStatus(pred func(pod store.Pod) bool) {
 
 	f.WaitUntilManifest("pod status change seen", "foobar", func(state store.ManifestState) bool {
 		return pred(state.Pod)
-	})
-}
-
-func (f *testFixture) waitForBuildErrorReplay(name model.ManifestName, message string) {
-	f.WaitUntil("build log shown", func(s store.EngineState) bool {
-		expectedOutput := strings.Join([]string{
-			fmt.Sprintf("Last %s build log:", name),
-			"──────────────────────────────────────────────────────────",
-			message,
-			"──────────────────────────────────────────────────────────",
-		}, "\n")
-		return strings.Contains(f.log.String(), expectedOutput)
-	})
-}
-
-func (f *testFixture) waitForPodErrorReplay(name model.ManifestName, message string) {
-	f.WaitUntil("pod log shown", func(s store.EngineState) bool {
-		expectedOutput := strings.Join([]string{
-			fmt.Sprintf("%s pod log:", name),
-			"──────────────────────────────────────────────────────────",
-			message,
-			"──────────────────────────────────────────────────────────",
-		}, "\n")
-		return strings.Contains(f.log.String(), expectedOutput)
 	})
 }
 
