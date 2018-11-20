@@ -14,7 +14,7 @@ import (
 type WatchableManifest interface {
 	Dependencies() []string
 	ManifestName() model.ManifestName
-	ConfigMatcher() (model.PathMatcher, error)
+	// ConfigMatcher() (model.PathMatcher, error)
 	LocalRepos() []model.LocalGithubRepo
 }
 
