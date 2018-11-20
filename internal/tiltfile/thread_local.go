@@ -82,6 +82,15 @@ func getReadFiles(t *skylark.Thread) ([]string, error) {
 	if !ok {
 		return nil, errors.New("internal error: readFiles thread local was not of type []string")
 	}
+
+	var r []string
+	readFilesMap := make(map[string]bool)
+	for _, f := range readFiles {
+		if !readFilesMap[f] {
+			readFilesMap[f] = true
+			r = append(r, f)
+		}
+	}
 	return readFiles, nil
 }
 

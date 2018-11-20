@@ -28,7 +28,7 @@ type Manifest struct {
 
 	// Local files read while reading the Tilt configuration.
 	// If these files are changed, we should reload the manifest.
-	ConfigFiles []string
+	// ConfigFiles []string
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -59,11 +59,7 @@ func (m Manifest) CachePaths() []string {
 }
 
 func (m Manifest) ConfigMatcher() (PathMatcher, error) {
-	configMatcher, err := NewSimpleFileMatcher(m.ConfigFiles...)
-	if err != nil {
-		return nil, err
-	}
-	return configMatcher, nil
+	return EmptyMatcher, nil
 }
 
 func (m Manifest) IsStaticBuild() bool {
@@ -126,7 +122,6 @@ func (m Manifest) validate() *ValidateErr {
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
-	configFilesMatch := stringSlicesEqual(m1.ConfigFiles, m2.ConfigFiles)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
 	reposMatch := m1.reposEqual(m2.Repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
@@ -134,7 +129,7 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
 
-	return primitivesMatch && entrypointMatch && configFilesMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch
+	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -226,15 +221,11 @@ func (m Manifest) Dependencies() []string {
 	for _, p := range m.LocalPaths() {
 		deps = append(deps, p)
 	}
-	for _, f := range m.ConfigFiles {
-		deps = append(deps, f)
-	}
 
 	return sliceutils.DedupeStringSlice(deps)
 }
 
 func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
-	m.ConfigFiles = confFiles
 	return m
 }
 

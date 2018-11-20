@@ -108,7 +108,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, globalYAML, configFiles, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 	if err != nil {
 		return err
 	}
@@ -118,6 +118,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
+		ConfigFiles:        configFiles,
 		ManifestNames:      manifestNames,
 	})
 
@@ -165,18 +166,20 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = handleCompletedBuild(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
-	case ManifestReloadedAction:
-		handleManifestReloaded(ctx, state, action)
+	// case ManifestReloadedAction:
+	// 	handleManifestReloaded(ctx, state, action)
 	case LogAction:
 		handleLogAction(state, action)
-	case GlobalYAMLManifestReloadedAction:
-		handleGlobalYAMLManifestReloaded(ctx, state, action)
+	// case GlobalYAMLManifestReloadedAction:
+	// 	handleGlobalYAMLManifestReloaded(ctx, state, action)
 	case GlobalYAMLApplyStartedAction:
 		handleGlobalYAMLApplyStarted(ctx, state, action)
 	case GlobalYAMLApplyCompleteAction:
 		handleGlobalYAMLApplyComplete(ctx, state, action)
 	case GlobalYAMLApplyError:
 		handleGlobalYAMLApplyError(ctx, state, action)
+	case TiltfileReloadStartedAction:
+		handleTiltfileReloadStarted(ctx, state, action)
 	case TiltfileReloadedAction:
 		handleTiltfileReloaded(ctx, state, action)
 	default:
@@ -188,55 +191,55 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	}
 })
 
-func handleManifestReloaded(ctx context.Context, state *store.EngineState, action ManifestReloadedAction) {
-	state.BuildControllerActionCount++
+// func handleManifestReloaded(ctx context.Context, state *store.EngineState, action ManifestReloadedAction) {
+// 	state.BuildControllerActionCount++
 
-	ms, ok := state.ManifestStates[action.OldManifest.Name]
-	if !ok {
-		state.PermanentError = fmt.Errorf("handleManifestReloaded: Missing manifest state: %s", action.OldManifest.Name)
-		return
-	}
+// 	ms, ok := state.ManifestStates[action.OldManifest.Name]
+// 	if !ok {
+// 		state.PermanentError = fmt.Errorf("handleManifestReloaded: Missing manifest state: %s", action.OldManifest.Name)
+// 		return
+// 	}
 
-	ms.LastManifestLoadError = action.Error
-	if ms.LastManifestLoadError != nil {
-		logger.Get(ctx).Infof("getting new manifest error: %v", ms.LastManifestLoadError)
+// 	ms.LastManifestLoadError = action.Error
+// 	if ms.LastManifestLoadError != nil {
+// 		logger.Get(ctx).Infof("getting new manifest error: %v", ms.LastManifestLoadError)
 
-		err := removeFromManifestsToBuild(state, ms.Manifest.Name)
-		if err != nil {
-			state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
-			return
-		}
-		return
-	}
+// 		err := removeFromManifestsToBuild(state, ms.Manifest.Name)
+// 		if err != nil {
+// 			state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
+// 			return
+// 		}
+// 		return
+// 	}
 
-	newManifest := action.NewManifest
-	if newManifest.Equal(ms.Manifest) {
-		logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
-			ms.Manifest.Name)
+// 	newManifest := action.NewManifest
+// 	if newManifest.Equal(ms.Manifest) {
+// 		logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
+// 			ms.Manifest.Name)
 
-		mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
-		if err != nil {
-			logger.Get(ctx).Infof(err.Error())
-			return
-		}
-		ms.PendingFileChanges = mountedChangedFiles
+// 		mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
+// 		if err != nil {
+// 			logger.Get(ctx).Infof(err.Error())
+// 			return
+// 		}
+// 		ms.PendingFileChanges = mountedChangedFiles
 
-		if len(ms.PendingFileChanges) == 0 {
-			ms.ConfigIsDirty = false
-			err = removeFromManifestsToBuild(state, ms.Manifest.Name)
-			if err != nil {
-				state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
-			}
-			return
-		}
-	} else {
-		// Manifest has changed, ensure we do an image build so that we apply the changes
-		ms.LastBuild = store.BuildResult{}
-		ms.Manifest = newManifest
-	}
+// 		if len(ms.PendingFileChanges) == 0 {
+// 			ms.ConfigIsDirty = false
+// 			err = removeFromManifestsToBuild(state, ms.Manifest.Name)
+// 			if err != nil {
+// 				state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
+// 			}
+// 			return
+// 		}
+// 	} else {
+// 		// Manifest has changed, ensure we do an image build so that we apply the changes
+// 		ms.LastBuild = store.BuildResult{}
+// 		ms.Manifest = newManifest
+// 	}
 
-	ms.ConfigIsDirty = false
-}
+// 	ms.ConfigIsDirty = false
+// }
 
 func removeFromManifestsToBuild(state *store.EngineState, mn model.ManifestName) error {
 	for i, n := range state.ManifestsToBuild {
@@ -347,12 +350,18 @@ func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
 	event manifestFilesChangedAction) {
-	manifest := state.ManifestStates[event.manifestName].Manifest
 
-	if eventContainsConfigFiles(manifest, event) {
-		logger.Get(ctx).Debugf("Event contains config files")
-		state.ManifestStates[event.manifestName].ConfigIsDirty = true
+	if event.manifestName == "Tiltfile" {
+		for _, f := range event.files {
+			state.PendingConfigFileChanges[f] = true
+		}
+		return
 	}
+
+	// if eventContainsConfigFiles(manifest, event) {
+	// 	logger.Get(ctx).Debugf("Event contains config files")
+	// 	state.ManifestStates[event.manifestName].ConfigIsDirty = true
+	// }
 
 	ms := state.ManifestStates[event.manifestName]
 
@@ -380,13 +389,13 @@ func handleFSEvent(
 	enqueueBuild(state, event.manifestName)
 }
 
-func handleGlobalYAMLManifestReloaded(
-	ctx context.Context,
-	state *store.EngineState,
-	event GlobalYAMLManifestReloadedAction,
-) {
-	state.GlobalYAML = event.GlobalYAML
-}
+// func handleGlobalYAMLManifestReloaded(
+// 	ctx context.Context,
+// 	state *store.EngineState,
+// 	event GlobalYAMLManifestReloadedAction,
+// ) {
+// 	state.GlobalYAML = event.GlobalYAML
+// }
 
 func handleGlobalYAMLApplyStarted(
 	ctx context.Context,
@@ -420,6 +429,14 @@ func handleGlobalYAMLApplyError(
 	state.GlobalYAMLState.LastError = event.Error
 }
 
+func handleTiltfileReloadStarted(
+	ctx context.Context,
+	state *store.EngineState,
+	event TiltfileReloadStartedAction,
+) {
+	state.PendingConfigFileChanges = make(map[string]bool)
+}
+
 func handleTiltfileReloaded(
 	ctx context.Context,
 	state *store.EngineState,
@@ -438,14 +455,23 @@ func handleTiltfileReloaded(
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
+		ms, ok := state.ManifestStates[m.ManifestName()]
+		if !ok {
+			ms = &store.ManifestState{}
+		}
+		ms.LastManifestLoadError = nil
 		state.ManifestStates[m.ManifestName()].LastManifestLoadError = nil
-		oldManifest := state.ManifestStates[m.ManifestName()].Manifest
 
 		newDefOrder[i] = m.ManifestName()
-		if !oldManifest.Equal(m) {
-			state.ManifestStates[m.ManifestName()].Manifest = m
+		if !m.Equal(ms.Manifest) {
+			// Manifest has changed, ensure we do an image build so that we apply the changes
+			ms.LastBuild = store.BuildResult{}
+			ms.Manifest = m
+			// TODO(dbentley): change watches when manifest changes
+			// TODO(dbentley): add changed file to pending file changes?
 			enqueueBuild(state, m.ManifestName())
 		}
+		state.ManifestStates[m.ManifestName()] = ms
 	}
 	// TODO(dmiller) handle deleting manifests
 	state.ManifestDefinitionOrder = newDefOrder
@@ -608,6 +634,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	engineState.TiltfilePath = action.TiltfilePath
+	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.ManifestNames
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
@@ -662,22 +689,22 @@ func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
 	return true, nil
 }
 
-type configFilesManifest interface {
-	ConfigMatcher() (model.PathMatcher, error)
-}
+// type configFilesManifest interface {
+// 	ConfigMatcher() (model.PathMatcher, error)
+// }
 
-func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChangedAction) bool {
-	matcher, err := manifest.ConfigMatcher()
-	if err != nil {
-		return false
-	}
+// func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChangedAction) bool {
+// 	matcher, err := manifest.ConfigMatcher()
+// 	if err != nil {
+// 		return false
+// 	}
 
-	for _, f := range e.files {
-		matches, err := matcher.Matches(f, false)
-		if matches && err == nil {
-			return true
-		}
-	}
+// 	for _, f := range e.files {
+// 		matches, err := matcher.Matches(f, false)
+// 		if matches && err == nil {
+// 			return true
+// 		}
+// 	}
 
-	return false
-}
+// 	return false
+// }

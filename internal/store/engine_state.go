@@ -54,7 +54,9 @@ type EngineState struct {
 	GlobalYAML      model.YAMLManifest
 	GlobalYAMLState *YAMLManifestState
 
-	TiltfilePath string
+	TiltfilePath             string
+	ConfigFiles              []string
+	PendingConfigFileChanges map[string]bool
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
@@ -95,6 +97,7 @@ type ManifestState struct {
 func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	ret.PendingConfigFileChanges = make(map[string]bool)
 	return ret
 }
 

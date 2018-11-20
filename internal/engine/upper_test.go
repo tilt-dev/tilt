@@ -1513,7 +1513,7 @@ type testFixture struct {
 	pod                   *v1.Pod
 	bc                    *BuildController
 	fwm                   *WatchManager
-	tfw                   *TiltfileWatcher
+	// tfw                   *TiltfileWatcher
 
 	onchangeCh chan bool
 }
@@ -1521,7 +1521,7 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 	watcher := newFakeNotify()
-	tfWatcher := newFakeNotify()
+	// tfWatcher := newFakeNotify()
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
@@ -1551,17 +1551,17 @@ func newTestFixture(t *testing.T) *testFixture {
 	fswm := func() (watch.Notify, error) {
 		return watcher, nil
 	}
-	tfwm := func() (watch.Notify, error) {
-		return tfWatcher, nil
-	}
+	// tfwm := func() (watch.Notify, error) {
+	// 	return tfWatcher, nil
+	// }
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 
 	gybc := NewGlobalYAMLBuildController(k8s)
-	tfw := NewTiltfileWatcher(tfwm)
-	tfw.DisableForTesting(true)
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, tfw)
+	// tfw := NewTiltfileWatcher(tfwm)
+	// tfw.DisableForTesting(true)
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

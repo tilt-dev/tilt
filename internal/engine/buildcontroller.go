@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 type BuildController struct {
@@ -92,18 +90,18 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	go func() {
-		if entry.needsConfigReload {
-			newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
-			st.Dispatch(GlobalYAMLManifestReloadedAction{
-				GlobalYAML: newGlobalYAML,
-			})
-			st.Dispatch(ManifestReloadedAction{
-				OldManifest: entry.manifest,
-				NewManifest: newManifest,
-				Error:       err,
-			})
-			return
-		}
+		// 	if entry.needsConfigReload {
+		// 		newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
+		// 		st.Dispatch(GlobalYAMLManifestReloadedAction{
+		// 			GlobalYAML: newGlobalYAML,
+		// 		})
+		// 		st.Dispatch(ManifestReloadedAction{
+		// 			OldManifest: entry.manifest,
+		// 			NewManifest: newManifest,
+		// 			Error:       err,
+		// 		})
+		// 		return
+		// 	}
 
 		st.Dispatch(BuildStartedAction{
 			Manifest:     entry.manifest,
@@ -147,36 +145,36 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	}
 }
 
-func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
-	// Sends any output to the CurrentBuildLog
-	t, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, err
-	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, name)
-	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, err
-	}
-	if len(newManifests) != 1 {
-		return model.Manifest{}, model.YAMLManifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
-	}
-	newManifest := newManifests[0]
+// func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
+// 	// Sends any output to the CurrentBuildLog
+// 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
+// 	if err != nil {
+// 		return model.Manifest{}, model.YAMLManifest{}, err
+// 	}
+// 	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, name)
+// 	if err != nil {
+// 		return model.Manifest{}, model.YAMLManifest{}, err
+// 	}
+// 	if len(newManifests) != 1 {
+// 		return model.Manifest{}, model.YAMLManifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
+// 	}
+// 	newManifest := newManifests[0]
 
-	return newManifest, globalYAML, nil
-}
+// 	return newManifest, globalYAML, nil
+// }
 
-func getNewManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
-	// Sends any output to the CurrentBuildLog
-	t, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return []model.Manifest{}, model.YAMLManifest{}, err
-	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
-	if err != nil {
-		return []model.Manifest{}, model.YAMLManifest{}, err
-	}
+// func getNewManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
+// 	// Sends any output to the CurrentBuildLog
+// 	t, err := tiltfile.Load(ctx, tiltfile.FileName)
+// 	if err != nil {
+// 		return []model.Manifest{}, model.YAMLManifest{}, err
+// 	}
+// 	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
+// 	if err != nil {
+// 		return []model.Manifest{}, model.YAMLManifest{}, err
+// 	}
 
-	return newManifests, globalYAML, nil
-}
+// 	return newManifests, globalYAML, nil
+// }
 
 var _ store.Subscriber = &BuildController{}
