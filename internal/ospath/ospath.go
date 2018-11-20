@@ -11,7 +11,7 @@ import (
 // Returns true if successful. If `file` is not under `dir`, returns false.
 func Child(dir string, file string) (string, bool) {
 	current := file
-	child := ""
+	child := "."
 	for true {
 		if dir == current {
 			return child, true
