@@ -316,20 +316,36 @@ func (t *Tiltfile) absWorkingDir() string {
 	return filepath.Dir(t.filename)
 }
 
+func skylarkStringOrLocalPathToString(path skylark.Value) (string, error) {
+	switch p := path.(type) {
+	case localPath:
+		return p.path, nil
+	case skylark.String:
+		return string(p), nil
+	default:
+		return "", fmt.Errorf("Got %s want localPath or string", path.Type())
+	}
+}
+
 func (t *Tiltfile) readFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var path string
+	var path skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
 
-	path = t.absPath(path)
-	dat, err := ioutil.ReadFile(path)
+	pathString, err := skylarkStringOrLocalPathToString(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid type for path: %v", err)
+	}
+
+	pathString = t.absPath(pathString)
+	dat, err := ioutil.ReadFile(pathString)
 	if err != nil {
 		return nil, err
 	}
 
-	err = t.recordReadFile(thread, path)
+	err = t.recordReadFile(thread, pathString)
 	if err != nil {
 		return nil, err
 	}
