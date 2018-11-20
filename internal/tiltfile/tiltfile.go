@@ -480,14 +480,6 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 			return manifests, model.YAMLManifest{}, nil, err
 		}
 
-		// // All manifests depend on global YAML, therefore all depend on its dependencies.
-		// // TODO(maia): there's probs a better thread-magic way for each individual manifest to
-		// // about files opened in the global scope, i.e. files opened when getting global YAML.
-		// for i, m := range curManifests {
-		// 	deps := append(m.ConfigFiles, gYAMLDeps...)
-		// 	curManifests[i] = m.WithConfigFiles(deps)
-		// }
-
 		manifests = append(manifests, curManifests...)
 	}
 
@@ -497,14 +489,14 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 	}
 	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
-	// TODO(dbentley): now grab t.thread.Local(readFilesKey) and return that as config files
-
 	configFiles, err := getReadFiles(t.thread)
-	logger.Get(ctx).Infof("Hrm %q %v", configFiles, len(manifests))
 	if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	}
+
+	// The Tiltfile itself should always be one of its own configFiles
 	configFiles = append(configFiles, t.filename)
+
 	return manifests, globalYAML, configFiles, nil
 }
 
