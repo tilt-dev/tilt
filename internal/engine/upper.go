@@ -163,8 +163,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
 		err = handleCompletedBuild(ctx, state, action)
-	case hud.ShowErrorAction:
-		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case ManifestReloadedAction:
@@ -682,38 +680,4 @@ func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChang
 	}
 
 	return false
-}
-
-// TODO(nick): This should be in the HUD
-func showError(ctx context.Context, state *store.EngineState, resourceNumber int) {
-	if resourceNumber > len(state.ManifestDefinitionOrder) {
-		logger.Get(ctx).Infof("Resource %d does not exist, so no log to print", resourceNumber)
-		return
-	}
-
-	mn := state.ManifestDefinitionOrder[resourceNumber-1]
-
-	ms := state.ManifestStates[mn]
-
-	if ms.LastBuildFinishTime.Equal(time.Time{}) {
-		logger.Get(ctx).Infof("Resource %d has no previous build, so no log to print", resourceNumber)
-		return
-	}
-
-	if ms.LastManifestLoadError != nil {
-		logger.Get(ctx).Infof("Last %s manifest load error:", mn)
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.LastManifestLoadError.Error())
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-	} else if ms.LastBuildError != nil {
-		logger.Get(ctx).Infof("Last %s build log:", mn)
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-	} else {
-		logger.Get(ctx).Infof("%s pod log:", mn)
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.Pod.Log())
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-	}
 }
