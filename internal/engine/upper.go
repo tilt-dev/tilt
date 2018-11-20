@@ -65,7 +65,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, tfw *TiltfileWatcher) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -76,6 +76,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(sw)
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
+	st.AddSubscriber(tfw)
 
 	return Upper{
 		b:     b,
@@ -101,7 +102,13 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, args...)
+	manifestNames := make([]model.ManifestName, len(args))
+
+	for i, a := range args {
+		manifestNames[i] = model.ManifestName(a)
+	}
+
+	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 	if err != nil {
 		return err
 	}
@@ -111,6 +118,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
+		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -119,11 +127,18 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
 	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 
+	manifestNames := make([]model.ManifestName, len(manifests))
+
+	for i, m := range manifests {
+		manifestNames[i] = m.ManifestName()
+	}
+
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       tiltfilePath,
+		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -137,7 +152,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case ErrorAction:
 		err = action.Error
 	case hud.ExitAction:
-		handleExitAction(state)
+		handleExitAction(state, action)
 	case manifestFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
@@ -148,8 +163,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodLogAction(state, action)
 	case BuildCompleteAction:
 		err = handleCompletedBuild(ctx, state, action)
-	case hud.ShowErrorAction:
-		showError(ctx, state, action.ResourceNumber)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case ManifestReloadedAction:
@@ -164,6 +177,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleGlobalYAMLApplyComplete(ctx, state, action)
 	case GlobalYAMLApplyError:
 		handleGlobalYAMLApplyError(ctx, state, action)
+	case TiltfileReloadedAction:
+		handleTiltfileReloaded(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -405,6 +420,38 @@ func handleGlobalYAMLApplyError(
 	state.GlobalYAMLState.LastError = event.Error
 }
 
+func handleTiltfileReloaded(
+	ctx context.Context,
+	state *store.EngineState,
+	event TiltfileReloadedAction,
+) {
+	manifests := event.Manifests
+	globalYAML := event.GlobalYAML
+	err := event.Err
+	if err != nil {
+		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
+
+		for _, ms := range state.ManifestStates {
+			ms.LastManifestLoadError = err
+		}
+		return
+	}
+	newDefOrder := make([]model.ManifestName, len(manifests))
+	for i, m := range manifests {
+		state.ManifestStates[m.ManifestName()].LastManifestLoadError = nil
+		oldManifest := state.ManifestStates[m.ManifestName()].Manifest
+
+		newDefOrder[i] = m.ManifestName()
+		if !oldManifest.Equal(m) {
+			state.ManifestStates[m.ManifestName()].Manifest = m
+			enqueueBuild(state, m.ManifestName())
+		}
+	}
+	// TODO(dmiller) handle deleting manifests
+	state.ManifestDefinitionOrder = newDefOrder
+	state.GlobalYAML = globalYAML
+}
+
 func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
 	state.ManifestStates[mn].QueueEntryTime = time.Now()
@@ -501,7 +548,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
 		ms.CrashRebuildInProg = true
 		ms.ExpectedContainerID = ""
-		logger.Get(ctx).Infof("Detected a container change for %s. We could be running state code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
 		enqueueBuild(state, ms.Manifest.Name)
 	}
 
@@ -561,6 +608,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	engineState.TiltfilePath = action.TiltfilePath
+	engineState.InitManifests = action.ManifestNames
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 
@@ -580,8 +628,12 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	return nil
 }
 
-func handleExitAction(state *store.EngineState) {
-	state.Exit = true
+func handleExitAction(state *store.EngineState, action hud.ExitAction) {
+	if action.Err != nil {
+		state.PermanentError = action.Err
+	} else {
+		state.UserExited = true
+	}
 }
 
 // Check if the filesChangedSet only contains spurious changes that
@@ -628,38 +680,4 @@ func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChang
 	}
 
 	return false
-}
-
-// TODO(nick): This should be in the HUD
-func showError(ctx context.Context, state *store.EngineState, resourceNumber int) {
-	if resourceNumber > len(state.ManifestDefinitionOrder) {
-		logger.Get(ctx).Infof("Resource %d does not exist, so no log to print", resourceNumber)
-		return
-	}
-
-	mn := state.ManifestDefinitionOrder[resourceNumber-1]
-
-	ms := state.ManifestStates[mn]
-
-	if ms.LastBuildFinishTime.Equal(time.Time{}) {
-		logger.Get(ctx).Infof("Resource %d has no previous build, so no log to print", resourceNumber)
-		return
-	}
-
-	if ms.LastManifestLoadError != nil {
-		logger.Get(ctx).Infof("Last %s manifest load error:", mn)
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.LastManifestLoadError.Error())
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-	} else if ms.LastBuildError != nil {
-		logger.Get(ctx).Infof("Last %s build log:", mn)
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.LastBuildLog.String())
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-	} else {
-		logger.Get(ctx).Infof("%s pod log:", mn)
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-		logger.Get(ctx).Infof("%s", ms.Pod.Log())
-		logger.Get(ctx).Infof("──────────────────────────────────────────────────────────")
-	}
 }

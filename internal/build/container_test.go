@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -20,7 +21,7 @@ func TestStaticDockerfile(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	df := Dockerfile(`
+	df := dockerfile.Dockerfile(`
 FROM alpine
 WORKDIR /src
 ADD a.txt .
@@ -32,7 +33,7 @@ ADD dir/c.txt .
 	f.WriteFile("dir/c.txt", "c")
 	f.WriteFile("missing.txt", "missing")
 
-	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher)
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, model.DockerBuildArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +46,31 @@ ADD dir/c.txt .
 		expectedFile{Path: "/src/missing.txt", Missing: true},
 	}
 	f.assertFilesInImage(ref, pcs)
+}
+
+func TestStaticDockerfileWithBuildArgs(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	df := dockerfile.Dockerfile(`FROM alpine
+ARG some_variable_name
+
+ADD $some_variable_name /test.txt`)
+
+	f.WriteFile("awesome_variable", "hi im an awesome variable")
+
+	ba := model.DockerBuildArgs{
+		"some_variable_name": "awesome_variable",
+	}
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, ba)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []expectedFile{
+		expectedFile{Path: "/test.txt", Contents: "hi im an awesome variable"},
+	}
+	f.assertFilesInImage(ref, expected)
 }
 
 func TestMount(t *testing.T) {
@@ -267,9 +293,10 @@ func TestBuildFailingStep(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
 
-		// Different versions of docker have3 a different error string
+		// Different versions of docker have a different error string
 		hasExitCode1 := strings.Contains(err.Error(), "exit code 1") ||
-			strings.Contains(err.Error(), "returned a non-zero code: 1")
+			strings.Contains(err.Error(), "returned a non-zero code: 1") ||
+			strings.Contains(err.Error(), "exit code: 1")
 		if !hasExitCode1 {
 			t.Errorf("Expected failure with exit code 1, actual: %v", err)
 		}
@@ -299,7 +326,7 @@ func TestDockerfileWithEntrypointPermitted(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	df := Dockerfile(`FROM alpine
+	df := dockerfile.Dockerfile(`FROM alpine
 ENTRYPOINT ["sleep", "100000"]`)
 
 	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df, nil, model.EmptyMatcher, nil, model.Cmd{})
@@ -523,7 +550,7 @@ func TestReapOneImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	label := Label("tilt.reaperTest")
+	label := dockerfile.Label("tilt.reaperTest")
 	f.b.extraLabels[label] = "1"
 	df2 := simpleDockerfile.Run(model.ToShellCmd("echo hi >> hi.txt"))
 	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df2, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})

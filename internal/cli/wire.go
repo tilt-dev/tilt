@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 var K8sWireSet = wire.NewSet(
@@ -42,10 +43,14 @@ var BaseWireSet = wire.NewSet(
 	engine.NewPodWatcher,
 	engine.NewServiceWatcher,
 	engine.NewImageController,
+	engine.NewTiltfileWatcher,
 
 	provideClock,
 	hud.NewRenderer,
 	hud.NewDefaultHeadsUpDisplay,
+
+	provideLogActions,
+	store.NewStore,
 
 	engine.NewUpper,
 	provideAnalytics,

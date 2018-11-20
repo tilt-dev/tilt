@@ -247,6 +247,46 @@ var equalitytests = []struct {
 		},
 		false,
 	},
+	{
+		Manifest{
+			StaticBuildArgs: DockerBuildArgs{
+				"foo":  "bar",
+				"baz:": "qux",
+			},
+		},
+		Manifest{
+			StaticBuildArgs: DockerBuildArgs{
+				"foo":  "bar",
+				"baz:": "quz",
+			},
+		},
+		false,
+	},
+	{
+		Manifest{
+			StaticBuildArgs: DockerBuildArgs{
+				"foo":  "bar",
+				"baz:": "qux",
+			},
+		},
+		Manifest{
+			StaticBuildArgs: DockerBuildArgs{
+				"foo":  "bar",
+				"baz:": "qux",
+			},
+		},
+		true,
+	},
+	{
+		Manifest{cachePaths: []string{"foo"}},
+		Manifest{},
+		false,
+	},
+	{
+		Manifest{cachePaths: []string{"foo"}},
+		Manifest{cachePaths: []string{"foo"}},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

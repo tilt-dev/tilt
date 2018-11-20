@@ -88,6 +88,7 @@ func formatFileList(files []string) string {
 	return strings.Join(ret, ", ")
 }
 
+var cText = tcell.Color232
 var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
@@ -114,13 +115,25 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split.Add(r.renderFooter(v, keyLegend(vs)))
 	l.Add(split)
 
+	var ret rty.Component = l
 	if vs.LogModal.TiltLog {
-		return r.renderFullLogModal(v, l)
+		ret = r.renderFullLogModal(v, ret)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
-		return r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], l)
-	} else {
-		return l
+		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
 	}
+
+	ret = r.maybeAddAlertModal(vs, ret)
+
+	return ret
+}
+
+func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) rty.Component {
+	if vs.AlertMessage != "" {
+		b := rty.NewBox(rty.Fg(rty.TextString(vs.AlertMessage), tcell.ColorDefault))
+		b.SetTitle("! Alert !")
+		layout = r.renderModal(rty.Fg(b, tcell.ColorRed), layout, false)
+	}
+	return layout
 }
 
 func keyLegend(vs view.ViewState) string {
@@ -144,15 +157,15 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 		}
 	}
 	if errorCount == 0 {
-		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Text(" OK")
+		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
 	} else {
 		s := "error"
 		if errorCount > 1 {
 			s = "errors"
 		}
-		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Textf(" %d %s", errorCount, s)
+		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" %d %s", errorCount, s).Fg(tcell.ColorDefault)
 	}
-	sbRight.Text(keys)
+	sbRight.Fg(cText).Text(keys).Fg(tcell.ColorDefault)
 
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
@@ -185,13 +198,15 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
 	sl := rty.NewTextScrollLayout(logScrollerName)
 	sl.Add(rty.TextString(s))
-	box := rty.NewBox()
+	box := rty.NewGrowingBox()
 	box.SetInner(sl)
 	box.SetTitle(title)
-	l := rty.NewFlexLayout(rty.DirVert)
-	l.Add(box)
-	ml := rty.NewModalLayout(background, l, .9)
-	return ml
+
+	return r.renderModal(box, background, true)
+}
+
+func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {
+	return rty.NewModalLayout(bg, fg, .9, fixed)
 }
 
 func renderNarration(msg string) rty.Component {
@@ -202,7 +217,7 @@ func renderNarration(msg string) rty.Component {
 	lines.Add(l)
 	lines.Add(rty.NewLine())
 
-	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), tcell.ColorDefault)
+	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), cText)
 	return rty.NewFixedSize(box, rty.GROW, 3)
 }
 
@@ -253,92 +268,14 @@ func abbreviateLog(s string) []string {
 
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
-	layout.Add(resourceTitle(selected, rv, res))
-	layout.Add(r.resourceK8s(res, rv))
-	layout.Add(r.resourceTilt(res, rv))
-	layout.Add(rty.NewLine())
+	renderResourceSummary(selected, rv, res, layout)
+	renderResourcesK8s(res, layout, rv)
+	renderResourceBuild(res, r, rv, layout)
 	return layout
 }
 
-func resourceTitle(selected bool, rv view.ResourceViewState, res view.Resource) rty.Component {
-	l := rty.NewLine()
-	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
+func renderResourceBuild(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
 
-	p := " "
-	if selected {
-		p = "▼"
-	}
-	if selected && rv.IsCollapsed {
-		p = "▶"
-	}
-
-	sbLeft.Textf("%s %s ", p, res.Name)
-
-	if res.LastDeployTime.Equal(time.Time{}) {
-		sbRight.Text(" Not Deployed •  —      ")
-	} else {
-		sbRight.Textf(" OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
-	}
-
-	l.Add(sbLeft.Build())
-	l.Add(rty.Fg(rty.NewFillerString('╌'), cLightText))
-	l.Add(sbRight.Build())
-	return l
-}
-
-func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty.Component {
-	l := rty.NewLine()
-	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
-	sbDetail := rty.NewStringBuilder()
-	status := r.spinner()
-	indent := "    "
-
-	if res.PodStatus != "" {
-		podStatusColor, ok := podStatusColors[res.PodStatus]
-		if !ok {
-			podStatusColor = tcell.ColorDefault
-		}
-		sbLeft.Fg(podStatusColor).Textf("%s● ", indent).Fg(tcell.ColorDefault)
-		status = res.PodStatus
-
-		if len(res.Endpoints) != 0 {
-			sbRight.Textf("%s • ", strings.Join(res.Endpoints, " "))
-		}
-
-		// TODO(maia): show # restarts even if == 0 (in gray or green)?
-		if res.PodRestarts > 0 {
-			sbRight.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
-		}
-
-		sbRight.Textf("%s ago ", formatDuration(time.Since(res.PodCreationTime)))
-
-		// K8s Log
-		if !rv.IsCollapsed {
-			if res.PodRestarts > 0 {
-				logLines := abbreviateLog(res.PodLog)
-				if len(logLines) > 0 {
-					layout.Add(rty.NewStringBuilder().Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
-					for _, logLine := range logLines[1:] {
-						layout.Add(rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
-					}
-				}
-			}
-		}
-	} else {
-		sbLeft.Fg(cLightText).Textf("%s● ", indent).Fg(tcell.ColorDefault)
-	}
-
-	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
-
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
-	return l
-}
-
-func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	// Last Deployed Edits
 	if !res.LastDeployTime.Equal(time.Time{}) {
 		if len(res.LastDeployEdits) > 0 {
@@ -409,18 +346,81 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	if len(buildComponents) == 0 {
 		buildComponents = []rty.Component{rty.TextString("no build yet")}
 	}
-	l := rty.NewLine()
-	l.Add(rty.ColoredString("  BUILD: ", cLightText))
-	l.Add(buildComponents[0])
+	l := rty.NewConcatLayout(rty.DirHor)
 	layout.Add(l)
-	for _, c := range buildComponents[1:] {
-		l := rty.NewLine()
-		l.Add(rty.TextString("         "))
-		l.Add(c)
-		layout.Add(l)
+	intro := "  BUILD: "
+	l.Add(rty.ColoredString(intro, cLightText))
+	cl := rty.NewConcatLayout(rty.DirVert)
+	l.AddDynamic(cl)
+	for _, c := range buildComponents {
+		cl.Add(c)
 	}
 	layout.Add(rty.NewLine())
-	return l
+}
+
+func renderResourceSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
+	l := rty.NewLine()
+	sb := rty.NewStringBuilder()
+	p := "  "
+	if selected {
+		p = "▼ "
+	}
+	if selected && rv.IsCollapsed {
+		p = "▶ "
+	}
+
+	sb.Text(p)
+	sb.Textf("%s ", res.Name)
+
+	l.Add(sb.Build())
+	l.Add(rty.NewFillerString('╌'))
+	sb2 := rty.NewStringBuilder()
+	if res.LastDeployTime.Equal(time.Time{}) {
+		sb2.Text("  Not Deployed • —  ")
+	} else {
+		sb2.Textf("  OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
+	}
+	l.Add(sb2.Build())
+	layout.Add(l)
+}
+
+func renderResourcesK8s(res view.Resource, layout *rty.ConcatLayout, rv view.ResourceViewState) {
+	if res.PodStatus != "" {
+		podStatusColor, ok := podStatusColors[res.PodStatus]
+		if !ok {
+			podStatusColor = tcell.ColorDefault
+		}
+
+		sb := rty.NewStringBuilder()
+		sb.Fg(cLightText).Text("    K8S: ").Fg(tcell.ColorDefault)
+		sb.Textf("%s ago — ", formatDuration(time.Since(res.PodCreationTime)))
+		sb.Fg(podStatusColor).Text(res.PodStatus).Fg(tcell.ColorDefault)
+
+		// TODO(maia): show # restarts even if == 0 (in gray or green)?
+		if res.PodRestarts > 0 {
+			sb.Fg(cBad).Textf(" [%d restart(s)]", res.PodRestarts).Fg(tcell.ColorDefault)
+		}
+
+		layout.Add(sb.Build())
+
+		if len(res.Endpoints) != 0 {
+			sb := rty.NewStringBuilder()
+			sb.Textf("         %s", strings.Join(res.Endpoints, " "))
+			layout.Add(sb.Build())
+		}
+
+		if !rv.IsCollapsed {
+			if res.PodRestarts > 0 {
+				logLines := abbreviateLog(res.PodLog)
+				if len(logLines) > 0 {
+					layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
+					for _, logLine := range logLines[1:] {
+						layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
+					}
+				}
+			}
+		}
+	}
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {

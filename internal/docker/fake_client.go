@@ -84,6 +84,8 @@ type FakeDockerClient struct {
 
 	RestartsByContainer map[string]int
 	RemovedImageIDs     []string
+
+	Images map[string]types.ImageInspect
 }
 
 func NewFakeDockerClient() *FakeDockerClient {
@@ -92,6 +94,7 @@ func NewFakeDockerClient() *FakeDockerClient {
 		BuildOutput:         ExampleBuildOutput1,
 		ContainerListOutput: make(map[string][]types.Container),
 		RestartsByContainer: make(map[string]int),
+		Images:              make(map[string]types.ImageInspect),
 	}
 }
 
@@ -166,7 +169,11 @@ func (c *FakeDockerClient) ImageTag(ctx context.Context, source, target string) 
 }
 
 func (c *FakeDockerClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
-	return types.ImageInspect{}, nil, nil
+	result, ok := c.Images[imageID]
+	if ok {
+		return result, nil, nil
+	}
+	return types.ImageInspect{}, nil, notFoundError{}
 }
 
 func (c *FakeDockerClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
@@ -199,3 +206,14 @@ func NewFakeDockerResponse(contents string) fakeDockerResponse {
 func (r fakeDockerResponse) Close() error { return nil }
 
 var _ io.ReadCloser = fakeDockerResponse{}
+
+type notFoundError struct {
+}
+
+func (e notFoundError) NotFound() bool {
+	return true
+}
+
+func (e notFoundError) Error() string {
+	return "fake docker client error: object not found"
+}

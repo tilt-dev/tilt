@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tilt-docserver
+spec:
+  selector:
+    matchLabels:
+      app: tilt-docserver
+  template:
+    metadata:
+      labels:
+        app: tilt-docserver
+    spec:
+      containers:
+      - name: tilt-docserver
+        image: gcr.io/windmill-public-containers/tilt-docserver
+        ports:
+        - containerPort: 8000

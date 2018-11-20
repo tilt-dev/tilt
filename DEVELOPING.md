@@ -13,6 +13,23 @@
 ## Developing
 See `Makefile`.
 
+## Documentation
+
+The documentation is written in Restructured Text and generated with Sphinx. We install Sphinx inside
+a container so that you don't have to install it locally. To regenerate the HTML, run
+
+```
+make docs
+```
+
+and open them [locally](docs/_build/html/index.html).
+
+Netlify will automatically deploy the docs to [the public site](https://docs.windmill.build/) when you merge to master.
+
+If you'd like to send a preview to someone else,
+push with the special branch name `docs` and open a pull request.
+Netlify will annotate the pull request with the URL of a preview.
+
 ## Releasing
 
 We use [goreleaser](https://goreleaser.com) for releases.

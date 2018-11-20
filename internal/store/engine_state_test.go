@@ -40,6 +40,20 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
 }
 
+func TestStateToViewPortForwards(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithPortForwards([]model.PortForward{
+		{LocalPort: 8000, ContainerPort: 5000},
+		{LocalPort: 7000, ContainerPort: 5001},
+	})
+	state := newState([]model.Manifest{m}, model.YAMLManifest{})
+	v := StateToView(*state)
+	assert.Equal(t,
+		[]string{"http://localhost:7000/", "http://localhost:8000/"},
+		v.Resources[0].Endpoints)
+}
+
 func TestStateViewYAMLManifestNoYAML(t *testing.T) {
 	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), "", []string{})
 	state := newState([]model.Manifest{}, m)

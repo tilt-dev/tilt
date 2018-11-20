@@ -32,7 +32,7 @@ func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 // Diff the current watches against the state store of what
 // we're supposed to be watching, returning the changes
 // we need to make.
-func (m *PodLogManager) diff(ctx context.Context, st *store.Store) (setup []PodLogWatch, teardown []PodLogWatch) {
+func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodLogWatch, teardown []PodLogWatch) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -104,7 +104,7 @@ func (m *PodLogManager) diff(ctx context.Context, st *store.Store) (setup []PodL
 	return setup, teardown
 }
 
-func (m *PodLogManager) OnChange(ctx context.Context, st *store.Store) {
+func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := m.diff(ctx, st)
 	for _, watch := range teardown {
 		watch.cancel()
@@ -115,7 +115,7 @@ func (m *PodLogManager) OnChange(ctx context.Context, st *store.Store) {
 	}
 }
 
-func (m *PodLogManager) consumeLogs(watch PodLogWatch, st *store.Store) {
+func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	defer func() {
 		watch.terminationTime <- time.Now()
 		watch.cancel()
@@ -182,7 +182,7 @@ type podLogKey struct {
 }
 
 type PodLogActionWriter struct {
-	store        *store.Store
+	store        store.RStore
 	podID        k8s.PodID
 	manifestName model.ManifestName
 }

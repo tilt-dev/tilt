@@ -75,7 +75,11 @@ func (i *InteractiveTester) runCaptureError(name string, width int, height int, 
 
 	expected := i.loadGoldenFile(name)
 
-	if !canvasesEqual(actual, expected) {
+	eq, err := canvasesEqual(actual, expected)
+	if err != nil {
+		return errors.Wrapf(err, "error comparing canvases for %s", name)
+	}
+	if !eq {
 		updated, err := i.displayAndMaybeWrite(name, actual, expected)
 		if err == nil {
 			if !updated {
@@ -89,27 +93,33 @@ func (i *InteractiveTester) runCaptureError(name string, width int, height int, 
 	return nil
 }
 
-func canvasesEqual(actual, expected Canvas) bool {
+func canvasesEqual(actual, expected Canvas) (bool, error) {
 	actualWidth, actualHeight := actual.Size()
 	expectedWidth, expectedHeight := expected.Size()
 	if actualWidth != expectedWidth || actualHeight != expectedHeight {
-		return false
+		return false, nil
 	}
 
 	for x := 0; x < actualWidth; x++ {
 		for y := 0; y < actualHeight; y++ {
-			actualCh, _, actualStyle, _ := actual.GetContent(x, y)
-			expectedCh, _, expectedStyle, _ := expected.GetContent(x, y)
+			actualCh, _, actualStyle, _, err := actual.GetContent(x, y)
+			if err != nil {
+				return false, err
+			}
+			expectedCh, _, expectedStyle, _, err := expected.GetContent(x, y)
+			if err != nil {
+				return false, err
+			}
 			if actualCh != expectedCh || actualStyle != expectedStyle {
-				return false
+				return false, nil
 			}
 		}
 	}
 
-	return true
+	return true, nil
 }
 
-func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual, expected Canvas, highlightDiff bool) {
+func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual, expected Canvas, highlightDiff bool) error {
 	screen.Clear()
 
 	actualWidth, actualHeight := actual.Size()
@@ -128,9 +138,15 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 
 	for y := 0; y < actualHeight; y++ {
 		for x := 0; x < actualWidth; x++ {
-			ch, _, style, _ := actual.GetContent(x, y)
+			ch, _, style, _, err := actual.GetContent(x, y)
+			if err != nil {
+				return err
+			}
 			if highlightDiff {
-				expectedCh, _, expectedStyle, _ := expected.GetContent(x, y)
+				expectedCh, _, expectedStyle, _, err := expected.GetContent(x, y)
+				if err != nil {
+					return err
+				}
 				if ch != expectedCh || style != expectedStyle {
 					style = style.Reverse(true)
 				}
@@ -149,9 +165,15 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 
 	for y := 0; y < expectedHeight; y++ {
 		for x := 0; x < expectedWidth; x++ {
-			ch, _, style, _ := expected.GetContent(x, y)
+			ch, _, style, _, err := expected.GetContent(x, y)
+			if err != nil {
+				return err
+			}
 			if highlightDiff {
-				actualCh, _, actualStyle, _ := actual.GetContent(x, y)
+				actualCh, _, actualStyle, _, err := actual.GetContent(x, y)
+				if err != nil {
+					return err
+				}
 				if ch != actualCh || style != actualStyle {
 					style = style.Reverse(true)
 				}
@@ -163,6 +185,8 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 	}
 
 	screen.Show()
+
+	return nil
 }
 
 func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected Canvas) (updated bool, err error) {
@@ -174,7 +198,10 @@ func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected C
 	highlightDiff := false
 
 	for {
-		i.renderDiff(screen, name, actual, expected, highlightDiff)
+		err := i.renderDiff(screen, name, actual, expected, highlightDiff)
+		if err != nil {
+			return false, err
+		}
 
 		ev := screen.PollEvent()
 		switch ev := ev.(type) {
@@ -268,7 +295,10 @@ func (i *InteractiveTester) writeGoldenFile(name string, actual Canvas) error {
 	// iterative over y first so we write by rows
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			ch, _, style, _ := actual.GetContent(x, y)
+			ch, _, style, _, err := actual.GetContent(x, y)
+			if err != nil {
+				return err
+			}
 			d.Cells = append(d.Cells, caseCell{Ch: ch, Style: style})
 		}
 	}
@@ -297,7 +327,7 @@ func InitScreenAndRun(m *testing.M, screen *tcell.Screen) {
 		(*screen).Fini()
 	}
 
-	if r != 0 && *screen != nil {
+	if r != 0 && *screen == nil {
 		log.Printf("To update golden files, run with env variable RTY_INTERACTIVE=1 and hit y/n on each case to overwrite (or not)")
 	}
 	os.Exit(r)

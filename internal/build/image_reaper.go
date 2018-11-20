@@ -12,17 +12,18 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 )
 
 type ImageReaper struct {
 	docker docker.DockerClient
 }
 
-func FilterByLabel(label Label) filters.KeyValuePair {
+func FilterByLabel(label dockerfile.Label) filters.KeyValuePair {
 	return filters.Arg("label", string(label))
 }
 
-func FilterByLabelValue(label Label, val LabelValue) filters.KeyValuePair {
+func FilterByLabelValue(label dockerfile.Label, val dockerfile.LabelValue) filters.KeyValuePair {
 	return filters.Arg("label", fmt.Sprintf("%s=%s", label, val))
 }
 

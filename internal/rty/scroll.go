@@ -13,6 +13,8 @@ type TextScrollLayout struct {
 	cs   []Component
 }
 
+var _ Component = &TextScrollLayout{}
+
 func NewTextScrollLayout(name string) *TextScrollLayout {
 	return &TextScrollLayout{name: name}
 }
@@ -21,8 +23,8 @@ func (l *TextScrollLayout) Add(c Component) {
 	l.cs = append(l.cs, c)
 }
 
-func (l *TextScrollLayout) Size(width int, height int) (int, int) {
-	return width, height
+func (l *TextScrollLayout) Size(width int, height int) (int, int, error) {
+	return width, height, nil
 }
 
 type TextScrollState struct {
@@ -83,7 +85,15 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 			numLines = height
 		}
 
-		w.Divide(1, 0, width-1, numLines).Embed(firstCanvas, next.lineIdx, numLines)
+		w, err := w.Divide(0, 0, width-1, numLines)
+		if err != nil {
+			return nil, err
+		}
+
+		err = w.Embed(firstCanvas, next.lineIdx, numLines)
+		if err != nil {
+			return nil, err
+		}
 		y += numLines
 	}
 
@@ -93,16 +103,24 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 		if numLines > height-y {
 			numLines = height - y
 		}
-		w.Divide(1, y, width-1, numLines).Embed(canvas, 0, numLines)
+		w, err := w.Divide(0, y, width-1, numLines)
+		if err != nil {
+			return nil, err
+		}
+
+		err = w.Embed(canvas, 0, numLines)
+		if err != nil {
+			return nil, err
+		}
 		y += numLines
 	}
 
 	if next.lineIdx > 0 || next.canvasIdx > 0 {
-		w.SetContent(0, 0, '↑', nil)
+		w.SetContent(width-1, 0, '↑', nil)
 	}
 
 	if y >= height && !next.following {
-		w.SetContent(0, height-1, '↓', nil)
+		w.SetContent(width-1, height-1, '↓', nil)
 	}
 
 	return next, nil
@@ -235,6 +253,8 @@ type ElementScrollLayout struct {
 	children []Component
 }
 
+var _ Component = &ElementScrollLayout{}
+
 func NewElementScrollLayout(name string) *ElementScrollLayout {
 	return &ElementScrollLayout{name: name}
 }
@@ -243,8 +263,8 @@ func (l *ElementScrollLayout) Add(c Component) {
 	l.children = append(l.children, c)
 }
 
-func (l *ElementScrollLayout) Size(width int, height int) (int, int) {
-	return width, height
+func (l *ElementScrollLayout) Size(width int, height int) (int, int, error) {
+	return width, height, nil
 }
 
 type ElementScrollState struct {
@@ -294,17 +314,25 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 			if h > height-y {
 				h = height - y
 			}
-			w.Divide(1, y, width-1, h).Embed(canvases[i], 0, h)
+			w, err := w.Divide(0, y, width-1, h)
+			if err != nil {
+				return nil, err
+			}
+
+			err = w.Embed(canvases[i], 0, h)
+			if err != nil {
+				return nil, err
+			}
 			y += h
 		}
 	}
 
 	if next.firstVisibleElement != 0 {
-		w.SetContent(0, 0, '↑', nil)
+		w.SetContent(width-1, 0, '↑', nil)
 	}
 
 	if y >= height {
-		w.SetContent(0, height-1, '↓', nil)
+		w.SetContent(width-1, height-1, '↓', nil)
 	}
 
 	return &next, nil

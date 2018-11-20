@@ -16,7 +16,13 @@ func TestGlobalYAML(t *testing.T) {
 
 	f.WriteFile("global.yaml", "this is the global yaml")
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
-global_yaml(yaml)`)
+global_yaml(yaml)
+
+def manifestA():
+  stuff = read_file('./fileA')
+  image = static_build('Dockerfile', 'tag-a')
+  return k8s_service("yamlA", image)
+	`)
 
 	globalYAML := f.LoadGlobalYAML()
 	assert.Equal(t, globalYAML.K8sYAML(), "this is the global yaml")
@@ -32,7 +38,7 @@ global_yaml('def')`)
 
 	_, err := Load(f.ctx, FileName)
 	if assert.Error(t, err, "expect multiple invocations of `global_yaml` to result in error") {
-		assert.Equal(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
+		assert.Contains(t, err.Error(), "`global_yaml` can be called only once per Tiltfile")
 	}
 }
 
@@ -61,8 +67,8 @@ def manifestB():
 
 	manifests := f.LoadManifests("manifestA", "manifestB")
 
-	expectedDepsA := []string{"fileA", "Dockerfile", "Tiltfile", "global.yaml"}
-	expectedDepsB := []string{"fileB", "Dockerfile", "Tiltfile", "global.yaml"}
+	expectedDepsA := []string{"fileA", "Dockerfile", "global.yaml"}
+	expectedDepsB := []string{"fileB", "Dockerfile", "global.yaml"}
 	assert.ElementsMatch(t, manifests[0].ConfigFiles, f.JoinPaths(expectedDepsA))
 	assert.ElementsMatch(t, manifests[1].ConfigFiles, f.JoinPaths(expectedDepsB))
 }
@@ -86,6 +92,34 @@ def snack():
 `)
 
 	manifests, gYAML := f.LoadManifestsAndGlobalYAML("doggos", "snack")
+
+	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
+	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
+	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML())
+}
+
+func TestPerManifestYAMLExtractedFromGlobalYAMLForCompositeService(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml, testyaml.SecretYaml)
+	f.WriteFile("global.yaml", multiManifestYAML)
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
+
+def compserv():
+  return composite_service([doggos, snack])
+
+def doggos():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
+  return k8s_service(image)
+
+def snack():
+  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/snack')
+  return k8s_service(image)
+`)
+
+	manifests, gYAML := f.LoadManifestsAndGlobalYAML("compserv")
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
@@ -159,6 +193,26 @@ def doggos():
 		"expected Service yaml on Doggos manifest")
 	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML(),
 		"expected global YAML to only contain SecretYaml (all else extracted)")
+}
+
+func TestTwinsInGlobalYAML(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	yaml := yaml.ConcatYAML(testyaml.SanchoYAML, testyaml.SanchoTwinYAML)
+	f.WriteFile("global.yaml", yaml)
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
+
+def sancho():
+  image = static_build('Dockerfile', 'gcr.io/some-project-162817/sancho')
+  return k8s_service(image)
+`)
+
+	manifests, gYAML := f.LoadManifestsAndGlobalYAML("sancho")
+
+	assertYAMLEqual(t, yaml, manifests[0].K8sYAML())
+	assertYAMLEqual(t, "", gYAML.K8sYAML())
 }
 
 func assertYAMLEqual(t *testing.T, y1, y2 string, msgAndArgs ...interface{}) {

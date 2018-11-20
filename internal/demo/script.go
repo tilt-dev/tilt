@@ -61,12 +61,12 @@ type podMonitor struct {
 	mu            sync.Mutex
 }
 
-func (m *podMonitor) OnChange(ctx context.Context, store *store.Store) {
+func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	state := store.RLockState()
-	defer store.RUnlockState()
+	state := st.RLockState()
+	defer st.RUnlockState()
 
 	m.hasPodRestart = false
 	m.hasBuildError = false
@@ -180,12 +180,17 @@ func (s Script) Run(ctx context.Context) error {
 			return err
 		}
 
-		defer s.cleanUp(context.Background(), manifests)
+		defer s.cleanUp(newBackgroundContext(ctx), manifests)
 
 		return s.upper.StartForTesting(ctx, manifests, model.YAMLManifest{}, true, tfPath)
 	})
 
 	return g.Wait()
+}
+
+func newBackgroundContext(ctx context.Context) context.Context {
+	l := logger.Get(ctx)
+	return logger.WithLogger(context.Background(), l)
 }
 
 func (s Script) cleanUp(ctx context.Context, manifests []model.Manifest) {
@@ -219,7 +224,10 @@ func (s Script) runSteps(ctx context.Context, out io.Writer) error {
 			continue
 		}
 
-		s.hud.SetNarrationMessage(ctx, step.Narration)
+		err := s.hud.SetNarrationMessage(ctx, step.Narration)
+		if err != nil {
+			return err
+		}
 
 		if step.Command != "" {
 			cmd := exec.CommandContext(ctx, "sh", "-c", step.Command)

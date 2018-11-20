@@ -11,11 +11,20 @@ See the problem when it isn’t
 
 Click below to see a video of Tilt in action:
 
-[![asciicast](https://asciinema.org/a/209622.png)](https://asciinema.org/a/209622)
+[![asciicast](https://asciinema.org/a/211635.png)](https://asciinema.org/a/211635)
 
-## Installing
+## Installing Tilt
 
-Run `go get -u github.com/windmilleng/tilt`
+Tilt binaries are available for MacOS and Linux
+
+[Download the latest Tilt command for your platform](https://github.com/windmilleng/tilt/releases/latest)
+
+### Compiling from source
+
+If you'd prefer to install Tilt from source,
+
+- Install [go 1.11](https://golang.org/dl/)
+- Run `go get -u github.com/windmilleng/tilt`
 
 ## Using Tilt
 
@@ -48,6 +57,7 @@ def backend():
       trigger=['package.json'])
   run('go install github.com/companyname/backend/server')
   img = stop_build()
+  img.cache('/root/.cache/go-cache')
 
   yaml = read_file('backend.yaml')
   s = k8s_service(img, yaml=yaml)
@@ -63,16 +73,17 @@ written in a Mill, a dialect of python. It's based on [starlark](https://github.
 
 Mill comes with built-in functions.
 
-#### static_build(dockerfile, ref, context?)
+#### static_build(dockerfile, ref, build_args?, context?)
 Builds a docker image.
 
 ```python
-def static_build(dockerfile: str, ref: str, context: str = "") -> Image:
+def static_build(dockerfile: str, ref: str, build_args: Dict[str, str] = {}, context: str = "") -> Image:
       """Builds a docker image.
 
     Args:
       dockerfile: The path to a Dockerfile
       ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
+      build_args?: the build-time variables that are accessed like regular environment variables in the `RUN` instruction of the Dockerfile. See https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg
       context?: The path to use as the Docker build context. Defaults to the Dockerfile directory.
     Returns:
       Image
@@ -149,7 +160,7 @@ class Service
 #### global_yaml
 Call this _on the top level of your Tiltfile_ with a string of YAML.
 
-We will infer what (if any) of the k8s resources defined in your YAML correspond to `Services` defined elsewhere in your Tiltfile (matching based on the DockerImage ref and on pod selectors). Any remaining YAML is _global YAML_, i.e. YAML that Tilt applies to your k8s cluster independently of any `Service` you define. 
+We will infer what (if any) of the k8s resources defined in your YAML correspond to `Services` defined elsewhere in your Tiltfile (matching based on the DockerImage ref and on pod selectors). Any remaining YAML is _global YAML_, i.e. YAML that Tilt applies to your k8s cluster independently of any `Service` you define.
 ```python
 def global_yaml(yaml: string) -> None
 ```
@@ -168,6 +179,16 @@ Represents a built Docker image
 
 ```python
 class Image
+  def cache(path: string) -> None:
+    """Caches the given path between image builds.
+
+    Popular directories to cache include:
+    - Go projects: /root/.cache/go-cache
+    - NodeJS projects: /src/node_modules, /src/yarn.lock
+
+    Args:
+      path: The path to cache. May be a file or a directory.
+    """
 ```
 
 #### composite_service

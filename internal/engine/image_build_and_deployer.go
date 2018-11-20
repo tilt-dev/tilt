@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/pkg/errors"
@@ -30,6 +32,7 @@ var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
 	b             build.ImageBuilder
+	cacheBuilder  build.CacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
 	analytics     analytics.Analytics
@@ -37,13 +40,20 @@ type ImageBuildAndDeployer struct {
 	injectSynclet bool
 }
 
-func NewImageBuildAndDeployer(b build.ImageBuilder, k8sClient k8s.Client, env k8s.Env, analytics analytics.Analytics, updateMode UpdateMode) *ImageBuildAndDeployer {
+func NewImageBuildAndDeployer(
+	b build.ImageBuilder,
+	cacheBuilder build.CacheBuilder,
+	k8sClient k8s.Client,
+	env k8s.Env,
+	analytics analytics.Analytics,
+	updateMode UpdateMode) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		b:          b,
-		k8sClient:  k8sClient,
-		env:        env,
-		analytics:  analytics,
-		updateMode: updateMode,
+		b:            b,
+		cacheBuilder: cacheBuilder,
+		k8sClient:    k8sClient,
+		env:          env,
+		analytics:    analytics,
+		updateMode:   updateMode,
 	}
 }
 
@@ -100,20 +110,32 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
 
-		df := build.Dockerfile(manifest.StaticDockerfile)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest))
+		cacheRef, err := ibd.fetchCache(ctx, manifest)
+		if err != nil {
+			return nil, err
+		}
+
+		df := ibd.staticDockerfile(manifest, cacheRef)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest), manifest.StaticBuildArgs)
 
 		if err != nil {
 			return nil, err
 		}
 		n = ref
 
+		go ibd.maybeCreateCacheFrom(ctx, ref, state, manifest, cacheRef)
+
 	} else if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 		// No existing image to build off of, need to build from scratch
 		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
 
-		df := build.Dockerfile(manifest.BaseDockerfile)
+		cacheRef, err := ibd.fetchCache(ctx, manifest)
+		if err != nil {
+			return nil, err
+		}
+
+		df := ibd.baseDockerfile(manifest, cacheRef)
 		steps := manifest.Steps
 		ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
 
@@ -121,6 +143,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 			return nil, err
 		}
 		n = ref
+		go ibd.maybeCreateCacheFrom(ctx, ref, state, manifest, cacheRef)
 
 	} else {
 		changed, err := state.FilesChangedSinceLastResultImage()
@@ -235,4 +258,71 @@ func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	// No-op: ImageBuildAndDeployer doesn't currently need any extra info for a given build result.
 	return
+}
+
+func (ibd *ImageBuildAndDeployer) fetchCache(ctx context.Context, manifest model.Manifest) (reference.NamedTagged, error) {
+	return ibd.cacheBuilder.FetchCache(ctx, manifest.DockerRef(), manifest.CachePaths())
+}
+
+func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, manifest model.Manifest, oldCacheRef reference.NamedTagged) {
+	// Only create the cache the first time we build the image.
+	if !state.LastResult.IsEmpty() {
+		return
+	}
+
+	// Only create the cache if there is no existing cache
+	if oldCacheRef != nil {
+		return
+	}
+
+	baseDockerfile := dockerfile.Dockerfile(manifest.BaseDockerfile)
+	if manifest.IsStaticBuild() {
+		staticDockerfile := dockerfile.Dockerfile(manifest.StaticDockerfile)
+		ok := true
+		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
+		if !ok {
+			return
+		}
+	}
+
+	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef, manifest.CachePaths(), manifest.StaticBuildArgs)
+	if err != nil {
+		logger.Get(ctx).Debugf("Could not create cache: %v", err)
+	}
+}
+
+func (ibd *ImageBuildAndDeployer) staticDockerfile(manifest model.Manifest, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
+	df := dockerfile.Dockerfile(manifest.StaticDockerfile)
+	if cacheRef == nil {
+		return df
+	}
+
+	if len(manifest.CachePaths()) == 0 {
+		return df
+	}
+
+	_, restDf, ok := df.SplitIntoBaseDockerfile()
+	if !ok {
+		return df
+	}
+
+	// Replace all the lines before the ADD with a load from the Tilt cache.
+	return dockerfile.FromExisting(cacheRef).
+		WithLabel(build.CacheImage, "0"). // sadly there's no way to unset a label :sob:
+		Append(restDf)
+}
+
+func (ibd *ImageBuildAndDeployer) baseDockerfile(manifest model.Manifest, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
+	df := dockerfile.Dockerfile(manifest.BaseDockerfile)
+	if cacheRef == nil {
+		return df
+	}
+
+	if len(manifest.CachePaths()) == 0 {
+		return df
+	}
+
+	// Use the cache as the new base dockerfile.
+	return dockerfile.FromExisting(cacheRef).
+		WithLabel(build.CacheImage, "0") // sadly there's no way to unset a label :sob:
 }

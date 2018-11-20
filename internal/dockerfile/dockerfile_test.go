@@ -1,6 +1,10 @@
-package build
+package dockerfile
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestAllowEntrypoint(t *testing.T) {
 	df := Dockerfile(`ENTRYPOINT cat`)
@@ -43,4 +47,31 @@ ADD`)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestSplitIntoBaseDf(t *testing.T) {
+	df := Dockerfile(`
+
+# comment
+FROM golang:10
+
+RUN echo hi
+
+ADD . .
+
+RUN echo bye
+`)
+	a, b, ok := df.SplitIntoBaseDockerfile()
+	assert.Equal(t, `
+
+# comment
+FROM golang:10
+
+RUN echo hi
+`, string(a))
+	assert.Equal(t, `ADD . .
+
+RUN echo bye
+`, string(b))
+	assert.True(t, ok)
 }

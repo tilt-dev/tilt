@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/url"
 	"sort"
 	"time"
@@ -42,10 +43,10 @@ type EngineState struct {
 	PermanentError error
 
 	// The user has indicated they want to exit
-	Exit bool
+	UserExited bool
 
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
-	Log []byte
+	Log []byte `testdiff:"ignore"`
 
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
@@ -54,6 +55,9 @@ type EngineState struct {
 	GlobalYAMLState *YAMLManifestState
 
 	TiltfilePath string
+
+	// InitManifests is the list of manifest names that we were told to init from the CLI.
+	InitManifests []model.ManifestName
 }
 
 type ManifestState struct {
@@ -70,14 +74,14 @@ type ManifestState struct {
 	CurrentlyBuildingFileChanges []string
 
 	CurrentBuildStartTime     time.Time
-	CurrentBuildLog           *bytes.Buffer
+	CurrentBuildLog           *bytes.Buffer `testdiff:"ignore"`
 	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
 	LastBuildFinishTime       time.Time
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
-	LastBuildLog              *bytes.Buffer
+	LastBuildLog              *bytes.Buffer `testdiff:"ignore"`
 	QueueEntryTime            time.Time
 
 	// If the pod isn't running this container then it's possible we're running stale code
@@ -129,9 +133,9 @@ type Pod struct {
 	Phase     v1.PodPhase
 
 	// The log for the previously active pod, if any
-	PreRestartLog []byte
+	PreRestartLog []byte `testdiff:"ignore"`
 	// The log for the currently active pod, if any
-	CurrentLog []byte
+	CurrentLog []byte `testdiff:"ignore"`
 
 	// Corresponds to the deployed container.
 	ContainerName  container.Name
@@ -220,6 +224,29 @@ func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx conte
 	return files, nil
 }
 
+func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
+	defer func() {
+		sort.Strings(endpoints)
+	}()
+
+	// If the user specified port-forwards in the Tiltfile, we
+	// assume that's what they want to see in the UI
+	portForwards := ms.Manifest.PortForwards()
+	if len(portForwards) > 0 {
+		for _, pf := range portForwards {
+			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
+		}
+		return endpoints
+	}
+
+	for _, u := range ms.LBs {
+		if u != nil {
+			endpoints = append(endpoints, u.String())
+		}
+	}
+	return endpoints
+}
+
 func StateToView(s EngineState) view.View {
 	ret := view.View{}
 
@@ -254,12 +281,7 @@ func StateToView(s EngineState) view.View {
 			lastManifestLoadError = ms.LastManifestLoadError.Error()
 		}
 
-		var endpoints []string
-		for _, u := range ms.LBs {
-			if u != nil {
-				endpoints = append(endpoints, u.String())
-			}
-		}
+		endpoints := ManifestStateEndpoints(ms)
 
 		lastBuildLog := ""
 		if ms.LastBuildLog != nil {
@@ -314,6 +336,7 @@ func StateToView(s EngineState) view.View {
 			LastBuildDuration:     s.GlobalYAMLState.LastApplyDuration,
 			LastDeployTime:        s.GlobalYAMLState.LastSuccessfulApplyTime,
 			LastBuildError:        lastError,
+			IsYAMLManifest:        true,
 		}
 
 		ret.Resources = append(ret.Resources, r)

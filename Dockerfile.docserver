@@ -1,0 +1,10 @@
+FROM python:3.7
+
+RUN pip install sphinx sphinx_rtd_theme sphinx-autodoc-typehints recommonmark
+RUN mkdir -p /src
+WORKDIR /src
+
+ADD docs .
+RUN make html
+WORKDIR _build/html
+ENTRYPOINT python -m http.server 8000
