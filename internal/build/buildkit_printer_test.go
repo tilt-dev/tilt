@@ -175,11 +175,85 @@ func buildkitTestCase3() buildkitTestCase {
 	return c
 }
 
+func buildkitTestCase4() buildkitTestCase {
+	return buildkitTestCase{
+		name:  "docker-18.09-output",
+		level: logger.InfoLvl,
+		vertices: []*vertex{
+			{
+				digest: "sha8234234546454",
+				name:   "[1/2] RUN make",
+				error:  "",
+			},
+			{
+				digest:  "sha8234234546454",
+				name:    "[1/2] RUN make",
+				error:   "",
+				started: true,
+			},
+			{
+				digest:    "sha8234234546454",
+				name:      "[1/2] RUN make",
+				error:     "",
+				started:   true,
+				completed: true,
+			},
+			{
+				digest: "sha1234234234234",
+				name:   `[2/2] RUN echo "hi"`,
+				error:  "",
+			},
+			{
+				digest:  "sha1234234234234",
+				name:    `[2/2] RUN echo "hi"`,
+				error:   "",
+				started: true,
+			},
+			{
+				digest:    "sha1234234234234",
+				name:      `[2/2] RUN echo "hi"`,
+				error:     "context canceled",
+				started:   true,
+				completed: true,
+			},
+			{
+				digest: "sha82342xxxx454",
+				name:   "docker-image://docker.io/blah",
+				error:  "",
+			},
+			{
+				digest:  "sha82342xxxx454",
+				name:    "docker-image://docker.io/blah",
+				error:   "",
+				started: true,
+			},
+			{
+				digest:    "sha1234234234234",
+				name:      `[2/2] RUN echo "hi"`,
+				error:     "",
+				started:   true,
+				completed: true,
+			},
+		},
+		logs: []*vertexLog{
+			{
+				vertex: "sha1234234234234",
+				msg:    []byte("hi"),
+			},
+			{
+				vertex: "sha8234234546454",
+				msg:    []byte(""),
+			},
+		},
+	}
+}
+
 func TestBuildkitPrinter(t *testing.T) {
 	cases := []buildkitTestCase{
 		buildkitTestCase1(),
 		buildkitTestCase2(),
 		buildkitTestCase3(),
+		buildkitTestCase4(),
 	}
 
 	for _, c := range cases {

@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	digest "github.com/opencontainers/go-digest"
@@ -29,8 +30,14 @@ type vertex struct {
 const cmdPrefix = "/bin/sh -c "
 const buildPrefix = "    ╎ "
 
+var stepPattern = regexp.MustCompile("^\\[[0-9]+/[0-9]+\\]")
+
 func (v *vertex) isRun() bool {
 	return strings.HasPrefix(v.name, cmdPrefix)
+}
+
+func (v *vertex) isStep() bool {
+	return stepPattern.MatchString(v.name)
 }
 
 func (v *vertex) isError() bool {
@@ -90,9 +97,14 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		if !ok {
 			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
-		if vl.vertex.isRun() && vl.vertex.started && !vl.vertex.cmdPrinted {
-			b.logger.Infof("%sRUNNING: %s", buildPrefix, trimCmd(vl.vertex.name))
-			vl.vertex.cmdPrinted = true
+		if vl.vertex.started && !vl.vertex.cmdPrinted {
+			if vl.vertex.isRun() {
+				b.logger.Infof("%sRUNNING: %s", buildPrefix, trimCmd(vl.vertex.name))
+				vl.vertex.cmdPrinted = true
+			} else if vl.vertex.isStep() {
+				b.logger.Infof("%s%s", buildPrefix, trimCmd(vl.vertex.name))
+				vl.vertex.cmdPrinted = true
+			}
 		}
 
 		if vl.vertex.isError() {
