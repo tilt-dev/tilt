@@ -68,6 +68,8 @@ type BuildState struct {
 	// Files changed since the last result was build.
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
+
+	DeployInfo DeployInfo
 }
 
 func NewBuildState(result BuildResult, files []string) BuildState {
@@ -79,6 +81,11 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 		LastResult:      result,
 		FilesChangedSet: set,
 	}
+}
+
+func (b BuildState) WithDeployInfo(d DeployInfo) BuildState {
+	b.DeployInfo = d
+	return b
 }
 
 func (b BuildState) LastImage() reference.NamedTagged {
@@ -131,6 +138,36 @@ func (b BuildState) IsEmpty() bool {
 
 func (b BuildState) HasImage() bool {
 	return b.LastResult.HasImage()
+}
+
+// The information we need to find a ready container.
+type DeployInfo struct {
+	PodID         k8s.PodID
+	ContainerID   container.ID
+	ContainerName container.Name
+}
+
+func (d DeployInfo) Empty() bool {
+	return d == DeployInfo{}
+}
+
+// Check to see if there's a single, unambiguous Ready container
+// in the given PodSet. If so, create a DeployInfo for that container.
+func NewDeployInfo(podSet PodSet) DeployInfo {
+	if podSet.Len() != 1 {
+		return DeployInfo{}
+	}
+
+	pod := podSet.MostRecentPod()
+	if pod.PodID == "" || pod.ContainerID == "" || pod.ContainerName == "" || !pod.ContainerReady {
+		return DeployInfo{}
+	}
+
+	return DeployInfo{
+		PodID:         pod.PodID,
+		ContainerID:   pod.ContainerID,
+		ContainerName: pod.ContainerName,
+	}
 }
 
 var BuildStateClean = BuildState{}

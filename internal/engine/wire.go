@@ -34,7 +34,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	DefaultBuildOrder,
-	NewDeployDiscovery,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,

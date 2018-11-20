@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -23,15 +22,13 @@ const podPollTimeoutLocal = time.Second * 3
 type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	analytics analytics.Analytics
-	dd        *DeployDiscovery
 }
 
 func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
-	analytics analytics.Analytics, dd *DeployDiscovery) *LocalContainerBuildAndDeployer {
+	analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,
 		analytics: analytics,
-		dd:        dd,
 	}
 }
 
@@ -64,10 +61,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
-	deployInfo, err := cbd.dd.DeployInfoForImageBlocking(ctx, state.LastResult.Image)
-	if err != nil {
-		return store.BuildResult{}, errors.Wrap(err, "deploy info fetch failed")
-	} else if deployInfo.Empty() {
+	deployInfo := state.DeployInfo
+	if deployInfo.Empty() {
 		return store.BuildResult{}, fmt.Errorf("no deploy info")
 	}
 
@@ -84,30 +79,16 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	// TODO - use PipelineState here when we actually do pipeline output for container builds
 	writer := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.containerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps, writer)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps, writer)
 	if err != nil {
 		return store.BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
-	res.ContainerID = deployInfo.containerID // the container we deployed on top of
+	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
 	return res, nil
 }
 
 func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-PostProcessBuild")
-	span.SetTag("image", result.Image.String())
-	defer span.Finish()
-
-	if previousResult.HasImage() && (!result.HasImage() || result.Image != previousResult.Image) {
-		_ = cbd.dd.ForgetImage(previousResult.Image)
-	}
-
-	if !result.HasImage() {
-		// This is normal condition if the previous build failed.
-		return
-	}
-
-	cbd.dd.EnsureDeployInfoFetchStarted(ctx, result.Image, result.Namespace)
 }
