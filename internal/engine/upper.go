@@ -43,6 +43,7 @@ const maxChangedFilesToPrint = 5
 type Upper struct {
 	b     BuildAndDeployer
 	store *store.Store
+	kcli  k8s.Client
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -66,7 +67,8 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
+	kcli k8s.Client) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -82,6 +84,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	return Upper{
 		b:     b,
 		store: st,
+		kcli:  kcli,
 	}
 }
 
@@ -92,6 +95,11 @@ func (u Upper) Dispatch(action store.Action) {
 func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
+
+	err := u.kcli.ConnectedToCluster(ctx)
+	if err != nil {
+		return err
+	}
 
 	absTfPath, err := filepath.Abs(tiltfile.FileName)
 	if err != nil {

@@ -89,7 +89,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
 	configsController := engine.NewConfigsController()
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController, imageController, globalYAMLBuildController, configsController)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController, imageController, globalYAMLBuildController, configsController, k8sClient)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, store2, branch)
 	return script, nil
 }
@@ -167,7 +167,7 @@ func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
 	configsController := engine.NewConfigsController()
-	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController, imageController, globalYAMLBuildController, configsController)
+	upper := engine.NewUpper(ctx, compositeBuildAndDeployer, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, fsWatcherMaker, buildController, imageController, globalYAMLBuildController, configsController, k8sClient)
 	hudAndUpper := provideHudAndUpper(headsUpDisplay, upper)
 	return hudAndUpper, nil
 }
