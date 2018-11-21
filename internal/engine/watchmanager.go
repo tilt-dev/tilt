@@ -13,7 +13,7 @@ import (
 )
 
 // TODO(maia): throw an error if you try to name a manifest this in your Tiltfile?
-const ConfigsManifestName = "ConfigsManifest"
+const ConfigsManifestName = "_ConfigsManifest"
 
 type WatchableManifest interface {
 	Dependencies() []string
