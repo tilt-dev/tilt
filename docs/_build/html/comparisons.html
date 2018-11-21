@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -9,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; Tilt  documentation</title>
+  <title>Comparisons &mdash; Tilt  documentation</title>
   
 
   
@@ -29,8 +28,11 @@
 
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="index" title="Index" href="#" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tiltfile API Reference" href="api.html" />
+    <link rel="prev" title="Expanding a Tiltfile" href="fast_build.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -92,12 +94,16 @@
               
             
             
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Expanding a Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="comparisons.html">Comparisons</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Comparisons</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#skaffold">Skaffold</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#docker-compose">Docker Compose</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
 
@@ -144,7 +150,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Index</li>
+      <li>Comparisons</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -161,129 +167,37 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-
-<h1 id="index">Index</h1>
-
-<div class="genindex-jumpbox">
- <a href="#A"><strong>A</strong></a>
- | <a href="#C"><strong>C</strong></a>
- | <a href="#G"><strong>G</strong></a>
- | <a href="#I"><strong>I</strong></a>
- | <a href="#K"><strong>K</strong></a>
- | <a href="#L"><strong>L</strong></a>
- | <a href="#P"><strong>P</strong></a>
- | <a href="#R"><strong>R</strong></a>
- | <a href="#S"><strong>S</strong></a>
- 
+  <div class="section" id="comparisons">
+<span id="comparisons"></span><h1>Comparisons<a class="headerlink" href="#comparisons" title="Permalink to this headline">¶</a></h1>
+<p>There are no existing tools that offer a lightning fast, shareable and transparent developer experience.</p>
+<div class="section" id="skaffold">
+<span id="skaffold"></span><h2>Skaffold<a class="headerlink" href="#skaffold" title="Permalink to this headline">¶</a></h2>
+<p>Skaffold offers easy and repeatable Kubernetes deployments which lends itself to iterative development. Every time you change a file it rebuilds your entire Docker image and applies it to your Kubernetes cluster.</p>
+<p>Tilt does this faster and more transparently. Under-the-hood build optimizations allow for fast Docker rebuilds when changes are small, just like it should be. Changes are immediately applied to your Kubernetes cluster. Tilt also offers one UI right in your console to view all of your running services, catch errors, see logs, and more.</p>
+<p>Best of all: no more inflexible YAML configs. Express your build in familiar Pyton syntax.</p>
 </div>
-<h2 id="A">A</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.add">add() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#module-api">api (module)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="C">C</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Image.cache">cache() (api.Image method)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.composite_service">composite_service() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="G">G</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.global_yaml">global_yaml() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="I">I</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Image">Image (class in api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="K">K</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.k8s_service">k8s_service() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.kustomize">kustomize() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="L">L</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.local">local() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.local_git_repo">local_git_repo() (in module api)</a>
-</li>
-      <li><a href="api.html#api.LocalPath">LocalPath (class in api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="P">P</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Service.port_forward">port_forward() (api.Service method)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="R">R</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.read_file">read_file() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.run">run() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="S">S</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Service">Service (class in api)</a>
-</li>
-      <li><a href="api.html#api.start_fast_build">start_fast_build() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.static_build">static_build() (in module api)</a>
-</li>
-      <li><a href="api.html#api.stop_build">stop_build() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
+<div class="section" id="docker-compose">
+<span id="docker-compose"></span><h2>Docker Compose<a class="headerlink" href="#docker-compose" title="Permalink to this headline">¶</a></h2>
+<p>Docker compose is a tool for defining and running multi-container Docker applications. Docker compose configs are an easy way for developers to share a standard way to start services locally.</p>
+<p>Tilt brings your dev environment more in line with production by making it just as easy to run your services in Kubernetes natively. Make changes to multiple orchestrated services and see your changes take effect instantly: no restarts required.</p>
+<p>Have your cake and it too: specify your environment with clear, shareable, hackable files written in a familiar Python syntax.</p>
+</div>
+</div>
 
 
            </div>
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="Tiltfile API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="fast_build.html" class="btn btn-neutral" title="Expanding a Tiltfile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

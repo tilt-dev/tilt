@@ -51,4 +51,5 @@ Next Steps
    first_example
    first_config
    fast_build
+   comparisons
    api
