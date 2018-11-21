@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 type BuildController struct {
@@ -20,12 +18,11 @@ type BuildController struct {
 }
 
 type buildEntry struct {
-	ctx               context.Context
-	manifest          model.Manifest
-	buildState        store.BuildState
-	filesChanged      []string
-	firstBuild        bool
-	needsConfigReload bool
+	ctx          context.Context
+	manifest     model.Manifest
+	buildState   store.BuildState
+	filesChanged []string
+	firstBuild   bool
 }
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
@@ -61,20 +58,17 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildState := store.NewBuildState(ms.LastBuild, filesChanged)
 
-	needsConfigReload := ms.ConfigIsDirty
-
 	// TODO(nick): This is...not great, because it modifies the build log in place.
 	// A better solution would dispatch actions (like PodLogManager does) so that
 	// they go thru the state loop and immediately update in the UX.
 	ctx = logger.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
 
 	return buildEntry{
-		ctx:               ctx,
-		manifest:          manifest,
-		firstBuild:        firstBuild,
-		buildState:        buildState,
-		filesChanged:      filesChanged,
-		needsConfigReload: needsConfigReload,
+		ctx:          ctx,
+		manifest:     manifest,
+		firstBuild:   firstBuild,
+		buildState:   buildState,
+		filesChanged: filesChanged,
 	}, true
 }
 
@@ -92,19 +86,6 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	go func() {
-		if entry.needsConfigReload {
-			newManifest, newGlobalYAML, err := getNewManifestFromTiltfile(entry.ctx, entry.manifest.Name)
-			st.Dispatch(GlobalYAMLManifestReloadedAction{
-				GlobalYAML: newGlobalYAML,
-			})
-			st.Dispatch(ManifestReloadedAction{
-				OldManifest: entry.manifest,
-				NewManifest: newManifest,
-				Error:       err,
-			})
-			return
-		}
-
 		st.Dispatch(BuildStartedAction{
 			Manifest:     entry.manifest,
 			StartTime:    time.Now(),
@@ -145,38 +126,6 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
 		l.Infof("%s%s%s", rp, manifest.Name, rs)
 	}
-}
-
-func getNewManifestFromTiltfile(ctx context.Context, name model.ManifestName) (model.Manifest, model.YAMLManifest, error) {
-	// Sends any output to the CurrentBuildLog
-	t, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, err
-	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, name)
-	if err != nil {
-		return model.Manifest{}, model.YAMLManifest{}, err
-	}
-	if len(newManifests) != 1 {
-		return model.Manifest{}, model.YAMLManifest{}, fmt.Errorf("Expected there to be 1 manifest for %s, got %d", name, len(newManifests))
-	}
-	newManifest := newManifests[0]
-
-	return newManifest, globalYAML, nil
-}
-
-func getNewManifestsFromTiltfile(ctx context.Context, names []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
-	// Sends any output to the CurrentBuildLog
-	t, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return []model.Manifest{}, model.YAMLManifest{}, err
-	}
-	newManifests, globalYAML, err := t.GetManifestConfigsAndGlobalYAML(ctx, names...)
-	if err != nil {
-		return []model.Manifest{}, model.YAMLManifest{}, err
-	}
-
-	return newManifests, globalYAML, nil
 }
 
 var _ store.Subscriber = &BuildController{}

@@ -2,7 +2,6 @@ package store
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -10,12 +9,9 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"k8s.io/api/core/v1"
@@ -56,7 +52,9 @@ type EngineState struct {
 	GlobalYAML      model.YAMLManifest
 	GlobalYAMLState *YAMLManifestState
 
-	TiltfilePath string
+	TiltfilePath             string
+	ConfigFiles              []string
+	PendingConfigFileChanges map[string]bool
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
@@ -90,13 +88,12 @@ type ManifestState struct {
 	ExpectedContainerID container.ID
 	// We detected stale code and are currently doing an image build
 	CrashRebuildInProg bool
-	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
-	ConfigIsDirty bool
 }
 
 func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	ret.PendingConfigFileChanges = make(map[string]bool)
 	return ret
 }
 
@@ -271,32 +268,6 @@ func (s EngineState) Manifests() []model.Manifest {
 		result = append(result, ms.Manifest)
 	}
 	return result
-}
-
-// Returns a set of pending file changes, without config files that don't belong
-// to mounts. (Changed config files show up in ms.PendingFileChanges and don't
-// necessarily belong to any mounts/watched directories -- we don't want to run
-// these files through a build b/c we'll pitch an error if we find un-mounted
-// files at that point.)
-func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx context.Context) (map[string]bool, error) {
-	matcher, err := ms.Manifest.ConfigMatcher()
-	if err != nil {
-		return nil, errors.Wrap(err, "[PendingFileChangesWithoutUnmountedConfigFiles] getting config matcher")
-	}
-
-	files := make(map[string]bool)
-	for f := range ms.PendingFileChanges {
-		matches, err := matcher.Matches(f, false)
-		if err != nil {
-			logger.Get(ctx).Infof("Error matching %s: %v", f, err)
-		}
-		if matches && !build.FileBelongsToMount(f, ms.Manifest.Mounts) {
-			// Filter out config files that don't belong to a mount
-			continue
-		}
-		files[f] = true
-	}
-	return files, nil
 }
 
 func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {

@@ -412,17 +412,13 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest.ConfigFiles = []string{
-		f.JoinPath("Dockerfile"),
-	}
 	f.Start([]model.Manifest{manifest}, true)
 
 	// First call: with the old manifest
 	call := <-f.b.calls
 	assert.Empty(t, call.manifest.BaseDockerfile)
 
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = <-f.b.calls
@@ -432,7 +428,6 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
 
-	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
 
 	// third call: new manifest should persist
@@ -452,50 +447,57 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `def foobar():
+  return composite_service(baz, quux)
+
+def baz():
   start_fast_build("Dockerfile1", "docker-tag1")
   image = stop_build()
   return k8s_service(image, yaml="yaaaaaaaaml")
 
-  def bazqux():
-    start_fast_build("Dockerfile2", "docker-tag2")
-    image = stop_build()
-    return k8s_service(image, yaml="yaaaaaaaaml")
+def quux():
+  start_fast_build("Dockerfile2", "docker-tag2")
+  image = stop_build()
+  return k8s_service(image, yaml="yaaaaaaaaml")
 `)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 
 	mount1 := model.Mount{LocalPath: f.JoinPath("mount1"), ContainerPath: "/go"}
 	mount2 := model.Mount{LocalPath: f.JoinPath("mount2"), ContainerPath: "/go"}
-	manifest1 := f.newManifest("foobar", []model.Mount{mount1})
-	manifest1.ConfigFiles = []string{
-		f.JoinPath("mount1", "Dockerfile1"),
-	}
-	manifest2 := f.newManifest("bazqux", []model.Mount{mount2})
-	manifest2.ConfigFiles = []string{
-		f.JoinPath("mount2", "Dockerfile2"),
-	}
+	manifest1 := f.newManifest("baz", []model.Mount{mount1})
+	manifest2 := f.newManifest("quux", []model.Mount{mount2})
 
 	f.Start([]model.Manifest{manifest1, manifest2}, true)
 
 	// First call: with the old manifests
 	call := <-f.b.calls
 	assert.Empty(t, call.manifest.BaseDockerfile)
-	assert.Equal(t, "foobar", string(call.manifest.Name))
+	assert.Equal(t, "baz", string(call.manifest.Name))
 
 	call = <-f.b.calls
 	assert.Empty(t, call.manifest.BaseDockerfile)
-	assert.Equal(t, "bazqux", string(call.manifest.Name))
+	assert.Equal(t, "quux", string(call.manifest.Name))
 
-	f.WriteFile("Dockerfile1", `FROM node:10`)
-	f.store.Dispatch(manifestFilesChangedAction{
-		files:        []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")},
-		manifestName: manifest1.Name})
+	// rewrite the same config
+	f.WriteConfigFiles("Dockerfile1", `FROM iron/go:dev1`)
+
+	// Now with the manifests from the config files
+	call = <-f.b.calls
+	assert.Equal(t, `FROM iron/go:dev1`, call.manifest.BaseDockerfile)
+	assert.Equal(t, "baz", string(call.manifest.Name))
+
+	call = <-f.b.calls
+	assert.Equal(t, `FROM iron/go:dev2`, call.manifest.BaseDockerfile)
+	assert.Equal(t, "quux", string(call.manifest.Name))
+
+	// Now change a dockerfile
+	f.WriteConfigFiles("Dockerfile1", `FROM node:10`)
 
 	// Second call: one new manifest!
 	call = <-f.b.calls
 
-	assert.Equal(t, "foobar", string(call.manifest.Name))
-	assert.ElementsMatch(t, []string{f.JoinPath("mount1", "Dockerfile1"), f.JoinPath("mount1", "random_file.go")}, call.state.FilesChanged())
+	assert.Equal(t, "baz", string(call.manifest.Name))
+	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
@@ -504,7 +506,7 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 		return es.CurrentlyBuilding == ""
 	})
 
-	// Importantly the other manifest, bazqux, is _not_ called
+	// Importantly the other manifest, quux, is _not_ called
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
@@ -521,17 +523,21 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
   return k8s_service(image, yaml="yaaaaaaaaml")`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
-	manifest := f.loadManifest("foobar")
-	f.Start([]model.Manifest{manifest}, true)
+	f.loadAndStartFoobar()
 
 	// First call: with the old manifests
 	call := <-f.b.calls
 	assert.Equal(t, "FROM iron/go:dev1", call.manifest.BaseDockerfile)
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 
+	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
+	// NB(dbentley): race condition if we don't sleep here; what's the right way to do this?
+	// The race condition happens because config reloading isn't single-threaded wrt building.
+	time.Sleep(10 * time.Millisecond)
+
 	f.store.Dispatch(manifestFilesChangedAction{
-		files:        []string{f.JoinPath("Dockerfile"), f.JoinPath("random_file.go")},
-		manifestName: manifest.Name,
+		files:        []string{f.JoinPath("random_file.go")},
+		manifestName: "foobar",
 	})
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
@@ -540,7 +546,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	call = <-f.b.calls
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 	assert.ElementsMatch(t, []string{
-		f.JoinPath("Dockerfile"),
+		// f.JoinPath("Dockerfile"),
 		f.JoinPath("random_file.go"),
 	}, call.state.FilesChanged())
 
@@ -554,8 +560,6 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
-
-	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
 }
 
 func TestRebuildDockerfileFailed(t *testing.T) {
@@ -567,9 +571,6 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest.ConfigFiles = []string{
-		f.JoinPath("Tiltfile"),
-	}
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -578,26 +579,23 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	assert.Empty(t, call.manifest.BaseDockerfile)
 
 	// second call: do some stuff
-	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteConfigFiles("Tiltfile", simpleTiltfile)
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
 	call = <-f.b.calls
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 
 	// Third call: error!
-	f.WriteFile("Tiltfile", "borken")
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WriteConfigFiles("Tiltfile", "borken")
 	select {
 	case <-f.b.calls:
 	case <-time.After(100 * time.Millisecond):
 	}
 
 	// fourth call: fix
-	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev2`)
+	f.WriteConfigFiles("Tiltfile", simpleTiltfile,
+		"Dockerfile", `FROM iron/go:dev2`)
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 	call = <-f.b.calls
 	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
@@ -616,7 +614,6 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 func TestBreakManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.tfw.DisableForTesting(false)
 
 	origTiltfile := `def foobar():
 	start_fast_build("Dockerfile", "docker-tag1")
@@ -628,21 +625,19 @@ func TestBreakManifest(t *testing.T) {
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	name := "foobar"
-	manifest := f.loadManifest(name)
-	f.Start([]model.Manifest{manifest}, true)
+	f.loadAndStartFoobar()
 
 	// First call: all is well
 	_ = <-f.b.calls
 
 	// Second call: change Tiltfile, break manifest
-	f.WriteFile("Tiltfile", "borken")
-	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WriteConfigFiles("Tiltfile", "borken")
 	select {
 	case <-f.b.calls:
 	case <-time.After(100 * time.Millisecond):
 	}
 
+	name := "foobar"
 	f.WaitUntilManifest("error set", name, func(ms store.ManifestState) bool {
 		return ms.LastManifestLoadError != nil
 	})
@@ -660,7 +655,6 @@ func TestBreakManifest(t *testing.T) {
 func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.tfw.DisableForTesting(false)
 
 	origTiltfile := `def foobar():
 	start_fast_build("Dockerfile", "docker-tag1")
@@ -673,22 +667,19 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	name := "foobar"
-	manifest := f.loadManifest(name)
-	f.Start([]model.Manifest{manifest}, true)
+	f.loadAndStartFoobar()
 
 	// First call: all is well
 	_ = <-f.b.calls
 
 	// Second call: change Tiltfile, break manifest
-	f.WriteFile("Tiltfile", "borken")
-	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntilManifest("state is broken", "foobar", func(state store.ManifestState) bool {
 		return state.LastManifestLoadError != nil
 	})
 
 	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
-	f.WriteFile("Tiltfile", origTiltfile)
-	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WriteConfigFiles("Tiltfile", origTiltfile)
 	f.WaitUntilManifest("state is restored", "foobar", func(state store.ManifestState) bool {
 		return state.LastManifestLoadError == nil
 	})
@@ -705,7 +696,6 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.tfw.DisableForTesting(false)
 
 	tiltfileString := func(cmd string) string {
 		return fmt.Sprintf(`def foobar():
@@ -720,17 +710,15 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f.WriteFile("Tiltfile", tiltfileString("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	name := "foobar"
-	manifest := f.loadManifest(name)
-	f.Start([]model.Manifest{manifest}, true)
+	f.loadAndStartFoobar()
 
 	f.WaitUntil("first build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
 	})
 
+	name := "foobar"
 	// Second call: change Tiltfile, break manifest
-	f.WriteFile("Tiltfile", "borken")
-	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntilManifest("manifest load error", name, func(ms store.ManifestState) bool {
 		return ms.LastManifestLoadError != nil
 	})
@@ -740,9 +728,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	})
 
 	// Third call: put Tiltfile back. manifest changed, so expect a build
-	f.WriteFile("Tiltfile", tiltfileString("changed"))
-
-	f.tfWatcher.events <- watch.FileEvent{Path: f.JoinPath("Tiltfile")}
+	f.WriteConfigFiles("Tiltfile", tiltfileString("changed"))
 
 	f.WaitUntil("second build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 2
@@ -761,53 +747,6 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 		}}
 		assert.Equal(t, expectedSteps, ms.Manifest.Steps)
 	})
-}
-
-func TestFilterOutNonMountedConfigFiles(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	f.WriteFile("Tiltfile", `def foobar():
-  start_fast_build("Dockerfile", "docker-tag1")
-  add(local_git_repo('./nested'), '.')
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")
-`)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
-
-	manifest := f.loadManifest("foobar")
-	f.Start([]model.Manifest{manifest}, true)
-
-	// First call: with the old manifests (should be image build)
-	call := <-f.b.calls
-	assert.False(t, call.state.HasImage()) // No prior build state
-	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-	assert.Equal(t, "foobar", string(call.manifest.Name))
-
-	f.store.Dispatch(manifestFilesChangedAction{
-		files:        []string{f.JoinPath("Dockerfile"), f.JoinPath("nested/random_file.go")},
-		manifestName: manifest.Name,
-	})
-
-	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile, but
-	// we made a no-op change --> no change to the manifest, will do an incremental build.
-	call = <-f.b.calls
-	assert.True(t, call.state.HasImage()) // Had prior build state (i.e. this was an incremental build)
-	assert.Equal(t, "foobar", string(call.manifest.Name))
-
-	// 'Dockerfile' didn't get passed through as a changed file b/c it's outside of our mount(s).
-	assert.ElementsMatch(t, []string{f.JoinPath("nested/random_file.go")}, call.state.FilesChanged())
-
-	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
-		return es.CurrentlyBuilding == ""
-	})
-
-	err := f.Stop()
-	assert.Nil(t, err)
-	f.assertAllBuildsConsumed()
-
-	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
 }
 
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
@@ -1519,7 +1458,7 @@ func TestInitWithGlobalYAML(t *testing.T) {
 	})
 
 	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{})
-	f.store.Dispatch(GlobalYAMLManifestReloadedAction{
+	f.store.Dispatch(ConfigsReloadedAction{
 		GlobalYAML: newYM,
 	})
 
@@ -1602,7 +1541,6 @@ type testFixture struct {
 	upper                 Upper
 	b                     *fakeBuildAndDeployer
 	fsWatcher             *fakeNotify
-	tfWatcher             *fakeNotify
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeDockerClient
 	hud                   *hud.FakeHud
@@ -1612,7 +1550,7 @@ type testFixture struct {
 	pod                   *v1.Pod
 	bc                    *BuildController
 	fwm                   *WatchManager
-	tfw                   *TiltfileWatcher
+	cc                    *ConfigsController
 
 	onchangeCh chan bool
 }
@@ -1620,7 +1558,6 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 	watcher := newFakeNotify()
-	tfWatcher := newFakeNotify()
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
@@ -1650,17 +1587,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	fswm := func() (watch.Notify, error) {
 		return watcher, nil
 	}
-	tfwm := func() (watch.Notify, error) {
-		return tfWatcher, nil
-	}
+
 	fwm := NewWatchManager(fswm, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
-
 	gybc := NewGlobalYAMLBuildController(k8s)
-	tfw := NewTiltfileWatcher(tfwm)
-	tfw.DisableForTesting(true)
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, tfw, k8s)
+	cc := NewConfigsController()
+
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, cc, k8s)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
@@ -1673,7 +1607,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		upper:          upper,
 		b:              b,
 		fsWatcher:      watcher,
-		tfWatcher:      tfWatcher,
 		timerMaker:     &timerMaker,
 		docker:         docker,
 		hud:            fakeHud,
@@ -1682,7 +1615,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		bc:             bc,
 		onchangeCh:     fSub.ch,
 		fwm:            fwm,
-		tfw:            tfw,
+		cc:             cc,
 	}
 }
 
@@ -1904,17 +1837,32 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadManifest(name string) model.Manifest {
-	tf, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
+func (f *testFixture) loadAndStartFoobar() {
+	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
+	if err != nil {
+		f.store.Dispatch(ConfigsReloadedAction{
+			Err: err,
+		})
+		return
+	}
+	manifests, _, _, err := t.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
-	if err != nil {
-		f.T().Fatal(err)
+	f.Start(manifests, true)
+}
+
+func (f *testFixture) WriteConfigFiles(args ...string) {
+	if (len(args) % 2) != 0 {
+		f.T().Fatalf("WriteConfigFiles needs an even number of arguments; got %d", len(args))
 	}
-	assert.Equal(f.T(), 1, len(manifests))
-	return manifests[0]
+
+	var filenames []string
+	for i := 0; i < len(args); i += 2 {
+		f.WriteFile(args[i], args[i+1])
+		filenames = append(filenames, args[i])
+	}
+	f.store.Dispatch(manifestFilesChangedAction{manifestName: ConfigsManifestName, files: filenames})
 }
 
 type fixtureSub struct {

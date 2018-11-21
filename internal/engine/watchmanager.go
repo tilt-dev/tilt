@@ -11,11 +11,30 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+// TODO(maia): throw an error if you try to name a manifest this in your Tiltfile?
+const ConfigsManifestName = "_ConfigsManifest"
+
 type WatchableManifest interface {
 	Dependencies() []string
 	ManifestName() model.ManifestName
-	ConfigMatcher() (model.PathMatcher, error)
 	LocalRepos() []model.LocalGithubRepo
+}
+
+// configManifest makes a WatchableManifest that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
+type configsManifest struct {
+	dependencies []string
+}
+
+func (m *configsManifest) Dependencies() []string {
+	return m.dependencies
+}
+
+func (m *configsManifest) ManifestName() model.ManifestName {
+	return ConfigsManifestName
+}
+
+func (m *configsManifest) LocalRepos() []model.LocalGithubRepo {
+	return nil
 }
 
 type manifestFilesChangedAction struct {
@@ -51,26 +70,33 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []WatchableManifest) {
+func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []model.ManifestName) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	setup = []WatchableManifest{}
-	teardown = []WatchableManifest{}
-	manifestsToProcess := make(map[model.ManifestName]WatchableManifest, len(state.ManifestStates))
-	for i, m := range state.ManifestStates {
-		manifestsToProcess[i] = m.Manifest
-	}
-	for n, state := range state.ManifestStates {
-		_, ok := w.manifestWatches[n]
-		if !ok {
-			setup = append(setup, state.Manifest)
-		}
-		delete(manifestsToProcess, n)
+	teardown = []model.ManifestName{}
+
+	manifestsToProcess := make(map[model.ManifestName]WatchableManifest)
+	for name, state := range state.ManifestStates {
+		manifestsToProcess[name] = state.Manifest
 	}
 
-	for _, m := range manifestsToProcess {
-		teardown = append(teardown, m)
+	if len(state.ConfigFiles) > 0 {
+		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
+	}
+
+	for name := range w.manifestWatches {
+		if _, ok := manifestsToProcess[name]; !ok {
+			teardown = append(teardown, name)
+		}
+	}
+
+	for name, m := range manifestsToProcess {
+		if _, ok := w.manifestWatches[name]; !ok {
+			setup = append(setup, m)
+		}
+		delete(manifestsToProcess, name)
 	}
 
 	return setup, teardown
@@ -79,17 +105,17 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
-	for _, m := range teardown {
-		p, ok := w.manifestWatches[m.ManifestName()]
+	for _, name := range teardown {
+		p, ok := w.manifestWatches[name]
 		if !ok {
 			continue
 		}
 		err := p.notify.Close()
 		if err != nil {
-			logger.Get(ctx).Infof("Error closing watch: %v", err)
+			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
 		}
 		p.cancel()
-		delete(w.manifestWatches, m.ManifestName())
+		delete(w.manifestWatches, name)
 	}
 
 	for _, manifest := range setup {
@@ -137,7 +163,6 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if !ok {
 				return
 			}
-
 			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}
 
 			for _, e := range fsEvents {
