@@ -593,12 +593,10 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	}
 
 	// fourth call: fix
-	fmt.Println("fourth")
 	f.WriteConfigFiles("Tiltfile", simpleTiltfile,
 		"Dockerfile", `FROM iron/go:dev2`)
 
 	call = <-f.b.calls
-	fmt.Println("fourth done")
 	assert.Equal(t, "FROM iron/go:dev2", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
@@ -1744,7 +1742,6 @@ func (f *testFixture) assertAllBuildsConsumed() {
 func (f *testFixture) loadAndStart() {
 	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
-		fmt.Println("loading error")
 		f.store.Dispatch(TiltfileReloadedAction{
 			Err: err,
 		})
