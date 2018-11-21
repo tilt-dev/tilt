@@ -506,7 +506,7 @@ def quux():
 		return es.CurrentlyBuilding == ""
 	})
 
-	// Importantly the other manifest, bazqux, is _not_ called
+	// Importantly the other manifest, quux, is _not_ called
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
@@ -750,54 +750,6 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 		assert.Equal(t, expectedSteps, ms.Manifest.Steps)
 	})
 }
-
-// NB(dbentley): we don't need this anymore, because now we only watch if the Dockerfile is mounted
-// func TestFilterOutNonMountedConfigFiles(t *testing.T) {
-// 	f := newTestFixture(t)
-// 	defer f.TearDown()
-
-// 	f.WriteFile("Tiltfile", `def foobar():
-//   start_fast_build("Dockerfile", "docker-tag1")
-//   add(local_git_repo('./nested'), '.')
-//   image = stop_build()
-//   return k8s_service(image, yaml="yaaaaaaaaml")
-// `)
-// 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-// 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
-
-// 	manifest := f.loadManifest("foobar")
-// 	f.Start([]model.Manifest{manifest}, true)
-
-// 	// First call: with the old manifests (should be image build)
-// 	call := <-f.b.calls
-// 	assert.False(t, call.state.HasImage()) // No prior build state
-// 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-// 	assert.Equal(t, "foobar", string(call.manifest.Name))
-
-// 	f.store.Dispatch(manifestFilesChangedAction{
-// 		files:        []string{f.JoinPath("Dockerfile"), f.JoinPath("nested/random_file.go")},
-// 		manifestName: manifest.Name,
-// 	})
-
-// 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile, but
-// 	// we made a no-op change --> no change to the manifest, will do an incremental build.
-// 	call = <-f.b.calls
-// 	assert.True(t, call.state.HasImage()) // Had prior build state (i.e. this was an incremental build)
-// 	assert.Equal(t, "foobar", string(call.manifest.Name))
-
-// 	// 'Dockerfile' didn't get passed through as a changed file b/c it's outside of our mount(s).
-// 	assert.ElementsMatch(t, []string{f.JoinPath("nested/random_file.go")}, call.state.FilesChanged())
-
-// 	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
-// 		return es.CurrentlyBuilding == ""
-// 	})
-
-// 	err := f.Stop()
-// 	assert.Nil(t, err)
-// 	f.assertAllBuildsConsumed()
-
-// 	assert.Contains(t, strings.Join(f.LogLines(), "\n"), "manifest foobar hasn't changed")
-// }
 
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
@@ -1817,19 +1769,6 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 	}
 	f.store.Dispatch(manifestFilesChangedAction{manifestName: ConfigsManifestName, files: filenames})
 }
-
-// func (f *testFixture) loadManifest(name string) model.Manifest {
-// 	tf, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
-// 	if err != nil {
-// 		f.T().Fatal(err)
-// 	}
-// 	manifests, _, _, err := tf.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
-// 	if err != nil {
-// 		f.T().Fatal(err)
-// 	}
-// 	assert.Equal(f.T(), 1, len(manifests))
-// 	return manifests[0]
-// }
 
 type fixtureSub struct {
 	ch chan bool
