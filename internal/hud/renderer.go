@@ -422,7 +422,6 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
 			}
 			if len(logLines) > 0 {
-				// sbDetail.Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build()
 				for _, log := range logLines {
 					lv.Add(log)
 				}
