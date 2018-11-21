@@ -396,16 +396,18 @@ func handleTiltfileReloaded(
 
 		newDefOrder[i] = m.ManifestName()
 		if !m.Equal(ms.Manifest) {
+			ms.Manifest = m
+
 			// Manifest has changed, ensure we do an image build so that we apply the changes
 			ms.LastBuild = store.BuildResult{}
-			ms.Manifest = m
-			// TODO(dbentley): change watches when manifest changes
+
 			// TODO(dbentley): add changed file to pending file changes?
 			enqueueBuild(state, m.ManifestName())
 		}
 		state.ManifestStates[m.ManifestName()] = ms
 	}
 	// TODO(dmiller) handle deleting manifests
+	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles

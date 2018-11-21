@@ -21,7 +21,6 @@ func TestOneActionDispatched(t *testing.T) {
 	state.ManifestStates["blorgly"] = &store.ManifestState{
 		Manifest: model.Manifest{
 			Name: "blorgly",
-			// ConfigFiles: []string{"/a/b/c.conf"},
 		},
 	}
 	f.store.UnlockMutableState()
@@ -44,7 +43,6 @@ func TestNoChange(t *testing.T) {
 	state.ManifestStates["blorgly"] = &store.ManifestState{
 		Manifest: model.Manifest{
 			Name: "blorgly",
-			// ConfigFiles: []string{"/a/b/c.conf"},
 		},
 	}
 	f.store.UnlockMutableState()
@@ -58,32 +56,6 @@ func TestNoChange(t *testing.T) {
 
 	f.ConsumeFSEventsUntil("/a/b/c.conf")
 }
-
-// func TestMultipleManifestsEvents(t *testing.T) {
-// 	f := newWatchManagerFixture(t)
-
-// 	state := f.store.LockMutableStateForTesting()
-// 	state.WatchMounts = true
-// 	state.ManifestStates["blorgly"] = &store.ManifestState{
-// 		Manifest: model.Manifest{
-// 			Name:        "blorgly",
-// 			ConfigFiles: []string{"/a/b/c.conf"},
-// 		},
-// 	}
-// 	state.ManifestStates["server"] = &store.ManifestState{
-// 		Manifest: model.Manifest{
-// 			Name:        "server",
-// 			ConfigFiles: []string{"/b/c/d.conf"},
-// 		},
-// 	}
-// 	f.store.UnlockMutableState()
-
-// 	f.fswm.OnChange(f.ctx, f.store)
-
-// 	go func() {
-// 		f.notify.events <- watch.FileEvent{Path: "/a/b/c.conf"}
-// 	}()
-// }
 
 type watchManagerFixture struct {
 	t         *testing.T

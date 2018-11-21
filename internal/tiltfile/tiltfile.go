@@ -543,8 +543,6 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 			manifests = append(manifests, m)
 		}
 	case *k8sManifest:
-		// manifest.configFiles = files
-
 		m, err := skylarkManifestToDomain(manifest)
 		if err != nil {
 			return nil, err
@@ -636,7 +634,6 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		Steps:          image.steps,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		Name:           model.ManifestName(manifest.name),
-		// ConfigFiles:    SkylarkConfigFilesToDomain(manifest.configFiles),
 
 		StaticDockerfile: image.staticDockerfile.String(),
 		StaticBuildPath:  string(image.staticBuildPath.path),

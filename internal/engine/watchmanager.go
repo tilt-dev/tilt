@@ -82,22 +82,25 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 
 	setup = []WatchableManifest{}
 	teardown = []WatchableManifest{}
+
 	manifestsToProcess := make(map[model.ManifestName]WatchableManifest, len(state.ManifestStates))
-	for i, m := range state.ManifestStates {
-		manifestsToProcess[i] = m.Manifest
+	for name, state := range state.ManifestStates {
+		manifestsToProcess[name] = state.Manifest
 	}
+
 	if len(state.ConfigFiles) > 0 {
 		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
-	for k, v := range manifestsToProcess {
-		if _, ok := w.manifestWatches[k]; !ok {
-			setup = append(setup, v)
+
+	for name, m := range manifestsToProcess {
+		if _, ok := w.manifestWatches[name]; !ok {
+			setup = append(setup, m)
 		}
-		delete(manifestsToProcess, k)
+		delete(manifestsToProcess, name)
 	}
 
-	for _, v := range manifestsToProcess {
-		teardown = append(teardown, v)
+	for _, m := range manifestsToProcess {
+		teardown = append(teardown, m)
 	}
 
 	return setup, teardown

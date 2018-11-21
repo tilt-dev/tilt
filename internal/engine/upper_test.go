@@ -418,7 +418,6 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	assert.Empty(t, call.manifest.BaseDockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
-	// f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
 
 	// Second call: new manifest!
 	call = <-f.b.calls
@@ -523,7 +522,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
   return k8s_service(image, yaml="yaaaaaaaaml")`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
-	f.loadAndStart()
+	f.loadAndStartFoobar()
 
 	// First call: with the old manifests
 	call := <-f.b.calls
@@ -625,7 +624,7 @@ func TestBreakManifest(t *testing.T) {
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	f.loadAndStart()
+	f.loadAndStartFoobar()
 
 	// First call: all is well
 	_ = <-f.b.calls
@@ -667,7 +666,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
 	name := "foobar"
-	f.loadAndStart()
+	f.loadAndStartFoobar()
 
 	// First call: all is well
 	_ = <-f.b.calls
@@ -710,7 +709,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f.WriteFile("Tiltfile", tiltfileString("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	f.loadAndStart()
+	f.loadAndStartFoobar()
 
 	f.WaitUntil("first build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
@@ -1739,7 +1738,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadAndStart() {
+func (f *testFixture) loadAndStartFoobar() {
 	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.store.Dispatch(TiltfileReloadedAction{

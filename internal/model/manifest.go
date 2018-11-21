@@ -54,10 +54,6 @@ func (m Manifest) CachePaths() []string {
 	return append([]string{}, m.cachePaths...)
 }
 
-// func (m Manifest) ConfigMatcher() (PathMatcher, error) {
-// 	return EmptyMatcher, nil
-// }
-
 func (m Manifest) IsStaticBuild() bool {
 	return m.StaticDockerfile != ""
 }
