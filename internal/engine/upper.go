@@ -352,6 +352,7 @@ func handleFSEvent(
 	event manifestFilesChangedAction) {
 
 	if event.manifestName == "Tiltfile" {
+		fmt.Printf("Tiltfile! %v\n", len(event.files))
 		for _, f := range event.files {
 			state.PendingConfigFileChanges[f] = true
 		}
@@ -470,6 +471,9 @@ func handleTiltfileReloaded(
 			// TODO(dbentley): change watches when manifest changes
 			// TODO(dbentley): add changed file to pending file changes?
 			enqueueBuild(state, m.ManifestName())
+		} else {
+			logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
+				ms.Manifest.Name)
 		}
 		state.ManifestStates[m.ManifestName()] = ms
 	}
