@@ -271,6 +271,7 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	layout.Add(r.resourceTitle(selected, rv, res))
 	layout.Add(r.resourceK8s(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
+	layout.Add(rty.NewLine())
 	return layout
 }
 
@@ -355,127 +356,101 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 
 func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lines := rty.NewLines()
-
-	if !res.PendingBuildSince.Equal(time.Time{}) {
-		lines.Add(pendingBuild(
-			formatPreciseDuration(time.Since(res.PendingBuildSince)),
-			res.PendingBuildEdits,
-		))
-	}
-
-	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
-		lines.Add(currentBuild(
-			formatPreciseDuration(time.Since(res.CurrentBuildStartTime)),
-			res.CurrentBuildEdits,
-			r.spinner(),
-		))
-	}
-
-	lines.Add(r.lastBuild(res, rv))
-
-	return lines
-}
-
-func (r *Renderer) lastBuild(res view.Resource, rv view.ResourceViewState) rty.Component {
-	lines := rty.NewLines()
 	l := rty.NewLine()
-	ln := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
-	// sbDetail := rty.NewStringBuilder()
+
 	indent := "    "
-	status := "●"
-	var logExcerpts []rty.Component
+	statusColor := cPending
+	status := r.spinner()
+	duration := formatPreciseDuration(res.LastBuildDuration)
+	editsPrefix := ""
+	edits := ""
 
 	if res.LastManifestLoadError != "" {
-		sbLeft.Fg(cBad).Textf("%s%s", indent, status).Fg(tcell.ColorDefault)
-		sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault)
-		sbRight.Text("Failed to load manifest • ")
-		// sbDetail.Text(res.LastManifestLoadError)
+		statusColor = cBad
+		status = "Problem loading Tiltfile!"
 	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
 		if res.LastBuildError != "" {
-			sbLeft.Fg(cBad).Textf("%s%s", indent, status).Fg(tcell.ColorDefault)
-			sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault)
-			sbRight.Text("ERROR • ")
+			statusColor = cBad
+			status = "ERROR"
 		} else {
-			sbLeft.Fg(cGood).Textf("%s%s", indent, status).Fg(tcell.ColorDefault)
-			sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault)
-			sbRight.Text("OK • ")
+			statusColor = cGood
+			status = "OK"
 		}
 	}
 
-	sbRight.Fg(cLightText).Text("DURATION ").Fg(tcell.ColorDefault).Textf("%s • ", formatPreciseDuration(res.LastBuildDuration))
-	sbRight.Textf("%s ago ", formatDuration(time.Since(res.LastBuildFinishTime)))
+	sbLeft.Fg(statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
+	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(status)
 
-	if !rv.IsCollapsed {
-		if res.LastBuildError != "" {
-			abbrevLog := abbreviateLog(res.LastBuildLog)
-			for _, logLine := range abbrevLog {
-				logExcerpts = append(logExcerpts, rty.TextString(logLine))
-			}
-			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
-			if len(abbrevLog) == 0 {
-				logExcerpts = append(logExcerpts, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
-			}
-
-			for _, log := range logExcerpts {
-				ln.Add(rty.TextString("         "))
-				ln.Add(log)
-			}
+	// LAST
+	if !res.LastDeployTime.Equal(time.Time{}) {
+		if len(res.LastDeployEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.LastDeployEdits)
 		}
-
 	}
+
+	// PENDING
+	if !res.PendingBuildSince.Equal(time.Time{}) {
+		if len(res.PendingBuildEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.PendingBuildEdits)
+		}
+		duration = formatPreciseDuration(time.Since(res.PendingBuildSince))
+	}
+
+	// CURRENT
+	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
+		if len(res.CurrentBuildEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.CurrentBuildEdits)
+			status = "In Progress"
+		}
+		duration = formatPreciseDuration(time.Since(res.CurrentBuildStartTime))
+	}
+
+	sbLeft.Fg(cLightText).Text(editsPrefix).Fg(tcell.ColorDefault).Text(edits)
+	sbRight.Fg(cLightText).Text("DURATION ")
+	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", duration) // Last char cuts off
 
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
 	l.Add(sbRight.Build())
 	lines.Add(l)
-	lines.Add(ln)
+	lines.Add(r.lastBuildError(res, rv))
 	return lines
-
 }
 
-func currentBuild(duration string, currentBuildEdits []string, spinner string) rty.Component {
-	l := rty.NewLine()
-	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
-	indent := "    "
-	status := "●"
+func (r *Renderer) lastBuildError(res view.Resource, rv view.ResourceViewState) rty.Component {
+	lh := rty.NewConcatLayout(rty.DirHor)
+	lv := rty.NewConcatLayout(rty.DirVert)
+	lh.AddDynamic(lv)
+	var logLines []rty.Component
+	indent := "       "
 
-	sbLeft.Fg(cPending).Textf("%s%s", indent, status).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault)
-	if len(currentBuildEdits) > 0 {
-		sbLeft.Fg(cLightText).Text("EDITS ").Fg(tcell.ColorDefault).Text(formatFileList(currentBuildEdits))
-	}
-	sbRight.Textf("In Progress %s ", spinner)
-	sbRight.Fg(cLightText).Text("DURATION ").Fg(tcell.ColorDefault).Textf("%s • ", duration)
-
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
-	return l
-}
-
-func pendingBuild(duration string, pendingBuildEdits []string) rty.Component {
-	l := rty.NewLine()
-	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
-	indent := "    "
-	status := "●"
-
-	sbLeft.Fg(cPending).Textf("%s%s", indent, status).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault)
-	if len(pendingBuildEdits) > 0 {
-		sbLeft.Fg(cLightText).Text("EDITS ").Fg(tcell.ColorDefault).Text(formatFileList(pendingBuildEdits))
+	if res.LastManifestLoadError != "" {
+		logLines = append(logLines, rty.TextString(res.LastManifestLoadError))
 	}
 
-	sbRight.Text("Pending • ")
-	sbRight.Fg(cLightText).Text("DURATION ").Fg(tcell.ColorDefault).Textf("%s • ", duration)
+	if !rv.IsCollapsed {
+		if res.LastBuildError != "" {
+			abbrevLog := abbreviateLog(res.LastBuildLog)
+			for _, logLine := range abbrevLog {
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
+			}
+			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
+			if len(abbrevLog) == 0 {
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
+			}
 
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
-	return l
+			for _, log := range logLines {
+				lv.Add(log)
+			}
+		}
+	}
+
+	return lh
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {
