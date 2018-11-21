@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -92,11 +93,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return err
-	}
-
 	absTfPath, err := filepath.Abs(tiltfile.FileName)
 	if err != nil {
 		return err
@@ -108,7 +104,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, globalYAML, err := loadAndGetManifests(ctx, manifestNames)
 	if err != nil {
 		return err
 	}
@@ -122,6 +118,27 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	})
 
 	return u.store.Loop(ctx)
+}
+
+func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) ([]model.Manifest, model.YAMLManifest, error) {
+	var manifests []model.Manifest
+	var globalYAML model.YAMLManifest
+
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	if os.IsNotExist(err) {
+		manifests = []model.Manifest{}
+		globalYAML = model.YAMLManifest{}
+	} else if err != nil {
+		return nil, model.YAMLManifest{}, err
+	} else {
+		manifests, globalYAML, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+		if err != nil {
+			manifests = []model.Manifest{}
+			globalYAML = model.YAMLManifest{}
+		}
+	}
+
+	return manifests, globalYAML, nil
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
