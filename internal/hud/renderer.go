@@ -272,7 +272,6 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	layout.Add(r.resourceK8s(res, rv))
 	layout.Add(r.resourceK8sLogs(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
-	layout.Add(rty.NewLine())
 	return layout
 }
 
@@ -308,7 +307,7 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
 	status := r.spinner()
-	indent := "    "
+	indent := strings.Repeat(" ", 8)
 
 	if res.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[res.PodStatus]
@@ -351,7 +350,7 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
 
-	indent := "    "
+	indent := strings.Repeat(" ", 8)
 	statusColor := cPending
 	status := r.spinner()
 	duration := formatPreciseDuration(res.LastBuildDuration)
@@ -413,7 +412,7 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 	lv := rty.NewConcatLayout(rty.DirVert)
 	lh.AddDynamic(lv)
 	var logLines []rty.Component
-	indent := "       "
+	indent := strings.Repeat(" ", 12)
 
 	if res.PodStatus != "" && !rv.IsCollapsed {
 		if res.PodRestarts > 0 {
@@ -437,7 +436,7 @@ func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) r
 	lv := rty.NewConcatLayout(rty.DirVert)
 	lh.AddDynamic(lv)
 	var logLines []rty.Component
-	indent := "       "
+	indent := strings.Repeat(" ", 12)
 
 	if res.LastManifestLoadError != "" {
 		logLines = append(logLines, rty.TextString(res.LastManifestLoadError))
