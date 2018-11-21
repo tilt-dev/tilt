@@ -44,12 +44,6 @@ type manifestFilesChangedAction struct {
 
 func (manifestFilesChangedAction) Action() {}
 
-type configFilesChangedAction struct {
-	files []string
-}
-
-func (configFilesChangedAction) Action() {}
-
 type manifestNotifyCancel struct {
 	manifest WatchableManifest
 	notify   watch.Notify
@@ -83,7 +77,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	setup = []WatchableManifest{}
 	teardown = []model.ManifestName{}
 
-	manifestsToProcess := make(map[model.ManifestName]WatchableManifest, len(state.ManifestStates))
+	manifestsToProcess := make(map[model.ManifestName]WatchableManifest)
 	for name, state := range state.ManifestStates {
 		manifestsToProcess[name] = state.Manifest
 	}

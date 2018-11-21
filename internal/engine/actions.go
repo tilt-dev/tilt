@@ -121,17 +121,17 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
 
-type TiltfileReloadStartedAction struct {
+type ConfigsReloadStartedAction struct {
 	FilesChanged map[string]bool
 }
 
-func (TiltfileReloadStartedAction) Action() {}
+func (ConfigsReloadStartedAction) Action() {}
 
-type TiltfileReloadedAction struct {
+type ConfigsReloadedAction struct {
 	Manifests   []model.Manifest
 	GlobalYAML  model.YAMLManifest
 	ConfigFiles []string
 	Err         error
 }
 
-func (TiltfileReloadedAction) Action() {}
+func (ConfigsReloadedAction) Action() {}

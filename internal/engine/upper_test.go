@@ -1359,7 +1359,7 @@ func TestInitWithGlobalYAML(t *testing.T) {
 	})
 
 	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{})
-	f.store.Dispatch(TiltfileReloadedAction{
+	f.store.Dispatch(ConfigsReloadedAction{
 		GlobalYAML: newYM,
 	})
 
@@ -1451,7 +1451,7 @@ type testFixture struct {
 	pod                   *v1.Pod
 	bc                    *BuildController
 	fwm                   *WatchManager
-	tc                    *TiltfileController
+	cc                    *ConfigsController
 
 	onchangeCh chan bool
 }
@@ -1493,9 +1493,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
-	tc := NewTiltfileController()
+	cc := NewTiltfileController()
 
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, tc)
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, cc)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
@@ -1516,7 +1516,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		bc:             bc,
 		onchangeCh:     fSub.ch,
 		fwm:            fwm,
-		tc:             tc,
+		cc:             cc,
 	}
 }
 
@@ -1741,7 +1741,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 func (f *testFixture) loadAndStartFoobar() {
 	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
-		f.store.Dispatch(TiltfileReloadedAction{
+		f.store.Dispatch(ConfigsReloadedAction{
 			Err: err,
 		})
 		return

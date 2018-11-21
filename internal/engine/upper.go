@@ -65,7 +65,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, tc *TiltfileController) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -76,7 +76,7 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(sw)
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
-	st.AddSubscriber(tc)
+	st.AddSubscriber(cc)
 
 	return Upper{
 		b:     b,
@@ -174,9 +174,9 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleGlobalYAMLApplyComplete(ctx, state, action)
 	case GlobalYAMLApplyError:
 		handleGlobalYAMLApplyError(ctx, state, action)
-	case TiltfileReloadStartedAction:
+	case ConfigsReloadStartedAction:
 		handleTiltfileReloadStarted(ctx, state, action)
-	case TiltfileReloadedAction:
+	case ConfigsReloadedAction:
 		handleTiltfileReloaded(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
@@ -365,7 +365,7 @@ func handleGlobalYAMLApplyError(
 func handleTiltfileReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
-	event TiltfileReloadStartedAction,
+	event ConfigsReloadStartedAction,
 ) {
 	state.PendingConfigFileChanges = make(map[string]bool)
 }
@@ -373,7 +373,7 @@ func handleTiltfileReloadStarted(
 func handleTiltfileReloaded(
 	ctx context.Context,
 	state *store.EngineState,
-	event TiltfileReloadedAction,
+	event ConfigsReloadedAction,
 ) {
 	manifests := event.Manifests
 	err := event.Err

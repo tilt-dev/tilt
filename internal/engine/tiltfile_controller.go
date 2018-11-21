@@ -7,19 +7,19 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
-type TiltfileController struct {
+type ConfigsController struct {
 	disabledForTesting bool
 }
 
-func NewTiltfileController() *TiltfileController {
-	return &TiltfileController{}
+func NewTiltfileController() *ConfigsController {
+	return &ConfigsController{}
 }
 
-func (tc *TiltfileController) DisableForTesting(disabled bool) {
+func (tc *ConfigsController) DisableForTesting(disabled bool) {
 	tc.disabledForTesting = disabled
 }
 
-func (tc *TiltfileController) OnChange(ctx context.Context, st store.RStore) {
+func (tc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	if tc.disabledForTesting {
 		return
 	}
@@ -37,16 +37,16 @@ func (tc *TiltfileController) OnChange(ctx context.Context, st store.RStore) {
 	}
 	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
 	go func() {
-		st.Dispatch(TiltfileReloadStartedAction{FilesChanged: filesChanged})
+		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged})
 		t, err := tiltfile.Load(ctx, tiltfile.FileName)
 		if err != nil {
-			st.Dispatch(TiltfileReloadedAction{
+			st.Dispatch(ConfigsReloadedAction{
 				Err: err,
 			})
 			return
 		}
 		manifests, globalYAML, configFiles, err := t.GetManifestConfigsAndGlobalYAML(ctx, initManifests...)
-		st.Dispatch(TiltfileReloadedAction{
+		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
 			ConfigFiles: configFiles,
