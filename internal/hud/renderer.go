@@ -380,13 +380,6 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 			edits = formatFileList(res.LastDeployEdits)
 		}
 	}
-	if !res.PendingBuildSince.Equal(time.Time{}) {
-		if len(res.PendingBuildEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.PendingBuildEdits)
-		}
-		duration = formatPreciseDuration(time.Since(res.PendingBuildSince))
-	}
 	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
 		if len(res.CurrentBuildEdits) > 0 {
 			editsPrefix = " • EDITS "
@@ -394,6 +387,13 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 			status = "In Progress"
 		}
 		duration = formatPreciseDuration(time.Since(res.CurrentBuildStartTime))
+	}
+	if !res.PendingBuildSince.Equal(time.Time{}) {
+		if len(res.PendingBuildEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.PendingBuildEdits)
+		}
+		duration = formatPreciseDuration(time.Since(res.PendingBuildSince))
 	}
 
 	sbLeft.Fg(cLightText).Text(editsPrefix).Fg(tcell.ColorDefault).Text(edits)
