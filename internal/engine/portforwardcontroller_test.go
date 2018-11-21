@@ -35,7 +35,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id", Phase: v1.PodRunning}
+	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -43,7 +43,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID.String())
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id2", Phase: v1.PodRunning}
+	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -51,7 +51,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID.String())
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id2", Phase: v1.PodPending}
+	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -74,14 +74,14 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	state.ManifestStates["fe"] = &store.ManifestState{
 		Manifest: m,
 	}
-	state.ManifestStates["fe"].Pod = store.Pod{PodID: "pod-id", Phase: v1.PodRunning}
+	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].Pod.ContainerPorts = []int32{8000}
+	state.ManifestStates["fe"].PodSet.Pods["pod-id"].ContainerPorts = []int32{8000}
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)

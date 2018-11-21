@@ -5,6 +5,7 @@ import "time"
 type Resource struct {
 	Name               string
 	DirectoriesWatched []string
+	PathsWatched       []string
 	LastDeployTime     time.Time
 	LastDeployEdits    []string
 

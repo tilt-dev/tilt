@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -92,11 +93,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return err
-	}
-
 	absTfPath, err := filepath.Abs(tiltfile.FileName)
 	if err != nil {
 		return err
@@ -108,7 +104,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, configFiles, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
 	if err != nil {
 		return err
 	}
@@ -123,6 +119,29 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	})
 
 	return u.store.Loop(ctx)
+}
+
+func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
+	[]model.Manifest, model.YAMLManifest, []string, error) {
+	var manifests []model.Manifest
+	var globalYAML model.YAMLManifest
+	var configFiles []string
+
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	if os.IsNotExist(err) {
+		manifests = []model.Manifest{}
+		globalYAML = model.YAMLManifest{}
+	} else if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
+	} else {
+		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+		if err != nil {
+			manifests = []model.Manifest{}
+			globalYAML = model.YAMLManifest{}
+		}
+	}
+
+	return manifests, globalYAML, configFiles, nil
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
@@ -214,12 +233,9 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		delete(ms.PendingFileChanges, file)
 	}
 	ms.CurrentBuildStartTime = action.StartTime
-	ms.Pod.CurrentLog = []byte{}
-
-	// TODO(nick): It would be better if we reversed the relationship
-	// between CurrentlyBuilding and BuildController. BuildController should dispatch
-	// a StartBuildAction, and that should change the state of CurrentlyBuilding
-	// (rather than BuildController starting in response to CurrentlyBuilding).
+	for _, pod := range ms.PodSet.Pods {
+		pod.CurrentLog = []byte{}
+	}
 	state.CurrentlyBuilding = mn
 }
 
@@ -271,7 +287,10 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
 
-		ms.Pod.OldRestarts = ms.Pod.ContainerRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
+		for _, pod := range ms.PodSet.Pods {
+			// # of pod restarts from old code (shouldn't be reflected in HUD)
+			pod.OldRestarts = pod.ContainerRestarts
+		}
 	}
 
 	if engineState.WatchMounts {
@@ -422,10 +441,10 @@ func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
 // ensuring that some Pod exists on the state.
 //
 // Intended as a helper for pod-mutating events.
-func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.ManifestState {
+func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestState, *store.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
-		return nil
+		return nil, nil
 	}
 
 	podID := k8s.PodIDFromPod(pod)
@@ -436,65 +455,108 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
-		return nil
+		return nil, nil
 	}
 
-	// If the pod is empty, or older then the current pod, replace it.
-	if ms.Pod.PodID == "" || ms.Pod.StartedAt.Before(startedAt) {
-		ms.Pod = store.Pod{
+	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerRef())
+	if err != nil || imageID == nil {
+		// Ditto, this could happen if we get a pod from an old version of the manifest.
+		return nil, nil
+	}
+
+	// There are 4 cases:
+	// 1) This pod has an imageID we don't recognize because it's an old build
+	// 2) This pod has an imageID we don't recognize because it's a new build
+	// 3) This pod has an imageID we recognize, and we need to record it.
+	// 4) This pod has an imageID we recognize, and we've already recorded it.
+
+	// (1) + (2)
+	if ms.PodSet.ImageID == nil ||
+		ms.PodSet.ImageID.String() != imageID.String() {
+
+		bestPod := ms.MostRecentPod()
+		isOld := !bestPod.Empty() && bestPod.StartedAt.After(startedAt)
+		if isOld {
+			// (1)
+			return nil, nil
+		}
+
+		// (2)
+		ms.PodSet = store.PodSet{
+			ImageID: imageID,
+			Pods:    make(map[k8s.PodID]*store.Pod),
+		}
+		ms.PodSet.Pods[podID] = &store.Pod{
 			PodID:     podID,
 			StartedAt: startedAt,
 			Status:    status,
 			Namespace: ns,
 		}
+		return ms, ms.PodSet.Pods[podID]
 	}
 
-	return ms
+	podInfo, ok := ms.PodSet.Pods[podID]
+	if !ok {
+		// (3)
+		podInfo = &store.Pod{
+			PodID:     podID,
+			StartedAt: startedAt,
+			Status:    status,
+			Namespace: ns,
+		}
+		ms.PodSet.Pods[podID] = podInfo
+	}
+
+	// (4)
+	return ms, podInfo
 }
 
 // Fill in container fields on the pod state.
-func populateContainerStatus(ctx context.Context, ms *store.ManifestState, pod *v1.Pod, cStatus v1.ContainerStatus) {
+func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podInfo *store.Pod, pod *v1.Pod, cStatus v1.ContainerStatus) {
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
-	ms.Pod.ContainerName = cName
-	ms.Pod.ContainerReady = cStatus.Ready
+	podInfo.ContainerName = cName
+	podInfo.ContainerReady = cStatus.Ready
 
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
 		return
 	}
-	ms.Pod.ContainerID = cID
+	podInfo.ContainerID = cID
 
 	ports := make([]int32, 0)
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
 	for _, cPort := range cSpec.Ports {
 		ports = append(ports, cPort.ContainerPort)
 	}
-	ms.Pod.ContainerPorts = ports
+	podInfo.ContainerPorts = ports
 
-	forwards := PopulatePortForwards(ms.Manifest, ms.Pod)
+	forwards := PopulatePortForwards(ms.Manifest, *podInfo)
 	if len(forwards) < len(ms.Manifest.PortForwards()) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
-			ms.Manifest.Name, ms.Pod.PodID)
+			ms.Manifest.Name, podInfo.PodID)
 	}
 }
 
 func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
-	ms := ensureManifestStateWithPod(state, pod)
-	if ms == nil {
+	ms, podInfo := ensureManifestStateWithPod(state, pod)
+	if ms == nil || podInfo == nil {
 		return
 	}
 
 	podID := k8s.PodIDFromPod(pod)
-	if ms.Pod.PodID != podID {
+	if podInfo.PodID != podID {
 		// This is an event from an old pod.
 		return
 	}
 
 	// Update the status
-	ms.Pod.Phase = pod.Status.Phase
-	ms.Pod.Status = podStatusToString(*pod)
+	podInfo.Deleting = pod.DeletionTimestamp != nil
+	podInfo.Phase = pod.Status.Phase
+	podInfo.Status = podStatusToString(*pod)
+
+	defer prunePods(ms)
 
 	// Check if the container is ready.
 	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef())
@@ -505,19 +567,46 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 
-	populateContainerStatus(ctx, ms, pod, cStatus)
-	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
+	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
+	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.CrashRebuildInProg {
 		ms.CrashRebuildInProg = true
 		ms.ExpectedContainerID = ""
 		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
 		enqueueBuild(state, ms.Manifest.Name)
 	}
 
-	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
-		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.CurrentLog...)
-		ms.Pod.CurrentLog = []byte{}
+	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
+		podInfo.PreRestartLog = append([]byte{}, podInfo.CurrentLog...)
+		podInfo.CurrentLog = []byte{}
 	}
-	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
+	podInfo.ContainerRestarts = int(cStatus.RestartCount)
+}
+
+// If there's more than one pod, prune the deleting/dead ones so
+// that they don't clutter the output.
+func prunePods(ms *store.ManifestState) {
+	// Continue pruning until we have 1 pod.
+	for ms.PodSet.Len() > 1 {
+		bestPod := ms.MostRecentPod()
+
+		for key, pod := range ms.PodSet.Pods {
+			// Always remove pods that were manually deleted.
+			if pod.Deleting {
+				delete(ms.PodSet.Pods, key)
+				break
+			}
+
+			// Remove terminated pods if they aren't the most recent one.
+			isDead := pod.Phase == v1.PodSucceeded || pod.Phase == v1.PodFailed
+			if isDead && pod.PodID != bestPod.PodID {
+				delete(ms.PodSet.Pods, key)
+				break
+			}
+		}
+
+		// found nothing to delete, break out
+		return
+	}
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
@@ -529,7 +618,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	if ms.Pod.PodID != action.PodID {
+	podID := action.PodID
+	if !ms.PodSet.ContainsID(podID) {
 		// NOTE(nick): There are two cases where this could happen:
 		// 1) Pod 1 died and kubernetes started Pod 2. What should we do with
 		//    logs from Pod 1 that are still in the action queue?
@@ -544,7 +634,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
+	podInfo := ms.PodSet.Pods[podID]
+	podInfo.CurrentLog = append(podInfo.CurrentLog, action.Log...)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
