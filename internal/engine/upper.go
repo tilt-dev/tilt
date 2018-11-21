@@ -191,9 +191,9 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case GlobalYAMLApplyError:
 		handleGlobalYAMLApplyError(ctx, state, action)
 	case ConfigsReloadStartedAction:
-		handleTiltfileReloadStarted(ctx, state, action)
+		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
-		handleTiltfileReloaded(ctx, state, action)
+		handleConfigsReloaded(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -378,7 +378,7 @@ func handleGlobalYAMLApplyError(
 	state.GlobalYAMLState.LastError = event.Error
 }
 
-func handleTiltfileReloadStarted(
+func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
@@ -386,7 +386,7 @@ func handleTiltfileReloadStarted(
 	state.PendingConfigFileChanges = make(map[string]bool)
 }
 
-func handleTiltfileReloaded(
+func handleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,
 	event ConfigsReloadedAction,
@@ -416,8 +416,7 @@ func handleTiltfileReloaded(
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
 			ms.LastBuild = store.BuildResult{}
-
-			// TODO(dbentley): add changed file to pending file changes?
+			// TODO(dbentley): add changed file(s) to pending file changes? (would need to send along in the action)
 			enqueueBuild(state, m.ManifestName())
 		}
 		state.ManifestStates[m.ManifestName()] = ms

@@ -11,16 +11,16 @@ type ConfigsController struct {
 	disabledForTesting bool
 }
 
-func NewTiltfileController() *ConfigsController {
+func NewConfigsController() *ConfigsController {
 	return &ConfigsController{}
 }
 
-func (tc *ConfigsController) DisableForTesting(disabled bool) {
-	tc.disabledForTesting = disabled
+func (cc *ConfigsController) DisableForTesting(disabled bool) {
+	cc.disabledForTesting = disabled
 }
 
-func (tc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
-	if tc.disabledForTesting {
+func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
+	if cc.disabledForTesting {
 		return
 	}
 
