@@ -76,6 +76,27 @@ $ wget https://github.com/windmilleng/tilt/releases/download/v0.1.0/tilt.0.1.0.l
 $ tilt version
 ```
 
+From Source
+-----------
+
+If you'd prefer to install `tilt` from source,
+
+- Install [go 1.11](https://golang.org/dl/). Make sure the Go install directory
+(usually `$HOME/go/bin`) is on your `$PATH`.
+
+- Run:
+
+```
+$ go get -u github.com/windmilleng/tilt`
+```
+
+Verify that you installed it correctly with:
+
+```
+$ tilt version
+v0.0.0-dev, built 2018-11-20
+```
+
 Next Steps
 ----------
 
