@@ -22,7 +22,6 @@ type EngineState struct {
 	ManifestDefinitionOrder []model.ManifestName
 
 	ManifestStates    map[model.ManifestName]*ManifestState
-	ManifestsToBuild  []model.ManifestName
 	CurrentlyBuilding model.ManifestName
 	WatchMounts       bool
 
@@ -61,33 +60,37 @@ type EngineState struct {
 }
 
 type ManifestState struct {
-	LastBuild    BuildResult
-	Manifest     model.Manifest
-	PodSet       PodSet
-	LBs          map[k8s.ServiceName]*url.URL
-	HasBeenBuilt bool
+	LastBuild BuildResult
+	Manifest  model.Manifest
+	PodSet    PodSet
+	LBs       map[k8s.ServiceName]*url.URL
 
-	// TODO(nick): Maybe we should keep timestamps for the most
-	// recent change to each file?
-	PendingFileChanges map[string]bool
+	// Store the times of all the pending changes,
+	// so we can prioritize the oldest one first.
+	PendingFileChanges    map[string]time.Time
+	PendingManifestChange time.Time
+	StartedFirstBuild     bool
 
 	CurrentlyBuildingFileChanges []string
+	CurrentlyBuildingReason      BuildReason
 
 	CurrentBuildStartTime     time.Time
 	CurrentBuildLog           *bytes.Buffer `testdiff:"ignore"`
+	CurrentBuildReason        BuildReason
 	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
+	LastBuildStartTime        time.Time
 	LastBuildFinishTime       time.Time
+	LastBuildReason           BuildReason
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
 	LastBuildLog              *bytes.Buffer `testdiff:"ignore"`
-	QueueEntryTime            time.Time
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
 	// We detected stale code and are currently doing an image build
-	CrashRebuildInProg bool
+	NeedsRebuildFromCrash bool
 }
 
 func NewState() *EngineState {
@@ -101,7 +104,7 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	return &ManifestState{
 		LastBuild:          BuildResult{},
 		Manifest:           manifest,
-		PendingFileChanges: make(map[string]bool),
+		PendingFileChanges: make(map[string]time.Time),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
 		CurrentBuildLog:    &bytes.Buffer{},
 	}
@@ -109,6 +112,55 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 
 func (ms *ManifestState) MostRecentPod() Pod {
 	return ms.PodSet.MostRecentPod()
+}
+
+func (ms *ManifestState) NextBuildReason() BuildReason {
+	reason := BuildReasonNone
+	if len(ms.PendingFileChanges) > 0 {
+		reason = reason.With(BuildReasonFlagMountFiles)
+	}
+	if !ms.PendingManifestChange.IsZero() {
+		reason = reason.With(BuildReasonFlagConfig)
+	}
+	if !ms.StartedFirstBuild {
+		reason = reason.With(BuildReasonFlagInit)
+	}
+	if !ms.NeedsRebuildFromCrash {
+		reason = reason.With(BuildReasonFlagCrash)
+	}
+	return reason
+}
+
+// Whether a change at the given time should trigger a build.
+// Used to determine if changes to mount files or config files
+// should kick off a new build.
+func (ms *ManifestState) IsPendingTime(t time.Time) bool {
+	return !t.IsZero() && t.After(ms.LastBuildStartTime)
+}
+
+// Whether changes have been made to this Manifest's mount files
+// or config since the last build.
+func (ms *ManifestState) PendingBuildSince() time.Time {
+	earliest := time.Now()
+	isPending := false
+
+	for _, t := range ms.PendingFileChanges {
+		if t.Before(earliest) && ms.IsPendingTime(t) {
+			earliest = t
+			isPending = true
+		}
+	}
+
+	t := ms.PendingManifestChange
+	if t.Before(earliest) && ms.IsPendingTime(t) {
+		earliest = t
+		isPending = true
+	}
+
+	if !isPending {
+		return time.Time{}
+	}
+	return earliest
 }
 
 type YAMLManifestState struct {
@@ -359,7 +411,7 @@ func StateToView(s EngineState) view.View {
 			LastBuildDuration:     ms.LastBuildDuration,
 			LastBuildLog:          lastBuildLog,
 			PendingBuildEdits:     pendingBuildEdits,
-			PendingBuildSince:     ms.QueueEntryTime,
+			PendingBuildSince:     ms.PendingBuildSince(),
 			CurrentBuildEdits:     currentBuildEdits,
 			CurrentBuildStartTime: ms.CurrentBuildStartTime,
 			PodName:               pod.PodID.String(),

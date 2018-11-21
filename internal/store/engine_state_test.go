@@ -26,7 +26,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	ms := state.ManifestStates[m.Name]
 	ms.CurrentlyBuildingFileChanges = []string{"/a/b/d", "/a/b/c/d/e"}
 	ms.LastSuccessfulDeployEdits = []string{"/a/b/d", "/a/b/c/d/e"}
-	ms.PendingFileChanges = map[string]bool{"/a/b/d": true, "/a/b/c/d/e": true}
+	ms.PendingFileChanges = map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 
 	if !assert.Equal(t, 1, len(v.Resources)) {

@@ -211,33 +211,14 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	}
 })
 
-func removeFromManifestsToBuild(state *store.EngineState, mn model.ManifestName) error {
-	for i, n := range state.ManifestsToBuild {
-		if n == mn {
-			state.ManifestsToBuild = append(state.ManifestsToBuild[:i], state.ManifestsToBuild[i+1:]...)
-			state.ManifestStates[mn].QueueEntryTime = time.Time{}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("Missing manifest %s", mn)
-}
-
 func handleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
 	mn := action.Manifest.Name
-	err := removeFromManifestsToBuild(state, mn)
-	if err != nil {
-		state.PermanentError = fmt.Errorf("handleBuildStarted: %v", err)
-		return
-	}
-
 	ms := state.ManifestStates[mn]
 
+	ms.StartedFirstBuild = true
 	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
-	for _, file := range action.FilesChanged {
-		delete(ms.PendingFileChanges, file)
-	}
 	ms.CurrentBuildStartTime = action.StartTime
+	ms.CurrentBuildReason = action.Reason
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
 	}
@@ -261,20 +242,21 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	err := cb.Error
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
-	ms.HasBeenBuilt = true
+
+	startBuildTime := ms.CurrentBuildStartTime
 	ms.LastBuildError = err
+	ms.LastBuildStartTime = ms.CurrentBuildStartTime
 	ms.LastBuildFinishTime = time.Now()
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
-	ms.CurrentBuildStartTime = time.Time{}
+	ms.LastBuildReason = ms.CurrentBuildReason
 	ms.LastBuildLog = ms.CurrentBuildLog
+
+	ms.CurrentBuildStartTime = time.Time{}
+	ms.CurrentBuildReason = store.BuildReasonNone
 	ms.CurrentBuildLog = &bytes.Buffer{}
-	ms.CrashRebuildInProg = false
+	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		// Put the files that failed to build back into the pending queue.
-		for _, file := range ms.CurrentlyBuildingFileChanges {
-			ms.PendingFileChanges[file] = true
-		}
 		ms.CurrentlyBuildingFileChanges = nil
 
 		if isPermanentError(err) {
@@ -287,6 +269,18 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			return fmt.Errorf("Build Failed: %v", err)
 		}
 	} else {
+		// Remove pending file changes that were consumed by this build.
+		for file, modTime := range ms.PendingFileChanges {
+			if modTime.Before(startBuildTime) {
+				delete(ms.PendingFileChanges, file)
+			}
+		}
+
+		if !ms.PendingManifestChange.IsZero() &&
+			ms.PendingManifestChange.Before(startBuildTime) {
+			ms.PendingManifestChange = time.Time{}
+		}
+
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
@@ -300,11 +294,6 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-		if len(engineState.ManifestsToBuild) == 0 {
-			l := logger.Get(ctx)
-			l.Infof("%s", logger.Green(l).Sprintf("Awaiting changes…\n"))
-		}
 
 		if cb.Result.ContainerID != "" {
 			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
@@ -329,29 +318,9 @@ func handleFSEvent(
 	}
 
 	ms := state.ManifestStates[event.manifestName]
-
 	for _, f := range event.files {
-		ms.PendingFileChanges[f] = true
+		ms.PendingFileChanges[f] = time.Now()
 	}
-
-	spurious, err := onlySpuriousChanges(ms.PendingFileChanges)
-	if err != nil {
-		logger.Get(ctx).Infof("build watch error: %v", err)
-	}
-
-	if spurious {
-		// TODO(nick): I think we probably want to log when this happens?
-		return
-	}
-
-	// if the name is already in the queue, we don't need to add it again
-	for _, mn := range state.ManifestsToBuild {
-		if mn == event.manifestName {
-			return
-		}
-	}
-
-	enqueueBuild(state, event.manifestName)
 }
 
 func handleGlobalYAMLApplyStarted(
@@ -424,8 +393,7 @@ func handleConfigsReloaded(
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
 			ms.LastBuild = store.BuildResult{}
-			// TODO(dbentley): add changed file(s) to pending file changes? (would need to send along in the action)
-			enqueueBuild(state, m.ManifestName())
+			ms.PendingManifestChange = time.Now()
 		}
 		state.ManifestStates[m.ManifestName()] = ms
 	}
@@ -434,11 +402,6 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
-}
-
-func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
-	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
-	state.ManifestStates[mn].QueueEntryTime = time.Now()
 }
 
 // Get a pointer to a mutable manifest state,
@@ -572,11 +535,10 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	}
 
 	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
-	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.CrashRebuildInProg {
-		ms.CrashRebuildInProg = true
+	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.NeedsRebuildFromCrash {
+		ms.NeedsRebuildFromCrash = true
 		ms.ExpectedContainerID = ""
 		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
-		enqueueBuild(state, ms.Manifest.Name)
 	}
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
@@ -678,10 +640,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	}
 	engineState.WatchMounts = watchMounts
 
-	for _, m := range manifests {
-		enqueueBuild(engineState, m.Name)
-	}
-	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
+	engineState.InitialBuildCount = len(manifests)
 	return nil
 }
 
@@ -700,7 +659,7 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 // put everything to ignore in their gitignore/dockerignore files. This is a stop-gap
 // so they don't have a terrible experience if those files aren't there or
 // aren't in the right places.
-func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
+func onlySpuriousChanges(filesChanged map[string]time.Time) (bool, error) {
 	// If a lot of files have changed, don't treat this as spurious.
 	if len(filesChanged) > 3 {
 		return false, nil

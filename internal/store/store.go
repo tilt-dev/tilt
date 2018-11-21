@@ -141,7 +141,8 @@ func (s *Store) maybeFinished() (bool, error) {
 		return false, nil
 	}
 
-	finished := !state.WatchMounts && len(state.ManifestsToBuild) == 0 && state.CurrentlyBuilding == ""
+	finished := !state.WatchMounts &&
+		state.CompletedBuildCount == state.InitialBuildCount
 	return finished, nil
 }
 
