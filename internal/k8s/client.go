@@ -81,6 +81,8 @@ type Client interface {
 	WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error)
 
 	WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error)
+
+	ConnectedToCluster(ctx context.Context) error
 }
 
 type K8sClient struct {
@@ -201,6 +203,15 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 			}
 		}
 	}
+	return nil
+}
+
+func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"cluster-info"})
+	if err != nil {
+		return fmt.Errorf("Unable to connect to cluster via `kubectl cluster-info`: %s\nstdout: %s\nstderr: %s", err.Error(), stdout, stderr)
+	}
+
 	return nil
 }
 
