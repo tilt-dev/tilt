@@ -46,7 +46,6 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 }
 
 type IgnorableManifest interface {
-	// ConfigMatcher() (model.PathMatcher, error)
 	LocalRepos() []model.LocalGithubRepo
 }
 

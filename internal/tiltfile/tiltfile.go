@@ -232,7 +232,6 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 	for i.Next(&v) {
 		switch v := v.(type) {
 		case *skylark.Function:
-			// thread.SetLocal(readFilesKey, []string{})
 			r, err := v.Call(thread, nil, nil)
 			if err != nil {
 				return nil, handleSkylarkErr(t.thread, err)
@@ -526,18 +525,10 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", manifestName)
 	}
 
-	// thread := t.thread
-	// thread.SetLocal(readFilesKey, []string{})
-
 	val, err := manifestFunction.Call(t.thread, nil, nil)
 	if err != nil {
 		return nil, handleSkylarkErr(t.thread, err)
 	}
-
-	// files, err := getAndClearReadFiles(thread)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	var manifests []model.Manifest
 

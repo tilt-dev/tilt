@@ -86,8 +86,6 @@ type ManifestState struct {
 	ExpectedContainerID container.ID
 	// We detected stale code and are currently doing an image build
 	CrashRebuildInProg bool
-	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
-	ConfigIsDirty bool
 }
 
 func NewState() *EngineState {

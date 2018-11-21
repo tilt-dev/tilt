@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -105,7 +104,6 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
-	fmt.Println("[👋] let's set up some watches")
 	setup, teardown := w.diff(ctx, st)
 
 	for _, m := range teardown {
@@ -122,7 +120,6 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	for _, manifest := range setup {
-		fmt.Println("[👋] made a watcher")
 		watcher, err := w.fsWatcherMaker()
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
@@ -130,7 +127,6 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 		}
 
 		for _, d := range manifest.Dependencies() {
-			fmt.Println("[👋] watching:", d)
 			err = watcher.Add(d)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
@@ -168,7 +164,6 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if !ok {
 				return
 			}
-			fmt.Println("[👋] got some events...")
 			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}
 
 			for _, e := range fsEvents {
@@ -177,20 +172,17 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
-				fmt.Println("[👋] got path:", path)
 				isIgnored, err := filter.Matches(path, false)
 				if err != nil {
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
 				if !isIgnored {
-					fmt.Println("[👋] not ignored")
 					watchEvent.files = append(watchEvent.files, path)
 				}
 			}
 
 			if len(watchEvent.files) > 0 {
-				fmt.Println("[👋] dispatching a watch event")
 				st.Dispatch(watchEvent)
 			}
 		}

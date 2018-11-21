@@ -63,15 +63,6 @@ func getAndClearBuildContext(t *skylark.Thread) (*dockerImage, error) {
 	return buildContext, nil
 }
 
-// func getAndClearReadFiles(t *skylark.Thread) ([]string, error) {
-// 	readFiles, err := getReadFiles(t)
-// 	t.SetLocal(readFilesKey, nil)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return readFiles, nil
-// }
-
 func getReadFiles(t *skylark.Thread) ([]string, error) {
 	obj := t.Local(readFilesKey)
 	if obj == nil {

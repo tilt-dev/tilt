@@ -10,6 +10,8 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
+// TODO(dbentley): these tests aren't testing that it watches the right thing, just that it passes events up.
+// Fix this.
 func TestOneActionDispatched(t *testing.T) {
 	f := newWatchManagerFixture(t)
 	defer f.TearDown()

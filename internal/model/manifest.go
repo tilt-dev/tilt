@@ -26,10 +26,6 @@ type Manifest struct {
 	portForwards []PortForward
 	cachePaths   []string
 
-	// Local files read while reading the Tilt configuration.
-	// If these files are changed, we should reload the manifest.
-	// ConfigFiles []string
-
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
 	BaseDockerfile string
