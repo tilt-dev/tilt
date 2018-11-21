@@ -270,6 +270,7 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	layout := rty.NewConcatLayout(rty.DirVert)
 	layout.Add(r.resourceTitle(selected, rv, res))
 	layout.Add(r.resourceK8s(res, rv))
+	layout.Add(r.resourceK8sLogs(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
 	layout.Add(rty.NewLine())
 	return layout
@@ -293,7 +294,7 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 	if res.LastDeployTime.Equal(time.Time{}) {
 		sbRight.Text(" Not Deployed •  —      ")
 	} else {
-		sbRight.Textf(" OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
+		sbRight.Textf(" OK • %s ago ", formatDuration(time.Since(res.LastDeployTime))) // Last char cuts off
 	}
 
 	l.Add(sbLeft.Build())
@@ -306,7 +307,6 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
-	sbDetail := rty.NewStringBuilder()
 	status := r.spinner()
 	indent := "    "
 
@@ -318,29 +318,21 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 		sbLeft.Fg(podStatusColor).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 		status = res.PodStatus
 
+		// TODO(maia): show # restarts even if == 0 (in gray or green)?
+		if res.PodRestarts > 0 {
+			s := "restarts"
+			if res.PodRestarts == 1 {
+				s = "restart"
+			}
+			sbRight.Fg(cPending).Textf("%d %s", res.PodRestarts, s).Fg(tcell.ColorDefault).Text(" • ")
+		}
+
 		if len(res.Endpoints) != 0 {
 			sbRight.Textf("%s • ", strings.Join(res.Endpoints, " "))
 		}
 
-		// TODO(maia): show # restarts even if == 0 (in gray or green)?
-		if res.PodRestarts > 0 {
-			sbRight.Fg(cBad).Textf("%d restart(s) • ", res.PodRestarts).Fg(tcell.ColorDefault)
-		}
-
-		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault).Textf(" %s ", formatDuration(time.Since(res.PodCreationTime)))
-
-		// K8s Log
-		if !rv.IsCollapsed {
-			if res.PodRestarts > 0 {
-				logLines := abbreviateLog(res.PodLog)
-				if len(logLines) > 0 {
-					sbDetail.Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build()
-					for _, logLine := range logLines[1:] {
-						sbDetail.Text(fmt.Sprintf("%s%s", indent, logLine))
-					}
-				}
-			}
-		}
+		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
+		sbRight.Textf(" %s ", formatDuration(time.Since(res.PodCreationTime))) // Last char cuts off
 	} else {
 		sbLeft.Fg(cLightText).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 	}
@@ -350,7 +342,6 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
 	l.Add(sbRight.Build())
-	l.Add(sbDetail.Build())
 	return l
 }
 
@@ -383,15 +374,12 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	sbLeft.Fg(statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
 	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(status)
 
-	// LAST
 	if !res.LastDeployTime.Equal(time.Time{}) {
 		if len(res.LastDeployEdits) > 0 {
 			editsPrefix = " • EDITS "
 			edits = formatFileList(res.LastDeployEdits)
 		}
 	}
-
-	// PENDING
 	if !res.PendingBuildSince.Equal(time.Time{}) {
 		if len(res.PendingBuildEdits) > 0 {
 			editsPrefix = " • EDITS "
@@ -399,8 +387,6 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 		}
 		duration = formatPreciseDuration(time.Since(res.PendingBuildSince))
 	}
-
-	// CURRENT
 	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
 		if len(res.CurrentBuildEdits) > 0 {
 			editsPrefix = " • EDITS "
@@ -418,11 +404,36 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	l.Add(rty.NewFillerString(' '))
 	l.Add(sbRight.Build())
 	lines.Add(l)
-	lines.Add(r.lastBuildError(res, rv))
+	lines.Add(r.lastBuildLogs(res, rv))
 	return lines
 }
 
-func (r *Renderer) lastBuildError(res view.Resource, rv view.ResourceViewState) rty.Component {
+func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
+	lh := rty.NewConcatLayout(rty.DirHor)
+	lv := rty.NewConcatLayout(rty.DirVert)
+	lh.AddDynamic(lv)
+	var logLines []rty.Component
+	indent := "       "
+
+	if res.PodStatus != "" && !rv.IsCollapsed {
+		if res.PodRestarts > 0 {
+			abbrevLog := abbreviateLog(res.PodLog)
+			for _, logLine := range abbrevLog {
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
+			}
+			if len(logLines) > 0 {
+				// sbDetail.Text(indent).Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build()
+				for _, log := range logLines {
+					lv.Add(log)
+				}
+			}
+		}
+	}
+
+	return lh
+}
+
+func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lh := rty.NewConcatLayout(rty.DirHor)
 	lv := rty.NewConcatLayout(rty.DirVert)
 	lh.AddDynamic(lv)
