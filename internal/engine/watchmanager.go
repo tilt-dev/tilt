@@ -76,12 +76,12 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []WatchableManifest) {
+func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []model.ManifestName) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	setup = []WatchableManifest{}
-	teardown = []WatchableManifest{}
+	teardown = []model.ManifestName{}
 
 	manifestsToProcess := make(map[model.ManifestName]WatchableManifest, len(state.ManifestStates))
 	for name, state := range state.ManifestStates {
@@ -92,15 +92,17 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
+	for name := range w.manifestWatches {
+		if _, ok := manifestsToProcess[name]; !ok {
+			teardown = append(teardown, name)
+		}
+	}
+
 	for name, m := range manifestsToProcess {
 		if _, ok := w.manifestWatches[name]; !ok {
 			setup = append(setup, m)
 		}
 		delete(manifestsToProcess, name)
-	}
-
-	for _, m := range manifestsToProcess {
-		teardown = append(teardown, m)
 	}
 
 	return setup, teardown
@@ -109,17 +111,17 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
-	for _, m := range teardown {
-		p, ok := w.manifestWatches[m.ManifestName()]
+	for _, name := range teardown {
+		p, ok := w.manifestWatches[name]
 		if !ok {
 			continue
 		}
 		err := p.notify.Close()
 		if err != nil {
-			logger.Get(ctx).Infof("Error closing watch: %v", err)
+			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
 		}
 		p.cancel()
-		delete(w.manifestWatches, m.ManifestName())
+		delete(w.manifestWatches, name)
 	}
 
 	for _, manifest := range setup {
