@@ -122,10 +122,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 }
 
 func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
-	[]model.Manifest, model.YAMLManifest, []string, error) {
-	var manifests []model.Manifest
-	var globalYAML model.YAMLManifest
-	var configFiles []string
+	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
 
 	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if os.IsNotExist(err) {
