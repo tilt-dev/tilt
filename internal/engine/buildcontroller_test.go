@@ -18,14 +18,14 @@ func TestBuildControllerOnePod(t *testing.T) {
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
-	call := <-f.b.calls
+	call := f.nextCall()
 	assert.Equal(t, manifest, call.manifest)
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
-	call = <-f.b.calls
+	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.state.DeployInfo.PodID.String())
 
 	err := f.Stop()
@@ -41,7 +41,7 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
-	call := <-f.b.calls
+	call := f.nextCall()
 	assert.Equal(t, manifest, call.manifest)
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
@@ -54,10 +54,11 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	f.podEvent(podB)
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
-	call = <-f.b.calls
+	call = f.nextCall()
 	assert.Equal(t, "", call.state.DeployInfo.PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
+g
