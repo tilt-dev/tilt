@@ -61,4 +61,3 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
-g
