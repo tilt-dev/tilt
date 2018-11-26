@@ -20,12 +20,11 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
-	deployDiscovery := NewDeployDiscovery(k8s2)
 	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
-	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(deployDiscovery, syncletManager)
+	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics, deployDiscovery)
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics)
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
@@ -73,8 +72,7 @@ var (
 
 var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, build.NewContainerResolver, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
-	DefaultBuildOrder,
-	NewDeployDiscovery, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
+	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
 	NewGlobalYAMLBuildController,
 )

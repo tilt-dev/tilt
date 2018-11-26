@@ -56,7 +56,8 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	}
 	sort.Strings(filesChanged)
 
-	buildState := store.NewBuildState(ms.LastBuild, filesChanged)
+	buildState := store.NewBuildState(ms.LastBuild, filesChanged).
+		WithDeployInfo(store.NewDeployInfo(ms.PodSet))
 
 	// TODO(nick): This is...not great, because it modifies the build log in place.
 	// A better solution would dispatch actions (like PodLogManager does) so that
