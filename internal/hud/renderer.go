@@ -439,7 +439,7 @@ func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) r
 	indent := strings.Repeat(" ", 12)
 
 	if res.LastManifestLoadError != "" {
-		logLines = append(logLines, rty.TextString(res.LastManifestLoadError))
+		logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, res.LastManifestLoadError)))
 	}
 
 	if !rv.IsCollapsed {
@@ -450,12 +450,12 @@ func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) r
 			}
 			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
 			if len(abbrevLog) == 0 {
-				logLines = append(logLines, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("%sError: %s", indent, res.LastBuildError)))
 			}
+		}
 
-			for _, log := range logLines {
-				lv.Add(log)
-			}
+		for _, log := range logLines {
+			lv.Add(log)
 		}
 	}
 
