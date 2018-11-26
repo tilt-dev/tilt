@@ -75,6 +75,7 @@ type InitAction struct {
 	Manifests          []model.Manifest
 	GlobalYAMLManifest model.YAMLManifest
 	TiltfilePath       string
+	ConfigFiles        []string
 	ManifestNames      []model.ManifestName
 }
 
@@ -92,15 +93,10 @@ type BuildStartedAction struct {
 	Manifest     model.Manifest
 	StartTime    time.Time
 	FilesChanged []string
+	Reason       store.BuildReason
 }
 
 func (BuildStartedAction) Action() {}
-
-type GlobalYAMLManifestReloadedAction struct {
-	GlobalYAML model.YAMLManifest
-}
-
-func (GlobalYAMLManifestReloadedAction) Action() {}
 
 type GlobalYAMLApplyStartedAction struct{}
 
@@ -126,10 +122,17 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
 
-type TiltfileReloadedAction struct {
-	Manifests  []model.Manifest
-	GlobalYAML model.YAMLManifest
-	Err        error
+type ConfigsReloadStartedAction struct {
+	FilesChanged map[string]bool
 }
 
-func (TiltfileReloadedAction) Action() {}
+func (ConfigsReloadStartedAction) Action() {}
+
+type ConfigsReloadedAction struct {
+	Manifests   []model.Manifest
+	GlobalYAML  model.YAMLManifest
+	ConfigFiles []string
+	Err         error
+}
+
+func (ConfigsReloadedAction) Action() {}

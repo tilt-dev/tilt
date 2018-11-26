@@ -33,17 +33,18 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 
 	// Find all the port-forwards that need to be created.
 	for _, ms := range state.ManifestStates {
-		podID := ms.Pod.PodID
+		pod := ms.MostRecentPod()
+		podID := pod.PodID
 		if podID == "" {
 			continue
 		}
 
 		// Only do port-forwarding if the pod is running.
-		if ms.Pod.Phase != v1.PodRunning {
+		if pod.Phase != v1.PodRunning && !pod.Deleting {
 			continue
 		}
 
-		forwards := PopulatePortForwards(ms.Manifest, ms.Pod)
+		forwards := PopulatePortForwards(ms.Manifest, pod)
 		if len(forwards) == 0 {
 			continue
 		}
@@ -59,7 +60,7 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 		entry := portForwardEntry{
 			podID:     podID,
 			name:      ms.Manifest.Name,
-			namespace: ms.Pod.Namespace,
+			namespace: pod.Namespace,
 			forwards:  forwards,
 			ctx:       ctx,
 			cancel:    cancel,

@@ -10,15 +10,9 @@ import (
 
 type fileChangeFilter struct {
 	ignoreMatchers model.PathMatcher
-	configMatcher  model.PathMatcher
 }
 
 func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
-	configMatches, err := fcf.configMatcher.Matches(f, isDir)
-	if configMatches && err == nil {
-		return false, nil
-	}
-
 	return fcf.ignoreMatchers.Matches(f, isDir)
 }
 
@@ -52,7 +46,6 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 }
 
 type IgnorableManifest interface {
-	ConfigMatcher() (model.PathMatcher, error)
 	LocalRepos() []model.LocalGithubRepo
 }
 
@@ -77,14 +70,10 @@ func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 	matchers = append(matchers, model.NewGlobMatcher("*___jb_old___", "*___jb_tmp___"))
 
 	ignoreMatcher := model.NewCompositeMatcher(matchers)
-	configMatcher, err := m.ConfigMatcher()
-	if err != nil {
-		return nil, err
-	}
 
+	// TODO(maia): this doesn't have to be a composite matcher anymore since removing `configMatcher`?
 	return fileChangeFilter{
 		ignoreMatchers: ignoreMatcher,
-		configMatcher:  configMatcher,
 	}, nil
 }
 

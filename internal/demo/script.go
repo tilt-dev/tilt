@@ -77,11 +77,12 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	for _, ms := range state.ManifestStates {
-		if ms.Pod.Phase != v1.PodRunning {
+		pod := ms.MostRecentPod()
+		if pod.Phase != v1.PodRunning {
 			m.healthy = false
 		}
 
-		if ms.Pod.ContainerRestarts > 0 {
+		if pod.ContainerRestarts > 0 {
 			m.hasPodRestart = true
 			m.healthy = false
 		}
@@ -175,7 +176,7 @@ func (s Script) Run(ctx context.Context) error {
 			return err
 		}
 
-		manifests, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, "tiltdemo")
+		manifests, _, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, "tiltdemo")
 		if err != nil {
 			return err
 		}

@@ -3,6 +3,7 @@ package store
 import (
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -25,7 +26,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	ms := state.ManifestStates[m.Name]
 	ms.CurrentlyBuildingFileChanges = []string{"/a/b/d", "/a/b/c/d/e"}
 	ms.LastSuccessfulDeployEdits = []string{"/a/b/d", "/a/b/c/d/e"}
-	ms.PendingFileChanges = map[string]bool{"/a/b/d": true, "/a/b/c/d/e": true}
+	ms.PendingFileChanges = map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 
 	if !assert.Equal(t, 1, len(v.Resources)) {
@@ -73,6 +74,14 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	r := v.Resources[0]
 	assert.Equal(t, "", r.LastBuildError)
 	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
+}
+
+func TestMostRecentPod(t *testing.T) {
+	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
+	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
+	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
+	podSet := NewPodSet(podA, podB, podC)
+	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {

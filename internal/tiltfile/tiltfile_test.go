@@ -63,7 +63,8 @@ func newGitRepoFixture(t *testing.T) *gitRepoFixture {
 	}
 }
 
-func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest) {
+func (f *gitRepoFixture) LoadAllFromTiltfile(names ...model.ManifestName) (
+	manifests []model.Manifest, gYAML model.YAMLManifest, configFiles []string) {
 	// It's important that this uses a relative path, because
 	// that's how other places in Tilt call it. In the past, we've had
 	// a lot of bugs that come up due to relative paths vs. absolute paths.
@@ -72,15 +73,15 @@ func (f *gitRepoFixture) LoadManifestsAndGlobalYAML(names ...model.ManifestName)
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, globalYAML, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, names...)
+	manifests, globalYAML, configFiles, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, names...)
 	if err != nil {
 		f.T().Fatal("getting manifest config:", err)
 	}
-	return manifests, globalYAML
+	return manifests, globalYAML, configFiles
 }
 
 func (f *gitRepoFixture) LoadManifests(names ...model.ManifestName) []model.Manifest {
-	manifests, _ := f.LoadManifestsAndGlobalYAML(names...)
+	manifests, _, _ := f.LoadAllFromTiltfile(names...)
 	return manifests
 }
 
@@ -93,7 +94,7 @@ func (f *gitRepoFixture) LoadManifest(name model.ManifestName) model.Manifest {
 }
 
 func (f *gitRepoFixture) LoadGlobalYAML() model.YAMLManifest {
-	_, globalYAML := f.LoadManifestsAndGlobalYAML()
+	_, globalYAML, _ := f.LoadAllFromTiltfile()
 	return globalYAML
 }
 
@@ -103,7 +104,7 @@ func (f *gitRepoFixture) LoadManifestForError(name model.ManifestName) error {
 		f.T().Fatal("loading tiltconfig:", err)
 	}
 
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, name)
+	_, _, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, name)
 	if err == nil {
 		f.T().Fatal("Expected manifest load error")
 	}
@@ -571,55 +572,78 @@ func TestReadFilesParentDirectory(t *testing.T) {
 	assert.Equal(t, "hello world", manifest.K8sYAML())
 }
 
-func TestConfigMatcherWithFastBuild(t *testing.T) {
+func TestTiltfileInConfigFiles(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	tfPath := "path/to/Tiltfile"
+	f.WriteFile(tfPath, `# nothing to see here`)
+	tf, err := Load(f.ctx, f.JoinPath(tfPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, configFiles, err := tf.GetManifestConfigsAndGlobalYAML(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []string{f.JoinPath(tfPath)}
+	assert.ElementsMatch(t, expected, configFiles)
+}
+
+func TestConfigFilesFromFastBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 	f.WriteFile("Dockerfile.base", "docker text")
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 	f.WriteFile("Tiltfile", `def blorgly():
-  yaml = read_file("a.txt")
-  start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
-  image = stop_build()
-  return k8s_service(image)
-`)
-	manifest := f.LoadManifest("blorgly")
-	matches := func(p string) bool {
-		matcher, err := manifest.ConfigMatcher()
-		if err != nil {
-			t.Fatal(err)
-		}
-		ok, err := matcher.Matches(p, false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return ok
-	}
-	assert.True(t, matches(f.JoinPath("Dockerfile.base")))
-	assert.True(t, matches(f.JoinPath("a.txt")))
-	assert.False(t, matches(f.JoinPath("b.txt")))
+	  yaml = read_file("a.txt")
+	  start_fast_build("Dockerfile.base", "docker-tag", "the entrypoint")
+	  image = stop_build()
+	  return k8s_service(image)
+	`)
+
+	_, _, configFiles := f.LoadAllFromTiltfile("blorgly")
+
+	expected := []string{"Dockerfile.base", "a.txt", "Tiltfile"}
+	assert.ElementsMatch(t, f.JoinPaths(expected), configFiles)
 }
 
-func TestConfigMatcherWithStaticBuild(t *testing.T) {
+func TestConfigFilesFromStaticBuild(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 	f.WriteFile("Dockerfile", "dockerfile text")
 	f.WriteFile("Tiltfile", `def blorgly():
   return k8s_service(static_build("Dockerfile", "docker-tag"))`)
-	manifest := f.LoadManifest("blorgly")
-	matches := func(p string) bool {
-		matcher, err := manifest.ConfigMatcher()
-		if err != nil {
-			t.Fatal(err)
-		}
-		ok, err := matcher.Matches(p, false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return ok
-	}
-	assert.True(t, matches(f.JoinPath("Dockerfile")))
-	assert.False(t, matches(f.JoinPath("b.txt")))
+	_, _, configFiles := f.LoadAllFromTiltfile("blorgly")
+
+	expected := []string{"Dockerfile", "Tiltfile"}
+	assert.ElementsMatch(t, f.JoinPaths(expected), configFiles)
+}
+
+func TestConfigFilesDedupe(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("fileA", "apples")
+	f.WriteFile("fileB", "bananas")
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
+	f.WriteFile("Tiltfile", `def manifestA():
+  stuff = read_file('./fileA')  # this is a dependency of manifestA now
+  image = static_build('Dockerfile', 'tag-a')
+  return k8s_service(image, yaml="yamlA")
+
+def manifestB():
+  stuff = read_file('./fileB')  # this is a dependency of manifestB now
+  image = static_build('Dockerfile', 'tag-b')
+  return k8s_service(image, yaml="yamlB")
+`)
+	_, _, configFiles := f.LoadAllFromTiltfile("manifestA", "manifestB")
+
+	expected := []string{"fileA", "fileB", "Dockerfile", "Tiltfile"}
+	assert.ElementsMatch(t, f.JoinPaths(expected), configFiles)
 }
 
 func TestRepoPath(t *testing.T) {
@@ -727,7 +751,7 @@ def blorgly():
 	if err != nil {
 		t.Fatal("loading tiltconfig:", err)
 	}
-	_, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(output.CtxForTest(), "blorgly")
+	_, _, _, err = tiltconfig.GetManifestConfigsAndGlobalYAML(output.CtxForTest(), "blorgly")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "isn't a valid git repo")
 		assert.Contains(t, err.Error(), "Tiltfile:4: in blorgly")
@@ -1016,7 +1040,7 @@ def blorgly():
 		t.Fatal("loading tiltconfig:", err)
 	}
 
-	manifests, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, "blorgly")
+	manifests, _, _, err := tiltconfig.GetManifestConfigsAndGlobalYAML(f.ctx, "blorgly")
 	if err != nil {
 		t.Fatal("getting manifest config:", err)
 	}
@@ -1109,15 +1133,16 @@ def blorgly():
   return s
 `)
 
-	manifest := f.LoadManifest("blorgly")
+	_, _, configFiles := f.LoadAllFromTiltfile("blorgly")
 	expected := f.JoinPaths([]string{
 		"Dockerfile",
 		"configMap.yaml",
 		"deployment.yaml",
 		"kustomization.yaml",
 		"service.yaml",
+		"Tiltfile",
 	})
-	assert.Equal(t, expected, manifest.ConfigFiles)
+	assert.ElementsMatch(t, expected, configFiles)
 }
 
 func TestValidateBaseDockerfile(t *testing.T) {
@@ -1135,4 +1160,22 @@ ADD . .
 
 	err := f.LoadManifestForError("blorgly")
 	assert.Contains(t, err.Error(), "base Dockerfile contains an ADD/COPY")
+}
+
+func TestReadFileRepoPath(t *testing.T) {
+	f := newGitRepoFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile.base", "docker text")
+	f.WriteFile("a.txt", "hello world")
+	f.WriteFile("Tiltfile", `def blorgly():
+  repo = local_git_repo('.')
+  yaml = read_file(repo.path("a.txt"))
+  start_fast_build("Dockerfile.base", "docker-tag", str(repo.path('subpath')))
+  image = stop_build()
+  return k8s_service(image)
+`)
+
+	manifest := f.LoadManifest("blorgly")
+	assert.Equal(t, []string{"sh", "-c", f.JoinPath("subpath")}, manifest.Entrypoint.Argv)
 }

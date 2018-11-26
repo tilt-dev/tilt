@@ -15,7 +15,7 @@ func InjectSyncletSidecar(entity k8s.K8sEntity, matchRef reference.Named) (k8s.K
 
 	replaced := false
 	for _, pod := range pods {
-		ok, err := k8s.PodContainsRef(pod, matchRef)
+		ok, err := k8s.PodContainsRef(*pod, matchRef)
 		if err != nil {
 			return k8s.K8sEntity{}, false, err
 		}

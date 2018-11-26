@@ -43,54 +43,55 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 
 	stateWatches := make(map[podLogKey]bool, 0)
 	for _, ms := range state.ManifestStates {
-		pod := ms.Pod
-		if pod.PodID == "" || pod.ContainerName == "" || pod.ContainerID == "" {
-			continue
-		}
-
-		// Only fetch pod logs if the pod is running.
-		// Otherwise it will reject our connection.
-		if ms.Pod.Phase != v1.PodRunning {
-			continue
-		}
-
-		// Key the log watcher by the container id, so we auto-restart the
-		// watching if the container crashes.
-		key := podLogKey{
-			podID: pod.PodID,
-			cID:   pod.ContainerID,
-		}
-		stateWatches[key] = true
-
-		existing, isActive := m.watches[key]
-		startWatchTime := time.Unix(0, 0)
-		if isActive {
-			if existing.ctx.Err() == nil {
-				// The active pod watcher is still tailing the logs,
-				// so just skip it.
+		for _, pod := range ms.PodSet.PodList() {
+			if pod.PodID == "" || pod.ContainerName == "" || pod.ContainerID == "" {
 				continue
 			}
 
-			// The active pod watcher got cancelled somehow,
-			// so we need to create a new one that picks up
-			// where it left off.
-			startWatchTime = <-existing.terminationTime
-		}
+			// Only fetch pod logs if the pod is running.
+			// Otherwise it will reject our connection.
+			if pod.Phase != v1.PodRunning {
+				continue
+			}
 
-		ctx, cancel := context.WithCancel(ctx)
-		w := PodLogWatch{
-			ctx:             ctx,
-			cancel:          cancel,
-			name:            ms.Manifest.Name,
-			podID:           pod.PodID,
-			cID:             pod.ContainerID,
-			cName:           pod.ContainerName,
-			namespace:       pod.Namespace,
-			startWatchTime:  startWatchTime,
-			terminationTime: make(chan time.Time, 1),
+			// Key the log watcher by the container id, so we auto-restart the
+			// watching if the container crashes.
+			key := podLogKey{
+				podID: pod.PodID,
+				cID:   pod.ContainerID,
+			}
+			stateWatches[key] = true
+
+			existing, isActive := m.watches[key]
+			startWatchTime := time.Unix(0, 0)
+			if isActive {
+				if existing.ctx.Err() == nil {
+					// The active pod watcher is still tailing the logs,
+					// so just skip it.
+					continue
+				}
+
+				// The active pod watcher got cancelled somehow,
+				// so we need to create a new one that picks up
+				// where it left off.
+				startWatchTime = <-existing.terminationTime
+			}
+
+			ctx, cancel := context.WithCancel(ctx)
+			w := PodLogWatch{
+				ctx:             ctx,
+				cancel:          cancel,
+				name:            ms.Manifest.Name,
+				podID:           pod.PodID,
+				cID:             pod.ContainerID,
+				cName:           pod.ContainerName,
+				namespace:       pod.Namespace,
+				startWatchTime:  startWatchTime,
+				terminationTime: make(chan time.Time, 1),
+			}
+			m.watches[key] = w
+			setup = append(setup, w)
 		}
-		m.watches[key] = w
-		setup = append(setup, w)
 	}
 
 	for key, value := range m.watches {

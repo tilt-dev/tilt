@@ -125,33 +125,6 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			ConfigFiles: []string{"hi", "hello"},
-		},
-		Manifest{
-			ConfigFiles: []string{"hi", "hello", "my"},
-		},
-		false,
-	},
-	{
-		Manifest{
-			ConfigFiles: []string{"my", "hi", "hello"},
-		},
-		Manifest{
-			ConfigFiles: []string{"hi", "hello", "my"},
-		},
-		false,
-	},
-	{
-		Manifest{
-			ConfigFiles: []string{"hi", "hello", "my"},
-		},
-		Manifest{
-			ConfigFiles: []string{"hi", "hello", "my"},
-		},
-		true,
-	},
-	{
-		Manifest{
 			Steps: []Step{
 				Step{
 					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},

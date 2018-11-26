@@ -42,7 +42,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, gYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, gYAML, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 	if err != nil {
 		return err
 	}

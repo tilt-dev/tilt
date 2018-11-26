@@ -2,18 +2,16 @@ package store
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/build"
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"k8s.io/api/core/v1"
@@ -24,7 +22,6 @@ type EngineState struct {
 	ManifestDefinitionOrder []model.ManifestName
 
 	ManifestStates    map[model.ManifestName]*ManifestState
-	ManifestsToBuild  []model.ManifestName
 	CurrentlyBuilding model.ManifestName
 	WatchMounts       bool
 
@@ -54,47 +51,52 @@ type EngineState struct {
 	GlobalYAML      model.YAMLManifest
 	GlobalYAMLState *YAMLManifestState
 
-	TiltfilePath string
+	TiltfilePath             string
+	ConfigFiles              []string
+	PendingConfigFileChanges map[string]bool
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 }
 
 type ManifestState struct {
-	LastBuild    BuildResult
-	Manifest     model.Manifest
-	Pod          Pod
-	LBs          map[k8s.ServiceName]*url.URL
-	HasBeenBuilt bool
+	LastBuild BuildResult
+	Manifest  model.Manifest
+	PodSet    PodSet
+	LBs       map[k8s.ServiceName]*url.URL
 
-	// TODO(nick): Maybe we should keep timestamps for the most
-	// recent change to each file?
-	PendingFileChanges map[string]bool
+	// Store the times of all the pending changes,
+	// so we can prioritize the oldest one first.
+	PendingFileChanges    map[string]time.Time
+	PendingManifestChange time.Time
+	StartedFirstBuild     bool
 
 	CurrentlyBuildingFileChanges []string
+	CurrentlyBuildingReason      BuildReason
 
 	CurrentBuildStartTime     time.Time
 	CurrentBuildLog           *bytes.Buffer `testdiff:"ignore"`
+	CurrentBuildReason        BuildReason
 	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
+	LastBuildStartTime        time.Time
 	LastBuildFinishTime       time.Time
+	LastBuildReason           BuildReason
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
 	LastBuildLog              *bytes.Buffer `testdiff:"ignore"`
-	QueueEntryTime            time.Time
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
 	// We detected stale code and are currently doing an image build
-	CrashRebuildInProg bool
-	// we've observed changes to config file(s) and need to reload the manifest next time we start a build
-	ConfigIsDirty bool
+	NeedsRebuildFromCrash bool
 }
 
 func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	ret.PendingConfigFileChanges = make(map[string]bool)
 	return ret
 }
 
@@ -102,10 +104,63 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	return &ManifestState{
 		LastBuild:          BuildResult{},
 		Manifest:           manifest,
-		PendingFileChanges: make(map[string]bool),
+		PendingFileChanges: make(map[string]time.Time),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
 		CurrentBuildLog:    &bytes.Buffer{},
 	}
+}
+
+func (ms *ManifestState) MostRecentPod() Pod {
+	return ms.PodSet.MostRecentPod()
+}
+
+func (ms *ManifestState) NextBuildReason() BuildReason {
+	reason := BuildReasonNone
+	if len(ms.PendingFileChanges) > 0 {
+		reason = reason.With(BuildReasonFlagMountFiles)
+	}
+	if !ms.PendingManifestChange.IsZero() {
+		reason = reason.With(BuildReasonFlagConfig)
+	}
+	if !ms.StartedFirstBuild {
+		reason = reason.With(BuildReasonFlagInit)
+	}
+	if !ms.NeedsRebuildFromCrash {
+		reason = reason.With(BuildReasonFlagCrash)
+	}
+	return reason
+}
+
+// Whether a change at the given time should trigger a build.
+// Used to determine if changes to mount files or config files
+// should kick off a new build.
+func (ms *ManifestState) IsPendingTime(t time.Time) bool {
+	return !t.IsZero() && t.After(ms.LastBuildStartTime)
+}
+
+// Whether changes have been made to this Manifest's mount files
+// or config since the last build.
+func (ms *ManifestState) PendingBuildSince() time.Time {
+	earliest := time.Now()
+	isPending := false
+
+	for _, t := range ms.PendingFileChanges {
+		if t.Before(earliest) && ms.IsPendingTime(t) {
+			earliest = t
+			isPending = true
+		}
+	}
+
+	t := ms.PendingManifestChange
+	if t.Before(earliest) && ms.IsPendingTime(t) {
+		earliest = t
+		isPending = true
+	}
+
+	if !isPending {
+		return time.Time{}
+	}
+	return earliest
 }
 
 type YAMLManifestState struct {
@@ -125,12 +180,67 @@ func NewYAMLManifestState(manifest model.YAMLManifest) *YAMLManifestState {
 	}
 }
 
+type PodSet struct {
+	Pods    map[k8s.PodID]*Pod
+	ImageID reference.NamedTagged
+}
+
+func NewPodSet(pods ...Pod) PodSet {
+	podMap := make(map[k8s.PodID]*Pod, len(pods))
+	for _, pod := range pods {
+		p := pod
+		podMap[p.PodID] = &p
+	}
+	return PodSet{
+		Pods: podMap,
+	}
+}
+
+func (s PodSet) Len() int {
+	return len(s.Pods)
+}
+
+func (s PodSet) ContainsID(id k8s.PodID) bool {
+	_, ok := s.Pods[id]
+	return ok
+}
+
+func (s PodSet) PodList() []Pod {
+	pods := make([]Pod, 0, len(s.Pods))
+	for _, pod := range s.Pods {
+		pods = append(pods, *pod)
+	}
+	return pods
+}
+
+// Get the "most recent pod" from the PodSet.
+// For most users, we believe there will be only one pod per manifest.
+// So most of this time, this will return the only pod.
+// And in other cases, it will return a reasonable, consistent default.
+func (s PodSet) MostRecentPod() Pod {
+	bestPod := Pod{}
+	found := false
+
+	for _, v := range s.Pods {
+		if !found || v.isAfter(bestPod) {
+			bestPod = *v
+			found = true
+		}
+	}
+
+	return bestPod
+}
+
 type Pod struct {
 	PodID     k8s.PodID
 	Namespace k8s.Namespace
 	StartedAt time.Time
 	Status    string
 	Phase     v1.PodPhase
+
+	// If a pod is being deleted, Kubernetes marks it as Running
+	// until it actually gets removed.
+	Deleting bool
 
 	// The log for the previously active pod, if any
 	PreRestartLog []byte `testdiff:"ignore"`
@@ -147,6 +257,20 @@ type Pod struct {
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
+}
+
+func (p Pod) Empty() bool {
+	return p.PodID == ""
+}
+
+// A stable sort order for pods.
+func (p Pod) isAfter(p2 Pod) bool {
+	if p.StartedAt.After(p2.StartedAt) {
+		return true
+	} else if p2.StartedAt.After(p.StartedAt) {
+		return false
+	}
+	return p.PodID > p2.PodID
 }
 
 // attempting to include the most recent crash, but no preceding crashes
@@ -198,32 +322,6 @@ func (s EngineState) Manifests() []model.Manifest {
 	return result
 }
 
-// Returns a set of pending file changes, without config files that don't belong
-// to mounts. (Changed config files show up in ms.PendingFileChanges and don't
-// necessarily belong to any mounts/watched directories -- we don't want to run
-// these files through a build b/c we'll pitch an error if we find un-mounted
-// files at that point.)
-func (ms *ManifestState) PendingFileChangesWithoutUnmountedConfigFiles(ctx context.Context) (map[string]bool, error) {
-	matcher, err := ms.Manifest.ConfigMatcher()
-	if err != nil {
-		return nil, errors.Wrap(err, "[PendingFileChangesWithoutUnmountedConfigFiles] getting config matcher")
-	}
-
-	files := make(map[string]bool)
-	for f := range ms.PendingFileChanges {
-		matches, err := matcher.Matches(f, false)
-		if err != nil {
-			logger.Get(ctx).Infof("Error matching %s: %v", f, err)
-		}
-		if matches && !build.FileBelongsToMount(f, ms.Manifest.Mounts) {
-			// Filter out config files that don't belong to a mount
-			continue
-		}
-		files[f] = true
-	}
-	return files, nil
-}
-
 func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 	defer func() {
 		sort.Strings(endpoints)
@@ -254,10 +352,18 @@ func StateToView(s EngineState) view.View {
 		ms := s.ManifestStates[name]
 
 		var absWatchDirs []string
+		var absWatchPaths []string
 		for _, p := range ms.Manifest.LocalPaths() {
-			absWatchDirs = append(absWatchDirs, p)
+			fi, err := os.Stat(p)
+			if err == nil && !fi.IsDir() {
+				absWatchPaths = append(absWatchPaths, p)
+			} else {
+				absWatchDirs = append(absWatchDirs, p)
+			}
 		}
+		absWatchPaths = append(absWatchPaths, s.TiltfilePath)
 		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
+		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
 		for f := range ms.PendingFileChanges {
@@ -288,9 +394,15 @@ func StateToView(s EngineState) view.View {
 			lastBuildLog = ms.LastBuildLog.String()
 		}
 
+		// NOTE(nick): Right now, the UX is designed to show the output exactly one
+		// pod. A better UI might summarize the pods in other ways (e.g., show the
+		// "most interesting" pod that's crash looping, or show logs from all pods
+		// at once).
+		pod := ms.MostRecentPod()
 		r := view.Resource{
 			Name:                  name.String(),
 			DirectoriesWatched:    relWatchDirs,
+			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
 			LastManifestLoadError: lastManifestLoadError,
@@ -299,14 +411,14 @@ func StateToView(s EngineState) view.View {
 			LastBuildDuration:     ms.LastBuildDuration,
 			LastBuildLog:          lastBuildLog,
 			PendingBuildEdits:     pendingBuildEdits,
-			PendingBuildSince:     ms.QueueEntryTime,
+			PendingBuildSince:     ms.PendingBuildSince(),
 			CurrentBuildEdits:     currentBuildEdits,
 			CurrentBuildStartTime: ms.CurrentBuildStartTime,
-			PodName:               ms.Pod.PodID.String(),
-			PodCreationTime:       ms.Pod.StartedAt,
-			PodStatus:             ms.Pod.Status,
-			PodRestarts:           ms.Pod.ContainerRestarts - ms.Pod.OldRestarts,
-			PodLog:                ms.Pod.Log(),
+			PodName:               pod.PodID.String(),
+			PodCreationTime:       pod.StartedAt,
+			PodStatus:             pod.Status,
+			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
+			PodLog:                pod.Log(),
 			Endpoints:             endpoints,
 		}
 

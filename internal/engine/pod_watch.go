@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -35,6 +36,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 
 	ch, err := w.kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
 	if err != nil {
+		err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))
 		return
 	}

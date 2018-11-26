@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -42,6 +43,7 @@ const maxChangedFilesToPrint = 5
 type Upper struct {
 	b     BuildAndDeployer
 	store *store.Store
+	kcli  k8s.Client
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -65,7 +67,8 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
 	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, tfw *TiltfileWatcher) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
+	kcli k8s.Client) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -76,11 +79,12 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(sw)
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
-	st.AddSubscriber(tfw)
+	st.AddSubscriber(cc)
 
 	return Upper{
 		b:     b,
 		store: st,
+		kcli:  kcli,
 	}
 }
 
@@ -92,7 +96,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	err := u.kcli.ConnectedToCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -108,7 +112,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
 	if err != nil {
 		return err
 	}
@@ -118,10 +122,31 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
+		ConfigFiles:        configFiles,
 		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
+}
+
+func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
+	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
+
+	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
+	if os.IsNotExist(err) {
+		manifests = []model.Manifest{}
+		globalYAML = model.YAMLManifest{}
+	} else if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
+	} else {
+		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+		if err != nil {
+			manifests = []model.Manifest{}
+			globalYAML = model.YAMLManifest{}
+		}
+	}
+
+	return manifests, globalYAML, configFiles, nil
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
@@ -165,20 +190,18 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = handleCompletedBuild(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
-	case ManifestReloadedAction:
-		handleManifestReloaded(ctx, state, action)
 	case LogAction:
 		handleLogAction(state, action)
-	case GlobalYAMLManifestReloadedAction:
-		handleGlobalYAMLManifestReloaded(ctx, state, action)
 	case GlobalYAMLApplyStartedAction:
 		handleGlobalYAMLApplyStarted(ctx, state, action)
 	case GlobalYAMLApplyCompleteAction:
 		handleGlobalYAMLApplyComplete(ctx, state, action)
 	case GlobalYAMLApplyError:
 		handleGlobalYAMLApplyError(ctx, state, action)
-	case TiltfileReloadedAction:
-		handleTiltfileReloaded(ctx, state, action)
+	case ConfigsReloadStartedAction:
+		handleConfigsReloadStarted(ctx, state, action)
+	case ConfigsReloadedAction:
+		handleConfigsReloaded(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -188,89 +211,17 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	}
 })
 
-func handleManifestReloaded(ctx context.Context, state *store.EngineState, action ManifestReloadedAction) {
-	state.BuildControllerActionCount++
-
-	ms, ok := state.ManifestStates[action.OldManifest.Name]
-	if !ok {
-		state.PermanentError = fmt.Errorf("handleManifestReloaded: Missing manifest state: %s", action.OldManifest.Name)
-		return
-	}
-
-	ms.LastManifestLoadError = action.Error
-	if ms.LastManifestLoadError != nil {
-		logger.Get(ctx).Infof("getting new manifest error: %v", ms.LastManifestLoadError)
-
-		err := removeFromManifestsToBuild(state, ms.Manifest.Name)
-		if err != nil {
-			state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
-			return
-		}
-		return
-	}
-
-	newManifest := action.NewManifest
-	if newManifest.Equal(ms.Manifest) {
-		logger.Get(ctx).Debugf("Detected config change, but manifest %s hasn't changed",
-			ms.Manifest.Name)
-
-		mountedChangedFiles, err := ms.PendingFileChangesWithoutUnmountedConfigFiles(ctx)
-		if err != nil {
-			logger.Get(ctx).Infof(err.Error())
-			return
-		}
-		ms.PendingFileChanges = mountedChangedFiles
-
-		if len(ms.PendingFileChanges) == 0 {
-			ms.ConfigIsDirty = false
-			err = removeFromManifestsToBuild(state, ms.Manifest.Name)
-			if err != nil {
-				state.PermanentError = fmt.Errorf("handleManifestReloaded: %v", err)
-			}
-			return
-		}
-	} else {
-		// Manifest has changed, ensure we do an image build so that we apply the changes
-		ms.LastBuild = store.BuildResult{}
-		ms.Manifest = newManifest
-	}
-
-	ms.ConfigIsDirty = false
-}
-
-func removeFromManifestsToBuild(state *store.EngineState, mn model.ManifestName) error {
-	for i, n := range state.ManifestsToBuild {
-		if n == mn {
-			state.ManifestsToBuild = append(state.ManifestsToBuild[:i], state.ManifestsToBuild[i+1:]...)
-			state.ManifestStates[mn].QueueEntryTime = time.Time{}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("Missing manifest %s", mn)
-}
-
 func handleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
 	mn := action.Manifest.Name
-	err := removeFromManifestsToBuild(state, mn)
-	if err != nil {
-		state.PermanentError = fmt.Errorf("handleBuildStarted: %v", err)
-		return
-	}
-
 	ms := state.ManifestStates[mn]
 
+	ms.StartedFirstBuild = true
 	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
-	for _, file := range action.FilesChanged {
-		delete(ms.PendingFileChanges, file)
-	}
 	ms.CurrentBuildStartTime = action.StartTime
-	ms.Pod.CurrentLog = []byte{}
-
-	// TODO(nick): It would be better if we reversed the relationship
-	// between CurrentlyBuilding and BuildController. BuildController should dispatch
-	// a StartBuildAction, and that should change the state of CurrentlyBuilding
-	// (rather than BuildController starting in response to CurrentlyBuilding).
+	ms.CurrentBuildReason = action.Reason
+	for _, pod := range ms.PodSet.Pods {
+		pod.CurrentLog = []byte{}
+	}
 	state.CurrentlyBuilding = mn
 }
 
@@ -291,20 +242,21 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	err := cb.Error
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
-	ms.HasBeenBuilt = true
+
+	startBuildTime := ms.CurrentBuildStartTime
 	ms.LastBuildError = err
+	ms.LastBuildStartTime = ms.CurrentBuildStartTime
 	ms.LastBuildFinishTime = time.Now()
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
-	ms.CurrentBuildStartTime = time.Time{}
+	ms.LastBuildReason = ms.CurrentBuildReason
 	ms.LastBuildLog = ms.CurrentBuildLog
+
+	ms.CurrentBuildStartTime = time.Time{}
+	ms.CurrentBuildReason = store.BuildReasonNone
 	ms.CurrentBuildLog = &bytes.Buffer{}
-	ms.CrashRebuildInProg = false
+	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		// Put the files that failed to build back into the pending queue.
-		for _, file := range ms.CurrentlyBuildingFileChanges {
-			ms.PendingFileChanges[file] = true
-		}
 		ms.CurrentlyBuildingFileChanges = nil
 
 		if isPermanentError(err) {
@@ -317,21 +269,31 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			return fmt.Errorf("Build Failed: %v", err)
 		}
 	} else {
+		// Remove pending file changes that were consumed by this build.
+		for file, modTime := range ms.PendingFileChanges {
+			if modTime.Before(startBuildTime) {
+				delete(ms.PendingFileChanges, file)
+			}
+		}
+
+		if !ms.PendingManifestChange.IsZero() &&
+			ms.PendingManifestChange.Before(startBuildTime) {
+			ms.PendingManifestChange = time.Time{}
+		}
+
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
 		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
 		ms.CurrentlyBuildingFileChanges = nil
 
-		ms.Pod.OldRestarts = ms.Pod.ContainerRestarts // # of pod restarts from old code (shouldn't be reflected in HUD)
+		for _, pod := range ms.PodSet.Pods {
+			// # of pod restarts from old code (shouldn't be reflected in HUD)
+			pod.OldRestarts = pod.ContainerRestarts
+		}
 	}
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-		if len(engineState.ManifestsToBuild) == 0 {
-			l := logger.Get(ctx)
-			l.Infof("%s", logger.Green(l).Sprintf("Awaiting changes…\n"))
-		}
 
 		if cb.Result.ContainerID != "" {
 			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
@@ -347,45 +309,18 @@ func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
 	event manifestFilesChangedAction) {
-	manifest := state.ManifestStates[event.manifestName].Manifest
 
-	if eventContainsConfigFiles(manifest, event) {
-		logger.Get(ctx).Debugf("Event contains config files")
-		state.ManifestStates[event.manifestName].ConfigIsDirty = true
-	}
-
-	ms := state.ManifestStates[event.manifestName]
-
-	for _, f := range event.files {
-		ms.PendingFileChanges[f] = true
-	}
-
-	spurious, err := onlySpuriousChanges(ms.PendingFileChanges)
-	if err != nil {
-		logger.Get(ctx).Infof("build watch error: %v", err)
-	}
-
-	if spurious {
-		// TODO(nick): I think we probably want to log when this happens?
+	if event.manifestName == ConfigsManifestName {
+		for _, f := range event.files {
+			state.PendingConfigFileChanges[f] = true
+		}
 		return
 	}
 
-	// if the name is already in the queue, we don't need to add it again
-	for _, mn := range state.ManifestsToBuild {
-		if mn == event.manifestName {
-			return
-		}
+	ms := state.ManifestStates[event.manifestName]
+	for _, f := range event.files {
+		ms.PendingFileChanges[f] = time.Now()
 	}
-
-	enqueueBuild(state, event.manifestName)
-}
-
-func handleGlobalYAMLManifestReloaded(
-	ctx context.Context,
-	state *store.EngineState,
-	event GlobalYAMLManifestReloadedAction,
-) {
-	state.GlobalYAML = event.GlobalYAML
 }
 
 func handleGlobalYAMLApplyStarted(
@@ -420,13 +355,20 @@ func handleGlobalYAMLApplyError(
 	state.GlobalYAMLState.LastError = event.Error
 }
 
-func handleTiltfileReloaded(
+func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
-	event TiltfileReloadedAction,
+	event ConfigsReloadStartedAction,
+) {
+	state.PendingConfigFileChanges = make(map[string]bool)
+}
+
+func handleConfigsReloaded(
+	ctx context.Context,
+	state *store.EngineState,
+	event ConfigsReloadedAction,
 ) {
 	manifests := event.Manifests
-	globalYAML := event.GlobalYAML
 	err := event.Err
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
@@ -438,33 +380,38 @@ func handleTiltfileReloaded(
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
+		ms, ok := state.ManifestStates[m.ManifestName()]
+		if !ok {
+			ms = &store.ManifestState{}
+		}
+		ms.LastManifestLoadError = nil
 		state.ManifestStates[m.ManifestName()].LastManifestLoadError = nil
-		oldManifest := state.ManifestStates[m.ManifestName()].Manifest
 
 		newDefOrder[i] = m.ManifestName()
-		if !oldManifest.Equal(m) {
-			state.ManifestStates[m.ManifestName()].Manifest = m
-			enqueueBuild(state, m.ManifestName())
+		if !m.Equal(ms.Manifest) {
+			ms.Manifest = m
+
+			// Manifest has changed, ensure we do an image build so that we apply the changes
+			ms.LastBuild = store.BuildResult{}
+			ms.PendingManifestChange = time.Now()
 		}
+		state.ManifestStates[m.ManifestName()] = ms
 	}
 	// TODO(dmiller) handle deleting manifests
+	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
 	state.ManifestDefinitionOrder = newDefOrder
-	state.GlobalYAML = globalYAML
-}
-
-func enqueueBuild(state *store.EngineState, mn model.ManifestName) {
-	state.ManifestsToBuild = append(state.ManifestsToBuild, mn)
-	state.ManifestStates[mn].QueueEntryTime = time.Now()
+	state.GlobalYAML = event.GlobalYAML
+	state.ConfigFiles = event.ConfigFiles
 }
 
 // Get a pointer to a mutable manifest state,
 // ensuring that some Pod exists on the state.
 //
 // Intended as a helper for pod-mutating events.
-func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.ManifestState {
+func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestState, *store.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
-		return nil
+		return nil, nil
 	}
 
 	podID := k8s.PodIDFromPod(pod)
@@ -475,65 +422,108 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) *store.Ma
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
-		return nil
+		return nil, nil
 	}
 
-	// If the pod is empty, or older then the current pod, replace it.
-	if ms.Pod.PodID == "" || ms.Pod.StartedAt.Before(startedAt) {
-		ms.Pod = store.Pod{
+	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerRef())
+	if err != nil || imageID == nil {
+		// Ditto, this could happen if we get a pod from an old version of the manifest.
+		return nil, nil
+	}
+
+	// There are 4 cases:
+	// 1) This pod has an imageID we don't recognize because it's an old build
+	// 2) This pod has an imageID we don't recognize because it's a new build
+	// 3) This pod has an imageID we recognize, and we need to record it.
+	// 4) This pod has an imageID we recognize, and we've already recorded it.
+
+	// (1) + (2)
+	if ms.PodSet.ImageID == nil ||
+		ms.PodSet.ImageID.String() != imageID.String() {
+
+		bestPod := ms.MostRecentPod()
+		isOld := !bestPod.Empty() && bestPod.StartedAt.After(startedAt)
+		if isOld {
+			// (1)
+			return nil, nil
+		}
+
+		// (2)
+		ms.PodSet = store.PodSet{
+			ImageID: imageID,
+			Pods:    make(map[k8s.PodID]*store.Pod),
+		}
+		ms.PodSet.Pods[podID] = &store.Pod{
 			PodID:     podID,
 			StartedAt: startedAt,
 			Status:    status,
 			Namespace: ns,
 		}
+		return ms, ms.PodSet.Pods[podID]
 	}
 
-	return ms
+	podInfo, ok := ms.PodSet.Pods[podID]
+	if !ok {
+		// (3)
+		podInfo = &store.Pod{
+			PodID:     podID,
+			StartedAt: startedAt,
+			Status:    status,
+			Namespace: ns,
+		}
+		ms.PodSet.Pods[podID] = podInfo
+	}
+
+	// (4)
+	return ms, podInfo
 }
 
 // Fill in container fields on the pod state.
-func populateContainerStatus(ctx context.Context, ms *store.ManifestState, pod *v1.Pod, cStatus v1.ContainerStatus) {
+func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podInfo *store.Pod, pod *v1.Pod, cStatus v1.ContainerStatus) {
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
-	ms.Pod.ContainerName = cName
-	ms.Pod.ContainerReady = cStatus.Ready
+	podInfo.ContainerName = cName
+	podInfo.ContainerReady = cStatus.Ready
 
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
 		return
 	}
-	ms.Pod.ContainerID = cID
+	podInfo.ContainerID = cID
 
 	ports := make([]int32, 0)
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
 	for _, cPort := range cSpec.Ports {
 		ports = append(ports, cPort.ContainerPort)
 	}
-	ms.Pod.ContainerPorts = ports
+	podInfo.ContainerPorts = ports
 
-	forwards := PopulatePortForwards(ms.Manifest, ms.Pod)
+	forwards := PopulatePortForwards(ms.Manifest, *podInfo)
 	if len(forwards) < len(ms.Manifest.PortForwards()) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
-			ms.Manifest.Name, ms.Pod.PodID)
+			ms.Manifest.Name, podInfo.PodID)
 	}
 }
 
 func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
-	ms := ensureManifestStateWithPod(state, pod)
-	if ms == nil {
+	ms, podInfo := ensureManifestStateWithPod(state, pod)
+	if ms == nil || podInfo == nil {
 		return
 	}
 
 	podID := k8s.PodIDFromPod(pod)
-	if ms.Pod.PodID != podID {
+	if podInfo.PodID != podID {
 		// This is an event from an old pod.
 		return
 	}
 
 	// Update the status
-	ms.Pod.Phase = pod.Status.Phase
-	ms.Pod.Status = podStatusToString(*pod)
+	podInfo.Deleting = pod.DeletionTimestamp != nil
+	podInfo.Phase = pod.Status.Phase
+	podInfo.Status = podStatusToString(*pod)
+
+	defer prunePods(ms)
 
 	// Check if the container is ready.
 	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerRef())
@@ -544,19 +534,45 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 
-	populateContainerStatus(ctx, ms, pod, cStatus)
-	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != ms.Pod.ContainerID && !ms.CrashRebuildInProg {
-		ms.CrashRebuildInProg = true
+	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
+	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.NeedsRebuildFromCrash {
+		ms.NeedsRebuildFromCrash = true
 		ms.ExpectedContainerID = ""
 		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
-		enqueueBuild(state, ms.Manifest.Name)
 	}
 
-	if int(cStatus.RestartCount) > ms.Pod.ContainerRestarts {
-		ms.Pod.PreRestartLog = append([]byte{}, ms.Pod.CurrentLog...)
-		ms.Pod.CurrentLog = []byte{}
+	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
+		podInfo.PreRestartLog = append([]byte{}, podInfo.CurrentLog...)
+		podInfo.CurrentLog = []byte{}
 	}
-	ms.Pod.ContainerRestarts = int(cStatus.RestartCount)
+	podInfo.ContainerRestarts = int(cStatus.RestartCount)
+}
+
+// If there's more than one pod, prune the deleting/dead ones so
+// that they don't clutter the output.
+func prunePods(ms *store.ManifestState) {
+	// Continue pruning until we have 1 pod.
+	for ms.PodSet.Len() > 1 {
+		bestPod := ms.MostRecentPod()
+
+		for key, pod := range ms.PodSet.Pods {
+			// Always remove pods that were manually deleted.
+			if pod.Deleting {
+				delete(ms.PodSet.Pods, key)
+				break
+			}
+
+			// Remove terminated pods if they aren't the most recent one.
+			isDead := pod.Phase == v1.PodSucceeded || pod.Phase == v1.PodFailed
+			if isDead && pod.PodID != bestPod.PodID {
+				delete(ms.PodSet.Pods, key)
+				break
+			}
+		}
+
+		// found nothing to delete, break out
+		return
+	}
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
@@ -568,7 +584,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	if ms.Pod.PodID != action.PodID {
+	podID := action.PodID
+	if !ms.PodSet.ContainsID(podID) {
 		// NOTE(nick): There are two cases where this could happen:
 		// 1) Pod 1 died and kubernetes started Pod 2. What should we do with
 		//    logs from Pod 1 that are still in the action queue?
@@ -583,7 +600,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	ms.Pod.CurrentLog = append(ms.Pod.CurrentLog, action.Log...)
+	podInfo := ms.PodSet.Pods[podID]
+	podInfo.CurrentLog = append(podInfo.CurrentLog, action.Log...)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
@@ -608,6 +626,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	engineState.TiltfilePath = action.TiltfilePath
+	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.ManifestNames
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
@@ -621,10 +640,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	}
 	engineState.WatchMounts = watchMounts
 
-	for _, m := range manifests {
-		enqueueBuild(engineState, m.Name)
-	}
-	engineState.InitialBuildCount = len(engineState.ManifestsToBuild)
+	engineState.InitialBuildCount = len(manifests)
 	return nil
 }
 
@@ -643,7 +659,7 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 // put everything to ignore in their gitignore/dockerignore files. This is a stop-gap
 // so they don't have a terrible experience if those files aren't there or
 // aren't in the right places.
-func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
+func onlySpuriousChanges(filesChanged map[string]time.Time) (bool, error) {
 	// If a lot of files have changed, don't treat this as spurious.
 	if len(filesChanged) > 3 {
 		return false, nil
@@ -660,24 +676,4 @@ func onlySpuriousChanges(filesChanged map[string]bool) (bool, error) {
 		}
 	}
 	return true, nil
-}
-
-type configFilesManifest interface {
-	ConfigMatcher() (model.PathMatcher, error)
-}
-
-func eventContainsConfigFiles(manifest configFilesManifest, e manifestFilesChangedAction) bool {
-	matcher, err := manifest.ConfigMatcher()
-	if err != nil {
-		return false
-	}
-
-	for _, f := range e.files {
-		matches, err := matcher.Matches(f, false)
-		if matches && err == nil {
-			return true
-		}
-	}
-
-	return false
 }

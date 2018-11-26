@@ -212,7 +212,7 @@ def local(cmd: str) -> str
 Reads file and returns its contents.
 
 ```python
-def read_file(file_path: str) -> str
+def read_file(file_path: Union[str, localPath]) -> str
 ```
 
 #### stop_build()

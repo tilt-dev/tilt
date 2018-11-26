@@ -27,12 +27,12 @@ func TestLogs(t *testing.T) {
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
-		Pod: store.Pod{
+		PodSet: store.NewPodSet(store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		},
+		}),
 	}
 	f.store.UnlockMutableState()
 
@@ -53,12 +53,12 @@ func TestLogActions(t *testing.T) {
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
-		Pod: store.Pod{
+		PodSet: store.NewPodSet(store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		},
+		}),
 	}
 	f.store.UnlockMutableState()
 
@@ -76,12 +76,12 @@ func TestLogsFailed(t *testing.T) {
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
-		Pod: store.Pod{
+		PodSet: store.NewPodSet(store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		},
+		}),
 	}
 	f.store.UnlockMutableState()
 
@@ -103,12 +103,12 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	state.WatchMounts = true
 	state.ManifestStates["server"] = &store.ManifestState{
 		Manifest: model.Manifest{Name: "server"},
-		Pod: store.Pod{
+		PodSet: store.NewPodSet(store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		},
+		}),
 	}
 	f.store.UnlockMutableState()
 
