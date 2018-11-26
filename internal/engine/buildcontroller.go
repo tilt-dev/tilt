@@ -21,6 +21,7 @@ type buildEntry struct {
 	ctx          context.Context
 	manifest     model.Manifest
 	buildState   store.BuildState
+	buildReason  store.BuildReason
 	filesChanged []string
 	firstBuild   bool
 }
@@ -32,23 +33,75 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 	}
 }
 
+// Algorithm to choose a manifest to build next.
+func nextManifestToBuild(state store.EngineState) model.ManifestName {
+	// First, go through all the manifests in order.
+	// If any of them haven't started yet, build them now.
+	for _, mn := range state.ManifestDefinitionOrder {
+		ms, ok := state.ManifestStates[mn]
+		if ok && !ms.StartedFirstBuild {
+			return mn
+		}
+	}
+
+	// Next go through all the manifests, and check:
+	// 1) all pending file changes, and
+	// 2) all pending manifest changes
+	// The earliest one is the one we want.
+	choiceName := model.ManifestName("")
+	earliest := time.Now()
+
+	// always use a stable iteration order
+	for _, mn := range state.ManifestDefinitionOrder {
+		ms, ok := state.ManifestStates[mn]
+		if !ok {
+			continue
+		}
+
+		// Always prioritize builds that crashes and have an out-of-sync.
+		if ms.NeedsRebuildFromCrash {
+			return mn
+		}
+
+		t := ms.PendingManifestChange
+		if t.Before(earliest) && ms.IsPendingTime(t) {
+			choiceName = mn
+			earliest = t
+		}
+
+		spurious, _ := onlySpuriousChanges(ms.PendingFileChanges)
+		if !spurious {
+			for _, t := range ms.PendingFileChanges {
+				if t.Before(earliest) && ms.IsPendingTime(t) {
+					choiceName = mn
+					earliest = t
+				}
+			}
+		}
+	}
+
+	return choiceName
+}
+
 func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	if len(state.ManifestsToBuild) == 0 {
-		return buildEntry{}, false
-	}
-
+	// Don't start the next build until the previous action has been recorded,
+	// so that we don't accidentally repeat the same build.
 	if c.lastActionCount == state.BuildControllerActionCount {
 		return buildEntry{}, false
 	}
 
-	mn := state.ManifestsToBuild[0]
+	mn := nextManifestToBuild(state)
+	if mn == "" {
+		return buildEntry{}, false
+	}
+
 	c.lastActionCount = state.BuildControllerActionCount
 	ms := state.ManifestStates[mn]
 	manifest := ms.Manifest
-	firstBuild := !ms.HasBeenBuilt
+	firstBuild := !ms.StartedFirstBuild
 
 	filesChanged := make([]string, 0, len(ms.PendingFileChanges))
 	for file, _ := range ms.PendingFileChanges {
@@ -58,6 +111,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildState := store.NewBuildState(ms.LastBuild, filesChanged).
 		WithDeployInfo(store.NewDeployInfo(ms.PodSet))
+	buildReason := ms.NextBuildReason()
 
 	// TODO(nick): This is...not great, because it modifies the build log in place.
 	// A better solution would dispatch actions (like PodLogManager does) so that
@@ -68,6 +122,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		ctx:          ctx,
 		manifest:     manifest,
 		firstBuild:   firstBuild,
+		buildReason:  buildReason,
 		buildState:   buildState,
 		filesChanged: filesChanged,
 	}, true
@@ -91,6 +146,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 			Manifest:     entry.manifest,
 			StartTime:    time.Now(),
 			FilesChanged: entry.filesChanged,
+			Reason:       entry.buildReason,
 		})
 		c.logBuildEntry(entry.ctx, entry)
 		result, err := c.b.BuildAndDeploy(entry.ctx, entry.manifest, entry.buildState)

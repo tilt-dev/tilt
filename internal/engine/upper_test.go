@@ -190,8 +190,10 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	call := <-f.b.calls
 	assert.Equal(t, manifest, call.manifest)
 	assert.Equal(t, []string{}, call.state.FilesChanged())
+
 	fileRelPath := "fdas"
 	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+
 	call = <-f.b.calls
 	assert.Equal(t, manifest, call.manifest)
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
@@ -200,6 +202,10 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 		t.Errorf("error making abs path of %v: %v", fileRelPath, err)
 	}
 	assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
+
+	f.WithManifest("foobar", func(ms store.ManifestState) {
+		assert.True(t, ms.LastBuildReason.Has(store.BuildReasonFlagMountFiles))
+	})
 
 	err = f.Stop()
 	assert.NoError(t, err)
@@ -643,12 +649,11 @@ func TestBreakManifest(t *testing.T) {
 	})
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, ms.QueueEntryTime, time.Time{})
 		assert.Contains(t, ms.LastManifestLoadError.Error(), "borken")
 	})
 
 	f.withState(func(es store.EngineState) {
-		assert.NotContains(t, es.ManifestsToBuild, model.ManifestName(name))
+		assert.Equal(t, "", nextManifestToBuild(es).String())
 	})
 }
 
@@ -666,7 +671,6 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	name := "foobar"
 	f.loadAndStartFoobar()
 
 	// First call: all is well
@@ -685,11 +689,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	})
 
 	f.withState(func(state store.EngineState) {
-		assert.NotContains(t, state.ManifestsToBuild, model.ManifestName(name))
-	})
-
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
+		assert.Equal(t, "", nextManifestToBuild(state).String())
 	})
 }
 
@@ -735,11 +735,10 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	})
 
 	f.withState(func(state store.EngineState) {
-		assert.NotContains(t, state.ManifestsToBuild, model.ManifestName(name))
+		assert.Equal(t, "", nextManifestToBuild(state).String())
 	})
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, time.Time{}, ms.QueueEntryTime)
 		assert.NoError(t, ms.LastManifestLoadError)
 		expectedSteps := []model.Step{{
 			Cmd:           model.ToShellCmd("changed"),
@@ -1022,8 +1021,8 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		manifestName: manifest.Name,
 		files:        []string{"/go/a"},
 	})
-	f.WaitUntil("waiting for manifestToBuild > 0", func(st store.EngineState) bool {
-		return len(st.ManifestsToBuild) > 0
+	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
+		return nextManifestToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
 		Manifest:  manifest,
@@ -1038,8 +1037,8 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 
-	f.WaitUntilManifest("CrashRebuildInProg set to True", "foobar", func(state store.ManifestState) bool {
-		return state.CrashRebuildInProg
+	f.WaitUntilManifest("NeedsRebuildFromCrash set to True", "foobar", func(state store.ManifestState) bool {
+		return state.NeedsRebuildFromCrash
 	})
 	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
 	f.waitForCompletedBuildCount(1)
