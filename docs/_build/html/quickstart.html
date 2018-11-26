@@ -98,6 +98,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Tilt Installation Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#on-linux">On Linux</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#from-source">From Source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
@@ -234,6 +235,23 @@ $ kubectl config use-context docker-for-desktop
 <li>Verify that you installed it correctly with:</li>
 </ul>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
+</pre></div>
+</div>
+</div>
+<div class="section" id="from-source">
+<span id="from-source"></span><h2>From Source<a class="headerlink" href="#from-source" title="Permalink to this headline">¶</a></h2>
+<p>If you’d prefer to install <code class="docutils literal notranslate"><span class="pre">tilt</span></code> from source,</p>
+<ul class="simple">
+<li>Install <a class="reference external" href="https://golang.org/dl/">go 1.11</a>. Make sure the Go install directory
+(usually <code class="docutils literal notranslate"><span class="pre">$HOME/go/bin</span></code>) is on your <code class="docutils literal notranslate"><span class="pre">$PATH</span></code>.</li>
+<li>Run:</li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ go get -u github.com/windmilleng/tilt`
+</pre></div>
+</div>
+<p>Verify that you installed it correctly with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
+v0.0.0-dev, built 2018-11-20
 </pre></div>
 </div>
 </div>

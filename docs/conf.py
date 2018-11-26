@@ -14,6 +14,8 @@
 #
 import os
 import sys
+import recommonmark
+from recommonmark.transform import AutoStructify
 sys.path.insert(0, os.path.abspath('api'))
 
 # -- Project information -----------------------------------------------------
@@ -181,3 +183,10 @@ epub_title = project
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
+
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'enable_eval_rst': True,
+            'enable_auto_doc_ref': False,
+            }, True)
+    app.add_transform(AutoStructify)
