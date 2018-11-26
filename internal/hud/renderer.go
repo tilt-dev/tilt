@@ -359,7 +359,7 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 
 	if res.LastManifestLoadError != "" {
 		statusColor = cBad
-		status = "Problem loading Tiltfile!"
+		status = "Problem loading Tiltfile"
 	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
 		if res.LastBuildError != "" {
 			statusColor = cBad
