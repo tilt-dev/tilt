@@ -31,9 +31,8 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up <name> [<name2>] [<name3>] [...]",
-		Short: "stand up one or more manifests",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "up",
+		Short: "stand up manifest(s) defined in Tiltfile.main()",
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
@@ -108,7 +107,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch)
+		return upper.Start(ctx, c.watch)
 	})
 
 	err = g.Wait()

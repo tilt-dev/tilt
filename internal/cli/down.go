@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,18 +16,15 @@ type downCmd struct {
 
 func (c downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "down <name> [<name2>] [<name3>] [...]",
-		Short: "delete the kubernetes resources in one or more manifests",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "down",
+		Short: "delete the kubernetes resources associated with manifest(s) defined in Tiltfile.main()",
 	}
 
 	return cmd
 }
 
 func (c downCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.down", map[string]string{
-		"count": fmt.Sprintf("%d", len(args)),
-	})
+	analyticsService.Incr("cmd.down", map[string]string{})
 	defer analyticsService.Flush(time.Second)
 
 	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
