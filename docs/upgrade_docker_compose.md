@@ -53,10 +53,10 @@ services:
       dockerfile: ./spoonerisms/Dockerfile
 ```
 
-In Tilt you tell us where your Dockerfile is and we infer your build context from that.
+In Tilt you tell us where your Dockerfile is and what your build context is.
 
 ```python
-  img = static_build("spoonerisms/Dockerfile", "gcr.io/myproject/spoonerisms")
+  img = static_build("spoonerisms/Dockerfile", "gcr.io/myproject/spoonerisms", context="spoonerisms")
 ```
 
 We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.
@@ -124,11 +124,9 @@ All in all your `Tiltfile` should now look like this:
 
 ```python
 def spoonerisms():
-  img = static_build("spoonerisms/Dockerfile", "gcr.io/myproject/spoonerisms")
+  img = static_build("spoonerisms/Dockerfile", "gcr.io/myproject/spoonerisms", context="spoonerisms")
   yaml = read_file('spoonerisms.yaml')
   service = k8s_service(img, yaml=yaml)
   service.port_forward(9006)
   return service
 ```
-
-# From Skaffold
