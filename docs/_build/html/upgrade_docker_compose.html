@@ -1,0 +1,363 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>From Docker Compose &mdash; Tilt  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tiltfile API Reference" href="api.html" />
+    <link rel="prev" title="Expanding a Tiltfile" href="fast_build.html" />
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
+<script>
+ window.dataLayer = window.dataLayer || [];
+ function gtag(){dataLayer.push(arguments);}
+ gtag('js', new Date());
+
+ gtag('config', 'UA-129150759-2');
+</script>
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Expanding a Tiltfile</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">From Docker Compose</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differences-between-docker-compose-and-tilt">Differences between Docker Compose and Tilt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#migrate-from-docker-compose-to-tilt">Migrate from Docker Compose to Tilt</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Tilt</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>From Docker Compose</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="from-docker-compose">
+<span id="from-docker-compose"></span><h1>From Docker Compose<a class="headerlink" href="#from-docker-compose" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="before-you-begin">
+<span id="before-you-begin"></span><h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="quickstart.html">Install Tilt</a> and Kubernetes if they are not yet installed.</li>
+<li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
+</ul>
+</div>
+<div class="section" id="differences-between-docker-compose-and-tilt">
+<span id="differences-between-docker-compose-and-tilt"></span><h2>Differences between Docker Compose and Tilt<a class="headerlink" href="#differences-between-docker-compose-and-tilt" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Docker Compose is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called
+<a class="reference external" href="https://github.com/bazelbuild/starlark#tour&gt;">Starlark</a>.</li>
+<li>Docker Compose uses runs services on Docker Machine or Docker Swarm. Tilt runs services natively on Kubernetes.</li>
+</ul>
+</div>
+<div class="section" id="migrate-from-docker-compose-to-tilt">
+<span id="migrate-from-docker-compose-to-tilt"></span><h2>Migrate from Docker Compose to Tilt<a class="headerlink" href="#migrate-from-docker-compose-to-tilt" title="Permalink to this headline">¶</a></h2>
+<p>Let’s take a simple <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> file with one service:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">version</span><span class="p p-Indicator">:</span> <span class="s">&#39;3&#39;</span>
+<span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms</span>
+      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms/Dockerfile</span>
+    <span class="l l-Scalar l-Scalar-Plain">command</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">node /app/src/index.js&quot;</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms:/app</span>
+    <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="s">&quot;9006:5000&quot;</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
+<li>Define your service name</li>
+</ol>
+<p>In Docker Compose your service name is a key in the services list:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
+</pre></div>
+</div>
+<p>In Tilt your service name is a function defined in your Tiltfile.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">spoonerisms</span><span class="p">():</span>
+
+</pre></div>
+</div>
+<ol class="simple">
+<li>Set the build context</li>
+</ol>
+<p>In Docker Compose you can specify your build context and Dockerfile like so:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms</span>
+      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms/Dockerfile</span>
+</pre></div>
+</div>
+<p>In Tilt you tell us where your Dockerfile is and what your build context is.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;spoonerisms/Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/myproject/spoonerisms&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;spoonerisms&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.</p>
+<ol class="simple">
+<li>Create a simple Kubernetes resource for your service
+For a Node application it might look like this:</li>
+</ol>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># spoonerisms.yaml</span>
+<span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
+<span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+  <span class="l l-Scalar l-Scalar-Plain">labels</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">app</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+<span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">selector</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">matchLabels</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">app</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+  <span class="l l-Scalar l-Scalar-Plain">template</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">labels</span><span class="p p-Indicator">:</span>
+        <span class="l l-Scalar l-Scalar-Plain">app</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+        <span class="l l-Scalar l-Scalar-Plain">tier</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">web</span>
+    <span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">containers</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+        <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/myproject/spoonerisms</span>
+        <span class="l l-Scalar l-Scalar-Plain">command</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[</span><span class="s">&quot;node&quot;</span><span class="p p-Indicator">,</span> <span class="s">&quot;/app/src/index.js&quot;</span><span class="p p-Indicator">]</span>
+        <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">containerPort</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">5000</span>
+        <span class="l l-Scalar l-Scalar-Plain">resources</span><span class="p p-Indicator">:</span>
+          <span class="l l-Scalar l-Scalar-Plain">requests</span><span class="p p-Indicator">:</span>
+            <span class="l l-Scalar l-Scalar-Plain">cpu</span><span class="p p-Indicator">:</span> <span class="s">&quot;10m&quot;</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Combine your build context and k8s config to create a service</li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;spoonerisms.yaml&#39;</span><span class="p">)</span>
+  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Forward your port
+In Docker Compose your service has a <code class="docutils literal notranslate"><span class="pre">ports</span></code> field:</li>
+</ol>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="s">&quot;9006:5000&quot;</span>
+</pre></div>
+</div>
+<p>In Tilt services have a <code class="docutils literal notranslate"><span class="pre">port_forward</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">service</span><span class="o">.</span><span class="n">port_forward</span><span class="p">(</span><span class="mi">9006</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Return your service!</li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="k">return</span> <span class="n">service</span>
+</pre></div>
+</div>
+<p>All in all your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> should now look like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">spoonerisms</span><span class="p">():</span>
+  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;spoonerisms/Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/myproject/spoonerisms&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;spoonerisms&quot;</span><span class="p">)</span>
+  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;spoonerisms.yaml&#39;</span><span class="p">)</span>
+  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+  <span class="n">service</span><span class="o">.</span><span class="n">port_forward</span><span class="p">(</span><span class="mi">9006</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">service</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="Tiltfile API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="fast_build.html" class="btn btn-neutral" title="Expanding a Tiltfile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Windmill Engineering
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
