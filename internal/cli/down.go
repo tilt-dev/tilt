@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
@@ -37,12 +36,12 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifestNames := make([]model.ManifestName, len(args))
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
-	}
+	// manifestNames := make([]model.ManifestName, len(args))
+	// for i, a := range args {
+	// 	manifestNames[i] = model.ManifestName(a)
+	// }
 
-	manifests, gYAML, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, gYAML, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx)
 	if err != nil {
 		return err
 	}

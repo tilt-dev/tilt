@@ -23,6 +23,7 @@ import (
 )
 
 const FileName = "Tiltfile"
+const MainFuncName = "main" // we always look for a func called `main` returning a composite service
 
 const oldK8sServiceSyntaxError = "the syntax for `k8s_service` has changed. Before it was `k8s_service(yaml: string, dockerImage: Image)`. " +
 	"Now it is `k8s_service(dockerImage: Image, yaml: string = \"\")` (`yaml` is an optional arg)."
@@ -465,21 +466,17 @@ func handleSkylarkErr(thread *skylark.Thread, err error) error {
 
 // GetManifestConfigsAndGlobalYAML executes the Tiltfile to create manifests for all resources and
 // a manifest representing the global yaml.
-func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest, []string, error) {
-	var manifests []model.Manifest
+func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context) ([]model.Manifest, model.YAMLManifest, []string, error) {
 
 	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
 	if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	}
 
-	for _, manifestName := range names {
-		curManifests, err := t.getManifestConfigsHelper(ctx, manifestName.String())
-		if err != nil {
-			return manifests, model.YAMLManifest{}, nil, err
-		}
-
-		manifests = append(manifests, curManifests...)
+	// We always look for a function `main` that returns a manifest || composite_manifest.
+	manifests, err := t.getManifestConfigsFromMain(ctx)
+	if err != nil {
+		return manifests, model.YAMLManifest{}, nil, err
 	}
 
 	gYAML, err := getGlobalYAML(t.thread)
@@ -499,30 +496,25 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 	return manifests, globalYAML, configFiles, nil
 }
 
-func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName string) ([]model.Manifest, error) {
-	f, ok := t.globals[manifestName]
+func (t Tiltfile) getManifestConfigsFromMain(ctx context.Context) ([]model.Manifest, error) {
+	f, ok := t.globals[MainFuncName]
 
 	if !ok {
-		var globalNames []string
-		for name := range t.globals {
-			globalNames = append(globalNames, name)
-		}
-
 		return nil, fmt.Errorf(
-			"%s does not define a global named '%v'. perhaps you want one of:\n  %s",
-			t.filename,
-			manifestName,
-			strings.Join(globalNames, "\n  "))
+			"no function `%s` defined in %v (required; must return a k8s_service || composite_service)",
+			MainFuncName, t.filename)
 	}
 
 	manifestFunction, ok := f.(*skylark.Function)
 
 	if !ok {
-		return nil, fmt.Errorf("'%v' is a '%v', not a function. service definitions must be functions", manifestName, f.Type())
+		return nil, fmt.Errorf("'%v' must be a function (is a '%v')",
+			MainFuncName, f.Type())
 	}
 
 	if manifestFunction.NumParams() != 0 {
-		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments. service definitions must take 0 arguments", manifestName)
+		return nil, fmt.Errorf("func '%v' is defined to take more than 0 arguments (must take exactly 0)",
+			MainFuncName)
 	}
 
 	val, err := manifestFunction.Call(t.thread, nil, nil)
@@ -548,11 +540,11 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 			return nil, err
 		}
 
-		m.Name = model.ManifestName(manifestName)
+		m.Name = model.ManifestName(MainFuncName)
 		manifests = append(manifests, m)
-
 	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service",
+			MainFuncName, val.Type())
 	}
 
 	// Pull out Global YAML corresponding to manifest(s)

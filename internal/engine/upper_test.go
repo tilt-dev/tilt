@@ -523,7 +523,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
   return k8s_service(image, yaml="yaaaaaaaaml")`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifests")
@@ -617,7 +617,7 @@ func TestBreakManifest(t *testing.T) {
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: all is well
 	_ = f.nextCall("first call")
@@ -654,7 +654,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: all is well
 	_ = f.nextCall("first call")
@@ -693,7 +693,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	f.WriteFile("Tiltfile", tiltfileString("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	f.WaitUntil("first build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
@@ -1836,7 +1836,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadAndStartFoobar() {
+func (f *testFixture) loadAndStart() {
 	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
 	if err != nil {
 		f.store.Dispatch(ConfigsReloadedAction{
@@ -1844,7 +1844,7 @@ func (f *testFixture) loadAndStartFoobar() {
 		})
 		return
 	}
-	manifests, _, _, err := t.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
+	manifests, _, _, err := t.GetManifestConfigsAndGlobalYAML(f.ctx)
 	if err != nil {
 		f.T().Fatal(err)
 	}

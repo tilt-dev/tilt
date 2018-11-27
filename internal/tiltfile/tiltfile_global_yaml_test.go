@@ -15,14 +15,13 @@ func TestGlobalYAML(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("global.yaml", "this is the global yaml")
+	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
 global_yaml(yaml)
 
-def manifestA():
-  stuff = read_file('./fileA')
-  image = static_build('Dockerfile', 'tag-a')
-  return k8s_service("yamlA", image)
-	`)
+def main():
+  return composite_service([])
+`)
 
 	globalYAML := f.LoadGlobalYAML()
 	assert.Equal(t, globalYAML.K8sYAML(), "this is the global yaml")
@@ -54,6 +53,9 @@ func TestConfigFilesIncludeGlobalYAMLDependencies(t *testing.T) {
 	f.WriteFile("Tiltfile", `yaml = read_file('./global.yaml')
 global_yaml(yaml)
 
+def main():
+  return composite_service([manifestA, manifestB])
+
 def manifestA():
   stuff = read_file('./fileA')  # this is a dependency of manifestA now
   image = static_build('Dockerfile', 'tag-a')
@@ -65,7 +67,7 @@ def manifestB():
   return k8s_service(image, yaml="yamlB")
 `)
 
-	_, _, configFiles := f.LoadAllFromTiltfile("manifestA", "manifestB")
+	_, _, configFiles := f.LoadAllFromTiltfile()
 
 	expectedConfigFiles := []string{"fileA", "fileB", "Dockerfile", "global.yaml"}
 	for _, expected := range expectedConfigFiles {
@@ -73,28 +75,23 @@ def manifestB():
 	}
 }
 
-func TestPerManifestYAMLExtractedFromGlobalYAML(t *testing.T) {
+func TestPerManifestYAMLExtractedFromGlobalYAMLForSingleService(t *testing.T) {
 	f := newGitRepoFixture(t)
 	defer f.TearDown()
 
-	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml, testyaml.SecretYaml)
+	multiManifestYAML := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.SecretYaml)
 	f.WriteFile("global.yaml", multiManifestYAML)
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
 
-def doggos():
+def main():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
-  return k8s_service(image)
-
-def snack():
-  image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/snack')
   return k8s_service(image)
 `)
 
-	manifests, gYAML, _ := f.LoadAllFromTiltfile("doggos", "snack")
+	manifests, gYAML, _ := f.LoadAllFromTiltfile()
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
-	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
 	assertYAMLEqual(t, testyaml.SecretYaml, gYAML.K8sYAML())
 }
 
@@ -107,7 +104,7 @@ func TestPerManifestYAMLExtractedFromGlobalYAMLForCompositeService(t *testing.T)
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
 
-def compserv():
+def main():
   return composite_service([doggos, snack])
 
 def doggos():
@@ -119,7 +116,7 @@ def snack():
   return k8s_service(image)
 `)
 
-	manifests, gYAML, _ := f.LoadAllFromTiltfile("compserv")
+	manifests, gYAML, _ := f.LoadAllFromTiltfile()
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
@@ -135,6 +132,9 @@ func TestAllYAMLExtractedFromGlobalYAML(t *testing.T) {
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
 
+def main():
+  return composite_service([doggos, snack])
+
 def doggos():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
   return k8s_service(image)
@@ -144,7 +144,7 @@ def snack():
   return k8s_service(image)
 `)
 
-	manifests, gYAML, _ := f.LoadAllFromTiltfile("doggos", "snack")
+	manifests, gYAML, _ := f.LoadAllFromTiltfile()
 
 	assertYAMLEqual(t, testyaml.DoggosDeploymentYaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, testyaml.SnackYaml, manifests[1].K8sYAML())
@@ -160,12 +160,12 @@ func TestExtractedGlobalYAMLStacksWithExplicitYaml(t *testing.T) {
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", fmt.Sprintf(`global_yaml(read_file('./global.yaml'))
 
-def doggos_with_secret():
+def main():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
   return k8s_service(image, yaml="""%s""")
 `, testyaml.DoggosServiceYaml))
 
-	manifests, _, _ := f.LoadAllFromTiltfile("doggos_with_secret")
+	manifests, _, _ := f.LoadAllFromTiltfile()
 
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosDeploymentYaml)
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosServiceYaml)
@@ -180,12 +180,12 @@ func TestExtractedYAMLAssociatesViaImageAndSelector(t *testing.T) {
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
 
-def doggos():
+def main():
   image = static_build('Dockerfile', 'gcr.io/windmill-public-containers/servantes/doggos')
   return k8s_service(image)
 `)
 
-	manifests, gYAML, _ := f.LoadAllFromTiltfile("doggos")
+	manifests, gYAML, _ := f.LoadAllFromTiltfile()
 
 	assertYAMLContains(t, manifests[0].K8sYAML(), testyaml.DoggosDeploymentYaml,
 		"expected Deployment yaml on Doggos manifest")
@@ -204,12 +204,12 @@ func TestTwinsInGlobalYAML(t *testing.T) {
 	f.WriteFile("Dockerfile", "FROM iron/go:dev")
 	f.WriteFile("Tiltfile", `global_yaml(read_file('./global.yaml'))
 
-def sancho():
+def main():
   image = static_build('Dockerfile', 'gcr.io/some-project-162817/sancho')
   return k8s_service(image)
 `)
 
-	manifests, gYAML, _ := f.LoadAllFromTiltfile("sancho")
+	manifests, gYAML, _ := f.LoadAllFromTiltfile()
 
 	assertYAMLEqual(t, yaml, manifests[0].K8sYAML())
 	assertYAMLEqual(t, "", gYAML.K8sYAML())

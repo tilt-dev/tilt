@@ -26,7 +26,6 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 	state := st.RLockState()
 	defer st.RUnlockState()
-	initManifests := state.InitManifests
 	if len(state.PendingConfigFileChanges) == 0 {
 		return
 	}
@@ -45,7 +44,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			})
 			return
 		}
-		manifests, globalYAML, configFiles, err := t.GetManifestConfigsAndGlobalYAML(ctx, initManifests...)
+		manifests, globalYAML, configFiles, err := t.GetManifestConfigsAndGlobalYAML(ctx)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,

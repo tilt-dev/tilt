@@ -106,13 +106,13 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
+	// ~~~ MAIA: can delete?
 	manifestNames := make([]model.ManifestName, len(args))
-
 	for i, a := range args {
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
+	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	return u.store.Loop(ctx)
 }
 
-func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
+func loadAndGetManifests(ctx context.Context) (
 	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
 
 	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
@@ -139,7 +139,7 @@ func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName
 	} else if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	} else {
-		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx)
 		if err != nil {
 			manifests = []model.Manifest{}
 			globalYAML = model.YAMLManifest{}
@@ -371,7 +371,7 @@ func handleConfigsReloaded(
 	manifests := event.Manifests
 	err := event.Err
 	if err != nil {
-		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
+		logger.Get(ctx).Infof("Unable to parse Tiltfile/create configs: %v", err)
 
 		for _, ms := range state.ManifestStates {
 			ms.LastManifestLoadError = err
