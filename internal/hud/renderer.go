@@ -268,159 +268,198 @@ func abbreviateLog(s string) []string {
 
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
-	renderResourceSummary(selected, rv, res, layout)
-	renderResourcesK8s(res, layout, rv)
-	renderResourceBuild(res, r, rv, layout)
+	layout.Add(r.resourceTitle(selected, rv, res))
+	layout.Add(r.resourceK8s(res, rv))
+	layout.Add(r.resourceK8sLogs(res, rv))
+	layout.Add(r.resourceTilt(res, rv))
 	return layout
 }
 
-func renderResourceBuild(res view.Resource, r *Renderer, rv view.ResourceViewState, layout *rty.ConcatLayout) {
-
-	// Last Deployed Edits
-	if !res.LastDeployTime.Equal(time.Time{}) {
-		if len(res.LastDeployEdits) > 0 {
-			sb := rty.NewStringBuilder()
-			sb.Fg(cLightText).Text("  Last Deployed Edits: ").Fg(tcell.ColorDefault)
-			sb.Text(formatFileList(res.LastDeployEdits))
-			layout.Add(sb.Build())
-		}
-	}
-
-	var buildComponents []rty.Component
-	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
-		sb := rty.NewStringBuilder()
-		sb.Fg(cPending).Textf("In Progress %s", r.spinner()).Fg(tcell.ColorDefault)
-		sb.Textf(" - For %s", formatDuration(time.Since(res.CurrentBuildStartTime)))
-		if len(res.CurrentBuildEdits) > 0 {
-			sb.Textf(" • Edits: %s", formatFileList(res.CurrentBuildEdits))
-		}
-		buildComponents = append(buildComponents, sb.Build())
-	}
-	if !res.PendingBuildSince.Equal(time.Time{}) {
-		sb := rty.NewStringBuilder()
-		sb.Fg(cPending).Text("Pending").Fg(tcell.ColorDefault)
-		sb.Textf(" - For %s", formatDuration(time.Since(res.PendingBuildSince)))
-		if len(res.PendingBuildEdits) > 0 {
-			sb.Textf(" • Edits: %s", formatFileList(res.PendingBuildEdits))
-		}
-		buildComponents = append(buildComponents, sb.Build())
-	}
-
-	if res.LastManifestLoadError != "" {
-		sb := rty.NewStringBuilder()
-		sb.Textf("Failed to load manifest - ").Fg(cBad).Text("ERR").Fg(tcell.ColorDefault)
-		buildComponents = append(buildComponents, sb.Build())
-
-		sb = rty.NewStringBuilder().Text(res.LastManifestLoadError)
-		buildComponents = append(buildComponents, sb.Build())
-	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
-		sb := rty.NewStringBuilder()
-
-		sb.Textf("Last build ended %s ago (took %s) — ",
-			formatDuration(time.Since(res.LastBuildFinishTime)),
-			formatPreciseDuration(res.LastBuildDuration))
-
-		if res.LastBuildError != "" {
-			sb.Fg(cBad).Text("ERR")
-		} else {
-			sb.Fg(cGood).Text("OK")
-		}
-		sb.Fg(tcell.ColorDefault)
-
-		buildComponents = append(buildComponents, sb.Build())
-
-		if !rv.IsCollapsed {
-			if res.LastBuildError != "" {
-				abbrevLog := abbreviateLog(res.LastBuildLog)
-				for _, logLine := range abbrevLog {
-					buildComponents = append(buildComponents, rty.TextString(logLine))
-				}
-
-				// if the build log is non-empty, it will contain the error, so we don't need to show this separately
-				if len(abbrevLog) == 0 {
-					buildComponents = append(buildComponents, rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
-				}
-			}
-		}
-	}
-	if len(buildComponents) == 0 {
-		buildComponents = []rty.Component{rty.TextString("no build yet")}
-	}
-	l := rty.NewConcatLayout(rty.DirHor)
-	layout.Add(l)
-	intro := "  BUILD: "
-	l.Add(rty.ColoredString(intro, cLightText))
-	cl := rty.NewConcatLayout(rty.DirVert)
-	l.AddDynamic(cl)
-	for _, c := range buildComponents {
-		cl.Add(c)
-	}
-	layout.Add(rty.NewLine())
-}
-
-func renderResourceSummary(selected bool, rv view.ResourceViewState, res view.Resource, layout *rty.ConcatLayout) {
+func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res view.Resource) rty.Component {
 	l := rty.NewLine()
-	sb := rty.NewStringBuilder()
-	p := "  "
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+
+	p := " "
 	if selected {
-		p = "▼ "
+		p = "▼"
 	}
 	if selected && rv.IsCollapsed {
-		p = "▶ "
+		p = "▶"
 	}
 
-	sb.Text(p)
-	sb.Textf("%s ", res.Name)
+	sbLeft.Textf("%s %s ", p, res.Name)
 
-	l.Add(sb.Build())
-	l.Add(rty.NewFillerString('╌'))
-	sb2 := rty.NewStringBuilder()
 	if res.LastDeployTime.Equal(time.Time{}) {
-		sb2.Text("  Not Deployed • —  ")
+		sbRight.Text(" Not Deployed •  —      ")
 	} else {
-		sb2.Textf("  OK • %s ago ", formatDuration(time.Since(res.LastDeployTime)))
+		sbRight.Textf(" OK • %s ago ", formatDuration(time.Since(res.LastDeployTime))) // Last char cuts off
 	}
-	l.Add(sb2.Build())
-	layout.Add(l)
+
+	l.Add(sbLeft.Build())
+	l.Add(rty.Fg(rty.NewFillerString('╌'), cLightText))
+	l.Add(sbRight.Build())
+	return l
 }
 
-func renderResourcesK8s(res view.Resource, layout *rty.ConcatLayout, rv view.ResourceViewState) {
+func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty.Component {
+	l := rty.NewLine()
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+	status := r.spinner()
+	indent := strings.Repeat(" ", 8)
+
 	if res.PodStatus != "" {
 		podStatusColor, ok := podStatusColors[res.PodStatus]
 		if !ok {
 			podStatusColor = tcell.ColorDefault
 		}
-
-		sb := rty.NewStringBuilder()
-		sb.Fg(cLightText).Text("    K8S: ").Fg(tcell.ColorDefault)
-		sb.Textf("%s ago — ", formatDuration(time.Since(res.PodCreationTime)))
-		sb.Fg(podStatusColor).Text(res.PodStatus).Fg(tcell.ColorDefault)
+		sbLeft.Fg(podStatusColor).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
+		status = res.PodStatus
 
 		// TODO(maia): show # restarts even if == 0 (in gray or green)?
 		if res.PodRestarts > 0 {
-			sb.Fg(cBad).Textf(" [%d restart(s)]", res.PodRestarts).Fg(tcell.ColorDefault)
+			s := "restarts"
+			if res.PodRestarts == 1 {
+				s = "restart"
+			}
+			sbRight.Fg(cPending).Textf("%d %s", res.PodRestarts, s).Fg(tcell.ColorDefault).Text(" • ")
 		}
-
-		layout.Add(sb.Build())
 
 		if len(res.Endpoints) != 0 {
-			sb := rty.NewStringBuilder()
-			sb.Textf("         %s", strings.Join(res.Endpoints, " "))
-			layout.Add(sb.Build())
+			sbRight.Textf("%s • ", strings.Join(res.Endpoints, " "))
 		}
 
-		if !rv.IsCollapsed {
-			if res.PodRestarts > 0 {
-				logLines := abbreviateLog(res.PodLog)
-				if len(logLines) > 0 {
-					layout.Add(rty.NewStringBuilder().Text("    ").Fg(cLightText).Text("LOG:").Fg(tcell.ColorDefault).Textf(" %s", logLines[0]).Build())
-					for _, logLine := range logLines[1:] {
-						layout.Add(rty.TextString(fmt.Sprintf("         %s", logLine)))
-					}
+		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
+		sbRight.Textf(" %s ", formatDuration(time.Since(res.PodCreationTime))) // Last char cuts off
+	} else {
+		sbLeft.Fg(cLightText).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
+	}
+
+	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
+
+	l.Add(sbLeft.Build())
+	l.Add(rty.NewFillerString(' '))
+	l.Add(sbRight.Build())
+	return l
+}
+
+func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
+	lines := rty.NewLines()
+	l := rty.NewLine()
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+
+	indent := strings.Repeat(" ", 8)
+	statusColor := cPending
+	status := r.spinner()
+	duration := formatPreciseDuration(res.LastBuildDuration)
+	editsPrefix := ""
+	edits := ""
+
+	if res.LastManifestLoadError != "" {
+		statusColor = cBad
+		status = "Problem loading Tiltfile"
+	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
+		if res.LastBuildError != "" {
+			statusColor = cBad
+			status = "ERROR"
+		} else {
+			statusColor = cGood
+			status = "OK"
+		}
+	}
+
+	sbLeft.Fg(statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
+	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(status)
+
+	if !res.LastDeployTime.Equal(time.Time{}) {
+		if len(res.LastDeployEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.LastDeployEdits)
+		}
+	}
+	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
+		if len(res.CurrentBuildEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.CurrentBuildEdits)
+			status = "In Progress"
+		}
+		duration = formatPreciseDuration(time.Since(res.CurrentBuildStartTime))
+	}
+	if !res.PendingBuildSince.Equal(time.Time{}) {
+		if len(res.PendingBuildEdits) > 0 {
+			editsPrefix = " • EDITS "
+			edits = formatFileList(res.PendingBuildEdits)
+		}
+		duration = formatPreciseDuration(time.Since(res.PendingBuildSince))
+	}
+
+	sbLeft.Fg(cLightText).Text(editsPrefix).Fg(tcell.ColorDefault).Text(edits)
+	sbRight.Fg(cLightText).Text("DURATION ")
+	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", duration) // Last char cuts off
+
+	l.Add(sbLeft.Build())
+	l.Add(rty.NewFillerString(' '))
+	l.Add(sbRight.Build())
+	lines.Add(l)
+	lines.Add(r.lastBuildLogs(res, rv))
+	return lines
+}
+
+func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
+	lh := rty.NewConcatLayout(rty.DirHor)
+	lv := rty.NewConcatLayout(rty.DirVert)
+	lh.AddDynamic(lv)
+	var logLines []rty.Component
+	indent := strings.Repeat(" ", 12)
+
+	if res.PodStatus != "" && !rv.IsCollapsed {
+		if res.PodRestarts > 0 {
+			abbrevLog := abbreviateLog(res.PodLog)
+			for _, logLine := range abbrevLog {
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
+			}
+			if len(logLines) > 0 {
+				for _, log := range logLines {
+					lv.Add(log)
 				}
 			}
 		}
 	}
+
+	return lh
+}
+
+func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
+	lh := rty.NewConcatLayout(rty.DirHor)
+	lv := rty.NewConcatLayout(rty.DirVert)
+	lh.AddDynamic(lv)
+	var logLines []rty.Component
+	indent := strings.Repeat(" ", 12)
+
+	if res.LastManifestLoadError != "" {
+		logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, res.LastManifestLoadError)))
+	}
+
+	if !rv.IsCollapsed {
+		if res.LastBuildError != "" {
+			abbrevLog := abbreviateLog(res.LastBuildLog)
+			for _, logLine := range abbrevLog {
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
+			}
+			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
+			if len(abbrevLog) == 0 {
+				logLines = append(logLines, rty.TextString(fmt.Sprintf("%sError: %s", indent, res.LastBuildError)))
+			}
+		}
+
+		for _, log := range logLines {
+			lv.Add(log)
+		}
+	}
+
+	return lh
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {
