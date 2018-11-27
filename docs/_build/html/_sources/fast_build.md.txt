@@ -81,7 +81,7 @@ and assigns the repo object to a variable. This object has methods for working w
 
 When you're in a Git repo, Tilt knows that it can ignore the `.git` directory.
 
-* add(repo.path('cmd/demoserver1'), '/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1')
+* `add(repo.path('cmd/demoserver1'), '/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1')`
 
 The `add` function copies a directory from outside your container to inside of your container.
 

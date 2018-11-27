@@ -231,7 +231,7 @@ It’s only for setting up the environment, not for adding your code.</p>
 and assigns the repo object to a variable. This object has methods for working with Git repos.</p>
 <p>When you’re in a Git repo, Tilt knows that it can ignore the <code class="docutils literal notranslate"><span class="pre">.git</span></code> directory.</p>
 <ul class="simple">
-<li>add(repo.path(‘cmd/demoserver1’), ‘/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1’)</li>
+<li><code class="docutils literal notranslate"><span class="pre">add(repo.path('cmd/demoserver1'),</span> <span class="pre">'/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1')</span></code></li>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">add</span></code> function copies a directory from outside your container to inside of your container.</p>
 <p>In this case, we copy the directory <code class="docutils literal notranslate"><span class="pre">cmd/demoserver</span></code> inside of our Git repo into
