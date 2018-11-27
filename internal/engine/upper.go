@@ -632,7 +632,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	manifests := action.Manifests
 
 	engineState.GlobalYAML = action.GlobalYAMLManifest
-	engineState.GlobalYAMLState = store.NewYAMLManifestState(action.GlobalYAMLManifest)
+	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)

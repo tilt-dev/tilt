@@ -307,6 +307,10 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
 	status := r.spinner()
+	if !res.LastBuildFinishTime.Equal(time.Time{}) && res.LastDeployTime.Equal(time.Time{}) {
+		// We have a finished build but aren't deployed, because the build is broken
+		status = "N/A"
+	}
 	indent := strings.Repeat(" ", 8)
 
 	if res.PodStatus != "" {
@@ -332,6 +336,9 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 
 		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
 		sbRight.Textf(" %s ", formatDuration(time.Since(res.PodCreationTime))) // Last char cuts off
+	} else if res.IsYAMLManifest && !res.LastDeployTime.Equal(time.Time{}) {
+		sbLeft.Fg(cGood).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
+		status = "OK"
 	} else {
 		sbLeft.Fg(cLightText).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 	}
