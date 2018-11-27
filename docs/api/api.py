@@ -49,7 +49,7 @@ def local_git_repo(path: str) -> Repo:
 def start_fast_build(dockerfile_path: str, img_name: str, entrypoint: str = "") -> None:
   """Initiates a docker image build that supports ``add`` s and ``run`` s, and that uses a cache for subsequent builds.
 
-    See https://docs.tilt.build/fast_build.html
+    See the `fast build documentation <https://docs.tilt.build/fast_build.html>`_.
   """
   pass
 
