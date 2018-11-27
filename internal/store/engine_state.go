@@ -125,7 +125,7 @@ func (ms *ManifestState) NextBuildReason() BuildReason {
 	if !ms.StartedFirstBuild {
 		reason = reason.With(BuildReasonFlagInit)
 	}
-	if !ms.NeedsRebuildFromCrash {
+	if ms.NeedsRebuildFromCrash {
 		reason = reason.With(BuildReasonFlagCrash)
 	}
 	return reason
