@@ -8,7 +8,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/yanzay/log"
 	"k8s.io/api/core/v1"
 )
 
@@ -43,7 +42,6 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 			st.Dispatch(GlobalYAMLApplyError{Error: err})
 			return
 		}
-		log.Printf("~~ Applying global yaml:\n%s\n", m.K8sYAML())
 		st.Dispatch(GlobalYAMLApplyStartedAction{})
 
 		for _, e := range entities {
