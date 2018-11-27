@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 
 	"github.com/windmilleng/tcell"
@@ -139,6 +140,30 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
+				Name:                  "abe vigoda",
+				DirectoriesWatched:    []string{"foo", "bar"},
+				LastDeployTime:        ts,
+				LastDeployEdits:       []string{"main.go"},
+				PendingBuildEdits:     []string{},
+				PendingBuildSince:     ts,
+				CurrentBuildEdits:     []string{},
+				CurrentBuildStartTime: ts,
+				CurrentBuildReason:    model.BuildReasonFlagCrash,
+				PodName:               "vigoda-pod",
+				PodCreationTime:       ts,
+				PodStatus:             "Running",
+				PodRestarts:           0,
+				Endpoints:             []string{"1.2.3.4:8080"},
+				PodLog:                "",
+				CrashLog:              "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+			},
+		},
+	}
+	rtf.run("crash rebuild", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
 				Name:                "vigoda",
 				DirectoriesWatched:  []string{"foo", "bar"},
 				LastDeployTime:      ts,
@@ -201,6 +226,42 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		},
 	}
 	rtf.run("pending build", 70, 20, v, plainVs)
+}
+
+func TestRenderLogModal(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	vs := view.ViewState{
+		Resources: []view.ResourceViewState{
+			{
+				IsCollapsed: false,
+			},
+		},
+		LogModal: view.LogModal{ResourceLogNumber: 1},
+	}
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				LastBuildStartTime:  now.Add(-time.Minute),
+				LastBuildFinishTime: now,
+				LastBuildLog: `STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`,
+				PodName:         "vigoda-pod",
+				PodCreationTime: now,
+				PodLog:          "serving on 8080",
+				PodStatus:       "Running",
+				LastDeployTime:  now,
+			},
+		},
+	}
+	rtf.run("build log pane", 117, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {

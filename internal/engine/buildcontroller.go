@@ -21,7 +21,7 @@ type buildEntry struct {
 	ctx          context.Context
 	manifest     model.Manifest
 	buildState   store.BuildState
-	buildReason  store.BuildReason
+	buildReason  model.BuildReason
 	filesChanged []string
 	firstBuild   bool
 }

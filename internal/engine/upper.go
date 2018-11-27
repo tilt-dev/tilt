@@ -217,12 +217,19 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms := state.ManifestStates[mn]
 
 	ms.StartedFirstBuild = true
-	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
+	ms.CurrentBuildEdits = append([]string{}, action.FilesChanged...)
 	ms.CurrentBuildStartTime = action.StartTime
 	ms.CurrentBuildReason = action.Reason
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
 	}
+
+	// Keep the crash log around until we have a rebuild
+	// triggered by a explicit change (i.e., not a crash rebuild)
+	if !action.Reason.IsCrashOnly() {
+		ms.CrashLog = ""
+	}
+
 	state.CurrentlyBuilding = mn
 }
 
@@ -253,12 +260,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.LastBuildLog = ms.CurrentBuildLog
 
 	ms.CurrentBuildStartTime = time.Time{}
-	ms.CurrentBuildReason = store.BuildReasonNone
+	ms.CurrentBuildReason = model.BuildReasonNone
 	ms.CurrentBuildLog = nil
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		ms.CurrentlyBuildingFileChanges = nil
+		ms.CurrentBuildEdits = nil
 
 		if isPermanentError(err) {
 			return err
@@ -284,8 +291,8 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
-		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
-		ms.CurrentlyBuildingFileChanges = nil
+		ms.LastSuccessfulDeployEdits = ms.CurrentBuildEdits
+		ms.CurrentBuildEdits = nil
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -535,6 +542,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 
 	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
 	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.NeedsRebuildFromCrash {
+		ms.CrashLog = string(podInfo.CurrentLog)
 		ms.NeedsRebuildFromCrash = true
 		ms.ExpectedContainerID = ""
 		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
