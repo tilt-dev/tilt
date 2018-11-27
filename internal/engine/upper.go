@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -112,9 +111,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	}
 
 	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
-	if err != nil {
-		return err
-	}
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
@@ -123,6 +119,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
 		ManifestNames:      manifestNames,
+		Err:                err,
 	})
 
 	return u.store.Loop(ctx)
@@ -132,20 +129,11 @@ func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName
 	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
 
 	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if os.IsNotExist(err) {
-		manifests = []model.Manifest{}
-		globalYAML = model.YAMLManifest{}
-	} else if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
-	} else {
-		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
-		if err != nil {
-			manifests = []model.Manifest{}
-			globalYAML = model.YAMLManifest{}
-		}
+	if err != nil {
+		return []model.Manifest{model.Manifest{Name: "Tiltfile"}}, model.YAMLManifest{}, []string{tiltfile.FileName}, err
 	}
 
-	return manifests, globalYAML, configFiles, nil
+	return tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
@@ -655,7 +643,9 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
-		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
+		ms := store.NewManifestState(m)
+		ms.LastManifestLoadError = action.Err
+		engineState.ManifestStates[m.Name] = ms
 	}
 	engineState.WatchMounts = watchMounts
 

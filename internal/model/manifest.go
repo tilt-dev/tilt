@@ -26,6 +26,13 @@ type Manifest struct {
 	portForwards []PortForward
 	cachePaths   []string
 
+	// Properties for Docker Compose meta
+	DcMeta bool
+	DcYaml string
+
+	// Properties for Docker Compose Service
+	DcServiceName string
+
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
 	BaseDockerfile string
@@ -71,14 +78,15 @@ func (m Manifest) LocalPaths() []string {
 }
 
 func (m Manifest) Validate() error {
-	err := m.validate()
-	if err != nil {
-		return err
-	}
 	return nil
+	// err := m.validate()
+	// if err != nil {
+	// 	return err
+	// }
+	// return nil
 }
 
-func (m Manifest) validate() *ValidateErr {
+func (m Manifest) ValidateKubernetesBuildAndDeploy() *ValidateErr {
 	if m.Name == "" {
 		return validateErrf("[validate] manifest missing name: %+v", m)
 	}

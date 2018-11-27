@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -12,6 +13,7 @@ const readFilesKey = "readFiles"
 const reposKey = "repos"
 const globalYAMLKey = "globalYaml"
 const globalYAMLDepsKey = "globalYamlDeps"
+const contextKey = "context"
 
 func setGlobalYAML(t *skylark.Thread, yaml string) {
 	t.SetLocal(globalYAMLKey, yaml)
@@ -33,6 +35,10 @@ func getGlobalYAML(t *skylark.Thread) (string, error) {
 			"internal error: %s thread local was not of type string", globalYAMLKey)
 	}
 	return yaml, nil
+}
+
+func getContext(t *skylark.Thread) context.Context {
+	return t.Local(contextKey).(context.Context)
 }
 
 func getGlobalYAMLDeps(t *skylark.Thread) ([]string, error) {

@@ -63,6 +63,9 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 }
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
+	if manifest.DcYaml != "" {
+		return store.BuildResult{}, CantHandleFailure{fmt.Errorf("dc manifest")}
+	}
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
@@ -80,7 +83,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	ps := build.NewPipelineState(ctx, 2)
 	defer func() { ps.End(ctx, err) }()
 
-	err = manifest.Validate()
+	err = manifest.ValidateKubernetesBuildAndDeploy()
 	if err != nil {
 		return store.BuildResult{}, err
 	}

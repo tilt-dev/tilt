@@ -17,6 +17,7 @@ import (
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -224,7 +225,8 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 		return nil, err
 	}
 
-	var manifests []*k8sManifest
+	var kManifests []*k8sManifest
+	var dcManifests []*dcManifest
 
 	var v skylark.Value
 	i := manifestFuncs.Iterate()
@@ -236,19 +238,32 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 			if err != nil {
 				return nil, handleSkylarkErr(t.thread, err)
 			}
-			s, ok := r.(*k8sManifest)
-			if !ok {
-				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
+
+			switch r := r.(type) {
+			case *k8sManifest:
+				r.name = v.Name()
+				kManifests = append(kManifests, r)
+			case *dcManifest:
+				r.name = v.Name()
+				dcManifests = append(dcManifests, r)
+			default:
+				return nil, fmt.Errorf("composite_service: function %v return %v %T; expected k8s_service or docker_compose_service")
 			}
-
-			s.name = v.Name()
-
-			manifests = append(manifests, s)
 		default:
 			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
 		}
 	}
-	return compManifest{manifests}, nil
+	return compManifest{kManifests, dcManifests}, nil
+}
+
+func (t *Tiltfile) makeSkylarkDcManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	ctx := getContext(thread)
+	services, _, err := dockercompose.ParseConfig(ctx, []string{"docker-compose.yml"})
+	// FIXME(dbentley): record files as read
+	if err != nil {
+		return nil, err
+	}
+	return &dcManifest{services: services}, nil
 }
 
 func (t *Tiltfile) makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -418,6 +433,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 			logger.Get(ctx).Infof("%s", msg)
 		},
 	}
+	thread.SetLocal(contextKey, ctx)
 
 	filename, err := ospath.RealAbs(filename)
 	if err != nil {
@@ -430,19 +446,20 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	}
 
 	predeclared := skylark.StringDict{
-		"start_fast_build":  skylark.NewBuiltin("start_fast_build", tiltfile.makeSkylarkDockerImage),
-		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
-		"static_build":      skylark.NewBuiltin("static_build", tiltfile.makeStaticBuild),
-		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
-		"local_git_repo":    skylark.NewBuiltin("local_git_repo", tiltfile.makeSkylarkGitRepo),
-		"local":             skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service": skylark.NewBuiltin("composite_service", tiltfile.makeSkylarkCompositeManifest),
-		"read_file":         skylark.NewBuiltin("read_file", tiltfile.readFile),
-		"stop_build":        skylark.NewBuiltin("stop_build", stopBuild),
-		"add":               skylark.NewBuiltin("add", addMount),
-		"run":               skylark.NewBuiltin("run", tiltfile.runDockerImageCmd),
-		"kustomize":         skylark.NewBuiltin("kustomize", tiltfile.callKustomize),
-		"global_yaml":       skylark.NewBuiltin("global_yaml", tiltfile.globalYaml),
+		"start_fast_build":       skylark.NewBuiltin("start_fast_build", tiltfile.makeSkylarkDockerImage),
+		"start_slow_build":       skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
+		"static_build":           skylark.NewBuiltin("static_build", tiltfile.makeStaticBuild),
+		"k8s_service":            skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
+		"local_git_repo":         skylark.NewBuiltin("local_git_repo", tiltfile.makeSkylarkGitRepo),
+		"local":                  skylark.NewBuiltin("local", runLocalCmd),
+		"composite_service":      skylark.NewBuiltin("composite_service", tiltfile.makeSkylarkCompositeManifest),
+		"docker_compose_service": skylark.NewBuiltin("docker_compose_service", tiltfile.makeSkylarkDcManifest),
+		"read_file":              skylark.NewBuiltin("read_file", tiltfile.readFile),
+		"stop_build":             skylark.NewBuiltin("stop_build", stopBuild),
+		"add":                    skylark.NewBuiltin("add", addMount),
+		"run":                    skylark.NewBuiltin("run", tiltfile.runDockerImageCmd),
+		"kustomize":              skylark.NewBuiltin("kustomize", tiltfile.callKustomize),
+		"global_yaml":            skylark.NewBuiltin("global_yaml", tiltfile.globalYaml),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -467,16 +484,21 @@ func handleSkylarkErr(thread *skylark.Thread, err error) error {
 // a manifest representing the global yaml.
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest, []string, error) {
 	var manifests []model.Manifest
+	manifests = append(manifests, model.Manifest{Name: "Tiltfile"})
+
+	var configFiles []string
+	// The Tiltfile itself should always be one of its own configFiles
+	configFiles = append(configFiles, t.filename)
 
 	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
 	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+		return manifests, model.YAMLManifest{}, configFiles, err
 	}
 
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(ctx, manifestName.String())
 		if err != nil {
-			return manifests, model.YAMLManifest{}, nil, err
+			return manifests, model.YAMLManifest{}, configFiles, err
 		}
 
 		manifests = append(manifests, curManifests...)
@@ -484,17 +506,15 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 
 	gYAML, err := getGlobalYAML(t.thread)
 	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+		return manifests, model.YAMLManifest{}, configFiles, err
 	}
 	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
-	configFiles, err := getReadFiles(t.thread)
+	moreConfigFiles, err := getReadFiles(t.thread)
 	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+		return manifests, model.YAMLManifest{}, configFiles, err
 	}
-
-	// The Tiltfile itself should always be one of its own configFiles
-	configFiles = append(configFiles, t.filename)
+	configFiles = append(configFiles, moreConfigFiles...)
 
 	return manifests, globalYAML, configFiles, nil
 }
@@ -542,6 +562,14 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 			manifests = append(manifests, m)
 		}
+
+		for _, dcMan := range manifest.dcManifest {
+			dcManifests, err := dcMan.toDomain("")
+			if err != nil {
+				return nil, err
+			}
+			manifests = append(manifests, dcManifests...)
+		}
 	case *k8sManifest:
 		m, err := skylarkManifestToDomain(manifest)
 		if err != nil {
@@ -550,7 +578,12 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 		m.Name = model.ManifestName(manifestName)
 		manifests = append(manifests, m)
-
+	case *dcManifest:
+		dcManifests, err := manifest.toDomain(manifestName)
+		if err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, dcManifests...)
 	default:
 		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
 	}

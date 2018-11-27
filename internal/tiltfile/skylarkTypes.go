@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -18,7 +19,8 @@ const oldMountSyntaxError = "the syntax for `add` has changed. Before it was `ad
 const noActiveBuildError = "No active build"
 
 type compManifest struct {
-	cManifest []*k8sManifest
+	cManifest  []*k8sManifest
+	dcManifest []*dcManifest
 }
 
 var _ skylark.Value = compManifest{}
@@ -101,6 +103,53 @@ func (k *k8sManifest) createPortForward(thread *skylark.Thread, fn *skylark.Buil
 		ContainerPort: containerPort,
 	})
 	return skylark.None, nil
+}
+
+type dcManifest struct {
+	name string
+
+	services []dockercompose.Service
+}
+
+var _ skylark.Value = &dcManifest{}
+
+func (m *dcManifest) String() string {
+	return "dcManifest.String: not yet implemented"
+}
+
+func (m *dcManifest) Type() string {
+	return "dcManifest"
+}
+
+func (m *dcManifest) Freeze() {}
+
+func (m *dcManifest) Truth() skylark.Bool {
+	return true
+}
+
+func (m *dcManifest) Hash() (uint32, error) {
+	return 0, errors.New("unhashable type: dcManifest")
+}
+
+func (m *dcManifest) toDomain(metaName string) ([]model.Manifest, error) {
+	if metaName != "" {
+		m.name = metaName
+	}
+
+	var result []model.Manifest
+
+	for _, m := range m.services {
+		result = append(result, model.Manifest{
+			Name:          model.ManifestName(m.Name),
+			DcServiceName: m.Name,
+		})
+	}
+
+	result = append(result, model.Manifest{
+		Name:   model.ManifestName(m.name),
+		DcMeta: true,
+	})
+	return result, nil
 }
 
 type mount struct {
