@@ -297,9 +297,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
 		if cb.Result.ContainerID != "" {
-			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
-				ms.ExpectedContainerID = cb.Result.ContainerID
-			}
+			ms.ExpectedContainerID = cb.Result.ContainerID
 		}
 	}
 

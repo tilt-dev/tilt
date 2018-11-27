@@ -109,8 +109,12 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	}
 	sort.Strings(filesChanged)
 
-	buildState := store.NewBuildState(ms.LastBuild, filesChanged).
-		WithDeployInfo(store.NewDeployInfo(ms.PodSet))
+	buildState := store.NewBuildState(ms.LastBuild, filesChanged)
+
+	if !ms.NeedsRebuildFromCrash {
+		buildState = buildState.WithDeployInfo(store.NewDeployInfo(ms.PodSet))
+	}
+
 	buildReason := ms.NextBuildReason()
 
 	// Send the logs to both the EngineState and the normal log stream.
