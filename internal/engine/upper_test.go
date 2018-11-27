@@ -159,7 +159,7 @@ func TestUpper_Up(t *testing.T) {
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
-	lines := strings.Split(state.ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
+	lines := strings.Split(string(state.ManifestStates[manifest.Name].LastBuildLog), "\n")
 	assert.Contains(t, lines, "fake building foobar")
 	assert.Equal(t, gYaml, state.GlobalYAML)
 }

@@ -41,6 +41,13 @@ func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeActi
 	return ServiceChangeAction{Service: service, URL: url}
 }
 
+type BuildLogAction struct {
+	ManifestName model.ManifestName
+	Log          []byte
+}
+
+func (BuildLogAction) Action() {}
+
 type PodLogAction struct {
 	ManifestName model.ManifestName
 
