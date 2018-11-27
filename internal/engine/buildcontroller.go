@@ -109,14 +109,20 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	}
 	sort.Strings(filesChanged)
 
-	buildState := store.NewBuildState(ms.LastBuild, filesChanged).
-		WithDeployInfo(store.NewDeployInfo(ms.PodSet))
+	buildState := store.NewBuildState(ms.LastBuild, filesChanged)
+
+	if !ms.NeedsRebuildFromCrash {
+		buildState = buildState.WithDeployInfo(store.NewDeployInfo(ms.PodSet))
+	}
+
 	buildReason := ms.NextBuildReason()
 
-	// TODO(nick): This is...not great, because it modifies the build log in place.
-	// A better solution would dispatch actions (like PodLogManager does) so that
-	// they go thru the state loop and immediately update in the UX.
-	ctx = logger.CtxWithForkedOutput(ctx, ms.CurrentBuildLog)
+	// Send the logs to both the EngineState and the normal log stream.
+	actionWriter := BuildLogActionWriter{
+		store:        st,
+		manifestName: mn,
+	}
+	ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
 
 	return buildEntry{
 		ctx:          ctx,
@@ -183,6 +189,19 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
 		l.Infof("%s%s%s", rp, manifest.Name, rs)
 	}
+}
+
+type BuildLogActionWriter struct {
+	store        store.RStore
+	manifestName model.ManifestName
+}
+
+func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
+	w.store.Dispatch(BuildLogAction{
+		ManifestName: w.manifestName,
+		Log:          append([]byte{}, p...),
+	})
+	return len(p), nil
 }
 
 var _ store.Subscriber = &BuildController{}

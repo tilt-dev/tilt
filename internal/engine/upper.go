@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -172,6 +171,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleServiceEvent(ctx, state, action)
 	case PodLogAction:
 		handlePodLogAction(state, action)
+	case BuildLogAction:
+		handleBuildLogAction(state, action)
 	case BuildCompleteAction:
 		err = handleCompletedBuild(ctx, state, action)
 	case BuildStartedAction:
@@ -239,7 +240,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	ms.CurrentBuildStartTime = time.Time{}
 	ms.CurrentBuildReason = store.BuildReasonNone
-	ms.CurrentBuildLog = &bytes.Buffer{}
+	ms.CurrentBuildLog = nil
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
@@ -282,9 +283,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
 		if cb.Result.ContainerID != "" {
-			if ms, ok := engineState.ManifestStates[ms.Manifest.Name]; ok {
-				ms.ExpectedContainerID = cb.Result.ContainerID
-			}
+			ms.ExpectedContainerID = cb.Result.ContainerID
 		}
 	}
 
@@ -587,6 +586,18 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 
 	podInfo := ms.PodSet.Pods[podID]
 	podInfo.CurrentLog = append(podInfo.CurrentLog, action.Log...)
+}
+
+func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
+	manifestName := action.ManifestName
+	ms, ok := state.ManifestStates[manifestName]
+
+	if !ok || state.CurrentlyBuilding != manifestName {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+
+	ms.CurrentBuildLog = append(ms.CurrentBuildLog, action.Log...)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {

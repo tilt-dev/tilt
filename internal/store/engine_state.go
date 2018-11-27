@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"fmt"
 	"net/url"
 	"os"
@@ -72,7 +71,7 @@ type ManifestState struct {
 	CurrentlyBuildingReason      BuildReason
 
 	CurrentBuildStartTime     time.Time
-	CurrentBuildLog           *bytes.Buffer `testdiff:"ignore"`
+	CurrentBuildLog           []byte `testdiff:"ignore"`
 	CurrentBuildReason        BuildReason
 	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
@@ -82,7 +81,7 @@ type ManifestState struct {
 	LastBuildReason           BuildReason
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
-	LastBuildLog              *bytes.Buffer `testdiff:"ignore"`
+	LastBuildLog              []byte `testdiff:"ignore"`
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -103,7 +102,7 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]time.Time),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
-		CurrentBuildLog:    &bytes.Buffer{},
+		CurrentBuildLog:    []byte{},
 	}
 }
 
@@ -122,7 +121,7 @@ func (ms *ManifestState) NextBuildReason() BuildReason {
 	if !ms.StartedFirstBuild {
 		reason = reason.With(BuildReasonFlagInit)
 	}
-	if !ms.NeedsRebuildFromCrash {
+	if ms.NeedsRebuildFromCrash {
 		reason = reason.With(BuildReasonFlagCrash)
 	}
 	return reason
@@ -386,10 +385,7 @@ func StateToView(s EngineState) view.View {
 
 		endpoints := ManifestStateEndpoints(ms)
 
-		lastBuildLog := ""
-		if ms.LastBuildLog != nil {
-			lastBuildLog = ms.LastBuildLog.String()
-		}
+		lastBuildLog := string(ms.LastBuildLog)
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the

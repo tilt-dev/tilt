@@ -58,8 +58,9 @@ type fakeBuildAndDeployer struct {
 
 	buildCount int
 
-	// where we store container info for each manifest
-	deployInfo map[docker.ImgNameAndTag]container.ID
+	// Set this to simulate a container update that returns the container ID
+	// it updated.
+	nextBuildContainer container.ID
 
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
@@ -70,7 +71,12 @@ var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildResult {
 	b.buildCount++
 	nt, _ := reference.WithTag(ref, fmt.Sprintf("tilt-%d", b.buildCount))
-	return store.BuildResult{Image: nt}
+	containerID := b.nextBuildContainer
+	b.nextBuildContainer = ""
+	return store.BuildResult{
+		Image:       nt,
+		ContainerID: containerID,
+	}
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
@@ -91,22 +97,13 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	return b.nextBuildResult(manifest.DockerRef()), nil
 }
 
-func (b *fakeBuildAndDeployer) haveContainerForImage(img reference.NamedTagged) bool {
-	_, ok := b.deployInfo[docker.ToImgNameAndTag(img)]
-	return ok
-}
-
 func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-	if result.HasImage() && !b.haveContainerForImage(result.Image) {
-		b.deployInfo[docker.ToImgNameAndTag(result.Image)] = container.ID("testcontainer")
-	}
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
-		t:          t,
-		calls:      make(chan buildAndDeployCall, 5),
-		deployInfo: make(map[docker.ImgNameAndTag]container.ID),
+		t:     t,
+		calls: make(chan buildAndDeployCall, 5),
 	}
 }
 
@@ -159,7 +156,8 @@ func TestUpper_Up(t *testing.T) {
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
-	lines := strings.Split(state.ManifestStates[manifest.Name].LastBuildLog.String(), "\n")
+
+	lines := strings.Split(string(state.ManifestStates[manifest.Name].LastBuildLog), "\n")
 	assert.Contains(t, lines, "fake building main")
 	assert.Equal(t, gYaml, state.GlobalYAML)
 }
