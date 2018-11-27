@@ -369,9 +369,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 
 	f.assertAllBuildsConsumed()
 }
@@ -393,11 +391,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 	f.fsWatcher.events <- watch.FileEvent{Path: tmpPath}
 
-	select {
-	case <-f.b.calls:
-		t.Fatal("Expected to skip build")
-	case <-time.After(5 * time.Millisecond):
-	}
+	f.assertNoCall()
 
 	f.TouchFiles([]string{realPath})
 	f.fsWatcher.events <- watch.FileEvent{Path: realPath}
@@ -578,16 +572,13 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	// second call: do some stuff
 	f.WriteConfigFiles("Tiltfile", simpleTiltfile)
 
-	call = f.nextCall()
+	call = f.nextCall("changed configs cause image build")
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 
 	// Third call: error!
 	f.WriteConfigFiles("Tiltfile", "borken")
-	select {
-	case <-f.b.calls:
-	case <-time.After(100 * time.Millisecond):
-	}
+	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	// fourth call: fix
 	f.WriteConfigFiles("Tiltfile", simpleTiltfile,
@@ -629,10 +620,7 @@ func TestBreakManifest(t *testing.T) {
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
-	select {
-	case <-f.b.calls:
-	case <-time.After(100 * time.Millisecond):
-	}
+	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	name := "foobar"
 	f.WaitUntilManifest("error set", name, func(ms store.ManifestState) bool {
@@ -1165,9 +1153,7 @@ func TestPodContainerStatus(t *testing.T) {
 	})
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 
 	f.assertAllBuildsConsumed()
 }
@@ -1190,7 +1176,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	assert.Equal(t, manifest, call.manifest)
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
-	time.Sleep(10 * time.Millisecond)
+	f.assertNoCall("event for ignored file should not trigger build")
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1215,7 +1201,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	assert.Equal(t, manifest, call.manifest)
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
-	time.Sleep(10 * time.Millisecond)
+	f.assertNoCall("event for ignored file should not trigger build")
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1255,9 +1241,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	})
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 }
 
 func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
@@ -1284,9 +1268,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	})
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 }
 
 func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
@@ -1315,9 +1297,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	})
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 }
 
 func testService(serviceName string, manifestName string, ip string, port int) *v1.Service {
@@ -1361,9 +1341,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	})
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 
 	ms := f.upper.store.RLockState().ManifestStates[manifest.Name]
 	defer f.upper.store.RUnlockState()
@@ -1406,9 +1384,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	})
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 }
 
 func TestUpper_PodLogs(t *testing.T) {
@@ -1427,9 +1403,7 @@ func TestUpper_PodLogs(t *testing.T) {
 	f.podLog(name, "Hello world!\n")
 
 	err := f.Stop()
-	if !assert.NoError(t, err) {
-		return
-	}
+	assert.NoError(t, err)
 }
 
 func TestInitWithGlobalYAML(t *testing.T) {
@@ -1757,11 +1731,25 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 		select {
 		case call := <-f.b.calls:
 			return call
-		case <-time.After(1 * time.Second):
+		case <-time.After(100 * time.Millisecond):
 			f.T().Fatal(msg)
 		}
 	}
+}
 
+func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
+	msg := "expected there to be no BuildAndDeployCalls, but found one"
+	if len(msgAndArgs) > 0 {
+		msg = fmt.Sprintf("expected there to be no BuildAndDeployCalls, but found one: %s", msgAndArgs...)
+	}
+	for {
+		select {
+		case <-f.b.calls:
+			f.T().Fatal(msg)
+		case <-time.After(100 * time.Millisecond):
+			return
+		}
+	}
 }
 
 func (f *testFixture) startPod(manifestName model.ManifestName) {
