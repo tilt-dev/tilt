@@ -34,8 +34,10 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
 
 func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (result store.BuildResult, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
+	if result.HasImage() {
+		span.SetTag("image", result.Image.String())
+	}
 
 	startTime := time.Now()
 	defer func() {

@@ -133,17 +133,23 @@ func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName
 
 	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
 	if os.IsNotExist(err) {
-		manifests = []model.Manifest{}
 		globalYAML = model.YAMLManifest{}
 	} else if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	} else {
 		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 		if err != nil {
-			manifests = []model.Manifest{}
 			globalYAML = model.YAMLManifest{}
 		}
 	}
+
+	manifests = append(
+		manifests,
+		model.Manifest{
+			Name:       "Tiltfile",
+			IsTiltfile: true,
+		},
+	)
 
 	return manifests, globalYAML, configFiles, nil
 }
@@ -151,10 +157,12 @@ func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
 	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 
-	manifestNames := make([]model.ManifestName, len(manifests))
-
-	for i, m := range manifests {
-		manifestNames[i] = m.ManifestName()
+	var manifestNames []model.ManifestName
+	for _, m := range manifests {
+		if m.ManifestName() == "Tiltfile" {
+			continue
+		}
+		manifestNames = append(manifestNames, m.ManifestName())
 	}
 
 	u.store.Dispatch(InitAction{

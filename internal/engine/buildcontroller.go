@@ -39,7 +39,13 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 	// If any of them haven't started yet, build them now.
 	for _, mn := range state.ManifestDefinitionOrder {
 		ms, ok := state.ManifestStates[mn]
-		if ok && !ms.StartedFirstBuild {
+		if !ok {
+			continue
+		}
+		if ms.Manifest.IsTiltfile {
+			continue
+		}
+		if !ms.StartedFirstBuild {
 			return mn
 		}
 	}
@@ -55,6 +61,10 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 	for _, mn := range state.ManifestDefinitionOrder {
 		ms, ok := state.ManifestStates[mn]
 		if !ok {
+			continue
+		}
+
+		if ms.Manifest.IsTiltfile {
 			continue
 		}
 

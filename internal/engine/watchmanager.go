@@ -153,14 +153,17 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 		select {
 		case err, ok := <-watcher.Errors():
 			if !ok {
+				// TODO(dmiller): drain remaining fsevents
 				return
 			}
 			st.Dispatch(NewErrorAction(err))
 		case <-ctx.Done():
+			// TODO(dmiller): drain remaining fsevents
 			return
 
 		case fsEvents, ok := <-eventsCh:
 			if !ok {
+				// TODO(dmiller): drain remaining fsevents
 				return
 			}
 			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}

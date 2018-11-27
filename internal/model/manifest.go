@@ -40,6 +40,9 @@ type Manifest struct {
 	StaticBuildArgs  DockerBuildArgs
 
 	Repos []LocalGithubRepo
+
+	// Tiltfile Manifest specific fields
+	IsTiltfile bool
 }
 
 type DockerBuildArgs map[string]string
@@ -71,6 +74,9 @@ func (m Manifest) LocalPaths() []string {
 }
 
 func (m Manifest) Validate() error {
+	if m.IsTiltfile {
+		return nil
+	}
 	err := m.validate()
 	if err != nil {
 		return err
@@ -112,7 +118,7 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename && m1.IsTiltfile == m2.IsTiltfile
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := m1.mountsEqual(m2.Mounts)
 	reposMatch := m1.reposEqual(m2.Repos)
