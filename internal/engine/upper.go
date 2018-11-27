@@ -106,12 +106,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	// ~~~ MAIA: can delete?
-	manifestNames := make([]model.ManifestName, len(args))
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
-	}
-
 	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx)
 	if err != nil {
 		return err
@@ -123,7 +117,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
-		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -152,18 +145,11 @@ func loadAndGetManifests(ctx context.Context) (
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
 	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
 
-	manifestNames := make([]model.ManifestName, len(manifests))
-
-	for i, m := range manifests {
-		manifestNames[i] = m.ManifestName()
-	}
-
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       tiltfilePath,
-		ManifestNames:      manifestNames,
 	})
 
 	return u.store.Loop(ctx)
@@ -626,7 +612,6 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
-	engineState.InitManifests = action.ManifestNames
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 

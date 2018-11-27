@@ -76,7 +76,6 @@ type InitAction struct {
 	GlobalYAMLManifest model.YAMLManifest
 	TiltfilePath       string
 	ConfigFiles        []string
-	ManifestNames      []model.ManifestName
 }
 
 func (InitAction) Action() {}

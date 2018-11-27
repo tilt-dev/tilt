@@ -36,11 +36,6 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	// manifestNames := make([]model.ManifestName, len(args))
-	// for i, a := range args {
-	// 	manifestNames[i] = model.ManifestName(a)
-	// }
-
 	manifests, gYAML, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx)
 	if err != nil {
 		return err
