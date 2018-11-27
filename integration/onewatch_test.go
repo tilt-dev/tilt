@@ -14,7 +14,7 @@ func TestOneWatch(t *testing.T) {
 	f := newFixture(t, "onewatch")
 	defer f.TearDown()
 
-	f.TiltWatch("onewatch")
+	f.TiltWatch()
 
 	// ForwardPort will fail if all the pods are not ready.
 	// TODO(nick): We should make port-forwarding a primitive in the

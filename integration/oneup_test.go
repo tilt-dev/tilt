@@ -12,7 +12,7 @@ func TestOneUp(t *testing.T) {
 	f := newFixture(t, "oneup")
 	defer f.TearDown()
 
-	f.TiltUp("oneup")
+	f.TiltUp()
 
 	// ForwardPort will fail if all the pods are not ready.
 	// TODO(nick): We should make port-forwarding a primitive in the

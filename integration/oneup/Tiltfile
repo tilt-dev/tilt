@@ -1,6 +1,6 @@
 # -*- mode: Python -*-
 
-def oneup():
+def main():
   yaml = read_file('oneup.yaml')
   image_name = 'gcr.io/windmill-test-containers/integration/oneup'
   image = static_build('Dockerfile', image_name)
