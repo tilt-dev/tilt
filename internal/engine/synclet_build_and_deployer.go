@@ -49,6 +49,10 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
+	if manifest.IsDockerCompose() {
+		return store.BuildResult{}, CantHandleFailure{fmt.Errorf("not implemented: DC container builds")}
+	}
+
 	if err := sbd.canSyncletBuild(ctx, manifest, state); err != nil {
 		return store.BuildResult{}, WrapRedirectToNextBuilder(err)
 	}

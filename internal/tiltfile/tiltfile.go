@@ -244,10 +244,10 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 				r.name = v.Name()
 				kManifests = append(kManifests, r)
 			case *dcManifest:
-				r.name = v.Name()
 				dcManifests = append(dcManifests, r)
 			default:
-				return nil, fmt.Errorf("composite_service: function %v return %v %T; expected k8s_service or docker_compose_service")
+				return nil, fmt.Errorf("composite_service: function %v returned %v (%T); "+
+					"expected k8s_service or docker_compose_service", v.Name(), r, r)
 			}
 		default:
 			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
@@ -258,12 +258,25 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 
 func (t *Tiltfile) makeSkylarkDcManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	ctx := getContext(thread)
-	services, _, err := dockercompose.ParseConfig(ctx, []string{"docker-compose.yml"})
-	// FIXME(dbentley): record files as read
+
+	var path skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
-	return &dcManifest{services: services}, nil
+
+	// ~~ i still don't understand why path.String() returns it quoted / if there's a more idiomatic way
+	yamlPath, ok := skylark.AsString(path)
+	if !ok {
+		return nil, fmt.Errorf("couldn't AsString skylark.String: %v", path)
+	}
+
+	// TODO: support more than one docker-compose.yaml file
+	services, _, err := dockercompose.ParseConfig(ctx, []string{yamlPath})
+	if err != nil {
+		return nil, err
+	}
+	return &dcManifest{yamlPath: yamlPath, services: services}, nil
 }
 
 func (t *Tiltfile) makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -484,21 +497,16 @@ func handleSkylarkErr(thread *skylark.Thread, err error) error {
 // a manifest representing the global yaml.
 func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...model.ManifestName) ([]model.Manifest, model.YAMLManifest, []string, error) {
 	var manifests []model.Manifest
-	manifests = append(manifests, model.Manifest{Name: "Tiltfile"})
-
-	var configFiles []string
-	// The Tiltfile itself should always be one of its own configFiles
-	configFiles = append(configFiles, t.filename)
 
 	gYAMLDeps, err := getGlobalYAMLDeps(t.thread)
 	if err != nil {
-		return manifests, model.YAMLManifest{}, configFiles, err
+		return nil, model.YAMLManifest{}, nil, err
 	}
 
 	for _, manifestName := range names {
 		curManifests, err := t.getManifestConfigsHelper(ctx, manifestName.String())
 		if err != nil {
-			return manifests, model.YAMLManifest{}, configFiles, err
+			return manifests, model.YAMLManifest{}, nil, err
 		}
 
 		manifests = append(manifests, curManifests...)
@@ -506,15 +514,17 @@ func (t Tiltfile) GetManifestConfigsAndGlobalYAML(ctx context.Context, names ...
 
 	gYAML, err := getGlobalYAML(t.thread)
 	if err != nil {
-		return manifests, model.YAMLManifest{}, configFiles, err
+		return nil, model.YAMLManifest{}, nil, err
 	}
 	globalYAML := model.NewYAMLManifest(model.GlobalYAMLManifestName, gYAML, gYAMLDeps)
 
-	moreConfigFiles, err := getReadFiles(t.thread)
+	configFiles, err := getReadFiles(t.thread)
 	if err != nil {
-		return manifests, model.YAMLManifest{}, configFiles, err
+		return nil, model.YAMLManifest{}, nil, err
 	}
-	configFiles = append(configFiles, moreConfigFiles...)
+
+	// The Tiltfile itself should always be one of its own configFiles
+	configFiles = append(configFiles, t.filename)
 
 	return manifests, globalYAML, configFiles, nil
 }
@@ -564,7 +574,7 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		}
 
 		for _, dcMan := range manifest.dcManifest {
-			dcManifests, err := dcMan.toDomain("")
+			dcManifests, err := dcMan.toDomain()
 			if err != nil {
 				return nil, err
 			}
@@ -579,13 +589,14 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 		m.Name = model.ManifestName(manifestName)
 		manifests = append(manifests, m)
 	case *dcManifest:
-		dcManifests, err := manifest.toDomain(manifestName)
+		dcManifests, err := manifest.toDomain()
 		if err != nil {
 			return nil, err
 		}
 		manifests = append(manifests, dcManifests...)
 	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return one of:"+
+			"k8s_service, docker_compose_service, composite_service", manifestName, val.Type())
 	}
 
 	// Pull out Global YAML corresponding to manifest(s)
@@ -604,6 +615,11 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 // that correspond to the given manifest, and extracts and returns them. (Note
 // that this operation modifies the global YAML in place!)
 func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model.Manifest) (string, error) {
+	if m.IsDockerCompose() {
+		// No k8s YAML to worry about
+		return "", nil
+	}
+
 	gYAML, err := getGlobalYAML(t.thread)
 	if err != nil {
 		return "", err

@@ -20,18 +20,16 @@ func (m ManifestName) String() string { return string(m) }
 type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
-	k8sYaml      string
 	tiltFilename string
+
+	// Properties for Docker Compose manifests
+	DcYAMLPath string
+
+	// Properties for all k8s builds
+	k8sYaml      string
 	dockerRef    reference.Named
 	portForwards []PortForward
 	cachePaths   []string
-
-	// Properties for Docker Compose meta
-	DcMeta bool
-	DcYaml string
-
-	// Properties for Docker Compose Service
-	DcServiceName string
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -50,6 +48,9 @@ type Manifest struct {
 }
 
 type DockerBuildArgs map[string]string
+
+// & m.k8sYaml == "" ?
+func (m Manifest) IsDockerCompose() bool { return m.DcYAMLPath != "" }
 
 func (m Manifest) WithCachePaths(paths []string) Manifest {
 	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)

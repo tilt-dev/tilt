@@ -111,6 +111,10 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	}
 
 	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
+	// ~~ maybe this is just for now...?
+	if err != nil {
+		return err
+	}
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,

@@ -23,18 +23,14 @@ func NewDockerComposeBuildAndDeployer() *DockerComposeBuildAndDeployer {
 }
 
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-DockerComposeBuildAndDeployer-BuildAndDeploy")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
-	if manifest.DcMeta {
-		return store.BuildResult{}, nil
+	if !manifest.IsDockerCompose() {
+		return store.BuildResult{}, CantHandleFailure{fmt.Errorf("not a docker compose manifest")}
 	}
 
-	if manifest.DcServiceName == "" {
-		return store.BuildResult{}, CantHandleFailure{fmt.Errorf("no docker compose")}
-	}
-
-	cmd := exec.CommandContext(ctx, "docker-compose", "build", manifest.DcServiceName)
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", manifest.DcYAMLPath, "up", "-d", manifest.Name.String())
 	cmd.Stdout = logger.Get(ctx).Writer(logger.InfoLvl)
 	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 

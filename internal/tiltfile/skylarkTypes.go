@@ -106,7 +106,7 @@ func (k *k8sManifest) createPortForward(thread *skylark.Thread, fn *skylark.Buil
 }
 
 type dcManifest struct {
-	name string
+	yamlPath string
 
 	services []dockercompose.Service
 }
@@ -131,24 +131,16 @@ func (m *dcManifest) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: dcManifest")
 }
 
-func (m *dcManifest) toDomain(metaName string) ([]model.Manifest, error) {
-	if metaName != "" {
-		m.name = metaName
-	}
-
+func (m *dcManifest) toDomain() ([]model.Manifest, error) {
 	var result []model.Manifest
 
-	for _, m := range m.services {
+	for _, svc := range m.services {
 		result = append(result, model.Manifest{
-			Name:          model.ManifestName(m.Name),
-			DcServiceName: m.Name,
+			Name:       model.ManifestName(svc.Name),
+			DcYAMLPath: m.yamlPath,
 		})
 	}
 
-	result = append(result, model.Manifest{
-		Name:   model.ManifestName(m.name),
-		DcMeta: true,
-	})
 	return result, nil
 }
 
