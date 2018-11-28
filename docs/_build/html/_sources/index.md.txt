@@ -53,5 +53,6 @@ To get started, check out some [examples](first_example.html) or dive into the
    first_config
    fast_build
    upgrade_docker_compose
+   upgrade_skaffold
    api
 ```
