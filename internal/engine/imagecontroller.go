@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -57,13 +56,12 @@ func (c *ImageController) OnChange(ctx context.Context, st store.RStore) {
 }
 
 func (c *ImageController) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
-	refs := make([]reference.Named, len(manifests))
-	for i, s := range manifests {
-		refs[i] = s.DockerRef()
-	}
-
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
-	for _, ref := range refs {
+	for _, manifest := range manifests {
+		ref := manifest.DockerRef()
+		if ref == nil {
+			continue
+		}
 		nameFilter := build.FilterByRefName(ref)
 		err := c.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
 		if err != nil {

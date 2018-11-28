@@ -40,7 +40,7 @@ func (compManifest) Hash() (uint32, error) {
 
 type k8sManifest struct {
 	k8sYaml      skylark.String
-	dockerImage  dockerImage
+	dockerImage  *dockerImage
 	name         string
 	configFiles  []string
 	portForwards []model.PortForward
