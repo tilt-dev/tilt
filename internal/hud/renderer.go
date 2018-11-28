@@ -311,51 +311,68 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	sbRight := rty.NewStringBuilder()
 
 	indent := strings.Repeat(" ", 8)
-	statusColor := cPending
-	status := r.spinner()
 	duration := formatBuildDuration(res.LastBuildDuration)
-	editsPrefix := ""
-	edits := ""
+
+	// this is a struct instead of individual vars to reduce the chances someone unintentionally mixes state
+	// (e.g., a pending build's duration with a finished build's edits)
+	type buildStatus struct {
+		status      string
+		statusColor tcell.Color
+		editsPrefix string
+		edits       string
+	}
+
+	bs := buildStatus{
+		status:      r.spinner(),
+		statusColor: cPending,
+	}
 
 	if res.LastManifestLoadError != "" {
-		statusColor = cBad
-		status = "Problem loading Tiltfile"
-	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
+		bs.statusColor = cBad
+		bs.status = "Problem loading Tiltfile"
+	} else if !res.LastBuildFinishTime.IsZero() {
 		if res.LastBuildError != "" {
-			statusColor = cBad
-			status = "ERROR"
+			bs.statusColor = cBad
+			bs.status = "ERROR"
 		} else {
-			statusColor = cGood
-			status = "OK"
+			bs.statusColor = cGood
+			bs.status = "OK"
 		}
 	}
 
-	sbLeft.Fg(statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(status)
-
-	if !res.LastDeployTime.Equal(time.Time{}) {
+	if !res.LastDeployTime.IsZero() {
 		if len(res.LastDeployEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.LastDeployEdits)
+			bs.editsPrefix = " • EDITS "
+			bs.edits = formatFileList(res.LastDeployEdits)
 		}
 	}
-	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
+	if !res.CurrentBuildStartTime.IsZero() {
+		bs = buildStatus{
+			status:      "In Progress",
+			statusColor: cPending,
+		}
 		if len(res.CurrentBuildEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.CurrentBuildEdits)
-			status = "In Progress"
+			bs.editsPrefix = " • EDITS "
+			bs.edits = formatFileList(res.CurrentBuildEdits)
 		}
 		duration = formatBuildDuration(time.Since(res.CurrentBuildStartTime))
 	}
-	if !res.PendingBuildSince.Equal(time.Time{}) {
+	if !res.PendingBuildSince.IsZero() {
+		bs = buildStatus{
+			statusColor: cPending,
+			status:      "Pending",
+		}
 		if len(res.PendingBuildEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.PendingBuildEdits)
+			bs.editsPrefix = " • EDITS "
+			bs.edits = formatFileList(res.PendingBuildEdits)
 		}
 		duration = formatBuildDuration(time.Since(res.PendingBuildSince))
 	}
 
-	sbLeft.Fg(cLightText).Text(editsPrefix).Fg(tcell.ColorDefault).Text(edits)
+	sbLeft.Fg(bs.statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
+	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(bs.status)
+
+	sbLeft.Fg(cLightText).Text(bs.editsPrefix).Fg(tcell.ColorDefault).Text(bs.edits)
 	sbRight.Fg(cLightText).Text("DURATION ")
 	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", duration) // Last char cuts off
 

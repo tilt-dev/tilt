@@ -22,7 +22,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	vs := view.ViewState{
+	plainVs := view.ViewState{
 		Resources: []view.ResourceViewState{
 			{
 				IsCollapsed: false,
@@ -30,7 +30,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	rtf.run("one undeployed resource", 70, 20, v, vs)
+	rtf.run("one undeployed resource", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -42,7 +42,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("inline build log", 70, 20, v, vs)
+	rtf.run("inline build log", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -65,7 +65,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	rtf.run("inline build log with wrapping", 117, 20, v, vs)
+	rtf.run("inline build log with wrapping", 117, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -77,9 +77,10 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		},
 	}
 
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+	logModalVs := plainVs
+	logModalVs.LogModal = view.LogModal{ResourceLogNumber: 1}
 
-	rtf.run("modal build log displayed", 70, 20, v, vs)
+	rtf.run("modal build log displayed", 70, 20, v, logModalVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -93,8 +94,8 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	vs.LogModal = view.LogModal{}
-	rtf.run("pod log displayed inline", 70, 20, v, vs)
+
+	rtf.run("pod log displayed inline", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -106,7 +107,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	rtf.run("manifest error and build error", 70, 20, v, vs)
+	rtf.run("manifest error and build error", 70, 20, v, plainVs)
 
 	ts := time.Now().Add(-5 * time.Minute)
 	v = view.View{
@@ -133,25 +134,47 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	rtf.run("all the data at once", 70, 20, v, vs)
+	rtf.run("all the data at once", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "GlobalYAML",
-				CurrentBuildStartTime: ts,
-				LastBuildFinishTime:   ts,
-				LastBuildDuration:     1400 * time.Millisecond,
-				LastDeployTime:        ts,
-				LastBuildError:        "",
-				IsYAMLManifest:        true,
+				Name:                "GlobalYAML",
+				LastBuildFinishTime: ts,
+				LastBuildDuration:   1400 * time.Millisecond,
+				LastDeployTime:      ts,
+				LastBuildError:      "",
+				IsYAMLManifest:      true,
 			},
 		},
 	}
-	rtf.run("global yaml manifest", 70, 20, v, vs)
+	rtf.run("global yaml manifest", 70, 20, v, plainVs)
 
-	vs.AlertMessage = "this is only a test"
-	rtf.run("alert message", 70, 20, v, vs)
+	alertVs := plainVs
+	alertVs.AlertMessage = "this is only a test"
+	rtf.run("alert message", 70, 20, v, alertVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "vigoda",
+				CurrentBuildStartTime: ts.Add(-5 * time.Second),
+				CurrentBuildEdits:     []string{"main.go"},
+			},
+		},
+	}
+	rtf.run("build in progress", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:              "vigoda",
+				PendingBuildSince: ts.Add(-5 * time.Second),
+				PendingBuildEdits: []string{"main.go"},
+			},
+		},
+	}
+	rtf.run("pending build", 70, 20, v, plainVs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
