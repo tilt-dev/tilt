@@ -38,56 +38,6 @@ func (r *Renderer) Render(v view.View, vs view.ViewState) error {
 	return nil
 }
 
-func formatPreciseDuration(d time.Duration) string {
-	hours := int(d.Hours())
-	if hours > 0 {
-		return fmt.Sprintf("%dh", hours)
-	}
-
-	minutes := int(d.Minutes())
-	if minutes > 0 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-
-	seconds := int(d.Seconds())
-	if seconds > 10 {
-		return fmt.Sprintf("%ds", seconds)
-	}
-
-	fractionalSeconds := float64(d) / float64(time.Second)
-	return fmt.Sprintf("%0.2fs", fractionalSeconds)
-}
-
-func formatDuration(d time.Duration) string {
-	hours := int(d.Hours())
-	if hours > 0 {
-		return fmt.Sprintf("%dh", hours)
-	}
-
-	minutes := int(d.Minutes())
-	if minutes > 0 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-
-	return "<1m"
-}
-
-func formatFileList(files []string) string {
-	const maxFilesToDisplay = 3
-
-	var ret []string
-
-	for i, f := range files {
-		if i > maxFilesToDisplay {
-			ret = append(ret, fmt.Sprintf("(%d more)", len(files)-maxFilesToDisplay))
-			break
-		}
-		ret = append(ret, f)
-	}
-
-	return strings.Join(ret, ", ")
-}
-
 var cText = tcell.Color232
 var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
@@ -295,7 +245,7 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 	if res.LastDeployTime.Equal(time.Time{}) {
 		sbRight.Text(" Not Deployed •  —      ")
 	} else {
-		sbRight.Textf(" OK • %s ago ", formatDuration(time.Since(res.LastDeployTime))) // Last char cuts off
+		sbRight.Textf(" OK • %s ago ", formatDeployAge(time.Since(res.LastDeployTime))) // Last char cuts off
 	}
 
 	l.Add(sbLeft.Build())
@@ -341,7 +291,7 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 		}
 
 		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
-		sbRight.Textf(" %s ", formatDuration(time.Since(res.PodCreationTime))) // Last char cuts off
+		sbRight.Textf(" %s ", formatDeployAge(time.Since(res.PodCreationTime))) // Last char cuts off
 	} else {
 		sbLeft.Fg(cLightText).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 	}
@@ -363,7 +313,7 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	indent := strings.Repeat(" ", 8)
 	statusColor := cPending
 	status := r.spinner()
-	duration := formatPreciseDuration(res.LastBuildDuration)
+	duration := formatBuildDuration(res.LastBuildDuration)
 	editsPrefix := ""
 	edits := ""
 
@@ -395,14 +345,14 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 			edits = formatFileList(res.CurrentBuildEdits)
 			status = "In Progress"
 		}
-		duration = formatPreciseDuration(time.Since(res.CurrentBuildStartTime))
+		duration = formatBuildDuration(time.Since(res.CurrentBuildStartTime))
 	}
 	if !res.PendingBuildSince.Equal(time.Time{}) {
 		if len(res.PendingBuildEdits) > 0 {
 			editsPrefix = " • EDITS "
 			edits = formatFileList(res.PendingBuildEdits)
 		}
-		duration = formatPreciseDuration(time.Since(res.PendingBuildSince))
+		duration = formatBuildDuration(time.Since(res.PendingBuildSince))
 	}
 
 	sbLeft.Fg(cLightText).Text(editsPrefix).Fg(tcell.ColorDefault).Text(edits)
