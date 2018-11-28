@@ -1,0 +1,319 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>From Skaffold &mdash; Tilt  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tiltfile API Reference" href="api.html" />
+    <link rel="prev" title="From Docker Compose" href="upgrade_docker_compose.html" />
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
+<script>
+ window.dataLayer = window.dataLayer || [];
+ function gtag(){dataLayer.push(arguments);}
+ gtag('js', new Date());
+
+ gtag('config', 'UA-129150759-2');
+</script>
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Expanding a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">From Skaffold</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differences-between-skaffold-and-tilt">Differences between Skaffold and Tilt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#migrate-from-skaffold-to-tilt">Migrate from Skaffold to Tilt</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Tilt</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>From Skaffold</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="from-skaffold">
+<span id="from-skaffold"></span><h1>From Skaffold<a class="headerlink" href="#from-skaffold" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="before-you-begin">
+<span id="before-you-begin"></span><h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="quickstart.html">Install Tilt</a></li>
+<li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
+</ul>
+</div>
+<div class="section" id="differences-between-skaffold-and-tilt">
+<span id="differences-between-skaffold-and-tilt"></span><h2>Differences between Skaffold and Tilt<a class="headerlink" href="#differences-between-skaffold-and-tilt" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Skaffold streams the logs for services it started. Tilt provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.</li>
+<li>Skaffold is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called <a class="reference external" href="https://github.com/bazelbuild/starlark#tour&gt;">Starlark</a>.</li>
+</ul>
+</div>
+<div class="section" id="migrate-from-skaffold-to-tilt">
+<span id="migrate-from-skaffold-to-tilt"></span><h2>Migrate from Skaffold to Tilt<a class="headerlink" href="#migrate-from-skaffold-to-tilt" title="Permalink to this headline">¶</a></h2>
+<p>Let’s take a simple <code class="docutils literal notranslate"><span class="pre">skaffold.yaml</span></code> file with one service:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
+<span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
+<span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">.</span> <span class="c1"># This is the default if not specified</span>
+    <span class="l l-Scalar l-Scalar-Plain">docker</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Dockerfile</span> <span class="c1"># This is the default if not specified</span>
+<span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./deployments/snack.yaml</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
+<li>Define your service name</li>
+</ol>
+<p>In Skaffold services are implicitly named from their Kubernetes config. In Tilt services have names given by a function defined in your Tiltfile:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">snack</span><span class="p">():</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Set the build context</li>
+</ol>
+<p>In Skaffold you can specify your build context and Dockerfile like so:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">.</span> <span class="c1"># This is the default if not specified</span>
+    <span class="l l-Scalar l-Scalar-Plain">docker</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Dockerfile</span> <span class="c1"># This is the default if not specified</span>
+</pre></div>
+</div>
+<p>In Tilt you tell us where your Dockerfile is and what the build_context is.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/windmill-public-containers/servantes/snack&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Combine your build context and k8s config to create a service</li>
+</ol>
+<p>In Skaffold you specify your Kubernetes YAML under the <code class="docutils literal notranslate"><span class="pre">manifests</span></code> key:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./deployments/snack.yaml</span>
+</pre></div>
+</div>
+<p>In Tilt we similarly associate your image and your Kubernetes YAML through the concept of a service:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;./deployments/snack.yaml&#39;</span><span class="p">)</span>
+  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li>Return your service!</li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="k">return</span> <span class="n">service</span>
+</pre></div>
+</div>
+<p>All in all your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> should now look like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">snack</span><span class="p">():</span>
+  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/windmill-public-containers/servantes/snack&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;./deployments/snack.yaml&#39;</span><span class="p">)</span>
+  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">service</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="Tiltfile API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="upgrade_docker_compose.html" class="btn btn-neutral" title="From Docker Compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Windmill Engineering
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
