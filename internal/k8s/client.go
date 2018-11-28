@@ -50,7 +50,10 @@ type Client interface {
 	// we might need to fallback to deleting and re-creating them.
 	Upsert(ctx context.Context, entities []K8sEntity) error
 
-	// Deletes all given entities
+	// Deletes all given entities.
+	//
+	// Currently ignores any "not found" errors, because that seems like the correct
+	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
 	// Find all the pods that match the given image, namespace, and labels.
@@ -226,8 +229,12 @@ func maybeImmutableFieldStderr(stderr string) bool {
 		strings.Contains(stderr, "Forbidden")
 }
 
+// Deletes all given entities.
+//
+// Currently ignores any "not found" errors, because that seems like the correct
+// behavior for our use cases.
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, stderr, err := k.actOnEntities(ctx, []string{"delete"}, entities)
+	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)
 	if err != nil {
 		return fmt.Errorf("kubectl delete: %v\nstderr: %s", err, stderr)
 	}
