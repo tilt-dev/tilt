@@ -163,7 +163,6 @@ func (ms *ManifestState) PendingBuildSince() time.Time {
 }
 
 type YAMLManifestState struct {
-	Manifest        model.YAMLManifest
 	HasBeenDeployed bool
 
 	CurrentApplyStartTime   time.Time
@@ -173,10 +172,8 @@ type YAMLManifestState struct {
 	LastApplyDuration       time.Duration
 }
 
-func NewYAMLManifestState(manifest model.YAMLManifest) *YAMLManifestState {
-	return &YAMLManifestState{
-		Manifest: manifest,
-	}
+func NewYAMLManifestState() *YAMLManifestState {
+	return &YAMLManifestState{}
 }
 
 type PodSet struct {

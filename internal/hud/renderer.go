@@ -269,7 +269,9 @@ func abbreviateLog(s string) []string {
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 	layout.Add(r.resourceTitle(selected, rv, res))
-	layout.Add(r.resourceK8s(res, rv))
+	if l := r.resourceK8s(res, rv); l != nil {
+		layout.Add(l)
+	}
 	layout.Add(r.resourceK8sLogs(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
 	return layout
@@ -303,10 +305,18 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 }
 
 func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty.Component {
+	if res.IsYAMLManifest {
+		return nil
+	}
+
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
 	status := r.spinner()
+	if !res.LastBuildFinishTime.Equal(time.Time{}) && res.LastDeployTime.Equal(time.Time{}) {
+		// We have a finished build but aren't deployed, because the build is broken
+		status = "N/A"
+	}
 	indent := strings.Repeat(" ", 8)
 
 	if res.PodStatus != "" {

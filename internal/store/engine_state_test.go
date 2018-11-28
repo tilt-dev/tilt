@@ -91,7 +91,7 @@ func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *Engi
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
 	}
 	ret.GlobalYAML = YAMLManifest
-	ret.GlobalYAMLState = NewYAMLManifestState(YAMLManifest)
+	ret.GlobalYAMLState = NewYAMLManifestState()
 
 	return ret
 }
