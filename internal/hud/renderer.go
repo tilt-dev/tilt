@@ -269,7 +269,9 @@ func abbreviateLog(s string) []string {
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
 	layout := rty.NewConcatLayout(rty.DirVert)
 	layout.Add(r.resourceTitle(selected, rv, res))
-	layout.Add(r.resourceK8s(res, rv))
+	if l := r.resourceK8s(res, rv); l != nil {
+		layout.Add(l)
+	}
 	layout.Add(r.resourceK8sLogs(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
 	return layout
@@ -303,6 +305,10 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 }
 
 func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty.Component {
+	if res.IsYAMLManifest {
+		return nil
+	}
+
 	l := rty.NewLine()
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
@@ -336,9 +342,6 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 
 		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
 		sbRight.Textf(" %s ", formatDuration(time.Since(res.PodCreationTime))) // Last char cuts off
-	} else if res.IsYAMLManifest && !res.LastDeployTime.Equal(time.Time{}) {
-		sbLeft.Fg(cGood).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
-		status = "OK"
 	} else {
 		sbLeft.Fg(cLightText).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 	}
