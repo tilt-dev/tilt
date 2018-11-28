@@ -71,10 +71,10 @@ func (m Manifest) LocalPaths() []string {
 }
 
 func (m Manifest) Validate() error {
-	err := m.validate()
-	if err != nil {
-		return err
-	}
+	// err := m.validate()
+	// if err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
