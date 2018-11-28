@@ -79,7 +79,14 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 
 func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) rty.Component {
 	if vs.AlertMessage != "" {
-		b := rty.NewBox(rty.Fg(rty.TextString(vs.AlertMessage), tcell.ColorDefault))
+		l := rty.NewLines()
+		l.Add(rty.TextString(""))
+
+		msg := "   " + vs.AlertMessage + "   "
+		l.Add(rty.Fg(rty.TextString(msg), tcell.ColorDefault))
+		l.Add(rty.TextString(""))
+
+		b := rty.NewBox(l)
 		b.SetTitle("! Alert !")
 		layout = r.renderModal(rty.Fg(b, tcell.ColorRed), layout, false)
 	}
@@ -89,7 +96,9 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 func keyLegend(vs view.ViewState) string {
 	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
 	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
-		return "SCROLL: (↓) (↑) ┊ (esc) to exit view "
+		return "SCROLL: (↓) (↑) ┊ (esc) to close logs "
+	} else if vs.AlertMessage != "" {
+		return "Tilt (l)og ┊ (esc) to close alert "
 	}
 	return defaultKeys
 }
