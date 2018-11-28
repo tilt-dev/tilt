@@ -4,7 +4,7 @@
 * If you're new to Tilt try stepping through [a Simple Tiltfile](first_config.html) first.
 
 ## Differences between Skaffold and Tilt
-* Skaffold streams the logs for services it started. Tilt provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.
+* Skaffold streams the logs for all services it started. We found one combined stream of all services difficult to use &andunderstand for anything beyond the most simple apps. Tilt instead provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.
 * Skaffold is configured with a static YAML config. Tilt is configured with a `Tiltfile`, written in a small subset of Python called [Starlark](https://github.com/bazelbuild/starlark#tour>).
 
 ## Migrate from Skaffold to Tilt
