@@ -139,6 +139,32 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
+				Name:                "vigoda",
+				DirectoriesWatched:  []string{"foo", "bar"},
+				LastDeployTime:      ts,
+				LastDeployEdits:     []string{"main.go", "cli.go"},
+				LastBuildFinishTime: ts,
+				LastBuildDuration:   1400 * time.Millisecond,
+				LastBuildLog:        "",
+				PodName:             "vigoda-pod",
+				PodCreationTime:     ts,
+				PodStatus:           "Running",
+				PodRestarts:         1,
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog: `abe vigoda is crashing
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
+			},
+		},
+	}
+	rtf.run("pod log with inline wrapping", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
 				Name:                "GlobalYAML",
 				LastBuildFinishTime: ts,
 				LastBuildDuration:   1400 * time.Millisecond,

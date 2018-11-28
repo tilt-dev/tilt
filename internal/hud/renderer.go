@@ -402,23 +402,23 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lh := rty.NewConcatLayout(rty.DirHor)
 	lv := rty.NewConcatLayout(rty.DirVert)
-	lh.AddDynamic(lv)
-	var logLines []rty.Component
-	indent := strings.Repeat(" ", 12)
+	spacer := rty.TextString(strings.Repeat(" ", 12))
 
+	needsSpacer := false
 	if res.PodStatus != "" && !rv.IsCollapsed {
 		if res.PodRestarts > 0 {
 			abbrevLog := abbreviateLog(res.PodLog)
 			for _, logLine := range abbrevLog {
-				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
-			}
-			if len(logLines) > 0 {
-				for _, log := range logLines {
-					lv.Add(log)
-				}
+				lv.Add(rty.TextString(logLine))
+				needsSpacer = true
 			}
 		}
 	}
+
+	if needsSpacer {
+		lh.Add(spacer)
+	}
+	lh.AddDynamic(lv)
 
 	return lh
 }
@@ -426,30 +426,34 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lh := rty.NewConcatLayout(rty.DirHor)
 	lv := rty.NewConcatLayout(rty.DirVert)
-	lh.AddDynamic(lv)
-	var logLines []rty.Component
-	indent := strings.Repeat(" ", 12)
-
-	if res.LastManifestLoadError != "" {
-		logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, res.LastManifestLoadError)))
-	}
+	spacer := rty.TextString(strings.Repeat(" ", 12))
+	needsSpacer := false
 
 	if !rv.IsCollapsed {
+		if res.LastManifestLoadError != "" {
+			lv.Add(rty.TextString(res.LastManifestLoadError))
+			needsSpacer = true
+		}
+
 		if res.LastBuildError != "" {
 			abbrevLog := abbreviateLog(res.LastBuildLog)
 			for _, logLine := range abbrevLog {
-				logLines = append(logLines, rty.TextString(fmt.Sprintf("%s%s", indent, logLine)))
+				lv.Add(rty.TextString(logLine))
+				needsSpacer = true
 			}
+
 			// if the build log is non-empty, it will contain the error, so we don't need to show this separately
 			if len(abbrevLog) == 0 {
-				logLines = append(logLines, rty.TextString(fmt.Sprintf("%sError: %s", indent, res.LastBuildError)))
+				lv.Add(rty.TextString(fmt.Sprintf("Error: %s", res.LastBuildError)))
+				needsSpacer = true
 			}
 		}
-
-		for _, log := range logLines {
-			lv.Add(log)
-		}
 	}
+
+	if needsSpacer {
+		lh.Add(spacer)
+	}
+	lh.AddDynamic(lv)
 
 	return lh
 }
