@@ -3,6 +3,7 @@ package engine
 import (
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -46,14 +47,48 @@ func TestGlobalYamlParseError(t *testing.T) {
 	// (so we don't try to re-apply the same bad yaml multiple times)
 	assert.Equal(t, "some invalid yaml", bc.lastGlobalYAMLManifest.K8sYAML())
 
-	if len(st.Actions) != 1 {
-		t.Errorf("expect 1 action dispatched, got %d: %v", len(st.Actions), st.Actions)
+	if len(st.Actions) != 2 {
+		t.Errorf("expect 2 action dispatched, got %d: %#v", len(st.Actions), st.Actions)
+		return
 	}
-	gYAMLErr, ok := st.Actions[0].(GlobalYAMLApplyError)
+	_, ok := st.Actions[0].(GlobalYAMLApplyStartedAction)
 	if !ok {
-		t.Errorf("expected a `GlobalYAMLApplyError` error, got: %v", st.Actions[0])
+		t.Errorf("first action should be a GlobalYAMLApplyStartedAction, got: %#v", st.Actions[0])
+	}
+	gYAMLErr, ok := st.Actions[1].(GlobalYAMLApplyCompleteAction)
+	if !ok {
+		t.Errorf("expected a `GlobalYAMLApplyCompleteAction` action, got: %#v", st.Actions[1])
+		return
 	}
 	assert.Contains(t, gYAMLErr.Error.Error(), "Error parsing global_yaml")
+}
+
+func TestGlobalYamlFailUpsert(t *testing.T) {
+	yaml := "apiVersion: v1\nKind: Service"
+	st := newTestingStoreWithGlobalYAML(yaml)
+	bc := newGlobalYamlBuildControllerForTest(testyaml.SecretYaml)
+
+	bc.k8sClient.UpsertError = errors.New("upsert error!")
+	bc.OnChange(output.CtxForTest(), st)
+
+	assert.Equal(t, yaml, bc.lastGlobalYAMLManifest.K8sYAML())
+	if len(st.Actions) != 2 {
+		t.Errorf("expect 2 action dispatched, got %d: %#v", len(st.Actions), st.Actions)
+		return
+	}
+	_, ok := st.Actions[0].(GlobalYAMLApplyStartedAction)
+	if !ok {
+		t.Errorf("first action should be a GlobalYAMLApplyStartedAction, got: %#v", st.Actions[0])
+	}
+	gYAMLErr, ok := st.Actions[1].(GlobalYAMLApplyCompleteAction)
+	if !ok {
+		t.Errorf("expected a `GlobalYAMLApplyCompleteAction` action, got: %#v", st.Actions[1])
+		return
+	}
+
+	if assert.Error(t, gYAMLErr.Error) {
+		assert.Contains(t, gYAMLErr.Error.Error(), bc.k8sClient.UpsertError.Error())
+	}
 }
 
 func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {
@@ -65,9 +100,18 @@ func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {
 	return st
 }
 
-func newGlobalYamlBuildControllerForTest(yaml string) *GlobalYAMLBuildController {
-	return &GlobalYAMLBuildController{
-		lastGlobalYAMLManifest: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil),
-		k8sClient:              k8s.NewFakeK8sClient(),
+type TestGlobalYAMLBuildController struct {
+	GlobalYAMLBuildController
+	k8sClient *k8s.FakeK8sClient
+}
+
+func newGlobalYamlBuildControllerForTest(yaml string) *TestGlobalYAMLBuildController {
+	kc := k8s.NewFakeK8sClient()
+	return &TestGlobalYAMLBuildController{
+		GlobalYAMLBuildController: GlobalYAMLBuildController{
+			lastGlobalYAMLManifest: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil),
+			k8sClient:              kc,
+		},
+		k8sClient: kc,
 	}
 }
