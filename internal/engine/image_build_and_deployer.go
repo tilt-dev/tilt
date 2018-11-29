@@ -83,7 +83,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	ps := build.NewPipelineState(ctx, 2)
 	defer func() { ps.End(ctx, err) }()
 
-	err = manifest.ValidateKubernetesBuildAndDeploy()
+	err = manifest.ValidateK8sManifest()
 	if err != nil {
 		return store.BuildResult{}, err
 	}
