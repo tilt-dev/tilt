@@ -8,6 +8,7 @@ import (
 
 	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -134,20 +135,49 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 }
 
 func isInError(res view.Resource) bool {
-	return res.LastBuildError != "" || podStatusColors[res.PodStatus] == cBad
+	return res.LastBuildError != "" || podStatusColors[res.PodStatus] == cBad || isCrashing(res)
+}
+
+func isCrashing(res view.Resource) bool {
+	return res.PodRestarts > 0 ||
+		res.LastBuildReason.Has(model.BuildReasonFlagCrash) ||
+		res.CurrentBuildReason.Has(model.BuildReasonFlagCrash) ||
+		res.PendingBuildReason.Has(model.BuildReasonFlagCrash)
 }
 
 func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty.Component {
 	return r.renderLogModal("TILT LOG", v.Log, background)
 }
 
+func bestLogs(res view.Resource) string {
+	// A build is in progress, triggered by an explicit edit.
+	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
+		!res.CurrentBuildReason.IsCrashOnly() {
+		return res.CurrentBuildLog
+	}
+
+	// The last build was an error.
+	if res.LastBuildError != "" {
+		return res.LastBuildLog
+	}
+
+	// The last build finished, but the pod hasn't started yet.
+	if res.LastBuildStartTime.After(res.PodCreationTime) {
+		return res.LastBuildLog
+	}
+
+	// The last build finished, so prepend them to pod logs.
+	if res.LastBuildStartTime.Before(res.PodCreationTime) &&
+		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
+		return res.LastBuildLog + "\n\n" + res.PodLog
+	}
+
+	return res.PodLog
+}
+
 func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
-	var s string
-	if res.LastBuildError != "" && len(strings.TrimSpace(res.LastBuildLog)) > 0 {
-		s = res.LastBuildLog
-	} else if len(strings.TrimSpace(res.PodLog)) > 0 {
-		s = res.PodLog
-	} else {
+	s := bestLogs(res)
+	if len(strings.TrimSpace(s)) == 0 {
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
 
@@ -278,12 +308,18 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	}
 	indent := strings.Repeat(" ", 8)
 
+	podStatusColor, ok := podStatusColors[res.PodStatus]
+	if !ok {
+		podStatusColor = cLightText
+	}
+
+	if isCrashing(res) {
+		podStatusColor = cBad
+	}
+
+	sbLeft.Fg(podStatusColor).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
+
 	if res.PodStatus != "" {
-		podStatusColor, ok := podStatusColors[res.PodStatus]
-		if !ok {
-			podStatusColor = tcell.ColorDefault
-		}
-		sbLeft.Fg(podStatusColor).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 		status = res.PodStatus
 
 		// TODO(maia): show # restarts even if == 0 (in gray or green)?
@@ -301,8 +337,6 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 
 		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
 		sbRight.Textf(" %s ", formatDeployAge(time.Since(res.PodCreationTime))) // Last char cuts off
-	} else {
-		sbLeft.Fg(cLightText).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 	}
 
 	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
@@ -365,6 +399,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 			bs.status = "OK"
 		}
 	}
+
 	if !res.LastDeployTime.IsZero() {
 		if len(res.LastDeployEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
@@ -372,7 +407,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		}
 	}
 
-	if !res.CurrentBuildStartTime.IsZero() {
+	if !res.CurrentBuildStartTime.IsZero() && !res.CurrentBuildReason.IsCrashOnly() {
 		bs = buildStatus{
 			status:      "In Progress",
 			statusColor: cPending,
@@ -384,7 +419,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		}
 	}
 
-	if !res.PendingBuildSince.IsZero() {
+	if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
 		bs = buildStatus{
 			statusColor: cPending,
 			status:      "Pending",
@@ -405,9 +440,13 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 	spacer := rty.TextString(strings.Repeat(" ", 12))
 
 	needsSpacer := false
-	if res.PodStatus != "" && !rv.IsCollapsed {
-		if res.PodRestarts > 0 {
-			abbrevLog := abbreviateLog(res.PodLog)
+	if !rv.IsCollapsed {
+		if isCrashing(res) {
+			podLog := res.PodLog
+			if podLog == "" {
+				podLog = res.CrashLog
+			}
+			abbrevLog := abbreviateLog(podLog)
 			for _, logLine := range abbrevLog {
 				lv.Add(rty.TextString(logLine))
 				needsSpacer = true

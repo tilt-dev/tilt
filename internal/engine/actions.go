@@ -100,7 +100,7 @@ type BuildStartedAction struct {
 	Manifest     model.Manifest
 	StartTime    time.Time
 	FilesChanged []string
-	Reason       store.BuildReason
+	Reason       model.BuildReason
 }
 
 func (BuildStartedAction) Action() {}

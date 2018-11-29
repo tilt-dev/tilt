@@ -205,7 +205,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	})
 
 	f.WithManifest("foobar", func(ms store.ManifestState) {
-		assert.True(t, ms.LastBuildReason.Has(store.BuildReasonFlagMountFiles))
+		assert.True(t, ms.LastBuildReason.Has(model.BuildReasonFlagMountFiles))
 	})
 
 	err = f.Stop()

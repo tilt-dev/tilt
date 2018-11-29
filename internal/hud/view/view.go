@@ -1,6 +1,10 @@
 package view
 
-import "time"
+import (
+	"time"
+
+	"github.com/windmilleng/tilt/internal/model"
+)
 
 type Resource struct {
 	Name               string
@@ -12,15 +16,22 @@ type Resource struct {
 	LastManifestLoadError string
 
 	LastBuildError      string
+	LastBuildStartTime  time.Time
 	LastBuildFinishTime time.Time
 	LastBuildDuration   time.Duration
 	LastBuildLog        string
+	LastBuildReason     model.BuildReason
 
-	PendingBuildEdits []string
-	PendingBuildSince time.Time
+	PendingBuildReason model.BuildReason
+	PendingBuildEdits  []string
+	PendingBuildSince  time.Time
 
+	// Maybe these fields should be combined into a BuildInfo struct, so that we
+	// just have CurrentBuild, PendingBuild, LastBuild.
+	CurrentBuildReason    model.BuildReason
 	CurrentBuildEdits     []string
 	CurrentBuildStartTime time.Time
+	CurrentBuildLog       string
 
 	PodName         string
 	PodCreationTime time.Time
@@ -28,6 +39,10 @@ type Resource struct {
 	PodRestarts     int
 	Endpoints       []string
 	PodLog          string
+
+	// If a pod had to be killed because it was crashing, we keep the old log around
+	// for a little while.
+	CrashLog string
 
 	IsYAMLManifest bool
 }
