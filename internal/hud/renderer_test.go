@@ -1,6 +1,7 @@
 package hud
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -226,6 +227,22 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		},
 	}
 	rtf.run("pending build", 70, 20, v, plainVs)
+}
+
+func TestRenderTiltLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := view.View{
+		Log:       strings.Repeat("abcdefg", 30),
+		Resources: nil,
+	}
+	vs := view.ViewState{
+		LogModal: view.LogModal{
+			TiltLog: true,
+		},
+	}
+
+	rtf.run("tilt log", 70, 20, v, vs)
 }
 
 func TestRenderLogModal(t *testing.T) {

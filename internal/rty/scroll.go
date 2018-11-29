@@ -61,6 +61,15 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 		return next, nil
 	}
 
+	scrollbarWriter, err := w.Divide(width-1, 0, 1, height)
+	if err != nil {
+		return nil, err
+	}
+	w, err = w.Divide(0, 0, width-1, height)
+	if err != nil {
+		return nil, err
+	}
+
 	next.canvasLengths = make([]int, len(l.cs))
 	canvases := make([]Canvas, len(l.cs))
 
@@ -116,11 +125,11 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 	}
 
 	if next.lineIdx > 0 || next.canvasIdx > 0 {
-		w.SetContent(width-1, 0, '↑', nil)
+		scrollbarWriter.SetContent(0, 0, '↑', nil)
 	}
 
 	if y >= height && !next.following {
-		w.SetContent(width-1, height-1, '↓', nil)
+		scrollbarWriter.SetContent(0, height-1, '↓', nil)
 	}
 
 	return next, nil
@@ -297,6 +306,15 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 		return &next, nil
 	}
 
+	scrollbarWriter, err := w.Divide(width-1, 0, 1, height)
+	if err != nil {
+		return nil, err
+	}
+	w, err = w.Divide(0, 0, width-1, height)
+	if err != nil {
+		return nil, err
+	}
+
 	var canvases []Canvas
 	var heights []int
 	for _, c := range l.children {
@@ -328,11 +346,11 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	}
 
 	if next.firstVisibleElement != 0 {
-		w.SetContent(width-1, 0, '↑', nil)
+		scrollbarWriter.SetContent(0, 0, '↑', nil)
 	}
 
 	if y >= height {
-		w.SetContent(width-1, height-1, '↓', nil)
+		scrollbarWriter.SetContent(0, height-1, '↓', nil)
 	}
 
 	return &next, nil

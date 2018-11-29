@@ -35,12 +35,24 @@ func TestElementScroll(t *testing.T) {
 	f.run("scrolled all the way back up")
 }
 
+func TestElementScrollWrap(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+
+	sl, _ := i.rty.RegisterElementScroll("baz", []string{"hi"})
+	sl.Add(TextString(strings.Repeat("abcdefgh", 20)))
+	i.Run("line wrapped element scroll", 10, 10, sl)
+}
+
 func TestTextScroll(t *testing.T) {
 	i := NewInteractiveTester(t, screen)
 
 	sl := NewTextScrollLayout("foo")
-	sl.Add(TextString(strings.Repeat("hiaeiurhgeiugheriuhgrtiuhgrtgn\n", 200)))
-	i.Run("vertically overflowed box", 10, 10, sl)
+	sl.Add(TextString(strings.Repeat("abcd\n", 200)))
+	i.Run("vertically overflowed text scroll", 10, 10, sl)
+
+	sl = NewTextScrollLayout("bar")
+	sl.Add(TextString(strings.Repeat("abcd", 200)))
+	i.Run("line wrapped text scroll", 10, 10, sl)
 }
 
 type elementScrollTestFixture struct {
@@ -68,7 +80,7 @@ func (f *elementScrollTestFixture) layout() Component {
 			c.Add(TextString("SELECTED---->"))
 		}
 		for j := 0; j < 3; j++ {
-			c.Add(TextString(strings.Repeat(n, 10)))
+			c.Add(TextString(strings.Repeat(n, 9)))
 		}
 		components = append(components, c)
 	}
