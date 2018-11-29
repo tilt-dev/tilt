@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -42,28 +41,26 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
 	}()
 
-	// TODO(maia): proper output for this stuff
-
 	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
 	// of implementation of BuildAndDeploy?
 	err = manifest.Validate()
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResult{}, WrapDontFallBackError(err)
 	}
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResult{}, fmt.Errorf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResult{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
 	if manifest.IsStaticBuild() {
-		return store.BuildResult{}, fmt.Errorf("container build does not support static dockerfiles")
+		return store.BuildResult{}, RedirectToNextBuilderf("container build does not support static dockerfiles")
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
 	deployInfo := state.DeployInfo
 	if deployInfo.Empty() {
-		return store.BuildResult{}, fmt.Errorf("no deploy info")
+		return store.BuildResult{}, RedirectToNextBuilderf("no deploy info")
 	}
 
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
@@ -81,6 +78,9 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 
 	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(manifest), boiledSteps, writer)
 	if err != nil {
+		if build.IsUserBuildFailure(err) {
+			return store.BuildResult{}, WrapDontFallBackError(err)
+		}
 		return store.BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Container updated!")

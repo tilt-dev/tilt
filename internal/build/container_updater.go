@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -64,7 +65,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 			if isExitErr {
 				return UserBuildFailure{ExitCode: exitErr.ExitCode}
 			}
-			return fmt.Errorf("executing step %v on container %s: %v", s.Argv, cID.ShortStr(), err)
+			return errors.Wrapf(err, "executing step %v on container %s", s.Argv, cID.ShortStr())
 		}
 	}
 

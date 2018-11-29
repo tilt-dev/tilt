@@ -49,10 +49,8 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
-	// TODO(maia): proper output for this stuff
-
 	if err := sbd.canSyncletBuild(ctx, manifest, state); err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResult{}, WrapRedirectToNextBuilder(err)
 	}
 
 	return sbd.updateViaSynclet(ctx, manifest, state)
@@ -137,6 +135,9 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 
 	err = sCli.UpdateContainer(ctx, deployInfo.ContainerID, archive.Bytes(), containerPathsToRm, cmds)
 	if err != nil {
+		if build.IsUserBuildFailure(err) {
+			return store.BuildResult{}, WrapDontFallBackError(err)
+		}
 		return store.BuildResult{}, err
 	}
 
