@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
@@ -149,7 +150,7 @@ func MissingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMappi
 		if os.IsNotExist(err) {
 			result = append(result, mapping)
 		} else {
-			return nil, fmt.Errorf("MissingLocalPaths: %v", err)
+			return nil, errors.Wrap(err, "MissingLocalPaths")
 		}
 	}
 	return result, nil

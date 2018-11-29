@@ -1,10 +1,10 @@
 package model
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/gobwas/glob"
+	"github.com/pkg/errors"
 )
 
 type PathMatcher interface {
@@ -36,7 +36,7 @@ func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
 		// work with absolute paths.
 		path, err := filepath.Abs(path)
 		if err != nil {
-			return fileMatcher{}, fmt.Errorf("NewSimplePathMatcher: %v", err)
+			return fileMatcher{}, errors.Wrap(err, "NewSimplePathMatcher")
 		}
 		pathMap[path] = true
 	}

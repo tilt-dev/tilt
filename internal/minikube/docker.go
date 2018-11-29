@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+
+	"github.com/pkg/errors"
 )
 
 // This isn't perfect (because it won't unquote the value right) but
@@ -24,7 +26,7 @@ func DockerEnv(ctx context.Context) (map[string]string, error) {
 				"Did you forget to run `minikube start`?\n%s", string(exitErr.Stderr))
 		}
 
-		return nil, fmt.Errorf("Could not read docker env from minikube: %v", err)
+		return nil, errors.Wrap(err, "Could not read docker env from minikube")
 	}
 	return dockerEnvFromOutput(output)
 }

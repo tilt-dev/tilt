@@ -54,12 +54,12 @@ func (t *Tiltfile) makeSkylarkDockerImage(thread *skylark.Thread, fn *skylark.Bu
 
 	dockerfileLocalPath, err := t.localPathFromSkylarkValue(dockerfileName)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (docker_file_name): %v", err)
+		return nil, errors.Wrap(err, "Argument 0 (docker_file_name)")
 	}
 
 	ref, err := reference.ParseNormalizedNamed(dockerRef)
 	if err != nil {
-		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
+		return nil, errors.Wrapf(err, "Parsing %q", dockerRef)
 	}
 
 	existingBC := thread.Local(buildContextKey)
@@ -128,24 +128,24 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 
 	ref, err := reference.ParseNormalizedNamed(dockerRef)
 	if err != nil {
-		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
+		return nil, errors.Wrapf(err, "Parsing %q", dockerRef)
 	}
 
 	dockerfileLocalPath, err := t.localPathFromSkylarkValue(dockerfilePath)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 1 (dockerfile): %v", err)
+		return nil, errors.Wrap(err, "Argument 1 (dockerfile): %v")
 	}
 
 	var sba map[string]string
 	if buildArgs != nil {
 		d, ok := buildArgs.(*skylark.Dict)
 		if !ok {
-			return nil, fmt.Errorf("Argument 3 (build_args): expected dict, got %T", buildArgs)
+			return nil, fmt.Errorf("argument 3 (build_args): expected dict, got %T", buildArgs)
 		}
 
 		sba, err = skylarkStringDictToGoMap(d)
 		if err != nil {
-			return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
+			return nil, errors.Wrap(err, "Argument 3 (build_args): %v")
 		}
 	}
 
@@ -158,7 +158,7 @@ func (t *Tiltfile) makeStaticBuild(thread *skylark.Thread, fn *skylark.Builtin, 
 	} else {
 		buildLocalPath, err = t.localPathFromSkylarkValue(buildPath)
 		if err != nil {
-			return nil, fmt.Errorf("Argument 4 (context): %v", err)
+			return nil, errors.Wrap(err, "argument 4 (context)")
 		}
 	}
 
@@ -187,7 +187,7 @@ func (t *Tiltfile) readDockerfile(thread *skylark.Thread, path string) (dockerfi
 
 	dfBytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("failed to open dockerfile '%v': %v", path, err)
+		return "", errors.Wrapf(err, "failed to open dockerfile '%v'", path)
 	}
 
 	return dockerfile.Dockerfile(dfBytes), nil
@@ -329,7 +329,7 @@ func (t *Tiltfile) readFile(thread *skylark.Thread, fn *skylark.Builtin, args sk
 
 	pathString, err := skylarkStringOrLocalPathToString(path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid type for path: %v", err)
+		return nil, errors.Wrap(err, "invalid type for path")
 	}
 
 	pathString = t.absPath(pathString)
@@ -365,7 +365,7 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 
 	kustomizePath, err := t.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+		return nil, errors.Wrap(err, "argument 0 (path)")
 	}
 
 	cmd := fmt.Sprintf("kustomize build %s", path)
@@ -375,7 +375,7 @@ func (t *Tiltfile) callKustomize(thread *skylark.Thread, fn *skylark.Builtin, ar
 	}
 	deps, err := kustomize.Deps(kustomizePath.String())
 	if err != nil {
-		return nil, fmt.Errorf("internal error: %v", err)
+		return nil, errors.Wrap(err, "internal error")
 	}
 	for _, d := range deps {
 		err := t.recordReadFile(thread, d)
@@ -457,7 +457,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 func handleSkylarkErr(thread *skylark.Thread, err error) error {
 	evalErr, isEvalErr := err.(*skylark.EvalError)
 	if isEvalErr {
-		return fmt.Errorf("%s\n\n%s", evalErr.Error(), evalErr.Backtrace())
+		return errors.Wrap(evalErr, evalErr.Backtrace())
 	}
 
 	return err

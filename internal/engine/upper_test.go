@@ -309,8 +309,8 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.SetNextBuildFailure(buildFailedToken)
 
 	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false, "")
-	expected := fmt.Errorf("Build Failed: %v", buildFailedToken)
-	assert.Equal(t, expected, err)
+	expectedErrStr := fmt.Sprintf("Build Failed: %v", buildFailedToken)
+	assert.Equal(t, expectedErrStr, err.Error())
 }
 
 func TestRebuildWithChangedFiles(t *testing.T) {

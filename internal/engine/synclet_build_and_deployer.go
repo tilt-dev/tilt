@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -99,7 +100,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(manifest))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return store.BuildResult{}, fmt.Errorf("archivePathsIfExists: %v", err)
+		return store.BuildResult{}, errors.Wrap(err, "archivePathsIfExists")
 	}
 	archive, err := ab.BytesBuffer()
 	if err != nil {
@@ -109,7 +110,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	// get files to rm
 	toRemove, err := build.MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return store.BuildResult{}, fmt.Errorf("missingLocalPaths: %v", err)
+		return store.BuildResult{}, errors.Wrap(err, "missingLocalPaths")
 	}
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
