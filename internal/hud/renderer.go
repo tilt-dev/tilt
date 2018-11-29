@@ -313,6 +313,14 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	return l
 }
 
+type buildStatus struct {
+	status      string
+	statusColor tcell.Color
+	editsPrefix string
+	edits       string
+	duration    string
+}
+
 func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lines := rty.NewLines()
 	l := rty.NewLine()
@@ -320,53 +328,15 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	sbRight := rty.NewStringBuilder()
 
 	indent := strings.Repeat(" ", 8)
-	statusColor := cPending
-	status := r.spinner()
-	duration := formatBuildDuration(res.LastBuildDuration)
-	editsPrefix := ""
-	edits := ""
 
-	if res.LastManifestLoadError != "" {
-		statusColor = cBad
-		status = "Problem loading Tiltfile"
-	} else if !res.LastBuildFinishTime.Equal(time.Time{}) {
-		if res.LastBuildError != "" {
-			statusColor = cBad
-			status = "ERROR"
-		} else {
-			statusColor = cGood
-			status = "OK"
-		}
-	}
+	bs := r.makeBuildStatus(res)
 
-	sbLeft.Fg(statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(status)
+	sbLeft.Fg(bs.statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
+	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(bs.status)
 
-	if !res.LastDeployTime.Equal(time.Time{}) {
-		if len(res.LastDeployEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.LastDeployEdits)
-		}
-	}
-	if !res.CurrentBuildStartTime.Equal(time.Time{}) {
-		if len(res.CurrentBuildEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.CurrentBuildEdits)
-			status = "In Progress"
-		}
-		duration = formatBuildDuration(time.Since(res.CurrentBuildStartTime))
-	}
-	if !res.PendingBuildSince.Equal(time.Time{}) {
-		if len(res.PendingBuildEdits) > 0 {
-			editsPrefix = " • EDITS "
-			edits = formatFileList(res.PendingBuildEdits)
-		}
-		duration = formatBuildDuration(time.Since(res.PendingBuildSince))
-	}
-
-	sbLeft.Fg(cLightText).Text(editsPrefix).Fg(tcell.ColorDefault).Text(edits)
+	sbLeft.Fg(cLightText).Text(bs.editsPrefix).Fg(tcell.ColorDefault).Text(bs.edits)
 	sbRight.Fg(cLightText).Text("DURATION ")
-	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", duration) // Last char cuts off
+	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", bs.duration) // Last char cuts off
 
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
@@ -374,6 +344,59 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	lines.Add(l)
 	lines.Add(r.lastBuildLogs(res, rv))
 	return lines
+}
+
+func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
+	bs := buildStatus{
+		status:      r.spinner(),
+		statusColor: cPending,
+		duration:    formatBuildDuration(res.LastBuildDuration),
+	}
+
+	if res.LastManifestLoadError != "" {
+		bs.statusColor = cBad
+		bs.status = "Problem loading Tiltfile"
+	} else if !res.LastBuildFinishTime.IsZero() {
+		if res.LastBuildError != "" {
+			bs.statusColor = cBad
+			bs.status = "ERROR"
+		} else {
+			bs.statusColor = cGood
+			bs.status = "OK"
+		}
+	}
+	if !res.LastDeployTime.IsZero() {
+		if len(res.LastDeployEdits) > 0 {
+			bs.editsPrefix = " • EDITS "
+			bs.edits = formatFileList(res.LastDeployEdits)
+		}
+	}
+
+	if !res.CurrentBuildStartTime.IsZero() {
+		bs = buildStatus{
+			status:      "In Progress",
+			statusColor: cPending,
+			duration:    formatBuildDuration(time.Since(res.CurrentBuildStartTime)),
+		}
+		if len(res.CurrentBuildEdits) > 0 {
+			bs.editsPrefix = " • EDITS "
+			bs.edits = formatFileList(res.CurrentBuildEdits)
+		}
+	}
+
+	if !res.PendingBuildSince.IsZero() {
+		bs = buildStatus{
+			statusColor: cPending,
+			status:      "Pending",
+			duration:    formatBuildDuration(time.Since(res.PendingBuildSince)),
+		}
+		if len(res.PendingBuildEdits) > 0 {
+			bs.editsPrefix = " • EDITS "
+			bs.edits = formatFileList(res.PendingBuildEdits)
+		}
+	}
+
+	return bs
 }
 
 func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
