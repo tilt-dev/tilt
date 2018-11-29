@@ -388,7 +388,6 @@ func handleConfigsReloaded(
 		if !ok {
 			ms = &store.ManifestState{}
 		}
-		ms.LastManifestLoadError = nil
 
 		newDefOrder[i] = m.ManifestName()
 		if !m.Equal(ms.Manifest) {

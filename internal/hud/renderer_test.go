@@ -102,10 +102,9 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "a-a-a-aaaaabe vigoda",
-				LastManifestLoadError: "broken tiltfile!",
-				LastBuildError:        "broken go code!",
-				LastBuildLog:          "mashing keys is not a good way to generate code",
+				Name:           "a-a-a-aaaaabe vigoda",
+				LastBuildError: "broken go code!",
+				LastBuildLog:   "mashing keys is not a good way to generate code",
 			},
 		},
 	}

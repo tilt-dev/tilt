@@ -77,7 +77,6 @@ type ManifestState struct {
 	CurrentBuildLog       []byte `testdiff:"ignore"`
 	CurrentBuildReason    model.BuildReason
 
-	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
 	LastBuildStartTime        time.Time
@@ -383,11 +382,6 @@ func StateToView(s EngineState) view.View {
 			lastBuildError = ms.LastBuildError.Error()
 		}
 
-		lastManifestLoadError := ""
-		if ms.LastManifestLoadError != nil {
-			lastManifestLoadError = ms.LastManifestLoadError.Error()
-		}
-
 		endpoints := ManifestStateEndpoints(ms)
 
 		lastBuildLog := string(ms.LastBuildLog)
@@ -403,7 +397,6 @@ func StateToView(s EngineState) view.View {
 			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
-			LastManifestLoadError: lastManifestLoadError,
 			LastBuildError:        lastBuildError,
 			LastBuildReason:       ms.LastBuildReason,
 			LastBuildStartTime:    ms.LastBuildStartTime,

@@ -404,10 +404,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		duration:    formatBuildDuration(res.LastBuildDuration),
 	}
 
-	if res.LastManifestLoadError != "" {
-		bs.statusColor = cBad
-		bs.status = "Problem loading Tiltfile"
-	} else if !res.LastBuildFinishTime.IsZero() {
+	if !res.LastBuildFinishTime.IsZero() {
 		if res.LastBuildError != "" {
 			bs.statusColor = cBad
 			bs.status = "ERROR"
@@ -486,11 +483,6 @@ func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) r
 	needsSpacer := false
 
 	if !rv.IsCollapsed {
-		if res.LastManifestLoadError != "" {
-			lv.Add(rty.TextString(res.LastManifestLoadError))
-			needsSpacer = true
-		}
-
 		if res.LastBuildError != "" {
 			abbrevLog := abbreviateLog(res.LastBuildLog)
 			for _, logLine := range abbrevLog {
