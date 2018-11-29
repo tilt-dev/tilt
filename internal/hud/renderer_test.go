@@ -92,7 +92,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:   "Running",
 				PodRestarts: 1,
 				Endpoints:   []string{"1.2.3.4:8080"},
-				PodLog:      "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+				Log:         "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
 	}
@@ -131,7 +131,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:             "Running",
 				PodRestarts:           1,
 				Endpoints:             []string{"1.2.3.4:8080"},
-				PodLog:                "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+				Log:                   "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
 	}
@@ -154,7 +154,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:             "Running",
 				PodRestarts:           0,
 				Endpoints:             []string{"1.2.3.4:8080"},
-				PodLog:                "",
+				Log:                   "",
 				CrashLog:              "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
@@ -176,7 +176,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:           "Running",
 				PodRestarts:         1,
 				Endpoints:           []string{"1.2.3.4:8080"},
-				PodLog: `abe vigoda is crashing
+				Log: `abe vigoda is crashing
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
@@ -208,7 +208,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "vigoda",
+				Name: "vigoda",
 				CurrentBuildStartTime: ts.Add(-5 * time.Second),
 				CurrentBuildEdits:     []string{"main.go"},
 			},
@@ -271,7 +271,7 @@ func TestRenderLogModal(t *testing.T) {
 `,
 				PodName:         "vigoda-pod",
 				PodCreationTime: now,
-				PodLog:          "serving on 8080",
+				Log:             "serving on 8080",
 				PodStatus:       "Running",
 				LastDeployTime:  now,
 			},

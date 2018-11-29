@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -63,8 +64,13 @@ type EngineState struct {
 type ManifestState struct {
 	LastBuild BuildResult
 	Manifest  model.Manifest
-	PodSet    PodSet
-	LBs       map[k8s.ServiceName]*url.URL
+
+	// k8s-specific state
+	PodSet PodSet
+	LBs    map[k8s.ServiceName]*url.URL
+
+	// docker-compose-specific state
+	DCInfo dockercompose.Info
 
 	// Store the times of all the pending changes,
 	// so we can prioritize the oldest one first.
@@ -414,7 +420,12 @@ func StateToView(s EngineState) view.View {
 			PodCreationTime:       pod.StartedAt,
 			PodStatus:             pod.Status,
 			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
-			PodLog:                pod.Log(),
+			Log:                   logForPodOrDockerCompose(ms, pod),
+			IsDCManifest:          ms.Manifest.IsDockerCompose(),
+			DCYamlPath:            ms.Manifest.DcYAMLPath,
+			DCCommand:             ms.DCInfo.Command,
+			DCState:               ms.DCInfo.State,
+			DCPorts:               ms.DCInfo.Ports,
 			CrashLog:              ms.CrashLog,
 			Endpoints:             endpoints,
 		}
@@ -458,4 +469,11 @@ func StateToView(s EngineState) view.View {
 	}
 
 	return ret
+}
+
+func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
+	if ms.Manifest.IsDockerCompose() {
+		return ms.DCInfo.Log()
+	}
+	return pod.Log()
 }

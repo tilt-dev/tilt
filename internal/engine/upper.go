@@ -8,6 +8,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -250,6 +251,13 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuildReason = model.BuildReasonNone
 	ms.CurrentBuildLog = nil
 	ms.NeedsRebuildFromCrash = false
+
+	// ~~ TESTING SHIT
+	ms.DCInfo = dockercompose.Info{
+		Command: "./do/stuff",
+		State:   "pretty good",
+		Ports:   "12345",
+	}
 
 	if err != nil {
 		ms.CurrentBuildEdits = nil
