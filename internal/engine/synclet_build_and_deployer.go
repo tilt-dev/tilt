@@ -50,7 +50,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 	defer span.Finish()
 
 	if err := sbd.canSyncletBuild(ctx, manifest, state); err != nil {
-		return store.BuildResult{}, WrapExpectedError(err)
+		return store.BuildResult{}, WrapRedirectToNextBuilder(err)
 	}
 
 	return sbd.updateViaSynclet(ctx, manifest, state)

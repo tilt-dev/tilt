@@ -50,17 +50,17 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResult{}, ExpectedErrorf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResult{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
 	if manifest.IsStaticBuild() {
-		return store.BuildResult{}, ExpectedErrorf("container build does not support static dockerfiles")
+		return store.BuildResult{}, RedirectToNextBuilderf("container build does not support static dockerfiles")
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
 	deployInfo := state.DeployInfo
 	if deployInfo.Empty() {
-		return store.BuildResult{}, ExpectedErrorf("no deploy info")
+		return store.BuildResult{}, RedirectToNextBuilderf("no deploy info")
 	}
 
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)

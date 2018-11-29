@@ -10,19 +10,19 @@ import (
 
 // Nothing is on fire, this is an expected case like a container builder being
 // passed a build with no attached container. Don't need to show this to a user.
-type ExpectedError struct {
+type RedirectToNextBuilder struct {
 	error
 }
 
-func WrapExpectedError(err error) ExpectedError {
-	return ExpectedError{err}
+func WrapRedirectToNextBuilder(err error) RedirectToNextBuilder {
+	return RedirectToNextBuilder{err}
 }
 
-func ExpectedErrorf(msg string, a ...interface{}) ExpectedError {
-	return ExpectedError{fmt.Errorf(msg, a...)}
+func RedirectToNextBuilderf(msg string, a ...interface{}) RedirectToNextBuilder {
+	return RedirectToNextBuilder{fmt.Errorf(msg, a...)}
 }
 
-var _ error = ExpectedError{}
+var _ error = RedirectToNextBuilder{}
 
 // Something is wrong enough that we shouldn't bother falling back to other
 // BaD's -- they won't work.

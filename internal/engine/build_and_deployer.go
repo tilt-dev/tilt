@@ -56,12 +56,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return store.BuildResult{}, err
 		}
 
-		if _, ok := err.(ExpectedError); !ok {
-			logger.Get(ctx).Verbosef("falling back to next build and deploy method "+
-				"after unexpected error: %v", err)
-		} else {
+		if _, ok := err.(RedirectToNextBuilder); ok {
 			logger.Get(ctx).Debugf("(expected error) falling back to next build and deploy method "+
 				"after error: %v", err)
+		} else {
+			logger.Get(ctx).Verbosef("falling back to next build and deploy method "+
+				"after unexpected error: %v", err)
 		}
 
 		lastErr = err
