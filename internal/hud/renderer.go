@@ -284,7 +284,7 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 	if res.LastDeployTime.Equal(time.Time{}) {
 		sbRight.Text(" Not Deployed •  —      ")
 	} else {
-		sbRight.Textf(" OK • %s ago ", formatDeployAge(time.Since(res.LastDeployTime))) // Last char cuts off
+		sbRight.Textf(" OK • %s ago", formatDeployAge(time.Since(res.LastDeployTime)))
 	}
 
 	l.Add(sbLeft.Build())
@@ -336,7 +336,7 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 		}
 
 		sbRight.Fg(cLightText).Text("AGE").Fg(tcell.ColorDefault)
-		sbRight.Textf(" %s ", formatDeployAge(time.Since(res.PodCreationTime))) // Last char cuts off
+		sbRight.Textf(" %s", formatDeployAge(time.Since(res.PodCreationTime)))
 	}
 
 	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
