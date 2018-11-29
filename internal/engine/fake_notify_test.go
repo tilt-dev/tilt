@@ -44,13 +44,22 @@ func (w *fakeMultiWatcher) getSubErrors() []chan error {
 }
 
 func (w *fakeMultiWatcher) loop() {
+	defer func() {
+		for _, sub := range w.getSubs() {
+			close(sub)
+		}
+	}()
+
+	defer func() {
+		for _, sub := range w.getSubErrors() {
+			close(sub)
+		}
+	}()
+
 	for {
 		select {
 		case e, ok := <-w.events:
 			if !ok {
-				for _, sub := range w.getSubs() {
-					close(sub)
-				}
 				return
 			}
 			for _, sub := range w.getSubs() {
@@ -58,9 +67,6 @@ func (w *fakeMultiWatcher) loop() {
 			}
 		case e, ok := <-w.errors:
 			if !ok {
-				for _, sub := range w.getSubErrors() {
-					close(sub)
-				}
 				return
 			}
 			for _, sub := range w.getSubErrors() {
