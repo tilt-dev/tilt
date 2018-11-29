@@ -108,21 +108,21 @@ func (w *fakeWatcher) Events() chan watch.FileEvent {
 func (w *fakeWatcher) loop() {
 	var q []watch.FileEvent
 	for {
-		var outboundCh chan watch.FileEvent
-		var outboundE watch.FileEvent
-		if len(q) > 0 {
-			outboundCh, outboundE = w.outboundCh, q[0]
-		}
-
-		select {
-		case e, ok := <-w.inboundCh:
-			if !ok {
-				close(w.outboundCh)
-				return
+		if len(q) == 0 {
+			select {
+			case e, ok := <-w.inboundCh:
+				if !ok {
+					close(w.outboundCh)
+					return
+				}
+				q = append(q, e)
 			}
-			q = append(q, e)
-		case outboundCh <- outboundE:
-			q = q[1:]
+		} else {
+			e := q[0]
+			select {
+			case w.outboundCh <- e:
+				q = q[1:]
+			}
 		}
 	}
 }
