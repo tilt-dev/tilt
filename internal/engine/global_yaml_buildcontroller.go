@@ -32,50 +32,49 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 	m := state.GlobalYAML
 	st.RUnlockState()
 
-	newK8sEntities := []k8s.K8sEntity{}
 	if m.K8sYAML() != c.lastGlobalYAMLManifest.K8sYAML() {
 		c.lastGlobalYAMLManifest = m
 		st.Dispatch(GlobalYAMLApplyStartedAction{})
 
-		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
+		err := handleGlobalYamlChange(ctx, m, c.k8sClient)
+
 		if err != nil {
-			err = errors.Wrap(err, "Error parsing global_yaml")
 			logger.Get(ctx).Infof(err.Error())
-			st.Dispatch(GlobalYAMLApplyCompleteAction{Error: err})
-			return
 		}
 
-		for _, e := range entities {
-			e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
-			if err != nil {
-				err = errors.Wrap(err, "Error injecting labels in to global_yaml")
-				logger.Get(ctx).Infof(err.Error())
-				st.Dispatch(GlobalYAMLApplyCompleteAction{Error: err})
-				return
-			}
-
-			// For development, image pull policy should never be set to "Always",
-			// even if it might make sense to use "Always" in prod. People who
-			// set "Always" for development are shooting their own feet.
-			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
-			if err != nil {
-				err = errors.Wrap(err, "Error injecting image pull policy in to global_yaml")
-				logger.Get(ctx).Infof(err.Error())
-				st.Dispatch(GlobalYAMLApplyCompleteAction{Error: err})
-				return
-			}
-
-			newK8sEntities = append(newK8sEntities, e)
-		}
-
-		err = c.k8sClient.Upsert(ctx, newK8sEntities)
-		if err != nil {
-			err = errors.Wrap(err, "Error upserting global_yaml")
-			logger.Get(ctx).Infof(err.Error())
-			st.Dispatch(GlobalYAMLApplyCompleteAction{Error: err})
-			return
-		}
-
-		st.Dispatch(GlobalYAMLApplyCompleteAction{})
+		st.Dispatch(GlobalYAMLApplyCompleteAction{Error: err})
 	}
+}
+
+func handleGlobalYamlChange(ctx context.Context, m model.YAMLManifest, kCli k8s.Client) error {
+	entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
+	if err != nil {
+		return errors.Wrap(err, "Error parsing global_yaml")
+	}
+
+	newK8sEntities := []k8s.K8sEntity{}
+
+	for _, e := range entities {
+		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
+		if err != nil {
+			return errors.Wrap(err, "Error injecting labels in to global_yaml")
+		}
+
+		// For development, image pull policy should never be set to "Always",
+		// even if it might make sense to use "Always" in prod. People who
+		// set "Always" for development are shooting their own feet.
+		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+		if err != nil {
+			return errors.Wrap(err, "Error injecting image pull policy in to global_yaml")
+		}
+
+		newK8sEntities = append(newK8sEntities, e)
+	}
+
+	err = kCli.Upsert(ctx, newK8sEntities)
+	if err != nil {
+		return errors.Wrap(err, "Error upserting global_yaml")
+	}
+
+	return nil
 }
