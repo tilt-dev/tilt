@@ -107,37 +107,6 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	}
 }
 
-type fakeNotify struct {
-	paths  []string
-	events chan watch.FileEvent
-	errors chan error
-}
-
-func (n *fakeNotify) Add(name string) error {
-	n.paths = append(n.paths, name)
-	return nil
-}
-
-func (n *fakeNotify) Close() error {
-	close(n.events)
-	close(n.errors)
-	return nil
-}
-
-func (n *fakeNotify) Errors() chan error {
-	return n.errors
-}
-
-func (n *fakeNotify) Events() chan watch.FileEvent {
-	return n.events
-}
-
-func newFakeNotify() *fakeNotify {
-	return &fakeNotify{paths: make([]string, 0), errors: make(chan error, 1), events: make(chan watch.FileEvent, 10)}
-}
-
-var _ watch.Notify = &fakeNotify{}
-
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -230,6 +199,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	for _, fileRelPath := range fileRelPaths {
 		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 	}
+	time.Sleep(time.Millisecond)
 	f.timerMaker.restTimerLock.Unlock()
 
 	call = f.nextCall()
@@ -268,6 +238,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	for _, fileRelPath := range fileRelPaths {
 		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 	}
+	time.Sleep(time.Millisecond)
 	f.timerMaker.maxTimerLock.Unlock()
 
 	call = f.nextCall()
@@ -1209,12 +1180,6 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func makeFakeFsWatcherMaker(fn *fakeNotify) FsWatcherMaker {
-	return func() (watch.Notify, error) {
-		return fn, nil
-	}
-}
-
 func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1505,7 +1470,7 @@ type testFixture struct {
 	cancel                func()
 	upper                 Upper
 	b                     *fakeBuildAndDeployer
-	fsWatcher             *fakeNotify
+	fsWatcher             *fakeMetaWatcher
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeDockerClient
 	hud                   *hud.FakeHud
@@ -1522,7 +1487,7 @@ type testFixture struct {
 
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
-	watcher := newFakeNotify()
+	watcher := newFakeMetaWatcher()
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
@@ -1549,17 +1514,13 @@ func newTestFixture(t *testing.T) *testFixture {
 	_ = os.Chdir(f.Path())
 	_ = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 
-	fswm := func() (watch.Notify, error) {
-		return watcher, nil
-	}
-
-	fwm := NewWatchManager(fswm, timerMaker.maker())
+	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
 
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, fswm, bc, ic, gybc, cc, k8s)
+	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, watcher.newSub, bc, ic, gybc, cc, k8s)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
@@ -1588,7 +1549,7 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	f.createManifestsResult = make(chan error)
 
 	go func() {
-		err := f.upper.StartForTesting(f.ctx, manifests, model.YAMLManifest{}, watchMounts, "")
+		err := f.upper.StartForTesting(f.ctx, manifests, model.YAMLManifest{}, watchMounts, "/Tiltfile")
 		if err != nil && err != context.Canceled {
 			// Print this out here in case the test never completes
 			log.Printf("CreateManifests failed: %v", err)
@@ -1600,6 +1561,7 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	f.WaitUntil("manifests appear", func(st store.EngineState) bool {
 		return len(st.ManifestStates) == len(manifests) && st.WatchMounts == watchMounts
 	})
+	time.Sleep(5 * time.Millisecond)
 }
 
 func (f *testFixture) Stop() error {
@@ -1805,6 +1767,8 @@ func (f *testFixture) LogLines() []string {
 
 func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
+	close(f.fsWatcher.events)
+	close(f.fsWatcher.errors)
 	f.cancel()
 }
 
