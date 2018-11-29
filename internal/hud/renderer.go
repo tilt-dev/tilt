@@ -97,7 +97,7 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 func keyLegend(vs view.ViewState) string {
 	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
 	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
-		return "Scroll (↓) (↑) ┊ (esc) close logs "
+		return "Scroll (↓ ↑) ┊ (esc) close logs "
 	} else if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
 	}
