@@ -32,7 +32,7 @@ type FakeK8sClient struct {
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
 
-	PodLogs            string
+	PodLogs            BufferCloser
 	ContainerLogsError error
 
 	LastForwardPortPodID      PodID
@@ -48,7 +48,9 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan 
 }
 
 func NewFakeK8sClient() *FakeK8sClient {
-	return &FakeK8sClient{}
+	return &FakeK8sClient{
+		PodLogs: BufferCloser{Buffer: bytes.NewBuffer(nil)},
+	}
 }
 
 func (c *FakeK8sClient) ConnectedToCluster(ctx context.Context) error {
@@ -81,11 +83,15 @@ func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interf
 	return watch.NewEmptyWatch(), nil
 }
 
+func (c *FakeK8sClient) SetLogs(logs string) {
+	c.PodLogs = BufferCloser{Buffer: bytes.NewBufferString(logs)}
+}
+
 func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}
-	return BufferCloser{bytes.NewBufferString(c.PodLogs)}, nil
+	return c.PodLogs, nil
 }
 
 func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
