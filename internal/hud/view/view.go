@@ -55,8 +55,9 @@ type Resource struct {
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
 type View struct {
-	Log       string
-	Resources []Resource
+	Log                  string
+	Resources            []Resource
+	TiltfileErrorMessage string
 }
 
 type ViewState struct {

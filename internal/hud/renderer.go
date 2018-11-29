@@ -63,6 +63,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v, vs))
+	split.Add(r.renderTiltfileError(v))
 	split.Add(r.renderFooter(v, keyLegend(vs)))
 	l.Add(split)
 
@@ -116,14 +117,18 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 			errorCount++
 		}
 	}
-	if errorCount == 0 {
+	if errorCount == 0 && v.TiltfileErrorMessage == "" {
 		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
 	} else {
 		s := "error"
 		if errorCount > 1 {
 			s = "errors"
 		}
-		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" %d %s", errorCount, s).Fg(tcell.ColorDefault)
+		if v.TiltfileErrorMessage != "" {
+			sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" Error executing Tiltfile").Fg(tcell.ColorDefault)
+		} else {
+			sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" %d %s", errorCount, s).Fg(tcell.ColorDefault)
+		}
 	}
 	sbRight.Fg(cText).Text(keys).Fg(tcell.ColorDefault)
 
@@ -265,6 +270,17 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	layout.Add(r.resourceK8sLogs(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
 	return layout
+}
+
+func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
+	l := rty.NewLine()
+	sb := rty.NewStringBuilder()
+	if v.TiltfileErrorMessage != "" {
+		sb.Textf("Error loading Tiltfile: %s", v.TiltfileErrorMessage)
+	}
+
+	l.Add(sb.Build())
+	return l
 }
 
 func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res view.Resource) rty.Component {
