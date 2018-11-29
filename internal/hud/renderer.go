@@ -313,6 +313,14 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	return l
 }
 
+type buildStatus struct {
+	status      string
+	statusColor tcell.Color
+	editsPrefix string
+	edits       string
+	duration    string
+}
+
 func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lines := rty.NewLines()
 	l := rty.NewLine()
@@ -320,20 +328,29 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 	sbRight := rty.NewStringBuilder()
 
 	indent := strings.Repeat(" ", 8)
-	duration := formatBuildDuration(res.LastBuildDuration)
 
-	// this is a struct instead of individual vars to reduce the chances someone unintentionally mixes state
-	// (e.g., a pending build's duration with a finished build's edits)
-	type buildStatus struct {
-		status      string
-		statusColor tcell.Color
-		editsPrefix string
-		edits       string
-	}
+	bs := r.makeBuildStatus(res)
 
+	sbLeft.Fg(bs.statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
+	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(bs.status)
+
+	sbLeft.Fg(cLightText).Text(bs.editsPrefix).Fg(tcell.ColorDefault).Text(bs.edits)
+	sbRight.Fg(cLightText).Text("DURATION ")
+	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", bs.duration) // Last char cuts off
+
+	l.Add(sbLeft.Build())
+	l.Add(rty.NewFillerString(' '))
+	l.Add(sbRight.Build())
+	lines.Add(l)
+	lines.Add(r.lastBuildLogs(res, rv))
+	return lines
+}
+
+func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 	bs := buildStatus{
 		status:      r.spinner(),
 		statusColor: cPending,
+		duration:    formatBuildDuration(res.LastBuildDuration),
 	}
 
 	if res.LastManifestLoadError != "" {
@@ -348,49 +365,38 @@ func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rt
 			bs.status = "OK"
 		}
 	}
-
 	if !res.LastDeployTime.IsZero() {
 		if len(res.LastDeployEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
 			bs.edits = formatFileList(res.LastDeployEdits)
 		}
 	}
+
 	if !res.CurrentBuildStartTime.IsZero() {
 		bs = buildStatus{
 			status:      "In Progress",
 			statusColor: cPending,
+			duration:    formatBuildDuration(time.Since(res.CurrentBuildStartTime)),
 		}
 		if len(res.CurrentBuildEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
 			bs.edits = formatFileList(res.CurrentBuildEdits)
 		}
-		duration = formatBuildDuration(time.Since(res.CurrentBuildStartTime))
 	}
+
 	if !res.PendingBuildSince.IsZero() {
 		bs = buildStatus{
 			statusColor: cPending,
 			status:      "Pending",
+			duration:    formatBuildDuration(time.Since(res.PendingBuildSince)),
 		}
 		if len(res.PendingBuildEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
 			bs.edits = formatFileList(res.PendingBuildEdits)
 		}
-		duration = formatBuildDuration(time.Since(res.PendingBuildSince))
 	}
 
-	sbLeft.Fg(bs.statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(bs.status)
-
-	sbLeft.Fg(cLightText).Text(bs.editsPrefix).Fg(tcell.ColorDefault).Text(bs.edits)
-	sbRight.Fg(cLightText).Text("DURATION ")
-	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", duration) // Last char cuts off
-
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
-	lines.Add(l)
-	lines.Add(r.lastBuildLogs(res, rv))
-	return lines
+	return bs
 }
 
 func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState) rty.Component {
