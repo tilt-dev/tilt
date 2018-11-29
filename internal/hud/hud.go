@@ -106,14 +106,26 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	escape := func() bool {
+		am := h.activeModal()
+		if am != nil {
+			am.Close(&h.currentViewState)
+			return false
+		}
+
+		h.Close()
+		dispatch(NewExitAction(nil))
+		return true
+	}
+
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyEscape:
-			am := h.activeModal()
-			if am != nil {
-				h.activeModal().Close(&h.currentViewState)
+			if escape() {
+				return true
 			}
+
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r == 'b': // [B]rowser
@@ -131,7 +143,14 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					h.currentViewState.AlertMessage = fmt.Sprintf("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
 			case r == 'l': // Tilt [L]og
-				if h.activeModal() == nil {
+				am := h.activeModal()
+				_, isLogModal := am.(logModal)
+				if !isLogModal {
+					// Close any existing log modal
+					if am != nil {
+						am.Close(&h.currentViewState)
+					}
+
 					h.currentViewState.LogModal = view.LogModal{TiltLog: true}
 					h.activeModal().Bottom()
 				}
@@ -140,10 +159,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			case r == 'j':
 				h.activeScroller().Down()
 			case r == 'q': // [Q]uit
-				h.Close()
-				dispatch(NewExitAction(nil))
-				return true
-			case r == 'R':
+				if escape() {
+					return true
+				}
+			case r == 'R': // hidden key for recovering from printf junk during demos
 				h.r.screen.Sync()
 			}
 		case tcell.KeyUp:
