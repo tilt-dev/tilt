@@ -6,7 +6,7 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-type fakeMetaWatcher struct {
+type fakeMultiWatcher struct {
 	events chan watch.FileEvent
 	errors chan error
 
@@ -15,13 +15,13 @@ type fakeMetaWatcher struct {
 	subsErrors []chan error
 }
 
-func newFakeMetaWatcher() *fakeMetaWatcher {
-	r := &fakeMetaWatcher{events: make(chan watch.FileEvent), errors: make(chan error)}
+func newFakeMultiWatcher() *fakeMultiWatcher {
+	r := &fakeMultiWatcher{events: make(chan watch.FileEvent), errors: make(chan error)}
 	go r.loop()
 	return r
 }
 
-func (w *fakeMetaWatcher) newSub() (watch.Notify, error) {
+func (w *fakeMultiWatcher) newSub() (watch.Notify, error) {
 	subCh := make(chan watch.FileEvent)
 	errorCh := make(chan error)
 	w.mu.Lock()
@@ -31,19 +31,19 @@ func (w *fakeMetaWatcher) newSub() (watch.Notify, error) {
 	return newFakeWatcher(subCh, errorCh), nil
 }
 
-func (w *fakeMetaWatcher) getSubs() []chan watch.FileEvent {
+func (w *fakeMultiWatcher) getSubs() []chan watch.FileEvent {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.subs
 }
 
-func (w *fakeMetaWatcher) getSubErrors() []chan error {
+func (w *fakeMultiWatcher) getSubErrors() []chan error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.subsErrors
 }
 
-func (w *fakeMetaWatcher) loop() {
+func (w *fakeMultiWatcher) loop() {
 	for {
 		select {
 		case e, ok := <-w.events:

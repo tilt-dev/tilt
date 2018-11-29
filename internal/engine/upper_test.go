@@ -1470,7 +1470,7 @@ type testFixture struct {
 	cancel                func()
 	upper                 Upper
 	b                     *fakeBuildAndDeployer
-	fsWatcher             *fakeMetaWatcher
+	fsWatcher             *fakeMultiWatcher
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeDockerClient
 	hud                   *hud.FakeHud
@@ -1487,7 +1487,7 @@ type testFixture struct {
 
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
-	watcher := newFakeMetaWatcher()
+	watcher := newFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := makeFakeTimerMaker(t)
