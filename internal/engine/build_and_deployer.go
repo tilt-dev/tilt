@@ -28,12 +28,6 @@ type BuildAndDeployer interface {
 type BuildOrder []BuildAndDeployer
 type FallbackTester func(error) bool
 
-type CantHandleFailure struct {
-	error
-}
-
-var _ error = CantHandleFailure{}
-
 // CompositeBuildAndDeployer tries to run each builder in order.  If a builder
 // emits an error, it uses the FallbackTester to determine whether the error is
 // critical enough to stop the whole pipeline, or to fallback to the next
@@ -52,9 +46,6 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	var lastErr error
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
-		if _, ok := err.(CantHandleFailure); ok {
-			continue
-		}
 		if err == nil {
 			// TODO(maia): this should be reactive (i.e. happen as a response to `BuildCompleteAction`)
 			composite.PostProcessBuild(ctx, br, currentState.LastResult)

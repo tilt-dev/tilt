@@ -6,16 +6,15 @@
 package engine
 
 import (
-	"context"
-
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	docker "github.com/windmilleng/tilt/internal/docker"
+	dockerfile "github.com/windmilleng/tilt/internal/dockerfile"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	synclet "github.com/windmilleng/tilt/internal/synclet"
+	analytics "github.com/windmilleng/wmclient/pkg/analytics"
+	dirs "github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
@@ -32,10 +31,14 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env)
+	updateMode2, err := ProvideUpdateMode(updateMode, env)
 	if err != nil {
 		return nil, err
 	}
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8s2, env, memoryAnalytics, updateMode2)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer()
+	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode2)
+	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }
 

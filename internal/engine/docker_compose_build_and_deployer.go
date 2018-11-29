@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 
 	"github.com/opentracing/opentracing-go"
@@ -27,7 +26,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 	defer span.Finish()
 
 	if !manifest.IsDockerCompose() {
-		return store.BuildResult{}, CantHandleFailure{fmt.Errorf("not a docker compose manifest")}
+		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
 	}
 
 	cmd := exec.CommandContext(ctx, "docker-compose", "-f", manifest.DcYAMLPath, "up", "-d", manifest.Name.String())

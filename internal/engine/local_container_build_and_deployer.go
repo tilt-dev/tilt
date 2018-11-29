@@ -37,7 +37,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	defer span.Finish()
 
 	if manifest.IsDockerCompose() {
-		return store.BuildResult{}, CantHandleFailure{fmt.Errorf("not implemented: DC container builds")}
+		return store.BuildResult{}, RedirectToNextBuilderf("not implemented: DC container builds")
 	}
 
 	startTime := time.Now()
