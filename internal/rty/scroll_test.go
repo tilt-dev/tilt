@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -44,6 +45,21 @@ func TestElementScrollWrap(t *testing.T) {
 	sl, _ := i.rty.RegisterElementScroll("baz", []string{"hi"})
 	sl.Add(TextString(strings.Repeat("abcdefgh", 20)))
 	i.Run("line wrapped element scroll", 10, 10, sl)
+}
+
+func TestElementScrollPerfectlyFilled(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+
+	var names []string
+	for j := 0; j < 10; j++ {
+		names = append(names, fmt.Sprintf("%d", j+1))
+	}
+
+	sl, _ := i.rty.RegisterElementScroll("qux", names)
+	for range names {
+		sl.Add(TextString("abcd"))
+	}
+	i.Run("element scroll perfectly filled", 10, len(names), sl)
 }
 
 func TestTextScroll(t *testing.T) {
