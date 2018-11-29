@@ -1561,7 +1561,10 @@ func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
 	f.WaitUntil("manifests appear", func(st store.EngineState) bool {
 		return len(st.ManifestStates) == len(manifests) && st.WatchMounts == watchMounts
 	})
-	time.Sleep(5 * time.Millisecond)
+
+	f.PollUntil("watches setup", func() bool {
+		return !watchMounts || len(f.fwm.manifestWatches) == len(manifests)
+	})
 }
 
 func (f *testFixture) Stop() error {
