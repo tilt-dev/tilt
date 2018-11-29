@@ -113,6 +113,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 
 	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
 	if err != nil {
+		// TODO(dmiller): instead of returning, set the TiltfileError on state
 		return err
 	}
 
@@ -378,10 +379,7 @@ func handleConfigsReloaded(
 	err := event.Err
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
-
-		for _, ms := range state.ManifestStates {
-			ms.LastManifestLoadError = err
-		}
+		state.LastTiltfileError = err
 		return
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
@@ -407,6 +405,7 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+	state.LastTiltfileError = nil
 }
 
 // Get a pointer to a mutable manifest state,

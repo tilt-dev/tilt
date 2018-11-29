@@ -56,6 +56,8 @@ type EngineState struct {
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
+
+	LastTiltfileError error
 }
 
 type ManifestState struct {
@@ -457,6 +459,10 @@ func StateToView(s EngineState) view.View {
 	}
 
 	ret.Log = string(s.Log)
+
+	if s.LastTiltfileError != nil {
+		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
+	}
 
 	return ret
 }
