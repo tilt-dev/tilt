@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/pkg/browser"
-	"github.com/windmilleng/tcell"
-
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tcell"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/store"
@@ -163,6 +162,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				if escape() {
 					return true
 				}
+			case r == 'R': // hidden key for recovering from printf junk during demos
+				h.r.screen.Sync()
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()
