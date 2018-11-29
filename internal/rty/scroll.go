@@ -432,5 +432,5 @@ func (s *ElementScrollController) Top() {
 }
 
 func (s *ElementScrollController) Bottom() {
-	s.state.elementIdx = len(s.state.children)
+	s.state.elementIdx = len(s.state.children) - 1
 }

@@ -33,6 +33,9 @@ func TestElementScroll(t *testing.T) {
 		f.up()
 	}
 	f.run("scrolled all the way back up")
+
+	f.bottom()
+	f.run("jumped to bottom")
 }
 
 func TestTextScroll(t *testing.T) {
@@ -80,16 +83,25 @@ func (f *elementScrollTestFixture) layout() Component {
 	return l
 }
 
+func (f *elementScrollTestFixture) scroller() ElementScroller {
+	return f.i.rty.ElementScroller("items")
+}
+
 func (f *elementScrollTestFixture) run(name string) {
 	f.i.Run(name, 20, 10, f.layout())
 }
 
 func (f *elementScrollTestFixture) down() {
 	f.i.render(20, 10, f.layout())
-	f.i.rty.ElementScroller("items").Down()
+	f.scroller().Down()
 }
 
 func (f *elementScrollTestFixture) up() {
 	f.i.render(20, 10, f.layout())
-	f.i.rty.ElementScroller("items").Up()
+	f.scroller().Up()
+}
+
+func (f *elementScrollTestFixture) bottom() {
+	f.i.render(20, 10, f.layout())
+	f.scroller().Bottom()
 }
