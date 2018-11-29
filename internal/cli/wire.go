@@ -36,7 +36,6 @@ var BaseWireSet = wire.NewSet(
 	build.NewImageReaper,
 
 	engine.DeployerWireSet,
-	engine.DefaultShouldFallBack,
 	engine.NewPodLogManager,
 	engine.NewPortForwardController,
 	engine.NewBuildController,

@@ -14,7 +14,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -30,28 +29,6 @@ var imageID = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:
 var alreadyBuilt = store.BuildResult{Image: imageID}
 
 type expectedFile = testutils.ExpectedFile
-
-var dontFallBackErrStr = "don't fall back"
-
-func TestShouldImageBuild(t *testing.T) {
-	m := model.Mount{
-		LocalPath:     "asdf",
-		ContainerPath: "blah",
-	}
-	_, pathMapErr := build.FilesToPathMappings([]string{"a"}, []model.Mount{m})
-	if assert.Error(t, pathMapErr) {
-		assert.False(t, shouldImageBuild(pathMapErr))
-	}
-
-	s := model.Manifest{Name: "many errors"}
-	validateErr := s.Validate()
-	if assert.Error(t, validateErr) {
-		assert.False(t, shouldImageBuild(validateErr))
-	}
-
-	err := fmt.Errorf("hello world")
-	assert.True(t, shouldImageBuild(err))
-}
 
 func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
@@ -212,7 +189,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
-	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
@@ -229,10 +206,10 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	}
 }
 
-func TestNoFallbackForCertainErrors(t *testing.T) {
-	f := newBDFallbackFixture(t, k8s.EnvDockerDesktop)
+func TestNoFallbackForDontFallBackError(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	f.docker.ExecErrorToThrow = errors.New(dontFallBackErrStr)
+	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
 	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
@@ -447,22 +424,7 @@ type bdFixture struct {
 	bd     BuildAndDeployer
 }
 
-func shouldFallBack(err error) bool {
-	if strings.Contains(err.Error(), dontFallBackErrStr) {
-		return false
-	}
-	return true
-}
-
-func newBDFallbackFixture(t *testing.T, env k8s.Env) *bdFixture {
-	return newBDFixtureHelper(t, env, shouldFallBack)
-}
-
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
-	return newBDFixtureHelper(t, env, shouldImageBuild)
-}
-
-func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := docker.NewFakeDockerClient()
@@ -477,7 +439,7 @@ func newBDFixtureHelper(t *testing.T, env k8s.Env, fallbackFn FallbackTester) *b
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, mode, sCli, fallbackFn)
+	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, mode, sCli)
 	if err != nil {
 		t.Fatal(err)
 	}
