@@ -185,7 +185,10 @@ func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int,
 	heights = make([]int, len(l.cs))
 
 	for _, c := range fixedComponents {
-		w, h, err := alloc(c.c, width, height)
+		len, dep := whToLd(width, height, l.dir)
+		len -= allocatedLen
+		widthRemainder, heightRemainder := ldToWh(len, dep, l.dir)
+		w, h, err := alloc(c.c, widthRemainder, heightRemainder)
 		if err != nil {
 			return nil, nil, 0, 0, err
 		}
@@ -295,7 +298,7 @@ func NewFillerString(ch rune) *FillerString {
 }
 
 func (f *FillerString) Size(width int, height int) (int, int, error) {
-	return GROW, height, nil
+	return width, 1, nil
 }
 
 func (f *FillerString) Render(w Writer, width int, height int) error {

@@ -95,7 +95,7 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 }
 
 func keyLegend(vs view.ViewState) string {
-	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
+	defaultKeys := "(↓) next, (↑) prev ┊ (→) expand, (←) collapse, (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit "
 	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
 		return "SCROLL: (↓) (↑) ┊ (esc) to close logs "
 	} else if vs.AlertMessage != "" {
@@ -105,7 +105,7 @@ func keyLegend(vs view.ViewState) string {
 }
 
 func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
-	l := rty.NewLine()
+	footer := rty.NewConcatLayout(rty.DirHor)
 	sbLeft := rty.NewStringBuilder()
 	sbRight := rty.NewStringBuilder()
 
@@ -127,11 +127,12 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 	}
 	sbRight.Fg(cText).Text(keys).Fg(tcell.ColorDefault)
 
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
+	footer.Add(sbLeft.Build())
+	footer.Add(rty.TextString("   ")) // minimum 3 spaces between left and right
+	footer.AddDynamic(rty.NewFillerString(' '))
+	footer.Add(sbRight.Build())
 
-	return rty.NewFixedSize(rty.Bg(l, tcell.ColorWhiteSmoke), rty.GROW, 1)
+	return rty.NewFixedSize(rty.Bg(footer, tcell.ColorWhiteSmoke), rty.GROW, 1)
 }
 
 func isInError(res view.Resource) bool {
