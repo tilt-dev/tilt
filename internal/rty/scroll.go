@@ -327,10 +327,12 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 	next.firstVisibleElement = calculateFirstVisibleElement(next, heights, height)
 
 	y := 0
+	showDownArrow := false
 	for i, h := range heights {
 		if i >= next.firstVisibleElement {
 			if h > height-y {
 				h = height - y
+				showDownArrow = true
 			}
 			w, err := w.Divide(0, y, width-1, h)
 			if err != nil {
@@ -349,7 +351,7 @@ func (l *ElementScrollLayout) RenderStateful(w Writer, prevState interface{}, wi
 		scrollbarWriter.SetContent(0, 0, '↑', nil)
 	}
 
-	if y >= height {
+	if showDownArrow {
 		scrollbarWriter.SetContent(0, height-1, '↓', nil)
 	}
 
