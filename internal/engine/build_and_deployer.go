@@ -47,13 +47,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
-			// TODO(maia): this should be reactive (i.e. happen as a response to `BuildCompleteAction`
+			// TODO(maia): this should be reactive (i.e. happen as a response to `BuildCompleteAction`)
 			composite.PostProcessBuild(ctx, br, currentState.LastResult)
 			return br, err
 		}
 
 		if !shouldFallBackForErr(err) {
-			// We can't recover from this, so don't try to fall back
 			return store.BuildResult{}, err
 		}
 
