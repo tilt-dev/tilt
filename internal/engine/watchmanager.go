@@ -70,6 +70,7 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
+// TODO(dmiller) this needs to diff the files being watched as well
 func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []model.ManifestName) {
 	state := st.RLockState()
 	defer st.RUnlockState()
@@ -86,9 +87,26 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
-	for name := range w.manifestWatches {
-		if _, ok := manifestsToProcess[name]; !ok {
+	for name, mnc := range w.manifestWatches {
+		m, ok := manifestsToProcess[name]
+		if !ok {
 			teardown = append(teardown, name)
+			continue
+		}
+
+		if len(m.Dependencies()) != len(mnc.manifest.Dependencies()) {
+			teardown = append(teardown, name)
+			setup = append(setup, m)
+			continue
+		}
+
+		for i, d1 := range m.Dependencies() {
+			d2 := mnc.manifest.Dependencies()[i]
+			if d1 != d2 {
+				teardown = append(teardown, name)
+				setup = append(setup, m)
+				break
+			}
 		}
 	}
 
