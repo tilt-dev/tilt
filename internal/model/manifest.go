@@ -124,8 +124,9 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	portForwardsMatch := m1.portForwardsEqual(m2)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
+	dockerComposeEqual := m1.DcYAMLPath == m2.DcYAMLPath
 
-	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch
+	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch && dockerComposeEqual
 }
 
 func stringSlicesEqual(a, b []string) bool {
