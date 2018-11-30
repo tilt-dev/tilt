@@ -1515,7 +1515,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
 
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, watcher.newSub, bc, ic, gybc, cc, k8s)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
