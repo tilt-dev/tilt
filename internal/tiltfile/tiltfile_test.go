@@ -280,14 +280,16 @@ def blorgly_frontend():
 `)
 
 	manifests := f.LoadManifests("blorgly")
-	assert.Equal(t, "blorgly_backend", manifests[0].Name.String())
-	assert.Equal(t, 1, len(manifests[0].Repos))
-	assert.Equal(t, "", manifests[0].Repos[0].DockerignoreContents)
-	assert.Equal(t, "", manifests[0].Repos[0].GitignoreContents)
-	assert.Equal(t, "blorgly_frontend", manifests[1].Name.String())
-	assert.Equal(t, 1, len(manifests[1].Repos))
-	assert.Equal(t, "", manifests[1].Repos[0].DockerignoreContents)
-	assert.Equal(t, "", manifests[1].Repos[0].GitignoreContents)
+	if assert.Equal(t, 2, len(manifests)) {
+		assert.Equal(t, "blorgly_backend", manifests[0].Name.String())
+		assert.Equal(t, 1, len(manifests[0].Repos))
+		assert.Equal(t, "", manifests[0].Repos[0].DockerignoreContents)
+		assert.Equal(t, "", manifests[0].Repos[0].GitignoreContents)
+		assert.Equal(t, "blorgly_frontend", manifests[1].Name.String())
+		assert.Equal(t, 1, len(manifests[1].Repos))
+		assert.Equal(t, "", manifests[1].Repos[0].DockerignoreContents)
+		assert.Equal(t, "", manifests[1].Repos[0].GitignoreContents)
+	}
 }
 
 func TestGetManifestConfigUndefined(t *testing.T) {

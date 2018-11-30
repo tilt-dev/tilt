@@ -17,6 +17,7 @@ import (
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -224,7 +225,8 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 		return nil, err
 	}
 
-	var manifests []*k8sManifest
+	var kManifests []*k8sManifest
+	var dcManifests []*dcManifest
 
 	var v skylark.Value
 	i := manifestFuncs.Iterate()
@@ -236,19 +238,45 @@ func (t *Tiltfile) makeSkylarkCompositeManifest(thread *skylark.Thread, fn *skyl
 			if err != nil {
 				return nil, handleSkylarkErr(t.thread, err)
 			}
-			s, ok := r.(*k8sManifest)
-			if !ok {
-				return nil, fmt.Errorf("composite_service: function %v returned %v %T; expected k8s_service", v.Name(), r, r)
+
+			switch r := r.(type) {
+			case *k8sManifest:
+				r.name = v.Name()
+				kManifests = append(kManifests, r)
+			case *dcManifest:
+				dcManifests = append(dcManifests, r)
+			default:
+				return nil, fmt.Errorf("composite_service: function %v returned %v (%T); "+
+					"expected k8s_service or docker_compose_service", v.Name(), r, r)
 			}
-
-			s.name = v.Name()
-
-			manifests = append(manifests, s)
 		default:
 			return nil, fmt.Errorf("composite_service: unexpected input %v %T", v, v)
 		}
 	}
-	return compManifest{manifests}, nil
+	return compManifest{kManifests, dcManifests}, nil
+}
+
+func (t *Tiltfile) makeSkylarkDcManifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	ctx := getContext(thread)
+
+	var path skylark.String
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	// ~~ i still don't understand why path.String() returns it quoted / if there's a more idiomatic way
+	yamlPath, ok := skylark.AsString(path)
+	if !ok {
+		return nil, fmt.Errorf("couldn't AsString skylark.String: %v", path)
+	}
+
+	// TODO: support more than one docker-compose.yaml file
+	services, _, err := dockercompose.ParseConfig(ctx, []string{yamlPath})
+	if err != nil {
+		return nil, err
+	}
+	return &dcManifest{yamlPath: yamlPath, services: services}, nil
 }
 
 func (t *Tiltfile) makeSkylarkGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -418,6 +446,7 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 			logger.Get(ctx).Infof("%s", msg)
 		},
 	}
+	thread.SetLocal(contextKey, ctx)
 
 	filename, err := ospath.RealAbs(filename)
 	if err != nil {
@@ -430,19 +459,20 @@ func Load(ctx context.Context, filename string) (*Tiltfile, error) {
 	}
 
 	predeclared := skylark.StringDict{
-		"start_fast_build":  skylark.NewBuiltin("start_fast_build", tiltfile.makeSkylarkDockerImage),
-		"start_slow_build":  skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
-		"static_build":      skylark.NewBuiltin("static_build", tiltfile.makeStaticBuild),
-		"k8s_service":       skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
-		"local_git_repo":    skylark.NewBuiltin("local_git_repo", tiltfile.makeSkylarkGitRepo),
-		"local":             skylark.NewBuiltin("local", runLocalCmd),
-		"composite_service": skylark.NewBuiltin("composite_service", tiltfile.makeSkylarkCompositeManifest),
-		"read_file":         skylark.NewBuiltin("read_file", tiltfile.readFile),
-		"stop_build":        skylark.NewBuiltin("stop_build", stopBuild),
-		"add":               skylark.NewBuiltin("add", addMount),
-		"run":               skylark.NewBuiltin("run", tiltfile.runDockerImageCmd),
-		"kustomize":         skylark.NewBuiltin("kustomize", tiltfile.callKustomize),
-		"global_yaml":       skylark.NewBuiltin("global_yaml", tiltfile.globalYaml),
+		"start_fast_build":       skylark.NewBuiltin("start_fast_build", tiltfile.makeSkylarkDockerImage),
+		"start_slow_build":       skylark.NewBuiltin("start_slow_build", unimplementedSkylarkFunction),
+		"static_build":           skylark.NewBuiltin("static_build", tiltfile.makeStaticBuild),
+		"k8s_service":            skylark.NewBuiltin("k8s_service", makeSkylarkK8Manifest),
+		"local_git_repo":         skylark.NewBuiltin("local_git_repo", tiltfile.makeSkylarkGitRepo),
+		"local":                  skylark.NewBuiltin("local", runLocalCmd),
+		"composite_service":      skylark.NewBuiltin("composite_service", tiltfile.makeSkylarkCompositeManifest),
+		"docker_compose_service": skylark.NewBuiltin("docker_compose_service", tiltfile.makeSkylarkDcManifest),
+		"read_file":              skylark.NewBuiltin("read_file", tiltfile.readFile),
+		"stop_build":             skylark.NewBuiltin("stop_build", stopBuild),
+		"add":                    skylark.NewBuiltin("add", addMount),
+		"run":                    skylark.NewBuiltin("run", tiltfile.runDockerImageCmd),
+		"kustomize":              skylark.NewBuiltin("kustomize", tiltfile.callKustomize),
+		"global_yaml":            skylark.NewBuiltin("global_yaml", tiltfile.globalYaml),
 	}
 
 	globals, err := skylark.ExecFile(thread, filename, nil, predeclared)
@@ -542,6 +572,14 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 			manifests = append(manifests, m)
 		}
+
+		for _, dcMan := range manifest.dcManifest {
+			dcManifests, err := dcMan.toDomain()
+			if err != nil {
+				return nil, err
+			}
+			manifests = append(manifests, dcManifests...)
+		}
 	case *k8sManifest:
 		m, err := skylarkManifestToDomain(manifest)
 		if err != nil {
@@ -550,9 +588,15 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 
 		m.Name = model.ManifestName(manifestName)
 		manifests = append(manifests, m)
-
+	case *dcManifest:
+		dcManifests, err := manifest.toDomain()
+		if err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, dcManifests...)
 	default:
-		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return a k8s_service or composite_service", manifestName, val.Type())
+		return nil, fmt.Errorf("'%v' returned a '%v', but it needs to return one of:"+
+			"k8s_service, docker_compose_service, composite_service", manifestName, val.Type())
 	}
 
 	// Pull out Global YAML corresponding to manifest(s)
@@ -571,6 +615,11 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 // that correspond to the given manifest, and extracts and returns them. (Note
 // that this operation modifies the global YAML in place!)
 func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model.Manifest) (string, error) {
+	if m.IsDockerCompose() {
+		// No k8s YAML to worry about
+		return "", nil
+	}
+
 	gYAML, err := getGlobalYAML(t.thread)
 	if err != nil {
 		return "", err

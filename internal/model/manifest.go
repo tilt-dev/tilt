@@ -20,8 +20,14 @@ func (m ManifestName) String() string { return string(m) }
 type Manifest struct {
 	// Properties for all builds.
 	Name         ManifestName
-	k8sYaml      string
 	tiltFilename string
+
+	// Properties for Docker Compose manifests
+	// TODO(maia): pull out into separate type
+	DcYAMLPath string
+
+	// Properties for all k8s builds
+	k8sYaml      string
 	dockerRef    reference.Named
 	portForwards []PortForward
 	cachePaths   []string
@@ -43,6 +49,9 @@ type Manifest struct {
 }
 
 type DockerBuildArgs map[string]string
+
+// & m.k8sYaml == "" ?
+func (m Manifest) IsDockerCompose() bool { return m.DcYAMLPath != "" }
 
 func (m Manifest) WithCachePaths(paths []string) Manifest {
 	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)
@@ -70,41 +79,36 @@ func (m Manifest) LocalPaths() []string {
 	return result
 }
 
+// TODO: implement this (validate for container build)
 func (m Manifest) Validate() error {
-	err := m.validate()
-	if err != nil {
-		return err
+	if m.Name == "" {
+		return fmt.Errorf("[validate] manifest missing name: %+v", m)
+	}
+	for _, m := range m.Mounts {
+		if !filepath.IsAbs(m.LocalPath) {
+			return fmt.Errorf(
+				"[validate] mount.LocalPath must be an absolute path (got: %s)", m.LocalPath)
+		}
 	}
 	return nil
 }
 
-func (m Manifest) validate() *ValidateErr {
-	if m.Name == "" {
-		return validateErrf("[validate] manifest missing name: %+v", m)
-	}
-
+func (m Manifest) ValidateK8sManifest() error {
 	if m.dockerRef == nil {
-		return validateErrf("[validate] manifest %q missing image ref", m.Name)
+		return fmt.Errorf("[validate] manifest %q missing image ref", m.Name)
 	}
 
 	if m.K8sYAML() == "" {
-		return validateErrf("[validate] manifest %q missing k8s YAML", m.Name)
-	}
-
-	for _, m := range m.Mounts {
-		if !filepath.IsAbs(m.LocalPath) {
-			return validateErrf(
-				"[validate] mount.LocalPath must be an absolute path (got: %s)", m.LocalPath)
-		}
+		return fmt.Errorf("[validate] manifest %q missing k8s YAML", m.Name)
 	}
 
 	if m.IsStaticBuild() {
 		if m.StaticBuildPath == "" {
-			return validateErrf("[validate] manifest %q missing build path", m.Name)
+			return fmt.Errorf("[validate] manifest %q missing build path", m.Name)
 		}
 	} else {
 		if m.BaseDockerfile == "" {
-			return validateErrf("[validate] manifest %q missing base dockerfile", m.Name)
+			return fmt.Errorf("[validate] manifest %q missing base dockerfile", m.Name)
 		}
 	}
 
@@ -120,8 +124,9 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	portForwardsMatch := m1.portForwardsEqual(m2)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
+	dockerComposeEqual := m1.DcYAMLPath == m2.DcYAMLPath
 
-	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch
+	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch && dockerComposeEqual
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -428,19 +433,6 @@ func ToSteps(cwd string, cmds []Cmd) []Step {
 
 func ToShellSteps(cwd string, cmds []string) []Step {
 	return ToSteps(cwd, ToShellCmds(cmds))
-}
-
-// TODO(maia): remove this now that we have a more robust way of checking fallback errors
-type ValidateErr struct {
-	s string
-}
-
-func (e *ValidateErr) Error() string { return e.s }
-
-var _ error = &ValidateErr{}
-
-func validateErrf(format string, a ...interface{}) *ValidateErr {
-	return &ValidateErr{s: fmt.Sprintf(format, a...)}
 }
 
 type PortForward struct {

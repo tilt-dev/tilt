@@ -6,17 +6,17 @@
 package cli
 
 import (
-	"context"
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/demo"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"time"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	demo "github.com/windmilleng/tilt/internal/demo"
+	docker "github.com/windmilleng/tilt/internal/docker"
+	dockerfile "github.com/windmilleng/tilt/internal/dockerfile"
+	engine "github.com/windmilleng/tilt/internal/engine"
+	hud "github.com/windmilleng/tilt/internal/hud"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	store "github.com/windmilleng/tilt/internal/store"
+	time "time"
 )
 
 // Injectors from wire.go:
@@ -49,8 +49,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	reducer := _wireReducerValue
-	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	logActionsFlag2 := provideLogActions()
+	store2 := store.NewStore(reducer, logActionsFlag2)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -74,21 +74,22 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(dockerCli)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
+	updateModeFlag2 := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode)
-	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
+	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer()
+	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(dockerCli)
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
 	configsController := engine.NewConfigsController()
-	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, k8sClient)
-	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch)
+	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, k8sClient)
+	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, store2, branch)
 	return script, nil
 }
 
@@ -125,8 +126,8 @@ func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
 	}
 	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	reducer := _wireReducerValue
-	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	logActionsFlag2 := provideLogActions()
+	store2 := store.NewStore(reducer, logActionsFlag2)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -150,20 +151,21 @@ func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
 	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(dockerCli)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
+	updateModeFlag2 := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
 	if err != nil {
 		return HudAndUpper{}, err
 	}
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode)
-	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, env, updateMode)
+	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer()
+	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(dockerCli)
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
 	configsController := engine.NewConfigsController()
-	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, k8sClient)
+	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, k8sClient)
 	hudAndUpper := provideHudAndUpper(headsUpDisplay, upper)
 	return hudAndUpper, nil
 }

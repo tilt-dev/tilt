@@ -3,12 +3,15 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -63,5 +66,30 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	return kClient.Delete(ctx, entities)
+	err = kClient.Delete(ctx, entities)
+	if err != nil {
+		logger.Get(ctx).Infof("error deleting k8s entities: %v", err)
+	}
+
+	var dcManifests []model.Manifest
+	for _, m := range manifests {
+		if m.IsDockerCompose() {
+			dcManifests = append(dcManifests, m)
+		}
+	}
+
+	if len(dcManifests) > 0 {
+		// TODO(maia): when we support up-ing from multiple docker-compose files, we'll need to support down-ing as well
+		// TODO(maia): a way to `down` specific services?
+		cmd := exec.CommandContext(ctx, "docker-compose", "-f", dcManifests[0].DcYAMLPath, "down")
+		cmd.Stdout = logger.Get(ctx).Writer(logger.InfoLvl)
+		cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
+
+		err = cmd.Run()
+		err = dockercompose.FormatError(cmd, nil, err)
+		if err != nil {
+			logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)
+		}
+	}
+	return nil
 }

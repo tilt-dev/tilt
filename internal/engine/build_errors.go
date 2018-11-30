@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Nothing is on fire, this is an expected case like a container builder being
@@ -43,11 +42,6 @@ var _ error = DontFallBackError{}
 // A permanent error indicates that the whole build pipeline needs to stop.
 // It will never recover, even on subsequent rebuilds.
 func isPermanentError(err error) bool {
-	// TODO(maia): invalid manifests will soon no longer be cause to stop Tilt...
-	if _, ok := err.(*model.ValidateErr); ok {
-		return true
-	}
-
 	cause := errors.Cause(err)
 	if cause == context.Canceled {
 		return true
