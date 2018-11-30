@@ -127,7 +127,7 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 
 	curHeight := 0
 
-	printForTest(screen, curHeight, "y to accept, n to decline, d to highlight diff")
+	printForTest(screen, curHeight, "y: accept, n: reject, d: diff, q: quit")
 	curHeight++
 
 	printForTest(screen, curHeight, fmt.Sprintf("test: %s", name))
@@ -213,6 +213,10 @@ func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected C
 				return false, errors.New("user indicated expected output was not as desired")
 			case 'd':
 				highlightDiff = !highlightDiff
+			case 'q':
+				fmt.Println("User exited by pressing 'q'")
+				screen.Fini()
+				os.Exit(1)
 			}
 		}
 	}

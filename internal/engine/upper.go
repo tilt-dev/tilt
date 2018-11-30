@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -264,7 +265,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			p := logger.Red(l).Sprintf("Build Failed:")
 			l.Infof("%s %v", p, err)
 		} else {
-			return fmt.Errorf("Build Failed: %v", err)
+			return errors.Wrap(err, "Build Failed")
 		}
 	} else {
 		// Remove pending file changes that were consumed by this build.

@@ -1,7 +1,6 @@
 package tiltfile
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
@@ -37,7 +37,7 @@ func (compManifest) Truth() skylark.Bool {
 	return true
 }
 func (compManifest) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: composite manifest")
+	return 0, fmt.Errorf("unhashable type: composite manifest")
 }
 
 type k8sManifest struct {
@@ -74,7 +74,7 @@ func (k *k8sManifest) Truth() skylark.Bool {
 }
 
 func (k *k8sManifest) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: k8sManifest")
+	return 0, fmt.Errorf("unhashable type: k8sManifest")
 }
 
 func (k *k8sManifest) Attr(name string) (skylark.Value, error) {
@@ -179,15 +179,15 @@ func (t *Tiltfile) runDockerImageCmd(thread *skylark.Thread, fn *skylark.Builtin
 	}
 	buildContext, ok := thread.Local("buildContext").(*dockerImage)
 	if buildContext == nil {
-		return nil, errors.New("run called without a build context")
+		return nil, fmt.Errorf("run called without a build context")
 	}
 	if !ok {
-		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
+		return nil, fmt.Errorf("internal error: buildContext thread local was not of type *dockerImage")
 	}
 
 	cmd, ok := skylark.AsString(skylarkCmd)
 	if !ok {
-		return nil, errors.New("internal error: skylarkCmd was not a string")
+		return nil, fmt.Errorf("internal error: skylarkCmd was not a string")
 	}
 
 	var triggers []string
@@ -221,14 +221,14 @@ func addMount(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 
 	buildContext, ok := thread.Local("buildContext").(*dockerImage)
 	if buildContext == nil {
-		return nil, errors.New("add called without a build context")
+		return nil, fmt.Errorf("add called without a build context")
 	}
 	if !ok {
-		return nil, errors.New("internal error: buildContext thread local was not of type *dockerImage")
+		return nil, fmt.Errorf("internal error: buildContext thread local was not of type *dockerImage")
 	}
 
 	if len(buildContext.steps) > 0 {
-		return nil, errors.New("add mount before run command")
+		return nil, fmt.Errorf("add mount before run command")
 	}
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint)
 	if err != nil {
@@ -275,7 +275,7 @@ func (*dockerImage) Truth() skylark.Bool {
 }
 
 func (*dockerImage) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: dockerImage")
+	return 0, fmt.Errorf("unhashable type: dockerImage")
 }
 
 func (d *dockerImage) Attr(name string) (skylark.Value, error) {
@@ -303,7 +303,7 @@ func (d *dockerImage) cache(thread *skylark.Thread, fn *skylark.Builtin, args sk
 	}
 
 	if !filepath.IsAbs(path) {
-		return nil, fmt.Errorf("Must be an absolute path in the container: %s", path)
+		return nil, fmt.Errorf("must be an absolute path in the container: %s", path)
 	}
 
 	d.cachePaths = append(d.cachePaths, path)
@@ -324,7 +324,7 @@ func (t *Tiltfile) newGitRepo(path string) (gitRepo, error) {
 	absPath := t.absPath(path)
 	_, err := os.Stat(absPath)
 	if err != nil {
-		return gitRepo{}, fmt.Errorf("Reading path %s: %v", path, err)
+		return gitRepo{}, errors.Wrapf(err, "reading path %s", path)
 	}
 
 	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
@@ -363,7 +363,7 @@ func (gr gitRepo) Truth() skylark.Bool {
 }
 
 func (gitRepo) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: gitRepo")
+	return 0, fmt.Errorf("unhashable type: gitRepo")
 }
 
 func (gr gitRepo) Attr(name string) (skylark.Value, error) {
@@ -416,13 +416,13 @@ func (t *Tiltfile) localPathFromString(path string) (localPath, error) {
 	absPath := t.absPath(path)
 	_, err := os.Stat(absPath)
 	if err != nil {
-		return localPath{}, fmt.Errorf("Reading path %s: %v", path, err)
+		return localPath{}, errors.Wrapf(err, "reading path %s", path)
 	}
 
 	absDirPath := filepath.Dir(absPath)
 	_, err = os.Stat(filepath.Join(absDirPath, ".git"))
 	if err != nil && !os.IsNotExist(err) {
-		return localPath{}, fmt.Errorf("Reading path %s: %v", path, err)
+		return localPath{}, errors.Wrapf(err, "reading path %s", path)
 	}
 
 	hasGitDir := !os.IsNotExist(err)
@@ -454,7 +454,7 @@ func (localPath) Type() string {
 func (localPath) Freeze() {}
 
 func (localPath) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: localPath")
+	return 0, fmt.Errorf("unhashable type: localPath")
 }
 
 func (lp localPath) Truth() skylark.Bool {
