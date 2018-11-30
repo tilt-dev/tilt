@@ -182,7 +182,7 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
 
-	return r.renderLogModal(fmt.Sprintf("POD LOG: %s", res.Name), s, background)
+	return r.renderLogModal(fmt.Sprintf("LOG: %s", res.Name), s, background)
 }
 
 func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
