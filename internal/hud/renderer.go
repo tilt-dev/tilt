@@ -63,7 +63,6 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	split := rty.NewFlexLayout(rty.DirVert)
 
 	split.Add(r.renderResources(v, vs))
-	split.Add(r.renderTiltfileError(v))
 	split.Add(r.renderFooter(v, keyLegend(vs)))
 	l.Add(split)
 
@@ -224,6 +223,7 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 	}
 
 	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
+	l.Add(r.renderTiltfileError(v))
 
 	if len(rs) > 0 {
 		for i, res := range rs {
@@ -273,19 +273,14 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 }
 
 func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
-	l := rty.NewLines()
 	if v.TiltfileErrorMessage != "" {
-		sb := rty.NewStringBuilder()
-		sb.Textf("Error loading Tiltfile: %s", v.TiltfileErrorMessage)
-		l.Add(sb.Build())
-		for _, e := range strings.Split(v.TiltfileErrorMessage, "\n") {
-			sb := rty.NewStringBuilder()
-			sb.Textf("%s", e)
-			l.Add(sb.Build())
-		}
+		c := rty.NewConcatLayout(rty.DirVert)
+		c.Add(rty.TextString(v.TiltfileErrorMessage))
+		c.Add(rty.NewFillerString('—'))
+		return c
 	}
 
-	return l
+	return rty.NewLines()
 }
 
 func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res view.Resource) rty.Component {
