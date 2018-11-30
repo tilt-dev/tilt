@@ -110,15 +110,11 @@ type GlobalYAMLApplyStartedAction struct{}
 
 func (GlobalYAMLApplyStartedAction) Action() {}
 
-type GlobalYAMLApplyCompleteAction struct{}
-
-func (GlobalYAMLApplyCompleteAction) Action() {}
-
-type GlobalYAMLApplyError struct {
+type GlobalYAMLApplyCompleteAction struct {
 	Error error
 }
 
-func (GlobalYAMLApplyError) Action() {}
+func (GlobalYAMLApplyCompleteAction) Action() {}
 
 type HudStoppedAction struct {
 	err error

@@ -34,13 +34,13 @@ func (w *fakeMultiWatcher) newSub() (watch.Notify, error) {
 func (w *fakeMultiWatcher) getSubs() []chan watch.FileEvent {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.subs
+	return append([]chan watch.FileEvent{}, w.subs...)
 }
 
 func (w *fakeMultiWatcher) getSubErrors() []chan error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.subsErrors
+	return append([]chan error{}, w.subsErrors...)
 }
 
 func (w *fakeMultiWatcher) loop() {
