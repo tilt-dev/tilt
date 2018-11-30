@@ -633,7 +633,9 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
-		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
+		ms := store.NewManifestState(m)
+		ms.LastManifestLoadError = action.Err
+		engineState.ManifestStates[m.Name] = ms
 	}
 	engineState.WatchMounts = watchMounts
 
