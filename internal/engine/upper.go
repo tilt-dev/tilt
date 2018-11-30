@@ -197,8 +197,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleGlobalYAMLApplyStarted(ctx, state, action)
 	case GlobalYAMLApplyCompleteAction:
 		handleGlobalYAMLApplyComplete(ctx, state, action)
-	case GlobalYAMLApplyError:
-		handleGlobalYAMLApplyError(ctx, state, action)
 	case ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
@@ -344,21 +342,16 @@ func handleGlobalYAMLApplyComplete(
 	event GlobalYAMLApplyCompleteAction,
 ) {
 	ms := state.GlobalYAMLState
-	ms.HasBeenDeployed = true
 	ms.LastApplyFinishTime = time.Now()
 	ms.LastApplyDuration = time.Since(ms.CurrentApplyStartTime)
 	ms.CurrentApplyStartTime = time.Time{}
 
-	ms.LastSuccessfulApplyTime = time.Now()
-	ms.LastError = nil
-}
+	ms.LastError = event.Error
 
-func handleGlobalYAMLApplyError(
-	ctx context.Context,
-	state *store.EngineState,
-	event GlobalYAMLApplyError,
-) {
-	state.GlobalYAMLState.LastError = event.Error
+	if event.Error == nil {
+		ms.HasBeenDeployed = true
+		ms.LastSuccessfulApplyTime = time.Now()
+	}
 }
 
 func handleConfigsReloadStarted(

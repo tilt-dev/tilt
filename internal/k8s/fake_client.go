@@ -37,6 +37,8 @@ type FakeK8sClient struct {
 
 	LastForwardPortPodID      PodID
 	LastForwardPortRemotePort int
+
+	UpsertError error
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
@@ -56,6 +58,9 @@ func (c *FakeK8sClient) ConnectedToCluster(ctx context.Context) error {
 }
 
 func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
+	if c.UpsertError != nil {
+		return c.UpsertError
+	}
 	yaml, err := SerializeYAML(entities)
 	if err != nil {
 		return fmt.Errorf("kubectl apply: %v", err)
