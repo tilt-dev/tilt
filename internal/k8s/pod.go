@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,7 +76,7 @@ func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagge
 		LabelSelector: makeLabelSelector(labels),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("PodsWithImage: %v", err)
+		return nil, errors.Wrap(err, "PodsWithImage")
 	}
 
 	ip := podMap(podList)
@@ -114,7 +115,7 @@ func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, erro
 	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", podID.String(), jsonPath})
 
 	if err != nil {
-		return NodeID(""), fmt.Errorf("error finding node for pod '%s': %v, stderr: '%s'", podID.String(), err.Error(), stderr)
+		return NodeID(""), errors.Wrapf(err, "error finding node for pod '%s':\nstderr: '%s'", podID.String(), stderr)
 	}
 
 	lines := nonEmptyLines(stdout)
@@ -164,7 +165,7 @@ func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName str
 	stdout, stderr, err := k.kubectlRunner.exec(ctx, args)
 
 	if err != nil {
-		return PodID(""), fmt.Errorf("error finding app with %s: %v, stderr: '%s'", filterDesc, err.Error(), stderr)
+		return PodID(""), errors.Wrapf(err, "error finding app with %s:\nstderr: '%s'", filterDesc, stderr)
 	}
 
 	lines := nonEmptyLines(stdout)

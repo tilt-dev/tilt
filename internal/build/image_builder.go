@@ -107,7 +107,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 	df := baseDockerfile
 	df, steps, err := d.addConditionalSteps(df, steps, paths)
 	if err != nil {
-		return nil, fmt.Errorf("BuildImageFromScratch: %v", err)
+		return nil, errors.Wrapf(err, "BuildImageFromScratch")
 	}
 
 	df = df.AddAll()
@@ -132,7 +132,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 	// already handled by the watch loop.
 	df, err := d.addMountsAndRemovedFiles(ctx, df, paths)
 	if err != nil {
-		return nil, fmt.Errorf("BuildImageFromExisting: %v", err)
+		return nil, errors.Wrap(err, "BuildImageFromExisting")
 	}
 
 	df = d.addRemainingSteps(df, steps)
@@ -200,7 +200,7 @@ func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df do
 	df = df.AddAll()
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return "", fmt.Errorf("addMounts: %v", err)
+		return "", errors.Wrap(err, "addMounts")
 	}
 
 	toRemovePaths := make([]string, len(toRemove))
@@ -223,17 +223,17 @@ func (d *dockerImageBuilder) addRemainingSteps(df dockerfile.Dockerfile, remaini
 func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
 	tag, err := digestAsTag(dig)
 	if err != nil {
-		return nil, fmt.Errorf("TagImage: %v", err)
+		return nil, errors.Wrap(err, "TagImage")
 	}
 
 	namedTagged, err := reference.WithTag(ref, tag)
 	if err != nil {
-		return nil, fmt.Errorf("TagImage: %v", err)
+		return nil, errors.Wrap(err, "TagImage")
 	}
 
 	err = d.dcli.ImageTag(ctx, dig.String(), namedTagged.String())
 	if err != nil {
-		return nil, fmt.Errorf("TagImage#ImageTag: %v", err)
+		return nil, errors.Wrap(err, "TagImage#ImageTag")
 	}
 
 	return namedTagged, nil
@@ -254,7 +254,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
-		return nil, fmt.Errorf("PushImage#ParseRepositoryInfo: %s", err)
+		return nil, errors.Wrap(err, "PushImage#ParseRepositoryInfo")
 	}
 
 	l.Infof("%sconnecting to repository", prefix)
@@ -262,14 +262,14 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {
-		return nil, fmt.Errorf("PushImage#InitializeCLI: %s", err)
+		return nil, errors.Wrap(err, "PushImage#InitializeCLI")
 	}
 	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
 
 	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
 	if err != nil {
-		return nil, fmt.Errorf("PushImage#EncodeAuthToBase64: %s", err)
+		return nil, errors.Wrap(err, "PushImage#EncodeAuthToBase64")
 	}
 
 	options := types.ImagePushOptions{
@@ -278,7 +278,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	}
 
 	if reference.Domain(ref) == "" {
-		return nil, fmt.Errorf("PushImage: no domain in container name: %s", ref)
+		return nil, errors.Wrap(err, "PushImage: no domain in container name")
 	}
 
 	l.Infof("%spushing the image", prefix)
@@ -287,7 +287,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 		ref.String(),
 		options)
 	if err != nil {
-		return nil, fmt.Errorf("PushImage#ImagePush: %v", err)
+		return nil, errors.Wrap(err, "PushImage#ImagePush")
 	}
 
 	defer func() {
@@ -298,7 +298,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	}()
 	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse, writer)
 	if err != nil {
-		return nil, fmt.Errorf("Pushing image %q: %v", ref.Name(), err)
+		return nil, errors.Wrapf(err, "pushing image %q", ref.Name())
 	}
 
 	return ref, nil
@@ -343,17 +343,17 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		return nil, errors.Wrap(err, "ImageBuild")
 	}
 	if result == nil {
-		return nil, fmt.Errorf("Unable to read docker output: result is nil")
+		return nil, fmt.Errorf("unable to read docker output: result is nil")
 	}
 
 	digest, err := getDigestFromAux(*result)
 	if err != nil {
-		return nil, fmt.Errorf("getDigestFromAux: %v", err)
+		return nil, errors.Wrap(err, "getDigestFromAux")
 	}
 
 	nt, err := d.TagImage(ctx, ref, digest)
 	if err != nil {
-		return nil, fmt.Errorf("PushImage: %v", err)
+		return nil, errors.Wrap(err, "PushImage")
 	}
 
 	return nt, nil
@@ -385,7 +385,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 		message := jsonmessage.JSONMessage{}
 		err := decoder.Decode(&message)
 		if err != nil {
-			return nil, fmt.Errorf("decoding docker output: %v", err)
+			return nil, errors.Wrap(err, "decoding docker output")
 		}
 
 		if len(message.Stream) > 0 {
@@ -489,7 +489,7 @@ func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader
 	dig := pushOutput{}
 	err = json.Unmarshal(*aux, &dig)
 	if err != nil {
-		return "", fmt.Errorf("getDigestFromPushOutput#Unmarshal: %v, json string: %+v", err, aux)
+		return "", errors.Wrapf(err, "getDigestFromPushOutput#Unmarshal: json string: %+v", aux)
 	}
 
 	if dig.Digest == "" {
@@ -503,7 +503,7 @@ func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
 	digestMap := make(map[string]string, 0)
 	err := json.Unmarshal(aux, &digestMap)
 	if err != nil {
-		return "", fmt.Errorf("getDigestFromAux: %v", err)
+		return "", errors.Wrap(err, "getDigestFromAux")
 	}
 
 	id, ok := digestMap["ID"]
@@ -516,7 +516,7 @@ func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
 func digestAsTag(d digest.Digest) (string, error) {
 	str := d.Encoded()
 	if len(str) < 16 {
-		return "", fmt.Errorf("Digest too short: %s", str)
+		return "", fmt.Errorf("digest too short: %s", str)
 	}
 	return fmt.Sprintf("%s%s", ImageTagPrefix, str[:16]), nil
 }

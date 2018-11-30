@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/docker/distribution/reference"
@@ -50,7 +51,7 @@ func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Ti
 
 	summaries, err := r.docker.ImageList(ctx, listOptions)
 	if err != nil {
-		return fmt.Errorf("RemoveTiltImages: %v", err)
+		return errors.Wrap(err, "RemoveTiltImages")
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -76,7 +77,7 @@ func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Ti
 
 	err = g.Wait()
 	if err != nil {
-		return fmt.Errorf("RemoveTiltImages: %v", err)
+		return errors.Wrap(err, "RemoveTiltImages")
 	}
 	return err
 }

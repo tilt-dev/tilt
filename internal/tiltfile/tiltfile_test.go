@@ -518,7 +518,7 @@ func TestAddMissingDir(t *testing.T) {
 
 	err := f.LoadManifestForError("blorgly")
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Reading path ./garbage")
+		assert.Contains(t, err.Error(), "reading path ./garbage")
 		assert.Contains(t, err.Error(), "Tiltfile:3: in blorgly")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 
@@ -63,9 +64,9 @@ func (s Synclet) rmFiles(ctx context.Context, containerId container.ID, filesToD
 	if err != nil {
 		dockerExitErr, ok := err.(docker.ExitError)
 		if ok {
-			return fmt.Errorf("Error deleting files. error '%v', exit code %d, output '%s'", err, dockerExitErr.ExitCode, out.String())
+			return errors.Wrapf(err, "Error deleting files. exit code %d, output '%s'", dockerExitErr.ExitCode, out.String())
 		}
-		return fmt.Errorf("Error deleting files: %v", err)
+		return errors.Wrap(err, "Error deleting files")
 	}
 	return nil
 }

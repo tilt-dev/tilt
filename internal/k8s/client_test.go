@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,7 +62,7 @@ type fakeKubectlRunner struct {
 func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
 	b, err := ioutil.ReadAll(stdin)
 	if err != nil {
-		return "", "", fmt.Errorf("reading stdin: %v", err)
+		return "", "", errors.Wrap(err, "reading stdin")
 	}
 	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
 

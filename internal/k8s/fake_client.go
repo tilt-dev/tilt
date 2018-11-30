@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +64,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 	}
 	yaml, err := SerializeYAML(entities)
 	if err != nil {
-		return fmt.Errorf("kubectl apply: %v", err)
+		return errors.Wrap(err, "kubectl apply")
 	}
 	c.Yaml = yaml
 	return nil
@@ -72,7 +73,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	yaml, err := SerializeYAML(entities)
 	if err != nil {
-		return fmt.Errorf("kubectl delete: %v", err)
+		return errors.Wrap(err, "kubectl delete")
 	}
 	c.DeletedYaml = yaml
 	return nil
