@@ -34,7 +34,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 
 	err = cmd.Run()
-	err = dockercompose.NiceError(cmd, nil, err)
+	err = dockercompose.FormatError(cmd, nil, err)
 	return store.BuildResult{}, err
 }
 

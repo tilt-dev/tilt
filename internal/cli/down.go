@@ -86,7 +86,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 
 		err = cmd.Run()
-		err = dockercompose.NiceError(cmd, nil, err)
+		err = dockercompose.FormatError(cmd, nil, err)
 		if err != nil {
 			logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)
 		}

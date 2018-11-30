@@ -18,13 +18,13 @@ func ParseConfig(ctx context.Context, files []string) ([]Service, []string, erro
 		args = append(args, "-f", f)
 	}
 	args = append(args, "config")
-	_, err := DcOutput(ctx, args...)
+	_, err := dcOutput(ctx, args...)
 	if err != nil {
 		return nil, files, err
 	}
 
 	args = append(args, "--services")
-	servicesText, err := DcOutput(ctx, args...)
+	servicesText, err := dcOutput(ctx, args...)
 	if err != nil {
 		return nil, files, err
 	}
@@ -43,7 +43,7 @@ func ParseConfig(ctx context.Context, files []string) ([]Service, []string, erro
 	return services, files, nil
 }
 
-func DcOutput(ctx context.Context, args ...string) (string, error) {
+func dcOutput(ctx context.Context, args ...string) (string, error) {
 	output, err := exec.CommandContext(ctx, "docker-compose", args...).Output()
 	if err != nil {
 		errorMessage := fmt.Sprintf("command 'docker-compose %q' failed.\nerror: '%v'\nstdout: '%v'", args, err, string(output))
@@ -55,7 +55,7 @@ func DcOutput(ctx context.Context, args ...string) (string, error) {
 	return string(output), err
 }
 
-func NiceError(cmd *exec.Cmd, stdout []byte, err error) error {
+func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
 	if err == nil {
 		return nil
 	}

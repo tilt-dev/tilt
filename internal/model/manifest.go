@@ -23,6 +23,7 @@ type Manifest struct {
 	tiltFilename string
 
 	// Properties for Docker Compose manifests
+	// TODO(maia): pull out into separate type
 	DcYAMLPath string
 
 	// Properties for all k8s builds
