@@ -477,3 +477,16 @@ func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
 	}
 	return pod.Log()
 }
+
+// DockerComposeYAMLPath returns the path to the docker-compose yaml file of any
+// docker-compose manifests on this EngineState.
+// NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
+// path from the first d-c manifest we see.
+func (s EngineState) DockerComposeYAMLPath() string {
+	for _, ms := range s.ManifestStates {
+		if ms.Manifest.DcYAMLPath != "" {
+			return ms.Manifest.DcYAMLPath
+		}
+	}
+	return ""
+}

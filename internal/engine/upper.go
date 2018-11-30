@@ -64,7 +64,8 @@ func ProvideTimerMaker() timerMaker {
 
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController, kcli k8s.Client) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
+	kcli k8s.Client, dcw *DockerComposeWatcher) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -76,6 +77,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
 	st.AddSubscriber(cc)
+	st.AddSubscriber(dcw)
 
 	return Upper{
 		store: st,
@@ -641,9 +643,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
-		ms := store.NewManifestState(m)
-		ms.LastManifestLoadError = action.Err
-		engineState.ManifestStates[m.Name] = ms
+		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
 	}
 	engineState.WatchMounts = watchMounts
 
