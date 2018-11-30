@@ -273,13 +273,18 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 }
 
 func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
-	l := rty.NewLine()
-	sb := rty.NewStringBuilder()
+	l := rty.NewLines()
 	if v.TiltfileErrorMessage != "" {
+		sb := rty.NewStringBuilder()
 		sb.Textf("Error loading Tiltfile: %s", v.TiltfileErrorMessage)
+		l.Add(sb.Build())
+		for _, e := range strings.Split(v.TiltfileErrorMessage, "\n") {
+			sb := rty.NewStringBuilder()
+			sb.Textf("%s", e)
+			l.Add(sb.Build())
+		}
 	}
 
-	l.Add(sb.Build())
 	return l
 }
 
