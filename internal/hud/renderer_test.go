@@ -102,10 +102,9 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "a-a-a-aaaaabe vigoda",
-				LastManifestLoadError: "broken tiltfile!",
-				LastBuildError:        "broken go code!",
-				LastBuildLog:          "mashing keys is not a good way to generate code",
+				Name:           "a-a-a-aaaaabe vigoda",
+				LastBuildError: "broken go code!",
+				LastBuildLog:   "mashing keys is not a good way to generate code",
 			},
 		},
 	}
@@ -291,6 +290,17 @@ func TestRenderNarrationMessage(t *testing.T) {
 	}
 
 	rtf.run("narration message", 60, 20, v, vs)
+}
+
+func TestRenderTiltfileError(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	v := view.View{
+		TiltfileErrorMessage: "Tiltfile error!",
+	}
+
+	vs := view.ViewState{}
+
+	rtf.run("tiltfile error", 60, 20, v, vs)
 }
 
 type rendererTestFixture struct {
