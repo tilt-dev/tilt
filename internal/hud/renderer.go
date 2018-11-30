@@ -2,6 +2,7 @@ package hud
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -352,30 +353,41 @@ type buildStatus struct {
 	status      string
 	statusColor tcell.Color
 	editsPrefix string
-	edits       string
+	edits       []string
 	duration    string
+}
+
+func addEdits(c *rty.ConcatLayout, edits []string) {
+	if len(edits) > 0 {
+		l := rty.NewLine()
+		l.Add(rty.TextString(path.Base(edits[0])))
+		c.AddDynamic(l)
+		edits = edits[1:]
+		if len(edits) > 0 {
+			c.Add(rty.TextString(fmt.Sprintf(" (+%d more)", len(edits))))
+		}
+	}
 }
 
 func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lines := rty.NewLines()
-	l := rty.NewLine()
-	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
+	l := rty.NewConcatLayout(rty.DirHor)
 
 	indent := strings.Repeat(" ", 8)
-
 	bs := r.makeBuildStatus(res)
+	sb := rty.NewStringBuilder()
+	sb.Fg(bs.statusColor).Textf("%s●", indent)
+	sb.Fg(cLightText).Text(" TILT: ")
+	sb.Fg(tcell.ColorDefault).Text(bs.status)
+	sb.Fg(cLightText).Text(bs.editsPrefix)
+	l.Add(sb.Build())
+	addEdits(l, bs.edits)
 
-	sbLeft.Fg(bs.statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(bs.status)
+	right := rty.NewStringBuilder()
+	right.Text(" ").Fg(cLightText).Text("DURATION ")
+	right.Fg(tcell.ColorDefault).Textf("%s           ", bs.duration) // Last char cuts off
+	l.AddRight(right.Build())
 
-	sbLeft.Fg(cLightText).Text(bs.editsPrefix).Fg(tcell.ColorDefault).Text(bs.edits)
-	sbRight.Fg(cLightText).Text("DURATION ")
-	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", bs.duration) // Last char cuts off
-
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
 	lines.Add(l)
 	lines.Add(r.lastBuildLogs(res, rv))
 	return lines
@@ -404,7 +416,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 	if !res.LastDeployTime.IsZero() {
 		if len(res.LastDeployEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
-			bs.edits = formatFileList(res.LastDeployEdits)
+			bs.edits = res.LastDeployEdits
 		}
 	}
 
@@ -416,7 +428,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		}
 		if len(res.CurrentBuildEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
-			bs.edits = formatFileList(res.CurrentBuildEdits)
+			bs.edits = res.CurrentBuildEdits
 		}
 	}
 
@@ -428,7 +440,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		}
 		if len(res.PendingBuildEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
-			bs.edits = formatFileList(res.PendingBuildEdits)
+			bs.edits = res.PendingBuildEdits
 		}
 	}
 

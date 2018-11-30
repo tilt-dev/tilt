@@ -227,6 +227,17 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		},
 	}
 	rtf.run("pending build", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:            "vigoda",
+				LastDeployTime:  ts.Add(-5 * time.Second),
+				LastDeployEdits: []string{"abbot.go", "costello.go", "harold.go"},
+			},
+		},
+	}
+	rtf.run("edited files wrap", 60, 20, v, plainVs)
 }
 
 func TestRenderTiltLog(t *testing.T) {
