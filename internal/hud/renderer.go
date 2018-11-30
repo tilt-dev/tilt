@@ -119,15 +119,24 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 	if errorCount == 0 && v.TiltfileErrorMessage == "" {
 		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
 	} else {
+		var errorCountMessage string
+		var tiltfileError strings.Builder
 		s := "error"
 		if errorCount > 1 {
 			s = "errors"
 		}
-		if v.TiltfileErrorMessage != "" {
-			sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" Error executing Tiltfile").Fg(tcell.ColorDefault)
-		} else {
-			sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf(" %d %s", errorCount, s).Fg(tcell.ColorDefault)
+
+		if errorCount > 0 {
+			errorCountMessage = fmt.Sprintf(" %d %s", errorCount, s)
 		}
+
+		if v.TiltfileErrorMessage != "" {
+			_, err := tiltfileError.WriteString(" • Error executing Tiltfile")
+			if err != nil {
+				// This space intentionally left blank
+			}
+		}
+		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
 	}
 	sbRight.Fg(cText).Text(keys).Fg(tcell.ColorDefault)
 
@@ -275,6 +284,7 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
 	if v.TiltfileErrorMessage != "" {
 		c := rty.NewConcatLayout(rty.DirVert)
+		c.Add(rty.TextString("Error executing Tiltfile:"))
 		c.Add(rty.TextString(v.TiltfileErrorMessage))
 		c.Add(rty.NewFillerString('—'))
 		return c
