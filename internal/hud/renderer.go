@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tcell"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -164,6 +165,14 @@ func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty
 }
 
 func bestLogs(res view.Resource) string {
+	// ~~ TEMPORARY: just view the logs for a dc resource:
+	if res.IsDCManifest {
+		if res.LastBuildStartTime.Before(res.PodCreationTime) &&
+			len(strings.TrimSpace(res.LastBuildLog)) > 0 {
+			return res.LastBuildLog + "\n\n" + res.Log
+		}
+		return res.Log
+	}
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
 		!res.CurrentBuildReason.IsCrashOnly() {
@@ -183,10 +192,10 @@ func bestLogs(res view.Resource) string {
 	// The last build finished, so prepend them to pod logs.
 	if res.LastBuildStartTime.Before(res.PodCreationTime) &&
 		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
-		return res.LastBuildLog + "\n\n" + res.PodLog
+		return res.LastBuildLog + "\n\n" + res.Log
 	}
 
-	return res.PodLog
+	return res.Log
 }
 
 func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
@@ -276,6 +285,10 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	if l := r.resourceK8s(res, rv); l != nil {
 		layout.Add(l)
 	}
+	if l := r.resourceDC(res, rv); l != nil {
+		layout.Add(l)
+	}
+	// TODO: should be able to add either k8s logs or DC logs
 	layout.Add(r.resourceK8sLogs(res, rv))
 	layout.Add(r.resourceTilt(res, rv))
 	return layout
@@ -321,7 +334,7 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 }
 
 func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty.Component {
-	if res.IsYAMLManifest {
+	if res.IsYAMLManifest || res.IsDCManifest {
 		return nil
 	}
 
@@ -367,6 +380,44 @@ func (r *Renderer) resourceK8s(res view.Resource, rv view.ResourceViewState) rty
 	}
 
 	sbLeft.Fg(cLightText).Textf("K8S: ").Fg(tcell.ColorDefault).Text(status)
+
+	l.Add(sbLeft.Build())
+	l.Add(rty.NewFillerString(' '))
+	l.Add(sbRight.Build())
+	return l
+}
+
+func (r *Renderer) resourceDC(res view.Resource, rv view.ResourceViewState) rty.Component {
+	if !res.IsDCManifest {
+		return nil
+	}
+
+	l := rty.NewLine()
+	sbLeft := rty.NewStringBuilder()
+	sbRight := rty.NewStringBuilder()
+	status := r.spinner()
+	if !res.LastBuildFinishTime.Equal(time.Time{}) && res.LastDeployTime.Equal(time.Time{}) {
+		// We have a finished build but aren't deployed, because the build is broken
+		status = "N/A"
+	}
+	indent := strings.Repeat(" ", 8)
+
+	dcStatusColor := cLightText
+	if res.DCState == dockercompose.StateInProg {
+		dcStatusColor = cPending
+	} else if res.DCState == dockercompose.StateUp {
+		dcStatusColor = cGood
+	} else if res.DCState == dockercompose.StateDown {
+		dcStatusColor = cBad
+	}
+
+	sbLeft.Fg(dcStatusColor).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
+
+	if res.DCState != "" {
+		status = res.DCState
+	}
+
+	sbLeft.Fg(cLightText).Textf("DC: ").Fg(tcell.ColorDefault).Text(status)
 
 	l.Add(sbLeft.Build())
 	l.Add(rty.NewFillerString(' '))
@@ -466,7 +517,7 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 	needsSpacer := false
 	if !rv.IsCollapsed {
 		if isCrashing(res) {
-			podLog := res.PodLog
+			podLog := res.Log
 			if podLog == "" {
 				podLog = res.CrashLog
 			}

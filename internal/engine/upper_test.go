@@ -1539,8 +1539,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
+	dcw := NewDockerComposeWatcher()
 
-	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

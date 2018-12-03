@@ -63,7 +63,8 @@ func ProvideTimerMaker() timerMaker {
 
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController, kcli k8s.Client) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
+	kcli k8s.Client, dcw *DockerComposeWatcher) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -75,6 +76,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
 	st.AddSubscriber(cc)
+	st.AddSubscriber(dcw)
 
 	return Upper{
 		store: st,
@@ -190,6 +192,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
+	case DockerComposeEventAction:
+		handleDockerComposeEvent(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -646,6 +650,25 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 		state.PermanentError = action.Err
 	} else {
 		state.UserExited = true
+	}
+}
+
+func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {
+	evt := action.Event
+	mn := evt.Service
+	ms, ok := engineState.ManifestStates[model.ManifestName(mn)]
+	if !ok {
+		// No corresponding manifest, nothing to do
+		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
+		return
+	}
+
+	// For now, just guess at state.
+	state, ok := evt.GuessState()
+	logger.Get(ctx).Infof("guessing state for %s event: %s", evt.Type, evt.Action)
+	if ok {
+		logger.Get(ctx).Infof("state is probably: %s", state)
+		ms.DCInfo.State = state
 	}
 }
 
