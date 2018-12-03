@@ -95,10 +95,10 @@
             
             
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Expanding a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">From Skaffold</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
@@ -174,14 +174,14 @@
 <div class="section" id="before-you-begin">
 <span id="before-you-begin"></span><h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference external" href="quickstart.html">Install Tilt</a></li>
+<li><a class="reference external" href="install.html">Install Tilt</a></li>
 <li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
 </ul>
 </div>
 <div class="section" id="differences-between-skaffold-and-tilt">
 <span id="differences-between-skaffold-and-tilt"></span><h2>Differences between Skaffold and Tilt<a class="headerlink" href="#differences-between-skaffold-and-tilt" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Skaffold streams the logs for services it started. Tilt provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.</li>
+<li>Skaffold streams the logs for all services it started. We found one combined stream of all services difficult to use and understand for anything beyond the most simple apps. Tilt instead provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.</li>
 <li>Skaffold is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called <a class="reference external" href="https://github.com/bazelbuild/starlark#tour&gt;">Starlark</a>.</li>
 </ul>
 </div>
