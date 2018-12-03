@@ -157,7 +157,7 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 		return nil, fmt.Errorf("k8s_resource: name must not be empty")
 	}
 	if s.k8sByName[name] != nil {
-		return nil, fmt.Errorf("resource named %q has already been defined: %q", name)
+		return nil, fmt.Errorf("resource named %q has already been defined", name)
 	}
 
 	yamlPath, err := s.localPathFromSkylarkValue(yamlValue)
