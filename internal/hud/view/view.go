@@ -38,7 +38,8 @@ type Resource struct {
 	PodRestarts     int
 	Endpoints       []string
 
-	// Relevant to docker-compose resources (maybe should accomplish via interface?)
+	// Relevant to docker-compose resources
+	// TODO(maia): store as separate type
 	IsDCManifest bool
 	DCYamlPath   string
 	DCState      string
