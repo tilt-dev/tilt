@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -21,7 +22,7 @@ func TestLogs(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.PodLogs = "hello world!"
+	f.kClient.SetLogs("hello world!")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
@@ -47,7 +48,7 @@ func TestLogActions(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.PodLogs = "hello world!\ngoodbye world!\n"
+	f.kClient.SetLogs("hello world!\ngoodbye world!\n")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
@@ -97,7 +98,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.PodLogs = "hello world!\n"
+	f.kClient.SetLogs("hello world!\n")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
@@ -118,12 +119,59 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.kClient.PodLogs = "goodbye world!\n"
+	f.kClient.SetLogs("goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
 	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestLogsTruncatedWhenCanceled(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	logs := bytes.NewBuffer(nil)
+	f.kClient.PodLogs = k8s.BufferCloser{Buffer: logs}
+
+	state := f.store.LockMutableStateForTesting()
+	state.WatchMounts = true
+	state.ManifestStates["server"] = &store.ManifestState{
+		Manifest: model.Manifest{Name: "server"},
+		PodSet: store.NewPodSet(store.Pod{
+			PodID:         "pod-id",
+			ContainerName: "cname",
+			ContainerID:   "cid",
+			Phase:         v1.PodRunning,
+		}),
+	}
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
+	logs.Write([]byte("hello world!\n"))
+	err := f.out.WaitUntilContains("hello world!\n", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state = f.store.LockMutableStateForTesting()
+	state.ManifestStates["server"] = &store.ManifestState{
+		Manifest: model.Manifest{Name: "server"},
+		PodSet: store.NewPodSet(store.Pod{
+			PodID:         "pod-id",
+			ContainerName: "cname",
+			ContainerID:   "",
+			Phase:         v1.PodRunning,
+		}),
+	}
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
+
+	logs.Write([]byte("goodbye world!\n"))
+	time.Sleep(10 * time.Millisecond)
+
+	assert.NotContains(t, f.out.String(), "goodbye")
 }
 
 type plmFixture struct {

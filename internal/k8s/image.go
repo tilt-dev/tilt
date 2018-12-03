@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 )
 
@@ -121,7 +122,7 @@ func FindImageRefMatching(pod v1.PodSpec, ref reference.Named) (reference.Named,
 	for _, container := range pod.Containers {
 		cRef, err := reference.ParseNormalizedNamed(container.Image)
 		if err != nil {
-			return nil, fmt.Errorf("FindImageRefMatching: %v", err)
+			return nil, errors.Wrap(err, "FindImageRefMatching")
 		}
 
 		if cRef.Name() == ref.Name() {

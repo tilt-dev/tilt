@@ -56,6 +56,8 @@ type EngineState struct {
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
+
+	LastTiltfileError error
 }
 
 type ManifestState struct {
@@ -70,18 +72,16 @@ type ManifestState struct {
 	PendingManifestChange time.Time
 	StartedFirstBuild     bool
 
-	CurrentlyBuildingFileChanges []string
-	CurrentlyBuildingReason      BuildReason
+	CurrentBuildEdits     []string
+	CurrentBuildStartTime time.Time
+	CurrentBuildLog       []byte `testdiff:"ignore"`
+	CurrentBuildReason    model.BuildReason
 
-	CurrentBuildStartTime     time.Time
-	CurrentBuildLog           []byte `testdiff:"ignore"`
-	CurrentBuildReason        BuildReason
-	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
 	LastBuildStartTime        time.Time
 	LastBuildFinishTime       time.Time
-	LastBuildReason           BuildReason
+	LastBuildReason           model.BuildReason
 	LastSuccessfulDeployTime  time.Time
 	LastBuildDuration         time.Duration
 	LastBuildLog              []byte `testdiff:"ignore"`
@@ -90,6 +90,10 @@ type ManifestState struct {
 	ExpectedContainerID container.ID
 	// We detected stale code and are currently doing an image build
 	NeedsRebuildFromCrash bool
+
+	// If a pod had to be killed because it was crashing, we keep the old log
+	// around for a little while so we can show it in the UX.
+	CrashLog string
 }
 
 func NewState() *EngineState {
@@ -113,19 +117,19 @@ func (ms *ManifestState) MostRecentPod() Pod {
 	return ms.PodSet.MostRecentPod()
 }
 
-func (ms *ManifestState) NextBuildReason() BuildReason {
-	reason := BuildReasonNone
+func (ms *ManifestState) NextBuildReason() model.BuildReason {
+	reason := model.BuildReasonNone
 	if len(ms.PendingFileChanges) > 0 {
-		reason = reason.With(BuildReasonFlagMountFiles)
+		reason = reason.With(model.BuildReasonFlagMountFiles)
 	}
 	if !ms.PendingManifestChange.IsZero() {
-		reason = reason.With(BuildReasonFlagConfig)
+		reason = reason.With(model.BuildReasonFlagConfig)
 	}
 	if !ms.StartedFirstBuild {
-		reason = reason.With(BuildReasonFlagInit)
+		reason = reason.With(model.BuildReasonFlagInit)
 	}
 	if ms.NeedsRebuildFromCrash {
-		reason = reason.With(BuildReasonFlagCrash)
+		reason = reason.With(model.BuildReasonFlagCrash)
 	}
 	return reason
 }
@@ -368,7 +372,7 @@ func StateToView(s EngineState) view.View {
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
 		lastDeployEdits := shortenFileList(absWatchDirs, ms.LastSuccessfulDeployEdits)
-		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentlyBuildingFileChanges)
+		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentBuildEdits)
 
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
@@ -376,11 +380,6 @@ func StateToView(s EngineState) view.View {
 		lastBuildError := ""
 		if ms.LastBuildError != nil {
 			lastBuildError = ms.LastBuildError.Error()
-		}
-
-		lastManifestLoadError := ""
-		if ms.LastManifestLoadError != nil {
-			lastManifestLoadError = ms.LastManifestLoadError.Error()
 		}
 
 		endpoints := ManifestStateEndpoints(ms)
@@ -398,20 +397,25 @@ func StateToView(s EngineState) view.View {
 			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
-			LastManifestLoadError: lastManifestLoadError,
 			LastBuildError:        lastBuildError,
+			LastBuildReason:       ms.LastBuildReason,
+			LastBuildStartTime:    ms.LastBuildStartTime,
 			LastBuildFinishTime:   ms.LastBuildFinishTime,
 			LastBuildDuration:     ms.LastBuildDuration,
 			LastBuildLog:          lastBuildLog,
 			PendingBuildEdits:     pendingBuildEdits,
 			PendingBuildSince:     ms.PendingBuildSince(),
+			PendingBuildReason:    ms.NextBuildReason(),
 			CurrentBuildEdits:     currentBuildEdits,
+			CurrentBuildLog:       string(ms.CurrentBuildLog),
 			CurrentBuildStartTime: ms.CurrentBuildStartTime,
+			CurrentBuildReason:    ms.CurrentBuildReason,
 			PodName:               pod.PodID.String(),
 			PodCreationTime:       pod.StartedAt,
 			PodStatus:             pod.Status,
 			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
 			PodLog:                pod.Log(),
+			CrashLog:              ms.CrashLog,
 			Endpoints:             endpoints,
 		}
 
@@ -448,6 +452,10 @@ func StateToView(s EngineState) view.View {
 	}
 
 	ret.Log = string(s.Log)
+
+	if s.LastTiltfileError != nil {
+		ret.TiltfileErrorMessage = fmt.Sprintf("%T %v", s.LastTiltfileError, s.LastTiltfileError)
+	}
 
 	return ret
 }

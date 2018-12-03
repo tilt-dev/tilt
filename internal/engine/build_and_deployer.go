@@ -5,8 +5,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/store"
 
-	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -35,21 +33,13 @@ type FallbackTester func(error) bool
 // critical enough to stop the whole pipeline, or to fallback to the next
 // builder.
 type CompositeBuildAndDeployer struct {
-	builders       BuildOrder
-	shouldFallBack FallbackTester
+	builders BuildOrder
 }
 
 var _ BuildAndDeployer = &CompositeBuildAndDeployer{}
 
-func DefaultShouldFallBack() FallbackTester {
-	return FallbackTester(shouldImageBuild)
-}
-
-func NewCompositeBuildAndDeployer(builders BuildOrder, shouldFallBack FallbackTester) *CompositeBuildAndDeployer {
-	return &CompositeBuildAndDeployer{
-		builders:       builders,
-		shouldFallBack: shouldFallBack,
-	}
+func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeployer {
+	return &CompositeBuildAndDeployer{builders: builders}
 }
 
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error) {
@@ -57,49 +47,26 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
-			// TODO(maia): maybe this only needs to be called after certain builds?
-			// I.e. should be called after image build but not after a successful container build?
+			// TODO(maia): this should be reactive (i.e. happen as a response to `BuildCompleteAction`)
 			composite.PostProcessBuild(ctx, br, currentState.LastResult)
 			return br, err
 		}
 
-		if !composite.shouldFallBack(err) {
+		if !shouldFallBackForErr(err) {
 			return store.BuildResult{}, err
 		}
-		logger.Get(ctx).Verbosef("falling back to next build and deploy method after error: %v", err)
+
+		if _, ok := err.(RedirectToNextBuilder); ok {
+			logger.Get(ctx).Debugf("(expected error) falling back to next build and deploy method "+
+				"after error: %v", err)
+		} else {
+			logger.Get(ctx).Verbosef("falling back to next build and deploy method "+
+				"after unexpected error: %v", err)
+		}
+
 		lastErr = err
 	}
 	return store.BuildResult{}, lastErr
-}
-
-// A permanent error indicates that the whole build pipeline needs to stop.
-// It will never recover, even on subsequent rebuilds.
-func isPermanentError(err error) bool {
-	if _, ok := err.(*model.ValidateErr); ok {
-		return true
-	}
-
-	cause := errors.Cause(err)
-	if cause == context.Canceled {
-		return true
-	}
-	return false
-}
-
-// Given the error from our initial BuildAndDeploy attempt, shouldImageBuild determines
-// whether we should fall back to an ImageBuild.
-func shouldImageBuild(err error) bool {
-	if _, ok := err.(*build.PathMappingErr); ok {
-		return false
-	}
-	if isPermanentError(err) {
-		return false
-	}
-
-	if build.IsUserBuildFailure(err) {
-		return false
-	}
-	return true
 }
 
 func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult) {

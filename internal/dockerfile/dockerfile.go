@@ -2,16 +2,16 @@ package dockerfile
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-var ErrAddInDockerfile = errors.New("base Dockerfile contains an ADD/COPY, " +
+var ErrAddInDockerfile = fmt.Errorf("base Dockerfile contains an ADD/COPY, " +
 	"which is not currently supported -- move this to an add() call in your Tiltfile")
 
 type Dockerfile string
@@ -109,7 +109,7 @@ func (d Dockerfile) SplitIntoBaseDockerfile() (Dockerfile, Dockerfile, bool) {
 func (d Dockerfile) ValidateBaseDockerfile() error {
 	result, err := parser.Parse(bytes.NewBufferString(string(d)))
 	if err != nil {
-		return fmt.Errorf("ValidateBaseDockerfile: %v", err)
+		return errors.Wrap(err, "ValidateBaseDockerfile")
 	}
 
 	err = traverse(result.AST, func(node *parser.Node) error {

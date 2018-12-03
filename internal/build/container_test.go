@@ -213,9 +213,9 @@ func TestPushInvalid(t *testing.T) {
 	}
 
 	_, err = f.b.PushImage(f.ctx, ref, ioutil.Discard)
-	msg := `Pushing image "localhost:5005/myimage"`
+	msg := `pushing image "localhost:5005/myimage"`
 	if err == nil || !strings.Contains(err.Error(), msg) {
-		t.Fatalf("Expected error %q, actual: %v", msg, err)
+		t.Fatalf("Expected error containing %q, actual: %v", msg, err)
 	}
 }
 

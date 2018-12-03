@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -33,14 +34,44 @@ func TestElementScroll(t *testing.T) {
 		f.up()
 	}
 	f.run("scrolled all the way back up")
+
+	f.bottom()
+	f.run("jumped to bottom")
+}
+
+func TestElementScrollWrap(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+
+	sl, _ := i.rty.RegisterElementScroll("baz", []string{"hi"})
+	sl.Add(TextString(strings.Repeat("abcdefgh", 20)))
+	i.Run("line wrapped element scroll", 10, 10, sl)
+}
+
+func TestElementScrollPerfectlyFilled(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+
+	var names []string
+	for j := 0; j < 10; j++ {
+		names = append(names, fmt.Sprintf("%d", j+1))
+	}
+
+	sl, _ := i.rty.RegisterElementScroll("qux", names)
+	for range names {
+		sl.Add(TextString("abcd"))
+	}
+	i.Run("element scroll perfectly filled", 10, len(names), sl)
 }
 
 func TestTextScroll(t *testing.T) {
 	i := NewInteractiveTester(t, screen)
 
 	sl := NewTextScrollLayout("foo")
-	sl.Add(TextString(strings.Repeat("hiaeiurhgeiugheriuhgrtiuhgrtgn\n", 200)))
-	i.Run("vertically overflowed box", 10, 10, sl)
+	sl.Add(TextString(strings.Repeat("abcd\n", 200)))
+	i.Run("vertically overflowed text scroll", 10, 10, sl)
+
+	sl = NewTextScrollLayout("bar")
+	sl.Add(TextString(strings.Repeat("abcd", 200)))
+	i.Run("line wrapped text scroll", 10, 10, sl)
 }
 
 type elementScrollTestFixture struct {
@@ -68,7 +99,7 @@ func (f *elementScrollTestFixture) layout() Component {
 			c.Add(TextString("SELECTED---->"))
 		}
 		for j := 0; j < 3; j++ {
-			c.Add(TextString(strings.Repeat(n, 10)))
+			c.Add(TextString(strings.Repeat(n, 9)))
 		}
 		components = append(components, c)
 	}
@@ -80,16 +111,25 @@ func (f *elementScrollTestFixture) layout() Component {
 	return l
 }
 
+func (f *elementScrollTestFixture) scroller() ElementScroller {
+	return f.i.rty.ElementScroller("items")
+}
+
 func (f *elementScrollTestFixture) run(name string) {
 	f.i.Run(name, 20, 10, f.layout())
 }
 
 func (f *elementScrollTestFixture) down() {
 	f.i.render(20, 10, f.layout())
-	f.i.rty.ElementScroller("items").Down()
+	f.scroller().Down()
 }
 
 func (f *elementScrollTestFixture) up() {
 	f.i.render(20, 10, f.layout())
-	f.i.rty.ElementScroller("items").Up()
+	f.scroller().Up()
+}
+
+func (f *elementScrollTestFixture) bottom() {
+	f.i.render(20, 10, f.layout())
+	f.scroller().Bottom()
 }

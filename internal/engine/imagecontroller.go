@@ -2,8 +2,9 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -65,7 +66,7 @@ func (c *ImageController) reapOldWatchBuilds(ctx context.Context, manifests []mo
 		nameFilter := build.FilterByRefName(ref)
 		err := c.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
 		if err != nil {
-			return fmt.Errorf("reapOldWatchBuilds: %v", err)
+			return errors.Wrap(err, "reapOldWatchBuilds")
 		}
 	}
 

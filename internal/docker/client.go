@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
@@ -71,7 +72,7 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 	if env == k8s.EnvMinikube {
 		envMap, err := minikube.DockerEnv(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("newDockerClient: %v", err)
+			return nil, errors.Wrap(err, "newDockerClient")
 		}
 
 		envFunc = func(key string) string { return envMap[key] }
@@ -79,11 +80,11 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 
 	opts, err := CreateClientOpts(envFunc)
 	if err != nil {
-		return nil, fmt.Errorf("newDockerClient: %v", err)
+		return nil, errors.Wrap(err, "newDockerClient")
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("newDockerClient: %v", err)
+		return nil, errors.Wrap(err, "newDockerClient")
 	}
 	return &DockerCli{d}, nil
 }
@@ -172,12 +173,12 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ID, cmd m
 
 	execId, err := d.ContainerExecCreate(ctx, cID.String(), cfg)
 	if err != nil {
-		return fmt.Errorf("ExecInContainer#create: %v", err)
+		return errors.Wrap(err, "ExecInContainer#create")
 	}
 
 	connection, err := d.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
 	if err != nil {
-		return fmt.Errorf("ExecInContainer#attach: %v", err)
+		return errors.Wrap(err, "ExecInContainer#attach")
 	}
 	defer connection.Close()
 
@@ -185,25 +186,25 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ID, cmd m
 	err = d.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
 	esSpan.Finish()
 	if err != nil {
-		return fmt.Errorf("ExecInContainer#start: %v", err)
+		return errors.Wrap(err, "ExecInContainer#start")
 	}
 
 	_, err = fmt.Fprintf(out, "RUNNING: %s\n", cmd)
 	if err != nil {
-		return fmt.Errorf("ExecInContainer#print: %v", err)
+		return errors.Wrap(err, "ExecInContainer#print")
 	}
 
 	bufSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-readOutput")
 	_, err = io.Copy(out, connection.Reader)
 	bufSpan.Finish()
 	if err != nil {
-		return fmt.Errorf("ExecInContainer#copy: %v", err)
+		return errors.Wrap(err, "ExecInContainer#copy")
 	}
 
 	for true {
 		inspected, err := d.ContainerExecInspect(ctx, execId.ID)
 		if err != nil {
-			return fmt.Errorf("ExecInContainer#inspect: %v", err)
+			return errors.Wrap(err, "ExecInContainer#inspect")
 		}
 
 		if inspected.Running {

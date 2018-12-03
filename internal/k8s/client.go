@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -50,7 +51,10 @@ type Client interface {
 	// we might need to fallback to deleting and re-creating them.
 	Upsert(ctx context.Context, entities []K8sEntity) error
 
-	// Deletes all given entities
+	// Deletes all given entities.
+	//
+	// Currently ignores any "not found" errors, because that seems like the correct
+	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
 	// Find all the pods that match the given image, namespace, and labels.
@@ -151,7 +155,7 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 
 		url, err := url.Parse(urlString)
 		if err != nil {
-			return nil, fmt.Errorf("ServiceURL: malformed url: %v", err)
+			return nil, errors.Wrap(err, "ServiceURL: malformed url")
 		}
 		return url, nil
 	}
@@ -161,7 +165,7 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	if ip != "" && nodePort != 0 {
 		url, err := url.Parse(fmt.Sprintf("http://%s:%d/", ip, nodePort))
 		if err != nil {
-			return nil, fmt.Errorf("ServiceURL: malformed url: %v", err)
+			return nil, errors.Wrap(err, "ServiceURL: malformed url")
 		}
 		return url, nil
 	}
@@ -181,7 +185,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	if len(immutable) > 0 {
 		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)
 		if err != nil {
-			return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
+			return errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
 		}
 	}
 
@@ -192,14 +196,14 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 			shouldTryReplace := maybeImmutableFieldStderr(stderr)
 
 			if !shouldTryReplace {
-				return fmt.Errorf("kubectl apply: %v\nstderr: %s", err, stderr)
+				return errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
 			}
 
 			// If the kubectl apply failed due to an immutable field, fall back to kubectl replace --force.
 			l.Infof("%sFalling back to 'kubectl replace' on immutable field error", prefix)
 			_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, mutable)
 			if err != nil {
-				return fmt.Errorf("kubectl replace: %v\nstderr: %s", err, stderr)
+				return errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
 			}
 		}
 	}
@@ -209,7 +213,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
 	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"cluster-info"})
 	if err != nil {
-		return fmt.Errorf("Unable to connect to cluster via `kubectl cluster-info`: %s\nstdout: %s\nstderr: %s", err.Error(), stdout, stderr)
+		return errors.Wrapf(err, "Unable to connect to cluster via `kubectl cluster-info`:\nstdout: %s\nstderr: %s", stdout, stderr)
 	}
 
 	return nil
@@ -226,10 +230,14 @@ func maybeImmutableFieldStderr(stderr string) bool {
 		strings.Contains(stderr, "Forbidden")
 }
 
+// Deletes all given entities.
+//
+// Currently ignores any "not found" errors, because that seems like the correct
+// behavior for our use cases.
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	_, stderr, err := k.actOnEntities(ctx, []string{"delete"}, entities)
+	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)
 	if err != nil {
-		return fmt.Errorf("kubectl delete: %v\nstderr: %s", err, stderr)
+		return errors.Wrapf(err, "kubectl delete:\nstderr: %s", stderr)
 	}
 	return nil
 }
@@ -240,7 +248,7 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 
 	rawYAML, err := SerializeYAML(entities)
 	if err != nil {
-		return "", "", fmt.Errorf("serializeYaml for kubectl %s: %v", cmdArgs, err)
+		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
 	}
 	stdin := bytes.NewReader([]byte(rawYAML))
 

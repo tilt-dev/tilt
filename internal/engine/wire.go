@@ -58,8 +58,7 @@ func provideBuildAndDeployer(
 	dir *dirs.WindmillDir,
 	env k8s.Env,
 	updateMode UpdateModeFlag,
-	sCli synclet.SyncletClient,
-	shouldFallBackToImgBuild FallbackTester) (BuildAndDeployer, error) {
+	sCli synclet.SyncletClient) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,

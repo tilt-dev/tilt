@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/opencontainers/go-digest"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -67,7 +68,7 @@ func (r *ContainerResolver) containerIDForPodHelper(ctx context.Context, podName
 
 	containers, err := r.dcli.ContainerList(ctx, listOpts)
 	if err != nil {
-		return "", fmt.Errorf("getting containers: %v", err)
+		return "", errors.Wrap(err, "getting containers")
 	}
 
 	if len(containers) == 0 {

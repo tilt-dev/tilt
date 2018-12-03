@@ -430,6 +430,7 @@ func ToShellSteps(cwd string, cmds []string) []Step {
 	return ToSteps(cwd, ToShellCmds(cmds))
 }
 
+// TODO(maia): remove this now that we have a more robust way of checking fallback errors
 type ValidateErr struct {
 	s string
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -40,7 +41,6 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b     BuildAndDeployer
 	store *store.Store
 	kcli  k8s.Client
 }
@@ -62,12 +62,9 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, b BuildAndDeployer,
-	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
-	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client) Upper {
+func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController, kcli k8s.Client) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -81,7 +78,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(cc)
 
 	return Upper{
-		b:     b,
 		store: st,
 		kcli:  kcli,
 	}
@@ -113,6 +109,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 
 	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName)
 	if err != nil {
+		// TODO(dmiller): instead of returning, set the TiltfileError on state
 		return err
 	}
 
@@ -177,8 +174,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleGlobalYAMLApplyStarted(ctx, state, action)
 	case GlobalYAMLApplyCompleteAction:
 		handleGlobalYAMLApplyComplete(ctx, state, action)
-	case GlobalYAMLApplyError:
-		handleGlobalYAMLApplyError(ctx, state, action)
 	case ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
@@ -197,12 +192,19 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms := state.ManifestStates[mn]
 
 	ms.StartedFirstBuild = true
-	ms.CurrentlyBuildingFileChanges = append([]string{}, action.FilesChanged...)
+	ms.CurrentBuildEdits = append([]string{}, action.FilesChanged...)
 	ms.CurrentBuildStartTime = action.StartTime
 	ms.CurrentBuildReason = action.Reason
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
 	}
+
+	// Keep the crash log around until we have a rebuild
+	// triggered by a explicit change (i.e., not a crash rebuild)
+	if !action.Reason.IsCrashOnly() {
+		ms.CrashLog = ""
+	}
+
 	state.CurrentlyBuilding = mn
 }
 
@@ -233,12 +235,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.LastBuildLog = ms.CurrentBuildLog
 
 	ms.CurrentBuildStartTime = time.Time{}
-	ms.CurrentBuildReason = store.BuildReasonNone
+	ms.CurrentBuildReason = model.BuildReasonNone
 	ms.CurrentBuildLog = nil
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		ms.CurrentlyBuildingFileChanges = nil
+		ms.CurrentBuildEdits = nil
 
 		if isPermanentError(err) {
 			return err
@@ -247,7 +249,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			p := logger.Red(l).Sprintf("Build Failed:")
 			l.Infof("%s %v", p, err)
 		} else {
-			return fmt.Errorf("Build Failed: %v", err)
+			return errors.Wrap(err, "Build Failed")
 		}
 	} else {
 		// Remove pending file changes that were consumed by this build.
@@ -264,8 +266,8 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
-		ms.LastSuccessfulDeployEdits = ms.CurrentlyBuildingFileChanges
-		ms.CurrentlyBuildingFileChanges = nil
+		ms.LastSuccessfulDeployEdits = ms.CurrentBuildEdits
+		ms.CurrentBuildEdits = nil
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -317,21 +319,16 @@ func handleGlobalYAMLApplyComplete(
 	event GlobalYAMLApplyCompleteAction,
 ) {
 	ms := state.GlobalYAMLState
-	ms.HasBeenDeployed = true
 	ms.LastApplyFinishTime = time.Now()
 	ms.LastApplyDuration = time.Since(ms.CurrentApplyStartTime)
 	ms.CurrentApplyStartTime = time.Time{}
 
-	ms.LastSuccessfulApplyTime = time.Now()
-	ms.LastError = nil
-}
+	ms.LastError = event.Error
 
-func handleGlobalYAMLApplyError(
-	ctx context.Context,
-	state *store.EngineState,
-	event GlobalYAMLApplyError,
-) {
-	state.GlobalYAMLState.LastError = event.Error
+	if event.Error == nil {
+		ms.HasBeenDeployed = true
+		ms.LastSuccessfulApplyTime = time.Now()
+	}
 }
 
 func handleConfigsReloadStarted(
@@ -351,10 +348,7 @@ func handleConfigsReloaded(
 	err := event.Err
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
-
-		for _, ms := range state.ManifestStates {
-			ms.LastManifestLoadError = err
-		}
+		state.LastTiltfileError = err
 		return
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
@@ -363,8 +357,6 @@ func handleConfigsReloaded(
 		if !ok {
 			ms = &store.ManifestState{}
 		}
-		ms.LastManifestLoadError = nil
-		state.ManifestStates[m.ManifestName()].LastManifestLoadError = nil
 
 		newDefOrder[i] = m.ManifestName()
 		if !m.Equal(ms.Manifest) {
@@ -381,6 +373,7 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+	state.LastTiltfileError = nil
 }
 
 // Get a pointer to a mutable manifest state,
@@ -515,6 +508,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 
 	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
 	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.NeedsRebuildFromCrash {
+		ms.CrashLog = string(podInfo.CurrentLog)
 		ms.NeedsRebuildFromCrash = true
 		ms.ExpectedContainerID = ""
 		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)

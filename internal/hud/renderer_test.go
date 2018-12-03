@@ -1,10 +1,12 @@
 package hud
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 
 	"github.com/windmilleng/tcell"
@@ -22,7 +24,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	vs := view.ViewState{
+	plainVs := view.ViewState{
 		Resources: []view.ResourceViewState{
 			{
 				IsCollapsed: false,
@@ -30,7 +32,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	rtf.run("one undeployed resource", 70, 20, v, vs)
+	rtf.run("one undeployed resource", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -42,7 +44,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-	rtf.run("inline build log", 70, 20, v, vs)
+	rtf.run("inline build log", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -65,7 +67,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	rtf.run("inline build log with wrapping", 117, 20, v, vs)
+	rtf.run("inline build log with wrapping", 117, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -77,9 +79,10 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		},
 	}
 
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+	logModalVs := plainVs
+	logModalVs.LogModal = view.LogModal{ResourceLogNumber: 1}
 
-	rtf.run("modal build log displayed", 70, 20, v, vs)
+	rtf.run("modal build log displayed", 70, 20, v, logModalVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -93,20 +96,19 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	vs.LogModal = view.LogModal{}
-	rtf.run("pod log displayed inline", 70, 20, v, vs)
+
+	rtf.run("pod log displayed inline", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "a-a-a-aaaaabe vigoda",
-				LastManifestLoadError: "broken tiltfile!",
-				LastBuildError:        "broken go code!",
-				LastBuildLog:          "mashing keys is not a good way to generate code",
+				Name:           "a-a-a-aaaaabe vigoda",
+				LastBuildError: "broken go code!",
+				LastBuildLog:   "mashing keys is not a good way to generate code",
 			},
 		},
 	}
-	rtf.run("manifest error and build error", 70, 20, v, vs)
+	rtf.run("manifest error and build error", 70, 20, v, plainVs)
 
 	ts := time.Now().Add(-5 * time.Minute)
 	v = view.View{
@@ -133,25 +135,149 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			},
 		},
 	}
-	rtf.run("all the data at once", 70, 20, v, vs)
+	rtf.run("all the data at once", 70, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:                  "GlobalYAML",
-				CurrentBuildStartTime: ts,
-				LastBuildFinishTime:   ts,
-				LastBuildDuration:     1400 * time.Millisecond,
+				Name:                  "abe vigoda",
+				DirectoriesWatched:    []string{"foo", "bar"},
 				LastDeployTime:        ts,
-				LastBuildError:        "",
-				IsYAMLManifest:        true,
+				LastDeployEdits:       []string{"main.go"},
+				PendingBuildEdits:     []string{},
+				PendingBuildSince:     ts,
+				CurrentBuildEdits:     []string{},
+				CurrentBuildStartTime: ts,
+				CurrentBuildReason:    model.BuildReasonFlagCrash,
+				PodName:               "vigoda-pod",
+				PodCreationTime:       ts,
+				PodStatus:             "Running",
+				PodRestarts:           0,
+				Endpoints:             []string{"1.2.3.4:8080"},
+				PodLog:                "",
+				CrashLog:              "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
 	}
-	rtf.run("global yaml manifest", 70, 20, v, vs)
+	rtf.run("crash rebuild", 70, 20, v, plainVs)
 
-	vs.AlertMessage = "this is only a test"
-	rtf.run("alert message", 70, 20, v, vs)
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				DirectoriesWatched:  []string{"foo", "bar"},
+				LastDeployTime:      ts,
+				LastDeployEdits:     []string{"main.go", "cli.go"},
+				LastBuildFinishTime: ts,
+				LastBuildDuration:   1400 * time.Millisecond,
+				LastBuildLog:        "",
+				PodName:             "vigoda-pod",
+				PodCreationTime:     ts,
+				PodStatus:           "Running",
+				PodRestarts:         1,
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog: `abe vigoda is crashing
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
+			},
+		},
+	}
+	rtf.run("pod log with inline wrapping", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "GlobalYAML",
+				LastBuildFinishTime: ts,
+				LastBuildDuration:   1400 * time.Millisecond,
+				LastDeployTime:      ts,
+				LastBuildError:      "",
+				IsYAMLManifest:      true,
+			},
+		},
+	}
+	rtf.run("global yaml manifest", 70, 20, v, plainVs)
+
+	alertVs := plainVs
+	alertVs.AlertMessage = "this is only a test"
+	rtf.run("alert message", 70, 20, v, alertVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "vigoda",
+				CurrentBuildStartTime: ts.Add(-5 * time.Second),
+				CurrentBuildEdits:     []string{"main.go"},
+			},
+		},
+	}
+	rtf.run("build in progress", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:              "vigoda",
+				PendingBuildSince: ts.Add(-5 * time.Second),
+				PendingBuildEdits: []string{"main.go"},
+			},
+		},
+	}
+	rtf.run("pending build", 70, 20, v, plainVs)
+}
+
+func TestRenderTiltLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := view.View{
+		Log:       strings.Repeat("abcdefg", 30),
+		Resources: nil,
+	}
+	vs := view.ViewState{
+		LogModal: view.LogModal{
+			TiltLog: true,
+		},
+	}
+
+	rtf.run("tilt log", 70, 20, v, vs)
+}
+
+func TestRenderLogModal(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	vs := view.ViewState{
+		Resources: []view.ResourceViewState{
+			{
+				IsCollapsed: false,
+			},
+		},
+		LogModal: view.LogModal{ResourceLogNumber: 1},
+	}
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				LastBuildStartTime:  now.Add(-time.Minute),
+				LastBuildFinishTime: now,
+				LastBuildLog: `STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`,
+				PodName:         "vigoda-pod",
+				PodCreationTime: now,
+				PodLog:          "serving on 8080",
+				PodStatus:       "Running",
+				LastDeployTime:  now,
+			},
+		},
+	}
+	rtf.run("build log pane", 117, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
@@ -164,6 +290,17 @@ func TestRenderNarrationMessage(t *testing.T) {
 	}
 
 	rtf.run("narration message", 60, 20, v, vs)
+}
+
+func TestRenderTiltfileError(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	v := view.View{
+		TiltfileErrorMessage: "Tiltfile error!",
+	}
+
+	vs := view.ViewState{}
+
+	rtf.run("tiltfile error", 60, 20, v, vs)
 }
 
 type rendererTestFixture struct {
