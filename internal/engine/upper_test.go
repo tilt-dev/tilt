@@ -309,8 +309,8 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.SetNextBuildFailure(buildFailedToken)
 
 	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false, "")
-	expected := fmt.Errorf("Build Failed: %v", buildFailedToken)
-	assert.Equal(t, expected, err)
+	expectedErrStr := fmt.Sprintf("Build Failed: %v", buildFailedToken)
+	assert.Equal(t, expectedErrStr, err.Error())
 }
 
 func TestRebuildWithChangedFiles(t *testing.T) {
@@ -594,13 +594,8 @@ func TestBreakManifest(t *testing.T) {
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
-	name := "foobar"
-	f.WaitUntilManifest("error set", name, func(ms store.ManifestState) bool {
-		return ms.LastManifestLoadError != nil
-	})
-
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Contains(t, ms.LastManifestLoadError.Error(), "borken")
+	f.WaitUntil("error set", func(st store.EngineState) bool {
+		return st.LastTiltfileError != nil
 	})
 
 	f.withState(func(es store.EngineState) {
@@ -629,14 +624,14 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
-	f.WaitUntilManifest("state is broken", "foobar", func(state store.ManifestState) bool {
-		return state.LastManifestLoadError != nil
+	f.WaitUntil("state is broken", func(st store.EngineState) bool {
+		return st.LastTiltfileError != nil
 	})
 
 	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
-	f.WaitUntilManifest("state is restored", "foobar", func(state store.ManifestState) bool {
-		return state.LastManifestLoadError == nil
+	f.WaitUntil("state is restored", func(st store.EngineState) bool {
+		return st.LastTiltfileError == nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -670,8 +665,8 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	name := "foobar"
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
-	f.WaitUntilManifest("manifest load error", name, func(ms store.ManifestState) bool {
-		return ms.LastManifestLoadError != nil
+	f.WaitUntil("manifest load error", func(st store.EngineState) bool {
+		return st.LastTiltfileError != nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -687,10 +682,10 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, "", nextManifestToBuild(state).String())
+		assert.NoError(t, state.LastTiltfileError)
 	})
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.NoError(t, ms.LastManifestLoadError)
 		expectedSteps := []model.Step{{
 			Cmd:           model.ToShellCmd("changed"),
 			BaseDirectory: f.Path(),
@@ -1520,7 +1515,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
 
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, watcher.newSub, bc, ic, gybc, cc, k8s)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

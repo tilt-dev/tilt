@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -40,7 +41,6 @@ const maxChangedFilesToPrint = 5
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
-	b     BuildAndDeployer
 	store *store.Store
 	kcli  k8s.Client
 }
@@ -62,12 +62,9 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, b BuildAndDeployer,
-	hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController,
-	fwm *WatchManager, fswm FsWatcherMaker, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client) Upper {
+func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
+	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController, kcli k8s.Client) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -81,7 +78,6 @@ func NewUpper(ctx context.Context, b BuildAndDeployer,
 	st.AddSubscriber(cc)
 
 	return Upper{
-		b:     b,
 		store: st,
 		kcli:  kcli,
 	}
@@ -113,6 +109,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 
 	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
 	if err != nil {
+		// TODO(dmiller): instead of returning, set the TiltfileError on state
 		return err
 	}
 
@@ -272,7 +269,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 			p := logger.Red(l).Sprintf("Build Failed:")
 			l.Infof("%s %v", p, err)
 		} else {
-			return fmt.Errorf("Build Failed: %v", err)
+			return errors.Wrap(err, "Build Failed")
 		}
 	} else {
 		// Remove pending file changes that were consumed by this build.
@@ -371,10 +368,7 @@ func handleConfigsReloaded(
 	err := event.Err
 	if err != nil {
 		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
-
-		for _, ms := range state.ManifestStates {
-			ms.LastManifestLoadError = err
-		}
+		state.LastTiltfileError = err
 		return
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
@@ -383,7 +377,6 @@ func handleConfigsReloaded(
 		if !ok {
 			ms = &store.ManifestState{}
 		}
-		ms.LastManifestLoadError = nil
 
 		newDefOrder[i] = m.ManifestName()
 		if !m.Equal(ms.Manifest) {
@@ -400,6 +393,7 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+	state.LastTiltfileError = nil
 }
 
 // Get a pointer to a mutable manifest state,

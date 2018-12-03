@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 )
 
 type ID string
@@ -23,7 +24,7 @@ func (n Name) String() string { return string(n) }
 func ParseNamedTagged(s string) (reference.NamedTagged, error) {
 	ref, err := reference.Parse(s)
 	if err != nil {
-		return nil, fmt.Errorf("parsing %s: %v", s, err)
+		return nil, errors.Wrapf(err, "parsing %s", s)
 	}
 
 	nt, ok := ref.(reference.NamedTagged)

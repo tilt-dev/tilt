@@ -13,8 +13,6 @@ type Resource struct {
 	LastDeployTime     time.Time
 	LastDeployEdits    []string
 
-	LastManifestLoadError string
-
 	LastBuildError      string
 	LastBuildStartTime  time.Time
 	LastBuildFinishTime time.Time
@@ -55,8 +53,9 @@ type Resource struct {
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
 type View struct {
-	Log       string
-	Resources []Resource
+	Log                  string
+	Resources            []Resource
+	TiltfileErrorMessage string
 }
 
 type ViewState struct {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type Env string
@@ -27,7 +29,7 @@ func DetectEnv() (Env, error) {
 		if isExit {
 			return EnvUnknown, fmt.Errorf("DetectEnv failed. Output:\n%s", string(exitErr.Stderr))
 		}
-		return EnvUnknown, fmt.Errorf("DetectEnv: %v", err)
+		return EnvUnknown, errors.Wrap(err, "DetectEnv")
 	}
 
 	output := strings.TrimSpace(string(outputBytes))

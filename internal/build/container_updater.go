@@ -29,19 +29,19 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	// rm files from container
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return fmt.Errorf("MissingLocalPaths: %v", err)
+		return errors.Wrap(err, "MissingLocalPaths")
 	}
 
 	err = r.RmPathsFromContainer(ctx, cID, toRemove)
 	if err != nil {
-		return fmt.Errorf("RmPathsFromContainer: %v", err)
+		return errors.Wrap(err, "RmPathsFromContainer")
 	}
 
 	// copy files to container
 	ab := NewArchiveBuilder(filter)
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return fmt.Errorf("archivePathsIfExists: %v", err)
+		return errors.Wrap(err, "archivePathsIfExists")
 	}
 	archive, err := ab.BytesBuffer()
 	if err != nil {
@@ -72,7 +72,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	// Restart container so that entrypoint restarts with the updated files etc.
 	err = r.dcli.ContainerRestartNoWait(ctx, cID.String())
 	if err != nil {
-		return fmt.Errorf("ContainerRestart: %v", err)
+		return errors.Wrap(err, "ContainerRestart")
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID contain
 		if docker.IsExitError(err) {
 			return fmt.Errorf("Error deleting files from container: %s", out.String())
 		}
-		return fmt.Errorf("Error deleting files from container: %v", err)
+		return errors.Wrap(err, "Error deleting files from container")
 	}
 	return nil
 }

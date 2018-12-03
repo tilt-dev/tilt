@@ -68,7 +68,7 @@ func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []pathMa
 	for _, p := range paths {
 		err := a.tarPath(ctx, p.LocalPath, p.ContainerPath)
 		if err != nil {
-			return fmt.Errorf("tarPath '%s': %v", p.LocalPath, err)
+			return errors.Wrapf(err, "tarPath '%s'", p.LocalPath)
 		}
 	}
 	return nil
@@ -97,7 +97,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("%s: stat: %v", source, err)
+		return errors.Wrapf(err, "%s: stat", source)
 	}
 
 	sourceIsDir := sourceInfo.IsDir()
@@ -112,7 +112,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("error walking to %s: %v", path, err)
+			return errors.Wrapf(err, "error walking to %s", path)
 		}
 
 		matches, err := a.filter.Matches(path, info.IsDir())
@@ -124,7 +124,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 
 		header, err := tar.FileInfoHeader(info, path)
 		if err != nil {
-			return fmt.Errorf("%s: making header: %v", path, err)
+			return errors.Wrapf(err, "%s: making header", path)
 		}
 
 		if sourceIsDir {
@@ -138,7 +138,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 
 		err = a.tw.WriteHeader(header)
 		if err != nil {
-			return fmt.Errorf("%s: writing header: %v", path, err)
+			return errors.Wrapf(err, "%s: writing header", path)
 		}
 
 		if info.IsDir() {
@@ -152,7 +152,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 				if os.IsNotExist(err) {
 					return nil
 				}
-				return fmt.Errorf("%s: open: %v", path, err)
+				return errors.Wrapf(err, "%s: open", path)
 			}
 			defer func() {
 				_ = file.Close()
@@ -160,7 +160,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 
 			_, err = io.CopyN(a.tw, file, info.Size())
 			if err != nil && err != io.EOF {
-				return fmt.Errorf("%s: copying Contents: %v", path, err)
+				return errors.Wrapf(err, "%s: copying Contents", path)
 			}
 		}
 		return nil
@@ -179,12 +179,12 @@ func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths 
 	ab := NewArchiveBuilder(filter)
 	err := ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return nil, fmt.Errorf("archivePaths: %v", err)
+		return nil, errors.Wrap(err, "archivePaths")
 	}
 
 	err = ab.archiveDf(ctx, df)
 	if err != nil {
-		return nil, fmt.Errorf("archiveDf: %v", err)
+		return nil, errors.Wrap(err, "archiveDf")
 	}
 
 	return ab.BytesBuffer()

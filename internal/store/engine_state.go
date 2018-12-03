@@ -56,6 +56,8 @@ type EngineState struct {
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
+
+	LastTiltfileError error
 }
 
 type ManifestState struct {
@@ -75,7 +77,6 @@ type ManifestState struct {
 	CurrentBuildLog       []byte `testdiff:"ignore"`
 	CurrentBuildReason    model.BuildReason
 
-	LastManifestLoadError     error
 	LastSuccessfulDeployEdits []string
 	LastBuildError            error
 	LastBuildStartTime        time.Time
@@ -381,11 +382,6 @@ func StateToView(s EngineState) view.View {
 			lastBuildError = ms.LastBuildError.Error()
 		}
 
-		lastManifestLoadError := ""
-		if ms.LastManifestLoadError != nil {
-			lastManifestLoadError = ms.LastManifestLoadError.Error()
-		}
-
 		endpoints := ManifestStateEndpoints(ms)
 
 		lastBuildLog := string(ms.LastBuildLog)
@@ -401,7 +397,6 @@ func StateToView(s EngineState) view.View {
 			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastDeployEdits:       lastDeployEdits,
-			LastManifestLoadError: lastManifestLoadError,
 			LastBuildError:        lastBuildError,
 			LastBuildReason:       ms.LastBuildReason,
 			LastBuildStartTime:    ms.LastBuildStartTime,
@@ -457,6 +452,10 @@ func StateToView(s EngineState) view.View {
 	}
 
 	ret.Log = string(s.Log)
+
+	if s.LastTiltfileError != nil {
+		ret.TiltfileErrorMessage = fmt.Sprintf("%T %v", s.LastTiltfileError, s.LastTiltfileError)
+	}
 
 	return ret
 }
