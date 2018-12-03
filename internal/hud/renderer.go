@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tcell"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -401,8 +402,15 @@ func (r *Renderer) resourceDC(res view.Resource, rv view.ResourceViewState) rty.
 	}
 	indent := strings.Repeat(" ", 8)
 
-	// TODO: get color
 	dcStatusColor := cLightText
+	if res.DCState == dockercompose.StateInProg {
+		dcStatusColor = cPending
+	} else if res.DCState == dockercompose.StateUp {
+		dcStatusColor = cGood
+	} else if res.DCState == dockercompose.StateDown {
+		dcStatusColor = cBad
+	}
+
 	sbLeft.Fg(dcStatusColor).Textf("%s●  ", indent).Fg(tcell.ColorDefault)
 
 	if res.DCState != "" {
