@@ -1,9 +1,14 @@
 package dockercompose
 
+// Three hacky states just for now to get something into the hud.
+const (
+	StateDown   = "down"
+	StateInProg = "in progress"
+	StateUp     = "up"
+)
+
 type Info struct {
-	Command string
-	State   string
-	Ports   string
+	State string
 }
 
 func (i Info) Log() string {

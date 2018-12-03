@@ -407,12 +407,6 @@ func (r *Renderer) resourceDC(res view.Resource, rv view.ResourceViewState) rty.
 
 	if res.DCState != "" {
 		status = res.DCState
-		if res.DCCommand != "" {
-			status += " | " + res.DCCommand
-		}
-		if res.DCPorts != "" {
-			status += " | " + res.DCPorts
-		}
 	}
 
 	sbLeft.Fg(cLightText).Textf("DC: ").Fg(tcell.ColorDefault).Text(status)

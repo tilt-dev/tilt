@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -98,9 +97,8 @@ func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st st
 				logger.Get(ctx).Infof("[DOCKER-COMPOSE WATCHER] failed to unmarshal dc event '%s' with err: %v", evtJson, err)
 				continue
 			}
-			spew.Dump(evt)
-			// ~~and then dispatch... something.
-			// st.Dispatch(NewPodChangeAction(pod))
+
+			st.Dispatch(DockerComposeEventAction{evt})
 		case <-ctx.Done():
 			return
 		}

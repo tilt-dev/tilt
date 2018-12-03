@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -193,6 +194,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
+	case DockerComposeEventAction:
+		handleDockerComposeEvent(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -256,9 +259,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	// ~~ TESTING SHIT
 	ms.DCInfo = dockercompose.Info{
-		Command: "./do/stuff",
-		State:   "pretty good",
-		Ports:   "12345",
+		State: "pretty good",
 	}
 
 	if err != nil {
@@ -657,6 +658,22 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 	} else {
 		state.UserExited = true
 	}
+}
+
+func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) error {
+	fmt.Printf("totally handling this event: %s", spew.Sdump(action.Event))
+	evt := action.Event
+	mn := evt.Service
+	ms, ok := engineState.ManifestStates[model.ManifestName(mn)]
+	if !ok {
+		// No corresponding manifest, nothing to do
+		return nil
+	}
+
+	// For now, just guess at state.
+	ms.DCInfo.State = evt.GuessState()
+
+	return nil
 }
 
 // Check if the filesChangedSet only contains spurious changes that

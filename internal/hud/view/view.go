@@ -41,9 +41,7 @@ type Resource struct {
 	// Relevant to docker-compose resources (maybe should accomplish via interface?)
 	IsDCManifest bool
 	DCYamlPath   string
-	DCCommand    string
 	DCState      string
-	DCPorts      string
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.

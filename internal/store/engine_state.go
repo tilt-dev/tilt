@@ -423,9 +423,7 @@ func StateToView(s EngineState) view.View {
 			Log:                   logForPodOrDockerCompose(ms, pod),
 			IsDCManifest:          ms.Manifest.IsDockerCompose(),
 			DCYamlPath:            ms.Manifest.DcYAMLPath,
-			DCCommand:             ms.DCInfo.Command,
 			DCState:               ms.DCInfo.State,
-			DCPorts:               ms.DCInfo.Ports,
 			CrashLog:              ms.CrashLog,
 			Endpoints:             endpoints,
 		}
