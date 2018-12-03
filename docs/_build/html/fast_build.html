@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Expanding a Tiltfile &mdash; Tilt  documentation</title>
+  <title>Optimizing a Tiltfile &mdash; Tilt  documentation</title>
   
 
   
@@ -95,10 +95,10 @@
             
             
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Expanding a Tiltfile</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Optimizing a Tiltfile</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
@@ -150,7 +150,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Expanding a Tiltfile</li>
+      <li>Optimizing a Tiltfile</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -167,8 +167,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="expanding-a-tiltfile">
-<span id="expanding-a-tiltfile"></span><h1>Expanding a Tiltfile<a class="headerlink" href="#expanding-a-tiltfile" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="optimizing-a-tiltfile">
+<span id="optimizing-a-tiltfile"></span><h1>Optimizing a Tiltfile<a class="headerlink" href="#optimizing-a-tiltfile" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial looks at a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> with build optimizations.
 We explain what they do, and why you would want to use them.</p>
 <p>In <a class="reference external" href="first_config.md">the previous tutorial</a>, we introduced the <code class="docutils literal notranslate"><span class="pre">static_build()</span></code> function.
@@ -223,9 +223,9 @@ image has the name in <code class="docutils literal notranslate"><span class="pr
 </pre></div>
 </div>
 <p>It’s only one line! This line says we’re starting in a golang:1.10 container.</p>
-<p>This <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> looks different than most <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>s because
-it cannot contain any <code class="docutils literal notranslate"><span class="pre">ADD</span></code> or <code class="docutils literal notranslate"><span class="pre">COPY</span></code> lines.
-It’s only for setting up the environment, not for adding your code.</p>
+<p>Fast build Dockerfiles cannot contain any ADD or COPY lines.
+It’s only for setting up the environment, not for adding your code.
+So this Dockerfile might look different than most.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">repo</span> <span class="pre">=</span> <span class="pre">local_git_repo('.')</span></code></li>
 </ul>

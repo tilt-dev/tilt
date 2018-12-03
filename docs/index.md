@@ -29,7 +29,7 @@ Download the Tilt binary on
 [the github releases page](https://github.com/windmilleng/tilt/releases).
 
 Tilt expects that you already have Docker and `kubectl` installed.
-Read the more detailed [Installation Guide](quickstart.html)
+Read the more detailed [Installation Guide](install.html)
 to help you `tilt up` quickly.
 
 ## Configure Your Workflow to Share With Your Team
@@ -37,7 +37,7 @@ to help you `tilt up` quickly.
 Down with YAML!
 
 Configure Tilt with a `Tiltfile`, written in a small subset of Python called
-[Starlark](https://github.com/bazelbuild/starlark#tour>).
+[Starlark](https://github.com/bazelbuild/starlark#tour).
 
 To get started, check out some [examples](first_example.html) or dive into the
 [API reference](api.html).
@@ -48,7 +48,7 @@ To get started, check out some [examples](first_example.html) or dive into the
 .. toctree::
    :maxdepth: 1
 
-   quickstart
+   install
    first_example
    first_config
    fast_build
