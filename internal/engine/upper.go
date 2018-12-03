@@ -653,14 +653,13 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 	}
 }
 
-func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) error {
+func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {
 	evt := action.Event
 	mn := evt.Service
 	ms, ok := engineState.ManifestStates[model.ManifestName(mn)]
 	if !ok {
 		// No corresponding manifest, nothing to do
 		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
-		return nil
 	}
 
 	// For now, just guess at state.
@@ -670,8 +669,6 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 		logger.Get(ctx).Infof("state is probably: %s", state)
 		ms.DCInfo.State = state
 	}
-
-	return nil
 }
 
 // Check if the filesChangedSet only contains spurious changes that
