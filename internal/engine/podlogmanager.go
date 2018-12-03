@@ -19,13 +19,15 @@ import (
 type PodLogManager struct {
 	kClient k8s.Client
 
-	watches map[podLogKey]PodLogWatch
+	watches      map[podLogKey]PodLogWatch
+	watchesByPod map[k8s.PodID]PodLogWatch
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	return &PodLogManager{
-		kClient: kClient,
-		watches: make(map[podLogKey]PodLogWatch),
+		kClient:      kClient,
+		watches:      make(map[podLogKey]PodLogWatch),
+		watchesByPod: make(map[k8s.PodID]PodLogWatch),
 	}
 }
 
@@ -44,7 +46,17 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	stateWatches := make(map[podLogKey]bool, 0)
 	for _, ms := range state.ManifestStates {
 		for _, pod := range ms.PodSet.PodList() {
-			if pod.PodID == "" || pod.ContainerName == "" || pod.ContainerID == "" {
+			if pod.PodID == "" {
+				continue
+			}
+
+			watchByPod, ok := m.watchesByPod[pod.PodID]
+			if ok && watchByPod.cID != pod.ContainerID {
+				watchByPod.cancel()
+				delete(m.watchesByPod, pod.PodID)
+			}
+
+			if pod.ContainerName == "" || pod.ContainerID == "" {
 				continue
 			}
 
@@ -90,6 +102,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				terminationTime: make(chan time.Time, 1),
 			}
 			m.watches[key] = w
+			m.watchesByPod[pod.PodID] = w
 			setup = append(setup, w)
 		}
 	}
@@ -98,6 +111,12 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		_, inState := stateWatches[key]
 		if !inState {
 			delete(m.watches, key)
+
+			byPod, ok := m.watchesByPod[key.podID]
+			if ok && byPod.cID != key.cID {
+				delete(m.watchesByPod, key.podID)
+			}
+
 			teardown = append(teardown, value)
 		}
 	}
@@ -146,8 +165,8 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	}
 	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
 
-	_, err = io.Copy(multiWriter, readCloser)
-	if err != nil {
+	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
+	if err != nil && watch.ctx.Err() == nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
 	}
