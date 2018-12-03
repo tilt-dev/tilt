@@ -93,19 +93,10 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 			continue
 		}
 
-		if len(m.Dependencies()) != len(mnc.manifest.Dependencies()) {
+		if !dependenciesMatch(m.Dependencies(), mnc.manifest.Dependencies()) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
-			continue
-		}
-
-		for i, d1 := range m.Dependencies() {
-			d2 := mnc.manifest.Dependencies()[i]
-			if d1 != d2 {
-				teardown = append(teardown, name)
-				setup = append(setup, m)
-				break
-			}
+			break
 		}
 	}
 
@@ -117,6 +108,21 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	}
 
 	return setup, teardown
+}
+
+func dependenciesMatch(d1 []string, d2 []string) bool {
+	if len(d1) != len(d2) {
+		return false
+	}
+
+	for i, e1 := range d1 {
+		e2 := d2[i]
+		if e1 != e2 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
