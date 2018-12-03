@@ -25,7 +25,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
 	ms := state.ManifestStates[m.Name]
 	ms.CurrentBuildEdits = []string{"/a/b/d", "/a/b/c/d/e"}
-	ms.LastSuccessfulDeployEdits = []string{"/a/b/d", "/a/b/c/d/e"}
+	ms.LastBuildEdits = []string{"/a/b/d", "/a/b/c/d/e"}
 	ms.PendingFileChanges = map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 
@@ -34,7 +34,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	}
 
 	r := v.Resources[0]
-	assert.Equal(t, []string{"d", "d/e"}, r.LastDeployEdits)
+	assert.Equal(t, []string{"d", "d/e"}, r.LastBuildEdits)
 
 	sort.Strings(r.CurrentBuildEdits)
 	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuildEdits)

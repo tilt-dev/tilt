@@ -253,15 +253,15 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
 	ms.LastBuildReason = ms.CurrentBuildReason
 	ms.LastBuildLog = ms.CurrentBuildLog
+	ms.LastBuildEdits = ms.CurrentBuildEdits
 
 	ms.CurrentBuildStartTime = time.Time{}
 	ms.CurrentBuildReason = model.BuildReasonNone
 	ms.CurrentBuildLog = nil
+	ms.CurrentBuildEdits = nil
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		ms.CurrentBuildEdits = nil
-
 		if isPermanentError(err) {
 			return err
 		} else if engineState.WatchMounts {
@@ -286,8 +286,6 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
-		ms.LastSuccessfulDeployEdits = ms.CurrentBuildEdits
-		ms.CurrentBuildEdits = nil
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
