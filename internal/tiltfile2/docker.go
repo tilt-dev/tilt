@@ -1,6 +1,11 @@
 package tiltfile2
 
-import ()
+import (
+	"github.com/docker/distribution/reference"
+
+	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/model"
+)
 
 type dockerImage struct {
 	baseDockerfilePath localPath
@@ -18,16 +23,22 @@ type dockerImage struct {
 	staticBuildArgs      model.DockerBuildArgs
 }
 
-func (t *Tiltfile) readDockerfile(thread *skylark.Thread, path string) (dockerfile.Dockerfile, error) {
-	err := t.recordReadFile(thread, path)
-	if err != nil {
-		return "", err
-	}
+// func (t *Tiltfile) readDockerfile(thread *skylark.Thread, path string) (dockerfile.Dockerfile, error) {
+// 	err := t.recordReadFile(thread, path)
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	dfBytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to open dockerfile '%v': %v", path, err)
-	}
+// 	dfBytes, err := ioutil.ReadFile(path)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to open dockerfile '%v': %v", path, err)
+// 	}
 
-	return dockerfile.Dockerfile(dfBytes), nil
+// 	return dockerfile.Dockerfile(dfBytes), nil
+// }
+
+type mount struct {
+	// src        localPath
+	// mountPoint string
+	// repo       gitRepo
 }

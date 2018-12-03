@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -107,7 +107,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		manifestNames[i] = model.ManifestName(a)
 	}
 
-	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
+	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName)
 	if err != nil {
 		// TODO(dmiller): instead of returning, set the TiltfileError on state
 		return err
@@ -123,26 +123,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	})
 
 	return u.store.Loop(ctx)
-}
-
-func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
-	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
-
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if os.IsNotExist(err) {
-		manifests = []model.Manifest{}
-		globalYAML = model.YAMLManifest{}
-	} else if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
-	} else {
-		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
-		if err != nil {
-			manifests = []model.Manifest{}
-			globalYAML = model.YAMLManifest{}
-		}
-	}
-
-	return manifests, globalYAML, configFiles, nil
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,

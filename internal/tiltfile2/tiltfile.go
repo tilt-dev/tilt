@@ -1,24 +1,38 @@
 package tiltfile2
 
-import ()
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/skylark"
+	"github.com/google/skylark/resolve"
+
+	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
+)
 
 func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
 }
 
-func Load(ctx context.Context, filename string) ([]model.Manifest, error) {
-	thread := &skylark.Thread{
-		Print: func(_ *skylark.Thread, msg string) {
-			logger.Get(ctx).Infof("%s", msg)
-		},
+func Load(ctx context.Context, filename string) ([]model.Manifest, model.YAMLManifest, []string, error) {
+	filename, err := ospath.RealAbs(filename)
+	if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
 	}
 
 	s := newTiltfileState(ctx, filename)
 
-	s.exec()
-	s.analyze()
-	return s.translate()
+	if err := s.exec(); err != nil {
+		return nil, model.YAMLManifest{}, nil, err
+	}
+	assembled, err := s.assemble()
+	if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
+	}
+	manifests, err := s.translate(assembled)
+	return manifests, model.YAMLManifest{}, s.configFiles, err
 }
 
 func skylarkStringDictToGoMap(d *skylark.Dict) (map[string]string, error) {

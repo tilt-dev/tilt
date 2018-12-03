@@ -223,7 +223,8 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 			policy = v1.PullNever
 		}
 		if ref != nil {
-			e, replaced, err := k8s.InjectImageDigest(e, ref, policy)
+			var replaced bool
+			e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
 			if err != nil {
 				return nil, "", err
 			}
