@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -57,15 +58,19 @@ func (w *DockerComposeWatcher) startWatch(ctx context.Context, configPath string
 
 	ch := make(chan string)
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "events", "--json")
+	args := []string{"-f", configPath, "events", "--json"}
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return ch, errors.Wrap(err, "making stdout pipe for `docker-compose events")
 	}
 
+	err = cmd.Start()
+	if err != nil {
+		return ch, errors.Wrapf(err, "`docker-compose %s`",
+			strings.Join(args, " "))
+	}
 	go func() {
-		cmd.Start()
-
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			ch <- scanner.Text()
