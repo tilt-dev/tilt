@@ -104,7 +104,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Expanding a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
@@ -193,10 +193,8 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://github.com/windmilleng/tilt/releases/download/v0.1.0/tilt.0.1.0.mac.x86_64.tar.gz &amp;&amp; \
-    mkdir tilt &amp;&amp; \
-    tar -C tilt -xzvf tilt.0.1.0.mac.x86_64.tar.gz &amp;&amp; \
-    sudo mv tilt/tilt /usr/local/bin/tilt
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.2.0/tilt.0.2.0.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+  sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
 <ul class="simple">
@@ -227,10 +225,8 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://github.com/windmilleng/tilt/releases/download/v0.1.0/tilt.0.1.0.linux.x86_64.tar.gz &amp;&amp; \
-    mkdir tilt &amp;&amp; \
-    tar -C tilt -xzvf tilt.0.1.0.linux.x86_64.tar.gz &amp;&amp; \
-    sudo mv tilt/tilt /usr/local/bin/tilt
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.2.0/tilt.0.2.0.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+    sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
 <ul class="simple">

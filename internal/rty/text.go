@@ -2,7 +2,9 @@ package rty
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tcell"
 )
 
@@ -141,32 +143,45 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int, error)
 		}
 
 		// now we know it's a text directive
-		for _, ch := range s {
-			// TODO(dbentley): combining characters
-			// TODO(dbentley): tab, etc.
-			// TODO(dbentley): runewidth
-			if nextX >= width {
-				nextX, nextY = 0, nextY+1
-			}
-			if nextX+1 > maxWidth {
-				maxWidth = nextX + 1
-			}
-			if nextY >= height {
-				return maxWidth, height, nil
-			}
-			if ch == '\n' {
-				if nextX == 0 && w != nil {
-					// make sure we take up our space
-					w.SetContent(nextX, nextY, ch, nil)
+		tokenizer := NewTokenizer(s)
+		for {
+			token, err := tokenizer.Next()
+			if err != nil {
+				if err == io.EOF {
+					break
 				}
-				nextX, nextY = 0, nextY+1
-				continue
+				return 0, 0, errors.Wrapf(err, "StringLayout.Tokenize")
 			}
 
-			if w != nil {
-				w.SetContent(nextX, nextY, ch, nil)
+			if nextX != 0 && nextX+len(token)-1 >= width {
+				nextX, nextY = 0, nextY+1
 			}
-			nextX = nextX + 1
+
+			for _, r := range token {
+				if nextX >= width {
+					nextX, nextY = 0, nextY+1
+				}
+				if nextX+1 > maxWidth {
+					maxWidth = nextX + 1
+				}
+				if nextY >= height {
+					return maxWidth, height, nil
+				}
+
+				if r == '\n' {
+					if nextX == 0 && w != nil {
+						// make sure we take up our space
+						w.SetContent(nextX, nextY, r, nil)
+					}
+					nextX, nextY = 0, nextY+1
+					continue
+				}
+
+				if w != nil {
+					w.SetContent(nextX, nextY, r, nil)
+				}
+				nextX = nextX + 1
+			}
 		}
 	}
 	return maxWidth, nextY + 1, nil

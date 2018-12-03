@@ -26,10 +26,8 @@ $ kubectl config use-context docker-for-desktop
 - Install the Tilt binary with:
 
 ```
-$ wget https://github.com/windmilleng/tilt/releases/download/v0.1.0/tilt.0.1.0.mac.x86_64.tar.gz && \
-    mkdir tilt && \
-    tar -C tilt -xzvf tilt.0.1.0.mac.x86_64.tar.gz && \
-    sudo mv tilt/tilt /usr/local/bin/tilt
+$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.2.0/tilt.0.2.0.mac.x86_64.tar.gz | tar -xzv tilt && \
+  sudo mv tilt /usr/local/bin/tilt
 ```
 
 - Verify that you installed it correctly with:
@@ -64,10 +62,8 @@ $ kubectl cluster-info
 - Install the Tilt binary with:
 
 ```
-$ wget https://github.com/windmilleng/tilt/releases/download/v0.1.0/tilt.0.1.0.linux.x86_64.tar.gz && \
-    mkdir tilt && \
-    tar -C tilt -xzvf tilt.0.1.0.linux.x86_64.tar.gz && \
-    sudo mv tilt/tilt /usr/local/bin/tilt
+$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.2.0/tilt.0.2.0.linux.x86_64.tar.gz | tar -xzv tilt && \
+    sudo mv tilt /usr/local/bin/tilt
 ```
 
 - Verify that you installed it correctly with:
