@@ -91,9 +91,4 @@ func TestConcatLayout(t *testing.T) {
 	cl.Add(TextString("HEADER"))
 	cl.AddDynamic(TextString(strings.Repeat("helllllo", 20)))
 	i.Run("wrapping on right of ConcatLayout", 20, 20, cl)
-
-	cl = NewConcatLayout(DirHor)
-	cl.Add(TextString("left"))
-	cl.AddRight(TextString("right"))
-	i.Run("ConcatLayout: text on left and right", 40, 2, cl)
 }

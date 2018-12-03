@@ -236,7 +236,9 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 			},
 		},
 	}
-	rtf.run("edited files wrap", 60, 20, v, plainVs)
+	rtf.run("edited files narrow term", 60, 20, v, plainVs)
+	rtf.run("edited files normal term", 80, 20, v, plainVs)
+	rtf.run("edited files wide term", 120, 20, v, plainVs)
 }
 
 func TestRenderTiltLog(t *testing.T) {

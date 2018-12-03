@@ -124,9 +124,8 @@ type concatLayoutComponent struct {
 }
 
 type ConcatLayout struct {
-	dir     Dir
-	leftCs  []concatLayoutComponent
-	rightCs []concatLayoutComponent
+	dir Dir
+	cs  []concatLayoutComponent
 }
 
 var _ Component = &ConcatLayout{}
@@ -136,7 +135,7 @@ func NewConcatLayout(dir Dir) *ConcatLayout {
 }
 
 func (l *ConcatLayout) Add(c Component) {
-	l.leftCs = append(l.leftCs, concatLayoutComponent{c, true})
+	l.cs = append(l.cs, concatLayoutComponent{c, true})
 }
 
 // A ConcatLayout element can be either fixed or dynamic. Fixed components are all given a chance at the full
@@ -144,11 +143,7 @@ func (l *ConcatLayout) Add(c Component) {
 // Dynamic components get equal shares of whatever is left after the fixed components get theirs.
 // NB: There is currently a bit of a murky line between ConcatLayout and FlexLayout.
 func (l *ConcatLayout) AddDynamic(c Component) {
-	l.leftCs = append(l.leftCs, concatLayoutComponent{c, false})
-}
-
-func (l *ConcatLayout) AddRight(c Component) {
-	l.rightCs = append(l.rightCs, concatLayoutComponent{c, true})
+	l.cs = append(l.cs, concatLayoutComponent{c, false})
 }
 
 func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int, allocatedLen int, maxDepth int, err error) {
@@ -160,7 +155,7 @@ func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int,
 	}
 
 	var fixedComponents, unfixedComponents []componentAndIndex
-	for i, clc := range append(l.leftCs, l.rightCs...) {
+	for i, clc := range l.cs {
 		if clc.fixed {
 			fixedComponents = append(fixedComponents, componentAndIndex{clc.c, i})
 		} else {
@@ -186,8 +181,8 @@ func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int,
 		return reqWidth, reqHeight, nil
 	}
 
-	widths = make([]int, len(l.leftCs)+len(l.rightCs))
-	heights = make([]int, len(l.leftCs)+len(l.rightCs))
+	widths = make([]int, len(l.cs))
+	heights = make([]int, len(l.cs))
 
 	for _, c := range fixedComponents {
 		len, dep := whToLd(width, height, l.dir)
@@ -220,16 +215,8 @@ func (l *ConcatLayout) Size(width, height int) (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-
-	w, h := ldToWh(allocatedLen, maxDepth, l.dir)
-	if len(l.rightCs) > 0 {
-		if l.dir == DirHor {
-			w = width
-		} else {
-			h = height
-		}
-	}
-	return w, h, nil
+	len, dep := ldToWh(allocatedLen, maxDepth, l.dir)
+	return len, dep, err
 }
 
 func (l *ConcatLayout) Render(w Writer, width int, height int) error {
@@ -239,7 +226,7 @@ func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 	}
 
 	offset := 0
-	for i, c := range l.leftCs {
+	for i, c := range l.cs {
 		reqWidth, reqHeight, err := c.c.Size(widths[i], heights[i])
 		if err != nil {
 			return err
@@ -256,35 +243,6 @@ func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 		} else {
 			var err error
 			subW, err = w.Divide(0, offset, reqWidth, reqHeight)
-			if err != nil {
-				return err
-			}
-			offset += reqHeight
-		}
-
-		subW.RenderChild(c.c)
-	}
-
-	offset = 0
-
-	for i, c := range l.rightCs {
-		index := i + len(l.leftCs)
-		reqWidth, reqHeight, err := c.c.Size(widths[index], heights[index])
-		if err != nil {
-			return err
-		}
-
-		var subW Writer
-		if l.dir == DirHor {
-			var err error
-			subW, err = w.Divide(width-reqWidth-offset, 0, reqWidth, reqHeight)
-			if err != nil {
-				return err
-			}
-			offset += reqWidth
-		} else {
-			var err error
-			subW, err = w.Divide(0, height-reqHeight-offset, reqWidth, reqHeight)
 			if err != nil {
 				return err
 			}
