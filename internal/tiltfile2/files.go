@@ -1,6 +1,14 @@
 package tiltfile2
 
-import ()
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
+	"github.com/google/skylark"
+	"github.com/pkg/errors"
+)
 
 type gitRepo struct {
 	basePath             string
@@ -8,8 +16,8 @@ type gitRepo struct {
 	dockerignoreContents string
 }
 
-func (t *Tiltfile) newGitRepo(path string) (gitRepo, error) {
-	absPath := t.absPath(path)
+func (s *tiltfileState) newGitRepo(path string) (gitRepo, error) {
+	absPath := s.absPath(path)
 	_, err := os.Stat(absPath)
 	if err != nil {
 		return gitRepo{}, fmt.Errorf("Reading path %s: %v", path, err)
@@ -32,6 +40,16 @@ func (t *Tiltfile) newGitRepo(path string) (gitRepo, error) {
 	}
 
 	return gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}, nil
+}
+
+func (s *tiltfileState) localGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var path string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.newGitRepo(path)
 }
 
 var _ skylark.Value = gitRepo{}
@@ -87,21 +105,21 @@ type localPath struct {
 	repo gitRepo
 }
 
-func (t *Tiltfile) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
+func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
 	switch v := v.(type) {
 	case localPath:
 		return v, nil
 	case gitRepo:
 		return v.makeLocalPath("."), nil
 	case skylark.String:
-		return t.localPathFromString(string(v))
+		return s.localPathFromString(string(v))
 	default:
 		return localPath{}, fmt.Errorf(" Expected local path. Actual type: %T", v)
 	}
 }
 
-func (t *Tiltfile) localPathFromString(path string) (localPath, error) {
-	absPath := t.absPath(path)
+func (s *tiltfileState) localPathFromString(path string) (localPath, error) {
+	absPath := s.absPath(path)
 	_, err := os.Stat(absPath)
 	if err != nil {
 		return localPath{}, fmt.Errorf("Reading path %s: %v", path, err)
@@ -117,7 +135,7 @@ func (t *Tiltfile) localPathFromString(path string) (localPath, error) {
 	repo := gitRepo{}
 
 	if hasGitDir {
-		repo, err = t.newGitRepo(absDirPath)
+		repo, err = s.newGitRepo(absDirPath)
 		if err != nil {
 			return localPath{}, err
 		}
@@ -147,4 +165,27 @@ func (localPath) Hash() (uint32, error) {
 
 func (lp localPath) Truth() skylark.Bool {
 	return lp != localPath{}
+}
+
+// When running the Tilt demo, the current working directory is arbitrary.
+// So we want to resolve paths relative to the dir where the Tiltfile lives,
+// not relative to the working directory.
+func (s *tiltfileState) absPath(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(s.absWorkingDir(), path)
+}
+
+func (s *tiltfileState) absWorkingDir() string {
+	return filepath.Dir(s.filename)
+}
+
+func (s *tiltfileState) recordConfigFile(f string) {
+	s.configFiles = append(s.configFiles, f)
+}
+
+func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
+	s.recordConfigFile(p.path)
+	return ioutil.ReadFile(p.path)
 }

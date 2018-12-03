@@ -89,6 +89,25 @@ func (e K8sEntity) HasImage(image reference.Named) (bool, error) {
 	return false, nil
 }
 
+func (e K8sEntity) FindImages() ([]reference.Named, error) {
+	var result []reference.Named
+	containers, err := extractContainers(&e)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, container := range containers {
+		ref, err := reference.ParseNormalizedNamed(container.Image)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, ref)
+	}
+
+	return result, nil
+}
+
 func PodContainsRef(pod v1.PodSpec, ref reference.Named) (bool, error) {
 	cRef, err := FindImageRefMatching(pod, ref)
 	if err != nil {
