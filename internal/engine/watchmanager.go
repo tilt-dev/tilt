@@ -70,7 +70,6 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-// TODO(dmiller) this needs to diff the files being watched as well
 func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []model.ManifestName) {
 	state := st.RLockState()
 	defer st.RUnlockState()
