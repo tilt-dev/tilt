@@ -518,6 +518,11 @@ spec:
         command: ["/go/bin/snack"]
 `
 
+const (
+	SnackName  = "snack"
+	SnackImage = "gcr.io/windmill-public-containers/servantes/snack"
+)
+
 const SecretYaml = `
 apiVersion: v1
 kind: Secret
