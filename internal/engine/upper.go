@@ -6,10 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -256,11 +254,6 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuildReason = model.BuildReasonNone
 	ms.CurrentBuildLog = nil
 	ms.NeedsRebuildFromCrash = false
-
-	// ~~ TESTING SHIT
-	ms.DCInfo = dockercompose.Info{
-		State: "pretty good",
-	}
 
 	if err != nil {
 		ms.CurrentBuildEdits = nil
@@ -661,17 +654,22 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 }
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) error {
-	fmt.Printf("totally handling this event: %s", spew.Sdump(action.Event))
 	evt := action.Event
 	mn := evt.Service
 	ms, ok := engineState.ManifestStates[model.ManifestName(mn)]
 	if !ok {
 		// No corresponding manifest, nothing to do
+		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
 		return nil
 	}
 
 	// For now, just guess at state.
-	ms.DCInfo.State = evt.GuessState()
+	state, ok := evt.GuessState()
+	logger.Get(ctx).Infof("guessing state for %s event: %s", evt.Type, evt.Action)
+	if ok {
+		logger.Get(ctx).Infof("state is probably: %s", state)
+		ms.DCInfo.State = state
+	}
 
 	return nil
 }

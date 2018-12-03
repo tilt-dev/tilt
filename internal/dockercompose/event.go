@@ -29,10 +29,6 @@ func EventFromJsonStr(j string) (Event, error) {
 	return evt, err
 }
 
-func (evt Event) GuessState() string {
-	return "great!"
-}
-
 // https://docs.docker.com/engine/reference/commandline/events/
 type Type string
 
