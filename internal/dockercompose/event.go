@@ -33,7 +33,7 @@ func EventFromJsonStr(j string) (Event, error) {
 type Type string
 
 const (
-	// Add 'types' here (and to `UnmarshalJSON` below`) as we support them
+	// Add 'types' here (and to `UnmarshalJSON` below) as we support them
 	TypeContainer Type = "container"
 )
 

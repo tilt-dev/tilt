@@ -660,6 +660,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	if !ok {
 		// No corresponding manifest, nothing to do
 		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
+		return
 	}
 
 	// For now, just guess at state.

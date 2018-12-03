@@ -208,7 +208,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name: "vigoda",
+				Name:                  "vigoda",
 				CurrentBuildStartTime: ts.Add(-5 * time.Second),
 				CurrentBuildEdits:     []string{"main.go"},
 			},

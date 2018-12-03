@@ -18,7 +18,6 @@ type DockerComposeWatcher struct {
 }
 
 func NewDockerComposeWatcher() *DockerComposeWatcher {
-	fmt.Println("making a docker-compose watcher hoorayyyy")
 	return &DockerComposeWatcher{}
 }
 
