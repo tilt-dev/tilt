@@ -8,7 +8,7 @@
 * Skaffold is configured with a static YAML config. Tilt is configured with a `Tiltfile`, written in a small subset of Python called [Starlark](https://github.com/bazelbuild/starlark#tour>).
 
 ## Migrate from Skaffold to Tilt
-Let's take a simple `skaffold.yaml` file with one service:
+Let's take a relatively simple `skaffold.yaml` file with two services:
 
 ```yaml
 apiVersion: skaffold/v1alpha5
@@ -16,10 +16,14 @@ kind: Config
 build:
   artifacts:
   - image: gcr.io/windmill-public-containers/servantes/snack
+    context: snack
+  - image: gcr.io/windmill-public-containers/servantes/spoonerisms
+    context: spoonerisms
 deploy:
   kubectl:
     manifests:
-      - ./deployments/snack.yaml
+      - deployments/snack.yaml
+      - deployments/spoonerisms.yaml
 ```
 
 1. Create a `Tiltfile`
@@ -31,13 +35,14 @@ In Skaffold you specify your Kubernetes YAML under the `manifests` key:
 deploy:
   kubectl:
     manifests:
-      - ./deployments/snack.yaml
+      - deployments/snack.yaml
+      - deployments/spoonerisms.yaml
 ```
 
 In Tilt we specify Kubernetes YAML with the `k8s_resource` function.
 
 ```python
-k8s_resource('deploy', 'deployments/snack.yaml')
+k8s_resource('deploy', ['deployments/snack.yaml', 'deployments/spoonerisms.yaml'])
 ```
 
 3. Tell Tilt about your Dockerfile
@@ -48,12 +53,16 @@ In Skaffold you specify the image tag you want to build and deploy:
 build:
   artifacts:
   - image: gcr.io/windmill-public-containers/servantes/snack
+    context: snack
+  - image: gcr.io/windmill-public-containers/servantes/spoonerisms
+    context: spoonerisms
 ```
 
 Similarly in Tilt you specify the image tag as well as the Docker build context (`"."` in this case).
 
 ```python
-  docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', 'snack')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', 'spoonerisms')
 ```
 
 ## That's it!
@@ -61,6 +70,7 @@ Similarly in Tilt you specify the image tag as well as the Docker build context 
 Now your Tiltfile should look like this:
 
 ```python
-k8s_resource('deployment', 'deployments/snack.yaml')
-docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
+k8s_resource('deploy', ['deployments/snack.yaml', 'deployments/spoonerisms.yaml'])
+docker_build('gcr.io/windmill-public-containers/servantes/snack', 'snack')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', 'spoonerisms')
 ```
