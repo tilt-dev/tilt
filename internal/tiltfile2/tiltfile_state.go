@@ -136,7 +136,7 @@ func (s *tiltfileState) assemble() ([]*k8sResource, error) {
 		for _, ref := range resourceImages {
 			target := byImage[ref.Name()]
 			if target == nil {
-				target := &k8sResource{
+				target = &k8sResource{
 					expandedFrom: r.name,
 					imageRef:     ref.Name(),
 				}
@@ -231,7 +231,7 @@ func (s *tiltfileState) assignNames(result []*k8sResource) ([]*k8sResource, erro
 		//  project/foo
 		//  company/project/foo
 		//  gcr.io/company/project/foo
-		for p != "" {
+		for p != "" && p != "." {
 			var base string
 			p, base = filepath.Dir(p), filepath.Base(p)
 			n = filepath.Join(base, n)
