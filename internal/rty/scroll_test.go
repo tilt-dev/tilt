@@ -72,6 +72,21 @@ func TestTextScroll(t *testing.T) {
 	sl = NewTextScrollLayout("bar")
 	sl.Add(TextString(strings.Repeat("abcd", 200)))
 	i.Run("line wrapped text scroll", 10, 10, sl)
+
+	sl = NewTextScrollLayout("bar2")
+	s := ""
+	for i := 1; i <= 20; i++ {
+		s = s + fmt.Sprintf("%d\n", i)
+	}
+	sl.Add(TextString(s))
+	ts := i.rty.TextScroller(sl.name)
+	ts.Bottom()
+	ts.Up()
+	for i := 0; i < 5; i++ {
+		ts.Down()
+		ts.Down()
+	}
+	i.Run("textscroll: stop scrolling at bottom", 10, 10, sl)
 }
 
 type elementScrollTestFixture struct {
