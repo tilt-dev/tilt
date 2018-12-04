@@ -48,8 +48,7 @@ If you don't know Go, that's OK. These are steps to run to build a Go server.
 
 - `k8s_resource('oneup', 'oneup.yaml')`
 
-This next line reads a Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks while files you read, then automatically
-rebuilds your server if those files change.
+This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.
 
 At the risk of diving too deep, let's unpack that YAML file.
 

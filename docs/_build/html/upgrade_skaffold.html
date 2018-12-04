@@ -193,9 +193,6 @@
 <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
-    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">.</span> <span class="c1"># This is the default if not specified</span>
-    <span class="l l-Scalar l-Scalar-Plain">docker</span><span class="p p-Indicator">:</span>
-      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Dockerfile</span> <span class="c1"># This is the default if not specified</span>
 <span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
     <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
@@ -204,30 +201,20 @@
 </div>
 <ol class="simple">
 <li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
-<li>Define your service name</li>
-</ol>
-<p>In Skaffold services are implicitly named from their Kubernetes config. In Tilt services have names given by a function defined in your Tiltfile:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">snack</span><span class="p">():</span>
-</pre></div>
-</div>
-<ol class="simple">
-<li>Set the build context</li>
+<li>Tell Tilt about your Dockerfile</li>
 </ol>
 <p>In Skaffold you can specify your build context and Dockerfile like so:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
-    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">.</span> <span class="c1"># This is the default if not specified</span>
-    <span class="l l-Scalar l-Scalar-Plain">docker</span><span class="p p-Indicator">:</span>
-      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Dockerfile</span> <span class="c1"># This is the default if not specified</span>
 </pre></div>
 </div>
 <p>In Tilt you tell us where your Dockerfile is and what the build_context is.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/windmill-public-containers/servantes/snack&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <ol class="simple">
-<li>Combine your build context and k8s config to create a service</li>
+<li>Tell Tilt about your YAML</li>
 </ol>
 <p>In Skaffold you specify your Kubernetes YAML under the <code class="docutils literal notranslate"><span class="pre">manifests</span></code> key:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
@@ -236,23 +223,14 @@
       <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./deployments/snack.yaml</span>
 </pre></div>
 </div>
-<p>In Tilt we similarly associate your image and your Kubernetes YAML through the concept of a service:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;./deployments/snack.yaml&#39;</span><span class="p">)</span>
-  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+<p>In Tilt we associate your image and your Kubernetes YAML by image tag.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;snack&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<ol class="simple">
-<li>Return your service!</li>
-</ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="k">return</span> <span class="n">service</span>
-</pre></div>
-</div>
+<p>In Skaffold services are implicitly named from their Kubernetes config. In Tilt services have names given by the first argument to the <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> function.</p>
 <p>All in all your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> should now look like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">snack</span><span class="p">():</span>
-  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/windmill-public-containers/servantes/snack&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;./deployments/snack.yaml&#39;</span><span class="p">)</span>
-  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
-  <span class="k">return</span> <span class="n">service</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;snack&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>

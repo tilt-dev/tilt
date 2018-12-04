@@ -207,8 +207,7 @@ and download your image).</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">k8s_resource('oneup',</span> <span class="pre">'oneup.yaml')</span></code></li>
 </ul>
-<p>This next line reads a Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks while files you read, then automatically
-rebuilds your server if those files change.</p>
+<p>This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.</p>
 <p>At the risk of diving too deep, let’s unpack that YAML file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
 <span class="n">kind</span><span class="p">:</span> <span class="n">Namespace</span>
