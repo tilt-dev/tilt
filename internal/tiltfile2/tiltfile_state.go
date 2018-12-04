@@ -1,7 +1,6 @@
 package tiltfile2
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -9,7 +8,6 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 
-	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -26,12 +24,6 @@ type tiltfileState struct {
 	imagesByName map[string]*dockerImage
 	k8s          []*k8sResource
 	k8sByName    map[string]*k8sResource
-
-	// current fast_build_state
-	buildCtx *dockerImage
-
-	// final execution error, if any
-	err error
 }
 
 func newTiltfileState(ctx context.Context, filename string) *tiltfileState {
@@ -40,6 +32,7 @@ func newTiltfileState(ctx context.Context, filename string) *tiltfileState {
 		filename:     filename,
 		imagesByName: make(map[string]*dockerImage),
 		k8sByName:    make(map[string]*k8sResource),
+		configFiles:  []string{filename},
 	}
 }
 
@@ -56,8 +49,19 @@ func (s *tiltfileState) exec() error {
 // Builtin functions
 
 const (
+	// build functions
 	dockerBuildN = "docker_build"
+	fastBuildN   = "fast_build"
+
+	// k8s functions
 	k8sResourceN = "k8s_resource"
+	portForwardN = "port_forward"
+
+	// file functions
+	localGitRepoN = "local_git_repo"
+	localN        = "local"
+	readFileN     = "read_file"
+	kustomizeN    = "kustomize"
 )
 
 func (s *tiltfileState) builtins() skylark.StringDict {
@@ -67,121 +71,16 @@ func (s *tiltfileState) builtins() skylark.StringDict {
 	}
 
 	add(dockerBuildN, s.dockerBuild)
+	add(fastBuildN, s.fastBuild)
+
 	add(k8sResourceN, s.k8sResource)
+	add(portForwardN, s.portForward)
+
+	add(localGitRepoN, s.localGitRepo)
+	add(localN, s.local)
+	add(readFileN, s.skylarkReadFile)
+	add(kustomizeN, s.kustomize)
 	return r
-}
-
-func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var dockerRef string
-	var dockerfilePath, buildPath, buildArgs skylark.Value
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
-		"ref", &dockerRef,
-		"dockerfile", &dockerfilePath,
-		"build_args?", &buildArgs,
-		"context?", &buildPath,
-	); err != nil {
-		return nil, err
-	}
-
-	ref, err := reference.ParseNormalizedNamed(dockerRef)
-	if err != nil {
-		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
-	}
-
-	dockerfileLocalPath, err := s.localPathFromSkylarkValue(dockerfilePath)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 1 (dockerfile): %v", err)
-	}
-
-	var sba map[string]string
-	if buildArgs != nil {
-		d, ok := buildArgs.(*skylark.Dict)
-		if !ok {
-			return nil, fmt.Errorf("Argument 3 (build_args): expected dict, got %T", buildArgs)
-		}
-
-		sba, err = skylarkStringDictToGoMap(d)
-		if err != nil {
-			return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
-		}
-	}
-
-	var buildLocalPath localPath
-	if buildPath == nil {
-		buildLocalPath = localPath{
-			path: filepath.Dir(dockerfileLocalPath.path),
-			repo: dockerfileLocalPath.repo,
-		}
-	} else {
-		buildLocalPath, err = s.localPathFromSkylarkValue(buildPath)
-		if err != nil {
-			return nil, fmt.Errorf("Argument 4 (context): %v", err)
-		}
-	}
-
-	bs, err := s.readFile(dockerfileLocalPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.imagesByName[ref.Name()] != nil {
-		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
-	}
-
-	r := &dockerImage{
-		staticDockerfilePath: dockerfileLocalPath,
-		staticDockerfile:     dockerfile.Dockerfile(bs),
-		staticBuildPath:      buildLocalPath,
-		ref:                  ref,
-		tiltFilename:         s.filename,
-		staticBuildArgs:      sba,
-	}
-	s.imagesByName[ref.Name()] = r
-	s.images = append(s.images, r)
-
-	return skylark.None, nil
-}
-
-func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var name string
-	var yamlValue skylark.Value
-
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
-		"name", &name,
-		"yaml", &yamlValue,
-	); err != nil {
-		return nil, err
-	}
-
-	if name == "" {
-		return nil, fmt.Errorf("k8s_resource: name must not be empty")
-	}
-	if s.k8sByName[name] != nil {
-		return nil, fmt.Errorf("resource named %q has already been defined", name)
-	}
-
-	yamlPath, err := s.localPathFromSkylarkValue(yamlValue)
-	if err != nil {
-		return nil, err
-	}
-
-	bs, err := s.readFile(yamlPath)
-	if err != nil {
-		return nil, err
-	}
-
-	entities, err := k8s.ParseYAML(bytes.NewBuffer(bs))
-	if err != nil {
-		return nil, err
-	}
-
-	r := &k8sResource{
-		name: name,
-		k8s:  entities,
-	}
-	s.k8s = append(s.k8s, r)
-	s.k8sByName[name] = r
-	return skylark.None, nil
 }
 
 func (s *tiltfileState) assemble() ([]*k8sResource, error) {
@@ -371,19 +270,19 @@ func (s *tiltfileState) translate(resources []*k8sResource) ([]model.Manifest, e
 			return nil, err
 		}
 
-		m = m.WithPortForwards(nil). // FIXME(dbentley)
-						WithK8sYAML(k8sYaml)
+		m = m.WithPortForwards(s.portForwardsToDomain(r)). // FIXME(dbentley)
+									WithK8sYAML(k8sYaml)
 
 		if r.imageRef != "" {
 			image := s.imagesByName[r.imageRef]
-			m.Mounts = nil // FIXME(dbentley)
+			m.Mounts = s.mountsToDomain(image)
 			m.Entrypoint = model.ToShellCmd(image.entrypoint)
 			m.BaseDockerfile = image.baseDockerfile.String()
 			m.Steps = image.steps
 			m.StaticDockerfile = image.staticDockerfile.String()
 			m.StaticBuildPath = string(image.staticBuildPath.path)
 			m.StaticBuildArgs = image.staticBuildArgs
-			m.Repos = nil // FIXME(dbentley)
+			m.Repos = s.reposToDomain(image)
 			m = m.WithDockerRef(image.ref).
 				WithTiltFilename(image.tiltFilename).
 				WithCachePaths(image.cachePaths)
@@ -392,4 +291,8 @@ func (s *tiltfileState) translate(resources []*k8sResource) ([]model.Manifest, e
 	}
 
 	return result, nil
+}
+
+func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
+	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
 }
