@@ -24,11 +24,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	plainVs := view.ViewState{
-		Resources: []view.ResourceViewState{
-			{},
-		},
-	}
+	plainVs := fakeViewState(1, view.CollapseNo)
 
 	rtf.run("one undeployed resource", 70, 20, v, plainVs)
 
@@ -246,10 +242,9 @@ func TestRenderTiltLog(t *testing.T) {
 		Log:       strings.Repeat("abcdefg", 30),
 		Resources: nil,
 	}
-	vs := view.ViewState{
-		LogModal: view.LogModal{
-			TiltLog: true,
-		},
+	vs := fakeViewState(0, view.CollapseNo)
+	vs.LogModal = view.LogModal{
+		TiltLog: true,
 	}
 
 	rtf.run("tilt log", 70, 20, v, vs)
@@ -258,12 +253,8 @@ func TestRenderTiltLog(t *testing.T) {
 func TestRenderLogModal(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
-	vs := view.ViewState{
-		Resources: []view.ResourceViewState{
-			{},
-		},
-		LogModal: view.LogModal{ResourceLogNumber: 1},
-	}
+	vs := fakeViewState(1, view.CollapseNo)
+	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
 
 	now := time.Now()
 	v := view.View{
@@ -335,15 +326,9 @@ func TestAutoCollapseModes(t *testing.T) {
 		},
 	}
 
-	autoVS := view.ViewState{
-		Resources: []view.ResourceViewState{{CollapseState: view.CollapseAuto}},
-	}
-	collapseYesVS := view.ViewState{
-		Resources: []view.ResourceViewState{{CollapseState: view.CollapseYes}},
-	}
-	collapseNoVS := view.ViewState{
-		Resources: []view.ResourceViewState{{CollapseState: view.CollapseNo}},
-	}
+	autoVS := fakeViewState(1, view.CollapseAuto)
+	collapseYesVS := fakeViewState(1, view.CollapseYes)
+	collapseNoVS := fakeViewState(1, view.CollapseNo)
 	rtf.run("collapse-auto-good", 70, 20, goodView, autoVS)
 	rtf.run("collapse-auto-bad", 70, 20, badView, autoVS)
 	rtf.run("collapse-no-good", 70, 20, goodView, collapseNoVS)
@@ -374,4 +359,14 @@ var screen tcell.Screen
 
 func TestMain(m *testing.M) {
 	rty.InitScreenAndRun(m, &screen)
+}
+
+func fakeViewState(count int, collapse view.CollapseState) view.ViewState {
+	vs := view.ViewState{}
+	for i := 0; i < count; i++ {
+		vs.Resources = append(vs.Resources, view.ResourceViewState{
+			CollapseState: collapse,
+		})
+	}
+	return vs
 }
