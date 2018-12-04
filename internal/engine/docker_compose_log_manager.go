@@ -11,7 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-// Collects logs from deployed containers.
+// Collects logs from running docker-compose services.
 type DockerComposeLogManager struct {
 	watches map[model.ManifestName]DockerComposeLogWatch
 }
@@ -22,9 +22,8 @@ func NewDockerComposeLogManager() *DockerComposeLogManager {
 	}
 }
 
-// Diff the current watches against the state store of what
-// we're supposed to be watching, returning the changes
-// we need to make.
+// Diff the current watches against set of current docker-compose services, i.e.
+// what we SHOULD be watching, returning the changes we need to make.
 func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (setup []DockerComposeLogWatch, teardown []DockerComposeLogWatch) {
 	state := st.RLockState()
 	defer st.RUnlockState()
@@ -47,9 +46,8 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 				continue
 			}
 
-			// The active log watcher got cancelled somehow,
-			// so we need to create a new one that picks up
-			// where it left off.
+			// The active log watcher got cancelled somehow, so we need to create
+			// a new one that picks up where it left off.
 			startWatchTime = <-existing.terminationTime
 		}
 
@@ -105,10 +103,9 @@ func (m *DockerComposeLogManager) consumeLogs(watch DockerComposeLogWatch, st st
 		_ = readCloser.Close()
 	}()
 
+	// TODO(maia): docker-compose already prefixes logs, but maybe we want to roll
+	// our own (as in PodWatchManager) cuz it's prettier?
 	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	// ~~ DC already gives us prefixes -- tho maybe we want to roll our own cuz it's prettier?
-	// prefix := logPrefix(name.String())
-	// prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
 	actionWriter := DockerComposeLogActionWriter{
 		store:        st,
 		manifestName: name,

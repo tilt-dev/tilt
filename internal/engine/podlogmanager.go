@@ -155,17 +155,17 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		_ = readCloser.Close()
 	}()
 
-	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)      // write to master logger
-	prefix := logPrefix(name.String())                             // calculate prefix for pod log (i.e. service name?)
-	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter) // new writer that prefixes all lines
-	actionWriter := PodLogActionWriter{                            // `Write` message dispatches NewPodLog action
+	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
+	prefix := logPrefix(name.String())
+	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
+	actionWriter := PodLogActionWriter{
 		store:        st,
 		manifestName: name,
 		podID:        pID,
 	}
-	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter) // write to both at once
+	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
 
-	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser)) // til reader done, take all from readCloser (unless ctx.canceled) --> multiWriter
+	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
@@ -207,7 +207,6 @@ type PodLogActionWriter struct {
 	manifestName model.ManifestName
 }
 
-// implements writer interface
 func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(PodLogAction{
 		PodID:        w.podID,

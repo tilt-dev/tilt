@@ -150,9 +150,7 @@ func (DockerComposeEventAction) Action() {}
 
 type DockerComposeLogAction struct {
 	ManifestName model.ManifestName
-
-	PodID k8s.PodID
-	Log   []byte
+	Log          []byte
 }
 
 func (DockerComposeLogAction) Action() {}
