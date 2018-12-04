@@ -315,7 +315,7 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 	if selected {
 		p = "▼"
 	}
-	if selected && rv.IsCollapsed {
+	if selected && res.IsCollapsed(rv) {
 		p = "▶"
 	}
 
@@ -391,31 +391,17 @@ type buildStatus struct {
 	status      string
 	statusColor tcell.Color
 	editsPrefix string
-	edits       string
+	edits       []string
 	duration    string
 }
 
 func (r *Renderer) resourceTilt(res view.Resource, rv view.ResourceViewState) rty.Component {
 	lines := rty.NewLines()
-	l := rty.NewLine()
-	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
-
-	indent := strings.Repeat(" ", 8)
 
 	bs := r.makeBuildStatus(res)
+	esl := NewEditStatusLine(bs)
+	lines.Add(esl)
 
-	sbLeft.Fg(bs.statusColor).Textf("%s●", indent).Fg(tcell.ColorDefault)
-	sbLeft.Fg(cLightText).Text(" TILT: ").Fg(tcell.ColorDefault).Text(bs.status)
-
-	sbLeft.Fg(cLightText).Text(bs.editsPrefix).Fg(tcell.ColorDefault).Text(bs.edits)
-	sbRight.Fg(cLightText).Text("DURATION ")
-	sbRight.Fg(tcell.ColorDefault).Textf("%s           ", bs.duration) // Last char cuts off
-
-	l.Add(sbLeft.Build())
-	l.Add(rty.NewFillerString(' '))
-	l.Add(sbRight.Build())
-	lines.Add(l)
 	lines.Add(r.lastBuildLogs(res, rv))
 	return lines
 }
@@ -440,7 +426,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 	if !res.LastDeployTime.IsZero() {
 		if len(res.LastDeployEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
-			bs.edits = formatFileList(res.LastDeployEdits)
+			bs.edits = res.LastDeployEdits
 		}
 	}
 
@@ -452,7 +438,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		}
 		if len(res.CurrentBuildEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
-			bs.edits = formatFileList(res.CurrentBuildEdits)
+			bs.edits = res.CurrentBuildEdits
 		}
 	}
 
@@ -464,7 +450,7 @@ func (r *Renderer) makeBuildStatus(res view.Resource) buildStatus {
 		}
 		if len(res.PendingBuildEdits) > 0 {
 			bs.editsPrefix = " • EDITS "
-			bs.edits = formatFileList(res.PendingBuildEdits)
+			bs.edits = res.PendingBuildEdits
 		}
 	}
 
@@ -477,7 +463,7 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 	spacer := rty.TextString(strings.Repeat(" ", 12))
 
 	needsSpacer := false
-	if !rv.IsCollapsed {
+	if !res.IsCollapsed(rv) {
 		if isCrashing(res) {
 			podLog := res.PodLog
 			if podLog == "" {
@@ -505,7 +491,7 @@ func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) r
 	spacer := rty.TextString(strings.Repeat(" ", 12))
 	needsSpacer := false
 
-	if !rv.IsCollapsed {
+	if !res.IsCollapsed(rv) {
 		if res.LastBuildError != "" {
 			abbrevLog := abbreviateLog(res.LastBuildLog)
 			for _, logLine := range abbrevLog {

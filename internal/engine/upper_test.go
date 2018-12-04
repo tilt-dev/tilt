@@ -1421,6 +1421,35 @@ func TestHudExitWithError(t *testing.T) {
 	assert.Equal(t, e, err)
 }
 
+func TestNewMountsAreWatched(t *testing.T) {
+	f := newTestFixture(t)
+	mount1 := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	m1 := f.newManifest("mani1", []model.Mount{mount1})
+	f.Start([]model.Manifest{
+		m1,
+	}, true)
+
+	f.waitForCompletedBuildCount(1)
+
+	mount2 := model.Mount{LocalPath: "/js", ContainerPath: "/go"}
+	m2 := f.newManifest("mani1", []model.Mount{mount1, mount2})
+	f.store.Dispatch(ConfigsReloadedAction{
+		Manifests: []model.Manifest{m2},
+	})
+
+	f.WaitUntilManifest("has new mounts", "mani1", func(st store.ManifestState) bool {
+		return len(st.Manifest.Mounts) == 2
+	})
+
+	f.PollUntil("watches setup", func() bool {
+		watches, ok := f.fwm.manifestWatches[m2.ManifestName()]
+		if !ok {
+			return false
+		}
+		return len(watches.manifest.Dependencies()) == 2
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -1515,7 +1544,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
 
-	upper := NewUpper(ctx, b, fakeHud, pw, sw, st, plm, pfc, fwm, watcher.newSub, bc, ic, gybc, cc, k8s)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

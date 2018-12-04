@@ -1,4 +1,4 @@
-Expanding a Tiltfile
+Optimizing a Tiltfile
 =====================
 
 This tutorial looks at a `Tiltfile` with build optimizations.
@@ -70,9 +70,9 @@ FROM golang:1.10
 
 It's only one line! This line says we're starting in a golang:1.10 container.
 
-This `Dockerfile` looks different than most `Dockerfile`s because
-it cannot contain any `ADD` or `COPY` lines.
+Fast build Dockerfiles cannot contain any ADD or COPY lines.
 It's only for setting up the environment, not for adding your code.
+So this Dockerfile might look different than most.
 
 * `repo = local_git_repo('.')`
 

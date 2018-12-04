@@ -36,18 +36,21 @@ We use [goreleaser](https://goreleaser.com) for releases.
 
 Requirements:
 - goreleaser
-- Linux
+- MacOS
 - `GITHUB_TOKEN` env variable with repo scope
 
-Currently releases only work on Linux -> Linux due to cross-compilation issues with Apple FSEvents.
+Currently, releases have to be built on MacOS due to cross-compilation issues with Apple FSEvents.
+Cross-compiling a Linux target binary with a MacOS toolchain works fine.
 
 To create a new release at tag `$TAG`:
 
 ```
-git tag -a v0.0.1 -m "First release"
+git tag -a v0.0.1 -m "my release"
 git push origin v0.0.1
 make release
 ```
 
-goreleaser will build binaries for the latest tag (using semantic version to determine "latest").
+goreleaser will build binaries for the latest tag (using semantic version to
+determine "latest"). Check the current releases to figure out what the latest
+release ought to be.
 

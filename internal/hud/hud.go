@@ -17,6 +17,10 @@ import (
 // The main loop ensures the HUD updates at least this often
 const DefaultRefreshInterval = 1 * time.Second
 
+// number of arrows a pgup/dn is equivalent to
+// (we don't currently worry about trying to know how big a page is, and instead just support pgup/dn as "faster arrows"
+const pgUpDownCount = 20
+
 type HeadsUpDisplay interface {
 	store.Subscriber
 
@@ -169,6 +173,14 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.activeScroller().Up()
 		case tcell.KeyDown:
 			h.activeScroller().Down()
+		case tcell.KeyPgUp:
+			for i := 0; i < pgUpDownCount; i++ {
+				h.activeScroller().Up()
+			}
+		case tcell.KeyPgDn:
+			for i := 0; i < pgUpDownCount; i++ {
+				h.activeScroller().Down()
+			}
 		case tcell.KeyEnter:
 			if h.activeModal() == nil {
 				selectedIdx, r := h.selectedResource()
@@ -183,10 +195,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			}
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()
-			h.currentViewState.Resources[i].IsCollapsed = false
+			h.currentViewState.Resources[i].CollapseState = view.CollapseNo
 		case tcell.KeyLeft:
 			i, _ := h.selectedResource()
-			h.currentViewState.Resources[i].IsCollapsed = true
+			h.currentViewState.Resources[i].CollapseState = view.CollapseYes
 		case tcell.KeyHome:
 			h.activeScroller().Top()
 		case tcell.KeyEnd:

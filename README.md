@@ -36,7 +36,7 @@ to help you `tilt up` quickly.
 Down with YAML!
 
 Configure Tilt with a `Tiltfile`, written in a small subset of Python called
-[Starlark](https://github.com/bazelbuild/starlark#tour>).
+[Starlark](https://github.com/bazelbuild/starlark#tour).
 
 To get started, check out some [examples](https://docs.tilt.build/first_example.html) or dive into the
 [API reference](https://docs.tilt.build/api.html).
