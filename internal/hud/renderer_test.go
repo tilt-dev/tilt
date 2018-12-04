@@ -26,9 +26,7 @@ func TestRender(t *testing.T) {
 
 	plainVs := view.ViewState{
 		Resources: []view.ResourceViewState{
-			{
-				IsCollapsed: false,
-			},
+			{},
 		},
 	}
 
@@ -226,6 +224,19 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		},
 	}
 	rtf.run("pending build", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:            "vigoda",
+				LastDeployTime:  ts.Add(-5 * time.Second),
+				LastDeployEdits: []string{"abbot.go", "costello.go", "harold.go"},
+			},
+		},
+	}
+	rtf.run("edited files narrow term", 60, 20, v, plainVs)
+	rtf.run("edited files normal term", 80, 20, v, plainVs)
+	rtf.run("edited files wide term", 120, 20, v, plainVs)
 }
 
 func TestRenderTiltLog(t *testing.T) {
@@ -249,9 +260,7 @@ func TestRenderLogModal(t *testing.T) {
 
 	vs := view.ViewState{
 		Resources: []view.ResourceViewState{
-			{
-				IsCollapsed: false,
-			},
+			{},
 		},
 		LogModal: view.LogModal{ResourceLogNumber: 1},
 	}
@@ -301,6 +310,44 @@ func TestRenderTiltfileError(t *testing.T) {
 	vs := view.ViewState{}
 
 	rtf.run("tiltfile error", 60, 20, v, vs)
+}
+
+func TestAutoCollapseModes(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	goodView := view.View{
+		Resources: []view.Resource{
+			{
+				Name:               "vigoda",
+				DirectoriesWatched: []string{"bar"},
+			},
+		},
+	}
+	badView := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				DirectoriesWatched:  []string{"bar"},
+				LastBuildFinishTime: time.Now(),
+				LastBuildError:      "oh no the build failed",
+				LastBuildLog:        "1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n",
+			},
+		},
+	}
+
+	autoVS := view.ViewState{
+		Resources: []view.ResourceViewState{{CollapseState: view.CollapseAuto}},
+	}
+	collapseYesVS := view.ViewState{
+		Resources: []view.ResourceViewState{{CollapseState: view.CollapseYes}},
+	}
+	collapseNoVS := view.ViewState{
+		Resources: []view.ResourceViewState{{CollapseState: view.CollapseNo}},
+	}
+	rtf.run("collapse-auto-good", 70, 20, goodView, autoVS)
+	rtf.run("collapse-auto-bad", 70, 20, badView, autoVS)
+	rtf.run("collapse-no-good", 70, 20, goodView, collapseNoVS)
+	rtf.run("collapse-yes-bad", 70, 20, badView, collapseYesVS)
 }
 
 type rendererTestFixture struct {

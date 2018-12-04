@@ -52,6 +52,22 @@ type Resource struct {
 	IsYAMLManifest bool
 }
 
+func (r Resource) DefaultCollapse() bool {
+	autoExpand := r.LastBuildError != "" ||
+		r.CrashLog != "" ||
+		r.PodRestarts > 0 ||
+		r.PodStatus == "CrashLoopBackoff" ||
+		r.PodStatus == "Error" ||
+		r.LastBuildReason.Has(model.BuildReasonFlagCrash) ||
+		r.CurrentBuildReason.Has(model.BuildReasonFlagCrash) ||
+		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)
+	return !autoExpand
+}
+
+func (r Resource) IsCollapsed(rv ResourceViewState) bool {
+	return rv.CollapseState.IsCollapsed(r.DefaultCollapse())
+}
+
 // State of the current view that's not expressed in the underlying model state.
 //
 // This includes things like the current selection, warning messages,
@@ -74,8 +90,27 @@ type ViewState struct {
 	AlertMessage          string
 }
 
+type CollapseState int
+
+const (
+	CollapseAuto = iota
+	CollapseYes
+	CollapseNo
+)
+
+func (c CollapseState) IsCollapsed(defaultCollapse bool) bool {
+	switch c {
+	case CollapseYes:
+		return true
+	case CollapseNo:
+		return false
+	default: // CollapseAuto
+		return defaultCollapse
+	}
+}
+
 type ResourceViewState struct {
-	IsCollapsed bool
+	CollapseState CollapseState
 }
 
 type LogModal struct {

@@ -1442,7 +1442,11 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 
 	f.PollUntil("watches setup", func() bool {
-		return len(f.fwm.manifestWatches[m2.ManifestName()].manifest.Dependencies()) == 2
+		watches, ok := f.fwm.manifestWatches[m2.ManifestName()]
+		if !ok {
+			return false
+		}
+		return len(watches.manifest.Dependencies()) == 2
 	})
 }
 

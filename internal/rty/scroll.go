@@ -221,12 +221,16 @@ func (s *TextScrollController) Up() {
 func (s *TextScrollController) Down() {
 	st := s.state
 
+	if st.following {
+		return
+	}
+
 	if len(st.canvasLengths) == 0 {
 		return
 	}
 
 	canvasLength := st.canvasLengths[st.canvasIdx]
-	if st.lineIdx < canvasLength-1 {
+	if st.lineIdx+st.height < canvasLength-1 {
 		// we can just go down in this canvas
 		st.lineIdx++
 		return
