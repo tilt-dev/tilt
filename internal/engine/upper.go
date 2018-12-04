@@ -196,7 +196,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
 	case DockerComposeLogAction:
-		// handleDockerComposeLogAction(ctx, state, action)
+		handleDockerComposeLogAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -218,7 +218,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		pod.CurrentLog = []byte{}
 	}
 
-	ms.DCInfo.CurrentLog = "" // TODO(maia): when reset(/not) CrashLog for DC service?
+	ms.DCInfo.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
 
 	// Keep the crash log around until we have a rebuild
 	// triggered by a explicit change (i.e., not a crash rebuild)
@@ -670,9 +670,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 	// For now, just guess at state.
 	state, ok := evt.GuessState()
-	logger.Get(ctx).Infof("guessing state for %s event: %s", evt.Type, evt.Action)
 	if ok {
-		logger.Get(ctx).Infof("state is probably: %s", state)
 		ms.DCInfo.State = state
 	}
 }
@@ -686,11 +684,9 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 
-	// TODO: what if log comes from an inactive container?
+	// fmt.Printf("<via action> got log for %s:\n\t%s\n", ms.Manifest.Name, string(action.Log))
 
-	// ~~ add log info to the current log
-	podInfo := ms.PodSet.Pods["abc"]
-	podInfo.CurrentLog = append(podInfo.CurrentLog, action.Log...)
+	ms.DCInfo.CurrentLog = append(ms.DCInfo.CurrentLog, action.Log...)
 }
 
 // Check if the filesChangedSet only contains spurious changes that

@@ -1545,7 +1545,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	cc := NewConfigsController()
 	dcw := NewDockerComposeEventWatcher()
 	dclm := NewDockerComposeLogManager()
-
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)
 
 	go func() {

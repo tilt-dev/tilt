@@ -28,9 +28,9 @@ func (evt Event) GuessState() (string, bool) {
 
 type Info struct {
 	State      string
-	CurrentLog string
+	CurrentLog []byte
 }
 
 func (i Info) Log() string {
-	return i.CurrentLog
+	return string(i.CurrentLog)
 }

@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"time"
 
@@ -82,12 +81,10 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 func (m *DockerComposeLogManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := m.diff(ctx, st)
 	for _, watch := range teardown {
-		fmt.Println("Tearing down watch:", watch.name)
 		watch.cancel()
 	}
 
 	for _, watch := range setup {
-		fmt.Println("Setting up watch:", watch.name)
 		go m.consumeLogs(watch, st)
 	}
 }
@@ -108,16 +105,17 @@ func (m *DockerComposeLogManager) consumeLogs(watch DockerComposeLogWatch, st st
 		_ = readCloser.Close()
 	}()
 
-	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)      // write to master logger
-	prefix := logPrefix(name.String())                             // calculate prefix for pod log (i.e. service name?)
-	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter) // new writer that prefixes all lines
-	actionWriter := DockerComposeLogActionWriter{                  // `Write` message dispatches NewPodLog action
+	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
+	// ~~ DC already gives us prefixes -- tho maybe we want to roll our own cuz it's prettier?
+	// prefix := logPrefix(name.String())
+	// prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
+	actionWriter := DockerComposeLogActionWriter{
 		store:        st,
 		manifestName: name,
 	}
-	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter) // write to both at once
+	multiWriter := io.MultiWriter(logWriter, actionWriter)
 
-	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser)) // til reader done, take all from readCloser (unless ctx.canceled) --> multiWriter
+	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
