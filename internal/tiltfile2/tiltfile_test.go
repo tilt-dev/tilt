@@ -215,6 +215,25 @@ k8s_resource('foo', 'foo.yaml', port_forwards=EXPR)
 	}
 }
 
+func TestExpand(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+	f.setupExpand()
+	f.file("Tiltfile", `
+docker_build('gcr.io/a', 'a')
+docker_build('gcr.io/b', 'b')
+docker_build('gcr.io/c', 'c')
+docker_build('gcr.io/d', 'd')
+docker_build('gcr.io/e', 'e')
+docker_build('gcr.io/f', 'f')
+docker_build('gcr.io/g', 'g')
+k8s_resource('all', 'all.yaml')
+`)
+	f.load()
+	f.assertManifest("all")
+	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"))
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -322,6 +341,9 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
+			if m.DockerRef() == nil {
+				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
+			}
 			if m.DockerRef().Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, m.DockerRef().Name(), opt.image.ref)
 			}
@@ -476,4 +498,28 @@ func (f *fixture) setupFoo() {
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.gitInit("")
+}
+
+// expand has 7 images, a-g, and a yaml with all of it
+func (f *fixture) setupExpand() {
+	f.dockerfile("a/Dockerfile")
+	f.dockerfile("b/Dockerfile")
+	f.dockerfile("c/Dockerfile")
+	f.dockerfile("d/Dockerfile")
+	f.dockerfile("e/Dockerfile")
+	f.dockerfile("f/Dockerfile")
+	f.dockerfile("g/Dockerfile")
+
+	f.yaml("all.yaml",
+		deployment("a", image("gcr.io/a")),
+		deployment("b", image("gcr.io/b")),
+		deployment("c", image("gcr.io/c")),
+		deployment("d", image("gcr.io/d")),
+		deployment("e", image("gcr.io/e")),
+		deployment("f", image("gcr.io/f")),
+		deployment("g", image("gcr.io/g")),
+	)
+
+	f.gitInit("")
+
 }
