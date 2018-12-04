@@ -16,9 +16,6 @@ kind: Config
 build:
   artifacts:
   - image: gcr.io/windmill-public-containers/servantes/snack
-    context: . # This is the default if not specified
-    docker:
-      dockerfile: Dockerfile # This is the default if not specified
 deploy:
   kubectl:
     manifests:
@@ -26,15 +23,7 @@ deploy:
 ```
 
 1. Create a `Tiltfile`
-2. Define your service name
-
-In Skaffold services are implicitly named from their Kubernetes config. In Tilt services have names given by a function defined in your Tiltfile:
-
-```python
-def snack():
-```
-
-3. Set the build context
+2. Tell Tilt about your Dockerfile
 
 In Skaffold you can specify your build context and Dockerfile like so:
 
@@ -42,18 +31,15 @@ In Skaffold you can specify your build context and Dockerfile like so:
 build:
   artifacts:
   - image: gcr.io/windmill-public-containers/servantes/snack
-    context: . # This is the default if not specified
-    docker:
-      dockerfile: Dockerfile # This is the default if not specified
 ```
 
 In Tilt you tell us where your Dockerfile is and what the build_context is.
 
 ```python
-  img = static_build("Dockerfile", "gcr.io/windmill-public-containers/servantes/snack", context=".")
+  docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
 ```
 
-4. Combine your build context and k8s config to create a service
+3. Tell Tilt about your YAML
 
 In Skaffold you specify your Kubernetes YAML under the `manifests` key:
 
@@ -64,25 +50,17 @@ deploy:
       - ./deployments/snack.yaml
 ```
 
-In Tilt we similarly associate your image and your Kubernetes YAML through the concept of a service:
+In Tilt we associate your image and your Kubernetes YAML by image tag.
 
 ```python
-  yaml = read_file('./deployments/snack.yaml')
-  service = k8s_service(img, yaml=yaml)
+k8s_resource('snack', 'deployments/snack.yaml')
 ```
 
-5. Return your service!
-
-```python
-  return service
-```
+In Skaffold services are implicitly named from their Kubernetes config. In Tilt services have names given by the first argument to the `k8s_resource` function.
 
 All in all your `Tiltfile` should now look like this:
 
 ```python
-def snack():
-  img = static_build("Dockerfile", "gcr.io/windmill-public-containers/servantes/snack", context=".")
-  yaml = read_file('./deployments/snack.yaml')
-  service = k8s_service(img, yaml=yaml)
-  return service
+docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
+k8s_resource('snack', 'deployments/snack.yaml')
 ```
