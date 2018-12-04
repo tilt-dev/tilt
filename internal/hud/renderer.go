@@ -175,15 +175,19 @@ func bestLogs(res view.Resource) string {
 		return res.LastBuildLog
 	}
 
+	// Two cases:
+	// 1) The last build finished before this pod started
+	// 2) This log is from an in-place container update.
+	// in either case, prepend them to pod logs.
+	if (res.LastBuildStartTime.Equal(res.PodUpdateStartTime) ||
+		res.LastBuildStartTime.Before(res.PodCreationTime)) &&
+		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
+		return res.LastBuildLog + "\n" + res.PodLog
+	}
+
 	// The last build finished, but the pod hasn't started yet.
 	if res.LastBuildStartTime.After(res.PodCreationTime) {
 		return res.LastBuildLog
-	}
-
-	// The last build finished, so prepend them to pod logs.
-	if res.LastBuildStartTime.Before(res.PodCreationTime) &&
-		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
-		return res.LastBuildLog + "\n\n" + res.PodLog
 	}
 
 	return res.PodLog

@@ -239,6 +239,9 @@ type Pod struct {
 	Status    string
 	Phase     v1.PodPhase
 
+	// Set when we get ready to replace a pod. We may do the update in-place.
+	UpdateStartTime time.Time
+
 	// If a pod is being deleted, Kubernetes marks it as Running
 	// until it actually gets removed.
 	Deleting bool
@@ -413,6 +416,7 @@ func StateToView(s EngineState) view.View {
 			CurrentBuildReason:    ms.CurrentBuildReason,
 			PodName:               pod.PodID.String(),
 			PodCreationTime:       pod.StartedAt,
+			PodUpdateStartTime:    pod.UpdateStartTime,
 			PodStatus:             pod.Status,
 			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
 			PodLog:                pod.Log(),
