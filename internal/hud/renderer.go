@@ -303,7 +303,7 @@ func (r *Renderer) resourceTitle(selected bool, rv view.ResourceViewState, res v
 	if selected {
 		p = "▼"
 	}
-	if selected && rv.IsCollapsed {
+	if selected && res.IsCollapsed(rv) {
 		p = "▶"
 	}
 
@@ -451,7 +451,7 @@ func (r *Renderer) resourceK8sLogs(res view.Resource, rv view.ResourceViewState)
 	spacer := rty.TextString(strings.Repeat(" ", 12))
 
 	needsSpacer := false
-	if !rv.IsCollapsed {
+	if !res.IsCollapsed(rv) {
 		if isCrashing(res) {
 			podLog := res.PodLog
 			if podLog == "" {
@@ -479,7 +479,7 @@ func (r *Renderer) lastBuildLogs(res view.Resource, rv view.ResourceViewState) r
 	spacer := rty.TextString(strings.Repeat(" ", 12))
 	needsSpacer := false
 
-	if !rv.IsCollapsed {
+	if !res.IsCollapsed(rv) {
 		if res.LastBuildError != "" {
 			abbrevLog := abbreviateLog(res.LastBuildLog)
 			for _, logLine := range abbrevLog {
