@@ -195,10 +195,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			}
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()
-			h.currentViewState.Resources[i].IsCollapsed = false
+			h.currentViewState.Resources[i].CollapseState = view.CollapseNo
 		case tcell.KeyLeft:
 			i, _ := h.selectedResource()
-			h.currentViewState.Resources[i].IsCollapsed = true
+			h.currentViewState.Resources[i].CollapseState = view.CollapseYes
 		case tcell.KeyHome:
 			h.activeScroller().Top()
 		case tcell.KeyEnd:
