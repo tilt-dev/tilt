@@ -51,8 +51,8 @@ To get started, check out some [examples](first_example.html) or dive into the
    install
    first_example
    first_config
-   fast_build
-   upgrade_docker_compose
    upgrade_skaffold
+   upgrade_docker_compose
+   fast_build
    api
 ```
