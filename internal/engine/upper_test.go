@@ -1543,9 +1543,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcw := NewDockerComposeWatcher()
+	dcw := NewDockerComposeEventWatcher()
+	dclm := NewDockerComposeLogManager()
 
-	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

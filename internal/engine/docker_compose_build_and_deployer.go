@@ -29,7 +29,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", manifest.DcYAMLPath, "up", "--force-recreate", "-d", manifest.Name.String())
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", manifest.DcYAMLPath, "up", "--no-deps", "--build", "--force-recreate", "-d", manifest.Name.String())
 	cmd.Stdout = logger.Get(ctx).Writer(logger.InfoLvl)
 	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 
