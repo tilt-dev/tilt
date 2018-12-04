@@ -232,6 +232,12 @@ k8s_resource('all', 'all.yaml')
 	f.load()
 	f.assertManifest("all")
 	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+	f.assertManifest("e", db(image("gcr.io/e")), deployment("e"))
+	f.assertManifest("f", db(image("gcr.io/f")), deployment("f"))
+	f.assertManifest("g", db(image("gcr.io/g")), deployment("g"))
 }
 
 type fixture struct {
