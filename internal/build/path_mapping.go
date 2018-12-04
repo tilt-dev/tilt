@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -111,13 +113,37 @@ func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMap
 		// need ospath.RealChild -- but then can't deal with deleted local files.
 		relPath, isChild := ospath.Child(m.LocalPath, file)
 		if isChild {
+			localPathIsFile, err := isFile(m.LocalPath)
+			if err != nil {
+				return pathMapping{}, pathMappingErrf("error stat'ing: %v", err)
+			}
+			var containerPath string
+			if endsWithSlash(m.ContainerPath) && localPathIsFile {
+				fileName := path.Base(m.LocalPath)
+				containerPath = filepath.Join(m.ContainerPath, fileName)
+			} else {
+				containerPath = filepath.Join(m.ContainerPath, relPath)
+			}
 			return pathMapping{
 				LocalPath:     file,
-				ContainerPath: filepath.Join(m.ContainerPath, relPath),
+				ContainerPath: containerPath,
 			}, nil
 		}
 	}
 	return pathMapping{}, pathMappingErrf("file %s matches no mounts", file)
+}
+
+func endsWithSlash(path string) bool {
+	return strings.HasSuffix(path, string(filepath.Separator))
+}
+
+func isFile(path string) (bool, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	mode := fi.Mode()
+	return !mode.IsDir(), nil
 }
 
 func FileBelongsToMount(file string, mounts []model.Mount) bool {
