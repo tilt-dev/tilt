@@ -65,6 +65,19 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
 
+func TestExplicitDockerfileIsConfigFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', dockerfile='other/Dockerfile')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+}
+
 func TestFastBuildSimple(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
@@ -232,6 +245,7 @@ k8s_resource('all', 'all.yaml')
 	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+	f.assertConfigFiles("Tiltfile", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
 }
 
 func TestExpandExplicit(t *testing.T) {
