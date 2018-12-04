@@ -133,9 +133,8 @@ func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMap
 	return pathMapping{}, pathMappingErrf("file %s matches no mounts", file)
 }
 
-// TODO(dmiller): this won't work in Windows
 func endsWithSlash(path string) bool {
-	return strings.HasSuffix(path, "/")
+	return strings.HasSuffix(path, string(filepath.Separator))
 }
 
 func isFile(path string) (bool, error) {
@@ -144,7 +143,7 @@ func isFile(path string) (bool, error) {
 		return false, err
 	}
 	mode := fi.Mode()
-	return mode.IsRegular(), nil
+	return !mode.IsDir(), nil
 }
 
 func FileBelongsToMount(file string, mounts []model.Mount) bool {

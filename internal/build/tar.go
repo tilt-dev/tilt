@@ -132,7 +132,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 			header.Name = strings.TrimPrefix(path, source)
 			// ...and live inside `dest`
 			header.Name = filepath.Join(dest, header.Name)
-		} else if strings.HasSuffix(dest, "/") { // TODO(dmiller): this won't work in Windows
+		} else if strings.HasSuffix(dest, string(filepath.Separator)) {
 			header.Name = filepath.Join(dest, filepath.Base(source))
 		} else {
 			header.Name = dest
