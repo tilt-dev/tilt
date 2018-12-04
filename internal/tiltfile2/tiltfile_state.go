@@ -97,7 +97,7 @@ func (s *tiltfileState) assemble() ([]*k8sResource, error) {
 			for _, img := range s.images {
 				images = append(images, img.ref.Name())
 			}
-			return nil, fmt.Errorf("Resource %q requires image %q, but it is not configured (available images are %q", r.name, r.imageRef, images)
+			return nil, fmt.Errorf("Resource %q requires image %q, but it is not configured (available images are %q)", r.name, r.imageRef, images)
 		}
 		byImage[r.imageRef] = r
 	}
@@ -113,6 +113,9 @@ func (s *tiltfileState) assemble() ([]*k8sResource, error) {
 			return nil, err
 		}
 		for _, source := range result {
+			if source == r {
+				continue
+			}
 			if err := s.extractImage(r, source, ref); err != nil {
 				return nil, err
 			}

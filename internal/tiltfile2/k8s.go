@@ -23,11 +23,13 @@ type k8sResource struct {
 func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var name string
 	var yamlValue skylark.Value
+	var imageVal skylark.Value
 	var portForwardsVal skylark.Value
 
 	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"yaml?", &yamlValue,
+		"image?", &imageVal,
 		"port_forwards?", &portForwardsVal,
 	); err != nil {
 		return nil, err
@@ -41,7 +43,8 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 	}
 
 	yamlText := ""
-	if b, ok := yamlValue.(*blob); ok {
+	if yamlValue == nil {
+	} else if b, ok := yamlValue.(*blob); ok {
 		yamlText = b.String()
 	} else {
 
@@ -62,14 +65,27 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 		return nil, err
 	}
 
+	var imageRef string
+	switch imageVal := imageVal.(type) {
+	case nil:
+		// empty
+	case skylark.String:
+		imageRef = string(imageVal)
+	case *fastBuild:
+		imageRef = imageVal.img.ref.Name()
+	default:
+		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
+	}
+
 	portForwards, err := s.convertPortForwards(name, portForwardsVal)
 	if err != nil {
 		return nil, err
 	}
 
 	r := &k8sResource{
-		name: name,
-		k8s:  entities,
+		name:     name,
+		k8s:      entities,
+		imageRef: imageRef,
 
 		portForwards: portForwards,
 	}
