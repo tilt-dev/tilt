@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -684,7 +685,12 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 
-	// fmt.Printf("<via action> got log for %s:\n\t%s\n", ms.Manifest.Name, string(action.Log))
+	// filter out bogus log
+	// TODO(maia): this still shows up in the top-level tilt log and it's annoying :-/
+	logStr := string(action.Log)
+	if strings.TrimSpace(logStr) == "Attaching to" {
+		return
+	}
 
 	ms.DCInfo.CurrentLog = append(ms.DCInfo.CurrentLog, action.Log...)
 }
