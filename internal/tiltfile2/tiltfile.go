@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -25,6 +26,9 @@ func Load(ctx context.Context, filename string) ([]model.Manifest, model.YAMLMan
 	s := newTiltfileState(ctx, filename)
 
 	if err := s.exec(); err != nil {
+		if err, ok := err.(*skylark.EvalError); ok {
+			return nil, model.YAMLManifest{}, nil, errors.Wrap(err, err.Backtrace())
+		}
 		return nil, model.YAMLManifest{}, nil, err
 	}
 	assembled, err := s.assemble()

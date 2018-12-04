@@ -224,9 +224,6 @@ docker_build('gcr.io/a', 'a')
 docker_build('gcr.io/b', 'b')
 docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
-docker_build('gcr.io/e', 'e')
-docker_build('gcr.io/f', 'f')
-docker_build('gcr.io/g', 'g')
 k8s_resource('all', 'all.yaml')
 `)
 	f.load()
@@ -235,9 +232,52 @@ k8s_resource('all', 'all.yaml')
 	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
-	f.assertManifest("e", db(image("gcr.io/e")), deployment("e"))
-	f.assertManifest("f", db(image("gcr.io/f")), deployment("f"))
-	f.assertManifest("g", db(image("gcr.io/g")), deployment("g"))
+}
+
+func TestExpandExplicit(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+	f.setupExpand()
+	f.file("Tiltfile", `
+docker_build('gcr.io/a', 'a')
+docker_build('gcr.io/b', 'b')
+docker_build('gcr.io/c', 'c')
+docker_build('gcr.io/d', 'd')
+k8s_resource('all', 'all.yaml')
+k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
+`)
+	f.load()
+	f.assertManifest("all")
+	f.assertManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
+	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+}
+
+func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+	f.setupExpand()
+	f.yaml("all.yaml",
+		deployment("a", image("gcr.io/a")),
+		deployment("a2", image("gcr.io/a")),
+		deployment("b", image("gcr.io/b")),
+		deployment("c", image("gcr.io/c")),
+		deployment("d", image("gcr.io/d")),
+	)
+	f.file("Tiltfile", `
+docker_build('gcr.io/a', 'a')
+docker_build('gcr.io/b', 'b')
+docker_build('gcr.io/c', 'c')
+docker_build('gcr.io/d', 'd')
+k8s_resource('all', 'all.yaml')
+`)
+	f.load()
+	f.assertManifest("all")
+	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"), deployment("a2"))
+	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 type fixture struct {
@@ -506,26 +546,19 @@ func (f *fixture) setupFoo() {
 	f.gitInit("")
 }
 
-// expand has 7 images, a-g, and a yaml with all of it
+// expand has 4 images, a-d, and a yaml with all of it
 func (f *fixture) setupExpand() {
 	f.dockerfile("a/Dockerfile")
 	f.dockerfile("b/Dockerfile")
 	f.dockerfile("c/Dockerfile")
 	f.dockerfile("d/Dockerfile")
-	f.dockerfile("e/Dockerfile")
-	f.dockerfile("f/Dockerfile")
-	f.dockerfile("g/Dockerfile")
 
 	f.yaml("all.yaml",
 		deployment("a", image("gcr.io/a")),
 		deployment("b", image("gcr.io/b")),
 		deployment("c", image("gcr.io/c")),
 		deployment("d", image("gcr.io/d")),
-		deployment("e", image("gcr.io/e")),
-		deployment("f", image("gcr.io/f")),
-		deployment("g", image("gcr.io/g")),
 	)
 
 	f.gitInit("")
-
 }
