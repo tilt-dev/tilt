@@ -23,7 +23,7 @@ func formatBuildDuration(d time.Duration) string {
 	}
 
 	fractionalSeconds := float64(d) / float64(time.Second)
-	return fmt.Sprintf("%0.2fs", fractionalSeconds)
+	return fmt.Sprintf("%0.1fs", fractionalSeconds)
 }
 
 func formatDeployAge(d time.Duration) string {
