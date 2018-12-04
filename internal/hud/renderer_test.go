@@ -224,6 +224,19 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		},
 	}
 	rtf.run("pending build", 70, 20, v, plainVs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:            "vigoda",
+				LastDeployTime:  ts.Add(-5 * time.Second),
+				LastDeployEdits: []string{"abbot.go", "costello.go", "harold.go"},
+			},
+		},
+	}
+	rtf.run("edited files narrow term", 60, 20, v, plainVs)
+	rtf.run("edited files normal term", 80, 20, v, plainVs)
+	rtf.run("edited files wide term", 120, 20, v, plainVs)
 }
 
 func TestRenderTiltLog(t *testing.T) {
