@@ -3,7 +3,6 @@ package engine
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"os/exec"
 	"strings"
 
@@ -13,21 +12,21 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-type DockerComposeWatcher struct {
+type DockerComposeEventWatcher struct {
 	watching bool
 }
 
-func NewDockerComposeWatcher() *DockerComposeWatcher {
-	return &DockerComposeWatcher{}
+func NewDockerComposeEventWatcher() *DockerComposeEventWatcher {
+	return &DockerComposeEventWatcher{}
 }
 
-func (w *DockerComposeWatcher) needsWatch(st store.RStore) bool {
+func (w *DockerComposeEventWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
 	return state.WatchMounts && !w.watching
 }
 
-func (w *DockerComposeWatcher) OnChange(ctx context.Context, st store.RStore) {
+func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if !w.needsWatch(st) {
 		return
 	}
@@ -52,16 +51,14 @@ func (w *DockerComposeWatcher) OnChange(ctx context.Context, st store.RStore) {
 	go dispatchDockerComposeEventLoop(ctx, ch, st)
 }
 
-func (w *DockerComposeWatcher) startWatch(ctx context.Context, configPath string) (<-chan string, error) {
-	fmt.Printf("here's a watcher for docker yaml: %s\n", configPath)
-
+func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath string) (<-chan string, error) {
 	ch := make(chan string)
 
 	args := []string{"-f", configPath, "events", "--json"}
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return ch, errors.Wrap(err, "making stdout pipe for `docker-compose events")
+		return ch, errors.Wrap(err, "making stdout pipe for `docker-compose events`")
 	}
 
 	err = cmd.Start()

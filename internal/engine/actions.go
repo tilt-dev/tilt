@@ -147,3 +147,10 @@ type DockerComposeEventAction struct {
 }
 
 func (DockerComposeEventAction) Action() {}
+
+type DockerComposeLogAction struct {
+	ManifestName model.ManifestName
+	Log          []byte
+}
+
+func (DockerComposeLogAction) Action() {}

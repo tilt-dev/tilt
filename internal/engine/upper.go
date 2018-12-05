@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -64,7 +65,7 @@ func ProvideTimerMaker() timerMaker {
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client, dcw *DockerComposeWatcher) Upper {
+	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -77,6 +78,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(gybc)
 	st.AddSubscriber(cc)
 	st.AddSubscriber(dcw)
+	st.AddSubscriber(dclm)
 
 	return Upper{
 		store: st,
@@ -194,6 +196,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleConfigsReloaded(ctx, state, action)
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
+	case DockerComposeLogAction:
+		handleDockerComposeLogAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -214,6 +218,8 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
 	}
+
+	ms.DCInfo.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
 
 	// Keep the crash log around until we have a rebuild
 	// triggered by a explicit change (i.e., not a crash rebuild)
@@ -665,11 +671,28 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 	// For now, just guess at state.
 	state, ok := evt.GuessState()
-	logger.Get(ctx).Infof("guessing state for %s event: %s", evt.Type, evt.Action)
 	if ok {
-		logger.Get(ctx).Infof("state is probably: %s", state)
 		ms.DCInfo.State = state
 	}
+}
+
+func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
+	manifestName := action.ManifestName
+	ms, ok := state.ManifestStates[manifestName]
+
+	if !ok {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+
+	// filter out bogus log
+	// TODO(maia): this still shows up in the top-level tilt log and it's annoying :-/
+	logStr := string(action.Log)
+	if strings.TrimSpace(logStr) == "Attaching to" {
+		return
+	}
+
+	ms.DCInfo.CurrentLog = append(ms.DCInfo.CurrentLog, action.Log...)
 }
 
 // Check if the filesChangedSet only contains spurious changes that

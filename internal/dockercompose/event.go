@@ -55,15 +55,20 @@ type Action string
 
 const (
 	// Add 'actions' here (and to `UnmarshalJSON` below`) as we support them
-	ActionAttach  Action = "attach"
-	ActionCreate  Action = "create"
-	ActionDie     Action = "die"
-	ActionKill    Action = "kill"
-	ActionRename  Action = "rename"
-	ActionRestart Action = "restart"
-	ActionStart   Action = "start"
-	ActionStop    Action = "stop"
-	ActionUpdate  Action = "update"
+
+	// CONTAINER actions
+	ActionAttach     Action = "attach"
+	ActionCreate     Action = "create"
+	ActionDie        Action = "die"
+	ActionExecDie    Action = "exec_die"
+	ActionExecAttach Action = "exec_attach"
+	ActionExecCreate Action = "exec_create"
+	ActionKill       Action = "kill"
+	ActionRename     Action = "rename"
+	ActionRestart    Action = "restart"
+	ActionStart      Action = "start"
+	ActionStop       Action = "stop"
+	ActionUpdate     Action = "update"
 )
 
 func (a *Action) UnmarshalJSON(b []byte) error {
@@ -78,6 +83,12 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		*a = ActionCreate
 	} else if s == "die" {
 		*a = ActionDie
+	} else if s == "exec_attach" {
+		*a = ActionExecAttach
+	} else if s == "exec_die" {
+		*a = ActionExecDie
+	} else if s == "exec_create" {
+		*a = ActionExecCreate
 	} else if s == "kill" {
 		*a = ActionKill
 	} else if s == "rename" {
