@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/api/core/v1"
 )
@@ -171,12 +172,7 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		tf, err := tiltfile.Load(ctx, tfPath)
-		if err != nil {
-			return err
-		}
-
-		manifests, _, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, "tiltdemo")
+		manifests, _, _, err := tiltfile2.Load(ctx, tfPath)
 		if err != nil {
 			return err
 		}

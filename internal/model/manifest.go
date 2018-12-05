@@ -71,10 +71,10 @@ func (m Manifest) LocalPaths() []string {
 }
 
 func (m Manifest) Validate() error {
-	// err := m.validate()
-	// if err != nil {
-	// 	return err
-	// }
+	err := m.validate()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (m Manifest) validate() *ValidateErr {
 	}
 
 	if m.dockerRef == nil {
-		return validateErrf("[validate] manifest %q missing image ref", m.Name)
+		return nil
 	}
 
 	if m.K8sYAML() == "" {
