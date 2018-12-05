@@ -149,7 +149,6 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:             "Running",
 				PodRestarts:           0,
 				Endpoints:             []string{"1.2.3.4:8080"},
-				PodLog:                "",
 				CrashLog:              "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
@@ -279,6 +278,22 @@ func TestRenderLogModal(t *testing.T) {
 		},
 	}
 	rtf.run("build log pane", 117, 20, v, vs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "vigoda",
+				LastBuildFinishTime:   now.Add(-time.Minute),
+				CurrentBuildStartTime: now,
+				CurrentBuildLog:       "building!",
+				CurrentBuildReason:    model.BuildReasonFlagCrash,
+				PodName:               "vigoda-pod",
+				PodCreationTime:       now,
+				CrashLog:              "panic!",
+			},
+		},
+	}
+	rtf.run("resource log during crash rebuild", 60, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {

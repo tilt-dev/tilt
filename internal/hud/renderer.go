@@ -170,6 +170,12 @@ func bestLogs(res view.Resource) string {
 		return res.CurrentBuildLog
 	}
 
+	// A build is in progress, triggered by a pod crash.
+	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
+		res.CurrentBuildReason.IsCrashOnly() {
+		return res.CrashLog + "\n\n" + res.CurrentBuildLog
+	}
+
 	// The last build was an error.
 	if res.LastBuildError != "" {
 		return res.LastBuildLog
