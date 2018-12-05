@@ -86,32 +86,20 @@ func (s *tiltfileState) builtins() skylark.StringDict {
 	return r
 }
 
-const unresourcedName = "unresourced"
+const unresourcedName = "k8s_yaml"
 
-func (s *tiltfileState) assemble() (result []*k8sResource, outerErr error) {
-	if len(s.k8sUnresourced) > 0 {
-		logger.Get(s.ctx).Infof("deferring")
-		defer func() {
-			logger.Get(s.ctx).Infof("called %v", outerErr)
-			if outerErr != nil {
-				return
-			}
-			logger.Get(s.ctx).Infof("adding unresourced")
-			// At the end, add everything that's left
-			r, innerErr := s.makeK8sResource(unresourcedName)
-			outerErr = innerErr
-			if outerErr != nil {
-				return
-			}
-			r.k8s = s.k8sUnresourced
-			result = s.k8s
-		}()
-	}
+func (s *tiltfileState) assemble() ([]*k8sResource, error) {
+	hadUnresourced := len(s.k8sUnresourced) > 0
+
 	images, err := s.findUnresourcedImages()
 	if err != nil {
 		return nil, err
 	}
 	for _, image := range images {
+		if _, ok := s.imagesByName[image.Name()]; !ok {
+			// only expand for images we know how to build
+			continue
+		}
 		target, err := s.findExpandTarget(image)
 		if err != nil {
 			return nil, err
@@ -121,7 +109,46 @@ func (s *tiltfileState) assemble() (result []*k8sResource, outerErr error) {
 		}
 	}
 
+	if hadUnresourced {
+		r, err := s.makeK8sResource(unresourcedName)
+		if err != nil {
+			return nil, err
+		}
+		r.k8s = s.k8sUnresourced
+	}
+
+	for _, r := range s.k8s {
+		if err := s.validateK8s(r); err != nil {
+			return nil, err
+		}
+	}
+
 	return s.k8s, nil
+}
+
+func (s *tiltfileState) validateK8s(r *k8sResource) error {
+	var images []reference.Named
+	for _, e := range r.k8s {
+		entityImages, err := e.FindImages()
+		if err != nil {
+			return err
+		}
+		images = append(images, entityImages...)
+	}
+
+	for _, image := range images {
+		if _, ok := s.imagesByName[image.Name()]; !ok {
+			continue
+		}
+		if r.imageRef == "" {
+			r.imageRef = image.Name()
+		} else if r.imageRef == image.Name() {
+			continue
+		} else {
+			return fmt.Errorf("resource %q contains two images to be built: %q, %q. You can use k8s_yaml to include a lot of yaml and then Tilt will create resources automatically. If this doesn't solve your case (e.g. you have one pod that has two images that Tilt updates), please reach out so we can understand and prioritize", r.name, r.imageRef, image.Name())
+		}
+	}
+	return nil
 }
 
 func (s *tiltfileState) findExpandTarget(image reference.Named) (*k8sResource, error) {
@@ -146,6 +173,7 @@ func (s *tiltfileState) findExpandTarget(image reference.Named) (*k8sResource, e
 
 func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	var result []reference.Named
+	seen := make(map[string]bool)
 
 	for _, e := range s.k8sUnresourced {
 		images, err := e.FindImages()
@@ -168,7 +196,11 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 			}
 			return nil, fmt.Errorf("Found an entity with multiple images registered with k8s_yaml. Tilt doesn't support this yet; please reach out so we can understand and prioritize this case. found images: %q, entity: %q.", entityImages, str)
 		}
-		result = append(result, entityImages[0])
+		img := entityImages[0]
+		if !seen[img.Name()] {
+			result = append(result, img)
+			seen[img.Name()] = true
+		}
 	}
 	return result, nil
 }
@@ -196,7 +228,6 @@ func (s *tiltfileState) extractImage(dest *k8sResource, imageRef reference.Named
 			s.k8sUnresourced = remaining
 		}
 	}
-	dest.imageRef = imageRef.Name()
 	return nil
 }
 
