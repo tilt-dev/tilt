@@ -393,6 +393,11 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 		return nil, nil
 	}
 
+	if ms.Manifest.DockerRef() == nil {
+		// There is a Deployment that we don't build
+		return nil, nil
+	}
+
 	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerRef())
 	if err != nil || imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
