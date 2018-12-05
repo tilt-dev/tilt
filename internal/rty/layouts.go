@@ -268,6 +268,12 @@ func NewLine() *Line {
 	return &Line{del: NewFlexLayout(DirHor)}
 }
 
+func OneLine(c Component) *Line {
+	l := NewLine()
+	l.Add(c)
+	return l
+}
+
 func (l *Line) Add(c Component) {
 	l.del.Add(c)
 }

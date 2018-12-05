@@ -16,8 +16,8 @@ type durationCase struct {
 
 func TestFormatDurations(t *testing.T) {
 	table := []durationCase{
-		{time.Second, "<5s", "1.00s"},
-		{10 * time.Second, "<15s", "10.00s"},
+		{time.Second, "<5s", "1.0s"},
+		{10 * time.Second, "<15s", "10.0s"},
 		{20 * time.Second, "<30s", "20s"},
 		{40 * time.Second, "<45s", "40s"},
 		{50 * time.Second, "<1m", "50s"},

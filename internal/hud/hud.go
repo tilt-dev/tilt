@@ -15,7 +15,7 @@ import (
 )
 
 // The main loop ensures the HUD updates at least this often
-const DefaultRefreshInterval = 1 * time.Second
+const DefaultRefreshInterval = 100 * time.Millisecond
 
 // number of arrows a pgup/dn is equivalent to
 // (we don't currently worry about trying to know how big a page is, and instead just support pgup/dn as "faster arrows"

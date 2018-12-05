@@ -83,14 +83,15 @@ type ManifestState struct {
 	CurrentBuildLog       []byte `testdiff:"ignore"`
 	CurrentBuildReason    model.BuildReason
 
-	LastSuccessfulDeployEdits []string
-	LastBuildError            error
-	LastBuildStartTime        time.Time
-	LastBuildFinishTime       time.Time
-	LastBuildReason           model.BuildReason
-	LastSuccessfulDeployTime  time.Time
-	LastBuildDuration         time.Duration
-	LastBuildLog              []byte `testdiff:"ignore"`
+	LastSuccessfulDeployTime time.Time
+
+	LastBuildEdits      []string
+	LastBuildError      error
+	LastBuildStartTime  time.Time
+	LastBuildFinishTime time.Time
+	LastBuildReason     model.BuildReason
+	LastBuildDuration   time.Duration
+	LastBuildLog        []byte `testdiff:"ignore"`
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -377,7 +378,7 @@ func StateToView(s EngineState) view.View {
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
-		lastDeployEdits := shortenFileList(absWatchDirs, ms.LastSuccessfulDeployEdits)
+		lastBuildEdits := shortenFileList(absWatchDirs, ms.LastBuildEdits)
 		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentBuildEdits)
 
 		// Sort the strings to make the outputs deterministic.
@@ -402,7 +403,7 @@ func StateToView(s EngineState) view.View {
 			DirectoriesWatched:    relWatchDirs,
 			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
-			LastDeployEdits:       lastDeployEdits,
+			LastBuildEdits:        lastBuildEdits,
 			LastBuildError:        lastBuildError,
 			LastBuildReason:       ms.LastBuildReason,
 			LastBuildStartTime:    ms.LastBuildStartTime,

@@ -65,6 +65,42 @@ func TestFilesToPathMappings(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestFileToDirectoryPathMapping(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	paths := []string{
+		"mount1/fileA",
+	}
+	f.TouchFiles(paths)
+
+	absPaths := make([]string, len(paths))
+	for i, p := range paths {
+		absPaths[i] = f.JoinPath(p)
+	}
+
+	mounts := []model.Mount{
+		model.Mount{
+			LocalPath:     f.JoinPath("mount1", "fileA"),
+			ContainerPath: "/dest1/",
+		},
+	}
+
+	actual, err := FilesToPathMappings(absPaths, mounts)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	expected := []pathMapping{
+		pathMapping{
+			LocalPath:     filepath.Join(f.Path(), "mount1/fileA"),
+			ContainerPath: "/dest1/fileA",
+		},
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
 func TestFileNotInMountThrowsErr(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
