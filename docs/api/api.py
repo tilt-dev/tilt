@@ -3,6 +3,9 @@ from typing import Dict, Union, List, Callable
 class LocalPath:
   """A path on disk"""
 
+class Blob:
+  """The result of executing a command on your local system"""
+
 class Repo:
   def path(self, path: str) -> LocalPath:
     """Returns the absolute path to the file specified at ``path`` in the repo.
@@ -30,9 +33,9 @@ def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, docker
 pass
 
 class FastBuild:
-  # def add(src: Union[LocalPath, Repo], dest: str) -> FastBuild:
-  #   """Adds the content from ``src`` into the image at path ``dest``."""
-  #   pass
+  def add(src: Union[LocalPath, Repo], dest: str) -> 'FastBuild':
+    """Adds the content from ``src`` into the image at path ``dest``."""
+    pass
 
   def run(cmd: str, trigger: Union[List[str], str] = []) -> None:
     """Runs ``cmd`` as a build step in the image.
@@ -51,7 +54,7 @@ def fast_build(img_name: str, dockerfile_path: str, entrypoint: str = "") -> Fas
   """
   pass
 
-def k8s_yaml(yaml: Union[str, List[str], LocalPath]) -> None:
+def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
   """Call this with a path to a file that contains YAML, or with a string of YAML.
 
   We will infer what (if any) of the k8s resources defined in your YAML
@@ -64,21 +67,24 @@ def k8s_yaml(yaml: Union[str, List[str], LocalPath]) -> None:
   """
   pass
 
-def k8s_resource(name: str, image: str = "", port_forwards: Union[int, List[int]] = []) -> None:
+def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_forwards: Union[int, List[int]] = []) -> None:
   """Creates a kubernetes resource that tilt can deploy using the specified image.
 
   Args:
     name: What call this resource in the UI
+    yaml: Optional YAML. If YAML, as a string or Blob is
+      not passed wwe expect to be able to extract it from an
+      existing resource.
     image: An optional Image. If the image is not passed,
       we expect to be able to extract it from an existing resource.
   """
   pass
 
-def local(cmd: str) -> str:
-  """Runs cmd, waits for it to finish, and returns its stdout."""
+def local(cmd: str) -> Blob:
+  """Runs cmd, waits for it to finish, and returns its stdout as a Blob"""
   pass
 
-def read_file(file_path: Union[str, LocalPath]) -> str:
+def read_file(file_path: Union[str, LocalPath]) -> Blob:
   """Reads file and returns its contents.
 
   Args:
@@ -86,6 +92,6 @@ def read_file(file_path: Union[str, LocalPath]) -> str:
   pass
 
 
-def kustomize(pathToDir: str) -> str:
-  """Run `kustomize <https://github.com/kubernetes-sigs/kustomize>`_ on a given directory and return the resulting YAML."""
+def kustomize(pathToDir: str) -> Blob:
+  """Run `kustomize <https://github.com/kubernetes-sigs/kustomize>`_ on a given directory and return the resulting YAML as a Blob"""
   pass
