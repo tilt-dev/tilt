@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tcell"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 )
@@ -54,7 +55,15 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func (v *ResourceView) statusColor() tcell.Color {
-	if !v.res.CurrentBuildStartTime.IsZero() && !v.res.CurrentBuildReason.IsCrashOnly() {
+	if v.res.IsDCManifest {
+		if v.res.DCState == dockercompose.StateInProg {
+			return cPending
+		} else if v.res.DCState == dockercompose.StateUp {
+			return cGood
+		} else if v.res.DCState == dockercompose.StateDown {
+			return cBad
+		}
+	} else if !v.res.CurrentBuildStartTime.IsZero() && !v.res.CurrentBuildReason.IsCrashOnly() {
 		return cPending
 	} else if !v.res.PendingBuildSince.IsZero() && !v.res.PendingBuildReason.IsCrashOnly() {
 		return cPending
