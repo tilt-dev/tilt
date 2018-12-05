@@ -355,7 +355,7 @@ func handleConfigsReloaded(
 	for i, m := range manifests {
 		ms, ok := state.ManifestStates[m.ManifestName()]
 		if !ok {
-			ms = &store.ManifestState{}
+			ms = store.NewManifestState(m)
 		}
 
 		newDefOrder[i] = m.ManifestName()
