@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="next" title="Write Your Tiltfile" href="write_your_tiltfile.html" />
     <link rel="prev" title="Running your First Tilt Project" href="first_example.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
@@ -101,9 +101,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
 
@@ -174,11 +175,8 @@
 <p>Let’s look at the Tiltfile line-by-line and see what each part does.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># -*- mode: Python -*-</span>
 
-<span class="k">def</span> <span class="nf">oneup</span><span class="p">():</span>
-  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;oneup.yaml&#39;</span><span class="p">)</span>
-  <span class="n">image_name</span> <span class="o">=</span> <span class="s1">&#39;gcr.io/windmill-test-containers/integration/oneup&#39;</span>
-  <span class="n">image</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">)</span>
-  <span class="k">return</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-test-containers/integration/oneup&#39;</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;oneup&#39;</span><span class="p">,</span> <span class="s1">&#39;oneup.yaml&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -190,15 +188,27 @@ to use Python syntax highlighting.</p>
 <a class="reference external" href="https://github.com/bazelbuild/starlark#tour">Starlark</a>. Most Python editors
 will work well for editing Tiltfiles.</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">def</span> <span class="pre">oneup():</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">docker_build('gcr.io/windmill-test-containers/integration/oneup',</span> <span class="pre">'.')</span></code></li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">def</span></code> line defines a function. Every time <code class="docutils literal notranslate"><span class="pre">tilt</span></code> builds your server, it
-runs this function. <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> functions can even call <code class="docutils literal notranslate"><span class="pre">print()</span></code> to help with debugging.</p>
+<p>This line build the image and assigns a tag to it. The steps to build the image are in the
+<code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>.</p>
+<p>When we’re doing local development, it doesn’t matter that much what the image tag
+is, as long as it matches the name in our Kubernetes YAML.</p>
+<p>(When we’re doing remote development, the image tag is a URL that tells the cluster where to upload
+and download your image).</p>
+<p>If we open the Dockerfile, we see</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">golang</span><span class="p">:</span><span class="mf">1.11</span>
+<span class="n">WORKDIR</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
+<span class="n">ADD</span> <span class="o">.</span> <span class="o">.</span>
+<span class="n">RUN</span> <span class="n">go</span> <span class="n">install</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
+<span class="n">ENTRYPOINT</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">oneup</span>
+</pre></div>
+</div>
+<p>If you don’t know Go, that’s OK. These are steps to run to build a Go server.</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">yaml</span> <span class="pre">=</span> <span class="pre">read_file('oneup.yaml')</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">k8s_resource('oneup',</span> <span class="pre">'oneup.yaml')</span></code></li>
 </ul>
-<p>The next line reads a Kubernetes YAML. Tilt tracks while files you read, then automatically
-rebuilds your server if those files change.</p>
+<p>This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.</p>
 <p>At the risk of diving too deep, let’s unpack that YAML file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
 <span class="n">kind</span><span class="p">:</span> <span class="n">Namespace</span>
@@ -232,36 +242,6 @@ rebuilds your server if those files change.</p>
 </pre></div>
 </div>
 <p>There’s a lot of YAML here! But the idea is easy to summarize: schedule 1 server on Kubernetes.</p>
-<p>Now back to the Tiltfile.</p>
-<ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">image_name</span> <span class="pre">=</span> <span class="pre">'gcr.io/windmill-test-containers/integration/oneup'</span></code></li>
-</ul>
-<p>This line creates a variable <code class="docutils literal notranslate"><span class="pre">image_name</span></code> and assigns it to the name of the
-Docker image that contains our server.</p>
-<p>When we’re doing local development, it doesn’t matter that much what the image name
-is, as long as it matches the name in our Kubernetes YAML.</p>
-<p>(When we’re doing remote development, the image name is a URL that tells the cluster where to upload
-and download your image).</p>
-<ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">image</span> <span class="pre">=</span> <span class="pre">static_build('Dockerfile',</span> <span class="pre">image_name)</span></code></li>
-</ul>
-<p>This line build the image and assigns a name to it. The steps to build the image are in the
-<code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>.</p>
-<p>If we open the Dockerfile, we see</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">golang</span><span class="p">:</span><span class="mf">1.11</span>
-<span class="n">WORKDIR</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
-<span class="n">ADD</span> <span class="o">.</span> <span class="o">.</span>
-<span class="n">RUN</span> <span class="n">go</span> <span class="n">install</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">integration</span><span class="o">/</span><span class="n">oneup</span>
-<span class="n">ENTRYPOINT</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">oneup</span>
-</pre></div>
-</div>
-<p>If you don’t know Go, that’s OK. These are steps to run to build a Go server.</p>
-<ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">k8s_service(image,</span> <span class="pre">yaml=yaml)</span></code></li>
-</ul>
-<p>The last line of the Tiltfile creates the server in Kubernetes. The <code class="docutils literal notranslate"><span class="pre">k8s_service</span></code>
-function takes an image and a Kubernetes config. Tilt puts these together
-to deploy your service to a local Kubernetes cluster.</p>
 <div class="section" id="next-steps">
 <span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>That’s it! In this guide, we’ve stepped through every line of a simple Tiltfile.</p>
@@ -281,7 +261,7 @@ to make your development loop lightning-fast.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="fast_build.html" class="btn btn-neutral float-right" title="Optimizing a Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="write_your_tiltfile.html" class="btn btn-neutral float-right" title="Write Your Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="first_example.html" class="btn btn-neutral" title="Running your First Tilt Project" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
