@@ -167,6 +167,12 @@
   <div class="section" id="module-api">
 <span id="tiltfile-api-reference"></span><h1>Tiltfile API Reference<a class="headerlink" href="#module-api" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
+<dt id="api.Blob">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">Blob</code><a class="headerlink" href="#api.Blob" title="Permalink to this definition">¶</a></dt>
+<dd><p>The result of executing a command on your local system</p>
+</dd></dl>
+
+<dl class="class">
 <dt id="api.LocalPath">
 <em class="property">class </em><code class="descclassname">api.</code><code class="descname">LocalPath</code><a class="headerlink" href="#api.LocalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>A path on disk</p>
@@ -211,7 +217,7 @@
 
 <dl class="function">
 <dt id="api.k8s_resource">
-<code class="descclassname">api.</code><code class="descname">k8s_resource</code><span class="sig-paren">(</span><em>name</em>, <em>image=''</em>, <em>port_forwards=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_resource" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">api.</code><code class="descname">k8s_resource</code><span class="sig-paren">(</span><em>name</em>, <em>yaml=''</em>, <em>image=''</em>, <em>port_forwards=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_resource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a kubernetes resource that tilt can deploy using the specified image.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -219,6 +225,9 @@
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – What call this resource in the UI</li>
+<li><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Optional YAML. If YAML, as a string or Blob is
+not passed wwe expect to be able to extract it from an
+existing resource.</li>
 <li><strong>image</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – An optional Image. If the image is not passed,
 we expect to be able to extract it from an existing resource.</li>
 </ul>
@@ -243,7 +252,7 @@ applies to your k8s cluster independently.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>]) – Path(s) to YAML or YAML as a string</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Path(s) to YAML or YAML as a string</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
 </tr>
@@ -254,12 +263,12 @@ applies to your k8s cluster independently.</p>
 <dl class="function">
 <dt id="api.kustomize">
 <code class="descclassname">api.</code><code class="descname">kustomize</code><span class="sig-paren">(</span><em>pathToDir</em><span class="sig-paren">)</span><a class="headerlink" href="#api.kustomize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run <a class="reference external" href="https://github.com/kubernetes-sigs/kustomize">kustomize</a> on a given directory and return the resulting YAML.</p>
+<dd><p>Run <a class="reference external" href="https://github.com/kubernetes-sigs/kustomize">kustomize</a> on a given directory and return the resulting YAML as a Blob</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
 </tr>
 </tbody>
 </table>
@@ -268,12 +277,12 @@ applies to your k8s cluster independently.</p>
 <dl class="function">
 <dt id="api.local">
 <code class="descclassname">api.</code><code class="descname">local</code><span class="sig-paren">(</span><em>cmd</em><span class="sig-paren">)</span><a class="headerlink" href="#api.local" title="Permalink to this definition">¶</a></dt>
-<dd><p>Runs cmd, waits for it to finish, and returns its stdout.</p>
+<dd><p>Runs cmd, waits for it to finish, and returns its stdout as a Blob</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
 </tr>
 </tbody>
 </table>
@@ -303,7 +312,7 @@ applies to your k8s cluster independently.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_path</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>]) – Path to the file locally</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
 </tr>
 </tbody>
 </table>
