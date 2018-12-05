@@ -42,25 +42,7 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 		return nil, fmt.Errorf("resource named %q has already been defined", name)
 	}
 
-	yamlText := ""
-	if yamlValue == nil {
-	} else if b, ok := yamlValue.(*blob); ok {
-		yamlText = b.String()
-	} else {
-
-		yamlPath, err := s.localPathFromSkylarkValue(yamlValue)
-		if err != nil {
-			return nil, err
-		}
-
-		bs, err := s.readFile(yamlPath)
-		if err != nil {
-			return nil, err
-		}
-		yamlText = string(bs)
-	}
-
-	entities, err := k8s.ParseYAMLFromString(yamlText)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +74,43 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
 	return skylark.None, nil
+}
+
+func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v skylark.Value) ([]k8s.K8sEntity, error) {
+	if v, ok := v.(skylark.Sequence); ok {
+		var result []k8s.K8sEntity
+		it := v.Iterate()
+		defer it.Done()
+		var i skylark.Value
+		for it.Next(&i) {
+			entities, err := s.yamlEntitiesFromSkylarkValue(i)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, entities...)
+		}
+		return result, nil
+	}
+	return s.yamlEntitiesFromSkylarkValue(v)
+}
+
+func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v skylark.Value) ([]k8s.K8sEntity, error) {
+	switch v := v.(type) {
+	case nil:
+		return nil, nil
+	case *blob:
+		return k8s.ParseYAMLFromString(v.String())
+	default:
+		yamlPath, err := s.localPathFromSkylarkValue(v)
+		if err != nil {
+			return nil, err
+		}
+		bs, err := s.readFile(yamlPath)
+		if err != nil {
+			return nil, err
+		}
+		return k8s.ParseYAMLFromString(string(bs))
+	}
 }
 
 func (s *tiltfileState) convertPortForwards(name string, val skylark.Value) ([]portForward, error) {
