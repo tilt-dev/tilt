@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -349,6 +350,40 @@ func TestAutoCollapseModes(t *testing.T) {
 	rtf.run("collapse-auto-bad", 70, 20, badView, autoVS)
 	rtf.run("collapse-no-good", 70, 20, goodView, collapseNoVS)
 	rtf.run("collapse-yes-bad", 70, 20, badView, collapseYesVS)
+}
+
+func TestPodPending(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastBuildLog: `STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`,
+				PodName:        "vigoda-pod",
+				PodLog:         "serving on 8080",
+				PodStatus:      "",
+				LastDeployTime: ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+
+	rtf.run("pending pod no status", 80, 20, v, vs)
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+
+	v.Resources[0].PodCreationTime = ts
+	v.Resources[0].PodStatus = "Pending"
+	rtf.run("pending pod pending status", 80, 20, v, vs)
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
 }
 
 func TestPodLogContainerUpdate(t *testing.T) {
