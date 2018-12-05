@@ -31,12 +31,13 @@ type Resource struct {
 	CurrentBuildStartTime time.Time
 	CurrentBuildLog       string
 
-	PodName         string
-	PodCreationTime time.Time
-	PodStatus       string
-	PodRestarts     int
-	Endpoints       []string
-	PodLog          string
+	PodName            string
+	PodCreationTime    time.Time
+	PodUpdateStartTime time.Time
+	PodStatus          string
+	PodRestarts        int
+	Endpoints          []string
+	PodLog             string
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.

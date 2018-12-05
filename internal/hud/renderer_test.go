@@ -336,6 +336,32 @@ func TestAutoCollapseModes(t *testing.T) {
 	rtf.run("collapse-yes-bad", 70, 20, badView, collapseYesVS)
 }
 
+func TestPodLogContainerUpdate(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Running",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Serving on 8080",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+	rtf.run("pod log for container update", 70, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	t *testing.T
 	i rty.InteractiveTester

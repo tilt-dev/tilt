@@ -217,6 +217,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms.CurrentBuildReason = action.Reason
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
+		pod.UpdateStartTime = action.StartTime
 	}
 
 	// Keep the crash log around until we have a rebuild
