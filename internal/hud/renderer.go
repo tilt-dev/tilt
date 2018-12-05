@@ -230,13 +230,16 @@ func renderNarration(msg string) rty.Component {
 
 func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component {
 	rs := v.Resources
+
+	cl := rty.NewConcatLayout(rty.DirVert)
+	cl.Add(r.renderTiltfileError(v))
+
 	childNames := make([]string, len(rs))
 	for i, r := range rs {
 		childNames[i] = r.Name
 	}
-
+	// the items added to `l` below must be kept in sync with `childNames` above
 	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
-	l.Add(r.renderTiltfileError(v))
 
 	if len(rs) > 0 {
 		for i, res := range rs {
@@ -244,7 +247,8 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 		}
 	}
 
-	return l
+	cl.Add(l)
+	return cl
 }
 
 var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
