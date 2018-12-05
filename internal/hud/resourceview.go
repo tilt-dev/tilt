@@ -122,16 +122,49 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 	l.Add(rty.TextString(strings.Repeat(" ", 4)))
 
 	rhs := rty.NewConcatLayout(rty.DirVert)
-	rhs.Add(v.resourceExpandedK8s())
+	rhs.Add(v.resourceExpanded())
 	rhs.Add(v.resourceExpandedHistory())
 	rhs.Add(v.resourceExpandedError())
 	l.AddDynamic(rhs)
 	return l
 }
 
+func (v *ResourceView) resourceExpanded() rty.Component {
+	if l := v.resourceExpandedDC(); !rty.IsEmpty(l) {
+		return l
+	}
+	if l := v.resourceExpandedK8s(); !rty.IsEmpty(l) {
+		return l
+	}
+	return rty.EmptyLayout
+}
+
+func (v *ResourceView) resourceExpandedDC() rty.Component {
+	if !v.res.IsDCManifest {
+		return rty.EmptyLayout
+	}
+
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(v.resourceTextDCContainer())
+	l.Add(rty.TextString(" "))
+	l.AddDynamic(rty.NewFillerString(' '))
+
+	// TODO(maia): ports
+
+	l.Add(v.resourceTextAge())
+	return rty.OneLine(l)
+}
+
+func (v *ResourceView) resourceTextDCContainer() rty.Component {
+	sb := rty.NewStringBuilder()
+	sb.Fg(cLightText).Text("DC container: ")
+	sb.Fg(tcell.ColorDefault).Text("not implemented sry 😅")
+	return sb.Build()
+}
+
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	if v.res.IsYAMLManifest || v.res.PodName == "" {
-		return rty.NewConcatLayout(rty.DirVert)
+		return rty.EmptyLayout
 	}
 
 	l := rty.NewConcatLayout(rty.DirHor)
@@ -234,6 +267,7 @@ func (v *ResourceView) resourceExpandedError() rty.Component {
 	return l
 }
 
+// TODO(maia): rename this method to be generic (thiiink it already works with k8s AND dc?)
 func (v *ResourceView) resourceExpandedK8sError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
