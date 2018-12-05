@@ -111,7 +111,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:                  "a-a-a-aaaaabe vigoda",
 				DirectoriesWatched:    []string{"foo", "bar"},
 				LastDeployTime:        ts,
-				LastDeployEdits:       []string{"main.go", "cli.go"},
+				LastBuildEdits:        []string{"main.go", "cli.go"},
 				LastBuildError:        "the build failed!",
 				LastBuildFinishTime:   ts,
 				LastBuildDuration:     1400 * time.Millisecond,
@@ -130,6 +130,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		},
 	}
 	rtf.run("all the data at once", 70, 20, v, plainVs)
+	rtf.run("all the data at once 50w", 50, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -137,7 +138,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:                  "abe vigoda",
 				DirectoriesWatched:    []string{"foo", "bar"},
 				LastDeployTime:        ts,
-				LastDeployEdits:       []string{"main.go"},
+				LastBuildEdits:        []string{"main.go"},
 				PendingBuildEdits:     []string{},
 				PendingBuildSince:     ts,
 				CurrentBuildEdits:     []string{},
@@ -161,7 +162,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:                "vigoda",
 				DirectoriesWatched:  []string{"foo", "bar"},
 				LastDeployTime:      ts,
-				LastDeployEdits:     []string{"main.go", "cli.go"},
+				LastBuildEdits:      []string{"main.go", "cli.go"},
 				LastBuildFinishTime: ts,
 				LastBuildDuration:   1400 * time.Millisecond,
 				LastBuildLog:        "",
@@ -224,9 +225,9 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:            "vigoda",
-				LastDeployTime:  ts.Add(-5 * time.Second),
-				LastDeployEdits: []string{"abbot.go", "costello.go", "harold.go"},
+				Name:           "vigoda",
+				LastDeployTime: ts.Add(-5 * time.Second),
+				LastBuildEdits: []string{"abbot.go", "costello.go", "harold.go"},
 			},
 		},
 	}

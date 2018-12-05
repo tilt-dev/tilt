@@ -11,7 +11,7 @@ type Resource struct {
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
-	LastDeployEdits    []string
+	LastBuildEdits     []string
 
 	LastBuildError      string
 	LastBuildStartTime  time.Time
