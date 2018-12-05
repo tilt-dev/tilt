@@ -77,14 +77,15 @@ type ManifestState struct {
 	CurrentBuildLog       []byte `testdiff:"ignore"`
 	CurrentBuildReason    model.BuildReason
 
-	LastSuccessfulDeployEdits []string
-	LastBuildError            error
-	LastBuildStartTime        time.Time
-	LastBuildFinishTime       time.Time
-	LastBuildReason           model.BuildReason
-	LastSuccessfulDeployTime  time.Time
-	LastBuildDuration         time.Duration
-	LastBuildLog              []byte `testdiff:"ignore"`
+	LastSuccessfulDeployTime time.Time
+
+	LastBuildEdits      []string
+	LastBuildError      error
+	LastBuildStartTime  time.Time
+	LastBuildFinishTime time.Time
+	LastBuildReason     model.BuildReason
+	LastBuildDuration   time.Duration
+	LastBuildLog        []byte `testdiff:"ignore"`
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -238,6 +239,9 @@ type Pod struct {
 	Status    string
 	Phase     v1.PodPhase
 
+	// Set when we get ready to replace a pod. We may do the update in-place.
+	UpdateStartTime time.Time
+
 	// If a pod is being deleted, Kubernetes marks it as Running
 	// until it actually gets removed.
 	Deleting bool
@@ -371,7 +375,7 @@ func StateToView(s EngineState) view.View {
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
-		lastDeployEdits := shortenFileList(absWatchDirs, ms.LastSuccessfulDeployEdits)
+		lastBuildEdits := shortenFileList(absWatchDirs, ms.LastBuildEdits)
 		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentBuildEdits)
 
 		// Sort the strings to make the outputs deterministic.
@@ -396,7 +400,7 @@ func StateToView(s EngineState) view.View {
 			DirectoriesWatched:    relWatchDirs,
 			PathsWatched:          relWatchPaths,
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
-			LastDeployEdits:       lastDeployEdits,
+			LastBuildEdits:        lastBuildEdits,
 			LastBuildError:        lastBuildError,
 			LastBuildReason:       ms.LastBuildReason,
 			LastBuildStartTime:    ms.LastBuildStartTime,
@@ -412,6 +416,7 @@ func StateToView(s EngineState) view.View {
 			CurrentBuildReason:    ms.CurrentBuildReason,
 			PodName:               pod.PodID.String(),
 			PodCreationTime:       pod.StartedAt,
+			PodUpdateStartTime:    pod.UpdateStartTime,
 			PodStatus:             pod.Status,
 			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
 			PodLog:                pod.Log(),

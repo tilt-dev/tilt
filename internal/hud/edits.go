@@ -3,7 +3,6 @@ package hud
 import (
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -63,23 +62,34 @@ func (esl *EditStatusLineComponent) makeEditsComponents(width int) (rty.Componen
 	return filenames, filenamesEtAl
 }
 
+func (esl *EditStatusLineComponent) buildStatusText() rty.Component {
+	sb := rty.NewStringBuilder()
+	sb.Textf("%s ", esl.bs.status)
+	sb.Fg(cLightText).Text("(")
+	sb.Fg(tcell.ColorDefault).Text(formatBuildDuration(esl.bs.duration))
+	sb.Fg(cLightText).Text(")")
+	return sb.Build()
+}
+
+func (esl *EditStatusLineComponent) buildAgeText() rty.Component {
+	return deployTimeText(esl.bs.deployTime)
+}
+
+func (esl *EditStatusLineComponent) rightPane() rty.Component {
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(esl.buildStatusText())
+	l.Add(middotText())
+	l.Add(esl.buildAgeText())
+	return l
+}
+
 func (esl *EditStatusLineComponent) Render(w rty.Writer, width, height int) error {
 	offset := 0
 	allocated := 0
 	sb := rty.NewStringBuilder()
-	indent := strings.Repeat(" ", 8)
-
-	sb.Fg(esl.bs.statusColor).Textf("%s●", indent)
-	sb.Fg(cLightText).Text(" TILT: ")
-	sb.Fg(tcell.ColorDefault).Text(esl.bs.status)
-	sb.Fg(cLightText).Text(esl.bs.editsPrefix)
+	sb.Fg(cLightText).Text("EDITED FILES ")
 
 	lhs := sb.Build()
-
-	sb = rty.NewStringBuilder()
-	sb.Text(" ").Fg(cLightText).Text("DURATION ")
-	sb.Fg(tcell.ColorDefault).Textf("%s           ", esl.bs.duration)
-	duration := sb.Build()
 
 	lhsW, _, err := lhs.Size(width, 1)
 	if err != nil {
@@ -87,11 +97,12 @@ func (esl *EditStatusLineComponent) Render(w rty.Writer, width, height int) erro
 	}
 	allocated += lhsW
 
-	durationW, _, err := duration.Size(width, 1)
+	rhs := esl.rightPane()
+	rhsW, _, err := rhs.Size(width, 1)
 	if err != nil {
 		return err
 	}
-	allocated += durationW
+	allocated += rhsW
 
 	filenames, filenamesEtAl := esl.makeEditsComponents(width - allocated)
 	var filenamesW, filenamesEtAlW int
@@ -137,11 +148,11 @@ func (esl *EditStatusLineComponent) Render(w rty.Writer, width, height int) erro
 	}
 
 	{
-		w, err := w.Divide(width-durationW, 0, durationW, 1)
+		w, err := w.Divide(width-rhsW, 0, rhsW, 1)
 		if err != nil {
 			return err
 		}
-		w.RenderChild(duration)
+		w.RenderChild(rhs)
 	}
 
 	return nil

@@ -217,6 +217,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms.CurrentBuildReason = action.Reason
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
+		pod.UpdateStartTime = action.StartTime
 	}
 
 	// Keep the crash log around until we have a rebuild
@@ -253,15 +254,15 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
 	ms.LastBuildReason = ms.CurrentBuildReason
 	ms.LastBuildLog = ms.CurrentBuildLog
+	ms.LastBuildEdits = ms.CurrentBuildEdits
 
 	ms.CurrentBuildStartTime = time.Time{}
 	ms.CurrentBuildReason = model.BuildReasonNone
 	ms.CurrentBuildLog = nil
+	ms.CurrentBuildEdits = nil
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		ms.CurrentBuildEdits = nil
-
 		if isPermanentError(err) {
 			return err
 		} else if engineState.WatchMounts {
@@ -286,8 +287,6 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 		ms.LastSuccessfulDeployTime = time.Now()
 		ms.LastBuild = cb.Result
-		ms.LastSuccessfulDeployEdits = ms.CurrentBuildEdits
-		ms.CurrentBuildEdits = nil
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -531,7 +530,11 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		ms.CrashLog = string(podInfo.CurrentLog)
 		ms.NeedsRebuildFromCrash = true
 		ms.ExpectedContainerID = ""
-		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+		msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+		b := []byte(msg + "\n")
+		ms.LastBuildLog = append(ms.LastBuildLog, b...)
+		ms.CurrentBuildLog = append(ms.CurrentBuildLog, b...)
+		logger.Get(ctx).Infof("%s", msg)
 	}
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {

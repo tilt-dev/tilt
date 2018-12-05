@@ -98,6 +98,28 @@ func TestMount(t *testing.T) {
 	f.assertFilesInImage(ref, pcs)
 }
 
+func TestMountFileToDirectory(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	f.WriteFile("sup", "my name is dan")
+
+	m := model.Mount{
+		LocalPath:     f.JoinPath("sup"),
+		ContainerPath: "/src/",
+	}
+
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcs := []expectedFile{
+		expectedFile{Path: "/src/sup", Contents: "my name is dan"},
+	}
+	f.assertFilesInImage(ref, pcs)
+}
+
 func TestMultipleMounts(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()

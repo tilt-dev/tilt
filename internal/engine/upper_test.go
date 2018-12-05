@@ -1205,6 +1205,37 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestBuildResetsPodLog(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	f.startPod(name)
+	f.podLog(name, "first string")
+
+	f.WithManifest(name, func(ms store.ManifestState) {
+		assert.Equal(t, "first string\n", ms.MostRecentPod().Log())
+	})
+
+	f.upper.store.Dispatch(manifestFilesChangedAction{
+		manifestName: "foobar",
+		files:        []string{"/go/a.go"},
+	})
+
+	f.waitForCompletedBuildCount(2)
+
+	f.WithManifest(name, func(ms store.ManifestState) {
+		assert.Equal(t, "", ms.MostRecentPod().Log())
+		assert.Equal(t, ms.LastBuildStartTime, ms.MostRecentPod().UpdateStartTime)
+	})
+}
+
 func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

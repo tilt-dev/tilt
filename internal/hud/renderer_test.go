@@ -111,7 +111,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:                  "a-a-a-aaaaabe vigoda",
 				DirectoriesWatched:    []string{"foo", "bar"},
 				LastDeployTime:        ts,
-				LastDeployEdits:       []string{"main.go", "cli.go"},
+				LastBuildEdits:        []string{"main.go", "cli.go"},
 				LastBuildError:        "the build failed!",
 				LastBuildFinishTime:   ts,
 				LastBuildDuration:     1400 * time.Millisecond,
@@ -130,6 +130,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		},
 	}
 	rtf.run("all the data at once", 70, 20, v, plainVs)
+	rtf.run("all the data at once 50w", 50, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -137,7 +138,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:                  "abe vigoda",
 				DirectoriesWatched:    []string{"foo", "bar"},
 				LastDeployTime:        ts,
-				LastDeployEdits:       []string{"main.go"},
+				LastBuildEdits:        []string{"main.go"},
 				PendingBuildEdits:     []string{},
 				PendingBuildSince:     ts,
 				CurrentBuildEdits:     []string{},
@@ -148,7 +149,6 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:             "Running",
 				PodRestarts:           0,
 				Endpoints:             []string{"1.2.3.4:8080"},
-				PodLog:                "",
 				CrashLog:              "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
@@ -161,7 +161,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:                "vigoda",
 				DirectoriesWatched:  []string{"foo", "bar"},
 				LastDeployTime:      ts,
-				LastDeployEdits:     []string{"main.go", "cli.go"},
+				LastBuildEdits:      []string{"main.go", "cli.go"},
 				LastBuildFinishTime: ts,
 				LastBuildDuration:   1400 * time.Millisecond,
 				LastBuildLog:        "",
@@ -224,9 +224,9 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:            "vigoda",
-				LastDeployTime:  ts.Add(-5 * time.Second),
-				LastDeployEdits: []string{"abbot.go", "costello.go", "harold.go"},
+				Name:           "vigoda",
+				LastDeployTime: ts.Add(-5 * time.Second),
+				LastBuildEdits: []string{"abbot.go", "costello.go", "harold.go"},
 			},
 		},
 	}
@@ -278,6 +278,22 @@ func TestRenderLogModal(t *testing.T) {
 		},
 	}
 	rtf.run("build log pane", 117, 20, v, vs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "vigoda",
+				LastBuildFinishTime:   now.Add(-time.Minute),
+				CurrentBuildStartTime: now,
+				CurrentBuildLog:       "building!",
+				CurrentBuildReason:    model.BuildReasonFlagCrash,
+				PodName:               "vigoda-pod",
+				PodCreationTime:       now,
+				CrashLog:              "panic!",
+			},
+		},
+	}
+	rtf.run("resource log during crash rebuild", 60, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
@@ -333,6 +349,32 @@ func TestAutoCollapseModes(t *testing.T) {
 	rtf.run("collapse-auto-bad", 70, 20, badView, autoVS)
 	rtf.run("collapse-no-good", 70, 20, goodView, collapseNoVS)
 	rtf.run("collapse-yes-bad", 70, 20, badView, collapseYesVS)
+}
+
+func TestPodLogContainerUpdate(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Running",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Serving on 8080",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+	rtf.run("pod log for container update", 70, 20, v, vs)
 }
 
 type rendererTestFixture struct {
