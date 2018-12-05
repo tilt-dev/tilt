@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tcell"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 )
@@ -42,8 +43,8 @@ func (v *ResourceView) resourceTitle() rty.Component {
 	l.AddDynamic(rty.Fg(rty.NewFillerString('╌'), cLightText))
 	l.Add(rty.TextString(" "))
 
-	if !v.res.IsYAMLManifest {
-		l.Add(v.titleTextK8s())
+	if tt := v.titleText(); tt != nil {
+		l.Add(tt)
 		l.Add(middotText())
 	}
 
@@ -54,7 +55,15 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func (v *ResourceView) statusColor() tcell.Color {
-	if !v.res.CurrentBuildStartTime.IsZero() && !v.res.CurrentBuildReason.IsCrashOnly() {
+	if v.res.IsDCManifest {
+		if v.res.DCState == dockercompose.StateInProg {
+			return cPending
+		} else if v.res.DCState == dockercompose.StateUp {
+			return cGood
+		} else if v.res.DCState == dockercompose.StateDown {
+			return cBad
+		}
+	} else if !v.res.CurrentBuildStartTime.IsZero() && !v.res.CurrentBuildReason.IsCrashOnly() {
 		return cPending
 	} else if !v.res.PendingBuildSince.IsZero() && !v.res.PendingBuildReason.IsCrashOnly() {
 		return cPending
@@ -101,6 +110,30 @@ func (v *ResourceView) titleTextK8s() rty.Component {
 	return sb.Build()
 }
 
+func (v *ResourceView) titleText() rty.Component {
+	if v.res.IsYAMLManifest {
+		return nil
+	}
+	if tt := v.titleTextDC(); tt != nil {
+		return tt
+	}
+	return v.titleTextK8s()
+}
+
+func (v *ResourceView) titleTextDC() rty.Component {
+	if !v.res.IsDCManifest {
+		return nil
+	}
+
+	sb := rty.NewStringBuilder()
+	status := v.res.DCState
+	if status == "" {
+		status = "Pending"
+	}
+	sb.Textf("DC %s", status)
+	return sb.Build()
+}
+
 func (v *ResourceView) titleTextBuild() rty.Component {
 	sb := rty.NewStringBuilder()
 	bs := makeBuildStatus(v.res)
@@ -122,16 +155,49 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 	l.Add(rty.TextString(strings.Repeat(" ", 4)))
 
 	rhs := rty.NewConcatLayout(rty.DirVert)
-	rhs.Add(v.resourceExpandedK8s())
+	rhs.Add(v.resourceExpanded())
 	rhs.Add(v.resourceExpandedHistory())
 	rhs.Add(v.resourceExpandedError())
 	l.AddDynamic(rhs)
 	return l
 }
 
+func (v *ResourceView) resourceExpanded() rty.Component {
+	if l := v.resourceExpandedDC(); !rty.IsEmpty(l) {
+		return l
+	}
+	if l := v.resourceExpandedK8s(); !rty.IsEmpty(l) {
+		return l
+	}
+	return rty.EmptyLayout
+}
+
+func (v *ResourceView) resourceExpandedDC() rty.Component {
+	if !v.res.IsDCManifest {
+		return rty.EmptyLayout
+	}
+
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(v.resourceTextDCContainer())
+	l.Add(rty.TextString(" "))
+	l.AddDynamic(rty.NewFillerString(' '))
+
+	// TODO(maia): ports
+
+	l.Add(v.resourceTextAge())
+	return rty.OneLine(l)
+}
+
+func (v *ResourceView) resourceTextDCContainer() rty.Component {
+	sb := rty.NewStringBuilder()
+	sb.Fg(cLightText).Text("DC container: ")
+	sb.Fg(tcell.ColorDefault).Text("not implemented sry 😅")
+	return sb.Build()
+}
+
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	if v.res.IsYAMLManifest || v.res.PodName == "" {
-		return rty.NewConcatLayout(rty.DirVert)
+		return rty.EmptyLayout
 	}
 
 	l := rty.NewConcatLayout(rty.DirHor)
@@ -234,6 +300,7 @@ func (v *ResourceView) resourceExpandedError() rty.Component {
 	return l
 }
 
+// TODO(maia): rename this method to be generic (thiiink it already works with k8s AND dc?)
 func (v *ResourceView) resourceExpandedK8sError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
