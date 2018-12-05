@@ -51,6 +51,7 @@ To get started, check out some [examples](first_example.html) or dive into the
    install
    first_example
    first_config
+   write_your_tiltfile
    upgrade_skaffold
    upgrade_docker_compose
    fast_build

@@ -19,7 +19,7 @@ def local_git_repo(path: str) -> Repo:
   """Creates a ``repo`` from the git repo at ``path``."""
   pass
 
-def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: str = "Dockerfile") -> Image:
+def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: str = "Dockerfile") -> None:
   """Builds a docker image.
   Args:
     ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
@@ -30,9 +30,9 @@ def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, docker
 pass
 
 class FastBuild:
-  def add(src: Union[LocalPath, Repo], dest: str) -> FastBuild:
-    """Adds the content from ``src`` into the image at path ``dest``."""
-    pass
+  # def add(src: Union[LocalPath, Repo], dest: str) -> FastBuild:
+  #   """Adds the content from ``src`` into the image at path ``dest``."""
+  #   pass
 
   def run(cmd: str, trigger: Union[List[str], str] = []) -> None:
     """Runs ``cmd`` as a build step in the image.

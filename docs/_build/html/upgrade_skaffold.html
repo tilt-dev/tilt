@@ -32,7 +32,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="From Docker Compose" href="upgrade_docker_compose.html" />
-    <link rel="prev" title="A Simple Tiltfile" href="first_config.html" />
+    <link rel="prev" title="Write Your Tiltfile" href="write_your_tiltfile.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -98,10 +98,12 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">From Skaffold</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#differences-between-skaffold-and-tilt">Differences between Skaffold and Tilt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#migrate-from-skaffold-to-tilt">Migrate from Skaffold to Tilt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#that-s-it">That’s it!</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
@@ -187,50 +189,62 @@
 </div>
 <div class="section" id="migrate-from-skaffold-to-tilt">
 <span id="migrate-from-skaffold-to-tilt"></span><h2>Migrate from Skaffold to Tilt<a class="headerlink" href="#migrate-from-skaffold-to-tilt" title="Permalink to this headline">¶</a></h2>
-<p>Let’s take a simple <code class="docutils literal notranslate"><span class="pre">skaffold.yaml</span></code> file with one service:</p>
+<p>Let’s take a relatively simple <code class="docutils literal notranslate"><span class="pre">skaffold.yaml</span></code> file with two services:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
 <span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
 <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
+    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
 <span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
     <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./deployments/snack.yaml</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/snack.yaml</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
 </pre></div>
 </div>
 <ol class="simple">
 <li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
-<li>Tell Tilt about your Dockerfile</li>
-</ol>
-<p>In Skaffold you can specify your build context and Dockerfile like so:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
-  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
-</pre></div>
-</div>
-<p>In Tilt you tell us where your Dockerfile is and what the build_context is.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-<ol class="simple">
 <li>Tell Tilt about your YAML</li>
 </ol>
 <p>In Skaffold you specify your Kubernetes YAML under the <code class="docutils literal notranslate"><span class="pre">manifests</span></code> key:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
     <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./deployments/snack.yaml</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/snack.yaml</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
 </pre></div>
 </div>
-<p>In Tilt we associate your image and your Kubernetes YAML by image tag.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;snack&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">)</span>
+<p>In Tilt we specify Kubernetes YAML with the <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> function.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;deploy&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/spoonerisms.yaml&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
-<p>In Skaffold services are implicitly named from their Kubernetes config. In Tilt services have names given by the first argument to the <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> function.</p>
-<p>All in all your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> should now look like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;snack&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">)</span>
+<ol class="simple">
+<li>Tell Tilt about your Dockerfile</li>
+</ol>
+<p>In Skaffold you specify the image tag you want to build and deploy:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
+    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+</pre></div>
+</div>
+<p>Similarly in Tilt you specify the image tag as well as the Docker build context (<code class="docutils literal notranslate"><span class="pre">&quot;.&quot;</span></code> in this case).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;snack&#39;</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;spoonerisms&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="that-s-it">
+<span id="that-s-it"></span><h2>That’s it!<a class="headerlink" href="#that-s-it" title="Permalink to this headline">¶</a></h2>
+<p>Now your Tiltfile should look like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;deploy&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/spoonerisms.yaml&#39;</span><span class="p">])</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;snack&#39;</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;spoonerisms&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -247,7 +261,7 @@
         <a href="upgrade_docker_compose.html" class="btn btn-neutral float-right" title="From Docker Compose" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="first_config.html" class="btn btn-neutral" title="A Simple Tiltfile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="write_your_tiltfile.html" class="btn btn-neutral" title="Write Your Tiltfile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
