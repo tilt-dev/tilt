@@ -59,6 +59,8 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 		l.Add(renderNarration(vs.NarrationMessage))
 		l.Add(rty.NewLine())
 	}
+
+	l.Add(r.renderResourceHeader(v))
 	l.Add(r.renderResources(v, vs))
 	l.Add(r.renderPaneHeader(v))
 	l.Add(r.renderLogPane(v))
@@ -245,6 +247,27 @@ func renderNarration(msg string) rty.Component {
 
 	box := rty.Fg(rty.Bg(lines, tcell.ColorLightGrey), cText)
 	return rty.NewFixedSize(box, rty.GROW, 3)
+}
+
+func (r *Renderer) renderResourceHeader(v view.View) rty.Component {
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(rty.ColoredString("  RESOURCE NAME ", cLightText))
+	l.AddDynamic(rty.NewFillerString(' '))
+
+	k8sCell := rty.ColoredString(" K8S", cLightText)
+	l.Add(k8sCell)
+	l.Add(middotText())
+
+	buildCell := rty.NewMinLengthLayout(BuildDurCellMinWidth+BuildStatusCellMinWidth, rty.DirHor).
+		SetAlign(rty.AlignEnd).
+		Add(rty.ColoredString("BUILD STATUS", cLightText))
+	l.Add(buildCell)
+	l.Add(middotText())
+	deployCell := rty.NewMinLengthLayout(DeployCellMinWidth+1, rty.DirHor).
+		SetAlign(rty.AlignEnd).
+		Add(rty.ColoredString("UPDATED ", cLightText))
+	l.Add(deployCell)
+	return rty.OneLine(l)
 }
 
 func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component {
