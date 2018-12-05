@@ -84,6 +84,7 @@ type InitAction struct {
 	TiltfilePath       string
 	ConfigFiles        []string
 	ManifestNames      []model.ManifestName
+	Err                error
 }
 
 func (InitAction) Action() {}

@@ -172,7 +172,7 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		manifests, _, _, err := tiltfile2.Load(ctx, tfPath)
+		manifests, _, _, err := tiltfile2.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err
 		}

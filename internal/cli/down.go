@@ -8,8 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/engine"
-	// "github.com/windmilleng/tilt/internal/k8s"
-	// "github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
@@ -32,31 +30,15 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, _, _, err := tiltfile2.Load(ctx, tiltfile.FileName)
+	manifests, _, _, err := tiltfile2.Load(ctx, tiltfile.FileName, nil)
 	if err != nil {
 		return err
 	}
-
-	// manifestNames := make([]model.ManifestName, len(args))
-	// for i, a := range args {
-	// 	manifestNames[i] = model.ManifestName(a)
-	// }
-
-	// manifests, gYAML, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
-	// if err != nil {
-	// 	return err
-	// }
 
 	entities, err := engine.ParseYAMLFromManifests(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-
-	// globalEntities, err := k8s.ParseYAMLFromString(gYAML.K8sYAML())
-	// if err != nil {
-	// 	return errors.Wrap(err, "Parsing global YAML")
-	// }
-	// entities = append(entities, globalEntities...)
 
 	kClient, err := wireK8sClient(ctx)
 	if err != nil {
