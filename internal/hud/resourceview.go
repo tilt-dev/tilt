@@ -42,8 +42,8 @@ func (v *ResourceView) resourceTitle() rty.Component {
 	l.AddDynamic(rty.Fg(rty.NewFillerString('╌'), cLightText))
 	l.Add(rty.TextString(" "))
 
-	if !v.res.IsYAMLManifest {
-		l.Add(v.titleTextK8s())
+	if tt := v.titleText(); tt != nil {
+		l.Add(tt)
 		l.Add(middotText())
 	}
 
@@ -98,6 +98,30 @@ func (v *ResourceView) titleTextK8s() rty.Component {
 		status = "Pending"
 	}
 	sb.Textf("K8S %s", status)
+	return sb.Build()
+}
+
+func (v *ResourceView) titleText() rty.Component {
+	if v.res.IsYAMLManifest {
+		return nil
+	}
+	if tt := v.titleTextDC(); tt != nil {
+		return tt
+	}
+	return v.titleTextK8s()
+}
+
+func (v *ResourceView) titleTextDC() rty.Component {
+	if !v.res.IsDCManifest {
+		return nil
+	}
+
+	sb := rty.NewStringBuilder()
+	status := v.res.DCState
+	if status == "" {
+		status = "Pending"
+	}
+	sb.Textf("DC %s", status)
 	return sb.Build()
 }
 
