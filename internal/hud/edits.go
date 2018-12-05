@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -63,16 +62,11 @@ func (esl *EditStatusLineComponent) makeEditsComponents(width int) (rty.Componen
 }
 
 func (esl *EditStatusLineComponent) buildStatusText() rty.Component {
-	sb := rty.NewStringBuilder()
-	sb.Textf("%s ", esl.bs.status)
-	sb.Fg(cLightText).Text("(")
-	sb.Fg(tcell.ColorDefault).Text(formatBuildDuration(esl.bs.duration))
-	sb.Fg(cLightText).Text(")")
-	return sb.Build()
+	return buildStatusCell(esl.bs)
 }
 
 func (esl *EditStatusLineComponent) buildAgeText() rty.Component {
-	return deployTimeText(esl.bs.deployTime)
+	return deployTimeCell(esl.bs.deployTime)
 }
 
 func (esl *EditStatusLineComponent) rightPane() rty.Component {
