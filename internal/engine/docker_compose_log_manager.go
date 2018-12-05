@@ -13,18 +13,18 @@ import (
 
 // Collects logs from running docker-compose services.
 type DockerComposeLogManager struct {
-	watches map[model.ManifestName]DockerComposeLogWatch
+	watches map[model.ManifestName]dockerComposeLogWatch
 }
 
 func NewDockerComposeLogManager() *DockerComposeLogManager {
 	return &DockerComposeLogManager{
-		watches: make(map[model.ManifestName]DockerComposeLogWatch),
+		watches: make(map[model.ManifestName]dockerComposeLogWatch),
 	}
 }
 
 // Diff the current watches against set of current docker-compose services, i.e.
 // what we SHOULD be watching, returning the changes we need to make.
-func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (setup []DockerComposeLogWatch, teardown []DockerComposeLogWatch) {
+func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (setup []dockerComposeLogWatch, teardown []dockerComposeLogWatch) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -52,7 +52,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
-		w := DockerComposeLogWatch{
+		w := dockerComposeLogWatch{
 			ctx:             ctx,
 			cancel:          cancel,
 			name:            ms.Manifest.Name,
@@ -87,7 +87,7 @@ func (m *DockerComposeLogManager) OnChange(ctx context.Context, st store.RStore)
 	}
 }
 
-func (m *DockerComposeLogManager) consumeLogs(watch DockerComposeLogWatch, st store.RStore) {
+func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st store.RStore) {
 	defer func() {
 		watch.terminationTime <- time.Now()
 		watch.cancel()
@@ -119,7 +119,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch DockerComposeLogWatch, st st
 	}
 }
 
-type DockerComposeLogWatch struct {
+type dockerComposeLogWatch struct {
 	ctx             context.Context
 	cancel          func()
 	name            model.ManifestName
