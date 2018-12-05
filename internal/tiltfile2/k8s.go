@@ -16,8 +16,23 @@ type k8sResource struct {
 	imageRef string
 
 	portForwards []portForward
+}
 
-	expandedFrom string // this resource was not declared but expanded from another resource
+func (s *tiltfileState) k8sYaml(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var yamlValue skylark.Value
+	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+		"yaml", &yamlValue,
+	); err != nil {
+		return nil, err
+	}
+
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
+	if err != nil {
+		return nil, err
+	}
+	s.k8sUnresourced = append(s.k8sUnresourced, entities...)
+
+	return skylark.None, nil
 }
 
 func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -38,8 +53,9 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 	if name == "" {
 		return nil, fmt.Errorf("k8s_resource: name must not be empty")
 	}
-	if s.k8sByName[name] != nil {
-		return nil, fmt.Errorf("resource named %q has already been defined", name)
+	r, err := s.makeK8sResource(name)
+	if err != nil {
+		return nil, err
 	}
 
 	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
@@ -64,16 +80,24 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 		return nil, err
 	}
 
-	r := &k8sResource{
-		name:     name,
-		k8s:      entities,
-		imageRef: imageRef,
+	r.k8s = entities
+	r.imageRef = imageRef
+	r.portForwards = portForwards
 
-		portForwards: portForwards,
+	return skylark.None, nil
+}
+
+func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
+	if s.k8sByName[name] != nil {
+		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
+	}
+	r := &k8sResource{
+		name: name,
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
-	return skylark.None, nil
+
+	return r, nil
 }
 
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v skylark.Value) ([]k8s.K8sEntity, error) {
