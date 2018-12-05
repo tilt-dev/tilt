@@ -3,7 +3,9 @@ package hud
 import (
 	"time"
 
+	"github.com/windmilleng/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/rty"
 )
 
 type buildStatus struct {
@@ -45,4 +47,23 @@ func makeBuildStatus(res view.Resource) buildStatus {
 		edits:      edits,
 		deployTime: deployTime,
 	}
+}
+
+func buildStatusCell(bs buildStatus) rty.Component {
+	lhs := rty.NewMinLengthLayout(BuildStatusCellMinWidth, rty.DirHor).
+		Add(rty.TextString(bs.status))
+
+	sb := rty.NewStringBuilder()
+	if bs.duration != 0 {
+		sb.Fg(cLightText).Text(" (")
+		sb.Fg(tcell.ColorDefault).Text(formatBuildDuration(bs.duration))
+		sb.Fg(cLightText).Text(")")
+	}
+	rhs := rty.NewMinLengthLayout(BuildDurCellMinWidth, rty.DirHor).
+		SetAlign(rty.AlignEnd).
+		Add(sb.Build())
+
+	return rty.NewConcatLayout(rty.DirHor).
+		Add(lhs).
+		Add(rhs)
 }

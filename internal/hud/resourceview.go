@@ -11,6 +11,11 @@ import (
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
+// These widths are determined experimentally, to see what shows up in a typical UX.
+const DeployCellMinWidth = 8
+const BuildDurCellMinWidth = 7
+const BuildStatusCellMinWidth = 11
+
 type ResourceView struct {
 	res      view.Resource
 	rv       view.ResourceViewState
@@ -73,6 +78,8 @@ func (v *ResourceView) statusColor() tcell.Color {
 		return cBad
 	} else if v.res.IsYAMLManifest && !v.res.LastDeployTime.IsZero() {
 		return cGood
+	} else if !v.res.LastBuildFinishTime.IsZero() && v.res.PodStatus == "" {
+		return cPending // pod status hasn't shown up yet
 	}
 
 	statusColor, ok := podStatusColors[v.res.PodStatus]
@@ -135,19 +142,11 @@ func (v *ResourceView) titleTextDC() rty.Component {
 }
 
 func (v *ResourceView) titleTextBuild() rty.Component {
-	sb := rty.NewStringBuilder()
-	bs := makeBuildStatus(v.res)
-	sb.Text(bs.status)
-	if bs.duration != 0 {
-		sb.Fg(cLightText).Text(" (")
-		sb.Fg(tcell.ColorDefault).Text(formatBuildDuration(bs.duration))
-		sb.Fg(cLightText).Text(")")
-	}
-	return sb.Build()
+	return buildStatusCell(makeBuildStatus(v.res))
 }
 
 func (v *ResourceView) titleTextDeploy() rty.Component {
-	return deployTimeText(v.res.LastDeployTime)
+	return deployTimeCell(v.res.LastDeployTime)
 }
 
 func (v *ResourceView) resourceExpandedPane() rty.Component {
@@ -240,7 +239,9 @@ func (v *ResourceView) resourceTextAge() rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("AGE ")
 	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(v.res.PodCreationTime)))
-	return sb.Build()
+	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
+		SetAlign(rty.AlignEnd).
+		Add(sb.Build())
 }
 
 func (v *ResourceView) resourceExpandedHistory() rty.Component {
@@ -305,7 +306,7 @@ func (v *ResourceView) resourceExpandedK8sError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 	if isCrashing(v.res) {
-		log := v.res.Log
+		log := v.res.PodLog
 		if log == "" {
 			log = v.res.CrashLog
 		}

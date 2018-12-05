@@ -92,3 +92,11 @@ func TestConcatLayout(t *testing.T) {
 	cl.AddDynamic(TextString(strings.Repeat("helllllo", 20)))
 	i.Run("wrapping on right of ConcatLayout", 20, 20, cl)
 }
+
+func TestAlignEnd(t *testing.T) {
+	i := NewInteractiveTester(t, screen)
+	l := NewMinLengthLayout(10, DirHor).
+		SetAlign(AlignEnd).
+		Add(TextString("hello"))
+	i.Run("align right on min-length layout", 15, 15, NewBox(l))
+}

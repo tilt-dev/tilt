@@ -59,16 +59,14 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 		l.Add(renderNarration(vs.NarrationMessage))
 		l.Add(rty.NewLine())
 	}
-
-	split := rty.NewFlexLayout(rty.DirVert)
-
-	split.Add(r.renderResources(v, vs))
-	split.Add(r.renderFooter(v, keyLegend(vs)))
-	l.Add(split)
+	l.Add(r.renderResources(v, vs))
+	l.Add(r.renderPaneHeader(v))
+	l.Add(r.renderLogPane(v))
+	l.Add(r.renderFooter(v, keyLegend(vs)))
 
 	var ret rty.Component = l
 	if vs.LogModal.TiltLog {
-		ret = r.renderFullLogModal(v, ret)
+		ret = r.renderTiltLog(v, keyLegend(vs), ret)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
 		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
 	}
@@ -94,21 +92,17 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 	return layout
 }
 
-func keyLegend(vs view.ViewState) string {
-	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ Tilt (l)og ┊ (q)uit  "
-	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
-		return "Scroll (↓ ↑) ┊ (esc) close logs "
-	} else if vs.AlertMessage != "" {
-		return "Tilt (l)og ┊ (esc) close alert "
-	}
-	return defaultKeys
+func (r *Renderer) renderLogPane(v view.View) rty.Component {
+	l := rty.NewConcatLayout(rty.DirHor)
+	log := rty.NewTextScrollLayout("log")
+	log.Add(rty.TextString(v.Log))
+	l.Add(log)
+	return rty.NewFixedSize(l, rty.GROW, 7)
 }
 
-func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
-	footer := rty.NewConcatLayout(rty.DirHor)
+func (r *Renderer) renderPaneHeader(v view.View) rty.Component {
+	header := rty.NewConcatLayout(rty.DirHor)
 	sbLeft := rty.NewStringBuilder()
-	sbRight := rty.NewStringBuilder()
-
 	sbLeft.Text(" ") // Indent
 	errorCount := 0
 	for _, res := range v.Resources {
@@ -138,14 +132,31 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 		}
 		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
 	}
-	sbRight.Fg(cText).Text(keys).Fg(tcell.ColorDefault)
+	header.Add(sbLeft.Build())
+	header.Add(rty.NewFillerString(' '))
+	return rty.NewFixedSize(rty.Bg(header, tcell.ColorWhiteSmoke), rty.GROW, 1)
+}
 
-	footer.Add(sbLeft.Build())
-	footer.Add(rty.TextString("   ")) // minimum 3 spaces between left and right
-	footer.AddDynamic(rty.NewFillerString(' '))
-	footer.Add(sbRight.Build())
+func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
+	footer := rty.NewConcatLayout(rty.DirVert)
+	footer.Add(rty.NewFillerString('—'))
+	l := rty.NewConcatLayout(rty.DirHor)
+	sbRight := rty.NewStringBuilder()
+	sbRight.Text(keys)
+	l.AddDynamic(rty.NewFillerString(' '))
+	l.Add(sbRight.Build())
+	footer.Add(l)
+	return rty.NewFixedSize(footer, rty.GROW, 2)
+}
 
-	return rty.NewFixedSize(rty.Bg(footer, tcell.ColorWhiteSmoke), rty.GROW, 1)
+func keyLegend(vs view.ViewState) string {
+	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ fullscreen (l)og ┊ (q)uit  "
+	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
+		return "Scroll (↓ ↑) ┊ (esc) close logs "
+	} else if vs.AlertMessage != "" {
+		return "Tilt (l)og ┊ (esc) close alert "
+	}
+	return defaultKeys
 }
 
 func isInError(res view.Resource) bool {
@@ -159,18 +170,14 @@ func isCrashing(res view.Resource) bool {
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash)
 }
 
-func (r *Renderer) renderFullLogModal(v view.View, background rty.Component) rty.Component {
-	return r.renderLogModal("TILT LOG", v.Log, background)
-}
-
 func bestLogs(res view.Resource) string {
 	// ~~ TEMPORARY: just view the logs for a dc resource:
 	if res.IsDCManifest {
 		if res.LastBuildStartTime.Before(res.PodCreationTime) &&
 			len(strings.TrimSpace(res.LastBuildLog)) > 0 {
-			return res.LastBuildLog + "\n\n" + res.Log
+			return res.LastBuildLog + "\n\n" + res.PodLog
 		}
-		return res.Log
+		return res.PodLog
 	}
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
@@ -178,9 +185,25 @@ func bestLogs(res view.Resource) string {
 		return res.CurrentBuildLog
 	}
 
+	// A build is in progress, triggered by a pod crash.
+	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
+		res.CurrentBuildReason.IsCrashOnly() {
+		return res.CrashLog + "\n\n" + res.CurrentBuildLog
+	}
+
 	// The last build was an error.
 	if res.LastBuildError != "" {
 		return res.LastBuildLog
+	}
+
+	// Two cases:
+	// 1) The last build finished before this pod started
+	// 2) This log is from an in-place container update.
+	// in either case, prepend them to pod logs.
+	if (res.LastBuildStartTime.Equal(res.PodUpdateStartTime) ||
+		res.LastBuildStartTime.Before(res.PodCreationTime)) &&
+		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
+		return res.LastBuildLog + "\n" + res.PodLog
 	}
 
 	// The last build finished, but the pod hasn't started yet.
@@ -188,13 +211,17 @@ func bestLogs(res view.Resource) string {
 		return res.LastBuildLog
 	}
 
-	// The last build finished, so prepend them to pod logs.
-	if res.LastBuildStartTime.Before(res.PodCreationTime) &&
-		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
-		return res.LastBuildLog + "\n\n" + res.Log
-	}
+	return res.PodLog
+}
 
-	return res.Log
+func (r *Renderer) renderTiltLog(v view.View, keys string, background rty.Component) rty.Component {
+	l := rty.NewConcatLayout(rty.DirVert)
+	l.Add(r.renderPaneHeader(v))
+	sl := rty.NewTextScrollLayout(logScrollerName)
+	sl.Add(rty.TextString(v.Log))
+	l.AddDynamic(sl)
+	l.Add(r.renderFooter(v, keys))
+	return rty.NewModalLayout(background, l, 1, true)
 }
 
 func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
@@ -203,17 +230,13 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 		s = fmt.Sprintf("No log output for %s", res.Name)
 	}
 
-	return r.renderLogModal(fmt.Sprintf("LOG: %s", res.Name), s, background)
-}
-
-func (r *Renderer) renderLogModal(title string, s string, background rty.Component) rty.Component {
-	sl := rty.NewTextScrollLayout(logScrollerName)
-	sl.Add(rty.TextString(s))
+	l := rty.NewTextScrollLayout(logScrollerName)
+	l.Add(rty.TextString(s))
 	box := rty.NewGrowingBox()
-	box.SetInner(sl)
-	box.SetTitle(title)
+	box.SetInner(l)
+	box.SetTitle(fmt.Sprintf("LOG: %s", res.Name))
 
-	return r.renderModal(box, background, true)
+	return rty.NewModalLayout(background, box, 0.9, true)
 }
 
 func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {
@@ -234,13 +257,16 @@ func renderNarration(msg string) rty.Component {
 
 func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component {
 	rs := v.Resources
+
+	cl := rty.NewConcatLayout(rty.DirVert)
+	cl.Add(r.renderTiltfileError(v))
+
 	childNames := make([]string, len(rs))
 	for i, r := range rs {
 		childNames[i] = r.Name
 	}
-
+	// the items added to `l` below must be kept in sync with `childNames` above
 	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
-	l.Add(r.renderTiltfileError(v))
 
 	if len(rs) > 0 {
 		for i, res := range rs {
@@ -248,7 +274,8 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 		}
 	}
 
-	return l
+	cl.Add(l)
+	return cl
 }
 
 var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}

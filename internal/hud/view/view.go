@@ -32,11 +32,13 @@ type Resource struct {
 	CurrentBuildLog       string
 
 	// Relevant to k8s resources (maybe should accomplish via interface?)
-	PodName         string
-	PodCreationTime time.Time
-	PodStatus       string
-	PodRestarts     int
-	Endpoints       []string
+	PodName            string
+	PodCreationTime    time.Time
+	PodUpdateStartTime time.Time
+	PodStatus          string
+	PodRestarts        int
+	Endpoints          []string
+	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
 
 	// Relevant to docker-compose resources
 	// TODO(maia): store as separate type
@@ -47,7 +49,6 @@ type Resource struct {
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
-	Log      string
 
 	IsYAMLManifest bool
 }

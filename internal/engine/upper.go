@@ -217,6 +217,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms.CurrentBuildReason = action.Reason
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
+		pod.UpdateStartTime = action.StartTime
 	}
 
 	ms.DCInfo.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
@@ -531,7 +532,11 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		ms.CrashLog = string(podInfo.CurrentLog)
 		ms.NeedsRebuildFromCrash = true
 		ms.ExpectedContainerID = ""
-		logger.Get(ctx).Infof("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+		msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+		b := []byte(msg + "\n")
+		ms.LastBuildLog = append(ms.LastBuildLog, b...)
+		ms.CurrentBuildLog = append(ms.CurrentBuildLog, b...)
+		logger.Get(ctx).Infof("%s", msg)
 	}
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {

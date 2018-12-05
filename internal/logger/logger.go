@@ -14,7 +14,7 @@ import (
 // Logger with better controls for levels and colors.
 //
 // Note that our loggers often serve as both traditional loggers (where each
-// call to Log() is a discrete log entry that may be emitted as JSON or with
+// call to PodLog() is a discrete log entry that may be emitted as JSON or with
 // newlines) and as Writers (where each call to Write() may be part of a larger
 // output stream, and each message may not end in a newline).
 //

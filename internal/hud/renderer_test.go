@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -86,7 +87,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:   "Running",
 				PodRestarts: 1,
 				Endpoints:   []string{"1.2.3.4:8080"},
-				Log:         "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+				PodLog:      "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
 	}
@@ -125,7 +126,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:             "Running",
 				PodRestarts:           1,
 				Endpoints:             []string{"1.2.3.4:8080"},
-				Log:                   "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+				PodLog:                "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
 	}
@@ -149,7 +150,6 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:             "Running",
 				PodRestarts:           0,
 				Endpoints:             []string{"1.2.3.4:8080"},
-				Log:                   "",
 				CrashLog:              "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 			},
 		},
@@ -171,7 +171,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				PodStatus:           "Running",
 				PodRestarts:         1,
 				Endpoints:           []string{"1.2.3.4:8080"},
-				Log: `abe vigoda is crashing
+				PodLog: `abe vigoda is crashing
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
@@ -272,13 +272,29 @@ func TestRenderLogModal(t *testing.T) {
 `,
 				PodName:         "vigoda-pod",
 				PodCreationTime: now,
-				Log:             "serving on 8080",
+				PodLog:          "serving on 8080",
 				PodStatus:       "Running",
 				LastDeployTime:  now,
 			},
 		},
 	}
 	rtf.run("build log pane", 117, 20, v, vs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name:                  "vigoda",
+				LastBuildFinishTime:   now.Add(-time.Minute),
+				CurrentBuildStartTime: now,
+				CurrentBuildLog:       "building!",
+				CurrentBuildReason:    model.BuildReasonFlagCrash,
+				PodName:               "vigoda-pod",
+				PodCreationTime:       now,
+				CrashLog:              "panic!",
+			},
+		},
+	}
+	rtf.run("resource log during crash rebuild", 60, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
@@ -334,6 +350,66 @@ func TestAutoCollapseModes(t *testing.T) {
 	rtf.run("collapse-auto-bad", 70, 20, badView, autoVS)
 	rtf.run("collapse-no-good", 70, 20, goodView, collapseNoVS)
 	rtf.run("collapse-yes-bad", 70, 20, badView, collapseYesVS)
+}
+
+func TestPodPending(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastBuildLog: `STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`,
+				PodName:        "vigoda-pod",
+				PodLog:         "serving on 8080",
+				PodStatus:      "",
+				LastDeployTime: ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+
+	rtf.run("pending pod no status", 80, 20, v, vs)
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+
+	v.Resources[0].PodCreationTime = ts
+	v.Resources[0].PodStatus = "Pending"
+	rtf.run("pending pod pending status", 80, 20, v, vs)
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+}
+
+func TestPodLogContainerUpdate(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Running",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Serving on 8080",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+	rtf.run("pod log for container update", 70, 20, v, vs)
 }
 
 type rendererTestFixture struct {
