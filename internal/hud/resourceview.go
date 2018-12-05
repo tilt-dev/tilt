@@ -64,6 +64,8 @@ func (v *ResourceView) statusColor() tcell.Color {
 		return cBad
 	} else if v.res.IsYAMLManifest && !v.res.LastDeployTime.IsZero() {
 		return cGood
+	} else if !v.res.LastBuildFinishTime.IsZero() && v.res.PodStatus == "" {
+		return cPending // pod status hasn't shown up yet
 	}
 
 	statusColor, ok := podStatusColors[v.res.PodStatus]
