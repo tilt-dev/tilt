@@ -96,9 +96,10 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
 
@@ -167,52 +168,33 @@
 
 <div class="genindex-jumpbox">
  <a href="#A"><strong>A</strong></a>
- | <a href="#C"><strong>C</strong></a>
- | <a href="#G"><strong>G</strong></a>
- | <a href="#I"><strong>I</strong></a>
+ | <a href="#D"><strong>D</strong></a>
+ | <a href="#F"><strong>F</strong></a>
  | <a href="#K"><strong>K</strong></a>
  | <a href="#L"><strong>L</strong></a>
- | <a href="#P"><strong>P</strong></a>
  | <a href="#R"><strong>R</strong></a>
- | <a href="#S"><strong>S</strong></a>
  
 </div>
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.add">add() (in module api)</a>
-</li>
-  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#module-api">api (module)</a>
 </li>
   </ul></td>
 </tr></table>
 
-<h2 id="C">C</h2>
+<h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Image.cache">cache() (api.Image method)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.composite_service">composite_service() (in module api)</a>
+      <li><a href="api.html#api.docker_build">docker_build() (in module api)</a>
 </li>
   </ul></td>
 </tr></table>
 
-<h2 id="G">G</h2>
+<h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.global_yaml">global_yaml() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="I">I</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Image">Image (class in api)</a>
+      <li><a href="api.html#api.fast_build">fast_build() (in module api)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -220,10 +202,12 @@
 <h2 id="K">K</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.k8s_service">k8s_service() (in module api)</a>
+      <li><a href="api.html#api.k8s_resource">k8s_resource() (in module api)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#api.k8s_yaml">k8s_yaml() (in module api)</a>
+</li>
       <li><a href="api.html#api.kustomize">kustomize() (in module api)</a>
 </li>
   </ul></td>
@@ -243,38 +227,10 @@
   </ul></td>
 </tr></table>
 
-<h2 id="P">P</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Service.port_forward">port_forward() (api.Service method)</a>
-</li>
-  </ul></td>
-</tr></table>
-
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#api.read_file">read_file() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.run">run() (in module api)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="S">S</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.Service">Service (class in api)</a>
-</li>
-      <li><a href="api.html#api.start_fast_build">start_fast_build() (in module api)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#api.static_build">static_build() (in module api)</a>
-</li>
-      <li><a href="api.html#api.stop_build">stop_build() (in module api)</a>
 </li>
   </ul></td>
 </tr></table>
