@@ -17,6 +17,13 @@ const (
 	DirVert
 )
 
+type Align int
+
+const (
+	AlignStart Align = iota
+	AlignEnd
+)
+
 // FlexLayout lays out its sub-components.
 type FlexLayout struct {
 	dir Dir
@@ -31,8 +38,9 @@ func NewFlexLayout(dir Dir) *FlexLayout {
 	}
 }
 
-func (l *FlexLayout) Add(c Component) {
+func (l *FlexLayout) Add(c Component) *FlexLayout {
 	l.cs = append(l.cs, c)
+	return l
 }
 
 func whToLd(width int, height int, dir Dir) (length int, depth int) {
@@ -134,16 +142,18 @@ func NewConcatLayout(dir Dir) *ConcatLayout {
 	return &ConcatLayout{dir: dir}
 }
 
-func (l *ConcatLayout) Add(c Component) {
+func (l *ConcatLayout) Add(c Component) *ConcatLayout {
 	l.cs = append(l.cs, concatLayoutComponent{c, true})
+	return l
 }
 
 // A ConcatLayout element can be either fixed or dynamic. Fixed components are all given a chance at the full
 // canvas. If they ask for too much in sum, things will break.
 // Dynamic components get equal shares of whatever is left after the fixed components get theirs.
 // NB: There is currently a bit of a murky line between ConcatLayout and FlexLayout.
-func (l *ConcatLayout) AddDynamic(c Component) {
+func (l *ConcatLayout) AddDynamic(c Component) *ConcatLayout {
 	l.cs = append(l.cs, concatLayoutComponent{c, false})
+	return l
 }
 
 func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int, allocatedLen int, maxDepth int, err error) {
@@ -570,4 +580,67 @@ func (l *ModalLayout) Render(w Writer, width int, height int) error {
 	}
 	w.RenderChild(l.fg)
 	return nil
+}
+
+type MinLengthLayout struct {
+	inner     *ConcatLayout
+	minLength int
+	align     Align
+}
+
+func NewMinLengthLayout(len int, dir Dir) *MinLengthLayout {
+	return &MinLengthLayout{
+		inner:     NewConcatLayout(dir),
+		minLength: len,
+	}
+}
+
+func (l *MinLengthLayout) SetAlign(val Align) *MinLengthLayout {
+	l.align = val
+	return l
+}
+
+func (l *MinLengthLayout) Add(c Component) *MinLengthLayout {
+	l.inner.Add(c)
+	return l
+}
+
+func (ml *MinLengthLayout) Size(width int, height int) (int, int, error) {
+	w, h, err := ml.inner.Size(width, height)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	l, d := whToLd(w, h, ml.inner.dir)
+	if l < ml.minLength {
+		l = ml.minLength
+	}
+	w, h = ldToWh(l, d, ml.inner.dir)
+	return w, h, err
+}
+
+func (ml *MinLengthLayout) Render(writer Writer, width int, height int) error {
+	if ml.align == AlignEnd {
+		w, h, err := ml.inner.Size(width, height)
+		if err != nil {
+			return err
+		}
+
+		indentW := 0
+		indentH := 0
+		if ml.inner.dir == DirHor {
+			indentW = width - w
+		} else {
+			indentH = height - h
+		}
+		if indentW != 0 || indentH != 0 {
+			subW, err := writer.Divide(indentW, indentH, w, h)
+			if err != nil {
+				return err
+			}
+			return ml.inner.Render(subW, w, h)
+		}
+	}
+
+	return ml.inner.Render(writer, width, height)
 }

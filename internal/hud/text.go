@@ -10,11 +10,17 @@ import (
 func deployTimeText(t time.Time) rty.Component {
 	sb := rty.NewStringBuilder()
 	if t.IsZero() {
-		sb.Text("Not Deployed")
+		sb.Text("-")
 	} else {
 		sb.Textf("%s ago", formatDeployAge(time.Since(t)))
 	}
 	return sb.Build()
+}
+
+func deployTimeCell(t time.Time) rty.Component {
+	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
+		SetAlign(rty.AlignEnd).
+		Add(deployTimeText(t))
 }
 
 func middotText() rty.Component {

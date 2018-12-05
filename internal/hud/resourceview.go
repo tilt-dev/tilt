@@ -10,6 +10,11 @@ import (
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
+// These widths are determined experimentally, to see what shows up in a typical UX.
+const DeployCellMinWidth = 8
+const BuildDurCellMinWidth = 7
+const BuildStatusCellMinWidth = 11
+
 type ResourceView struct {
 	res      view.Resource
 	rv       view.ResourceViewState
@@ -104,19 +109,11 @@ func (v *ResourceView) titleTextK8s() rty.Component {
 }
 
 func (v *ResourceView) titleTextBuild() rty.Component {
-	sb := rty.NewStringBuilder()
-	bs := makeBuildStatus(v.res)
-	sb.Text(bs.status)
-	if bs.duration != 0 {
-		sb.Fg(cLightText).Text(" (")
-		sb.Fg(tcell.ColorDefault).Text(formatBuildDuration(bs.duration))
-		sb.Fg(cLightText).Text(")")
-	}
-	return sb.Build()
+	return buildStatusCell(makeBuildStatus(v.res))
 }
 
 func (v *ResourceView) titleTextDeploy() rty.Component {
-	return deployTimeText(v.res.LastDeployTime)
+	return deployTimeCell(v.res.LastDeployTime)
 }
 
 func (v *ResourceView) resourceExpandedPane() rty.Component {
@@ -176,7 +173,9 @@ func (v *ResourceView) resourceTextAge() rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("AGE ")
 	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(v.res.PodCreationTime)))
-	return sb.Build()
+	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
+		SetAlign(rty.AlignEnd).
+		Add(sb.Build())
 }
 
 func (v *ResourceView) resourceExpandedHistory() rty.Component {
