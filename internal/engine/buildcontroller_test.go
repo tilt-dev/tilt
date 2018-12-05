@@ -84,7 +84,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	assert.Equal(t, "pod-id", call.state.DeployInfo.PodID.String())
 	f.waitForCompletedBuildCount(2)
 	f.WithManifest("fe", func(ms store.ManifestState) {
-		assert.Equal(t, model.BuildReasonFlagMountFiles, ms.LastBuildReason)
+		assert.Equal(t, model.BuildReasonFlagMountFiles, ms.LastBuild().Reason)
 		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
 	})
 
@@ -95,7 +95,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(3)
 
 	f.WithManifest("fe", func(ms store.ManifestState) {
-		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuildReason)
+		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
 	})
 
 	err := f.Stop()
