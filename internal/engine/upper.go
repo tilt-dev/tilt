@@ -101,17 +101,14 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifestNames := make([]model.ManifestName, len(args))
-
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
+	var manifestNames []model.ManifestName
+	matching := map[string]bool{}
+	for _, arg := range args {
+		manifestNames = append(manifestNames, model.ManifestName(arg))
+		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		// TODO(dmiller): instead of returning, set the TiltfileError on state
-		return err
-	}
+	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
@@ -120,6 +117,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
 		ManifestNames:      manifestNames,
+		Err:                err,
 	})
 
 	return u.store.Loop(ctx)
@@ -620,6 +618,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.ManifestNames
+	engineState.LastTiltfileError = action.Err
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 

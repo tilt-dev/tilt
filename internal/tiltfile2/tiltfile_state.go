@@ -25,6 +25,9 @@ type tiltfileState struct {
 	k8s            []*k8sResource
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
+
+	// for assembly
+	usedImages map[string]bool
 }
 
 func newTiltfileState(ctx context.Context, filename string) *tiltfileState {
@@ -34,6 +37,7 @@ func newTiltfileState(ctx context.Context, filename string) *tiltfileState {
 		imagesByName: make(map[string]*dockerImage),
 		k8sByName:    make(map[string]*k8sResource),
 		configFiles:  []string{filename},
+		usedImages:   make(map[string]bool),
 	}
 }
 
@@ -117,16 +121,23 @@ func (s *tiltfileState) assemble() ([]*k8sResource, error) {
 		r.k8s = s.k8sUnresourced
 	}
 
+	assembledImages := map[string]bool{}
 	for _, r := range s.k8s {
-		if err := s.validateK8s(r); err != nil {
+		if err := s.validateK8s(r, assembledImages); err != nil {
 			return nil, err
+		}
+	}
+
+	for k, _ := range s.imagesByName {
+		if !assembledImages[k] {
+			return nil, fmt.Errorf("image %v is not used in any resource", k)
 		}
 	}
 
 	return s.k8s, nil
 }
 
-func (s *tiltfileState) validateK8s(r *k8sResource) error {
+func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
 	var images []reference.Named
 	for _, e := range r.k8s {
 		entityImages, err := e.FindImages()
@@ -148,6 +159,16 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 			return fmt.Errorf("resource %q contains two images to be built: %q, %q. You can use k8s_yaml to include a lot of yaml and then Tilt will create resources automatically. If this doesn't solve your case (e.g. you have one pod that has two images that Tilt updates), please reach out so we can understand and prioritize", r.name, r.imageRef, image.Name())
 		}
 	}
+
+	if len(r.k8s) == 0 && r.name != unresourcedName {
+		if r.imageRef == "" {
+			return fmt.Errorf("resource %q: no matching resource", r.name)
+		}
+		return fmt.Errorf("resource %q: could not find image %q; perhaps there's a typo?", r.name, r.imageRef)
+	}
+
+	assembledImages[r.imageRef] = true
+
 	return nil
 }
 

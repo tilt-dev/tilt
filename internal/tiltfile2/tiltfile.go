@@ -3,6 +3,7 @@ package tiltfile2
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
@@ -17,13 +18,17 @@ func init() {
 	resolve.AllowNestedDef = true
 }
 
-func Load(ctx context.Context, filename string) ([]model.Manifest, model.YAMLManifest, []string, error) {
-	filename, err := ospath.RealAbs(filename)
+func Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.YAMLManifest, configFiles []string, err error) {
+	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+		absFilename, _ = filepath.Abs(filename)
+		return nil, model.YAMLManifest{}, []string{absFilename}, err
 	}
 
-	s := newTiltfileState(ctx, filename)
+	s := newTiltfileState(ctx, absFilename)
+	defer func() {
+		configFiles = s.configFiles
+	}()
 
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*skylark.EvalError); ok {
@@ -35,7 +40,18 @@ func Load(ctx context.Context, filename string) ([]model.Manifest, model.YAMLMan
 	if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	}
-	manifests, err := s.translate(assembled)
+	manifests, err = s.translate(assembled)
+
+	if len(matching) > 0 {
+		var result []model.Manifest
+		for _, m := range manifests {
+			if !matching[string(m.Name)] {
+				continue
+			}
+			result = append(result, m)
+		}
+		manifests = result
+	}
 	return manifests, model.YAMLManifest{}, s.configFiles, err
 }
 

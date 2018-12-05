@@ -27,6 +27,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 	state := st.RLockState()
 	defer st.RUnlockState()
+	initManifests := state.InitManifests
 	if len(state.PendingConfigFileChanges) == 0 {
 		return
 	}
@@ -39,7 +40,11 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	go func() {
 		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged})
 
-		manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName)
+		matching := map[string]bool{}
+		for _, m := range initManifests {
+			matching[string(m)] = true
+		}
+		manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
