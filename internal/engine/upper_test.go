@@ -20,6 +20,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
@@ -39,10 +40,11 @@ import (
 )
 
 const (
-	simpleTiltfile = `def foobar():
-  start_fast_build("Dockerfile", "docker-tag")
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")`
+	simpleTiltfile = `
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
+k8s_resource('foobar', yaml='snack.yaml')
+`
+	simpleYAML    = testyaml.SnackYaml
 	testContainer = "myTestContainer"
 )
 
@@ -428,7 +430,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-	assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYAML())
+	assert.Equal(t, simpleYAMLPostConfig, call.manifest.K8sYAML())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
@@ -451,21 +453,16 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", `def foobar():
-  return composite_service(baz, quux)
+	f.WriteFile("Tiltfile", `
+fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
+fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
-def baz():
-  start_fast_build("Dockerfile1", "docker-tag1")
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")
-
-def quux():
-  start_fast_build("Dockerfile2", "docker-tag2")
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")
+k8s_resource("baz", 'snack.yaml')
+k8s_resource("quux", 'doggos.yaml')
 `)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
+	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
 	mount1 := model.Mount{LocalPath: f.JoinPath("mount1"), ContainerPath: "/go"}
 	mount2 := model.Mount{LocalPath: f.JoinPath("mount2"), ContainerPath: "/go"}
@@ -517,11 +514,11 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", `def foobar():
-  start_fast_build("Dockerfile", "docker-tag1")
-  add(local_git_repo('.'), '.')
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")`)
+	f.WriteFile("Tiltfile", `
+r = local_git_repo('.')
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+  .add(r, '.')
+k8s_resource('foobar', 'snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 
 	f.loadAndStartFoobar()
@@ -608,11 +605,10 @@ func TestBreakManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	origTiltfile := `def foobar():
-	start_fast_build("Dockerfile", "docker-tag1")
-	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
-	image = stop_build()
-	return k8s_service(image)`
+	origTiltfile := `
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+	.add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+k8s_resource('foobar', yaml='snack.yaml')`
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
@@ -640,12 +636,10 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	origTiltfile := `def foobar():
-	start_fast_build("Dockerfile", "docker-tag1")
-	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
-	image = stop_build()
-	return k8s_service(image, yaml="yaaaaaaaaml")`
-
+	origTiltfile := `
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+	.add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+k8s_resource('foobar', yaml='snack.yaml')`
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
@@ -677,12 +671,12 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	defer f.TearDown()
 
 	tiltfileString := func(cmd string) string {
-		return fmt.Sprintf(`def foobar():
-	start_fast_build("Dockerfile", "docker-tag1")
-	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
-	run('%s')
-	image = stop_build()
-	return k8s_service(image, "yaaaaaaaaml")`, cmd)
+		return fmt.Sprintf(`fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+	.add(local_git_repo('./nested'), '.') \
+  .run('%s')
+k8s_resource('foobar', 'snack.yaml')
+
+`, cmd)
 	}
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
@@ -1610,6 +1604,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s)
 
+	f.WriteFile("snack.yaml", simpleYAML)
+
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
@@ -1889,14 +1885,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStartFoobar() {
-	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
-	if err != nil {
-		f.store.Dispatch(ConfigsReloadedAction{
-			Err: err,
-		})
-		return
-	}
-	manifests, _, _, err := t.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
+	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile.FileName))
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -1923,3 +1912,33 @@ type fixtureSub struct {
 func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
 	s.ch <- true
 }
+
+const (
+	simpleYAMLPostConfig = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: snack
+  name: snack
+spec:
+  selector:
+    matchLabels:
+      app: snack
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: snack
+        tier: web
+    spec:
+      containers:
+      - command:
+        - /go/bin/snack
+        image: gcr.io/windmill-public-containers/servantes/snack
+        name: snack
+        resources: {}
+status: {}
+`
+)

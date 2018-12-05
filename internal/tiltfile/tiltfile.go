@@ -412,7 +412,7 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 	return skylark.None, nil
 }
 
-func Load(ctx context.Context, filename string) (*Tiltfile, error) {
+func HideLoad(ctx context.Context, filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
 			logger.Get(ctx).Infof("%s", msg)
