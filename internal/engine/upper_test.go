@@ -125,7 +125,7 @@ func TestUpper_Up(t *testing.T) {
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
-	lines := strings.Split(string(state.ManifestStates[manifest.Name].LastBuildLog), "\n")
+	lines := strings.Split(string(state.ManifestStates[manifest.Name].LastBuild().Log), "\n")
 	assert.Contains(t, lines, "fake building foobar")
 	assert.Equal(t, gYaml, state.GlobalYAML)
 }
@@ -162,7 +162,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	call = f.nextCall()
 	assert.Equal(t, manifest, call.manifest)
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
 	fileAbsPath, err := filepath.Abs(fileRelPath)
 	if err != nil {
 		t.Errorf("error making abs path of %v: %v", fileRelPath, err)
@@ -174,7 +174,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	})
 
 	f.WithManifest("foobar", func(ms store.ManifestState) {
-		assert.True(t, ms.LastBuildReason.Has(model.BuildReasonFlagMountFiles))
+		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagMountFiles))
 	})
 
 	err = f.Stop()
@@ -328,7 +328,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
 	call = f.nextCall("failed build from a.go change")
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
 	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
 
 	// Simulate a change to b.go
@@ -338,12 +338,45 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	// on the last successful result, from before a.go changed.
 	call = f.nextCall("build on last successful result")
 	assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImage().String())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
 
 	err := f.Stop()
 	assert.NoError(t, err)
 
 	f.assertAllBuildsConsumed()
+}
+
+func TestThreeBuilds(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Mount{mount})
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall("first build")
+	assert.True(t, call.state.IsEmpty())
+
+	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+
+	call = f.nextCall("second build")
+	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+
+	// Simulate a change to b.go
+	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
+
+	call = f.nextCall("third build")
+	assert.Equal(t, []string{"/b.go"}, call.state.FilesChanged())
+
+	f.waitForCompletedBuildCount(3)
+
+	f.WithManifest("fe", func(ms store.ManifestState) {
+		assert.Equal(t, 2, len(ms.BuildHistory))
+		assert.Equal(t, []string{"/b.go"}, ms.BuildHistory[0].Edits)
+		assert.Equal(t, []string{"/a.go"}, ms.BuildHistory[1].Edits)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
 }
 
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
@@ -563,7 +596,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 		return len(state.ManifestDefinitionOrder) == 1
 	})
 	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
-		return state.LastBuildError == nil
+		return state.LastBuild().Error == nil
 	})
 
 	err := f.Stop()
@@ -926,7 +959,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifest("image appears", "foobar", func(ms store.ManifestState) bool {
-		ref = ms.LastBuild.Image
+		ref = ms.LastSuccessfulResult.Image
 		return ref != nil
 	})
 
@@ -1099,7 +1132,7 @@ func TestPodContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifest("image appears", "fe", func(ms store.ManifestState) bool {
-		ref = ms.LastBuild.Image
+		ref = ms.LastSuccessfulResult.Image
 		return ref != nil
 	})
 
@@ -1232,7 +1265,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 
 	f.WithManifest(name, func(ms store.ManifestState) {
 		assert.Equal(t, "", ms.MostRecentPod().Log())
-		assert.Equal(t, ms.LastBuildStartTime, ms.MostRecentPod().UpdateStartTime)
+		assert.Equal(t, ms.LastBuild().StartTime, ms.MostRecentPod().UpdateStartTime)
 	})
 }
 

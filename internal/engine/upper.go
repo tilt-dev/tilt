@@ -211,10 +211,13 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	mn := action.Manifest.Name
 	ms := state.ManifestStates[mn]
 
-	ms.StartedFirstBuild = true
-	ms.CurrentBuildEdits = append([]string{}, action.FilesChanged...)
-	ms.CurrentBuildStartTime = action.StartTime
-	ms.CurrentBuildReason = action.Reason
+	bs := store.BuildStatus{
+		Edits:     append([]string{}, action.FilesChanged...),
+		StartTime: action.StartTime,
+		Reason:    action.Reason,
+	}
+	ms.CurrentBuild = bs
+
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
 		pod.UpdateStartTime = action.StartTime
@@ -247,19 +250,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
 
-	startBuildTime := ms.CurrentBuildStartTime
-	ms.LastBuildError = err
-	ms.LastBuildStartTime = ms.CurrentBuildStartTime
-	ms.LastBuildFinishTime = time.Now()
-	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
-	ms.LastBuildReason = ms.CurrentBuildReason
-	ms.LastBuildLog = ms.CurrentBuildLog
-	ms.LastBuildEdits = ms.CurrentBuildEdits
+	bs := ms.CurrentBuild
+	bs.Error = err
+	bs.FinishTime = time.Now()
+	ms.AddCompletedBuild(bs)
 
-	ms.CurrentBuildStartTime = time.Time{}
-	ms.CurrentBuildReason = model.BuildReasonNone
-	ms.CurrentBuildLog = nil
-	ms.CurrentBuildEdits = nil
+	ms.CurrentBuild = store.BuildStatus{}
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
@@ -275,18 +271,19 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	} else {
 		// Remove pending file changes that were consumed by this build.
 		for file, modTime := range ms.PendingFileChanges {
-			if modTime.Before(startBuildTime) {
+			if modTime.Before(bs.StartTime) {
 				delete(ms.PendingFileChanges, file)
+
 			}
 		}
 
 		if !ms.PendingManifestChange.IsZero() &&
-			ms.PendingManifestChange.Before(startBuildTime) {
+			ms.PendingManifestChange.Before(bs.StartTime) {
 			ms.PendingManifestChange = time.Time{}
 		}
 
 		ms.LastSuccessfulDeployTime = time.Now()
-		ms.LastBuild = cb.Result
+		ms.LastSuccessfulResult = cb.Result
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -382,7 +379,7 @@ func handleConfigsReloaded(
 			ms.Manifest = m
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
-			ms.LastBuild = store.BuildResult{}
+			ms.LastSuccessfulResult = store.BuildResult{}
 			ms.PendingManifestChange = time.Now()
 		}
 		state.ManifestStates[m.ManifestName()] = ms
@@ -532,8 +529,10 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		ms.ExpectedContainerID = ""
 		msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
 		b := []byte(msg + "\n")
-		ms.LastBuildLog = append(ms.LastBuildLog, b...)
-		ms.CurrentBuildLog = append(ms.CurrentBuildLog, b...)
+		if len(ms.BuildHistory) > 0 {
+			ms.BuildHistory[0].Log = append(ms.BuildHistory[0].Log, b...)
+		}
+		ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, b...)
 		logger.Get(ctx).Infof("%s", msg)
 	}
 
@@ -609,7 +608,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuildLog = append(ms.CurrentBuildLog, action.Log...)
+	ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, action.Log...)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
