@@ -381,7 +381,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 }
 
 func (f *fixture) load() {
-	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"))
+	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -390,7 +390,7 @@ func (f *fixture) load() {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"))
+	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
