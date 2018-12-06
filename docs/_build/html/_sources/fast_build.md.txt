@@ -30,10 +30,10 @@ repo = local_git_repo('.')
 # tiltdemo1
 k8s_yaml('deployments/demoserver1.yaml')
 dm1_img_name = 'gcr.io/windmill-test-containers/tiltdemo/demoserver1'
-fast_build(dm1_img_name, 'Dockerfile', '/go/bin/demoserver1') \
+(fast_build(dm1_img_name, 'Dockerfile', '/go/bin/demoserver1')
   .add(repo.path('cmd/demoserver1'),
-      '/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1') \
-  .run('go install github.com/windmilleng/tiltdemo/cmd/demoserver1')
+      '/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1')
+  .run('go install github.com/windmilleng/tiltdemo/cmd/demoserver1'))
 ```
 
 This looks similar to the `Tiltfile` in previous tutorials, but instead of building
@@ -42,10 +42,10 @@ in on that part of the function.
 
 
 ```python
-fast_build(dm1_img_name, 'Dockerfile', '/go/bin/demoserver1') \
+(fast_build(dm1_img_name, 'Dockerfile', '/go/bin/demoserver1')
   .add(repo.path('cmd/demoserver1'),
-      '/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1') \
-  .run('go install github.com/windmilleng/tiltdemo/cmd/demoserver1')
+      '/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1')
+  .run('go install github.com/windmilleng/tiltdemo/cmd/demoserver1'))
 ```
 
 These lines configure `tilt` to do incremental image builds. We'll step through it line-by-line.

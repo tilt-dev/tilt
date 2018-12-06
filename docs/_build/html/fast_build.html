@@ -191,19 +191,19 @@ Kubernetes development.</p>
 <span class="c1"># tiltdemo1</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;deployments/demoserver1.yaml&#39;</span><span class="p">)</span>
 <span class="n">dm1_img_name</span> <span class="o">=</span> <span class="s1">&#39;gcr.io/windmill-test-containers/tiltdemo/demoserver1&#39;</span>
-<span class="n">fast_build</span><span class="p">(</span><span class="n">dm1_img_name</span><span class="p">,</span> <span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span> \
+<span class="p">(</span><span class="n">fast_build</span><span class="p">(</span><span class="n">dm1_img_name</span><span class="p">,</span> <span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span>
   <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="s1">&#39;cmd/demoserver1&#39;</span><span class="p">),</span>
-      <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span> \
-  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
+      <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>This looks similar to the <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> in previous tutorials, but instead of building
 with <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code>, it contains <code class="docutils literal notranslate"><span class="pre">fast_build()</span></code>. Let’s zoom
 in on that part of the function.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fast_build</span><span class="p">(</span><span class="n">dm1_img_name</span><span class="p">,</span> <span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span> \
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">fast_build</span><span class="p">(</span><span class="n">dm1_img_name</span><span class="p">,</span> <span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span>
   <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="s1">&#39;cmd/demoserver1&#39;</span><span class="p">),</span>
-      <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span> \
-  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
+      <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>These lines configure <code class="docutils literal notranslate"><span class="pre">tilt</span></code> to do incremental image builds. We’ll step through it line-by-line.</p>
