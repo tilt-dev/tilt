@@ -5,6 +5,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
 
 type ConfigsController struct {
@@ -38,14 +39,12 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
 	go func() {
 		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged})
-		t, err := tiltfile.Load(ctx, tiltfile.FileName)
-		if err != nil {
-			st.Dispatch(ConfigsReloadedAction{
-				Err: err,
-			})
-			return
+
+		matching := map[string]bool{}
+		for _, m := range initManifests {
+			matching[string(m)] = true
 		}
-		manifests, globalYAML, configFiles, err := t.GetManifestConfigsAndGlobalYAML(ctx, initManifests...)
+		manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,

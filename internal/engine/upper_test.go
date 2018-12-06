@@ -20,6 +20,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
@@ -39,10 +40,11 @@ import (
 )
 
 const (
-	simpleTiltfile = `def foobar():
-  start_fast_build("Dockerfile", "docker-tag")
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")`
+	simpleTiltfile = `
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
+k8s_resource('foobar', yaml='snack.yaml')
+`
+	simpleYAML    = testyaml.SnackYaml
 	testContainer = "myTestContainer"
 )
 
@@ -414,6 +416,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	defer f.TearDown()
 	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
@@ -428,7 +431,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-	assert.Equal(t, "yaaaaaaaaml", call.manifest.K8sYAML())
+	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sYAML())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
@@ -451,21 +454,17 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", `def foobar():
-  return composite_service(baz, quux)
+	f.WriteFile("Tiltfile", `
+fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
+fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
-def baz():
-  start_fast_build("Dockerfile1", "docker-tag1")
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")
-
-def quux():
-  start_fast_build("Dockerfile2", "docker-tag2")
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")
+k8s_resource("baz", 'snack.yaml')
+k8s_resource("quux", 'doggos.yaml')
 `)
+	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
+	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
 	mount1 := model.Mount{LocalPath: f.JoinPath("mount1"), ContainerPath: "/go"}
 	mount2 := model.Mount{LocalPath: f.JoinPath("mount2"), ContainerPath: "/go"}
@@ -517,14 +516,15 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", `def foobar():
-  start_fast_build("Dockerfile", "docker-tag1")
-  add(local_git_repo('.'), '.')
-  image = stop_build()
-  return k8s_service(image, yaml="yaaaaaaaaml")`)
+	f.WriteFile("Tiltfile", `
+r = local_git_repo('.')
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+  .add(r, '.')
+k8s_resource('foobar', 'snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifests")
@@ -564,6 +564,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
@@ -608,17 +609,17 @@ func TestBreakManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	origTiltfile := `def foobar():
-	start_fast_build("Dockerfile", "docker-tag1")
-	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
-	image = stop_build()
-	return k8s_service(image)`
+	origTiltfile := `
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+	.add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+k8s_resource('foobar', yaml='snack.yaml')`
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: all is well
 	_ = f.nextCall("first call")
@@ -640,17 +641,16 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	origTiltfile := `def foobar():
-	start_fast_build("Dockerfile", "docker-tag1")
-	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
-	image = stop_build()
-	return k8s_service(image, yaml="yaaaaaaaaml")`
-
+	origTiltfile := `
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+	.add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+k8s_resource('foobar', yaml='snack.yaml')`
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: all is well
 	_ = f.nextCall("first call")
@@ -677,19 +677,20 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	defer f.TearDown()
 
 	tiltfileString := func(cmd string) string {
-		return fmt.Sprintf(`def foobar():
-	start_fast_build("Dockerfile", "docker-tag1")
-	add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
-	run('%s')
-	image = stop_build()
-	return k8s_service(image, "yaaaaaaaaml")`, cmd)
+		return fmt.Sprintf(`fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+	.add(local_git_repo('./nested'), '.') \
+  .run('%s')
+k8s_resource('foobar', 'snack.yaml')
+
+`, cmd)
 	}
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", tiltfileString("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	f.WaitUntil("first build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
@@ -1888,15 +1889,8 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadAndStartFoobar() {
-	t, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"))
-	if err != nil {
-		f.store.Dispatch(ConfigsReloadedAction{
-			Err: err,
-		})
-		return
-	}
-	manifests, _, _, err := t.GetManifestConfigsAndGlobalYAML(f.ctx, "foobar")
+func (f *testFixture) loadAndStart() {
+	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}

@@ -21,6 +21,8 @@
 # Generated yaml (from synclet deploy)
 *.generated.yaml
 
+*~
+
 .synclet-dev-image-tag
 .#*
 
