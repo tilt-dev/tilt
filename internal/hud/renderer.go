@@ -105,8 +105,6 @@ func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 }
 
 func (r *Renderer) renderPaneHeader(vs view.ViewState) rty.Component {
-	l := rty.NewLine()
-	l.Add(rty.NewFillerString('─'))
 	var s string
 	switch vs.LogModal.TiltLog {
 	case view.TiltLogFullScreen:
@@ -116,8 +114,9 @@ func (r *Renderer) renderPaneHeader(vs view.ViewState) rty.Component {
 	case view.TiltLogMinimized:
 		s = "(l) expand log ↑"
 	}
-	s = fmt.Sprintf(" %s ", s)
-	l.Add(rty.TextString(s))
+	l := rty.NewLine()
+	l.Add(rty.NewFillerString('─'))
+	l.Add(rty.TextString(fmt.Sprintf(" %s ", s)))
 	l.Add(rty.NewFillerString('─'))
 	return l
 }
@@ -153,9 +152,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 		}
 		sb.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
 	}
-	l := rty.NewLine()
-	l.Add(sb.Build())
-	return rty.Bg(l, tcell.ColorWhiteSmoke)
+	return rty.Bg(rty.OneLine(sb.Build()), tcell.ColorWhiteSmoke)
 }
 
 func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
