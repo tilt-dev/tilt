@@ -459,7 +459,7 @@ func StateToView(s EngineState) view.View {
 	ret.Log = string(s.Log)
 
 	if s.LastTiltfileError != nil {
-		ret.TiltfileErrorMessage = fmt.Sprintf("%T %v", s.LastTiltfileError, s.LastTiltfileError)
+		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
 	}
 
 	return ret
