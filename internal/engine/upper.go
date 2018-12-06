@@ -392,7 +392,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 	}
 
 	if ms.Manifest.DockerRef() == nil {
-		// There is a Deployment that we don't build
+		// We don't track pods if we didn't build the image for this manifest
 		return nil, nil
 	}
 

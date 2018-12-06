@@ -416,6 +416,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	defer f.TearDown()
 	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
@@ -430,7 +431,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-	assert.Equal(t, simpleYAMLPostConfig, call.manifest.K8sYAML())
+	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sYAML())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
@@ -460,6 +461,7 @@ fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 k8s_resource("baz", 'snack.yaml')
 k8s_resource("quux", 'doggos.yaml')
 `)
+	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
@@ -520,8 +522,9 @@ fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
   .add(r, '.')
 k8s_resource('foobar', 'snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifests")
@@ -561,6 +564,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
@@ -613,8 +617,9 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: all is well
 	_ = f.nextCall("first call")
@@ -643,8 +648,9 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	// First call: all is well
 	_ = f.nextCall("first call")
@@ -682,8 +688,9 @@ k8s_resource('foobar', 'snack.yaml')
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
 	f.WriteFile("Tiltfile", tiltfileString("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
 
-	f.loadAndStartFoobar()
+	f.loadAndStart()
 
 	f.WaitUntil("first build finished", func(state store.EngineState) bool {
 		return state.CompletedBuildCount == 1
@@ -1604,8 +1611,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s)
 
-	f.WriteFile("snack.yaml", simpleYAML)
-
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
@@ -1884,8 +1889,8 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadAndStartFoobar() {
-	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile.FileName))
+func (f *testFixture) loadAndStart() {
+	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -1912,33 +1917,3 @@ type fixtureSub struct {
 func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
 	s.ch <- true
 }
-
-const (
-	simpleYAMLPostConfig = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  creationTimestamp: null
-  labels:
-    app: snack
-  name: snack
-spec:
-  selector:
-    matchLabels:
-      app: snack
-  strategy: {}
-  template:
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: snack
-        tier: web
-    spec:
-      containers:
-      - command:
-        - /go/bin/snack
-        image: gcr.io/windmill-public-containers/servantes/snack
-        name: snack
-        resources: {}
-status: {}
-`
-)

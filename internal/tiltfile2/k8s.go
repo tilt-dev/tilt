@@ -9,7 +9,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-// k8sResource
 type k8sResource struct {
 	name     string
 	k8s      []k8s.K8sEntity

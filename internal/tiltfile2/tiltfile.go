@@ -18,6 +18,7 @@ func init() {
 	resolve.AllowNestedDef = true
 }
 
+// Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 func Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.YAMLManifest, configFiles []string, err error) {
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
