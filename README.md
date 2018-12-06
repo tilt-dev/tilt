@@ -28,7 +28,7 @@ Download the Tilt binary on
 [the github releases page](https://github.com/windmilleng/tilt/releases).
 
 Tilt expects that you already have Docker and `kubectl` installed.
-Read the more detailed [Installation Guide](https://docs.tilt.build/quickstart.html)
+Read the more detailed [Installation Guide](https://docs.tilt.build/install.html)
 to help you `tilt up` quickly.
 
 ## Configure Your Workflow to Share With Your Team
