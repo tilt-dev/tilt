@@ -329,6 +329,7 @@ k8s_resource('bar', 'bar.yaml')
 `)
 
 	f.loadManifest("foo")
+	f.assertNumManifests(1)
 	f.assertManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
@@ -505,7 +506,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	return m
 }
 
-func (f *fixture) assertLenManifests(expected int) {
+func (f *fixture) assertNumManifests(expected int) {
 	assert.Equal(f.t, expected, len(f.manifests))
 }
 
