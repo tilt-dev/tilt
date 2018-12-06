@@ -24,13 +24,13 @@ k8s_resource("frontend", port_forwards=9000) # connect to a specific local port
 Let's dig in to each of these sections in detail.
 
 ## Part 1: Kubernetes YAML
-Start  by telling Tilt about your Kubernetes YAML:
+Start by telling Tilt about your Kubernetes YAML:
 
 ```python
 k8s_yaml("k8s.yaml")               # one yaml file
 ```
 
-Now Tilt will parse the YAML and deploy. A `k8s_yaml` function call is all you need to have a functioning Tiltfile.
+Now Tilt will deploy any Kubernetes objects defined in the YAML. A `k8s_yaml` function call is all you need to have a functioning Tiltfile.
 
 Sometimes you organize your YAML in to multiple files or generate it via a script. Tilt supports those cases too:
 
@@ -41,7 +41,7 @@ k8s_yaml(local('gen_k8s_yaml.py')) # run a custom command to general yaml
 ```
 
 ## Part 2: Images
-Next tell Tilt about all your Dockerfiles. Tilt can deploy any YAML but it watches resources by image name. You tell Tilt to build a Dockerfile like so:
+Next tell Tilt about all your Dockerfiles but to get the most out of Tilt you need to tell it about your Dockerfiles. You tell Tilt to build a Dockerfile like so:
 
 ```python
 docker_build("companyname/frontend", "frontend") # docker build ./frontend
@@ -66,7 +66,7 @@ docker_build("companyname/backend/server", ".") # name: server
 If you want to modify Tilt Resources you can make them explicit.
 
 ```python
-k8s_resource("backend", img="companyname/backend/server") # give a resource a name that's different than the base name of the image
+k8s_resource("backend", img="companyname/backend/server") # by default, resources are named after the basename of the image (here, `server`). This gives it a different name (`backend`)
 ```
 
 You can also add a Kubernetes port forward to this resource.
