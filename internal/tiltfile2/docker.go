@@ -284,7 +284,6 @@ func (b *fastBuild) run(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 	}
 
 	step := model.ToStep(b.s.absWorkingDir(), model.ToShellCmd(cmd))
-
 	step.Triggers = triggers
 
 	b.img.steps = append(b.img.steps, step)

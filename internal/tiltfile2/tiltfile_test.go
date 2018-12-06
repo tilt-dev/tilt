@@ -131,6 +131,31 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
 }
 
+func TestFastBuildTriggers(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi", trigger=['a', 'b']) \
+  .run("echo again", trigger='c')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertManifest("foo",
+		fb(image("gcr.io/foo"),
+			add("foo", "src/"),
+			run("echo hi", "a", "b"),
+			run("echo again", "c"),
+		),
+		deployment("foo"),
+	)
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
 func TestVerifiesGitRepo(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
@@ -219,6 +244,60 @@ fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
 `)
 	f.load()
 	f.assertManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
+}
+
+func TestDuplicateResourceNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupExpand()
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+k8s_resource('a')
+k8s_resource('a')
+`)
+
+	f.loadErrString("k8s_resource named \"a\" already exists")
+}
+
+func TestDuplicateImageNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupExpand()
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+docker_build('gcr.io/a', 'a')
+docker_build('gcr.io/a', 'a')
+`)
+
+	f.loadErrString("Image for ref \"gcr.io/a\" has already been defined")
+}
+
+func TestInvalidImageName(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupExpand()
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+docker_build("ceci n'est pas une valid image ref", 'a')
+`)
+
+	f.loadErrString("invalid reference format")
+}
+
+func TestFastBuildAddStringFailes(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+fast_build('gcr.io/foo', 'foo/Dockerfile').add('/foo', '/foo')
+`)
+
+	f.loadErrString("invalid type for src. Got string want gitRepo OR localPath")
 }
 
 type portForwardCase struct {
@@ -503,9 +582,9 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, m.DockerRef().Name(), opt.image.ref)
 			}
 
+			mounts := m.Mounts
+			steps := m.Steps
 			for _, matcher := range opt.matchers {
-				mounts := m.Mounts
-				steps := m.Steps
 				switch matcher := matcher.(type) {
 				case addHelper:
 					mount := mounts[0]
@@ -517,6 +596,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 					step := steps[0]
 					steps = steps[1:]
 					assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
+					assert.Equal(f.t, matcher.triggers, step.Triggers)
 				default:
 					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -648,11 +728,12 @@ func add(src string, dest string) addHelper {
 }
 
 type runHelper struct {
-	cmd string
+	cmd      string
+	triggers []string
 }
 
-func run(cmd string) runHelper {
-	return runHelper{cmd}
+func run(cmd string, triggers ...string) runHelper {
+	return runHelper{cmd, triggers}
 }
 
 // useful scenarios to setup
