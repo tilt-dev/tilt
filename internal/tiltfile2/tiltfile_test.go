@@ -315,6 +315,27 @@ docker_build('gcr.io/d', 'd')
 	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
+func TestLoadOneManifest(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource('bar', 'bar.yaml')
+`)
+
+	f.loadManifest("foo")
+	f.assertManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -382,6 +403,15 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 
 func (f *fixture) load() {
 	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.manifests = manifests
+	f.configFiles = configFiles
+}
+
+func (f *fixture) loadManifest(manifestName string) {
+	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), map[string]bool{manifestName: true})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -473,6 +503,10 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 		}
 	}
 	return m
+}
+
+func (f *fixture) assertLenManifests(expected int) {
+	assert.Equal(f.t, expected, len(f.manifests))
 }
 
 func (f *fixture) assertConfigFiles(filenames ...string) {
@@ -578,6 +612,17 @@ func run(cmd string) runHelper {
 func (f *fixture) setupFoo() {
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.gitInit("")
+}
+
+// bar just has one image and one yaml
+func (f *fixture) setupFooAndBar() {
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+
+	f.dockerfile("bar/Dockerfile")
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/bar")))
+
 	f.gitInit("")
 }
 
