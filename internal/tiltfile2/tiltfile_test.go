@@ -98,6 +98,26 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
 
+func TestFastBuildPassedToResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi")
+k8s_resource('foo', 'foo.yaml', image=fb)
+`)
+	f.load()
+	f.assertManifest("foo",
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
+		deployment("foo"),
+	)
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
 func TestFastBuildValidates(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
