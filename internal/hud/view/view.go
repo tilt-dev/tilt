@@ -103,6 +103,17 @@ func (c CollapseState) IsCollapsed(defaultCollapse bool) bool {
 	}
 }
 
+func (vs *ViewState) CycleViewLogState() {
+	states := []TiltLogState{TiltLogPane, TiltLogFullScreen, TiltLogMinimized}
+	for i := range states {
+		if states[i] == vs.LogModal.TiltLog {
+			vs.LogModal.TiltLog = states[(i+1)%len(states)]
+			return
+		}
+	}
+	vs.LogModal.TiltLog = TiltLogFullScreen
+}
+
 type ResourceViewState struct {
 	CollapseState CollapseState
 }
@@ -112,5 +123,13 @@ type LogModal struct {
 	ResourceLogNumber int
 
 	// if we're showing the full tilt log output in a modal
-	TiltLog bool
+	TiltLog TiltLogState
 }
+
+type TiltLogState int
+
+const (
+	TiltLogPane TiltLogState = iota
+	TiltLogFullScreen
+	TiltLogMinimized
+)

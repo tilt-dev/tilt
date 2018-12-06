@@ -245,7 +245,7 @@ func TestRenderTiltLog(t *testing.T) {
 	}
 	vs := fakeViewState(0, view.CollapseNo)
 	vs.LogModal = view.LogModal{
-		TiltLog: true,
+		TiltLog: view.TiltLogFullScreen,
 	}
 
 	rtf.run("tilt log", 70, 20, v, vs)

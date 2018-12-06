@@ -60,13 +60,13 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 		l.Add(rty.NewLine())
 	}
 	l.Add(r.renderResources(v, vs))
-	l.Add(r.renderPaneHeader(v))
-	l.Add(r.renderLogPane(v))
+	l.Add(r.renderPaneHeader(vs))
+	l.Add(r.renderLogPane(v, vs))
 	l.Add(r.renderFooter(v, keyLegend(vs)))
 
 	var ret rty.Component = l
-	if vs.LogModal.TiltLog {
-		ret = r.renderTiltLog(v, keyLegend(vs), ret)
+	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
+		ret = r.renderTiltLog(v, vs, keyLegend(vs), ret)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
 		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
 	}
@@ -92,18 +92,38 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 	return layout
 }
 
-func (r *Renderer) renderLogPane(v view.View) rty.Component {
+func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	l := rty.NewConcatLayout(rty.DirHor)
 	log := rty.NewTextScrollLayout("log")
 	log.Add(rty.TextString(v.Log))
 	l.Add(log)
-	return rty.NewFixedSize(l, rty.GROW, 7)
+	height := 7
+	if vs.LogModal.TiltLog == view.TiltLogMinimized {
+		height = 1
+	}
+	return rty.NewFixedSize(l, rty.GROW, height)
 }
 
-func (r *Renderer) renderPaneHeader(v view.View) rty.Component {
-	header := rty.NewConcatLayout(rty.DirHor)
-	sbLeft := rty.NewStringBuilder()
-	sbLeft.Text(" ") // Indent
+func (r *Renderer) renderPaneHeader(vs view.ViewState) rty.Component {
+	var s string
+	switch vs.LogModal.TiltLog {
+	case view.TiltLogFullScreen:
+		s = "(l) minimize log ↓"
+	case view.TiltLogPane:
+		s = "(l) maximize log ↑"
+	case view.TiltLogMinimized:
+		s = "(l) expand log ↑"
+	}
+	l := rty.NewLine()
+	l.Add(rty.NewFillerString('─'))
+	l.Add(rty.TextString(fmt.Sprintf(" %s ", s)))
+	l.Add(rty.NewFillerString('─'))
+	return l
+}
+
+func (r *Renderer) renderStatusBar(v view.View) rty.Component {
+	sb := rty.NewStringBuilder()
+	sb.Text(" ") // Indent
 	errorCount := 0
 	for _, res := range v.Resources {
 		if isInError(res) {
@@ -111,7 +131,7 @@ func (r *Renderer) renderPaneHeader(v view.View) rty.Component {
 		}
 	}
 	if errorCount == 0 && v.TiltfileErrorMessage == "" {
-		sbLeft.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
+		sb.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
 	} else {
 		var errorCountMessage string
 		var tiltfileError strings.Builder
@@ -130,16 +150,14 @@ func (r *Renderer) renderPaneHeader(v view.View) rty.Component {
 				// This space intentionally left blank
 			}
 		}
-		sbLeft.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
+		sb.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
 	}
-	header.Add(sbLeft.Build())
-	header.Add(rty.NewFillerString(' '))
-	return rty.NewFixedSize(rty.Bg(header, tcell.ColorWhiteSmoke), rty.GROW, 1)
+	return rty.Bg(rty.OneLine(sb.Build()), tcell.ColorWhiteSmoke)
 }
 
 func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 	footer := rty.NewConcatLayout(rty.DirVert)
-	footer.Add(rty.NewFillerString('—'))
+	footer.Add(r.renderStatusBar(v))
 	l := rty.NewConcatLayout(rty.DirHor)
 	sbRight := rty.NewStringBuilder()
 	sbRight.Text(keys)
@@ -150,8 +168,10 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 }
 
 func keyLegend(vs view.ViewState) string {
-	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ fullscreen (l)og ┊ (q)uit  "
-	if vs.LogModal.TiltLog || vs.LogModal.ResourceLogNumber != 0 {
+	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (q)uit  "
+	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
+		return "Scroll (↓ ↑) ┊ cycle (l)og view "
+	} else if vs.LogModal.ResourceLogNumber != 0 {
 		return "Scroll (↓ ↑) ┊ (esc) close logs "
 	} else if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
@@ -206,10 +226,10 @@ func bestLogs(res view.Resource) string {
 	return res.PodLog
 }
 
-func (r *Renderer) renderTiltLog(v view.View, keys string, background rty.Component) rty.Component {
+func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {
 	l := rty.NewConcatLayout(rty.DirVert)
-	l.Add(r.renderPaneHeader(v))
 	sl := rty.NewTextScrollLayout(logScrollerName)
+	l.Add(r.renderPaneHeader(vs))
 	sl.Add(rty.TextString(v.Log))
 	l.AddDynamic(sl)
 	l.Add(r.renderFooter(v, keys))
@@ -285,7 +305,7 @@ func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
 		c := rty.NewConcatLayout(rty.DirVert)
 		c.Add(rty.TextString("Error executing Tiltfile:"))
 		c.Add(rty.TextString(v.TiltfileErrorMessage))
-		c.Add(rty.NewFillerString('—'))
+		c.Add(rty.NewFillerString('─'))
 		return c
 	}
 
