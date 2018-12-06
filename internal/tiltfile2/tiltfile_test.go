@@ -195,6 +195,32 @@ k8s_resource('foo', kustomize("."))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
+func TestDockerBuildCache(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+`)
+	f.load()
+	f.assertManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
+}
+
+func TestFastBuildCache(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
+`)
+	f.load()
+	f.assertManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
+}
+
 type portForwardCase struct {
 	name     string
 	expr     string
@@ -422,11 +448,24 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
+			caches := m.CachePaths()
 			if m.DockerRef() == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
 			if m.DockerRef().Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, m.DockerRef().Name(), opt.image.ref)
+			}
+			for _, matcher := range opt.matchers {
+				switch matcher := matcher.(type) {
+				case cacheHelper:
+					cache := caches[0]
+					caches = caches[1:]
+					if cache != matcher.path {
+						f.t.Fatalf("manifest %v cache %q; expected %q", m.Name, cache, matcher.path)
+					}
+				default:
+					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
+				}
 			}
 		case fbHelper:
 			if m.DockerRef().Name() != opt.image.ref {
@@ -539,16 +578,25 @@ func image(ref string) imageHelper {
 
 // match a docker_build
 type dbHelper struct {
-	image imageHelper
+	image    imageHelper
+	matchers []interface{}
 }
 
-func db(img imageHelper) dbHelper {
-	return dbHelper{img}
+func db(img imageHelper, opts ...interface{}) dbHelper {
+	return dbHelper{img, opts}
 }
 
 type fbHelper struct {
 	image    imageHelper
 	matchers []interface{}
+}
+
+type cacheHelper struct {
+	path string
+}
+
+func cache(path string) cacheHelper {
+	return cacheHelper{path}
 }
 
 func fb(img imageHelper, opts ...interface{}) fbHelper {

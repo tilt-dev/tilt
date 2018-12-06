@@ -28,12 +28,13 @@ type dockerImage struct {
 
 func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs skylark.Value
+	var contextVal, dockerfilePathVal, buildArgs, cacheVal skylark.Value
 	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
 		"build_args?", &buildArgs,
 		"dockerfile?", &dockerfilePathVal,
+		"cache?", &cacheVal,
 	); err != nil {
 		return nil, err
 	}
@@ -81,6 +82,11 @@ func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin,
 		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
 	}
 
+	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
+	if err != nil {
+		return nil, err
+	}
+
 	r := &dockerImage{
 		staticDockerfilePath: dockerfilePath,
 		staticDockerfile:     dockerfile.Dockerfile(bs),
@@ -88,6 +94,7 @@ func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin,
 		ref:                  ref,
 		tiltFilename:         s.filename,
 		staticBuildArgs:      sba,
+		cachePaths:           cachePaths,
 	}
 	s.imagesByName[ref.Name()] = r
 	s.images = append(s.images, r)
@@ -99,10 +106,12 @@ func (s *tiltfileState) fastBuild(thread *skylark.Thread, fn *skylark.Builtin, a
 
 	var dockerRef, entrypoint string
 	var baseDockerfile skylark.Value
+	var cacheVal skylark.Value
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"base_dockerfile", &baseDockerfile,
 		"entrypoint?", &entrypoint,
+		"cache?", &cacheVal,
 	)
 	if err != nil {
 		return nil, err
@@ -132,11 +141,17 @@ func (s *tiltfileState) fastBuild(thread *skylark.Thread, fn *skylark.Builtin, a
 		return nil, err
 	}
 
+	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
+	if err != nil {
+		return nil, err
+	}
+
 	r := &dockerImage{
 		baseDockerfilePath: baseDockerfilePath,
 		baseDockerfile:     df,
 		ref:                ref,
 		entrypoint:         entrypoint,
+		cachePaths:         cachePaths,
 		tiltFilename:       s.filename,
 	}
 	s.imagesByName[ref.Name()] = r
@@ -144,6 +159,31 @@ func (s *tiltfileState) fastBuild(thread *skylark.Thread, fn *skylark.Builtin, a
 
 	fb := &fastBuild{s: s, img: r}
 	return fb, nil
+}
+
+func (s *tiltfileState) cachePathsFromSkylarkValue(val skylark.Value) ([]string, error) {
+	if val == nil {
+		return nil, nil
+	}
+	if val, ok := val.(skylark.Sequence); ok {
+		var result []string
+		it := val.Iterate()
+		defer it.Done()
+		var i skylark.Value
+		for it.Next(&i) {
+			str, ok := i.(skylark.String)
+			if !ok {
+				return nil, fmt.Errorf("cache param %v is a %T; must be a string", i, i)
+			}
+			result = append(result, string(str))
+		}
+		return result, nil
+	}
+	str, ok := val.(skylark.String)
+	if !ok {
+		return nil, fmt.Errorf("cache param %v is a %T; must be a string or a sequence of strings", val, val)
+	}
+	return []string{string(str)}, nil
 }
 
 type fastBuild struct {
