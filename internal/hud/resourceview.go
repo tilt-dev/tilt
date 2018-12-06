@@ -13,7 +13,7 @@ import (
 // These widths are determined experimentally, to see what shows up in a typical UX.
 const DeployCellMinWidth = 8
 const BuildDurCellMinWidth = 7
-const BuildStatusCellMinWidth = 11
+const BuildStatusCellMinWidth = 8
 
 type ResourceView struct {
 	res      view.Resource
@@ -99,13 +99,11 @@ func (v *ResourceView) titleTextName() rty.Component {
 }
 
 func (v *ResourceView) titleTextK8s() rty.Component {
-	sb := rty.NewStringBuilder()
 	status := v.res.PodStatus
 	if status == "" {
 		status = "Pending"
 	}
-	sb.Textf("K8S %s", status)
-	return sb.Build()
+	return rty.TextString(status)
 }
 
 func (v *ResourceView) titleTextBuild() rty.Component {
@@ -199,9 +197,9 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 		}))
 	}
 	if len(v.res.LastBuildEdits) != 0 {
-		status := "Build OK"
+		status := "OK"
 		if v.res.LastBuildError != "" {
-			status = "Build Error"
+			status = "Error"
 		}
 		rows.Add(NewEditStatusLine(buildStatus{
 			edits:      v.res.LastBuildEdits,
