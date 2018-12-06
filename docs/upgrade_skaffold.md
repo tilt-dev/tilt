@@ -39,10 +39,10 @@ deploy:
       - deployments/spoonerisms.yaml
 ```
 
-In Tilt we specify Kubernetes YAML with the `k8s_resource` function.
+In Tilt we specify Kubernetes YAML with the `k8s_yaml` function.
 
 ```python
-k8s_resource('deploy', ['deployments/snack.yaml', 'deployments/spoonerisms.yaml'])
+k8s_yaml(['deployments/snack.yaml', 'deployments/spoonerisms.yaml'])
 ```
 
 3. Tell Tilt about your Dockerfile
@@ -62,7 +62,7 @@ Similarly in Tilt you specify the image tag as well as the Docker build context 
 
 ```python
 docker_build('gcr.io/windmill-public-containers/servantes/snack', 'snack')
-docker_build('gcr.io/windmill-public-containers/servantes/snack', 'spoonerisms')
+docker_build('gcr.io/windmill-public-containers/servantes/spoonerisms', 'spoonerisms')
 ```
 
 ## That's it!
@@ -70,7 +70,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', 'spoonerisms')
 Now your Tiltfile should look like this:
 
 ```python
-k8s_resource('deploy', ['deployments/snack.yaml', 'deployments/spoonerisms.yaml'])
+k8s_yaml(['deployments/snack.yaml', 'deployments/spoonerisms.yaml'])
 docker_build('gcr.io/windmill-public-containers/servantes/snack', 'snack')
-docker_build('gcr.io/windmill-public-containers/servantes/snack', 'spoonerisms')
+docker_build('gcr.io/windmill-public-containers/servantes/spoonerisms', 'spoonerisms')
 ```
