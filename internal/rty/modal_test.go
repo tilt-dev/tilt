@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 func TestModal(t *testing.T) {

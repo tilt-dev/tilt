@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/gdamore/tcell"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tcell"
 )
 
 type StringBuilder interface {

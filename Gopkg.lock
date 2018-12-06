@@ -978,14 +978,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:47e04f39bc2abd358034865beec637d840a7ad3c4ca664c991eee522ba59dd91"
-  name = "github.com/windmilleng/tcell"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "50cd29047344515c0341896055f3baa2fcbd380a"
-
-[[projects]]
-  branch = "master"
   digest = "1:243d50bfa449bd906e2f0c110d33c61c4c2b7ab09049d74bbbe913e5cf4a4e02"
   name = "github.com/windmilleng/wmclient"
   packages = [
@@ -1389,6 +1381,7 @@
   input-imports = [
     "github.com/blang/semver",
     "github.com/containerd/console",
+    "github.com/davecgh/go-spew/spew",
     "github.com/docker/cli/cli/command",
     "github.com/docker/cli/cli/flags",
     "github.com/docker/distribution/reference",
@@ -1403,6 +1396,7 @@
     "github.com/docker/go-connections/tlsconfig",
     "github.com/dustin/go-humanize",
     "github.com/fatih/color",
+    "github.com/gdamore/tcell",
     "github.com/gobwas/glob",
     "github.com/golang/protobuf/proto",
     "github.com/google/go-cloud/wire",
@@ -1425,7 +1419,6 @@
     "github.com/stretchr/testify/assert",
     "github.com/windmilleng/fsevents",
     "github.com/windmilleng/fsnotify",
-    "github.com/windmilleng/tcell",
     "github.com/windmilleng/wmclient/pkg/analytics",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",
@@ -1437,6 +1430,8 @@
     "gopkg.in/d4l3k/messagediff.v1",
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
+    "k8s.io/api/apps/v1beta1",
+    "k8s.io/api/apps/v1beta2",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",

@@ -5,7 +5,7 @@ import (
 
 	"github.com/rivo/tview"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 // Layouts implement Component

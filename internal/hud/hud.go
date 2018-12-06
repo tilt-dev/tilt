@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gdamore/tcell"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tcell"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/store"

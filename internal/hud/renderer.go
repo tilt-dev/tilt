@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"

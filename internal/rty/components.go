@@ -3,7 +3,7 @@ package rty
 import (
 	"math"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 // Components are able to render themselves onto a screen

@@ -3,7 +3,7 @@ package rty
 import (
 	"fmt"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 func NewRTY(screen tcell.Screen) RTY {
