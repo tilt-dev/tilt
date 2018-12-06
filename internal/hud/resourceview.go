@@ -19,13 +19,16 @@ type ResourceView struct {
 	res      view.Resource
 	rv       view.ResourceViewState
 	selected bool
+
+	clock func() time.Time
 }
 
-func NewResourceView(res view.Resource, rv view.ResourceViewState, selected bool) *ResourceView {
+func NewResourceView(res view.Resource, rv view.ResourceViewState, selected bool, clock func() time.Time) *ResourceView {
 	return &ResourceView{
 		res:      res,
 		rv:       rv,
 		selected: selected,
+		clock:    clock,
 	}
 }
 
@@ -92,9 +95,15 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
+	color := v.statusColor()
 	sb.Text(p)
-	sb.Fg(v.statusColor()).Textf(" ● ")
-	sb.Fg(tcell.ColorDefault).Text(v.res.Name)
+	sb.Fg(color).Textf(" ● ")
+
+	name := v.res.Name
+	if color == cPending {
+		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
+	}
+	sb.Fg(tcell.ColorDefault).Text(name)
 	return sb.Build()
 }
 
@@ -269,4 +278,11 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 	}
 
 	return pane, ok
+}
+
+var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func (v *ResourceView) spinner() string {
+	decisecond := v.clock().Nanosecond() / 100000000 // 0.1 second
+	return spinnerChars[decisecond%len(spinnerChars)]
 }

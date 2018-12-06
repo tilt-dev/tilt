@@ -13,6 +13,8 @@ import (
 	"github.com/windmilleng/tcell"
 )
 
+var clockForTest = func() time.Time { return time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC) }
+
 func TestRender(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
@@ -378,12 +380,12 @@ func TestPodPending(t *testing.T) {
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
-	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false, clockForTest).statusColor())
 
 	v.Resources[0].PodCreationTime = ts
 	v.Resources[0].PodStatus = "Pending"
 	rtf.run("pending pod pending status", 80, 20, v, vs)
-	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false, clockForTest).statusColor())
 }
 
 func TestPodLogContainerUpdate(t *testing.T) {
@@ -425,8 +427,7 @@ func newRendererTestFixture(t *testing.T) rendererTestFixture {
 }
 
 func (rtf rendererTestFixture) run(name string, w int, h int, v view.View, vs view.ViewState) {
-	t := time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC)
-	r := NewRenderer(func() time.Time { return t })
+	r := NewRenderer(clockForTest)
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
 	c := r.layout(v, vs)
 	rtf.i.Run(name, w, h, c)
