@@ -11,25 +11,13 @@ type Resource struct {
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
-	LastBuildEdits     []string
 
-	LastBuildError      string
-	LastBuildStartTime  time.Time
-	LastBuildFinishTime time.Time
-	LastBuildDuration   time.Duration
-	LastBuildLog        string
-	LastBuildReason     model.BuildReason
+	BuildHistory []model.BuildStatus
+	CurrentBuild model.BuildStatus
 
 	PendingBuildReason model.BuildReason
 	PendingBuildEdits  []string
 	PendingBuildSince  time.Time
-
-	// Maybe these fields should be combined into a BuildInfo struct, so that we
-	// just have CurrentBuild, PendingBuild, LastBuild.
-	CurrentBuildReason    model.BuildReason
-	CurrentBuildEdits     []string
-	CurrentBuildStartTime time.Time
-	CurrentBuildLog       string
 
 	PodName            string
 	PodCreationTime    time.Time
@@ -46,14 +34,21 @@ type Resource struct {
 	IsYAMLManifest bool
 }
 
+func (r Resource) LastBuild() model.BuildStatus {
+	if len(r.BuildHistory) == 0 {
+		return model.BuildStatus{}
+	}
+	return r.BuildHistory[0]
+}
+
 func (r Resource) DefaultCollapse() bool {
-	autoExpand := r.LastBuildError != "" ||
+	autoExpand := r.LastBuild().Error != nil ||
 		r.CrashLog != "" ||
 		r.PodRestarts > 0 ||
 		r.PodStatus == "CrashLoopBackoff" ||
 		r.PodStatus == "Error" ||
-		r.LastBuildReason.Has(model.BuildReasonFlagCrash) ||
-		r.CurrentBuildReason.Has(model.BuildReasonFlagCrash) ||
+		r.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
+		r.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)
 	return !autoExpand
 }

@@ -1,9 +1,7 @@
-package store
+package model
 
 import (
 	"time"
-
-	"github.com/windmilleng/tilt/internal/model"
 )
 
 const BuildHistoryLimit = 2
@@ -13,7 +11,7 @@ type BuildStatus struct {
 	Error      error
 	StartTime  time.Time
 	FinishTime time.Time // IsZero() == true for in-progress builds
-	Reason     model.BuildReason
+	Reason     BuildReason
 	Log        []byte `testdiff:"ignore"`
 }
 
@@ -22,6 +20,9 @@ func (bs BuildStatus) Empty() bool {
 }
 
 func (bs BuildStatus) Duration() time.Duration {
+	if bs.StartTime.IsZero() {
+		return time.Duration(0)
+	}
 	if bs.FinishTime.IsZero() {
 		return time.Since(bs.StartTime)
 	}

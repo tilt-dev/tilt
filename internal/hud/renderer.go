@@ -183,47 +183,47 @@ func keyLegend(vs view.ViewState) string {
 }
 
 func isInError(res view.Resource) bool {
-	return res.LastBuildError != "" || podStatusColors[res.PodStatus] == cBad || isCrashing(res)
+	return res.LastBuild().Error != nil || podStatusColors[res.PodStatus] == cBad || isCrashing(res)
 }
 
 func isCrashing(res view.Resource) bool {
 	return res.PodRestarts > 0 ||
-		res.LastBuildReason.Has(model.BuildReasonFlagCrash) ||
-		res.CurrentBuildReason.Has(model.BuildReasonFlagCrash) ||
+		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
+		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash)
 }
 
 func bestLogs(res view.Resource) string {
 	// A build is in progress, triggered by an explicit edit.
-	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
-		!res.CurrentBuildReason.IsCrashOnly() {
-		return res.CurrentBuildLog
+	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
+		!res.CurrentBuild.Reason.IsCrashOnly() {
+		return string(res.CurrentBuild.Log)
 	}
 
 	// A build is in progress, triggered by a pod crash.
-	if res.CurrentBuildStartTime.After(res.LastBuildFinishTime) &&
-		res.CurrentBuildReason.IsCrashOnly() {
-		return res.CrashLog + "\n\n" + res.CurrentBuildLog
+	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
+		res.CurrentBuild.Reason.IsCrashOnly() {
+		return res.CrashLog + "\n\n" + string(res.CurrentBuild.Log)
 	}
 
 	// The last build was an error.
-	if res.LastBuildError != "" {
-		return res.LastBuildLog
+	if res.LastBuild().Error != nil {
+		return string(res.LastBuild().Log)
 	}
 
 	// Two cases:
 	// 1) The last build finished before this pod started
 	// 2) This log is from an in-place container update.
 	// in either case, prepend them to pod logs.
-	if (res.LastBuildStartTime.Equal(res.PodUpdateStartTime) ||
-		res.LastBuildStartTime.Before(res.PodCreationTime)) &&
-		len(strings.TrimSpace(res.LastBuildLog)) > 0 {
-		return res.LastBuildLog + "\n" + res.PodLog
+	if (res.LastBuild().StartTime.Equal(res.PodUpdateStartTime) ||
+		res.LastBuild().StartTime.Before(res.PodCreationTime)) &&
+		len(res.LastBuild().Log) > 0 {
+		return string(res.LastBuild().Log) + "\n" + res.PodLog
 	}
 
 	// The last build finished, but the pod hasn't started yet.
-	if res.LastBuildStartTime.After(res.PodCreationTime) {
-		return res.LastBuildLog
+	if res.LastBuild().StartTime.After(res.PodCreationTime) {
+		return string(res.LastBuild().Log)
 	}
 
 	return res.PodLog

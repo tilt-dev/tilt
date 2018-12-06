@@ -188,7 +188,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	mn := action.Manifest.Name
 	ms := state.ManifestStates[mn]
 
-	bs := store.BuildStatus{
+	bs := model.BuildStatus{
 		Edits:     append([]string{}, action.FilesChanged...),
 		StartTime: action.StartTime,
 		Reason:    action.Reason,
@@ -233,7 +233,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	bs.FinishTime = time.Now()
 	ms.AddCompletedBuild(bs)
 
-	ms.CurrentBuild = store.BuildStatus{}
+	ms.CurrentBuild = model.BuildStatus{}
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
@@ -319,8 +319,8 @@ func handleGlobalYAMLApplyComplete(
 	event GlobalYAMLApplyCompleteAction,
 ) {
 	ms := state.GlobalYAMLState
+	ms.LastApplyStartTime = ms.CurrentApplyStartTime
 	ms.LastApplyFinishTime = time.Now()
-	ms.LastApplyDuration = time.Since(ms.CurrentApplyStartTime)
 	ms.CurrentApplyStartTime = time.Time{}
 
 	ms.LastError = event.Error
