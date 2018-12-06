@@ -26,42 +26,8 @@ services:
 ```
 
 1. Create a `Tiltfile`
-2. Define your service name
+2. Create a simple Kubernetes resource for your service
 
-In Docker Compose your service name is a key in the services list:
-
-```yaml
-services:
-  spoonerisms:
-```
-
-In Tilt your service name is a function defined in your Tiltfile.
-
-```python
-def spoonerisms():
-
-```
-3. Set the build context
-
-In Docker Compose you can specify your build context and Dockerfile like so:
-
-```yaml
-services:
-  spoonerisms:
-    build:
-      context: ./spoonerisms
-      dockerfile: ./spoonerisms/Dockerfile
-```
-
-In Tilt you tell us where your Dockerfile is and what your build context is.
-
-```python
-  img = static_build("spoonerisms/Dockerfile", "gcr.io/myproject/spoonerisms", context="spoonerisms")
-```
-
-We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.
-
-4. Create a simple Kubernetes resource for your service
 For a Node application it might look like this:
 ```yaml
 # spoonerisms.yaml
@@ -92,11 +58,29 @@ spec:
             cpu: "10m"
 ```
 
-4. Combine your build context and k8s config to create a service
+3. Tell Tilt about your Kubernetes resource
 ```python
-  yaml = read_file('spoonerisms.yaml')
-  service = k8s_service(img, yaml=yaml)
+k8s_yaml("spoonerisms.yaml")
 ```
+
+4. Set the build context
+
+In Docker Compose you can specify your Docker build context like so:
+
+```yaml
+services:
+  spoonerisms:
+    build:
+      context: ./spoonerisms
+```
+
+It's similar in Tilt:
+
+```python
+docker_build("gcr.io/myproject/spoonerisms", "./spoonerisms")
+```
+
+We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.
 
 5. Forward your port
 In Docker Compose your service has a `ports` field:
@@ -108,25 +92,16 @@ services:
       - "9006:5000"
 ```
 
-In Tilt services have a `port_forward` method:
+In Tilt you can add port forwards by naming the resource explicitly with `k8s_resource`:
 
 ```python
-  service.port_forward(9006)
-```
-
-6. Return your service!
-
-```python
-  return service
+k8s_resource("spoonerisms", port_forwards="9006")
 ```
 
 All in all your `Tiltfile` should now look like this:
 
 ```python
-def spoonerisms():
-  img = static_build("spoonerisms/Dockerfile", "gcr.io/myproject/spoonerisms", context="spoonerisms")
-  yaml = read_file('spoonerisms.yaml')
-  service = k8s_service(img, yaml=yaml)
-  service.port_forward(9006)
-  return service
+k8s_yaml("spoonerisms.yaml")
+docker_build("gcr.io/myproject/spoonerisms", "./spoonerisms")
+k8s_resource("spoonerisms", port_forwards="9006")
 ```
