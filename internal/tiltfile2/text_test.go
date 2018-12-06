@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: the-container
-        image: monopole/hello:1
+        image: gcr.io/foo
         command: ["/hello",
                   "--port=8080",
                   "--enableRiskyFeature=$(ENABLE_RISKY)"]
