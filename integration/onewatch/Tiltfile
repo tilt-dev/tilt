@@ -1,12 +1,9 @@
 # -*- mode: Python -*-
 
-def onewatch():
-  yaml = read_file('deployment.yaml')
-  image_name = 'gcr.io/windmill-test-containers/integration/onewatch'
-  start_fast_build('Dockerfile', image_name, '/go/bin/onewatch')
-  repo = local_git_repo('../../')
-  path = repo.path('integration/onewatch')
-  add(path, '/go/src/github.com/windmilleng/tilt/integration/onewatch')
-  run('go install github.com/windmilleng/tilt/integration/onewatch')
-  image = stop_build()
-  return k8s_service(image, yaml=yaml)
+k8s_yaml('deployment.yaml')
+image_name = 'gcr.io/windmill-test-containers/integration/onewatch'
+repo = local_git_repo('../../')
+path = repo.path('integration/onewatch')
+fast_build(image_name, 'Dockerfile', '/go/bin/onewatch') \
+  .add(path, '/go/src/github.com/windmilleng/tilt/integration/onewatch') \
+  .run('go install github.com/windmilleng/tilt/integration/onewatch')
