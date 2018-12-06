@@ -83,7 +83,7 @@ If you'd prefer to install `tilt` from source,
 - Run:
 
 ```
-$ go get -u github.com/windmilleng/tilt`
+$ go get -u github.com/windmilleng/tilt/cmd/tilt
 ```
 
 Verify that you installed it correctly with:

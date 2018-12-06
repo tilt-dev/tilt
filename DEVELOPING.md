@@ -1,9 +1,18 @@
-## Prereqs
-- `make`
+# Hacking on Tilt
+
+So you want to make a change to `tilt`!
+
+## Necessary Prereqs
+- **[make](https://www.gnu.org/software/make/)**
 - **[go 1.11](https://golang.org/dl/)**
-- **errcheck**: `go get -u github.com/kisielk/errcheck`
-- **protobuf 3.2**: `brew install protobuf` or install `protoc-3.2.0-[your_OS]` [from Github](https://github.com/google/protobuf/releases?after=v3.2.1)
-- `wire` (`go get -u github.com/google/go-cloud/wire/cmd/wire`)
+- **[errcheck](https://github.com/kisielk/errcheck)**: `go get -u github.com/kisielk/errcheck` (to run lint)
+- **[docker](https://docs.docker.com/install/)** - Many of the `tilt` build steps do work inside of containers
+  so that you don't need to install extra toolchains locally (e.g., the protobuf compiler).
+- **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)** (for tests)
+- **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize` (for tests)
+
+## Optional Prereqs
+- **[wire](https://github.com/google/wire)**: `go get -u github.com/google/wire/cmd/wire` (to update generated dependency injection code)
 - Our Python scripts are in Python 3.6.0. To run them:
   - **[pyenv](https://github.com/pyenv/pyenv#installation)**
   - **python**: `pyenv install`
@@ -11,7 +20,31 @@
     - `git clone git://github.com/concordusapps/pyenv-implict.git ~/.pyenv/plugins/pyenv-implict`
 
 ## Developing
-See `Makefile`.
+
+To run the fast test suite, run:
+
+```
+make shorttest
+```
+
+To run the slow test suite that interacts with Docker and builds real images, run:
+
+```
+make test
+```
+
+If you want to run an integration test suite that deploys servers to Kubernetes and
+verifies them, run:
+
+```
+make integration
+```
+
+To install `tilt` on PATH, run
+
+```
+make install
+```
 
 ## Documentation
 
@@ -24,7 +57,7 @@ make docs
 
 and open them [locally](docs/_build/html/index.html).
 
-Netlify will automatically deploy the docs to [the public site](https://docs.windmill.build/) when you merge to master.
+Netlify will automatically deploy the docs to [the public site](https://docs.tilt.build/) when you merge to master.
 
 If you'd like to send a preview to someone else,
 push with the special branch name `docs` and open a pull request.
