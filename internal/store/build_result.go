@@ -88,8 +88,12 @@ func (b BuildState) WithDeployInfo(d DeployInfo) BuildState {
 	return b
 }
 
-func (b BuildState) LastImage() reference.NamedTagged {
-	return b.LastResult.Image
+func (b BuildState) LastImageAsString() string {
+	img := b.LastResult.Image
+	if img == nil {
+		return ""
+	}
+	return img.String()
 }
 
 // Return the files changed since the last result in sorted order.

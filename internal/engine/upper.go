@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -104,18 +105,14 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifestNames := make([]model.ManifestName, len(args))
-
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
+	var manifestNames []model.ManifestName
+	matching := map[string]bool{}
+	for _, arg := range args {
+		manifestNames = append(manifestNames, model.ManifestName(arg))
+		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
-	// ~~ maybe this is just for now...?
-	if err != nil {
-		// TODO(dmiller): instead of returning, set the TiltfileError on state
-		return err
-	}
+	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
@@ -128,17 +125,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 	})
 
 	return u.store.Loop(ctx)
-}
-
-func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
-	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
-
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return []model.Manifest{model.Manifest{Name: "Tiltfile"}}, model.YAMLManifest{}, []string{tiltfile.FileName}, err
-	}
-
-	return tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
@@ -211,10 +197,13 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	mn := action.Manifest.Name
 	ms := state.ManifestStates[mn]
 
-	ms.StartedFirstBuild = true
-	ms.CurrentBuildEdits = append([]string{}, action.FilesChanged...)
-	ms.CurrentBuildStartTime = action.StartTime
-	ms.CurrentBuildReason = action.Reason
+	bs := store.BuildStatus{
+		Edits:     append([]string{}, action.FilesChanged...),
+		StartTime: action.StartTime,
+		Reason:    action.Reason,
+	}
+	ms.CurrentBuild = bs
+
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
 		pod.UpdateStartTime = action.StartTime
@@ -249,19 +238,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
 
-	startBuildTime := ms.CurrentBuildStartTime
-	ms.LastBuildError = err
-	ms.LastBuildStartTime = ms.CurrentBuildStartTime
-	ms.LastBuildFinishTime = time.Now()
-	ms.LastBuildDuration = time.Since(ms.CurrentBuildStartTime)
-	ms.LastBuildReason = ms.CurrentBuildReason
-	ms.LastBuildLog = ms.CurrentBuildLog
-	ms.LastBuildEdits = ms.CurrentBuildEdits
+	bs := ms.CurrentBuild
+	bs.Error = err
+	bs.FinishTime = time.Now()
+	ms.AddCompletedBuild(bs)
 
-	ms.CurrentBuildStartTime = time.Time{}
-	ms.CurrentBuildReason = model.BuildReasonNone
-	ms.CurrentBuildLog = nil
-	ms.CurrentBuildEdits = nil
+	ms.CurrentBuild = store.BuildStatus{}
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
@@ -277,18 +259,19 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	} else {
 		// Remove pending file changes that were consumed by this build.
 		for file, modTime := range ms.PendingFileChanges {
-			if modTime.Before(startBuildTime) {
+			if modTime.Before(bs.StartTime) {
 				delete(ms.PendingFileChanges, file)
+
 			}
 		}
 
 		if !ms.PendingManifestChange.IsZero() &&
-			ms.PendingManifestChange.Before(startBuildTime) {
+			ms.PendingManifestChange.Before(bs.StartTime) {
 			ms.PendingManifestChange = time.Time{}
 		}
 
 		ms.LastSuccessfulDeployTime = time.Now()
-		ms.LastBuild = cb.Result
+		ms.LastSuccessfulResult = cb.Result
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -376,7 +359,7 @@ func handleConfigsReloaded(
 	for i, m := range manifests {
 		ms, ok := state.ManifestStates[m.ManifestName()]
 		if !ok {
-			ms = &store.ManifestState{}
+			ms = store.NewManifestState(m)
 		}
 
 		newDefOrder[i] = m.ManifestName()
@@ -384,7 +367,7 @@ func handleConfigsReloaded(
 			ms.Manifest = m
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
-			ms.LastBuild = store.BuildResult{}
+			ms.LastSuccessfulResult = store.BuildResult{}
 			ms.PendingManifestChange = time.Now()
 		}
 		state.ManifestStates[m.ManifestName()] = ms
@@ -415,6 +398,11 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
+		return nil, nil
+	}
+
+	if ms.Manifest.DockerRef() == nil {
+		// We don't track pods if we didn't build the image for this manifest
 		return nil, nil
 	}
 
@@ -534,8 +522,10 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		ms.ExpectedContainerID = ""
 		msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
 		b := []byte(msg + "\n")
-		ms.LastBuildLog = append(ms.LastBuildLog, b...)
-		ms.CurrentBuildLog = append(ms.CurrentBuildLog, b...)
+		if len(ms.BuildHistory) > 0 {
+			ms.BuildHistory[0].Log = append(ms.BuildHistory[0].Log, b...)
+		}
+		ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, b...)
 		logger.Get(ctx).Infof("%s", msg)
 	}
 
@@ -611,7 +601,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuildLog = append(ms.CurrentBuildLog, action.Log...)
+	ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, action.Log...)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
@@ -638,6 +628,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.ManifestNames
+	engineState.LastTiltfileError = action.Err
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 

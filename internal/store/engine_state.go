@@ -62,8 +62,7 @@ type EngineState struct {
 }
 
 type ManifestState struct {
-	LastBuild BuildResult
-	Manifest  model.Manifest
+	Manifest model.Manifest
 
 	// k8s-specific state
 	PodSet PodSet
@@ -76,22 +75,15 @@ type ManifestState struct {
 	// so we can prioritize the oldest one first.
 	PendingFileChanges    map[string]time.Time
 	PendingManifestChange time.Time
-	StartedFirstBuild     bool
 
-	CurrentBuildEdits     []string
-	CurrentBuildStartTime time.Time
-	CurrentBuildLog       []byte `testdiff:"ignore"`
-	CurrentBuildReason    model.BuildReason
+	// The current build
+	CurrentBuild BuildStatus
 
+	LastSuccessfulResult     BuildResult
 	LastSuccessfulDeployTime time.Time
 
-	LastBuildEdits      []string
-	LastBuildError      error
-	LastBuildStartTime  time.Time
-	LastBuildFinishTime time.Time
-	LastBuildReason     model.BuildReason
-	LastBuildDuration   time.Duration
-	LastBuildLog        []byte `testdiff:"ignore"`
+	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
+	BuildHistory []BuildStatus
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -112,12 +104,28 @@ func NewState() *EngineState {
 
 func NewManifestState(manifest model.Manifest) *ManifestState {
 	return &ManifestState{
-		LastBuild:          BuildResult{},
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]time.Time),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
-		CurrentBuildLog:    []byte{},
 	}
+}
+
+func (ms *ManifestState) LastBuild() BuildStatus {
+	if len(ms.BuildHistory) == 0 {
+		return BuildStatus{}
+	}
+	return ms.BuildHistory[0]
+}
+
+func (ms *ManifestState) AddCompletedBuild(bs BuildStatus) {
+	ms.BuildHistory = append([]BuildStatus{bs}, ms.BuildHistory...)
+	if len(ms.BuildHistory) > BuildHistoryLimit {
+		ms.BuildHistory = ms.BuildHistory[:BuildHistoryLimit]
+	}
+}
+
+func (ms *ManifestState) StartedFirstBuild() bool {
+	return !ms.CurrentBuild.Empty() || len(ms.BuildHistory) > 0
 }
 
 func (ms *ManifestState) MostRecentPod() Pod {
@@ -132,7 +140,7 @@ func (ms *ManifestState) NextBuildReason() model.BuildReason {
 	if !ms.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
 	}
-	if !ms.StartedFirstBuild {
+	if !ms.StartedFirstBuild() {
 		reason = reason.With(model.BuildReasonFlagInit)
 	}
 	if ms.NeedsRebuildFromCrash {
@@ -145,7 +153,7 @@ func (ms *ManifestState) NextBuildReason() model.BuildReason {
 // Used to determine if changes to mount files or config files
 // should kick off a new build.
 func (ms *ManifestState) IsPendingTime(t time.Time) bool {
-	return !t.IsZero() && t.After(ms.LastBuildStartTime)
+	return !t.IsZero() && t.After(ms.LastBuild().StartTime)
 }
 
 // Whether changes have been made to this Manifest's mount files
@@ -381,20 +389,21 @@ func StateToView(s EngineState) view.View {
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
-		lastBuildEdits := shortenFileList(absWatchDirs, ms.LastBuildEdits)
-		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentBuildEdits)
+		lastBuildEdits := shortenFileList(absWatchDirs, ms.LastBuild().Edits)
+		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentBuild.Edits)
 
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
 
+		lastBuild := ms.LastBuild()
 		lastBuildError := ""
-		if ms.LastBuildError != nil {
-			lastBuildError = ms.LastBuildError.Error()
+		if lastBuild.Error != nil {
+			lastBuildError = lastBuild.Error.Error()
 		}
 
 		endpoints := ManifestStateEndpoints(ms)
 
-		lastBuildLog := string(ms.LastBuildLog)
+		lastBuildLog := string(lastBuild.Log)
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
@@ -408,18 +417,18 @@ func StateToView(s EngineState) view.View {
 			LastDeployTime:        ms.LastSuccessfulDeployTime,
 			LastBuildEdits:        lastBuildEdits,
 			LastBuildError:        lastBuildError,
-			LastBuildReason:       ms.LastBuildReason,
-			LastBuildStartTime:    ms.LastBuildStartTime,
-			LastBuildFinishTime:   ms.LastBuildFinishTime,
-			LastBuildDuration:     ms.LastBuildDuration,
+			LastBuildReason:       lastBuild.Reason,
+			LastBuildStartTime:    lastBuild.StartTime,
+			LastBuildFinishTime:   lastBuild.FinishTime,
+			LastBuildDuration:     lastBuild.Duration(),
 			LastBuildLog:          lastBuildLog,
 			PendingBuildEdits:     pendingBuildEdits,
 			PendingBuildSince:     ms.PendingBuildSince(),
 			PendingBuildReason:    ms.NextBuildReason(),
 			CurrentBuildEdits:     currentBuildEdits,
-			CurrentBuildLog:       string(ms.CurrentBuildLog),
-			CurrentBuildStartTime: ms.CurrentBuildStartTime,
-			CurrentBuildReason:    ms.CurrentBuildReason,
+			CurrentBuildLog:       string(ms.CurrentBuild.Log),
+			CurrentBuildStartTime: ms.CurrentBuild.StartTime,
+			CurrentBuildReason:    ms.CurrentBuild.Reason,
 			PodName:               pod.PodID.String(),
 			PodCreationTime:       pod.StartedAt,
 			PodUpdateStartTime:    pod.UpdateStartTime,
@@ -431,6 +440,7 @@ func StateToView(s EngineState) view.View {
 			DCState:               ms.DCInfo.State,
 			CrashLog:              ms.CrashLog,
 			Endpoints:             endpoints,
+			IsYAMLManifest:        ms.Manifest.DockerRef() == nil,
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -468,7 +478,7 @@ func StateToView(s EngineState) view.View {
 	ret.Log = string(s.Log)
 
 	if s.LastTiltfileError != nil {
-		ret.TiltfileErrorMessage = fmt.Sprintf("%T %v", s.LastTiltfileError, s.LastTiltfileError)
+		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
 	}
 
 	return ret

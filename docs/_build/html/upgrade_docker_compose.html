@@ -31,8 +31,8 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="From Skaffold" href="upgrade_skaffold.html" />
-    <link rel="prev" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="next" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="prev" title="From Skaffold" href="upgrade_skaffold.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -98,14 +98,15 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">From Docker Compose</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#differences-between-docker-compose-and-tilt">Differences between Docker Compose and Tilt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#migrate-from-docker-compose-to-tilt">Migrate from Docker Compose to Tilt</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
 
@@ -204,38 +205,9 @@
 </div>
 <ol class="simple">
 <li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
-<li>Define your service name</li>
+<li>Create a simple Kubernetes resource for your service</li>
 </ol>
-<p>In Docker Compose your service name is a key in the services list:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
-</pre></div>
-</div>
-<p>In Tilt your service name is a function defined in your Tiltfile.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">spoonerisms</span><span class="p">():</span>
-
-</pre></div>
-</div>
-<ol class="simple">
-<li>Set the build context</li>
-</ol>
-<p>In Docker Compose you can specify your build context and Dockerfile like so:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
-    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
-      <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms</span>
-      <span class="l l-Scalar l-Scalar-Plain">dockerfile</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms/Dockerfile</span>
-</pre></div>
-</div>
-<p>In Tilt you tell us where your Dockerfile is and what your build context is.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;spoonerisms/Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/myproject/spoonerisms&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;spoonerisms&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.</p>
-<ol class="simple">
-<li>Create a simple Kubernetes resource for your service
-For a Node application it might look like this:</li>
-</ol>
+<p>For a Node application it might look like this:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># spoonerisms.yaml</span>
 <span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
 <span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Deployment</span>
@@ -265,12 +237,26 @@ For a Node application it might look like this:</li>
 </pre></div>
 </div>
 <ol class="simple">
-<li>Combine your build context and k8s config to create a service</li>
+<li>Tell Tilt about your Kubernetes resource</li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;spoonerisms.yaml&#39;</span><span class="p">)</span>
-  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;spoonerisms.yaml&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<ol class="simple">
+<li>Set the build context</li>
+</ol>
+<p>In Docker Compose you can specify your Docker build context like so:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./spoonerisms</span>
+</pre></div>
+</div>
+<p>It’s similar in Tilt:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;gcr.io/myproject/spoonerisms&quot;</span><span class="p">,</span> <span class="s2">&quot;./spoonerisms&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.</p>
 <ol class="simple">
 <li>Forward your port
 In Docker Compose your service has a <code class="docutils literal notranslate"><span class="pre">ports</span></code> field:</li>
@@ -281,23 +267,14 @@ In Docker Compose your service has a <code class="docutils literal notranslate">
       <span class="p p-Indicator">-</span> <span class="s">&quot;9006:5000&quot;</span>
 </pre></div>
 </div>
-<p>In Tilt services have a <code class="docutils literal notranslate"><span class="pre">port_forward</span></code> method:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">service</span><span class="o">.</span><span class="n">port_forward</span><span class="p">(</span><span class="mi">9006</span><span class="p">)</span>
-</pre></div>
-</div>
-<ol class="simple">
-<li>Return your service!</li>
-</ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="k">return</span> <span class="n">service</span>
+<p>In Tilt you can add port forwards by naming the resource explicitly with <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;spoonerisms&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="s2">&quot;9006&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>All in all your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> should now look like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">spoonerisms</span><span class="p">():</span>
-  <span class="n">img</span> <span class="o">=</span> <span class="n">static_build</span><span class="p">(</span><span class="s2">&quot;spoonerisms/Dockerfile&quot;</span><span class="p">,</span> <span class="s2">&quot;gcr.io/myproject/spoonerisms&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;spoonerisms&quot;</span><span class="p">)</span>
-  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;spoonerisms.yaml&#39;</span><span class="p">)</span>
-  <span class="n">service</span> <span class="o">=</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml</span><span class="p">)</span>
-  <span class="n">service</span><span class="o">.</span><span class="n">port_forward</span><span class="p">(</span><span class="mi">9006</span><span class="p">)</span>
-  <span class="k">return</span> <span class="n">service</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;spoonerisms.yaml&quot;</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;gcr.io/myproject/spoonerisms&quot;</span><span class="p">,</span> <span class="s2">&quot;./spoonerisms&quot;</span><span class="p">)</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;spoonerisms&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="s2">&quot;9006&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -311,10 +288,10 @@ In Docker Compose your service has a <code class="docutils literal notranslate">
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="upgrade_skaffold.html" class="btn btn-neutral float-right" title="From Skaffold" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="fast_build.html" class="btn btn-neutral float-right" title="Optimizing a Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="fast_build.html" class="btn btn-neutral" title="Optimizing a Tiltfile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="upgrade_skaffold.html" class="btn btn-neutral" title="From Skaffold" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

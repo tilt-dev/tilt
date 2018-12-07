@@ -154,10 +154,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					if am != nil {
 						am.Close(&h.currentViewState)
 					}
-
-					h.currentViewState.LogModal = view.LogModal{TiltLog: true}
-					h.activeModal().Bottom()
 				}
+				h.currentViewState.CycleViewLogState()
 			case r == 'k':
 				h.activeScroller().Up()
 			case r == 'j':

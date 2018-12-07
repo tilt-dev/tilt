@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
 
 type downCmd struct {
@@ -21,9 +21,8 @@ type downCmd struct {
 
 func (c downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "down <name> [<name2>] [<name3>] [...]",
-		Short: "delete the kubernetes resources in one or more manifests",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "down",
+		Short: "delete kubernetes resources",
 	}
 
 	return cmd
@@ -35,17 +34,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if err != nil {
-		return err
-	}
-
-	manifestNames := make([]model.ManifestName, len(args))
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
-	}
-
-	manifests, gYAML, _, err := tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
+	manifests, _, _, err := tiltfile2.Load(ctx, tiltfile.FileName, nil)
 	if err != nil {
 		return err
 	}
@@ -54,12 +43,6 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-
-	globalEntities, err := k8s.ParseYAMLFromString(gYAML.K8sYAML())
-	if err != nil {
-		return errors.Wrap(err, "Parsing global YAML")
-	}
-	entities = append(entities, globalEntities...)
 
 	kClient, err := wireK8sClient(ctx)
 	if err != nil {

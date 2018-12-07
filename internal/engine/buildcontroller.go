@@ -39,7 +39,7 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 	// If any of them haven't started yet, build them now.
 	for _, mn := range state.ManifestDefinitionOrder {
 		ms, ok := state.ManifestStates[mn]
-		if ok && !ms.StartedFirstBuild {
+		if ok && !ms.StartedFirstBuild() {
 			return mn
 		}
 	}
@@ -101,7 +101,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	c.lastActionCount = state.BuildControllerActionCount
 	ms := state.ManifestStates[mn]
 	manifest := ms.Manifest
-	firstBuild := !ms.StartedFirstBuild
+	firstBuild := !ms.StartedFirstBuild()
 
 	filesChanged := make([]string, 0, len(ms.PendingFileChanges))
 	for file, _ := range ms.PendingFileChanges {
@@ -109,7 +109,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	}
 	sort.Strings(filesChanged)
 
-	buildState := store.NewBuildState(ms.LastBuild, filesChanged)
+	buildState := store.NewBuildState(ms.LastSuccessfulResult, filesChanged)
 
 	if !ms.NeedsRebuildFromCrash {
 		buildState = buildState.WithDeployInfo(store.NewDeployInfo(ms.PodSet))

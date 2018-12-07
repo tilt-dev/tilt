@@ -21,7 +21,8 @@ func (h *Hud) activeScroller() scroller {
 func (h *Hud) activeModal() modal {
 	if h.currentViewState.AlertMessage != "" {
 		return makeAlertModal(h.r.rty)
-	} else if h.currentViewState.LogModal.TiltLog || h.currentViewState.LogModal.ResourceLogNumber != 0 {
+	} else if h.currentViewState.LogModal.TiltLog == view.TiltLogFullScreen ||
+		h.currentViewState.LogModal.ResourceLogNumber != 0 {
 		return makeLogModal(h.r.rty)
 	} else {
 		return nil
