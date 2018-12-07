@@ -2,6 +2,16 @@
 
 So you want to make a change to `tilt`!
 
+## Contributing
+
+We welcome contributions, either as bug reports, feature requests, or pull requests.
+
+Most of this page describes how to get set up making & testing changes.
+
+Small PRs are better than large ones. If you have an idea for a major feature, please file
+an issue first. The [Roadmap](ROADMAP.md) has details on some of the upcoming
+features that we have in mind and might already be in-progress.
+
 ## Necessary Prereqs
 - **[make](https://www.gnu.org/software/make/)**
 - **[go 1.11](https://golang.org/dl/)**
