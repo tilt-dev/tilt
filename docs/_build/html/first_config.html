@@ -190,10 +190,8 @@ will work well for editing Tiltfiles.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">docker_build('gcr.io/windmill-test-containers/integration/oneup',</span> <span class="pre">'.')</span></code></li>
 </ul>
-<p>This line build the image and assigns a tag to it. The steps to build the image are in the
-<code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>.</p>
-<p>When we’re doing local development, it doesn’t matter that much what the image tag
-is, as long as it matches the name in our Kubernetes YAML.</p>
+<p>This line builds the image and assigns the tag <code class="docutils literal notranslate"><span class="pre">gcr.io/windmill-test-containers/integration/oneup</span></code> to it. The steps to build the image are in the <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>.</p>
+<p>When we’re doing local development, it doesn’t matter that much what the image tag is, as long as it matches a name in our Kubernetes YAML.</p>
 <p>(When we’re doing remote development, the image tag is a URL that tells the cluster where to upload
 and download your image).</p>
 <p>If we open the Dockerfile, we see</p>

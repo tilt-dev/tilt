@@ -25,11 +25,9 @@ will work well for editing Tiltfiles.
 
 - `docker_build('gcr.io/windmill-test-containers/integration/oneup', '.')`
 
-This line build the image and assigns a tag to it. The steps to build the image are in the
-`Dockerfile`.
+This line builds the image and assigns the tag `gcr.io/windmill-test-containers/integration/oneup` to it. The steps to build the image are in the `Dockerfile`.
 
-When we're doing local development, it doesn't matter that much what the image tag
-is, as long as it matches the name in our Kubernetes YAML.
+When we're doing local development, it doesn't matter that much what the image tag is, as long as it matches a name in our Kubernetes YAML.
 
 (When we're doing remote development, the image tag is a URL that tells the cluster where to upload
 and download your image).

@@ -197,11 +197,11 @@
 <p>Let’s dig in to each of these sections in detail.</p>
 <div class="section" id="part-1-kubernetes-yaml">
 <span id="part-1-kubernetes-yaml"></span><h2>Part 1: Kubernetes YAML<a class="headerlink" href="#part-1-kubernetes-yaml" title="Permalink to this headline">¶</a></h2>
-<p>Start  by telling Tilt about your Kubernetes YAML:</p>
+<p>Start by telling Tilt about your Kubernetes YAML:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;k8s.yaml&quot;</span><span class="p">)</span>               <span class="c1"># one yaml file</span>
 </pre></div>
 </div>
-<p>Now Tilt will parse the YAML and deploy. A <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> function call is all you need to have a functioning Tiltfile.</p>
+<p>Now Tilt will deploy any Kubernetes objects defined in the YAML. A <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> function call is all you need to have a functioning Tiltfile.</p>
 <p>Sometimes you organize your YAML in to multiple files or generate it via a script. Tilt supports those cases too:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span> <span class="c1"># list of yaml files</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>  <span class="c1"># run kustomize to generate yaml</span>
@@ -211,7 +211,7 @@
 </div>
 <div class="section" id="part-2-images">
 <span id="part-2-images"></span><h2>Part 2: Images<a class="headerlink" href="#part-2-images" title="Permalink to this headline">¶</a></h2>
-<p>Next tell Tilt about all your Dockerfiles. Tilt can deploy any YAML but it watches resources by image name. You tell Tilt to build a Dockerfile like so:</p>
+<p>Next tell Tilt about all your Dockerfiles but to get the most out of Tilt you need to tell it about your Dockerfiles. You tell Tilt to build a Dockerfile like so:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/frontend&quot;</span><span class="p">,</span> <span class="s2">&quot;frontend&quot;</span><span class="p">)</span> <span class="c1"># docker build ./frontend</span>
 </pre></div>
 </div>
@@ -232,7 +232,7 @@
 </pre></div>
 </div>
 <p>If you want to modify Tilt Resources you can make them explicit.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span> <span class="c1"># give a resource a name that&#39;s different than the base name of the image</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span> <span class="c1"># by default, resources are named after the basename of the image (here, `server`). This gives it a different name (`backend`)</span>
 </pre></div>
 </div>
 <p>You can also add a Kubernetes port forward to this resource.</p>
