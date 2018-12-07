@@ -76,8 +76,12 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	// TODO - currently hardcoded that we have 2 pipeline steps. This might end up being dynamic? drop it from the output?
-	ps := build.NewPipelineState(ctx, 2)
+	hasBuild := manifest.DockerRef() != nil
+	numStages := 2
+	if !hasBuild {
+		numStages = 1
+	}
+	ps := build.NewPipelineState(ctx, numStages)
 	defer func() { ps.End(ctx, err) }()
 
 	err = manifest.Validate()
@@ -85,9 +89,12 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 		return store.BuildResult{}, err
 	}
 
-	ref, err := ibd.build(ctx, manifest, state, ps)
-	if err != nil {
-		return store.BuildResult{}, err
+	var ref reference.NamedTagged
+	if hasBuild {
+		ref, err = ibd.build(ctx, manifest, state, ps)
+		if err != nil {
+			return store.BuildResult{}, err
+		}
 	}
 
 	k8sEntities, namespace, err := ibd.deploy(ctx, ps, manifest, ref)
@@ -179,7 +186,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest deployableImageManifest, n reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest deployableImageManifest, ref reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -192,7 +199,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		return nil, "", err
 	}
 
-	didReplace := false
+	replacedAny := false
 	newK8sEntities := []k8s.K8sEntity{}
 	namespace := k8s.DefaultNamespace
 	for _, e := range entities {
@@ -215,20 +222,25 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		if ibd.canSkipPush() {
 			policy = v1.PullNever
 		}
-		e, replaced, err := k8s.InjectImageDigest(e, n, policy)
-		if err != nil {
-			return nil, "", err
-		}
-		if replaced {
-			didReplace = true
-			namespace = e.Namespace()
+		if ref != nil {
+			var replaced bool
+			e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
+			if err != nil {
+				return nil, "", err
+			}
+			if replaced {
+				replacedAny = true
+				namespace = e.Namespace()
 
-			if ibd.injectSynclet {
-				e, replaced, err = sidecar.InjectSyncletSidecar(e, n)
-				if err != nil {
-					return nil, "", err
-				} else if !replaced {
-					return nil, "", fmt.Errorf("Could not inject synclet: %v", e)
+				if ibd.injectSynclet {
+					var sidecarInjected bool
+					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
+					if err != nil {
+						return nil, "", err
+					}
+					if !sidecarInjected {
+						return nil, "", fmt.Errorf("Could not inject synclet: %v", e)
+					}
 				}
 			}
 		}
@@ -236,7 +248,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
-	if !didReplace {
+	if ref != nil && !replacedAny {
 		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef())
 	}
 

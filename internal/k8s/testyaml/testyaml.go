@@ -517,6 +517,38 @@ spec:
         image: gcr.io/windmill-public-containers/servantes/snack
         command: ["/go/bin/snack"]
 `
+const (
+	SnackName  = "snack"
+	SnackImage = "gcr.io/windmill-public-containers/servantes/snack"
+)
+
+const SnackYAMLPostConfig = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: snack
+  name: snack
+spec:
+  selector:
+    matchLabels:
+      app: snack
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: snack
+        tier: web
+    spec:
+      containers:
+      - command:
+        - /go/bin/snack
+        image: gcr.io/windmill-public-containers/servantes/snack
+        name: snack
+        resources: {}
+status: {}
+`
 
 const SecretYaml = `
 apiVersion: v1

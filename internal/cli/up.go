@@ -31,9 +31,8 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up <name> [<name2>] [<name3>] [...]",
+		Use:   "up [<name>] [<name2>] [...]",
 		Short: "stand up one or more manifests",
-		Args:  cobra.MinimumNArgs(1),
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")

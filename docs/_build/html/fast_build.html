@@ -31,8 +31,8 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="From Docker Compose" href="upgrade_docker_compose.html" />
-    <link rel="prev" title="A Simple Tiltfile" href="first_config.html" />
+    <link rel="next" title="Tiltfile API Reference" href="api.html" />
+    <link rel="prev" title="From Docker Compose" href="upgrade_docker_compose.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -98,12 +98,13 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Optimizing a Tiltfile</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
 
@@ -171,53 +172,48 @@
 <span id="optimizing-a-tiltfile"></span><h1>Optimizing a Tiltfile<a class="headerlink" href="#optimizing-a-tiltfile" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial looks at a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> with build optimizations.
 We explain what they do, and why you would want to use them.</p>
-<p>In <a class="reference external" href="first_config.md">the previous tutorial</a>, we introduced the <code class="docutils literal notranslate"><span class="pre">static_build()</span></code> function.
+<p>In <a class="reference external" href="first_config.md">the previous tutorial</a>, we introduced the <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code> function.
 This function builds a Docker image. Tilt will watch the inputs to the
 image, and rebuild it every time they change.</p>
 <p>This works well for interpreted languages like JavaScript and Python
 where you can add the files and go. For servers that need to be compiled,
 it would be too slow to recompile from scratch every time.</p>
-<p>That’s why Tilt has a function <code class="docutils literal notranslate"><span class="pre">start_fast_build()</span></code> for lightning-fast local
+<p>That’s why Tilt has a function <code class="docutils literal notranslate"><span class="pre">fast_build()</span></code> for lightning-fast local
 Kubernetes development.</p>
 <p>Let’s look at an example in the <a class="reference external" href="https://github.com/windmilleng/tiltdemo">tiltdemo repo</a>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">windmilleng</span><span class="o">/</span><span class="n">tiltdemo</span>
 <span class="n">cd</span> <span class="n">tiltdemo</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> at the root of the repo contains this function:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># -*- mode: Python -*-</span>
+<p>The <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> at the root of the repo contains this example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">repo</span> <span class="o">=</span> <span class="n">local_git_repo</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">tiltdemo1</span><span class="p">():</span>
-  <span class="n">yaml</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;deployments/demoserver1.yaml&#39;</span><span class="p">)</span>
-  <span class="n">image_name</span> <span class="o">=</span> <span class="s1">&#39;gcr.io/windmill-test-containers/tiltdemo/demoserver1&#39;</span>
-  <span class="n">start_fast_build</span><span class="p">(</span><span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span>
-  <span class="n">repo</span> <span class="o">=</span> <span class="n">local_git_repo</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
-  <span class="n">add</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="s1">&#39;cmd/demoserver1&#39;</span><span class="p">),</span>
+<span class="c1"># tiltdemo1</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;deployments/demoserver1.yaml&#39;</span><span class="p">)</span>
+<span class="n">dm1_img_name</span> <span class="o">=</span> <span class="s1">&#39;gcr.io/windmill-test-containers/tiltdemo/demoserver1&#39;</span>
+<span class="p">(</span><span class="n">fast_build</span><span class="p">(</span><span class="n">dm1_img_name</span><span class="p">,</span> <span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="s1">&#39;cmd/demoserver1&#39;</span><span class="p">),</span>
       <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
-  <span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
-  <span class="n">image</span> <span class="o">=</span> <span class="n">stop_build</span><span class="p">()</span>
-  <span class="k">return</span> <span class="n">k8s_service</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">yaml</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>This looks similar to the <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> in previous tutorials, but instead of building
-with <code class="docutils literal notranslate"><span class="pre">static_build()</span></code>, it contains <code class="docutils literal notranslate"><span class="pre">start_fast_build()</span></code> and <code class="docutils literal notranslate"><span class="pre">stop_build()</span></code>. Let’s zoom
+with <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code>, it contains <code class="docutils literal notranslate"><span class="pre">fast_build()</span></code>. Let’s zoom
 in on that part of the function.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">start_fast_build</span><span class="p">(</span><span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span>
-<span class="n">repo</span> <span class="o">=</span> <span class="n">local_git_repo</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
-<span class="n">add</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="s1">&#39;cmd/demoserver1&#39;</span><span class="p">),</span>
-    <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
-<span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
-<span class="n">image</span> <span class="o">=</span> <span class="n">stop_build</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">fast_build</span><span class="p">(</span><span class="n">dm1_img_name</span><span class="p">,</span> <span class="s1">&#39;Dockerfile&#39;</span><span class="p">,</span> <span class="s1">&#39;/go/bin/demoserver1&#39;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="s1">&#39;cmd/demoserver1&#39;</span><span class="p">),</span>
+      <span class="s1">&#39;/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;go install github.com/windmilleng/tiltdemo/cmd/demoserver1&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>These lines configure <code class="docutils literal notranslate"><span class="pre">tilt</span></code> to do incremental image builds. We’ll step through it line-by-line.</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">start_fast_build('Dockerfile',</span> <span class="pre">image_name,</span> <span class="pre">'/go/bin/demoserver1')</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">fast_build(dm1_img_name,</span> <span class="pre">'Dockerfile',</span> <span class="pre">'/go/bin/demoserver1')</span></code></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">start_fast_build</span></code> begins the build.
+<p><code class="docutils literal notranslate"><span class="pre">fast_build</span></code> begins the build.
 This is setting up the build environment before we add any code.
 We build on top of the image in <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>. Our new
-image has the name in <code class="docutils literal notranslate"><span class="pre">image_name</span></code> and has an entrypoint <code class="docutils literal notranslate"><span class="pre">/go/bin/demoserver</span></code>.</p>
+image has the name in <code class="docutils literal notranslate"><span class="pre">dm1_img_name</span></code> and has an entrypoint <code class="docutils literal notranslate"><span class="pre">/go/bin/demoserver1</span></code>.</p>
 <p>Here’s what’s in <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">golang</span><span class="p">:</span><span class="mf">1.10</span>
 </pre></div>
@@ -227,15 +223,9 @@ image has the name in <code class="docutils literal notranslate"><span class="pr
 It’s only for setting up the environment, not for adding your code.
 So this Dockerfile might look different than most.</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">repo</span> <span class="pre">=</span> <span class="pre">local_git_repo('.')</span></code></li>
-</ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">local_git_repo</span></code> function reads the git repo at the given path,
-and assigns the repo object to a variable. This object has methods for working with Git repos.</p>
-<p>When you’re in a Git repo, Tilt knows that it can ignore the <code class="docutils literal notranslate"><span class="pre">.git</span></code> directory.</p>
-<ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">add(repo.path('cmd/demoserver1'),</span> <span class="pre">'/go/src/github.com/windmilleng/tiltdemo/cmd/demoserver1')</span></code></li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">add</span></code> function copies a directory from outside your container to inside of your container.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">add</span></code> method copies a directory from outside your container to inside of your container.</p>
 <p>In this case, we copy the directory <code class="docutils literal notranslate"><span class="pre">cmd/demoserver</span></code> inside of our Git repo into
 the container filesystem.</p>
 <p>While Tilt is running, it watches all files in cmd/demoserver. If they change, it copies the file
@@ -243,7 +233,7 @@ into the container.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">run('go</span> <span class="pre">install</span> <span class="pre">github.com/windmilleng/tiltdemo/cmd/demoserver1')</span></code></li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">run</span></code> function runs shell commands inside your container.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">run</span></code> method runs shell commands inside your container.</p>
 <p>Every time a file changes, Tilt will run this command again.</p>
 <p>One of the major build optimizations that Tilt does is to keep the container running, and
 start the command inside the running container.</p>
@@ -251,10 +241,6 @@ start the command inside the running container.</p>
 don’t delete all their code and re-clone it from git every time we need to do a new build!
 We re-run the command in the same directory. Modern tools then take advantage of local caches.
 Tilt runs commands with the same approach, but inside a container.</p>
-<ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">image</span> <span class="pre">=</span> <span class="pre">stop_build()</span></code></li>
-</ul>
-<p>This line completes the build process and stores the Docker image in the variable <code class="docutils literal notranslate"><span class="pre">image</span></code>.</p>
 <div class="section" id="next-steps">
 <span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>In this guide, we explored just a few of the functions we can use in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>
@@ -271,10 +257,10 @@ read the complete <a class="reference external" href="api.html">Tiltfile API ref
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="upgrade_docker_compose.html" class="btn btn-neutral float-right" title="From Docker Compose" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="api.html" class="btn btn-neutral float-right" title="Tiltfile API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="first_config.html" class="btn btn-neutral" title="A Simple Tiltfile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="upgrade_docker_compose.html" class="btn btn-neutral" title="From Docker Compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

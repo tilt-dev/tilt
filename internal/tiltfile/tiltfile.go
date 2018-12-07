@@ -200,7 +200,7 @@ func unimplementedSkylarkFunction(thread *skylark.Thread, fn *skylark.Builtin, a
 func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var dockerImage *dockerImage
 	var yaml skylark.String
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "dockerImage", &dockerImage, "yaml?", &yaml)
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "dockerImage?", &dockerImage, "yaml?", &yaml)
 	if err != nil {
 		if strings.Contains(err.Error(), "got string, want dockerImage") {
 			return nil, fmt.Errorf(oldK8sServiceSyntaxError)
@@ -211,7 +211,7 @@ func makeSkylarkK8Manifest(thread *skylark.Thread, fn *skylark.Builtin, args sky
 	// Name will be initialized later
 	return &k8sManifest{
 		k8sYaml:     yaml,
-		dockerImage: *dockerImage,
+		dockerImage: dockerImage,
 	}, nil
 }
 
@@ -412,7 +412,7 @@ func (t *Tiltfile) globalYaml(thread *skylark.Thread, fn *skylark.Builtin, args 
 	return skylark.None, nil
 }
 
-func Load(ctx context.Context, filename string) (*Tiltfile, error) {
+func HideLoad(ctx context.Context, filename string) (*Tiltfile, error) {
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) {
 			logger.Get(ctx).Infof("%s", msg)
@@ -571,6 +571,9 @@ func (t Tiltfile) getManifestConfigsHelper(ctx context.Context, manifestName str
 // that correspond to the given manifest, and extracts and returns them. (Note
 // that this operation modifies the global YAML in place!)
 func (t *Tiltfile) extractFromGlobalYAMLForManifest(ctx context.Context, m model.Manifest) (string, error) {
+	if m.DockerRef() == nil {
+		return "", nil
+	}
 	gYAML, err := getGlobalYAML(t.thread)
 	if err != nil {
 		return "", err
@@ -627,26 +630,26 @@ func skylarkManifestToDomain(manifest *k8sManifest) (model.Manifest, error) {
 		return model.Manifest{}, fmt.Errorf("internal error: k8sService.k8sYaml was not a string in '%v'", manifest)
 	}
 
-	image := manifest.dockerImage
 	m := model.Manifest{
-		BaseDockerfile: image.baseDockerfile.String(),
-		Mounts:         skylarkMountsToDomain(image.mounts),
-		Steps:          image.steps,
-		Entrypoint:     model.ToShellCmd(image.entrypoint),
-		Name:           model.ManifestName(manifest.name),
-
-		StaticDockerfile: image.staticDockerfile.String(),
-		StaticBuildPath:  string(image.staticBuildPath.path),
-		StaticBuildArgs:  image.staticBuildArgs,
-
-		Repos: SkylarkReposToDomain(image),
+		Name: model.ManifestName(manifest.name),
 	}
 
 	m = m.WithPortForwards(manifest.portForwards).
-		WithTiltFilename(image.tiltFilename).
-		WithK8sYAML(k8sYaml).
-		WithDockerRef(image.ref).
-		WithCachePaths(image.cachePaths)
+		WithK8sYAML(k8sYaml)
+
+	if image := manifest.dockerImage; image != nil {
+		m.Mounts = skylarkMountsToDomain(image.mounts)
+		m.Entrypoint = model.ToShellCmd(image.entrypoint)
+		m.BaseDockerfile = image.baseDockerfile.String()
+		m.Steps = image.steps
+		m.StaticDockerfile = image.staticDockerfile.String()
+		m.StaticBuildPath = string(image.staticBuildPath.path)
+		m.StaticBuildArgs = image.staticBuildArgs
+		m.Repos = SkylarkReposToDomain(image)
+		m = m.WithDockerRef(image.ref).
+			WithTiltFilename(image.tiltFilename).
+			WithCachePaths(image.cachePaths)
+	}
 
 	return m, nil
 }
@@ -658,7 +661,7 @@ func SkylarkConfigFilesToDomain(cf []string) []string {
 	return ss
 }
 
-func SkylarkReposToDomain(image dockerImage) []model.LocalGithubRepo {
+func SkylarkReposToDomain(image *dockerImage) []model.LocalGithubRepo {
 	dRepos := []model.LocalGithubRepo{}
 	repoSet := make(map[string]bool, 0)
 

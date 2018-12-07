@@ -431,6 +431,7 @@ func StateToView(s EngineState) view.View {
 			PodLog:                pod.Log(),
 			CrashLog:              ms.CrashLog,
 			Endpoints:             endpoints,
+			IsYAMLManifest:        ms.Manifest.DockerRef() == nil,
 		}
 
 		ret.Resources = append(ret.Resources, r)

@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -101,17 +101,14 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	manifestNames := make([]model.ManifestName, len(args))
-
-	for i, a := range args {
-		manifestNames[i] = model.ManifestName(a)
+	var manifestNames []model.ManifestName
+	matching := map[string]bool{}
+	for _, arg := range args {
+		manifestNames = append(manifestNames, model.ManifestName(arg))
+		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := loadAndGetManifests(ctx, manifestNames)
-	if err != nil {
-		// TODO(dmiller): instead of returning, set the TiltfileError on state
-		return err
-	}
+	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
@@ -120,29 +117,10 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
 		ManifestNames:      manifestNames,
+		Err:                err,
 	})
 
 	return u.store.Loop(ctx)
-}
-
-func loadAndGetManifests(ctx context.Context, manifestNames []model.ManifestName) (
-	manifests []model.Manifest, globalYAML model.YAMLManifest, configFiles []string, err error) {
-
-	tf, err := tiltfile.Load(ctx, tiltfile.FileName)
-	if os.IsNotExist(err) {
-		manifests = []model.Manifest{}
-		globalYAML = model.YAMLManifest{}
-	} else if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
-	} else {
-		manifests, globalYAML, configFiles, err = tf.GetManifestConfigsAndGlobalYAML(ctx, manifestNames...)
-		if err != nil {
-			manifests = []model.Manifest{}
-			globalYAML = model.YAMLManifest{}
-		}
-	}
-
-	return manifests, globalYAML, configFiles, nil
 }
 
 func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
@@ -371,7 +349,7 @@ func handleConfigsReloaded(
 	for i, m := range manifests {
 		ms, ok := state.ManifestStates[m.ManifestName()]
 		if !ok {
-			ms = &store.ManifestState{}
+			ms = store.NewManifestState(m)
 		}
 
 		newDefOrder[i] = m.ManifestName()
@@ -410,6 +388,11 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 	ms, ok := state.ManifestStates[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
+		return nil, nil
+	}
+
+	if ms.Manifest.DockerRef() == nil {
+		// We don't track pods if we didn't build the image for this manifest
 		return nil, nil
 	}
 
@@ -635,6 +618,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.ManifestNames
+	engineState.LastTiltfileError = action.Err
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
 

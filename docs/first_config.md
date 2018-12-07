@@ -10,11 +10,8 @@ Let's look at the Tiltfile line-by-line and see what each part does.
 ```
 # -*- mode: Python -*-
 
-def oneup():
-  yaml = read_file('oneup.yaml')
-  image_name = 'gcr.io/windmill-test-containers/integration/oneup'
-  image = static_build('Dockerfile', image_name)
-  return k8s_service(image, yaml=yaml)
+docker_build('gcr.io/windmill-test-containers/integration/oneup', '.')
+k8s_resource('oneup', 'oneup.yaml')
 ```
 
 - `# -*- mode: Python -*-`
@@ -26,15 +23,32 @@ A `Tiltfile` uses a small subset of Python called
 [Starlark](https://github.com/bazelbuild/starlark#tour). Most Python editors
 will work well for editing Tiltfiles.
 
-- `def oneup():`
+- `docker_build('gcr.io/windmill-test-containers/integration/oneup', '.')`
 
-The `def` line defines a function. Every time `tilt` builds your server, it
-runs this function. `Tiltfile` functions can even call `print()` to help with debugging.
+This line build the image and assigns a tag to it. The steps to build the image are in the
+`Dockerfile`.
 
-- `yaml = read_file('oneup.yaml')`
+When we're doing local development, it doesn't matter that much what the image tag
+is, as long as it matches the name in our Kubernetes YAML.
 
-The next line reads a Kubernetes YAML. Tilt tracks while files you read, then automatically
-rebuilds your server if those files change.
+(When we're doing remote development, the image tag is a URL that tells the cluster where to upload
+and download your image).
+
+If we open the Dockerfile, we see
+
+```
+FROM golang:1.11
+WORKDIR /go/src/github.com/windmilleng/integration/oneup
+ADD . .
+RUN go install github.com/windmilleng/integration/oneup
+ENTRYPOINT /go/bin/oneup
+```
+
+If you don't know Go, that's OK. These are steps to run to build a Go server.
+
+- `k8s_resource('oneup', 'oneup.yaml')`
+
+This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.
 
 At the risk of diving too deep, let's unpack that YAML file.
 
@@ -71,42 +85,6 @@ spec:
 ```
 
 There's a lot of YAML here! But the idea is easy to summarize: schedule 1 server on Kubernetes.
-
-Now back to the Tiltfile.
-
-- `image_name = 'gcr.io/windmill-test-containers/integration/oneup'`
-
-This line creates a variable `image_name` and assigns it to the name of the
-Docker image that contains our server.
-
-When we're doing local development, it doesn't matter that much what the image name
-is, as long as it matches the name in our Kubernetes YAML.
-
-(When we're doing remote development, the image name is a URL that tells the cluster where to upload
-and download your image).
-
-- `image = static_build('Dockerfile', image_name)`
-
-This line build the image and assigns a name to it. The steps to build the image are in the
-`Dockerfile`.
-
-If we open the Dockerfile, we see
-
-```
-FROM golang:1.11
-WORKDIR /go/src/github.com/windmilleng/integration/oneup
-ADD . .
-RUN go install github.com/windmilleng/integration/oneup
-ENTRYPOINT /go/bin/oneup
-```
-
-If you don't know Go, that's OK. These are steps to run to build a Go server.
-
-- `return k8s_service(image, yaml=yaml)`
-
-The last line of the Tiltfile creates the server in Kubernetes. The `k8s_service`
-function takes an image and a Kubernetes config. Tilt puts these together
-to deploy your service to a local Kubernetes cluster.
 
 Next Steps
 ----------
