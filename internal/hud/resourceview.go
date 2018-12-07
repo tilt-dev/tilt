@@ -283,6 +283,6 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 func (v *ResourceView) spinner() string {
-	decisecond := v.clock().Nanosecond() / 100000000 // 0.1 second
-	return spinnerChars[decisecond%len(spinnerChars)]
+	decisecond := v.clock().Nanosecond() / int(time.Second/10)
+	return spinnerChars[decisecond%len(spinnerChars)] // tick spinner every 10x/second
 }
