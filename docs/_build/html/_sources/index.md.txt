@@ -20,7 +20,7 @@ or logs right in your terminal.
 ```eval_rst
 .. raw:: html
 
-   <script id="asciicast-211635" src="https://asciinema.org/a/211635.js" async></script>
+   <script id="asciicast-216237" src="https://asciinema.org/a/216237.js" async></script>
 ```
 
 ## Install Tilt

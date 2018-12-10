@@ -20,7 +20,7 @@ The screencast below demonstrates what a typical Tilt session looks like:
 starting two servers, making changes to them, and seeing any new errors
 or logs right in your terminal.
 
-[![asciicast](https://asciinema.org/a/211635.png)](https://asciinema.org/a/211635)
+[![asciicast](https://asciinema.org/a/216237.png)](https://asciinema.org/a/216237)
 
 ## Install Tilt
 
