@@ -1,27 +1,27 @@
 # -*- mode: Python -*-
 
-def test():
-  entrypoint = 'cd /go/src/github.com/windmilleng/tilt && make test'
-  start_fast_build('Dockerfile.base', 'gcr.io/blorg-dev/tilt-test', entrypoint)
-  add(local_git_repo('.'), '/go/src/github.com/windmilleng/tilt')
-  run('cd src/github.com/windmilleng/tilt && go build ./...')
-  image = stop_build()
+def get_username():
+  return str(local('whoami')).rstrip('\n')
 
-  return k8s_service(image, yaml=read_file('tilt-test.yaml'))
+# docserver
+k8s_resource('docserver', 'docserver.yaml', port_forwards=10000)
+docker_build('gcr.io/windmill-public-containers/tilt-docserver', '.', dockerfile='Dockerfile.docserver')
 
-def synclet():
-  username = local('whoami').rstrip('\n')
-  image_tag = 'gcr.io/blorg-dev/synclet:devel-synclet-' + username
-  start_fast_build('synclet/Dockerfile.base', image_tag, './server')
-  add(local_git_repo('.'), '/go/src/github.com/windmilleng/tilt')
-  run('cd /go/src/github.com/windmilleng/tilt && go build -o server ./cmd/synclet/main.go && mv server /app')
-  local('synclet/populate_config_template.py devel')
-  image = stop_build()
+# test
+repo = local_git_repo('.')
+ep = 'cd /go/src/github.com/windmilleng/tilt && make test'
+test_img = (fast_build('gcr.io/blorg-dev/tilt-test', 'Dockerfile.base', entrypoint=ep)
+  .add(repo, '/go/src/github.com/windmilleng/tilt')
+  .run('cd src/github.com/windmilleng/tilt && go build ./...'))
 
-  return k8s_service(image, yaml=read_file('synclet/synclet-conf.generated.yaml'))
+k8s_resource('test', yaml='tilt-test.yaml', image=test_img)
 
-def docserver():
-  image = static_build('Dockerfile.docserver', 'gcr.io/windmill-public-containers/tilt-docserver')
-  s = k8s_service(image, yaml=read_file('docserver.yaml'))
-  s.port_forward(10000)
-  return s
+# synclet
+image_tag = 'gcr.io/blorg-dev/synclet:devel-synclet-' + get_username()
+
+synclet_img = (fast_build(image_tag, 'synclet/Dockerfile.base', entrypoint='./server')
+  .add(repo, '/go/src/github.com/windmilleng/tilt')
+  .run('cd /go/src/github.com/windmilleng/tilt && go build -o server ./cmd/synclet/main.go && mv server /app'))
+
+local('synclet/populate_config_template.py devel')
+k8s_resource('synclet', yaml='synclet/synclet-conf.generated.yaml', image=synclet_img)
