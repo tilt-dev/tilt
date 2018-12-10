@@ -143,11 +143,8 @@ func (s Script) Run(ctx context.Context) error {
 		return nil
 	}
 
-	// Discard all the logs. Uncomment the line below to make debugging easier.
-	out := ioutil.Discard
-	//out, _ = os.OpenFile("log.txt", os.O_WRONLY|os.O_TRUNC|os.O_CREATE, os.FileMode(0644))
-
-	l := logger.NewLogger(logger.DebugLvl, out)
+	l := engine.NewLogActionLogger(ctx, s.store.Dispatch)
+	out := l.Writer(logger.InfoLvl)
 	ctx = logger.WithLogger(ctx, l)
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
