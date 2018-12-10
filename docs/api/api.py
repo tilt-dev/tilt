@@ -67,7 +67,7 @@ def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
   """
   pass
 
-def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_forwards: Union[int, List[int]] = []) -> None:
+def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_forwards: Union[str, int, List[int]] = []) -> None:
   """Creates a kubernetes resource that tilt can deploy using the specified image.
 
   Args:
@@ -77,6 +77,12 @@ def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_f
       existing resource.
     image: An optional Image. If the image is not passed,
       we expect to be able to extract it from an existing resource.
+    port_forwards: Local ports to connect to the pod. If no
+      target port is specified, will use the first container port.
+      Example values: 9000 (connect localhost:9000 to the default container port),
+      '9000:8000' (connect localhost:9000 to the container port 8000),
+      ['9000:8000', '9001:8001'] (connect localhost:9000 and :9001 to the
+      container ports 8000 and 8001, respectively).
   """
   pass
 

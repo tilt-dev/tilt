@@ -190,7 +190,9 @@ will work well for editing Tiltfiles.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">docker_build('gcr.io/windmill-test-containers/integration/oneup',</span> <span class="pre">'.')</span></code></li>
 </ul>
-<p>This line builds the image and assigns the tag <code class="docutils literal notranslate"><span class="pre">gcr.io/windmill-test-containers/integration/oneup</span></code> to it. The steps to build the image are in the <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>.</p>
+<p>This line builds a docker image. The first argument <code class="docutils literal notranslate"><span class="pre">gcr.io/windmill-test-containers/integration/oneup</span></code> is the tag for the image.
+The second argument <code class="docutils literal notranslate"><span class="pre">.</span></code> is the directory to use as the build context. In this case, we use the source code and Dockerfile
+in the current directory.</p>
 <p>When we’re doing local development, it doesn’t matter that much what the image tag is, as long as it matches a name in our Kubernetes YAML.</p>
 <p>(When we’re doing remote development, the image tag is a URL that tells the cluster where to upload
 and download your image).</p>
@@ -202,11 +204,12 @@ and download your image).</p>
 <span class="n">ENTRYPOINT</span> <span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">oneup</span>
 </pre></div>
 </div>
-<p>If you don’t know Go, that’s OK. These are steps to run to build a Go server.</p>
+<p>If you don’t know Go, that’s OK. These are steps to run that build a Go server.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">k8s_resource('oneup',</span> <span class="pre">'oneup.yaml')</span></code></li>
 </ul>
-<p>This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes. Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.</p>
+<p>This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes.
+Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.</p>
 <p>At the risk of diving too deep, let’s unpack that YAML file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
 <span class="n">kind</span><span class="p">:</span> <span class="n">Namespace</span>
