@@ -474,13 +474,32 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	f.loadManifest("foo")
+	f.load("foo")
 	f.assertNumManifests(1)
 	f.assertManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+}
+
+func TestLoadTypoManifest(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource('bar', 'bar.yaml')
+`)
+
+	_, _, _, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), matchMap("baz"))
+	if assert.Error(t, err) {
+		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
+	}
 }
 
 type fixture struct {
@@ -558,18 +577,16 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 	f.file(path, s)
 }
 
-func (f *fixture) load() {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
-	if err != nil {
-		f.t.Fatal(err)
+func matchMap(names ...string) map[string]bool {
+	m := make(map[string]bool, len(names))
+	for _, n := range names {
+		m[n] = true
 	}
-	f.manifests = manifests
-	f.yamlManifest = yamlManifest
-	f.configFiles = configFiles
+	return m
 }
 
-func (f *fixture) loadManifest(manifestName string) {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), map[string]bool{manifestName: true})
+func (f *fixture) load(names ...string) {
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}

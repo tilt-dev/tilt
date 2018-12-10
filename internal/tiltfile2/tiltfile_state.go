@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
@@ -238,6 +239,39 @@ func (s *tiltfileState) extractImage(dest *k8sResource, imageRef reference.Named
 		}
 	}
 	return nil
+}
+
+// If the user requested only a subset of manifests, filter those manifests out.
+func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manifest, error) {
+	if len(matching) == 0 {
+		return manifests, nil
+	}
+
+	var result []model.Manifest
+	matched := make(map[string]bool, len(matching))
+	var unmatchedNames []string
+	for _, m := range manifests {
+		if !matching[string(m.Name)] {
+			unmatchedNames = append(unmatchedNames, m.Name.String())
+			continue
+		}
+		result = append(result, m)
+		matched[string(m.Name)] = true
+	}
+
+	if len(matched) != len(matching) {
+		var missing []string
+		for k := range matching {
+			if !matched[k] {
+				missing = append(missing, k)
+			}
+		}
+
+		return nil, fmt.Errorf("Could not find resources: %s. Existing resources in Tiltfile: %s",
+			strings.Join(missing, ", "), strings.Join(unmatchedNames, ", "))
+	}
+
+	return result, nil
 }
 
 func (s *tiltfileState) translate(resources []*k8sResource) ([]model.Manifest, error) {
