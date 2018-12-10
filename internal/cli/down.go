@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
 
@@ -30,7 +29,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, _, _, err := tiltfile2.Load(ctx, tiltfile.FileName, nil)
+	manifests, _, _, err := tiltfile2.Load(ctx, tiltfile2.FileName, nil)
 	if err != nil {
 		return err
 	}

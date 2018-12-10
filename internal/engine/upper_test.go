@@ -19,7 +19,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 
 	"github.com/docker/distribution/reference"
@@ -1890,7 +1889,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
+	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile2.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
