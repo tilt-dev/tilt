@@ -25,9 +25,9 @@ In the oneup directory, run
 tilt up oneup
 ```
 
-Your terminal will turn into a status box that lets you watch your server come up.
-
-When it's ready, type `Enter` to see the oneup logs.
+Your terminal will turn into a status box that lets you watch your server come up. When it's ready,
+you will see the status icon turn green. The logs in the botton pane will display
+"Serving oneup on 8000."
 
 ![oneup server logs](_static/oneup.png)
 

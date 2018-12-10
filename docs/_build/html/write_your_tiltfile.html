@@ -176,73 +176,121 @@
             
   <div class="section" id="write-your-tiltfile">
 <span id="write-your-tiltfile"></span><h1>Write Your Tiltfile<a class="headerlink" href="#write-your-tiltfile" title="Permalink to this headline">¶</a></h1>
-<p>A Tiltfile can be broken down in to three things: Kubernetes YAML, Docker images and resources. In this doc we’ll step through all three concepts so you can learn to write your own Tiltfiles with gusto!</p>
+<p>A Tiltfile can be broken down in to three things: Kubernetes YAML, Docker images
+and resources.  In this doc we’ll step through all three concepts so you can
+learn to write your own Tiltfiles with gusto!</p>
 <p>To start here’s an illustrative example that uses most of the features of Tilt.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">## Part 1: Kubernetes YAML</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;k8s.yaml&quot;</span><span class="p">)</span>               <span class="c1"># one yaml file</span>
-<span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span> <span class="c1"># list of yaml files</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>  <span class="c1"># run kustomize to generate yaml</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s1">&#39;gen_k8s_yaml.py&#39;</span><span class="p">))</span> <span class="c1"># run a custom command to general yaml</span>
+
+<span class="c1"># one yaml file</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;k8s.yaml&quot;</span><span class="p">)</span>
+
+<span class="c1"># list of yaml files</span>
+<span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span>
+
+<span class="c1"># run kustomize to generate yaml</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>
+
+<span class="c1"># run a custom command to general yaml</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s1">&#39;gen_k8s_yaml.py&#39;</span><span class="p">))</span>
 
 <span class="c1">## Part 2: Images</span>
-<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/frontend&quot;</span><span class="p">,</span> <span class="s2">&quot;frontend&quot;</span><span class="p">)</span> <span class="c1"># docker build &lt;path&gt;</span>
-<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend&quot;</span><span class="p">,</span> <span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">dockerfile</span><span class="o">=</span><span class="s2">&quot;backend/Dockerfile.dev&quot;</span><span class="p">)</span> <span class="c1"># docker build with specific Dockerfile</span>
-<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/graphql&quot;</span><span class="p">,</span> <span class="s2">&quot;graphql&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">}</span> <span class="c1"># docker build with build args</span>
+
+<span class="c1"># docker build ./frontend</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/frontend&quot;</span><span class="p">,</span> <span class="s2">&quot;frontend&quot;</span><span class="p">)</span>
+
+<span class="c1"># docker build with specific Dockerfile</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend&quot;</span><span class="p">,</span> <span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">dockerfile</span><span class="o">=</span><span class="s2">&quot;backend/Dockerfile.dev&quot;</span><span class="p">)</span>
+
+<span class="c1"># docker build with build args</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/graphql&quot;</span><span class="p">,</span> <span class="s2">&quot;graphql&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">})</span>
 
 <span class="c1">## Part 3: Resources</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span> <span class="c1"># give a resource a name that&#39;s different than the base name of the image</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;frontend&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> <span class="c1"># connect to a specific local port</span>
+
+<span class="c1"># give a resource a name that&#39;s different than the base name of the image</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
+
+<span class="c1"># connect to a specific local port</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;frontend&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
 </pre></div>
 </div>
 <p>Let’s dig in to each of these sections in detail.</p>
 <div class="section" id="part-1-kubernetes-yaml">
 <span id="part-1-kubernetes-yaml"></span><h2>Part 1: Kubernetes YAML<a class="headerlink" href="#part-1-kubernetes-yaml" title="Permalink to this headline">¶</a></h2>
 <p>Start by telling Tilt about your Kubernetes YAML:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;k8s.yaml&quot;</span><span class="p">)</span>               <span class="c1"># one yaml file</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># one yaml file</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;k8s.yaml&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Now Tilt will deploy any Kubernetes objects defined in the YAML. A <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> function call is all you need to have a functioning Tiltfile.</p>
-<p>Sometimes you organize your YAML in to multiple files or generate it via a script. Tilt supports those cases too:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span> <span class="c1"># list of yaml files</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>  <span class="c1"># run kustomize to generate yaml</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s1">&#39;gen_k8s_yaml.py&#39;</span><span class="p">))</span> <span class="c1"># run a custom command to general yaml</span>
+<p>Now Tilt will deploy any Kubernetes objects defined in the YAML. A <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code>
+function call is all you need to have a functioning Tiltfile.</p>
+<p>Sometimes you organize your YAML in to multiple files or generate it via a
+script. Tilt supports those cases too:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># list of yaml files</span>
+<span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span>
+
+<span class="c1"># run kustomize to generate yaml</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>
+
+<span class="c1"># run a custom command to general yaml</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s1">&#39;gen_k8s_yaml.py&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="part-2-images">
 <span id="part-2-images"></span><h2>Part 2: Images<a class="headerlink" href="#part-2-images" title="Permalink to this headline">¶</a></h2>
-<p>Next tell Tilt about all your Dockerfiles but to get the most out of Tilt you need to tell it about your Dockerfiles. You tell Tilt to build a Dockerfile like so:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/frontend&quot;</span><span class="p">,</span> <span class="s2">&quot;frontend&quot;</span><span class="p">)</span> <span class="c1"># docker build ./frontend</span>
+<p>Next tell Tilt about all your Dockerfiles but to get the most out of Tilt you
+need to tell it about your Dockerfiles. You tell Tilt to build a Dockerfile like
+so:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># docker build ./frontend</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/frontend&quot;</span><span class="p">,</span> <span class="s2">&quot;frontend&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Tilt extracts the Kubernetes objects that reference this image in to a new “Resource”, discussed below.</p>
+<p>Tilt extracts the Kubernetes objects that reference this image in to a new
+“Resource”, discussed below.</p>
 <div class="section" id="options-to-docker-build">
 <span id="options-to-docker-build"></span><h3>Options to Docker build<a class="headerlink" href="#options-to-docker-build" title="Permalink to this headline">¶</a></h3>
-<p>You can also specify advanced configuration options, such as custom Dockerfile paths or build arguments:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend&quot;</span><span class="p">,</span> <span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">dockerfile</span><span class="o">=</span><span class="s2">&quot;backend/Dockerfile.dev&quot;</span><span class="p">)</span> <span class="c1"># docker build with specific Dockerfile</span>
-<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend&quot;</span><span class="p">,</span> <span class="s2">&quot;graphql&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">}</span> <span class="c1"># docker build with build args</span>
+<p>You can also specify advanced configuration options, such as custom Dockerfile
+paths or build arguments:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># docker build ./frontend</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/frontend&quot;</span><span class="p">,</span> <span class="s2">&quot;frontend&quot;</span><span class="p">)</span>
+
+<span class="c1"># docker build with specific Dockerfile</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend&quot;</span><span class="p">,</span> <span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">dockerfile</span><span class="o">=</span><span class="s2">&quot;backend/Dockerfile.dev&quot;</span><span class="p">)</span>
+
+<span class="c1"># docker build with build args</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/graphql&quot;</span><span class="p">,</span> <span class="s2">&quot;graphql&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">})</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="section" id="part-3-resources">
 <span id="part-3-resources"></span><h2>Part 3: Resources<a class="headerlink" href="#part-3-resources" title="Permalink to this headline">¶</a></h2>
-<p>Tilt automatically defines Tilt Resources. Tilt Resources represent logical groupings of images and Kubernetes YAML. Tilt by default takes the last path segment in your image name and uses that as the name of the resource. So for example:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span> <span class="c1"># name: server</span>
+<p>Tilt automatically defines Tilt Resources. Tilt Resources represent logical
+groupings of images and Kubernetes YAML.  Tilt by default takes the last path
+segment in your image name and uses that as the name of the resource. So for
+example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># name: server</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If you want to modify Tilt Resources you can make them explicit.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span> <span class="c1"># by default, resources are named after the basename of the image (here, `server`). This gives it a different name (`backend`)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># by default, resources are named after the basename of the image (here, `server`).</span>
+<span class="c1"># This gives it a different name (`backend`)</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>You can also add a Kubernetes port forward to this resource.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> <span class="c1"># connect to a specific local port</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># connect to a specific local port</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
 </pre></div>
 </div>
 </div>
 <div class="section" id="next-steps">
 <span id="next-steps"></span><h2>Next steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
-<p>That’s it! We just covered everything you need to know to get your microservices running locally using Tilt. To see everything you can do with Tilt check out the <a class="reference external" href="api.html">Tiltfile API reference</a>.</p>
+<p>That’s it! We just covered everything you need to know to get your microservices
+running locally using Tilt.  To see everything you can do with Tilt check out
+the <a class="reference external" href="api.html">Tiltfile API reference</a>.</p>
 </div>
 </div>
 
