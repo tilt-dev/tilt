@@ -13,6 +13,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
+const FileName = "Tiltfile"
+
 func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true

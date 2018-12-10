@@ -18,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/api/core/v1"
@@ -171,7 +170,7 @@ func (s Script) Run(ctx context.Context) error {
 			return ctx.Err()
 		}
 
-		tfPath := filepath.Join(dir, tiltfile.FileName)
+		tfPath := filepath.Join(dir, tiltfile2.FileName)
 		manifests, _, _, err := tiltfile2.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err

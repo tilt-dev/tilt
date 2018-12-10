@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
 
@@ -44,7 +43,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		for _, m := range initManifests {
 			matching[string(m)] = true
 		}
-		manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
+		manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile2.FileName, matching)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
