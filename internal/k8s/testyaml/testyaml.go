@@ -550,6 +550,7 @@ spec:
 status: {}
 `
 
+const SecretName = "mysecret"
 const SecretYaml = `
 apiVersion: v1
 kind: Secret

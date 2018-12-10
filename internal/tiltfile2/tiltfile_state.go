@@ -90,14 +90,10 @@ func (s *tiltfileState) builtins() skylark.StringDict {
 	return r
 }
 
-const unresourcedName = "k8s_yaml"
-
-func (s *tiltfileState) assemble() ([]*k8sResource, error) {
-	hadUnresourced := len(s.k8sUnresourced) > 0
-
+func (s *tiltfileState) assemble() ([]*k8sResource, []k8s.K8sEntity, error) {
 	images, err := s.findUnresourcedImages()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, image := range images {
 		if _, ok := s.imagesByName[image.Name()]; !ok {
@@ -106,35 +102,27 @@ func (s *tiltfileState) assemble() ([]*k8sResource, error) {
 		}
 		target, err := s.findExpandTarget(image)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := s.extractImage(target, image); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-	}
-
-	if hadUnresourced {
-		r, err := s.makeK8sResource(unresourcedName)
-		if err != nil {
-			return nil, err
-		}
-		r.k8s = s.k8sUnresourced
 	}
 
 	assembledImages := map[string]bool{}
 	for _, r := range s.k8s {
 		if err := s.validateK8s(r, assembledImages); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	for k, _ := range s.imagesByName {
 		if !assembledImages[k] {
-			return nil, fmt.Errorf("image %v is not used in any resource", k)
+			return nil, nil, fmt.Errorf("image %v is not used in any resource", k)
 		}
 	}
 
-	return s.k8s, nil
+	return s.k8s, s.k8sUnresourced, nil
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
@@ -160,7 +148,7 @@ func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]b
 		}
 	}
 
-	if len(r.k8s) == 0 && r.name != unresourcedName {
+	if len(r.k8s) == 0 {
 		if r.imageRef == "" {
 			return fmt.Errorf("resource %q: no matching resource", r.name)
 		}

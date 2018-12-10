@@ -84,7 +84,7 @@ func (m Manifest) validate() *ValidateErr {
 	}
 
 	if m.dockerRef == nil {
-		return nil
+		return validateErrf("[validate] manifest %q missing image ref", m.Name)
 	}
 
 	if m.K8sYAML() == "" {
