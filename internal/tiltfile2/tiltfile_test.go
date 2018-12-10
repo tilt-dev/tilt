@@ -369,8 +369,29 @@ docker_build('gcr.io/d', 'd')
 	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
-	f.assertManifest("k8s_yaml")
+	f.assertNoYAMLManifest("")
 	f.assertConfigFiles("Tiltfile", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
+}
+
+func TestExpandUnresourced(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+	f.dockerfile("a/Dockerfile")
+
+	f.yaml("all.yaml",
+		deployment("a", image("gcr.io/a")),
+		secret("a-secret"),
+	)
+
+	f.gitInit("")
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+docker_build('gcr.io/a', 'a')
+`)
+
+	f.load()
+	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertYAMLManifest("a-secret")
 }
 
 func TestExpandExplicit(t *testing.T) {
@@ -468,8 +489,9 @@ type fixture struct {
 	tmp *tempdir.TempDirFixture
 
 	// created by load
-	manifests   []model.Manifest
-	configFiles []string
+	manifests    []model.Manifest
+	yamlManifest model.YAMLManifest
+	configFiles  []string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -514,6 +536,15 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 			}
 
 			entityObjs = append(entityObjs, objs...)
+		case secretHelper:
+			s := testyaml.SecretYaml
+			s = strings.Replace(s, testyaml.SecretName, e.name, -1)
+			objs, err := k8s.ParseYAMLFromString(s)
+			if err != nil {
+				f.t.Fatal(err)
+			}
+
+			entityObjs = append(entityObjs, objs...)
 		default:
 			f.t.Fatalf("unexpected entity %T %v", e, e)
 		}
@@ -528,20 +559,22 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 }
 
 func (f *fixture) load() {
-	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
 	f.manifests = manifests
+	f.yamlManifest = yamlManifest
 	f.configFiles = configFiles
 }
 
 func (f *fixture) loadManifest(manifestName string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), map[string]bool{manifestName: true})
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), map[string]bool{manifestName: true})
 	if err != nil {
 		f.t.Fatal(err)
 	}
 	f.manifests = manifests
+	f.yamlManifest = yamlManifest
 	f.configFiles = configFiles
 }
 
@@ -564,6 +597,23 @@ func (f *fixture) gitInit(path string) {
 	if err := os.Mkdir(f.tmp.JoinPath(".git"), os.FileMode(0777)); err != nil {
 		f.t.Fatal(err)
 	}
+}
+
+func (f *fixture) assertNoYAMLManifest(name string) {
+	assert.Equal(f.t, model.YAMLManifest{}, f.yamlManifest)
+}
+
+func (f *fixture) assertYAMLManifest(resNames ...string) {
+	assert.Equal(f.t, unresourcedName, f.yamlManifest.ManifestName().String())
+
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sYAML()))
+	assert.NoError(f.t, err)
+
+	entityNames := make([]string, len(entities))
+	for i, e := range entities {
+		entityNames[i] = e.Name()
+	}
+	assert.Equal(f.t, resNames, entityNames)
 }
 
 // assert functions and helpers
@@ -675,6 +725,14 @@ func (f *fixture) k8sName(e k8s.K8sEntity) string {
 		return ""
 	}
 	return name.String()
+}
+
+type secretHelper struct {
+	name string
+}
+
+func secret(name string) secretHelper {
+	return secretHelper{name: name}
 }
 
 type deployHelper struct {
