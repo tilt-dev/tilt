@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 const testDataDir = "testdata"

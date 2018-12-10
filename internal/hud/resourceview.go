@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 )

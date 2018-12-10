@@ -10,7 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 var clockForTest = func() time.Time { return time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC) }

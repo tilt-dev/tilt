@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gdamore/tcell"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tcell"
 )
 
 func TestFlexLayoutOverflow(t *testing.T) {

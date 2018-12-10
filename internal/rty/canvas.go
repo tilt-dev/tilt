@@ -3,7 +3,7 @@ package rty
 import (
 	"fmt"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 // Canvases hold content.
