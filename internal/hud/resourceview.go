@@ -246,9 +246,9 @@ func (v *ResourceView) resourceExpandedK8sError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 	if isCrashing(v.res) {
-		podLog := v.res.PodLog
+		podLog := v.res.CrashLog
 		if podLog == "" {
-			podLog = v.res.CrashLog
+			podLog = v.res.PodLog
 		}
 		abbrevLog := abbreviateLog(podLog)
 		for _, logLine := range abbrevLog {

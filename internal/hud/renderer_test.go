@@ -414,6 +414,85 @@ func TestPodLogContainerUpdate(t *testing.T) {
 	rtf.run("pod log for container update", 70, 20, v, vs)
 }
 
+func TestCrashingPodInlineCrashLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Error",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Something's maybe wrong idk",
+				CrashLog:            "Definitely borken",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+				LastBuildReason:     model.BuildReasonFlagCrash,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("crashing pod displays crash log inline if present", 70, 20, v, vs)
+}
+
+func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Error",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Something's maybe wrong idk",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+				LastBuildReason:     model.BuildReasonFlagCrash,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("crashing pod displays pod log inline if no crash log if present", 70, 20, v, vs)
+}
+
+func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Running",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Something's maybe wrong idk",
+				CrashLog:            "Definitely borken",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("non-crashing pod displays no logs inline even if crash log if present", 70, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	t *testing.T
 	i rty.InteractiveTester
