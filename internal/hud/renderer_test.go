@@ -134,6 +134,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	}
 	rtf.run("all the data at once", 70, 20, v, plainVs)
 	rtf.run("all the data at once 50w", 50, 20, v, plainVs)
+	rtf.run("all the data at once 10w", 10, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
