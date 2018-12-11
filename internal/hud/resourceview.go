@@ -129,10 +129,21 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 
 	rhs := rty.NewConcatLayout(rty.DirVert)
 	rhs.Add(v.resourceExpandedK8s())
+	rhs.Add(v.resourceExpandedEndpoints())
 	rhs.Add(v.resourceExpandedHistory())
 	rhs.Add(v.resourceExpandedError())
 	l.AddDynamic(rhs)
 	return l
+}
+
+func (v *ResourceView) endpointsNeedSecondLine() bool {
+	if len(v.res.Endpoints) > 1 {
+		return true
+	}
+	if len(v.res.Endpoints) == 1 && v.res.PodRestarts > 0 {
+		return true
+	}
+	return false
 }
 
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
@@ -144,16 +155,20 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	l.Add(v.resourceTextPodName())
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
+	l.Add(rty.TextString(" "))
 
 	if v.res.PodRestarts > 0 {
 		l.Add(v.resourceTextPodRestarts())
 		l.Add(middotText())
 	}
 
-	for _, endpoint := range v.res.Endpoints {
-		l.Add(rty.TextString(endpoint))
-		l.Add(middotText())
+	if len(v.res.Endpoints) > 0 && !v.endpointsNeedSecondLine() {
+		for _, endpoint := range v.res.Endpoints {
+			l.Add(rty.TextString(endpoint))
+			l.Add(middotText())
+		}
 	}
+
 	l.Add(v.resourceTextAge())
 	return rty.OneLine(l)
 }
@@ -183,6 +198,30 @@ func (v *ResourceView) resourceTextAge() rty.Component {
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
 		Add(sb.Build())
+}
+
+func (v *ResourceView) resourceExpandedEndpoints() rty.Component {
+	if !v.endpointsNeedSecondLine() {
+		return rty.NewConcatLayout(rty.DirVert)
+	}
+
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(v.resourceTextURL())
+
+	for i, endpoint := range v.res.Endpoints {
+		if i != 0 {
+			l.Add(middotText())
+		}
+		l.Add(rty.TextString(endpoint))
+	}
+
+	return l
+}
+
+func (v *ResourceView) resourceTextURL() rty.Component {
+	sb := rty.NewStringBuilder()
+	sb.Fg(cLightText).Text("URL: ")
+	return sb.Build()
 }
 
 func (v *ResourceView) resourceExpandedHistory() rty.Component {
