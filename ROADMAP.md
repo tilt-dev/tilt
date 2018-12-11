@@ -1,13 +1,11 @@
 # Roadmap
 
-Welcome to the future!
+✨ Welcome to the future! ✨
 
 This page is for features that the Tilt team has plans to implement.
 
-Less "Wouldn't that be cool?" or "Bugs we should fix."
-
-More "Yes! We should implement this thing! And we've knocked around a few
-implementation ideas."
+(These features are less "Wouldn't that be cool?" or "Bugs we should fix", and more "Yes! We should 
+implement this thing! And we've knocked around a few implementation ideas.")
 
 Ideas are categorized by
 - how much value we think they would add (P1 highest value, P3 lowest value)
@@ -15,9 +13,9 @@ Ideas are categorized by
 
 ## Windows Support (P3, C3)
 
-Tilt has OS-specific dependencies on a terminal library (tcell) and a
-filesystem-watching library (fsnotify). In theory, these libraries support all
-major operating systems. In practice, we've spent a signficant amount of time
+Tilt has OS-specific dependencies on a terminal library (`tcell`) and a
+filesystem-watching library (`fsnotify`). In theory, these libraries support all
+major operating systems. In practice, we've spent a significant amount of time
 dealing with OS-specific bugs.
 
 Currently Tilt doesn't even compile on Windows. We need to fix the compilation
@@ -45,19 +43,19 @@ Open questions:
 
 ## Docker-Compose Support (P1, C1-2)
 
-docker-compose.yml is, by far, the most popular format for describing
+`docker-compose.yml` is, by far, the most popular format for describing
 sets of microservices for running locally. Kubernetes YAML is nice, but much more verbose.
 Tilt should support docker-compose.yml for configuring services.
 
-The big implementation question is how this should interact with Kubernetes.  We've
+The big implementation question is how this should interact with Kubernetes. We've
 experimented with docker-compose -> Kubernetes conversion tools (e.g.,
-[kompose](https://github.com/kubernetes/kompose). They fidelity is a mixed
+[kompose](https://github.com/kubernetes/kompose) -- its fidelity is a mixed
 bag. [Compose on
 Kubernetes](https://blog.docker.com/2018/12/simplifying-kubernetes-with-docker-compose-and-friends/)
-looks promising but we haven't tried it yet.
+looks promising but we haven't tried it yet).
 
 We've partially implemented a system that uses the docker-compose CLI
-directly. Unfortunately, it needs separte code-paths for monitoring the
+directly. Unfortunately, it needs separate code-paths for monitoring the
 docker-compose services. It isn't production-ready quite yet.
 
 Open questions:
@@ -92,8 +90,8 @@ web pane, and serve that.
 
 Tilt can make builds much faster by reusing containers and artifacts from previous builds.
 
-The syntax is different than the normal Dockerfile syntax. But you can convert a Dockerfile
-to a fast Tilt build! The process is fairly mechanical. Could we automate it?
+The syntax is different than the normal Dockerfile syntax, but you can easily convert a
+Dockerfile to a fast Tilt build! The process is fairly mechanical. Could we automate it?
 
 Open questions:
 - Will users want to see and tweak the auto-generated fast build?
@@ -119,8 +117,9 @@ Tilt surfaces build errors, crashes, and deploy logs in one pane,
 so you can get a complete view of your server status. How could Tilt include application-specific
 error states, like HTTP 500 status codes, or severe logs?
 
-There's a lot of prior art in this space, including both log-based aggregators (see honeytail)
-and network-based aggregators (see linkerd2).
+There's a lot of prior art in this space, including both log-based aggregators (see
+[honeytail](https://github.com/honeycombio/honeytail)) and network-based aggregators
+(see [linkerd2](https://github.com/linkerd/linkerd2)).
 
 Open questions:
 - Are there common standards for this kind of error surfacing in development? How can we contribute
