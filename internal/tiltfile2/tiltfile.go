@@ -45,17 +45,15 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 	if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	}
-	manifests, err = s.translate(assembled)
 
-	if len(matching) > 0 {
-		var result []model.Manifest
-		for _, m := range manifests {
-			if !matching[string(m.Name)] {
-				continue
-			}
-			result = append(result, m)
-		}
-		manifests = result
+	manifests, err = s.translate(assembled)
+	if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
+	}
+
+	manifests, err = match(manifests, matching)
+	if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
 	}
 
 	yamlManifest := model.YAMLManifest{}
