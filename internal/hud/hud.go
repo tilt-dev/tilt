@@ -194,9 +194,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			} else {
 				_, isLogModal := am.(logModal)
 				if isLogModal {
-					if am != nil {
-						am.Close(&h.currentViewState)
-					}
+					am.Close(&h.currentViewState)
 				}
 			}
 		case tcell.KeyRight:
