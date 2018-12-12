@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type gitRepo struct {
@@ -113,7 +114,18 @@ func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, e
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
 	case skylark.String:
-		return localPath{path: s.absPath(string(v))}, nil
+		lp := localPath{path: s.absPath(string(v))}
+
+		// If this is the root of a git repo, automatically turn this into a gitRepo
+		// so that we don't end up tracking .git changes
+		if ospath.IsDir(filepath.Join(lp.path, ".git")) {
+			repo, err := s.newGitRepo(lp.path)
+			if err == nil {
+				return repo.makeLocalPath("."), nil
+			}
+		}
+
+		return lp, nil
 	default:
 		return localPath{}, fmt.Errorf("Expected local path. Actual type: %T", v)
 	}
