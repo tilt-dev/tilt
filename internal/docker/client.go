@@ -26,7 +26,10 @@ import (
 // https://docs.docker.com/develop/sdk/#api-version-matrix
 // API version 1.30 is the first version where the full digest
 // shows up in the API output of BuildImage
-const minDockerVersion = "1.30"
+var minDockerVersion = semver.MustParse("1.30.0")
+
+var minDockerVersionStableBuildkit = semver.MustParse("1.39.0")
+var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 
 // Create an interface so this can be mocked out.
 type DockerClient interface {
@@ -65,6 +68,7 @@ var _ DockerClient = &DockerCli{}
 
 type DockerCli struct {
 	*client.Client
+	supportsBuildkit bool
 }
 
 func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
@@ -86,7 +90,40 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "newDockerClient")
 	}
-	return &DockerCli{d}, nil
+
+	serverVersion, err := d.ServerVersion(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "newDockerClient")
+	}
+
+	return &DockerCli{
+		Client:           d,
+		supportsBuildkit: SupportsBuildkit(serverVersion),
+	}, nil
+}
+
+// Sadly, certain versions of docker return an error if the client requests
+// buildkit. We have to infer whether it supports buildkit from version numbers.
+//
+// Inferred from release notes
+// https://docs.docker.com/engine/release-notes/
+func SupportsBuildkit(v types.Version) bool {
+	version, err := semver.ParseTolerant(v.APIVersion)
+	if err != nil {
+		// If the server version doesn't parse, we want to still start up.
+		// Just disable buildkit
+		return false
+	}
+
+	if minDockerVersionStableBuildkit.LTE(version) {
+		return true
+	}
+
+	if minDockerVersionExperimentalBuildkit.LTE(version) && v.Experimental {
+		return true
+	}
+
+	return false
 }
 
 // Adapted from client.FromEnv
@@ -121,19 +158,14 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 		result = append(result, client.WithHost(host))
 	}
 
-	minVersion, err := semver.ParseTolerant(minDockerVersion)
-	if err != nil {
-		return nil, fmt.Errorf("Minimum docker version is invalid: %s", minDockerVersion)
-	}
-
-	versionToSet := minVersion
+	versionToSet := minDockerVersion
 	if version := env("DOCKER_API_VERSION"); version != "" {
 		reqVersion, err := semver.ParseTolerant(version)
 		if err != nil {
 			return nil, fmt.Errorf("Could not parse DOCKER_API_VERSION: %s", version)
 		}
 
-		if minVersion.LT(reqVersion) {
+		if minDockerVersion.LT(reqVersion) {
 			versionToSet = reqVersion
 		}
 	}
@@ -141,6 +173,14 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 	result = append(result, client.WithVersion(versionToSet.String()))
 
 	return result, nil
+}
+
+func (d *DockerCli) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+	requestedBuildkit := options.Version == types.BuilderBuildKit
+	if requestedBuildkit && !d.supportsBuildkit {
+		options.Version = types.BuilderV1
+	}
+	return d.Client.ImageBuild(ctx, buildContext, options)
 }
 
 func (d *DockerCli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
