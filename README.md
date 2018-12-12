@@ -8,6 +8,8 @@ Local Kubernetes development with no stress.
 Tilt helps you develop your microservices locally
 without slowing you down or making you play Twenty Questions with `kubectl`.
 
+Questions? Comments? Just want to say hi? Find us on the Kubernetes slack in [**#tilt**](https://kubernetes.slack.com/messages/CESBL84MV/).
+
 ## Overview
 
 Run `tilt up` to start working on your services in a complete dev environment
@@ -17,10 +19,10 @@ Tilt watches what you're working on so that it can bring your environment
 up-to-date in real-time.
 
 The screencast below demonstrates what a typical Tilt session looks like:
-starting two servers, making changes to them, and seeing any new errors
+starting multiple microservices, making changes to them, and seeing any new errors
 or logs right in your terminal.
 
-[![asciicast](https://asciinema.org/a/216237.png)](https://asciinema.org/a/216237)
+[![screencast](resources/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
 
 ## Install Tilt
 
