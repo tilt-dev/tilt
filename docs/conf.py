@@ -110,6 +110,14 @@ html_favicon = '_static/favicon.ico'
 html_logo = '_static/logo.png'
 html_show_sourcelink = False
 
+html_context = {
+    "display_github": True,
+    "github_user": "windmilleng",
+    "github_repo": "tilt",
+    "github_version": "master",
+    "conf_py_path": "/docs/",
+}
+
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.

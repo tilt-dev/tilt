@@ -42,18 +42,28 @@ Configure Tilt with a `Tiltfile`, written in a small subset of Python called
 To get started, check out some [examples](first_example.html) or dive into the
 [API reference](api.html).
 
-## Next Steps
-
 ```eval_rst
+
 .. toctree::
    :maxdepth: 1
+   :caption: Getting Started
 
    install
    first_example
    first_config
    write_your_tiltfile
+   
+.. toctree::
+   :maxdepth: 1
+   :caption: Configs From Other Tools
+
    upgrade_skaffold
    upgrade_docker_compose
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Advanced Configs
+
    fast_build
    api
 ```
