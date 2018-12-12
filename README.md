@@ -22,7 +22,7 @@ The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
 or logs right in your terminal.
 
-[![screencast](resources/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
+[![screencast](docs/_static/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
 
 ## Install Tilt
 
