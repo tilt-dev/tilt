@@ -15,9 +15,8 @@ import (
 )
 
 type gitRepo struct {
-	basePath             string
-	gitignoreContents    string
-	dockerignoreContents string
+	basePath          string
+	gitignoreContents string
 }
 
 func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
@@ -36,12 +35,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 		return nil, err
 	}
 
-	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	return &gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}, nil
+	return &gitRepo{absPath, string(gitignoreContents)}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -67,7 +61,7 @@ func (gr *gitRepo) Type() string {
 func (gr *gitRepo) Freeze() {}
 
 func (gr *gitRepo) Truth() skylark.Bool {
-	return gr.basePath != "" || gr.gitignoreContents != "" || gr.dockerignoreContents != ""
+	return gr.basePath != "" || gr.gitignoreContents != ""
 }
 
 func (*gitRepo) Hash() (uint32, error) {

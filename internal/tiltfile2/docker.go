@@ -2,12 +2,15 @@ package tiltfile2
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
 
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type dockerImage struct {
@@ -317,9 +320,8 @@ func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGithubRep
 
 		repoSet[repo.basePath] = true
 		result = append(result, model.LocalGithubRepo{
-			LocalPath:            repo.basePath,
-			DockerignoreContents: repo.dockerignoreContents,
-			GitignoreContents:    repo.gitignoreContents,
+			LocalPath:         repo.basePath,
+			GitignoreContents: repo.gitignoreContents,
 		})
 	}
 
@@ -329,6 +331,44 @@ func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGithubRep
 	maybeAddRepo(image.baseDockerfilePath)
 	maybeAddRepo(image.staticDockerfilePath)
 	maybeAddRepo(image.staticBuildPath)
+
+	return result
+}
+
+func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Dockerignore {
+	var result []model.Dockerignore
+	dupeSet := map[string]bool{}
+
+	maybeAddDockerignore := func(path string) {
+		if path == "" || dupeSet[path] {
+			return
+		}
+		dupeSet[path] = true
+
+		if !ospath.IsDir(path) {
+			return
+		}
+
+		contents, err := ioutil.ReadFile(filepath.Join(path, ".dockerignore"))
+		if err != nil {
+			return
+		}
+
+		result = append(result, model.Dockerignore{
+			LocalPath: path,
+			Contents:  string(contents),
+		})
+	}
+
+	for _, m := range image.mounts {
+		maybeAddDockerignore(m.src.path)
+
+		repo := m.src.repo
+		if repo != nil {
+			maybeAddDockerignore(repo.basePath)
+		}
+	}
+	maybeAddDockerignore(image.staticBuildPath.path)
 
 	return result
 }
