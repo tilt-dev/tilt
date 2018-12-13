@@ -226,7 +226,7 @@ This is setting up the build environment before we add any code.
 We build on top of the image in <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>. Our new
 image has the name in <code class="docutils literal notranslate"><span class="pre">dm1_img_name</span></code> and has an entrypoint <code class="docutils literal notranslate"><span class="pre">/go/bin/demoserver1</span></code>.</p>
 <p>Here’s what’s in <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">golang</span><span class="p">:</span><span class="mf">1.10</span>
+<div class="highlight-dockerfile notranslate"><div class="highlight"><pre><span></span><span class="k">FROM</span><span class="s"> golang:1.10</span>
 </pre></div>
 </div>
 <p>It’s only one line! This line says we’re starting in a golang:1.10 container.</p>
