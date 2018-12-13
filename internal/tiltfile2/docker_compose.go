@@ -2,6 +2,7 @@ package tiltfile2
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -14,28 +15,25 @@ type dcResource struct {
 	services []dockercompose.Service
 }
 
+func (dc dcResource) Empty() bool { return reflect.DeepEqual(dc, dcResource{}) }
+
 func (s *tiltfileState) dockerCompose(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var path skylark.String
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	var yamlPath string
+	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "yamlPath", &yamlPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// ~~ i still don't understand why path.String() returns it quoted / if there's a more idiomatic way
-	yamlPath, ok := skylark.AsString(path)
-	if !ok {
-		return nil, fmt.Errorf("couldn't AsString skylark.String: %v", path)
-	}
-
-	// TODO: support more than one docker-compose.yaml file
 	services, _, err := dockercompose.ParseConfig(s.ctx, []string{yamlPath})
 	if err != nil {
 		return nil, err
 	}
 
-	dc := dcResource{yamlPath: yamlPath, services: services}
+	if !s.dc.Empty() {
+		return skylark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.yamlPath, yamlPath)
+	}
 
-	s.dc = append(s.dc, dc)
+	s.dc = dcResource{yamlPath: yamlPath, services: services}
 
 	return skylark.None, nil
 }

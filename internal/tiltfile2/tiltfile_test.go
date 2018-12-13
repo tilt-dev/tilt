@@ -502,7 +502,7 @@ k8s_resource('bar', 'bar.yaml')
 	}
 }
 
-func TestDockerCompose(t *testing.T) {
+func TestDockerComposeResourceCreation(t *testing.T) {
 	// TODO(maia)
 }
 
