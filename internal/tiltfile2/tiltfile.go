@@ -41,14 +41,22 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 		}
 		return nil, model.YAMLManifest{}, nil, err
 	}
-	assembled, unresourced, err := s.assemble()
+
+	resources, unresourced, err := s.assemble()
 	if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	}
 
-	manifests, err = s.translate(assembled)
-	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+	if len(resources.k8s) > 0 {
+		manifests, err = s.translateK8s(resources.k8s)
+		if err != nil {
+			return nil, model.YAMLManifest{}, nil, err
+		}
+	} else {
+		manifests, err = s.translateDC(resources.dc)
+		if err != nil {
+			return nil, model.YAMLManifest{}, nil, err
+		}
 	}
 
 	manifests, err = match(manifests, matching)
