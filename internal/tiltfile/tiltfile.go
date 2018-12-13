@@ -272,7 +272,7 @@ func (t *Tiltfile) makeSkylarkDcManifest(thread *skylark.Thread, fn *skylark.Bui
 	}
 
 	// TODO: support more than one docker-compose.yaml file
-	services, _, err := dockercompose.ParseConfig(ctx, []string{yamlPath})
+	services, err := dockercompose.ParseConfig(ctx, yamlPath)
 	if err != nil {
 		return nil, err
 	}

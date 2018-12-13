@@ -330,7 +330,7 @@ func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 	for _, svc := range dc.services {
 		result = append(result, model.Manifest{
 			Name:       model.ManifestName(svc.Name),
-			DcYAMLPath: dc.yamlPath,
+			DcYAMLPath: dc.configPath,
 		})
 	}
 
