@@ -47,7 +47,6 @@ func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img referen
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
 	if manifest.IsDockerCompose() {
@@ -58,6 +57,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 		return store.BuildResult{}, WrapRedirectToNextBuilder(err)
 	}
 
+	span.SetTag("manifest", manifest.Name.String())
 	return sbd.updateViaSynclet(ctx, manifest, state)
 }
 
@@ -153,8 +153,10 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 
 func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
-	span.SetTag("image", result.Image.String())
 	defer span.Finish()
+	if result.Image != nil {
+		span.SetTag("image", result.Image.String())
+	}
 
 	// TODO(nick): Warming and forgetting synclet connections should be in its own subscriber.
 	if previousResult.HasImage() && (!result.HasImage() || result.Image != previousResult.Image) {

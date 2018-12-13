@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gdamore/tcell"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tcell"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/store"
@@ -110,7 +110,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	escape := func() bool {
+	escape := func() (hudDone bool) {
 		am := h.activeModal()
 		if am != nil {
 			am.Close(&h.currentViewState)
@@ -150,7 +150,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				am := h.activeModal()
 				_, isLogModal := am.(logModal)
 				if !isLogModal {
-					// Close any existing log modal
+					// Close any existing non-log modal
 					if am != nil {
 						am.Close(&h.currentViewState)
 					}
@@ -179,8 +179,9 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			for i := 0; i < pgUpDownCount; i++ {
 				h.activeScroller().Down()
 			}
-		case tcell.KeyEnter:
-			if h.activeModal() == nil {
+		case tcell.KeyEnter: // toggle log modal for selected resource
+			am := h.activeModal()
+			if am == nil {
 				selectedIdx, r := h.selectedResource()
 
 				if r.IsYAMLManifest {
@@ -190,6 +191,11 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 
 				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
 				h.activeModal().Bottom()
+			} else {
+				_, isLogModal := am.(logModal)
+				if isLogModal {
+					am.Close(&h.currentViewState)
+				}
 			}
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()

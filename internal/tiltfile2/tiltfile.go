@@ -9,9 +9,13 @@ import (
 	"github.com/google/skylark/resolve"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
+
+const FileName = "Tiltfile"
+const unresourcedName = "k8s_yaml"
 
 func init() {
 	resolve.AllowLambda = true
@@ -37,23 +41,32 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 		}
 		return nil, model.YAMLManifest{}, nil, err
 	}
-	assembled, err := s.assemble()
+	assembled, unresourced, err := s.assemble()
 	if err != nil {
 		return nil, model.YAMLManifest{}, nil, err
 	}
-	manifests, err = s.translate(assembled)
 
-	if len(matching) > 0 {
-		var result []model.Manifest
-		for _, m := range manifests {
-			if !matching[string(m.Name)] {
-				continue
-			}
-			result = append(result, m)
-		}
-		manifests = result
+	manifests, err = s.translate(assembled)
+	if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
 	}
-	return manifests, model.YAMLManifest{}, s.configFiles, err
+
+	manifests, err = match(manifests, matching)
+	if err != nil {
+		return nil, model.YAMLManifest{}, nil, err
+	}
+
+	yamlManifest := model.YAMLManifest{}
+	if len(unresourced) > 0 {
+		yaml, err := k8s.SerializeYAML(unresourced)
+		if err != nil {
+			return nil, model.YAMLManifest{}, nil, err
+		}
+
+		yamlManifest = model.NewYAMLManifest(unresourcedName, yaml, nil)
+	}
+
+	return manifests, yamlManifest, s.configFiles, err
 }
 
 func skylarkStringDictToGoMap(d *skylark.Dict) (map[string]string, error) {

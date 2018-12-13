@@ -440,7 +440,6 @@ func StateToView(s EngineState) view.View {
 			DCState:               ms.DCInfo.State,
 			CrashLog:              ms.CrashLog,
 			Endpoints:             endpoints,
-			IsYAMLManifest:        ms.Manifest.DockerRef() == nil,
 		}
 
 		ret.Resources = append(ret.Resources, r)

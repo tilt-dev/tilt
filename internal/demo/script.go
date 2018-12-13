@@ -18,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/api/core/v1"
@@ -143,11 +142,8 @@ func (s Script) Run(ctx context.Context) error {
 		return nil
 	}
 
-	// Discard all the logs. Uncomment the line below to make debugging easier.
-	out := ioutil.Discard
-	//out, _ = os.OpenFile("log.txt", os.O_WRONLY|os.O_TRUNC|os.O_CREATE, os.FileMode(0644))
-
-	l := logger.NewLogger(logger.DebugLvl, out)
+	l := engine.NewLogActionLogger(ctx, s.store.Dispatch)
+	out := l.Writer(logger.InfoLvl)
 	ctx = logger.WithLogger(ctx, l)
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
@@ -171,7 +167,7 @@ func (s Script) Run(ctx context.Context) error {
 			return ctx.Err()
 		}
 
-		tfPath := filepath.Join(dir, tiltfile.FileName)
+		tfPath := filepath.Join(dir, tiltfile2.FileName)
 		manifests, _, _, err := tiltfile2.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err

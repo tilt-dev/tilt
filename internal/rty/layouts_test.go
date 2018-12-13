@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gdamore/tcell"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tcell"
 )
 
 func TestFlexLayoutOverflow(t *testing.T) {
@@ -99,4 +99,56 @@ func TestAlignEnd(t *testing.T) {
 		SetAlign(AlignEnd).
 		Add(TextString("hello"))
 	i.Run("align right on min-length layout", 15, 15, NewBox(l))
+}
+
+func TestNestedConcatLayoutOverflow(t *testing.T) {
+	sc := tcell.NewSimulationScreen("")
+	err := sc.Init()
+	assert.NoError(t, err)
+	sc.SetSize(8, 1)
+
+	r := NewRTY(sc)
+
+	f1 := NewConcatLayout(DirHor)
+	for i := 0; i < 10; i++ {
+		f1.Add(TextString("x"))
+		f1.AddDynamic(NewFillerString(' '))
+	}
+
+	f2 := NewConcatLayout(DirHor)
+	f1.Add(f2)
+	for i := 0; i < 10; i++ {
+		f2.Add(TextString("y"))
+		f2.AddDynamic(NewFillerString(' '))
+	}
+
+	err = r.Render(NewFixedSize(f1, 8, 1))
+	assert.NoError(t, err)
+
+	i := NewInteractiveTester(t, screen)
+	i.Run("concat text overflow", 8, 1, f1)
+}
+
+func TestMinWidthInNestedConcatLayoutOverflow(t *testing.T) {
+	sc := tcell.NewSimulationScreen("")
+	err := sc.Init()
+	assert.NoError(t, err)
+	sc.SetSize(8, 1)
+
+	r := NewRTY(sc)
+
+	f1 := NewConcatLayout(DirHor)
+	for i := 0; i < 10; i++ {
+		f1.Add(NewMinLengthLayout(3, DirHor).Add(TextString("x")))
+		f1.AddDynamic(NewFillerString(' '))
+	}
+
+	f2 := NewConcatLayout(DirHor)
+	f2.Add(f1)
+
+	err = r.Render(f2)
+	assert.NoError(t, err)
+
+	i := NewInteractiveTester(t, screen)
+	i.Run("min width concat text overflow", 8, 1, f2)
 }

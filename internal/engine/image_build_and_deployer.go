@@ -79,11 +79,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	hasBuild := manifest.DockerRef() != nil
 	numStages := 2
-	if !hasBuild {
-		numStages = 1
-	}
 	ps := build.NewPipelineState(ctx, numStages)
 	defer func() { ps.End(ctx, err) }()
 
@@ -92,12 +88,9 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 		return store.BuildResult{}, err
 	}
 
-	var ref reference.NamedTagged
-	if hasBuild {
-		ref, err = ibd.build(ctx, manifest, state, ps)
-		if err != nil {
-			return store.BuildResult{}, err
-		}
+	ref, err := ibd.build(ctx, manifest, state, ps)
+	if err != nil {
+		return store.BuildResult{}, err
 	}
 
 	k8sEntities, namespace, err := ibd.deploy(ctx, ps, manifest, ref)

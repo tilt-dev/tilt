@@ -94,11 +94,15 @@
               
             
             
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">From Docker Compose</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
@@ -106,6 +110,9 @@
 <li class="toctree-l2"><a class="reference internal" href="#migrate-from-docker-compose-to-tilt">Migrate from Docker Compose to Tilt</a></li>
 </ul>
 </li>
+</ul>
+<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
@@ -159,6 +166,10 @@
       <li class="wy-breadcrumbs-aside">
         
             
+            
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/upgrade_docker_compose.md" class="fa fa-github"> Edit on GitHub</a>
+            
+          
         
       </li>
     
@@ -203,10 +214,10 @@
       <span class="p p-Indicator">-</span> <span class="s">&quot;9006:5000&quot;</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ul class="simple">
 <li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
 <li>Create a simple Kubernetes resource for your service</li>
-</ol>
+</ul>
 <p>For a Node application it might look like this:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># spoonerisms.yaml</span>
 <span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
@@ -236,15 +247,15 @@
             <span class="l l-Scalar l-Scalar-Plain">cpu</span><span class="p p-Indicator">:</span> <span class="s">&quot;10m&quot;</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ul class="simple">
 <li>Tell Tilt about your Kubernetes resource</li>
-</ol>
+</ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;spoonerisms.yaml&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ul class="simple">
 <li>Set the build context</li>
-</ol>
+</ul>
 <p>In Docker Compose you can specify your Docker build context like so:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
@@ -257,10 +268,10 @@
 </pre></div>
 </div>
 <p>We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.</p>
-<ol class="simple">
+<ul class="simple">
 <li>Forward your port
 In Docker Compose your service has a <code class="docutils literal notranslate"><span class="pre">ports</span></code> field:</li>
-</ol>
+</ul>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">services</span><span class="p p-Indicator">:</span>
   <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span><span class="p p-Indicator">:</span>
     <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>

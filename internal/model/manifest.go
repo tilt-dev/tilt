@@ -95,20 +95,20 @@ func (m Manifest) Validate() error {
 
 func (m Manifest) ValidateK8sManifest() error {
 	if m.dockerRef == nil {
-		return nil
+		return fmt.Errorf("[validateK8sManifest] manifest %q missing image ref", m.Name)
 	}
 
 	if m.K8sYAML() == "" {
-		return fmt.Errorf("[validate] manifest %q missing k8s YAML", m.Name)
+		return fmt.Errorf("[validateK8sManifest] manifest %q missing k8s YAML", m.Name)
 	}
 
 	if m.IsStaticBuild() {
 		if m.StaticBuildPath == "" {
-			return fmt.Errorf("[validate] manifest %q missing build path", m.Name)
+			return fmt.Errorf("[validateK8sManifest] manifest %q missing build path", m.Name)
 		}
 	} else {
 		if m.BaseDockerfile == "" {
-			return fmt.Errorf("[validate] manifest %q missing base dockerfile", m.Name)
+			return fmt.Errorf("[validateK8sManifest] manifest %q missing base dockerfile", m.Name)
 		}
 	}
 

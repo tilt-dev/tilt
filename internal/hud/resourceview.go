@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -20,13 +20,16 @@ type ResourceView struct {
 	res      view.Resource
 	rv       view.ResourceViewState
 	selected bool
+
+	clock func() time.Time
 }
 
-func NewResourceView(res view.Resource, rv view.ResourceViewState, selected bool) *ResourceView {
+func NewResourceView(res view.Resource, rv view.ResourceViewState, selected bool, clock func() time.Time) *ResourceView {
 	return &ResourceView{
 		res:      res,
 		rv:       rv,
 		selected: selected,
+		clock:    clock,
 	}
 }
 
@@ -101,9 +104,15 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
+	color := v.statusColor()
 	sb.Text(p)
-	sb.Fg(v.statusColor()).Textf(" ● ")
-	sb.Fg(tcell.ColorDefault).Text(v.res.Name)
+	sb.Fg(color).Textf(" ● ")
+
+	name := v.res.Name
+	if color == cPending {
+		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
+	}
+	sb.Fg(tcell.ColorDefault).Text(name)
 	return sb.Build()
 }
 
@@ -153,6 +162,7 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 
 	rhs := rty.NewConcatLayout(rty.DirVert)
 	rhs.Add(v.resourceExpanded())
+	rhs.Add(v.resourceExpandedEndpoints())
 	rhs.Add(v.resourceExpandedHistory())
 	rhs.Add(v.resourceExpandedError())
 	l.AddDynamic(rhs)
@@ -192,6 +202,16 @@ func (v *ResourceView) resourceTextDCContainer() rty.Component {
 	return sb.Build()
 }
 
+func (v *ResourceView) endpointsNeedSecondLine() bool {
+	if len(v.res.Endpoints) > 1 {
+		return true
+	}
+	if len(v.res.Endpoints) == 1 && v.res.PodRestarts > 0 {
+		return true
+	}
+	return false
+}
+
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	if v.res.IsYAMLManifest || v.res.PodName == "" {
 		return rty.EmptyLayout
@@ -201,16 +221,20 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	l.Add(v.resourceTextPodName())
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
+	l.Add(rty.TextString(" "))
 
 	if v.res.PodRestarts > 0 {
 		l.Add(v.resourceTextPodRestarts())
 		l.Add(middotText())
 	}
 
-	for _, endpoint := range v.res.Endpoints {
-		l.Add(rty.TextString(endpoint))
-		l.Add(middotText())
+	if len(v.res.Endpoints) > 0 && !v.endpointsNeedSecondLine() {
+		for _, endpoint := range v.res.Endpoints {
+			l.Add(rty.TextString(endpoint))
+			l.Add(middotText())
+		}
 	}
+
 	l.Add(v.resourceTextAge())
 	return rty.OneLine(l)
 }
@@ -240,6 +264,30 @@ func (v *ResourceView) resourceTextAge() rty.Component {
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
 		Add(sb.Build())
+}
+
+func (v *ResourceView) resourceExpandedEndpoints() rty.Component {
+	if !v.endpointsNeedSecondLine() {
+		return rty.NewConcatLayout(rty.DirVert)
+	}
+
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(v.resourceTextURL())
+
+	for i, endpoint := range v.res.Endpoints {
+		if i != 0 {
+			l.Add(middotText())
+		}
+		l.Add(rty.TextString(endpoint))
+	}
+
+	return l
+}
+
+func (v *ResourceView) resourceTextURL() rty.Component {
+	sb := rty.NewStringBuilder()
+	sb.Fg(cLightText).Text("URL: ")
+	return sb.Build()
 }
 
 func (v *ResourceView) resourceExpandedHistory() rty.Component {
@@ -304,11 +352,11 @@ func (v *ResourceView) resourceExpandedK8sError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 	if isCrashing(v.res) {
-		log := v.res.PodLog
-		if log == "" {
-			log = v.res.CrashLog
+		podLog := v.res.CrashLog
+		if podLog == "" {
+			podLog = v.res.PodLog
 		}
-		abbrevLog := abbreviateLog(log)
+		abbrevLog := abbreviateLog(podLog)
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true
@@ -336,4 +384,11 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 	}
 
 	return pane, ok
+}
+
+var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func (v *ResourceView) spinner() string {
+	decisecond := v.clock().Nanosecond() / int(time.Second/10)
+	return spinnerChars[decisecond%len(spinnerChars)] // tick spinner every 10x/second
 }

@@ -10,8 +10,10 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
+
+var clockForTest = func() time.Time { return time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC) }
 
 func TestRender(t *testing.T) {
 	rtf := newRendererTestFixture(t)
@@ -132,6 +134,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	}
 	rtf.run("all the data at once", 70, 20, v, plainVs)
 	rtf.run("all the data at once 50w", 50, 20, v, plainVs)
+	rtf.run("all the data at once 10w", 10, 20, v, plainVs)
 
 	v = view.View{
 		Resources: []view.Resource{
@@ -378,12 +381,12 @@ func TestPodPending(t *testing.T) {
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
-	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false, clockForTest).statusColor())
 
 	v.Resources[0].PodCreationTime = ts
 	v.Resources[0].PodStatus = "Pending"
 	rtf.run("pending pod pending status", 80, 20, v, vs)
-	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false).statusColor())
+	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false, clockForTest).statusColor())
 }
 
 func TestPodLogContainerUpdate(t *testing.T) {
@@ -412,6 +415,85 @@ func TestPodLogContainerUpdate(t *testing.T) {
 	rtf.run("pod log for container update", 70, 20, v, vs)
 }
 
+func TestCrashingPodInlineCrashLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Error",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Something's maybe wrong idk",
+				CrashLog:            "Definitely borken",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+				LastBuildReason:     model.BuildReasonFlagCrash,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("crashing pod displays crash log inline if present", 70, 20, v, vs)
+}
+
+func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Error",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Something's maybe wrong idk",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+				LastBuildReason:     model.BuildReasonFlagCrash,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("crashing pod displays pod log inline if no crash log if present", 70, 20, v, vs)
+}
+
+func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:                "vigoda",
+				PodName:             "vigoda-pod",
+				PodStatus:           "Running",
+				Endpoints:           []string{"1.2.3.4:8080"},
+				PodLog:              "Something's maybe wrong idk",
+				CrashLog:            "Definitely borken",
+				LastBuildLog:        "Building (1/2)\nBuilding (2/2)\n",
+				PodUpdateStartTime:  ts,
+				PodCreationTime:     ts.Add(-time.Minute),
+				LastBuildStartTime:  ts,
+				LastBuildFinishTime: ts,
+				LastDeployTime:      ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("non-crashing pod displays no logs inline even if crash log if present", 70, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	t *testing.T
 	i rty.InteractiveTester
@@ -425,8 +507,7 @@ func newRendererTestFixture(t *testing.T) rendererTestFixture {
 }
 
 func (rtf rendererTestFixture) run(name string, w int, h int, v view.View, vs view.ViewState) {
-	t := time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC)
-	r := NewRenderer(func() time.Time { return t })
+	r := NewRenderer(clockForTest)
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
 	c := r.layout(v, vs)
 	rtf.i.Run(name, w, h, c)

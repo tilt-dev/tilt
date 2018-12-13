@@ -93,13 +93,20 @@
               
             
             
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Tiltfile API Reference</a></li>
 </ul>
@@ -153,6 +160,10 @@
       <li class="wy-breadcrumbs-aside">
         
             
+            
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/api.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
         
       </li>
     
@@ -230,6 +241,12 @@ not passed wwe expect to be able to extract it from an
 existing resource.</li>
 <li><strong>image</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – An optional Image. If the image is not passed,
 we expect to be able to extract it from an existing resource.</li>
+<li><strong>port_forwards</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]]) – Local ports to connect to the pod. If no
+target port is specified, will use the first container port.
+Example values: 9000 (connect localhost:9000 to the default container port),
+‘9000:8000’ (connect localhost:9000 to the container port 8000),
+[‘9000:8000’, ‘9001:8001’] (connect localhost:9000 and :9001 to the
+container ports 8000 and 8001, respectively).</li>
 </ul>
 </td>
 </tr>

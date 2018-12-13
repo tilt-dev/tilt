@@ -1,6 +1,11 @@
 FROM python:3.7
 
-RUN pip install sphinx sphinx_rtd_theme sphinx-autodoc-typehints recommonmark
+RUN pip3 install sphinx sphinx_rtd_theme sphinx-autodoc-typehints recommonmark
+
+# Path a dumb bug in sphinx
+# TODO(nick): fix this upstream
+RUN sed -i -e "s/^.*rawcaption.*\$//" /usr/local/lib/python3.7/site-packages/sphinx/environment/adapters/toctree.py
+
 RUN mkdir -p /src
 WORKDIR /src
 

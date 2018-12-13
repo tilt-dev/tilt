@@ -3,7 +3,7 @@ package rty
 import (
 	"testing"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 var screen tcell.Screen

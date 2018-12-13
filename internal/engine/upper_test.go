@@ -19,7 +19,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 
 	"github.com/docker/distribution/reference"
@@ -1024,6 +1023,108 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 }
 
+func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.bc.DisableForTesting()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	// Start a fake build to set manifestState.ExpectedContainerId
+	f.store.Dispatch(manifestFilesChangedAction{
+		manifestName: manifest.Name,
+		files:        []string{"/go/a"},
+	})
+	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
+		return nextManifestToBuild(st) == manifest.Name
+	})
+	f.store.Dispatch(BuildStartedAction{
+		Manifest:  manifest,
+		StartTime: time.Now(),
+	})
+
+	// Simulate k8s restarting the container due to a crash.
+	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
+	f.store.Dispatch(BuildCompleteAction{
+		Result: store.BuildResult{
+			Image:       nil,
+			ContainerID: "theOriginalContainer",
+		},
+	})
+
+	f.WaitUntilManifest("NeedsRebuildFromCrash set to True", "foobar", func(state store.ManifestState) bool {
+		return state.NeedsRebuildFromCrash
+	})
+	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
+	f.waitForCompletedBuildCount(1)
+}
+
+func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.bc.DisableForTesting()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Mount{mount})
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	// Start a fake build to set manifestState.ExpectedContainerId
+	f.store.Dispatch(manifestFilesChangedAction{
+		manifestName: manifest.Name,
+		files:        []string{"/go/a"},
+	})
+	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
+		return nextManifestToBuild(st) == manifest.Name
+	})
+
+	f.store.Dispatch(BuildStartedAction{
+		Manifest:  manifest,
+		StartTime: time.Now(),
+	})
+
+	// Simulate a normal build completion
+	podStartTime := time.Now()
+	f.store.Dispatch(BuildCompleteAction{
+		Result: store.BuildResult{
+			Image:       nil,
+			ContainerID: "normal-container-id",
+		},
+	})
+	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
+
+	// Start another fake build to set manifestState.ExpectedContainerId
+	f.store.Dispatch(manifestFilesChangedAction{
+		manifestName: manifest.Name,
+		files:        []string{"/go/a"},
+	})
+	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
+		return nextManifestToBuild(st) == manifest.Name
+	})
+	f.store.Dispatch(BuildStartedAction{
+		Manifest:  manifest,
+		StartTime: time.Now(),
+	})
+
+	// Simulate a pod crash, then a build compltion
+	f.podEvent(f.testPod("mypod", "foobar", "Running", "funny-container-id", podStartTime))
+	f.store.Dispatch(BuildCompleteAction{
+		Result: store.BuildResult{
+			Image:       nil,
+			ContainerID: "normal-container-id",
+		},
+	})
+
+	f.WaitUntilManifest("NeedsRebuildFromCrash set to True", "foobar", func(state store.ManifestState) bool {
+		return state.NeedsRebuildFromCrash
+	})
+}
+
 func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1891,7 +1992,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
+	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile2.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}

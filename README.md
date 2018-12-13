@@ -8,6 +8,8 @@ Local Kubernetes development with no stress.
 Tilt helps you develop your microservices locally
 without slowing you down or making you play Twenty Questions with `kubectl`.
 
+Questions? Comments? Just want to say hi? Find us on the Kubernetes slack in [**#tilt**](https://kubernetes.slack.com/messages/CESBL84MV/).
+
 ## Overview
 
 Run `tilt up` to start working on your services in a complete dev environment
@@ -17,12 +19,16 @@ Tilt watches what you're working on so that it can bring your environment
 up-to-date in real-time.
 
 The screencast below demonstrates what a typical Tilt session looks like:
-starting two servers, making changes to them, and seeing any new errors
+starting multiple microservices, making changes to them, and seeing any new errors
 or logs right in your terminal.
 
-[![asciicast](https://asciinema.org/a/211635.png)](https://asciinema.org/a/211635)
+[![screencast](docs/_static/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
 
 ## Install Tilt
+
+If you don't know where to start, start here:
+
+[Complete Tilt User Guide](https://docs.tilt.build/)
 
 Download the Tilt binary on
 [the github releases page](https://github.com/windmilleng/tilt/releases).
@@ -41,7 +47,12 @@ Configure Tilt with a `Tiltfile`, written in a small subset of Python called
 To get started, check out some [examples](https://docs.tilt.build/first_example.html) or dive into the
 [API reference](https://docs.tilt.build/api.html).
 
-## [Complete Tilt User Guide](https://docs.tilt.build/)
+## Development
+
+To make changes to Tilt, read the [developer guide](DEVELOPING.md).
+
+For bugs and feature requests, file an [issue](https://github.com/windmilleng/tilt/issues)
+or check out the [feature roadmap](ROADMAP.md).
 
 ## Privacy
 

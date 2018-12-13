@@ -25,8 +25,8 @@ services:
       - "9006:5000"
 ```
 
-1. Create a `Tiltfile`
-2. Create a simple Kubernetes resource for your service
+- Create a `Tiltfile`
+- Create a simple Kubernetes resource for your service
 
 For a Node application it might look like this:
 ```yaml
@@ -58,12 +58,12 @@ spec:
             cpu: "10m"
 ```
 
-3. Tell Tilt about your Kubernetes resource
+- Tell Tilt about your Kubernetes resource
 ```python
 k8s_yaml("spoonerisms.yaml")
 ```
 
-4. Set the build context
+- Set the build context
 
 In Docker Compose you can specify your Docker build context like so:
 
@@ -82,7 +82,7 @@ docker_build("gcr.io/myproject/spoonerisms", "./spoonerisms")
 
 We also ask that you name the image, so that we can insert it in to your Kubernetes configuration.
 
-5. Forward your port
+- Forward your port
 In Docker Compose your service has a `ports` field:
 
 ```yaml

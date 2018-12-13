@@ -5,7 +5,7 @@ import (
 
 	"github.com/rivo/tview"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 )
 
 // Layouts implement Component
@@ -203,6 +203,11 @@ func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int,
 	for _, c := range fixedComponents {
 		len, dep := whToLd(width, height, l.dir)
 		len -= allocatedLen
+		if len <= 0 {
+			widths[c.index], heights[c.index] = 0, 0
+			continue
+		}
+
 		widthRemainder, heightRemainder := ldToWh(len, dep, l.dir)
 		w, h, err := alloc(c.c, widthRemainder, heightRemainder)
 		if err != nil {
@@ -214,6 +219,11 @@ func (l *ConcatLayout) allocate(width, height int) (widths []int, heights []int,
 	if len(unfixedComponents) > 0 {
 		lenPerUnfixed := (length - allocatedLen) / len(unfixedComponents)
 		for _, c := range unfixedComponents {
+			if lenPerUnfixed <= 0 {
+				widths[c.index], heights[c.index] = 0, 0
+				continue
+			}
+
 			w, h := ldToWh(lenPerUnfixed, depth, l.dir)
 			reqW, reqH, err := alloc(c.c, w, h)
 			if err != nil {
@@ -236,6 +246,10 @@ func (l *ConcatLayout) Size(width, height int) (int, int, error) {
 }
 
 func (l *ConcatLayout) Render(w Writer, width int, height int) error {
+	if width <= 0 && height <= 0 {
+		return nil
+	}
+
 	widths, heights, _, _, err := l.allocate(width, height)
 	if err != nil {
 		return err
@@ -246,6 +260,10 @@ func (l *ConcatLayout) Render(w Writer, width int, height int) error {
 		reqWidth, reqHeight, err := c.c.Size(widths[i], heights[i])
 		if err != nil {
 			return err
+		}
+
+		if reqWidth <= 0 && reqHeight <= 0 {
+			continue
 		}
 
 		var subW Writer
@@ -612,17 +630,28 @@ func (l *MinLengthLayout) Add(c Component) *MinLengthLayout {
 }
 
 func (ml *MinLengthLayout) Size(width int, height int) (int, int, error) {
-	w, h, err := ml.inner.Size(width, height)
+	sizedWidth, sizedHeight, err := ml.inner.Size(width, height)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	l, d := whToLd(w, h, ml.inner.dir)
-	if l < ml.minLength {
-		l = ml.minLength
+	// If the inner container requested a length smaller than the minLength,
+	// increase the length to the minLength
+	sizedLen, sizedDep := whToLd(sizedWidth, sizedHeight, ml.inner.dir)
+	if sizedLen < ml.minLength {
+		sizedLen = ml.minLength
 	}
-	w, h = ldToWh(l, d, ml.inner.dir)
-	return w, h, err
+	sizedWidth, sizedHeight = ldToWh(sizedLen, sizedDep, ml.inner.dir)
+
+	// It should be impossible to make the container bigger than the size alloted,
+	// even with minLength.
+	if sizedWidth > width {
+		sizedWidth = width
+	}
+	if sizedHeight > height {
+		sizedHeight = height
+	}
+	return sizedWidth, sizedHeight, err
 }
 
 func (ml *MinLengthLayout) Render(writer Writer, width int, height int) error {

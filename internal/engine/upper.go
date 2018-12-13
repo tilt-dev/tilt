@@ -17,7 +17,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -100,7 +99,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		return err
 	}
 
-	absTfPath, err := filepath.Abs(tiltfile.FileName)
+	absTfPath, err := filepath.Abs(tiltfile2.FileName)
 	if err != nil {
 		return err
 	}
@@ -112,7 +111,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile.FileName, matching)
+	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile2.FileName, matching)
 
 	u.store.Dispatch(InitAction{
 		WatchMounts:        watchMounts,
@@ -203,6 +202,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		Reason:    action.Reason,
 	}
 	ms.CurrentBuild = bs
+	ms.ExpectedContainerID = ""
 
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = []byte{}
@@ -281,9 +281,14 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
 		if cb.Result.ContainerID != "" {
 			ms.ExpectedContainerID = cb.Result.ContainerID
+
+			bestPod := ms.MostRecentPod()
+			if bestPod.StartedAt.After(bs.StartTime) ||
+				bestPod.UpdateStartTime.Equal(bs.StartTime) {
+				checkForPodCrash(ctx, ms, bestPod)
+			}
 		}
 	}
 
@@ -401,11 +406,6 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 		return nil, nil
 	}
 
-	if ms.Manifest.DockerRef() == nil {
-		// We don't track pods if we didn't build the image for this manifest
-		return nil, nil
-	}
-
 	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerRef())
 	if err != nil || imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
@@ -516,24 +516,37 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	}
 
 	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
-	if ms.ExpectedContainerID != "" && ms.ExpectedContainerID != podInfo.ContainerID && !ms.NeedsRebuildFromCrash {
-		ms.CrashLog = string(podInfo.CurrentLog)
-		ms.NeedsRebuildFromCrash = true
-		ms.ExpectedContainerID = ""
-		msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
-		b := []byte(msg + "\n")
-		if len(ms.BuildHistory) > 0 {
-			ms.BuildHistory[0].Log = append(ms.BuildHistory[0].Log, b...)
-		}
-		ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, b...)
-		logger.Get(ctx).Infof("%s", msg)
-	}
+	checkForPodCrash(ctx, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
 		podInfo.PreRestartLog = append([]byte{}, podInfo.CurrentLog...)
 		podInfo.CurrentLog = []byte{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
+}
+
+func checkForPodCrash(ctx context.Context, ms *store.ManifestState, podInfo store.Pod) {
+	if ms.NeedsRebuildFromCrash {
+		// We're already aware the pod is crashing.
+		return
+	}
+
+	if ms.ExpectedContainerID == "" || ms.ExpectedContainerID == podInfo.ContainerID {
+		// The pod is what we expect it to be.
+		return
+	}
+
+	// The pod isn't what we expect!
+	ms.CrashLog = string(podInfo.CurrentLog)
+	ms.NeedsRebuildFromCrash = true
+	ms.ExpectedContainerID = ""
+	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+	b := []byte(msg + "\n")
+	if len(ms.BuildHistory) > 0 {
+		ms.BuildHistory[0].Log = append(ms.BuildHistory[0].Log, b...)
+	}
+	ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, b...)
+	logger.Get(ctx).Infof("%s", msg)
 }
 
 // If there's more than one pod, prune the deleting/dead ones so

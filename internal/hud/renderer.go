@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tcell"
+	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -321,14 +321,8 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 	return cl
 }
 
-var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-
-func (r *Renderer) spinner() string {
-	return spinnerChars[r.clock().Second()%len(spinnerChars)]
-}
-
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
-	return NewResourceView(res, rv, selected).Build()
+	return NewResourceView(res, rv, selected, r.clock).Build()
 }
 
 func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
