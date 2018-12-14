@@ -298,10 +298,11 @@ func (s *tiltfileState) translate(resources []*k8sResource) ([]model.Manifest, e
 			m.StaticDockerfile = image.staticDockerfile.String()
 			m.StaticBuildPath = string(image.staticBuildPath.path)
 			m.StaticBuildArgs = image.staticBuildArgs
-			m.Repos = s.reposToDomain(image)
 			m = m.WithDockerRef(image.ref).
 				WithTiltFilename(image.tiltFilename).
-				WithCachePaths(image.cachePaths)
+				WithCachePaths(image.cachePaths).
+				WithRepos(s.reposToDomain(image)).
+				WithDockerignores(s.dockerignoresToDomain(image))
 		}
 		result = append(result, m)
 	}

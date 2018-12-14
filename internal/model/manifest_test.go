@@ -53,7 +53,7 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			Repos: []LocalGithubRepo{
+			repos: []LocalGithubRepo{
 				LocalGithubRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
@@ -61,7 +61,7 @@ var equalitytests = []struct {
 			},
 		},
 		Manifest{
-			Repos: []LocalGithubRepo{
+			repos: []LocalGithubRepo{
 				LocalGithubRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.so",
@@ -72,7 +72,7 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			Repos: []LocalGithubRepo{
+			repos: []LocalGithubRepo{
 				LocalGithubRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
@@ -80,7 +80,7 @@ var equalitytests = []struct {
 			},
 		},
 		Manifest{
-			Repos: []LocalGithubRepo{
+			repos: []LocalGithubRepo{
 				LocalGithubRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
@@ -258,6 +258,16 @@ var equalitytests = []struct {
 	{
 		Manifest{cachePaths: []string{"foo"}},
 		Manifest{cachePaths: []string{"foo"}},
+		true,
+	},
+	{
+		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
+		Manifest{dockerignores: []Dockerignore{{"b", "a"}}},
+		false,
+	},
+	{
+		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
+		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
 		true,
 	},
 }

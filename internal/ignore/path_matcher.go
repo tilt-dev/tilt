@@ -18,6 +18,7 @@ func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
 
 type repoManifest interface {
 	LocalRepos() []model.LocalGithubRepo
+	Dockerignores() []model.Dockerignore
 	TiltFilename() string
 }
 
@@ -35,8 +36,9 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 		if err == nil {
 			matchers = append(matchers, gim)
 		}
-
-		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.DockerignoreContents)
+	}
+	for _, r := range m.Dockerignores() {
+		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.Contents)
 		if err == nil {
 			matchers = append(matchers, dim)
 		}
@@ -47,6 +49,7 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 
 type IgnorableManifest interface {
 	LocalRepos() []model.LocalGithubRepo
+	Dockerignores() []model.Dockerignore
 }
 
 // Filter out files that should not trigger new builds.
@@ -57,8 +60,9 @@ func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 		if err == nil {
 			matchers = append(matchers, gim)
 		}
-
-		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.DockerignoreContents)
+	}
+	for _, di := range m.Dockerignores() {
+		dim, err := dockerignore.DockerIgnoreTesterFromContents(di.LocalPath, di.Contents)
 		if err == nil {
 			matchers = append(matchers, dim)
 		}

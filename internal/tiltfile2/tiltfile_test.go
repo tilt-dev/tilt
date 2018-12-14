@@ -527,6 +527,92 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestDockerignorePathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file(".dockerignore", "*.txt")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("a.txt"),
+		fileChangeFilters("a.txt"),
+		buildMatches("txt.a"),
+		fileChangeMatches("txt.a"),
+	)
+}
+
+func TestDockerignorePathFilterSubdir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("foo/Dockerfile", "FROM golang:1.10")
+	f.file("foo/.dockerignore", "*.txt")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+		buildMatches("foo/txt.a"),
+		fileChangeMatches("foo/txt.a"),
+	)
+}
+
+func TestFastBuildDockerignoreRoot(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file(".dockerignore", "foo/*.txt")
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi")
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+	)
+}
+
+func TestFastBuildDockerignoreSubdir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("foo/.dockerignore", "*.txt")
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi")
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+		buildMatches("foo/subdir/a.txt"),
+		fileChangeMatches("foo/subdir/a.txt"),
+	)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
