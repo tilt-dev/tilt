@@ -3,16 +3,20 @@ package dockercompose
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os/exec"
 	"path"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/model"
 
 	"gopkg.in/yaml.v2"
 )
 
-// Fill in fields as we need more
+// Go representations of docker-compose.yml
+// (Add fields as we need to support more things)
 type Config struct {
 	Services map[string]ServiceConfig `yaml:"services"`
 }
@@ -103,6 +107,34 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 	}
 
 	return services, nil
+}
+
+func (s Service) ToManifest(dcConfigPath string) (model.Manifest, error) {
+	m := model.Manifest{
+		Name:       model.ManifestName(s.Name),
+		DcYAMLPath: dcConfigPath,
+	}
+
+	if s.DfPath == "" {
+		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
+		return m, nil
+	}
+
+	// TODO(maia): record s.DfPath as config file!
+	bs, err := ioutil.ReadFile(s.DfPath)
+	if err != nil {
+		return model.Manifest{}, errors.Wrapf(err, "opening Dockerfile for %s: '%s'", s.Name, s.DfPath)
+	}
+
+	// TODO(maia): ignore volumes mounted via dc.yml (b/c those auto-update)
+	df := dockerfile.Dockerfile(bs)
+	mounts, err := df.DeriveMounts(s.Context)
+	if err != nil {
+		return model.Manifest{}, err
+	}
+
+	m.Mounts = mounts
+	return m, nil
 }
 
 func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
