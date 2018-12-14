@@ -194,7 +194,12 @@ func (m Manifest) Dependencies() []string {
 		deps = append(deps, p)
 	}
 
-	return sliceutils.DedupeStringSlice(deps)
+	deduped := sliceutils.DedupeStringSlice(deps)
+
+	// Sort so that any nested paths come after their parents
+	sort.Strings(deduped)
+
+	return deduped
 }
 
 func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
