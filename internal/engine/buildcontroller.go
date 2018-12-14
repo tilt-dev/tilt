@@ -62,25 +62,49 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 		if ms.NeedsRebuildFromCrash {
 			return mn
 		}
+	}
 
-		t := ms.PendingManifestChange
-		if t.Before(earliest) && ms.IsPendingTime(t) {
-			choiceName = mn
-			earliest = t
-		}
+	if state.TriggerMode == model.TriggerManual && len(state.TriggerQueue) > 0 {
+		return state.TriggerQueue[0]
+	}
 
-		spurious, _ := onlySpuriousChanges(ms.PendingFileChanges)
-		if !spurious {
-			for _, t := range ms.PendingFileChanges {
-				if t.Before(earliest) && ms.IsPendingTime(t) {
-					choiceName = mn
-					earliest = t
-				}
+	if state.TriggerMode == model.TriggerAuto {
+		for _, mn := range state.ManifestDefinitionOrder {
+			ms, ok := state.ManifestStates[mn]
+			if !ok {
+				continue
+			}
+
+			ok, newTime := hasPendingChangesBefore(ms, earliest)
+			if ok {
+				choiceName = mn
+				earliest = newTime
 			}
 		}
 	}
 
 	return choiceName
+}
+
+func hasPendingChangesBefore(ms *store.ManifestState, highWaterMark time.Time) (bool, time.Time) {
+	ok := false
+	earliest := highWaterMark
+	t := ms.PendingManifestChange
+	if t.Before(earliest) && ms.IsPendingTime(t) {
+		ok = true
+		earliest = t
+	}
+
+	spurious, _ := onlySpuriousChanges(ms.PendingFileChanges)
+	if !spurious {
+		for _, t := range ms.PendingFileChanges {
+			if t.Before(earliest) && ms.IsPendingTime(t) {
+				ok = true
+				earliest = t
+			}
+		}
+	}
+	return ok, earliest
 }
 
 func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {

@@ -61,6 +61,9 @@ type EngineState struct {
 	InitManifests []model.ManifestName
 
 	LastTiltfileError error
+
+	TriggerMode  model.TriggerMode
+	TriggerQueue []model.ManifestName
 }
 
 func (e EngineState) IsEmpty() bool {
@@ -370,7 +373,9 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 }
 
 func StateToView(s EngineState) view.View {
-	ret := view.View{}
+	ret := view.View{
+		TriggerMode: s.TriggerMode,
+	}
 
 	for _, name := range s.ManifestDefinitionOrder {
 		ms := s.ManifestStates[name]
@@ -416,7 +421,7 @@ func StateToView(s EngineState) view.View {
 		// at once).
 		pod := ms.MostRecentPod()
 		r := view.Resource{
-			Name:               name.String(),
+			Name:               name,
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
@@ -449,7 +454,7 @@ func StateToView(s EngineState) view.View {
 		relWatches := ospath.TryAsCwdChildren(absWatches)
 
 		r := view.Resource{
-			Name:               s.GlobalYAML.ManifestName().String(),
+			Name:               s.GlobalYAML.ManifestName(),
 			DirectoriesWatched: relWatches,
 			CurrentBuild:       model.BuildStatus{StartTime: s.GlobalYAMLState.CurrentApplyStartTime},
 			BuildHistory: []model.BuildStatus{

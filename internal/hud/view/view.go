@@ -7,7 +7,7 @@ import (
 )
 
 type Resource struct {
-	Name               string
+	Name               model.ManifestName
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
@@ -75,6 +75,7 @@ type View struct {
 	Log                  string
 	Resources            []Resource
 	TiltfileErrorMessage string
+	TriggerMode          model.TriggerMode
 }
 
 type ViewState struct {

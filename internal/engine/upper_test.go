@@ -115,7 +115,10 @@ func TestUpper_Up(t *testing.T) {
 
 	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
 		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, gYaml, false, "")
+	err := f.upper.Init(f.ctx, InitAction{
+		Manifests:          []model.Manifest{manifest},
+		GlobalYAMLManifest: gYaml,
+	})
 	close(f.b.calls)
 	assert.Nil(t, err)
 	var startedManifests []model.Manifest
@@ -309,7 +312,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
-	err := f.upper.StartForTesting(f.ctx, []model.Manifest{manifest}, model.YAMLManifest{}, false, "")
+	err := f.upper.Init(f.ctx, InitAction{Manifests: []model.Manifest{manifest}})
 	expectedErrStr := fmt.Sprintf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expectedErrStr, err.Error())
 }
@@ -1737,10 +1740,23 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
+	f.Init(InitAction{
+		Manifests:   manifests,
+		WatchMounts: watchMounts,
+	})
+}
+
+func (f *testFixture) Init(action InitAction) {
+	if action.TiltfilePath == "" {
+		action.TiltfilePath = "/Tiltfile"
+	}
+
+	manifests := action.Manifests
+	watchMounts := action.WatchMounts
 	f.createManifestsResult = make(chan error)
 
 	go func() {
-		err := f.upper.StartForTesting(f.ctx, manifests, model.YAMLManifest{}, watchMounts, "/Tiltfile")
+		err := f.upper.Init(f.ctx, action)
 		if err != nil && err != context.Canceled {
 			// Print this out here in case the test never completes
 			log.Printf("CreateManifests failed: %v", err)

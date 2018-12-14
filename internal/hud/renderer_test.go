@@ -411,12 +411,14 @@ func TestPodPending(t *testing.T) {
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
-	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false, clockForTest).statusColor())
+	assert.Equal(t, cPending,
+		NewResourceView(v.Resources[0], vs.Resources[0], model.TriggerAuto, false, clockForTest).statusColor())
 
 	v.Resources[0].PodCreationTime = ts
 	v.Resources[0].PodStatus = "Pending"
 	rtf.run("pending pod pending status", 80, 20, v, vs)
-	assert.Equal(t, cPending, NewResourceView(v.Resources[0], vs.Resources[0], false, clockForTest).statusColor())
+	assert.Equal(t, cPending,
+		NewResourceView(v.Resources[0], vs.Resources[0], model.TriggerAuto, false, clockForTest).statusColor())
 }
 
 func TestPodLogContainerUpdate(t *testing.T) {
@@ -530,6 +532,23 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 	}
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("non-crashing pod displays no logs inline even if crash log if present", 70, 20, v, vs)
+}
+
+func TestPendingBuildInManualTriggerMode(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+	v := view.View{
+		TriggerMode: model.TriggerManual,
+		Resources: []view.Resource{
+			{
+				Name:              "vigoda",
+				PendingBuildSince: ts.Add(-5 * time.Second),
+				PendingBuildEdits: []string{"main.go"},
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseNo)
+	rtf.run("pending build with manual trigger", 80, 20, v, vs)
 }
 
 type rendererTestFixture struct {
