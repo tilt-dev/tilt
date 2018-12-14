@@ -12,23 +12,25 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.loadErrString("no such file")
 }
 
 func TestEmpty(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.file("Tiltfile", "")
 	f.load()
@@ -36,7 +38,7 @@ func TestEmpty(t *testing.T) {
 
 func TestMissingDockerfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
@@ -48,7 +50,7 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestSimple(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -67,7 +69,7 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestExplicitDockerfileIsConfigFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 	f.setupFoo()
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
@@ -80,7 +82,7 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestFastBuildSimple(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -100,7 +102,7 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestFastBuildPassedToResource(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -120,7 +122,7 @@ k8s_resource('foo', 'foo.yaml', image=fb)
 
 func TestFastBuildValidates(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("foo/Dockerfile", `
@@ -138,7 +140,7 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestFastBuildRunBeforeAdd(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -153,7 +155,7 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestFastBuildTriggers(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -178,14 +180,14 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestVerifiesGitRepo(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 	f.file("Tiltfile", "local_git_repo('.')")
 	f.loadErrString("isn't a valid git repo")
 }
 
 func TestLocal(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -204,7 +206,7 @@ k8s_resource('foo', yaml)
 
 func TestReadFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -224,7 +226,7 @@ k8s_resource('foo', yaml)
 
 func TestKustomize(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("kustomization.yaml", kustomizeFileText)
@@ -242,7 +244,7 @@ k8s_resource('foo', kustomize("."))
 
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -255,7 +257,7 @@ docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 
 func TestFastBuildCache(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -268,7 +270,7 @@ fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
 
 func TestDuplicateResourceNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupExpand()
 	f.file("Tiltfile", `
@@ -282,7 +284,7 @@ k8s_resource('a')
 
 func TestDuplicateImageNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupExpand()
 	f.file("Tiltfile", `
@@ -296,7 +298,7 @@ docker_build('gcr.io/a', 'a')
 
 func TestInvalidImageName(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupExpand()
 	f.file("Tiltfile", `
@@ -309,7 +311,7 @@ docker_build("ceci n'est pas une valid image ref", 'a')
 
 func TestFastBuildAddStringFailes(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -336,7 +338,7 @@ func TestPortForward(t *testing.T) {
 	for _, c := range portForwardCases {
 		t.Run(c.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.tearDown()
+			defer f.TearDown()
 			f.setupFoo()
 			s := `
 docker_build('gcr.io/foo', 'foo')
@@ -355,7 +357,7 @@ k8s_resource('foo', 'foo.yaml', port_forwards=EXPR)
 
 func TestExpand(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 	f.setupExpand()
 	f.file("Tiltfile", `
 k8s_yaml('all.yaml')
@@ -375,7 +377,7 @@ docker_build('gcr.io/d', 'd')
 
 func TestExpandUnresourced(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 	f.dockerfile("a/Dockerfile")
 
 	f.yaml("all.yaml",
@@ -396,7 +398,7 @@ docker_build('gcr.io/a', 'a')
 
 func TestExpandExplicit(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 	f.setupExpand()
 	f.file("Tiltfile", `
 k8s_yaml('all.yaml')
@@ -415,7 +417,7 @@ k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 
 func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 	f.setupExpand()
 	f.yaml("all.yaml",
 		deployment("a", image("gcr.io/a")),
@@ -440,7 +442,7 @@ docker_build('gcr.io/d', 'd')
 
 func TestMultipleYamlFiles(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupExpand()
 	f.yaml("a.yaml", deployment("a", image("gcr.io/a")))
@@ -463,7 +465,7 @@ docker_build('gcr.io/d', 'd')
 
 func TestLoadOneManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
@@ -485,7 +487,7 @@ k8s_resource('bar', 'bar.yaml')
 
 func TestLoadTypoManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
+	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
@@ -496,10 +498,119 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), matchMap("baz"))
+	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
+}
+
+func TestBasicGitPathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters(".git"),
+		fileChangeFilters(".git"),
+		buildFilters("Tiltfile"),
+		fileChangeMatches("Tiltfile"),
+		buildMatches("foo.yaml"),
+		fileChangeMatches("foo.yaml"),
+	)
+}
+
+func TestDockerignorePathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file(".dockerignore", "*.txt")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("a.txt"),
+		fileChangeFilters("a.txt"),
+		buildMatches("txt.a"),
+		fileChangeMatches("txt.a"),
+	)
+}
+
+func TestDockerignorePathFilterSubdir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("foo/Dockerfile", "FROM golang:1.10")
+	f.file("foo/.dockerignore", "*.txt")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+		buildMatches("foo/txt.a"),
+		fileChangeMatches("foo/txt.a"),
+	)
+}
+
+func TestFastBuildDockerignoreRoot(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file(".dockerignore", "foo/*.txt")
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi")
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+	)
+}
+
+func TestFastBuildDockerignoreSubdir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("foo/.dockerignore", "*.txt")
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi")
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+		buildMatches("foo/subdir/a.txt"),
+		fileChangeMatches("foo/subdir/a.txt"),
+	)
 }
 
 func TestDockerComposeResourceCreation(t *testing.T) {
@@ -517,7 +628,7 @@ func TestDockerComposeAndK8sNotSupported(t *testing.T) {
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
-	tmp *tempdir.TempDirFixture
+	*tempdir.TempDirFixture
 
 	// created by load
 	manifests    []model.Manifest
@@ -528,20 +639,18 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := output.ForkedCtxForTest(out)
+	f := tempdir.NewTempDirFixture(t)
+
 	r := &fixture{
-		ctx: ctx,
-		t:   t,
-		tmp: tempdir.NewTempDirFixture(t),
+		ctx:            ctx,
+		t:              t,
+		TempDirFixture: f,
 	}
 	return r
 }
 
-func (f *fixture) tearDown() {
-	f.tmp.TearDown()
-}
-
 func (f *fixture) file(path string, contents string) {
-	f.tmp.WriteFile(path, contents)
+	f.WriteFile(path, contents)
 }
 
 type k8sOpts interface{}
@@ -598,7 +707,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), matchMap(names...))
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -608,7 +717,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.tmp.JoinPath("Tiltfile"), nil)
+	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
@@ -623,7 +732,7 @@ func (f *fixture) loadErrString(msgs ...string) {
 }
 
 func (f *fixture) gitInit(path string) {
-	if err := os.Mkdir(f.tmp.JoinPath(".git"), os.FileMode(0777)); err != nil {
+	if err := os.Mkdir(f.JoinPath(path, ".git"), os.FileMode(0777)); err != nil {
 		f.t.Fatal(err)
 	}
 }
@@ -688,8 +797,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				case addHelper:
 					mount := mounts[0]
 					mounts = mounts[1:]
-					if mount.LocalPath != f.tmp.JoinPath(matcher.src) {
-						f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.tmp.JoinPath(matcher.src))
+					if mount.LocalPath != f.JoinPath(matcher.src) {
+						f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
 					}
 				case runHelper:
 					step := steps[0]
@@ -715,6 +824,46 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			if opt.num != len(f.entities(m)) {
 				f.t.Fatalf("manifest %v has %v entities in %v; expected %v", m.Name, len(f.entities(m)), m.K8sYAML(), opt.num)
 			}
+
+		case matchPathHelper:
+			// Make sure the path matches one of the mounts.
+			isDep := false
+			path := f.JoinPath(opt.path)
+			for _, d := range m.LocalPaths() {
+				_, isChild := ospath.Child(d, path)
+				if isChild {
+					isDep = true
+				}
+			}
+
+			if !isDep {
+				f.t.Errorf("Path %s is not a dependency of manifest %s", path, m.Name)
+			}
+
+			expectedFilter := opt.missing
+			filter := ignore.CreateBuildContextFilter(m)
+			filterName := "BuildContextFilter"
+			if opt.fileChange {
+				var err error
+				filter, err = ignore.CreateFileChangeFilter(m)
+				if err != nil {
+					f.t.Fatalf("Error creating file change filter: %v", err)
+				}
+				filterName = "FileChangeFilter"
+			}
+
+			actualFilter, err := filter.Matches(path, false)
+			if err != nil {
+				f.t.Fatalf("Error matching filter (%s): %v", path, err)
+			}
+			if actualFilter != expectedFilter {
+				if expectedFilter {
+					f.t.Errorf("%s should filter %s", filterName, path)
+				} else {
+					f.t.Errorf("%s should not filter %s", filterName, path)
+				}
+			}
+
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.PortForwards())
 		default:
@@ -731,7 +880,7 @@ func (f *fixture) assertNumManifests(expected int) {
 func (f *fixture) assertConfigFiles(filenames ...string) {
 	var expected []string
 	for _, filename := range filenames {
-		expected = append(expected, f.tmp.JoinPath(filename))
+		expected = append(expected, f.JoinPath(filename))
 	}
 	sort.Strings(expected)
 	sort.Strings(f.configFiles)
@@ -788,6 +937,40 @@ type numEntitiesHelper struct {
 
 func numEntities(num int) numEntitiesHelper {
 	return numEntitiesHelper{num}
+}
+
+type matchPathHelper struct {
+	path       string
+	missing    bool
+	fileChange bool
+}
+
+func buildMatches(path string) matchPathHelper {
+	return matchPathHelper{
+		path: path,
+	}
+}
+
+func buildFilters(path string) matchPathHelper {
+	return matchPathHelper{
+		path:    path,
+		missing: true,
+	}
+}
+
+func fileChangeMatches(path string) matchPathHelper {
+	return matchPathHelper{
+		path:       path,
+		fileChange: true,
+	}
+}
+
+func fileChangeFilters(path string) matchPathHelper {
+	return matchPathHelper{
+		path:       path,
+		missing:    true,
+		fileChange: true,
+	}
 }
 
 type imageHelper struct {

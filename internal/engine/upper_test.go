@@ -1264,13 +1264,13 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest.Repos = []model.LocalGithubRepo{
-		{
-			LocalPath:            f.Path(),
-			DockerignoreContents: "dignore.txt",
-		},
-	}
+	manifest := f.newManifest("foobar", []model.Mount{mount}).
+		WithDockerignores([]model.Dockerignore{
+			{
+				LocalPath: f.Path(),
+				Contents:  "dignore.txt",
+			},
+		})
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1289,13 +1289,13 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest.Repos = []model.LocalGithubRepo{
-		{
-			LocalPath:         f.Path(),
-			GitignoreContents: "gignore.txt",
-		},
-	}
+	manifest := f.newManifest("foobar", []model.Mount{mount}).
+		WithRepos([]model.LocalGithubRepo{
+			{
+				LocalPath:         f.Path(),
+				GitignoreContents: "gignore.txt",
+			},
+		})
 
 	f.Start([]model.Manifest{manifest}, true)
 

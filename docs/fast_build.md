@@ -59,7 +59,7 @@ image has the name in `dm1_img_name` and has an entrypoint `/go/bin/demoserver1`
 
 Here's what's in `Dockerfile`:
 
-```
+```dockerfile
 FROM golang:1.10
 ```
 

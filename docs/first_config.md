@@ -36,7 +36,7 @@ and download your image).
 
 If we open the Dockerfile, we see
 
-```
+```dockerfile
 FROM golang:1.11
 WORKDIR /go/src/github.com/windmilleng/integration/oneup
 ADD . .
@@ -53,7 +53,7 @@ Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Til
 
 At the risk of diving too deep, let's unpack that YAML file.
 
-```
+```yaml
 apiVersion: v1
 kind: Namespace
 metadata:

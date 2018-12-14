@@ -18,6 +18,7 @@ type WatchableManifest interface {
 	Dependencies() []string
 	ManifestName() model.ManifestName
 	LocalRepos() []model.LocalGithubRepo
+	Dockerignores() []model.Dockerignore
 }
 
 // configManifest makes a WatchableManifest that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
@@ -34,6 +35,10 @@ func (m *configsManifest) ManifestName() model.ManifestName {
 }
 
 func (m *configsManifest) LocalRepos() []model.LocalGithubRepo {
+	return nil
+}
+
+func (m *configsManifest) Dockerignores() []model.Dockerignore {
 	return nil
 }
 
