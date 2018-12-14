@@ -45,13 +45,24 @@ type Manifest struct {
 	StaticBuildPath  string // the absolute path to the files
 	StaticBuildArgs  DockerBuildArgs
 
-	Repos []LocalGithubRepo
+	dockerignores []Dockerignore
+	repos         []LocalGithubRepo
 }
 
 type DockerBuildArgs map[string]string
 
 // & m.k8sYaml == "" ?
 func (m Manifest) IsDockerCompose() bool { return m.DcYAMLPath != "" }
+
+func (m Manifest) WithRepos(repos []LocalGithubRepo) Manifest {
+	m.repos = append(append([]LocalGithubRepo{}, m.repos...), repos...)
+	return m
+}
+
+func (m Manifest) WithDockerignores(dockerignores []Dockerignore) Manifest {
+	m.dockerignores = append(append([]Dockerignore{}, m.dockerignores...), dockerignores...)
+	return m
+}
 
 func (m Manifest) WithCachePaths(paths []string) Manifest {
 	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)
@@ -65,6 +76,10 @@ func (m Manifest) CachePaths() []string {
 
 func (m Manifest) IsStaticBuild() bool {
 	return m.StaticDockerfile != ""
+}
+
+func (m Manifest) Dockerignores() []Dockerignore {
+	return append([]Dockerignore{}, m.dockerignores...)
 }
 
 func (m Manifest) LocalPaths() []string {
@@ -118,15 +133,25 @@ func (m Manifest) ValidateK8sManifest() error {
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
-	mountsMatch := m1.mountsEqual(m2.Mounts)
-	reposMatch := m1.reposEqual(m2.Repos)
+	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
+	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
-	portForwardsMatch := m1.portForwardsEqual(m2)
+	portForwardsMatch := reflect.DeepEqual(m1.portForwards, m2.portForwards)
+	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
 	dockerComposeEqual := m1.DcYAMLPath == m2.DcYAMLPath
 
-	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch && dockerComposeEqual
+	return primitivesMatch &&
+		entrypointMatch &&
+		mountsMatch &&
+		reposMatch &&
+		portForwardsMatch &&
+		stepsMatch &&
+		buildArgsMatch &&
+		cachePathsMatch &&
+		dockerignoresMatch &&
+		dockerComposeEqual
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -136,56 +161,6 @@ func stringSlicesEqual(a, b []string) bool {
 
 	for i := range b {
 		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) mountsEqual(m2 []Mount) bool {
-	if (m1.Mounts == nil) != (m2 == nil) {
-		return false
-	}
-
-	if len(m1.Mounts) != len(m2) {
-		return false
-	}
-
-	for i := range m2 {
-		if m1.Mounts[i] != m2[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
-	if (m1.Repos == nil) != (m2 == nil) {
-		return false
-	}
-
-	if len(m1.Repos) != len(m2) {
-		return false
-	}
-
-	for i := range m2 {
-		if m1.Repos[i] != m2[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
-	if len(m1.portForwards) != len(m2.portForwards) {
-		return false
-	}
-
-	for i := range m2.portForwards {
-		if m1.portForwards[i] != m2.portForwards[i] {
 			return false
 		}
 	}
@@ -227,7 +202,7 @@ func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
 }
 
 func (m Manifest) LocalRepos() []LocalGithubRepo {
-	return m.Repos
+	return m.repos
 }
 
 func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
@@ -282,17 +257,19 @@ type Mount struct {
 	ContainerPath string
 }
 
+type Dockerignore struct {
+
+	// The path to evaluate the dockerignore contents relative to
+	LocalPath string
+	Contents  string
+}
+
 type LocalGithubRepo struct {
-	LocalPath            string
-	DockerignoreContents string
-	GitignoreContents    string
+	LocalPath         string
+	GitignoreContents string
 }
 
 func (LocalGithubRepo) IsRepo() {}
-
-func (r1 LocalGithubRepo) Equal(r2 LocalGithubRepo) bool {
-	return r1.DockerignoreContents == r2.DockerignoreContents && r1.GitignoreContents == r2.GitignoreContents && r1.LocalPath == r2.LocalPath
-}
 
 type Step struct {
 	// Required. The command to run in this step.

@@ -378,13 +378,11 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest := NewSanchoManifest()
 	manifest.Mounts[0].LocalPath = f.Path()
 
-	manifest.Repos = []model.LocalGithubRepo{
+	manifest = manifest.WithRepos([]model.LocalGithubRepo{
 		model.LocalGithubRepo{
-			LocalPath:            f.Path(),
-			DockerignoreContents: "",
-			GitignoreContents:    "",
+			LocalPath: f.Path(),
 		},
-	}
+	})
 	manifest = manifest.WithTiltFilename(filepath.Join(f.Path(), "Tiltfile"))
 	f.WriteFile("Tiltfile", "# hello world")
 	f.WriteFile("a.txt", "a")

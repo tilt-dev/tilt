@@ -71,6 +71,15 @@ func Realwd() (string, error) {
 	return RealAbs(path)
 }
 
+func IsRegularFile(path string) bool {
+	f, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return f.Mode().IsRegular()
+}
+
 func IsDir(path string) bool {
 	f, err := os.Stat(path)
 	if err != nil {

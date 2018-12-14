@@ -11,12 +11,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type gitRepo struct {
-	basePath             string
-	gitignoreContents    string
-	dockerignoreContents string
+	basePath          string
+	gitignoreContents string
 }
 
 func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
@@ -35,12 +35,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 		return nil, err
 	}
 
-	dockerignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".dockerignore"))
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	return &gitRepo{absPath, string(gitignoreContents), string(dockerignoreContents)}, nil
+	return &gitRepo{absPath, string(gitignoreContents)}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -66,7 +61,7 @@ func (gr *gitRepo) Type() string {
 func (gr *gitRepo) Freeze() {}
 
 func (gr *gitRepo) Truth() skylark.Bool {
-	return gr.basePath != "" || gr.gitignoreContents != "" || gr.dockerignoreContents != ""
+	return gr.basePath != "" || gr.gitignoreContents != ""
 }
 
 func (*gitRepo) Hash() (uint32, error) {
@@ -113,7 +108,18 @@ func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, e
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
 	case skylark.String:
-		return localPath{path: s.absPath(string(v))}, nil
+		lp := localPath{path: s.absPath(string(v))}
+
+		// If this is the root of a git repo, automatically turn this into a gitRepo
+		// so that we don't end up tracking .git changes
+		if ospath.IsDir(filepath.Join(lp.path, ".git")) {
+			repo, err := s.newGitRepo(lp.path)
+			if err == nil {
+				return repo.makeLocalPath("."), nil
+			}
+		}
+
+		return lp, nil
 	default:
 		return localPath{}, fmt.Errorf("Expected local path. Actual type: %T", v)
 	}
