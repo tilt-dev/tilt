@@ -86,6 +86,34 @@ func TestMostRecentPod(t *testing.T) {
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 
+func TestEmptyState(t *testing.T) {
+	es := newState([]model.Manifest{}, model.YAMLManifest{})
+
+	v := StateToView(*es)
+	assert.Equal(t, emptyTiltfileMsg, v.TiltfileErrorMessage)
+
+	yaml := "yamlyaml"
+	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"})
+	nes := newState([]model.Manifest{}, m)
+	v = StateToView(*nes)
+	assert.Equal(t, "", v.TiltfileErrorMessage)
+
+	m2 := model.Manifest{
+		Name: "foo",
+		Mounts: []model.Mount{
+			{
+				LocalPath: "/a/b",
+			},
+			{
+				LocalPath: "/a/b/c",
+			},
+		},
+	}
+	nes = newState([]model.Manifest{m2}, model.YAMLManifest{})
+	v = StateToView(*nes)
+	assert.Equal(t, "", v.TiltfileErrorMessage)
+}
+
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
 	ret := NewState()
 	for _, m := range manifests {

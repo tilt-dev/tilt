@@ -16,6 +16,8 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/ to get started."
+
 type EngineState struct {
 	// saved so that we can render in order
 	ManifestDefinitionOrder []model.ManifestName
@@ -58,6 +60,10 @@ type EngineState struct {
 	InitManifests []model.ManifestName
 
 	LastTiltfileError error
+}
+
+func (e EngineState) IsEmpty() bool {
+	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
 }
 
 type ManifestState struct {
@@ -467,7 +473,9 @@ func StateToView(s EngineState) view.View {
 
 	ret.Log = string(s.Log)
 
-	if s.LastTiltfileError != nil {
+	if s.LastTiltfileError == nil && s.IsEmpty() {
+		ret.TiltfileErrorMessage = emptyTiltfileMsg
+	} else if s.LastTiltfileError != nil {
 		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
 	}
 
