@@ -1,9 +1,11 @@
 package dockerfile
 
 import (
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 func TestAllowEntrypoint(t *testing.T) {
@@ -74,4 +76,44 @@ RUN echo hi
 RUN echo bye
 `, string(b))
 	assert.True(t, ok)
+}
+
+func TestDeriveMounts(t *testing.T) {
+	df := Dockerfile(`RUN echo 'hi'
+COPY foo /bar
+ADD /abs/bar /baz
+ADD ./beep/boop /blorp`)
+	context := "/context/dir"
+	mounts, err := df.DeriveMounts(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedMounts := []model.Mount{
+		model.Mount{
+			LocalPath:     path.Join(context, "foo"),
+			ContainerPath: "/bar",
+		},
+		model.Mount{
+			LocalPath:     "/abs/bar",
+			ContainerPath: "/baz",
+		},
+		model.Mount{
+			LocalPath:     path.Join(context, "beep/boop"),
+			ContainerPath: "/blorp",
+		},
+	}
+	assert.Equal(t, len(expectedMounts), len(mounts))
+	for _, m := range expectedMounts {
+		assert.Contains(t, mounts, m)
+	}
+}
+
+func TestNoAddsToNoMounts(t *testing.T) {
+	df := Dockerfile(`RUN echo 'hi'`)
+	mounts, err := df.DeriveMounts("/context/dir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Empty(t, mounts)
 }

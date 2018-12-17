@@ -2,55 +2,147 @@ package dockercompose
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"os/exec"
+	"path"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/model"
+
+	"gopkg.in/yaml.v2"
 )
 
-type Service struct {
-	Name string
+// Go representations of docker-compose.yml
+// (Add fields as we need to support more things)
+type Config struct {
+	Services map[string]ServiceConfig `yaml:"services"`
 }
 
-func ParseConfig(ctx context.Context, files []string) ([]Service, []string, error) {
-	var args []string
-	for _, f := range files {
-		args = append(args, "-f", f)
+type ServiceConfig struct {
+	Build BuildConfig `yaml:"build"`
+}
+
+type BuildConfig struct {
+	Context    string `yaml:"context"`
+	Dockerfile string `yaml:"dockerfile"`
+}
+
+// A docker-compose service, according to Tilt.
+type Service struct {
+	Name    string
+	Context string
+	DfPath  string
+}
+
+func (c Config) GetService(name string) (Service, error) {
+	svcConfig, ok := c.Services[name]
+	if !ok {
+		return Service{}, fmt.Errorf("no service %s found in config", name)
 	}
-	args = append(args, "config")
-	_, err := dcOutput(ctx, args...)
+
+	df := svcConfig.Build.Dockerfile
+	if df == "" && svcConfig.Build.Context != "" {
+		// We only expect a Dockerfile if there's a build context specified.
+		df = "Dockerfile"
+	}
+
+	return Service{
+		Name:    name,
+		Context: svcConfig.Build.Context,
+		DfPath:  path.Join(svcConfig.Build.Context, df),
+	}, nil
+}
+
+func svcNames(ctx context.Context, configPath string) ([]string, error) {
+	servicesText, err := dcOutput(ctx, configPath, "config", "--services")
 	if err != nil {
-		return nil, files, err
+		return nil, err
 	}
 
-	args = append(args, "--services")
-	servicesText, err := dcOutput(ctx, args...)
-	if err != nil {
-		return nil, files, err
-	}
+	serviceNames := strings.Split(servicesText, "\n")
 
-	serviceNames := strings.Split(string(servicesText), "\n")
-
-	var services []Service
+	var result []string
 
 	for _, name := range serviceNames {
 		if name == "" {
 			continue
 		}
-		services = append(services, Service{Name: name})
+		result = append(result, name)
 	}
 
-	return services, files, nil
+	return result, nil
 }
 
-func dcOutput(ctx context.Context, args ...string) (string, error) {
+func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
+	configOut, err := dcOutput(ctx, configPath, "config")
+	if err != nil {
+		return nil, err
+	}
+
+	config := Config{}
+	err = yaml.Unmarshal([]byte(configOut), &config)
+	if err != nil {
+		return nil, err
+	}
+
+	svcNames, err := svcNames(ctx, configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var services []Service
+
+	for _, name := range svcNames {
+		svc, err := config.GetService(name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting service %s", name)
+		}
+		services = append(services, svc)
+	}
+
+	return services, nil
+}
+
+func (s Service) ToManifest(dcConfigPath string) (model.Manifest, error) {
+	m := model.Manifest{
+		Name:       model.ManifestName(s.Name),
+		DcYAMLPath: dcConfigPath,
+	}
+
+	if s.DfPath == "" {
+		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
+		return m, nil
+	}
+
+	// TODO(maia): record s.DfPath as config file!
+	bs, err := ioutil.ReadFile(s.DfPath)
+	if err != nil {
+		return model.Manifest{}, errors.Wrapf(err, "opening Dockerfile for %s: '%s'", s.Name, s.DfPath)
+	}
+
+	// TODO(maia): ignore volumes mounted via dc.yml (b/c those auto-update)
+	df := dockerfile.Dockerfile(bs)
+	mounts, err := df.DeriveMounts(s.Context)
+	if err != nil {
+		return model.Manifest{}, err
+	}
+
+	m.Mounts = mounts
+	return m, nil
+}
+
+func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
+	args = append([]string{"-f", configPath}, args...)
 	output, err := exec.CommandContext(ctx, "docker-compose", args...).Output()
 	if err != nil {
 		errorMessage := fmt.Sprintf("command 'docker-compose %q' failed.\nerror: '%v'\nstdout: '%v'", args, err, string(output))
 		if err, ok := err.(*exec.ExitError); ok {
 			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 		}
-		err = errors.New(errorMessage)
+		err = fmt.Errorf(errorMessage)
 	}
 	return string(output), err
 }
@@ -66,5 +158,5 @@ func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
 	if err, ok := err.(*exec.ExitError); ok && len(err.Stderr) > 0 {
 		errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 	}
-	return errors.New(errorMessage)
+	return fmt.Errorf(errorMessage)
 }
