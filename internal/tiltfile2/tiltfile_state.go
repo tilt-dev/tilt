@@ -14,6 +14,11 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+type resourceSet struct {
+	dc  dcResource // currently only support one d-c.yml
+	k8s []*k8sResource
+}
+
 type tiltfileState struct {
 	// set at creation
 	ctx      context.Context
@@ -26,6 +31,7 @@ type tiltfileState struct {
 	k8s            []*k8sResource
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
+	dc             dcResource // currently only support one d-c.yml
 
 	// for assembly
 	usedImages map[string]bool
@@ -56,8 +62,9 @@ func (s *tiltfileState) exec() error {
 
 const (
 	// build functions
-	dockerBuildN = "docker_build"
-	fastBuildN   = "fast_build"
+	dockerComposeN = "docker_compose"
+	dockerBuildN   = "docker_build"
+	fastBuildN     = "fast_build"
 
 	// k8s functions
 	k8sYamlN     = "k8s_yaml"
@@ -77,6 +84,8 @@ func (s *tiltfileState) builtins() skylark.StringDict {
 		r[name] = skylark.NewBuiltin(name, fn)
 	}
 
+	add(dockerComposeN, s.dockerCompose)
+
 	add(dockerBuildN, s.dockerBuild)
 	add(fastBuildN, s.fastBuild)
 
@@ -91,10 +100,10 @@ func (s *tiltfileState) builtins() skylark.StringDict {
 	return r
 }
 
-func (s *tiltfileState) assemble() ([]*k8sResource, []k8s.K8sEntity, error) {
+func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	images, err := s.findUnresourcedImages()
 	if err != nil {
-		return nil, nil, err
+		return resourceSet{}, nil, err
 	}
 	for _, image := range images {
 		if _, ok := s.imagesByName[image.Name()]; !ok {
@@ -103,27 +112,34 @@ func (s *tiltfileState) assemble() ([]*k8sResource, []k8s.K8sEntity, error) {
 		}
 		target, err := s.findExpandTarget(image)
 		if err != nil {
-			return nil, nil, err
+			return resourceSet{}, nil, err
 		}
 		if err := s.extractImage(target, image); err != nil {
-			return nil, nil, err
+			return resourceSet{}, nil, err
 		}
 	}
 
 	assembledImages := map[string]bool{}
 	for _, r := range s.k8s {
 		if err := s.validateK8s(r, assembledImages); err != nil {
-			return nil, nil, err
+			return resourceSet{}, nil, err
 		}
 	}
 
 	for k, _ := range s.imagesByName {
 		if !assembledImages[k] {
-			return nil, nil, fmt.Errorf("image %v is not used in any resource", k)
+			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
 		}
 	}
 
-	return s.k8s, s.k8sUnresourced, nil
+	if !s.dc.Empty() && len(s.k8s) > 0 {
+		return resourceSet{}, nil, fmt.Errorf("can't declare both k8s resources and docker-compose resources")
+	}
+
+	return resourceSet{
+		dc:  s.dc,
+		k8s: s.k8s,
+	}, s.k8sUnresourced, nil
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
@@ -274,7 +290,7 @@ func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manife
 	return result, nil
 }
 
-func (s *tiltfileState) translate(resources []*k8sResource) ([]model.Manifest, error) {
+func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, r := range resources {
 		m := model.Manifest{
@@ -307,6 +323,18 @@ func (s *tiltfileState) translate(resources []*k8sResource) ([]model.Manifest, e
 		result = append(result, m)
 	}
 
+	return result, nil
+}
+
+func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
+	var result []model.Manifest
+	for _, svc := range dc.services {
+		m, err := svc.ToManifest(dc.configPath)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, m)
+	}
 	return result, nil
 }
 

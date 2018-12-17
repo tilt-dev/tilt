@@ -194,6 +194,15 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
+	// ~~ TEMPORARY: just view the logs for a dc resource:
+	if res.IsDCManifest {
+		lastBuildLog := strings.TrimSpace(string(res.LastBuild().Log))
+		if res.LastBuild().StartTime.Before(res.PodCreationTime) &&
+			len(lastBuildLog) > 0 {
+			return lastBuildLog + "\n\n" + res.PodLog
+		}
+		return res.PodLog
+	}
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {

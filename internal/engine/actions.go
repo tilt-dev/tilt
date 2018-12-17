@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -140,3 +141,16 @@ type ConfigsReloadedAction struct {
 }
 
 func (ConfigsReloadedAction) Action() {}
+
+type DockerComposeEventAction struct {
+	Event dockercompose.Event
+}
+
+func (DockerComposeEventAction) Action() {}
+
+type DockerComposeLogAction struct {
+	ManifestName model.ManifestName
+	Log          []byte
+}
+
+func (DockerComposeLogAction) Action() {}

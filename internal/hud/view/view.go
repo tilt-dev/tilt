@@ -19,13 +19,20 @@ type Resource struct {
 	PendingBuildEdits  []string
 	PendingBuildSince  time.Time
 
+	// Relevant to k8s resources (maybe should accomplish via interface?)
 	PodName            string
 	PodCreationTime    time.Time
 	PodUpdateStartTime time.Time
 	PodStatus          string
 	PodRestarts        int
 	Endpoints          []string
-	PodLog             string
+	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
+
+	// Relevant to docker-compose resources
+	// TODO(maia): store as separate type
+	IsDCManifest bool
+	DCYamlPath   string
+	DCState      string
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -68,8 +69,13 @@ func (e EngineState) IsEmpty() bool {
 
 type ManifestState struct {
 	Manifest model.Manifest
-	PodSet   PodSet
-	LBs      map[k8s.ServiceName]*url.URL
+
+	// k8s-specific state
+	PodSet PodSet
+	LBs    map[k8s.ServiceName]*url.URL
+
+	// docker-compose-specific state
+	DCInfo dockercompose.Info
 
 	// Store the times of all the pending changes,
 	// so we can prioritize the oldest one first.
@@ -427,6 +433,9 @@ func StateToView(s EngineState) view.View {
 			PodLog:             pod.Log(),
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
+			IsDCManifest:       ms.Manifest.IsDockerCompose(),
+			DCYamlPath:         ms.Manifest.DcYAMLPath,
+			DCState:            ms.DCInfo.State,
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -466,4 +475,24 @@ func StateToView(s EngineState) view.View {
 	}
 
 	return ret
+}
+
+func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
+	if ms.Manifest.IsDockerCompose() {
+		return ms.DCInfo.Log()
+	}
+	return pod.Log()
+}
+
+// DockerComposeYAMLPath returns the path to the docker-compose yaml file of any
+// docker-compose manifests on this EngineState.
+// NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
+// path from the first d-c manifest we see.
+func (s EngineState) DockerComposeYAMLPath() string {
+	for _, ms := range s.ManifestStates {
+		if ms.Manifest.DcYAMLPath != "" {
+			return ms.Manifest.DcYAMLPath
+		}
+	}
+	return ""
 }

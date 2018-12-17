@@ -36,6 +36,10 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
+	if manifest.IsDockerCompose() {
+		return store.BuildResult{}, RedirectToNextBuilderf("not implemented: DC container builds")
+	}
+
 	startTime := time.Now()
 	defer func() {
 		cbd.analytics.Timer("build.container", time.Since(startTime), nil)

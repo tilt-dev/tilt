@@ -613,6 +613,18 @@ k8s_resource('foo', 'foo.yaml')
 	)
 }
 
+func TestDockerComposeResourceCreation(t *testing.T) {
+	// TODO(maia)
+}
+
+func TestMultipleDockerComposeNotSupported(t *testing.T) {
+	// TODO(maia)
+}
+
+func TestDockerComposeAndK8sNotSupported(t *testing.T) {
+	// TODO(maia)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

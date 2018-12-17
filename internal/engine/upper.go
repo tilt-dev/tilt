@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -63,7 +64,8 @@ func ProvideTimerMaker() timerMaker {
 
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController, kcli k8s.Client) Upper {
+	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
+	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -75,6 +77,8 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(ic)
 	st.AddSubscriber(gybc)
 	st.AddSubscriber(cc)
+	st.AddSubscriber(dcw)
+	st.AddSubscriber(dclm)
 
 	return Upper{
 		store: st,
@@ -175,6 +179,10 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
+	case DockerComposeEventAction:
+		handleDockerComposeEvent(ctx, state, action)
+	case DockerComposeLogAction:
+		handleDockerComposeLogAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -200,6 +208,8 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		pod.CurrentLog = []byte{}
 		pod.UpdateStartTime = action.StartTime
 	}
+
+	ms.DCInfo.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
 
 	// Keep the crash log around until we have a rebuild
 	// triggered by a explicit change (i.e., not a crash rebuild)
@@ -271,7 +281,6 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
 		if cb.Result.ContainerID != "" {
 			ms.ExpectedContainerID = cb.Result.ContainerID
 
@@ -655,6 +664,42 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 	} else {
 		state.UserExited = true
 	}
+}
+
+func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {
+	evt := action.Event
+	mn := evt.Service
+	ms, ok := engineState.ManifestStates[model.ManifestName(mn)]
+	if !ok {
+		// No corresponding manifest, nothing to do
+		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
+		return
+	}
+
+	// For now, just guess at state.
+	state, ok := evt.GuessState()
+	if ok {
+		ms.DCInfo.State = state
+	}
+}
+
+func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
+	manifestName := action.ManifestName
+	ms, ok := state.ManifestStates[manifestName]
+
+	if !ok {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+
+	// filter out bogus log
+	// TODO(maia): this still shows up in the top-level tilt log and it's annoying :-/
+	logStr := string(action.Log)
+	if strings.TrimSpace(logStr) == "Attaching to" {
+		return
+	}
+
+	ms.DCInfo.CurrentLog = append(ms.DCInfo.CurrentLog, action.Log...)
 }
 
 // Check if the filesChangedSet only contains spurious changes that

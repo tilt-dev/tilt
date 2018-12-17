@@ -33,6 +33,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	build.NewContainerResolver,
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
+	NewDockerComposeBuildAndDeployer,
 	DefaultBuildOrder,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),

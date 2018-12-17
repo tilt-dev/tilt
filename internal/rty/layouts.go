@@ -17,6 +17,12 @@ const (
 	DirVert
 )
 
+var EmptyLayout = NewConcatLayout(DirVert)
+
+func IsEmpty(l Component) bool {
+	return l == nil || l == EmptyLayout
+}
+
 type Align int
 
 const (
