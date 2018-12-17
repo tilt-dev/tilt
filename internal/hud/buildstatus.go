@@ -21,22 +21,22 @@ func makeBuildStatus(res view.Resource) buildStatus {
 	edits := []string{}
 	deployTime := time.Time{}
 
-	if !res.CurrentBuildStartTime.IsZero() && !res.CurrentBuildReason.IsCrashOnly() {
+	if !res.CurrentBuild.StartTime.IsZero() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		status = "Building"
-		duration = time.Since(res.CurrentBuildStartTime)
-		edits = res.CurrentBuildEdits
+		duration = time.Since(res.CurrentBuild.StartTime)
+		edits = res.CurrentBuild.Edits
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
 		status = "Pending"
 		duration = time.Since(res.PendingBuildSince)
 		edits = res.PendingBuildEdits
-	} else if !res.LastBuildFinishTime.IsZero() {
-		if res.LastBuildError != "" {
+	} else if !res.LastBuild().FinishTime.IsZero() {
+		if res.LastBuild().Error != nil {
 			status = "Error"
 		} else {
 			status = "OK"
 		}
-		duration = res.LastBuildDuration
-		edits = res.LastBuildEdits
+		duration = res.LastBuild().Duration()
+		edits = res.LastBuild().Edits
 		deployTime = res.LastDeployTime
 
 	}

@@ -25,7 +25,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
 	ms := state.ManifestStates[m.Name]
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
-	ms.BuildHistory = []BuildStatus{
+	ms.BuildHistory = []model.BuildStatus{
 		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
 	}
 	ms.PendingFileChanges = map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
@@ -36,10 +36,10 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	}
 
 	r := v.Resources[0]
-	assert.Equal(t, []string{"d", "d/e"}, r.LastBuildEdits)
+	assert.Equal(t, []string{"d", "d/e"}, r.LastBuild().Edits)
 
-	sort.Strings(r.CurrentBuildEdits)
-	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuildEdits)
+	sort.Strings(r.CurrentBuild.Edits)
+	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuild.Edits)
 	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
 }
 
@@ -74,7 +74,7 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	assert.Equal(t, 1, len(v.Resources))
 
 	r := v.Resources[0]
-	assert.Equal(t, "", r.LastBuildError)
+	assert.Equal(t, nil, r.LastBuild().Error)
 	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
 }
 
