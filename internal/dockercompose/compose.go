@@ -62,7 +62,7 @@ func svcNames(ctx context.Context, configPath string) ([]string, error) {
 		return nil, err
 	}
 
-	serviceNames := strings.Split(string(servicesText), "\n")
+	serviceNames := strings.Split(servicesText, "\n")
 
 	var result []string
 
@@ -96,9 +96,6 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 	var services []Service
 
 	for _, name := range svcNames {
-		if name == "" {
-			continue
-		}
 		svc, err := config.GetService(name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting service %s", name)

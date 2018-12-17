@@ -3,7 +3,7 @@ package dockerfile
 import (
 	"bytes"
 	"fmt"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -162,9 +162,12 @@ func nodeToMount(node *parser.Node, context string) (model.Mount, error) {
 	dstNode := srcNode.Next
 
 	src := srcNode.Value
-	if !path.IsAbs(src) {
-		src = path.Join(context, src)
+	if !filepath.IsAbs(src) {
+		src = filepath.Join(context, src)
 	}
+
+	// TODO(maia): do we support relative ContainerPaths in mounts?
+	// If not, need to either a. make absolute or b. error out here.
 
 	return model.Mount{
 		LocalPath:     src,
