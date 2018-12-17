@@ -17,6 +17,8 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/ to get started."
+
 type EngineState struct {
 	// saved so that we can render in order
 	ManifestDefinitionOrder []model.ManifestName
@@ -61,6 +63,10 @@ type EngineState struct {
 	LastTiltfileError error
 }
 
+func (e EngineState) IsEmpty() bool {
+	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
+}
+
 type ManifestState struct {
 	Manifest model.Manifest
 
@@ -77,13 +83,13 @@ type ManifestState struct {
 	PendingManifestChange time.Time
 
 	// The current build
-	CurrentBuild BuildStatus
+	CurrentBuild model.BuildStatus
 
 	LastSuccessfulResult     BuildResult
 	LastSuccessfulDeployTime time.Time
 
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
-	BuildHistory []BuildStatus
+	BuildHistory []model.BuildStatus
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -110,17 +116,17 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	}
 }
 
-func (ms *ManifestState) LastBuild() BuildStatus {
+func (ms *ManifestState) LastBuild() model.BuildStatus {
 	if len(ms.BuildHistory) == 0 {
-		return BuildStatus{}
+		return model.BuildStatus{}
 	}
 	return ms.BuildHistory[0]
 }
 
-func (ms *ManifestState) AddCompletedBuild(bs BuildStatus) {
-	ms.BuildHistory = append([]BuildStatus{bs}, ms.BuildHistory...)
-	if len(ms.BuildHistory) > BuildHistoryLimit {
-		ms.BuildHistory = ms.BuildHistory[:BuildHistoryLimit]
+func (ms *ManifestState) AddCompletedBuild(bs model.BuildStatus) {
+	ms.BuildHistory = append([]model.BuildStatus{bs}, ms.BuildHistory...)
+	if len(ms.BuildHistory) > model.BuildHistoryLimit {
+		ms.BuildHistory = ms.BuildHistory[:model.BuildHistoryLimit]
 	}
 }
 
@@ -188,7 +194,7 @@ type YAMLManifestState struct {
 	LastError               error
 	LastApplyFinishTime     time.Time
 	LastSuccessfulApplyTime time.Time
-	LastApplyDuration       time.Duration
+	LastApplyStartTime      time.Time
 }
 
 func NewYAMLManifestState() *YAMLManifestState {
@@ -389,21 +395,20 @@ func StateToView(s EngineState) view.View {
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
-		lastBuildEdits := shortenFileList(absWatchDirs, ms.LastBuild().Edits)
-		currentBuildEdits := shortenFileList(absWatchDirs, ms.CurrentBuild.Edits)
+
+		buildHistory := append([]model.BuildStatus{}, ms.BuildHistory...)
+		for i, build := range buildHistory {
+			build.Edits = shortenFileList(absWatchDirs, build.Edits)
+			buildHistory[i] = build
+		}
+
+		currentBuild := ms.CurrentBuild
+		currentBuild.Edits = shortenFileList(absWatchDirs, ms.CurrentBuild.Edits)
 
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
 
-		lastBuild := ms.LastBuild()
-		lastBuildError := ""
-		if lastBuild.Error != nil {
-			lastBuildError = lastBuild.Error.Error()
-		}
-
 		endpoints := ManifestStateEndpoints(ms)
-
-		lastBuildLog := string(lastBuild.Log)
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
@@ -411,35 +416,26 @@ func StateToView(s EngineState) view.View {
 		// at once).
 		pod := ms.MostRecentPod()
 		r := view.Resource{
-			Name:                  name.String(),
-			DirectoriesWatched:    relWatchDirs,
-			PathsWatched:          relWatchPaths,
-			LastDeployTime:        ms.LastSuccessfulDeployTime,
-			LastBuildEdits:        lastBuildEdits,
-			LastBuildError:        lastBuildError,
-			LastBuildReason:       lastBuild.Reason,
-			LastBuildStartTime:    lastBuild.StartTime,
-			LastBuildFinishTime:   lastBuild.FinishTime,
-			LastBuildDuration:     lastBuild.Duration(),
-			LastBuildLog:          lastBuildLog,
-			PendingBuildEdits:     pendingBuildEdits,
-			PendingBuildSince:     ms.PendingBuildSince(),
-			PendingBuildReason:    ms.NextBuildReason(),
-			CurrentBuildEdits:     currentBuildEdits,
-			CurrentBuildLog:       string(ms.CurrentBuild.Log),
-			CurrentBuildStartTime: ms.CurrentBuild.StartTime,
-			CurrentBuildReason:    ms.CurrentBuild.Reason,
-			PodName:               pod.PodID.String(),
-			PodCreationTime:       pod.StartedAt,
-			PodUpdateStartTime:    pod.UpdateStartTime,
-			PodStatus:             pod.Status,
-			PodRestarts:           pod.ContainerRestarts - pod.OldRestarts,
-			PodLog:                logForPodOrDockerCompose(ms, pod),
-			IsDCManifest:          ms.Manifest.IsDockerCompose(),
-			DCYamlPath:            ms.Manifest.DcYAMLPath,
-			DCState:               ms.DCInfo.State,
-			CrashLog:              ms.CrashLog,
-			Endpoints:             endpoints,
+			Name:               name.String(),
+			DirectoriesWatched: relWatchDirs,
+			PathsWatched:       relWatchPaths,
+			LastDeployTime:     ms.LastSuccessfulDeployTime,
+			BuildHistory:       buildHistory,
+			PendingBuildEdits:  pendingBuildEdits,
+			PendingBuildSince:  ms.PendingBuildSince(),
+			PendingBuildReason: ms.NextBuildReason(),
+			CurrentBuild:       currentBuild,
+			PodName:            pod.PodID.String(),
+			PodCreationTime:    pod.StartedAt,
+			PodUpdateStartTime: pod.UpdateStartTime,
+			PodStatus:          pod.Status,
+			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
+			PodLog:             pod.Log(),
+			CrashLog:           ms.CrashLog,
+			Endpoints:          endpoints,
+			IsDCManifest:       ms.Manifest.IsDockerCompose(),
+			DCYamlPath:         ms.Manifest.DcYAMLPath,
+			DCState:            ms.DCInfo.State,
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -452,23 +448,19 @@ func StateToView(s EngineState) view.View {
 		}
 		relWatches := ospath.TryAsCwdChildren(absWatches)
 
-		var lastError string
-
-		if s.GlobalYAMLState.LastError != nil {
-			lastError = s.GlobalYAMLState.LastError.Error()
-		} else {
-			lastError = ""
-		}
-
 		r := view.Resource{
-			Name:                  s.GlobalYAML.ManifestName().String(),
-			DirectoriesWatched:    relWatches,
-			CurrentBuildStartTime: s.GlobalYAMLState.CurrentApplyStartTime,
-			LastBuildFinishTime:   s.GlobalYAMLState.LastApplyFinishTime,
-			LastBuildDuration:     s.GlobalYAMLState.LastApplyDuration,
-			LastDeployTime:        s.GlobalYAMLState.LastSuccessfulApplyTime,
-			LastBuildError:        lastError,
-			IsYAMLManifest:        true,
+			Name:               s.GlobalYAML.ManifestName().String(),
+			DirectoriesWatched: relWatches,
+			CurrentBuild:       model.BuildStatus{StartTime: s.GlobalYAMLState.CurrentApplyStartTime},
+			BuildHistory: []model.BuildStatus{
+				model.BuildStatus{
+					StartTime:  s.GlobalYAMLState.LastApplyStartTime,
+					FinishTime: s.GlobalYAMLState.LastApplyFinishTime,
+					Error:      s.GlobalYAMLState.LastError,
+				},
+			},
+			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
+			IsYAMLManifest: true,
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -476,7 +468,9 @@ func StateToView(s EngineState) view.View {
 
 	ret.Log = string(s.Log)
 
-	if s.LastTiltfileError != nil {
+	if s.LastTiltfileError == nil && s.IsEmpty() {
+		ret.TiltfileErrorMessage = emptyTiltfileMsg
+	} else if s.LastTiltfileError != nil {
 		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
 	}
 

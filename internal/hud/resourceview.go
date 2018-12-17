@@ -71,17 +71,17 @@ func (v *ResourceView) statusColor() tcell.Color {
 		} else if v.res.DCState == dockercompose.StateDown {
 			return cBad
 		}
-	} else if !v.res.CurrentBuildStartTime.IsZero() && !v.res.CurrentBuildReason.IsCrashOnly() {
+	} else if !v.res.CurrentBuild.StartTime.IsZero() && !v.res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !v.res.PendingBuildSince.IsZero() && !v.res.PendingBuildReason.IsCrashOnly() {
 		return cPending
 	} else if isCrashing(v.res) {
 		return cBad
-	} else if v.res.LastBuildError != "" {
+	} else if v.res.LastBuild().Error != nil {
 		return cBad
 	} else if v.res.IsYAMLManifest && !v.res.LastDeployTime.IsZero() {
 		return cGood
-	} else if !v.res.LastBuildFinishTime.IsZero() && v.res.PodStatus == "" {
+	} else if !v.res.LastBuild().FinishTime.IsZero() && v.res.PodStatus == "" {
 		return cPending // pod status hasn't shown up yet
 	}
 
@@ -295,7 +295,7 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 		return rty.NewConcatLayout(rty.DirVert)
 	}
 
-	if len(v.res.CurrentBuildEdits) == 0 && len(v.res.LastBuildEdits) == 0 {
+	if len(v.res.CurrentBuild.Edits) == 0 && len(v.res.LastBuild().Edits) == 0 {
 		return rty.NewConcatLayout(rty.DirVert)
 	}
 
@@ -303,21 +303,21 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 	l.Add(rty.NewStringBuilder().Fg(cLightText).Text("HISTORY: ").Build())
 
 	rows := rty.NewConcatLayout(rty.DirVert)
-	if len(v.res.CurrentBuildEdits) != 0 {
+	if len(v.res.CurrentBuild.Edits) != 0 {
 		rows.Add(NewEditStatusLine(buildStatus{
-			edits:    v.res.CurrentBuildEdits,
-			duration: time.Since(v.res.CurrentBuildStartTime),
+			edits:    v.res.CurrentBuild.Edits,
+			duration: time.Since(v.res.CurrentBuild.StartTime),
 			status:   "Building",
 		}))
 	}
-	if len(v.res.LastBuildEdits) != 0 {
+	if len(v.res.LastBuild().Edits) != 0 {
 		status := "OK"
-		if v.res.LastBuildError != "" {
+		if v.res.LastBuild().Error != nil {
 			status = "Error"
 		}
 		rows.Add(NewEditStatusLine(buildStatus{
-			edits:      v.res.LastBuildEdits,
-			duration:   v.res.LastBuildDuration,
+			edits:      v.res.LastBuild().Edits,
+			duration:   v.res.LastBuild().Duration(),
 			status:     status,
 			deployTime: v.res.LastDeployTime,
 		}))
@@ -369,8 +369,8 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 
-	if v.res.LastBuildError != "" {
-		abbrevLog := abbreviateLog(v.res.LastBuildLog)
+	if v.res.LastBuild().Error != nil {
+		abbrevLog := abbreviateLog(string(v.res.LastBuild().Log))
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true
@@ -378,7 +378,7 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 
 		// if the build log is non-empty, it will contain the error, so we don't need to show this separately
 		if len(abbrevLog) == 0 {
-			pane.Add(rty.TextString(fmt.Sprintf("Error: %s", v.res.LastBuildError)))
+			pane.Add(rty.TextString(fmt.Sprintf("Error: %s", v.res.LastBuild().Error)))
 			ok = true
 		}
 	}

@@ -38,3 +38,7 @@ func (y YAMLManifest) ConfigMatcher() (PathMatcher, error) {
 func (y YAMLManifest) K8sYAML() string {
 	return y.k8sYAML
 }
+
+func (y YAMLManifest) Empty() bool {
+	return y.K8sYAML() == ""
+}

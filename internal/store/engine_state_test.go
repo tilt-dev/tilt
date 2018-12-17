@@ -25,7 +25,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
 	ms := state.ManifestStates[m.Name]
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
-	ms.BuildHistory = []BuildStatus{
+	ms.BuildHistory = []model.BuildStatus{
 		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
 	}
 	ms.PendingFileChanges = map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
@@ -36,10 +36,10 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	}
 
 	r := v.Resources[0]
-	assert.Equal(t, []string{"d", "d/e"}, r.LastBuildEdits)
+	assert.Equal(t, []string{"d", "d/e"}, r.LastBuild().Edits)
 
-	sort.Strings(r.CurrentBuildEdits)
-	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuildEdits)
+	sort.Strings(r.CurrentBuild.Edits)
+	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuild.Edits)
 	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
 }
 
@@ -74,7 +74,7 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	assert.Equal(t, 1, len(v.Resources))
 
 	r := v.Resources[0]
-	assert.Equal(t, "", r.LastBuildError)
+	assert.Equal(t, nil, r.LastBuild().Error)
 	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
 }
 
@@ -84,6 +84,34 @@ func TestMostRecentPod(t *testing.T) {
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
 	podSet := NewPodSet(podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
+}
+
+func TestEmptyState(t *testing.T) {
+	es := newState([]model.Manifest{}, model.YAMLManifest{})
+
+	v := StateToView(*es)
+	assert.Equal(t, emptyTiltfileMsg, v.TiltfileErrorMessage)
+
+	yaml := "yamlyaml"
+	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"})
+	nes := newState([]model.Manifest{}, m)
+	v = StateToView(*nes)
+	assert.Equal(t, "", v.TiltfileErrorMessage)
+
+	m2 := model.Manifest{
+		Name: "foo",
+		Mounts: []model.Mount{
+			{
+				LocalPath: "/a/b",
+			},
+			{
+				LocalPath: "/a/b/c",
+			},
+		},
+	}
+	nes = newState([]model.Manifest{m2}, model.YAMLManifest{})
+	v = StateToView(*nes)
+	assert.Equal(t, "", v.TiltfileErrorMessage)
 }
 
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
