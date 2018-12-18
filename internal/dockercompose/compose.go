@@ -106,7 +106,8 @@ func (c Config) GetService(name string) (Service, error) {
 }
 
 func svcNames(ctx context.Context, configPath string) ([]string, error) {
-	servicesText, err := dcOutput(ctx, configPath, "config", "--services")
+	dcc := NewDockerComposeClient()
+	servicesText, err := dcc.Services(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,8 @@ func svcNames(ctx context.Context, configPath string) ([]string, error) {
 }
 
 func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
-	configOut, err := dcOutput(ctx, configPath, "config")
+	dcc := NewDockerComposeClient()
+	configOut, err := dcc.Config(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}
