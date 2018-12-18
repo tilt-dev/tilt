@@ -26,7 +26,7 @@ func (s *tiltfileState) dockerCompose(thread *skylark.Thread, fn *skylark.Builti
 		return nil, err
 	}
 	if !filepath.IsAbs(configPath) {
-		configPath = filepath.Join(s.root, configPath)
+		configPath = filepath.Join(s.absWorkingDir(), configPath)
 	}
 	absConfigPath, err := ospath.RealAbs(configPath)
 	if err != nil {

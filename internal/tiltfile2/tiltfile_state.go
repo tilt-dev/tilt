@@ -23,7 +23,6 @@ type tiltfileState struct {
 	// set at creation
 	ctx      context.Context
 	filename string
-	root     string
 
 	// added to during execution
 	configFiles    []string
@@ -42,7 +41,6 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tilt
 	return &tiltfileState{
 		ctx:          ctx,
 		filename:     filename,
-		root:         tfRoot,
 		imagesByName: make(map[string]*dockerImage),
 		k8sByName:    make(map[string]*k8sResource),
 		configFiles:  []string{filename},
