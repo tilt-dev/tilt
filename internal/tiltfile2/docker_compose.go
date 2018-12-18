@@ -2,6 +2,7 @@ package tiltfile2
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 
 	"github.com/google/skylark"
@@ -23,17 +24,21 @@ func (s *tiltfileState) dockerCompose(thread *skylark.Thread, fn *skylark.Builti
 	if err != nil {
 		return nil, err
 	}
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return nil, err
+	}
 
-	services, err := dockercompose.ParseConfig(s.ctx, configPath)
+	services, err := dockercompose.ParseConfig(s.ctx, absConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
 	if !s.dc.Empty() {
-		return skylark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
+		return skylark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, absConfigPath)
 	}
 
-	s.dc = dcResource{configPath: configPath, services: services}
+	s.dc = dcResource{configPath: absConfigPath, services: services}
 
 	return skylark.None, nil
 }
