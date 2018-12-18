@@ -270,6 +270,16 @@ var equalitytests = []struct {
 		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
 		true,
 	},
+	{
+		Manifest{DcYAMLPath: "/src/docker-compose.yml"},
+		Manifest{DcYAMLPath: "/src/docker-compose.yml"},
+		true,
+	},
+	{
+		Manifest{DcYAMLPath: "/src/docker-compose1.yml"},
+		Manifest{DcYAMLPath: "/src/docker-compose2.yml"},
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
