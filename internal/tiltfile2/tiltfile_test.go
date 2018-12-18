@@ -631,6 +631,7 @@ services:
 	f.file("Tiltfile", tf)
 
 	f.load("foo")
+	// TODO(maia): assert docker-compose.yml and Dockerfile are dependencies
 	f.assertManifest("foo", dcYAMLPath(YAMLPath))
 }
 
