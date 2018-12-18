@@ -636,11 +636,56 @@ services:
 }
 
 func TestMultipleDockerComposeNotSupported(t *testing.T) {
-	// TODO(maia)
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	dc1 := f.TempDirFixture.JoinPath("docker-compose1.yml")
+	dc2 := f.TempDirFixture.JoinPath("docker-compose2.yml")
+	f.file("docker-compose1.yml", `
+version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+	f.file("docker-compose2.yml", `
+version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+
+	tf := fmt.Sprintf(`docker_compose('%s')
+docker_compose('%s')`, dc1, dc2)
+	f.file("Tiltfile", tf)
+
+	f.loadErrString("already have a docker-compose resource declared")
 }
 
 func TestDockerComposeAndK8sNotSupported(t *testing.T) {
-	// TODO(maia)
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("docker-compose.yml", `
+version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	tf := fmt.Sprintf(`docker_compose('%s')
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')`, YAMLPath)
+	f.file("Tiltfile", tf)
+
+	f.loadErrString("can't declare both k8s resources and docker-compose resources")
 }
 
 type fixture struct {
