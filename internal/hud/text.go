@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -17,10 +18,10 @@ func deployTimeText(t time.Time) rty.Component {
 	return sb.Build()
 }
 
-func deployTimeCell(t time.Time) rty.Component {
+func deployTimeCell(t time.Time, color tcell.Color) rty.Component {
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
-		Add(deployTimeText(t))
+		Add(rty.Fg(deployTimeText(t), color))
 }
 
 func middotText() rty.Component {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -66,7 +67,7 @@ func (esl *EditStatusLineComponent) buildStatusText() rty.Component {
 }
 
 func (esl *EditStatusLineComponent) buildAgeText() rty.Component {
-	return deployTimeCell(esl.bs.deployTime)
+	return deployTimeCell(esl.bs.deployTime, esl.bs.defaultTextColor())
 }
 
 func (esl *EditStatusLineComponent) rightPane() rty.Component {
@@ -81,7 +82,17 @@ func (esl *EditStatusLineComponent) Render(w rty.Writer, width, height int) erro
 	offset := 0
 	allocated := 0
 	sb := rty.NewStringBuilder()
-	sb.Fg(cLightText).Text("EDITED FILES ")
+	bs := esl.bs
+
+	if len(bs.edits) == 0 {
+		if bs.reason.Has(model.BuildReasonFlagInit) {
+			sb.Fg(cLightText).Text("FIRST BUILD ")
+		} else if bs.reason.Has(model.BuildReasonFlagCrash) {
+			sb.Fg(cLightText).Text("CRASH BUILD ")
+		}
+	} else {
+		sb.Fg(cLightText).Text("EDITED FILES ")
+	}
 
 	lhs := sb.Build()
 

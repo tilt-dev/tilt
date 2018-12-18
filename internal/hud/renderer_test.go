@@ -551,6 +551,38 @@ func TestPendingBuildInManualTriggerMode(t *testing.T) {
 	rtf.run("pending build with manual trigger", 80, 20, v, vs)
 }
 
+func TestBuildHistory(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:      "vigoda",
+				PodName:   "vigoda-pod",
+				PodStatus: "Running",
+				BuildHistory: []model.BuildStatus{
+					{
+						Edits:      []string{"main.go"},
+						StartTime:  ts.Add(-10 * time.Second),
+						FinishTime: ts,
+					},
+					{
+						Reason:     model.BuildReasonFlagInit,
+						StartTime:  ts.Add(-2 * time.Minute),
+						FinishTime: ts.Add(-2 * time.Minute).Add(5 * time.Second),
+					},
+				},
+				PodUpdateStartTime: ts,
+				PodCreationTime:    ts.Add(-time.Minute),
+				LastDeployTime:     ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseNo)
+	rtf.run("multiple build history entries", 80, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	t *testing.T
 	i rty.InteractiveTester
