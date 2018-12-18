@@ -14,7 +14,7 @@ import (
 func LogReaderForService(ctx context.Context, svcName, configPath string) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
-	args := []string{"-f", configPath, "logs", "-f", "-t", svcName} // ~~ don't need -t probs
+	args := []string{"-f", configPath, "logs", "-f", "-t", svcName} // TODO(maia): probs don't need -t
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

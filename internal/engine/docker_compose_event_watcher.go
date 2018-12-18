@@ -94,7 +94,7 @@ func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st st
 			}
 			evt, err := dockercompose.EventFromJsonStr(evtJson)
 			if err != nil {
-				// ~~ what do i do with this error?
+				// TODO(maia): handle this error better?
 				logger.Get(ctx).Infof("[DOCKER-COMPOSE WATCHER] failed to unmarshal dc event '%s' with err: %v", evtJson, err)
 				continue
 			}
