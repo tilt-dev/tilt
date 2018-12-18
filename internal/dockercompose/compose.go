@@ -180,19 +180,6 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	return m, []string{s.DfPath}, nil
 }
 
-func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
-	args = append([]string{"-f", configPath}, args...)
-	output, err := exec.CommandContext(ctx, "docker-compose", args...).Output()
-	if err != nil {
-		errorMessage := fmt.Sprintf("command 'docker-compose %q' failed.\nerror: '%v'\nstdout: '%v'", args, err, string(output))
-		if err, ok := err.(*exec.ExitError); ok {
-			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
-		}
-		err = fmt.Errorf(errorMessage)
-	}
-	return string(output), err
-}
-
 func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
 	if err == nil {
 		return nil
