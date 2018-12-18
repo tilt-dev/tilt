@@ -626,12 +626,11 @@ services:
     command: sleep 100
     ports:
       - "12312:12312"`)
-	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	tf := fmt.Sprintf("docker_compose('%s')", YAMLPath)
-	f.file("Tiltfile", tf)
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
 	f.load("foo")
 	// TODO(maia): assert docker-compose.yml and Dockerfile are dependencies
+	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertManifest("foo", dcYAMLPath(YAMLPath))
 }
 
@@ -640,8 +639,6 @@ func TestMultipleDockerComposeNotSupported(t *testing.T) {
 	defer f.TearDown()
 
 	f.setupFoo()
-	dc1 := f.TempDirFixture.JoinPath("docker-compose1.yml")
-	dc2 := f.TempDirFixture.JoinPath("docker-compose2.yml")
 	f.file("docker-compose1.yml", `
 version: '3'
 services:
@@ -659,8 +656,8 @@ services:
     ports:
       - "12312:12312"`)
 
-	tf := fmt.Sprintf(`docker_compose('%s')
-docker_compose('%s')`, dc1, dc2)
+	tf := `docker_compose('docker-compose1.yml')
+docker_compose('docker-compose2.yml')`
 	f.file("Tiltfile", tf)
 
 	f.loadErrString("already have a docker-compose resource declared")
@@ -679,13 +676,32 @@ services:
     command: sleep 100
     ports:
       - "12312:12312"`)
-	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	tf := fmt.Sprintf(`docker_compose('%s')
+	tf := `docker_compose('docker-compose.yml')
 docker_build('gcr.io/foo', 'foo')
-k8s_resource('foo', 'foo.yaml')`, YAMLPath)
+k8s_resource('foo', 'foo.yaml')`
 	f.file("Tiltfile", tf)
 
 	f.loadErrString("can't declare both k8s resources and docker-compose resources")
+}
+
+func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	f.setupFoo()
+	f.file("docker-compose.yml", `
+version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", YAMLPath))
+
+	f.load("foo")
+	f.assertManifest("foo", dcYAMLPath(YAMLPath))
 }
 
 type fixture struct {

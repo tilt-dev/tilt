@@ -37,7 +37,7 @@ type tiltfileState struct {
 	usedImages map[string]bool
 }
 
-func newTiltfileState(ctx context.Context, filename string) *tiltfileState {
+func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
 	return &tiltfileState{
 		ctx:          ctx,
 		filename:     filename,

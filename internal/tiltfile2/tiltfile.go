@@ -30,7 +30,9 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 		return nil, model.YAMLManifest{}, []string{absFilename}, err
 	}
 
-	s := newTiltfileState(ctx, absFilename)
+	tfRoot, _ := filepath.Split(absFilename)
+
+	s := newTiltfileState(ctx, absFilename, tfRoot)
 	defer func() {
 		configFiles = s.configFiles
 	}()
