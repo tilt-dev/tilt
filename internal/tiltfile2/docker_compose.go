@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 // dcResource represents a single docker-compose config file and all its associated services
@@ -24,7 +25,10 @@ func (s *tiltfileState) dockerCompose(thread *skylark.Thread, fn *skylark.Builti
 	if err != nil {
 		return nil, err
 	}
-	absConfigPath, err := filepath.Abs(configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(s.root, configPath)
+	}
+	absConfigPath, err := ospath.RealAbs(configPath)
 	if err != nil {
 		return nil, err
 	}
