@@ -271,13 +271,13 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{DcYAMLPath: "/src/docker-compose.yml"},
-		Manifest{DcYAMLPath: "/src/docker-compose.yml"},
+		Manifest{DcConfigPath: "/src/docker-compose.yml"},
+		Manifest{DcConfigPath: "/src/docker-compose.yml"},
 		true,
 	},
 	{
-		Manifest{DcYAMLPath: "/src/docker-compose1.yml"},
-		Manifest{DcYAMLPath: "/src/docker-compose2.yml"},
+		Manifest{DcConfigPath: "/src/docker-compose1.yml"},
+		Manifest{DcConfigPath: "/src/docker-compose2.yml"},
 		false,
 	},
 	{

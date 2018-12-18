@@ -158,10 +158,10 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	m := model.Manifest{
-		Name:       model.ManifestName(s.Name),
-		DcYAMLPath: dcConfigPath,
-		DcYAMLRaw:  s.ServiceConfig,
-		DfRaw:      s.DfContents,
+		Name:         model.ManifestName(s.Name),
+		DcConfigPath: dcConfigPath,
+		DcYAMLRaw:    s.ServiceConfig,
+		DfRaw:        s.DfContents,
 	}
 
 	if s.DfPath == "" {

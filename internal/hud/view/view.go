@@ -31,7 +31,7 @@ type Resource struct {
 	// Relevant to docker-compose resources
 	// TODO(maia): store as separate type
 	IsDCManifest bool
-	DCYamlPath   string
+	DcConfigPath string
 	DCState      string
 
 	// If a pod had to be killed because it was crashing, we keep the old log around

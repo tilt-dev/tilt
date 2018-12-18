@@ -33,7 +33,7 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 	w.watching = true
 
 	state := st.RLockState()
-	configPath := state.DockerComposeYAMLPath()
+	configPath := state.DockerComposeConfigPath()
 	st.RUnlockState()
 
 	if configPath == "" {

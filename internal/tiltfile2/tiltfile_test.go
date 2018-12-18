@@ -629,8 +629,8 @@ services:
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
 	f.load("foo")
-	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.assertManifest("foo", dcYAMLPath(YAMLPath))
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	f.assertManifest("foo", dcConfigPath(configPath))
 
 	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
 	f.assertConfigFiles(expectedConfFiles...)
@@ -690,7 +690,7 @@ func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.setupFoo()
 	f.file("docker-compose.yml", `
 version: '3'
@@ -700,10 +700,10 @@ services:
     command: sleep 100
     ports:
       - "12312:12312"`)
-	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", YAMLPath))
+	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", configPath))
 
 	f.load("foo")
-	f.assertManifest("foo", dcYAMLPath(YAMLPath))
+	f.assertManifest("foo", dcConfigPath(configPath))
 }
 
 type fixture struct {
@@ -947,8 +947,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.PortForwards())
-		case dcYAMLPathHelper:
-			assert.Equal(f.t, opt.path, m.DcYAMLPath)
+		case dcConfigPathHelper:
+			assert.Equal(f.t, opt.path, m.DcConfigPath)
 		default:
 			f.t.Fatalf("unexpected arg to assertManifest: %T %v", opt, opt)
 		}
@@ -996,12 +996,12 @@ func secret(name string) secretHelper {
 	return secretHelper{name: name}
 }
 
-type dcYAMLPathHelper struct {
+type dcConfigPathHelper struct {
 	path string
 }
 
-func dcYAMLPath(path string) dcYAMLPathHelper {
-	return dcYAMLPathHelper{path}
+func dcConfigPath(path string) dcConfigPathHelper {
+	return dcConfigPathHelper{path}
 }
 
 type deployHelper struct {

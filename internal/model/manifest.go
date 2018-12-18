@@ -25,9 +25,9 @@ type Manifest struct {
 
 	// Properties for Docker Compose manifests
 	// TODO(maia): pull out into separate type
-	DcYAMLPath string
-	DcYAMLRaw  []byte // for diff'ing when config files change
-	DfRaw      []byte // for diff'ing when config files change
+	DcConfigPath string
+	DcYAMLRaw    []byte // for diff'ing when config files change
+	DfRaw        []byte // for diff'ing when config files change
 
 	// Properties for all k8s builds
 	k8sYaml      string
@@ -55,7 +55,7 @@ type Manifest struct {
 type DockerBuildArgs map[string]string
 
 // & m.k8sYaml == "" ?
-func (m Manifest) IsDockerCompose() bool { return m.DcYAMLPath != "" }
+func (m Manifest) IsDockerCompose() bool { return m.DcConfigPath != "" }
 
 func (m Manifest) WithRepos(repos []LocalGithubRepo) Manifest {
 	m.repos = append(append([]LocalGithubRepo{}, m.repos...), repos...)
@@ -143,7 +143,7 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
-	dockerComposeEqual := m1.DcYAMLPath == m2.DcYAMLPath && bytes.Equal(m1.DcYAMLRaw, m2.DcYAMLRaw) && bytes.Equal(m1.DfRaw, m2.DfRaw)
+	dockerComposeEqual := m1.DcConfigPath == m2.DcConfigPath && bytes.Equal(m1.DcYAMLRaw, m2.DcYAMLRaw) && bytes.Equal(m1.DfRaw, m2.DfRaw)
 
 	return primitivesMatch &&
 		entrypointMatch &&
