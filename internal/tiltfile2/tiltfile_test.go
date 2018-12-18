@@ -614,7 +614,24 @@ k8s_resource('foo', 'foo.yaml')
 }
 
 func TestDockerComposeResourceCreation(t *testing.T) {
-	// TODO(maia)
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("docker-compose.yml", `
+version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	tf := fmt.Sprintf("docker_compose('%s')", YAMLPath)
+	f.file("Tiltfile", tf)
+
+	f.load("foo")
+	f.assertManifest("foo", dcYAMLPath(YAMLPath))
 }
 
 func TestMultipleDockerComposeNotSupported(t *testing.T) {
@@ -866,6 +883,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.PortForwards())
+		case dcYAMLPathHelper:
+			assert.Equal(f.t, opt.path, m.DcYAMLPath)
 		default:
 			f.t.Fatalf("unexpected arg to assertManifest: %T %v", opt, opt)
 		}
@@ -911,6 +930,14 @@ type secretHelper struct {
 
 func secret(name string) secretHelper {
 	return secretHelper{name: name}
+}
+
+type dcYAMLPathHelper struct {
+	path string
+}
+
+func dcYAMLPath(path string) dcYAMLPathHelper {
+	return dcYAMLPathHelper{path}
 }
 
 type deployHelper struct {
