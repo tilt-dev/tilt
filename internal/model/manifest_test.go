@@ -280,6 +280,26 @@ var equalitytests = []struct {
 		Manifest{DcYAMLPath: "/src/docker-compose2.yml"},
 		false,
 	},
+	{
+		Manifest{DcYAMLRaw: []byte("hello world")},
+		Manifest{DcYAMLRaw: []byte("hello world")},
+		true,
+	},
+	{
+		Manifest{DcYAMLRaw: []byte("hello world")},
+		Manifest{DcYAMLRaw: []byte("goodbye world")},
+		false,
+	},
+	{
+		Manifest{DfRaw: []byte("hello world")},
+		Manifest{DfRaw: []byte("hello world")},
+		true,
+	},
+	{
+		Manifest{DfRaw: []byte("hello world")},
+		Manifest{DfRaw: []byte("goodbye world")},
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
