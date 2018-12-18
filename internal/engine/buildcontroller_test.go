@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	store "github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -101,4 +102,36 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestBuildControllerManualTrigger(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Mount{mount})
+	f.Init(InitAction{
+		Manifests:   []model.Manifest{manifest},
+		WatchMounts: true,
+		TriggerMode: model.TriggerManual,
+	})
+
+	f.nextCall()
+	f.waitForCompletedBuildCount(1)
+
+	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "fe"})
+	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
+
+	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+		return len(st.ManifestStates["fe"].PendingFileChanges) > 0
+	})
+
+	// We don't expect a call because the trigger happened before the file event
+	// came in.
+	f.assertNoCall()
+
+	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "fe"})
+	call := f.nextCall()
+	assert.Equal(t, []string{f.JoinPath("main.go")}, call.state.FilesChanged())
+	f.waitForCompletedBuildCount(2)
 }

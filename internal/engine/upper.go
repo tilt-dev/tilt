@@ -12,6 +12,7 @@ import (
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -90,7 +91,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error {
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -113,36 +114,19 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool) error
 
 	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile2.FileName, matching)
 
-	u.store.Dispatch(InitAction{
+	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
 		Manifests:          manifests,
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
-		ManifestNames:      manifestNames,
+		TriggerMode:        triggerMode,
 		Err:                err,
 	})
-
-	return u.store.Loop(ctx)
 }
 
-func (u Upper) StartForTesting(ctx context.Context, manifests []model.Manifest,
-	globalYAML model.YAMLManifest, watchMounts bool, tiltfilePath string) error {
-
-	manifestNames := make([]model.ManifestName, len(manifests))
-
-	for i, m := range manifests {
-		manifestNames[i] = m.ManifestName()
-	}
-
-	u.store.Dispatch(InitAction{
-		WatchMounts:        watchMounts,
-		Manifests:          manifests,
-		GlobalYAMLManifest: globalYAML,
-		TiltfilePath:       tiltfilePath,
-		ManifestNames:      manifestNames,
-	})
-
+func (u Upper) Init(ctx context.Context, action InitAction) error {
+	u.store.Dispatch(action)
 	return u.store.Loop(ctx)
 }
 
@@ -183,6 +167,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDockerComposeEvent(ctx, state, action)
 	case DockerComposeLogAction:
 		handleDockerComposeLogAction(state, action)
+	case view.AppendToTriggerQueueAction:
+		appendToTriggerQueue(state, action.Name)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -218,6 +204,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	state.CurrentlyBuilding = mn
+	removeFromTriggerQueue(state, mn)
 }
 
 func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
@@ -293,6 +280,38 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	return nil
+}
+
+func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
+	if state.TriggerMode != model.TriggerManual {
+		return
+	}
+
+	ms, ok := state.ManifestStates[mn]
+	if !ok {
+		return
+	}
+
+	ok, _ = hasPendingChangesBefore(ms, time.Now())
+	if !ok {
+		return
+	}
+
+	for _, triggerName := range state.TriggerQueue {
+		if mn == triggerName {
+			return
+		}
+	}
+	state.TriggerQueue = append(state.TriggerQueue, mn)
+}
+
+func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
+	for i, triggerName := range state.TriggerQueue {
+		if triggerName == mn {
+			state.TriggerQueue = append(state.TriggerQueue[:i], state.TriggerQueue[i+1:]...)
+			break
+		}
+	}
 }
 
 func handleFSEvent(
@@ -638,13 +657,18 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
-	engineState.TiltfilePath = action.TiltfilePath
-	engineState.ConfigFiles = action.ConfigFiles
-	engineState.InitManifests = action.ManifestNames
-	engineState.LastTiltfileError = action.Err
 	watchMounts := action.WatchMounts
 	manifests := action.Manifests
+	manifestNames := make([]model.ManifestName, len(manifests))
+	for i, m := range manifests {
+		manifestNames[i] = m.ManifestName()
+	}
 
+	engineState.TiltfilePath = action.TiltfilePath
+	engineState.TriggerMode = action.TriggerMode
+	engineState.ConfigFiles = action.ConfigFiles
+	engineState.InitManifests = manifestNames
+	engineState.LastTiltfileError = action.Err
 	engineState.GlobalYAML = action.GlobalYAMLManifest
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 

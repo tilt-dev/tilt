@@ -65,11 +65,11 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	l.Add(r.renderResources(v, vs))
 	l.Add(r.renderPaneHeader(vs))
 	l.Add(r.renderLogPane(v, vs))
-	l.Add(r.renderFooter(v, keyLegend(vs)))
+	l.Add(r.renderFooter(v, keyLegend(v, vs)))
 
 	var ret rty.Component = l
 	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
-		ret = r.renderTiltLog(v, vs, keyLegend(vs), ret)
+		ret = r.renderTiltLog(v, vs, keyLegend(v, vs), ret)
 	} else if vs.LogModal.ResourceLogNumber != 0 {
 		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
 	}
@@ -170,7 +170,7 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 	return rty.NewFixedSize(footer, rty.GROW, 2)
 }
 
-func keyLegend(vs view.ViewState) string {
+func keyLegend(v view.View, vs view.ViewState) string {
 	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (q)uit  "
 	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
 		return "Scroll (↓ ↑) ┊ cycle (l)og view "
@@ -178,6 +178,8 @@ func keyLegend(vs view.ViewState) string {
 		return "Scroll (↓ ↑) ┊ (esc) close logs "
 	} else if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
+	} else if v.TriggerMode == model.TriggerManual {
+		return "Build (space) ┊ " + defaultKeys
 	}
 	return defaultKeys
 }
@@ -307,14 +309,14 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 
 	childNames := make([]string, len(rs))
 	for i, r := range rs {
-		childNames[i] = r.Name
+		childNames[i] = r.Name.String()
 	}
 	// the items added to `l` below must be kept in sync with `childNames` above
 	l, selectedResource := r.rty.RegisterElementScroll(resourcesScollerName, childNames)
 
 	if len(rs) > 0 {
 		for i, res := range rs {
-			l.Add(r.renderResource(res, vs.Resources[i], selectedResource == res.Name))
+			l.Add(r.renderResource(res, vs.Resources[i], v.TriggerMode, selectedResource == res.Name.String()))
 		}
 	}
 
@@ -322,8 +324,8 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 	return cl
 }
 
-func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, selected bool) rty.Component {
-	return NewResourceView(res, rv, selected, r.clock).Build()
+func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, triggerMode model.TriggerMode, selected bool) rty.Component {
+	return NewResourceView(res, rv, triggerMode, selected, r.clock).Build()
 }
 
 func (r *Renderer) renderTiltfileError(v view.View) rty.Component {

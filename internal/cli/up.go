@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
@@ -27,6 +28,7 @@ type upCmd struct {
 	browserMode string
 	traceTags   string
 	hud         bool
+	autoDeploy  bool
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -43,6 +45,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&c.autoDeploy, "auto-deploy", true, "If false, tilt will wait on <spacebar> to trigger builds")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
@@ -105,9 +108,14 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		})
 	}
 
+	triggerMode := model.TriggerAuto
+	if !c.autoDeploy {
+		triggerMode = model.TriggerManual
+	}
+
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch)
+		return upper.Start(ctx, args, c.watch, triggerMode)
 	})
 
 	err = g.Wait()

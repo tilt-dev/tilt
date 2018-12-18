@@ -8,6 +8,7 @@ import (
 	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -17,19 +18,22 @@ const BuildDurCellMinWidth = 7
 const BuildStatusCellMinWidth = 8
 
 type ResourceView struct {
-	res      view.Resource
-	rv       view.ResourceViewState
-	selected bool
+	res         view.Resource
+	rv          view.ResourceViewState
+	triggerMode model.TriggerMode
+	selected    bool
 
 	clock func() time.Time
 }
 
-func NewResourceView(res view.Resource, rv view.ResourceViewState, selected bool, clock func() time.Time) *ResourceView {
+func NewResourceView(res view.Resource, rv view.ResourceViewState, triggerMode model.TriggerMode,
+	selected bool, clock func() time.Time) *ResourceView {
 	return &ResourceView{
-		res:      res,
-		rv:       rv,
-		selected: selected,
-		clock:    clock,
+		res:         res,
+		rv:          rv,
+		triggerMode: triggerMode,
+		selected:    selected,
+		clock:       clock,
 	}
 }
 
@@ -74,7 +78,11 @@ func (v *ResourceView) statusColor() tcell.Color {
 	} else if !v.res.CurrentBuild.StartTime.IsZero() && !v.res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !v.res.PendingBuildSince.IsZero() && !v.res.PendingBuildReason.IsCrashOnly() {
-		return cPending
+		if v.triggerMode == model.TriggerAuto {
+			return cPending
+		} else {
+			return cLightText
+		}
 	} else if isCrashing(v.res) {
 		return cBad
 	} else if v.res.LastBuild().Error != nil {
@@ -108,7 +116,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 	sb.Text(p)
 	sb.Fg(color).Textf(" ● ")
 
-	name := v.res.Name
+	name := v.res.Name.String()
 	if color == cPending {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
@@ -149,7 +157,7 @@ func (v *ResourceView) titleTextDC() rty.Component {
 }
 
 func (v *ResourceView) titleTextBuild() rty.Component {
-	return buildStatusCell(makeBuildStatus(v.res))
+	return buildStatusCell(makeBuildStatus(v.res, v.triggerMode))
 }
 
 func (v *ResourceView) titleTextDeploy() rty.Component {

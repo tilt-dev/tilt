@@ -5,6 +5,7 @@ import (
 
 	"github.com/gdamore/tcell"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -15,7 +16,7 @@ type buildStatus struct {
 	deployTime time.Time
 }
 
-func makeBuildStatus(res view.Resource) buildStatus {
+func makeBuildStatus(res view.Resource, triggerMode model.TriggerMode) buildStatus {
 	status := "Pending"
 	duration := time.Duration(0)
 	edits := []string{}
@@ -27,7 +28,9 @@ func makeBuildStatus(res view.Resource) buildStatus {
 		edits = res.CurrentBuild.Edits
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
 		status = "Pending"
-		duration = time.Since(res.PendingBuildSince)
+		if triggerMode == model.TriggerAuto {
+			duration = time.Since(res.PendingBuildSince)
+		}
 		edits = res.PendingBuildEdits
 	} else if !res.LastBuild().FinishTime.IsZero() {
 		if res.LastBuild().Error != nil {

@@ -175,7 +175,12 @@ func (s Script) Run(ctx context.Context) error {
 
 		defer s.cleanUp(newBackgroundContext(ctx), manifests)
 
-		return s.upper.StartForTesting(ctx, manifests, model.YAMLManifest{}, true, tfPath)
+		initAction := engine.InitAction{
+			WatchMounts:  true,
+			Manifests:    manifests,
+			TiltfilePath: tfPath,
+		}
+		return s.upper.Init(ctx, initAction)
 	})
 
 	return g.Wait()

@@ -166,6 +166,12 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				}
 			case r == 'R': // hidden key for recovering from printf junk during demos
 				h.r.screen.Sync()
+			case r == ' ': // [space] - trigger build for selected resource
+				_, selected := h.selectedResource()
+				dispatch(view.AppendToTriggerQueueAction{
+					Name: selected.Name,
+				})
+
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()
