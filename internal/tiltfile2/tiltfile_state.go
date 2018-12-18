@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/skylark"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -329,12 +330,14 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, svc := range dc.services {
-		m, err := svc.ToManifest(dc.configPath)
+		m, configFiles, err := svc.ToManifest(dc.configPath)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, m)
+		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, configFiles...))
 	}
+	s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, dc.configPath))
 	return result, nil
 }
 

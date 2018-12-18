@@ -629,9 +629,11 @@ services:
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
 	f.load("foo")
-	// TODO(maia): assert docker-compose.yml and Dockerfile are dependencies
 	YAMLPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertManifest("foo", dcYAMLPath(YAMLPath))
+
+	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
+	f.assertConfigFiles(expectedConfFiles...)
 }
 
 func TestMultipleDockerComposeNotSupported(t *testing.T) {

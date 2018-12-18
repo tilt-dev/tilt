@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -18,11 +18,45 @@ import (
 // Go representations of docker-compose.yml
 // (Add fields as we need to support more things)
 type Config struct {
-	Services map[string]ServiceConfig `yaml:"services"`
+	Services map[string]ServiceConfig
 }
 
 type ServiceConfig struct {
-	Build BuildConfig `yaml:"build"`
+	RawYAML []byte      // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
+	Build   BuildConfig `yaml:"build"`
+}
+
+// We use a custom Unmarshal method here so that we can store the RawYAML in addition
+// to unmarshaling the fields we care about into structs.
+func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	aux := struct {
+		Services map[string]interface{} `yaml:"services"`
+	}{}
+	err := unmarshal(&aux)
+	if err != nil {
+		return err
+	}
+
+	if c.Services == nil {
+		c.Services = make(map[string]ServiceConfig)
+	}
+
+	for k, v := range aux.Services {
+		b, err := yaml.Marshal(v) // so we can unmarshal it again
+		if err != nil {
+			return err
+		}
+
+		svcConf := &ServiceConfig{}
+		err = yaml.Unmarshal(b, svcConf)
+		if err != nil {
+			return err
+		}
+
+		svcConf.RawYAML = b
+		c.Services[k] = *svcConf
+	}
+	return nil
 }
 
 type BuildConfig struct {
@@ -35,6 +69,10 @@ type Service struct {
 	Name    string
 	Context string
 	DfPath  string
+
+	// Currently just use these to diff against when config files are edited to see if manifest has changed
+	ServiceConfig []byte
+	DfContents    []byte
 }
 
 func (c Config) GetService(name string) (Service, error) {
@@ -49,11 +87,22 @@ func (c Config) GetService(name string) (Service, error) {
 		df = "Dockerfile"
 	}
 
-	return Service{
-		Name:    name,
-		Context: svcConfig.Build.Context,
-		DfPath:  path.Join(svcConfig.Build.Context, df),
-	}, nil
+	dfPath := filepath.Join(svcConfig.Build.Context, df)
+	svc := Service{
+		Name:          name,
+		Context:       svcConfig.Build.Context,
+		DfPath:        dfPath,
+		ServiceConfig: svcConfig.RawYAML,
+	}
+
+	if dfPath != "" {
+		dfContents, err := ioutil.ReadFile(dfPath)
+		if err != nil {
+			return svc, err
+		}
+		svc.DfContents = dfContents
+	}
+	return svc, nil
 }
 
 func svcNames(ctx context.Context, configPath string) ([]string, error) {
@@ -106,32 +155,29 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 	return services, nil
 }
 
-func (s Service) ToManifest(dcConfigPath string) (model.Manifest, error) {
+func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
+	configFiles []string, err error) {
 	m := model.Manifest{
 		Name:       model.ManifestName(s.Name),
 		DcYAMLPath: dcConfigPath,
+		DcYAMLRaw:  s.ServiceConfig,
+		DfRaw:      s.DfContents,
 	}
 
 	if s.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
-		return m, nil
-	}
-
-	// TODO(maia): record s.DfPath as config file!
-	bs, err := ioutil.ReadFile(s.DfPath)
-	if err != nil {
-		return model.Manifest{}, errors.Wrapf(err, "opening Dockerfile for %s: '%s'", s.Name, s.DfPath)
+		return m, nil, nil
 	}
 
 	// TODO(maia): ignore volumes mounted via dc.yml (b/c those auto-update)
-	df := dockerfile.Dockerfile(bs)
+	df := dockerfile.Dockerfile(s.DfContents)
 	mounts, err := df.DeriveMounts(s.Context)
 	if err != nil {
-		return model.Manifest{}, err
+		return model.Manifest{}, nil, err
 	}
 
 	m.Mounts = mounts
-	return m, nil
+	return m, []string{s.DfPath}, nil
 }
 
 func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
