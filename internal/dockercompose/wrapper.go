@@ -14,33 +14,34 @@ import (
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, pathToConfig, serviceName string, stdout, stderr io.Writer) error
-	Down(ctx context.Context, pathToConfig string, stdout, stderr io.Writer) error
-	Logs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error)
-	Events(ctx context.Context, pathToConfig string) (<-chan string, error)
-	Config(ctx context.Context, pathToConfig string) (string, error)
-	Services(ctx context.Context, pathToConfig string) (string, error)
+	Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error
+	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
+	Logs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error)
+	Events(ctx context.Context, configPath string) (<-chan string, error)
+	Config(ctx context.Context, configPath string) (string, error)
+	Services(ctx context.Context, configPath string) (string, error)
 }
 
 type cmdDCClient struct{}
 
+// TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
+// have to keep passing it in.
 func NewDockerComposeClient() DockerComposeClient {
 	return &cmdDCClient{}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, pathToConfig, serviceName string, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", pathToConfig, "up", "--no-deps", "--build", "--force-recreate", "-d", serviceName)
+func (c *cmdDCClient) Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error {
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "--force-recreate", "-d", serviceName)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	err := cmd.Run()
-	return FormatError(cmd, nil, err)
+	return FormatError(cmd, nil, cmd.Run())
 }
 
-func (c *cmdDCClient) Down(ctx context.Context, pathToConfig string, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", pathToConfig, "down")
-	cmd.Stdout = logger.Get(ctx).Writer(logger.InfoLvl)
-	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
+func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error {
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "down")
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	err := cmd.Run()
 	if err != nil {
@@ -50,10 +51,11 @@ func (c *cmdDCClient) Down(ctx context.Context, pathToConfig string, stdout, std
 	return nil
 }
 
-func (c *cmdDCClient) Logs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
+// TODO(dmiller) rename to indicate that this streams logs to the io.ReadCloser
+func (c *cmdDCClient) Logs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
-	args := []string{"-f", pathToConfig, "logs", "-f", "-t", serviceName} // ~~ don't need -t probs
+	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName} // ~~ don't need -t probs
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -79,10 +81,11 @@ func (c *cmdDCClient) Logs(ctx context.Context, pathToConfig, serviceName string
 	return stdout, nil
 }
 
-func (c *cmdDCClient) Events(ctx context.Context, pathToConfig string) (<-chan string, error) {
+// TODO(dmiller) rename to indicate that this streams logs to the chan string
+func (c *cmdDCClient) Events(ctx context.Context, configPath string) (<-chan string, error) {
 	ch := make(chan string)
 
-	args := []string{"-f", pathToConfig, "events", "--json"}
+	args := []string{"-f", configPath, "events", "--json"}
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -113,12 +116,12 @@ func (c *cmdDCClient) Events(ctx context.Context, pathToConfig string) (<-chan s
 	return ch, nil
 }
 
-func (c *cmdDCClient) Config(ctx context.Context, pathToConfig string) (string, error) {
-	return dcOutput(ctx, pathToConfig, "config")
+func (c *cmdDCClient) Config(ctx context.Context, configPath string) (string, error) {
+	return dcOutput(ctx, configPath, "config")
 }
 
-func (c *cmdDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
-	return dcOutput(ctx, pathToConfig, "config", "--services")
+func (c *cmdDCClient) Services(ctx context.Context, configPath string) (string, error) {
+	return dcOutput(ctx, configPath, "config", "--services")
 }
 
 func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
