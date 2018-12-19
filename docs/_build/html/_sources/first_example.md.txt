@@ -22,21 +22,25 @@ in `integration/oneup`.
 In the oneup directory, run
 
 ```
-tilt up oneup
+tilt up
 ```
 
 Your terminal will turn into a status box that lets you watch your server come up. When it's ready,
 you will see the status icon turn green. The logs in the botton pane will display
-"Serving oneup on 8000."
+"Serving oneup on container port 8000."
 
 ![oneup server logs](_static/oneup.png)
+
+Type `b` to open `oneup` in a browser window.
+Your browser will open `http://localhost:8100`.
+You should see the text `🍄 One-Up! 🍄`.
 
 Congratulations! You've run your first server with `tilt`.
 
 Type `q` to quit the status box. When you're finished, run
 
 ```
-tilt down oneup
+tilt down
 ```
 
 to turn off the server.
@@ -45,9 +49,13 @@ to turn off the server.
 Next Steps
 ----------
 
-In the next guide, we're going to learn
+How did Tilt know how to build the server?
+How did it get into the Kubernetes cluster?
+How did it start listening on `localhost:8100`?
+
+In the next guide, we'll answer these questions while you learn 
 [how to configure your own project](first_config.html)
-to run with Tilt.
+with Tilt.
 
 
 

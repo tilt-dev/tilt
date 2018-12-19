@@ -11,7 +11,7 @@ Let's look at the Tiltfile line-by-line and see what each part does.
 # -*- mode: Python -*-
 
 docker_build('gcr.io/windmill-test-containers/integration/oneup', '.')
-k8s_resource('oneup', 'oneup.yaml')
+k8s_resource('oneup', 'oneup.yaml', port_forwards=8100)
 ```
 
 - `# -*- mode: Python -*-`
@@ -46,9 +46,10 @@ ENTRYPOINT /go/bin/oneup
 
 If you don't know Go, that's OK. These are steps to run that build a Go server.
 
-- `k8s_resource('oneup', 'oneup.yaml')`
+- `k8s_resource('oneup', 'oneup.yaml', port_forwards=8100)`
 
-This next line reads Kubernetes YAML, gives it a name and creates it in Kubernetes.
+This next line reads Kubernetes YAML, gives it a name, creates it in Kubernetes, and sets up a localhost:8100 listener.
+
 Tilt tracks dependencies; you can edit YAML, Dockerfiles or the Tiltfile and Tilt will automatically rebuild your server.
 
 At the risk of diving too deep, let's unpack that YAML file.
@@ -86,6 +87,10 @@ spec:
 ```
 
 There's a lot of YAML here! But the idea is easy to summarize: schedule 1 server on Kubernetes.
+
+The `port_forwards=8100` tells Tilt to connect `localhost:8100` to the main
+`containerPort` for the `oneup` container.  Tilt will wait for the server to
+come up and make the connection when its ready.
 
 Next Steps
 ----------
