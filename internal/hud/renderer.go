@@ -196,8 +196,8 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	// ~~ TEMPORARY: just view the logs for a dc resource:
-	if res.IsDCManifest {
+	// TODO(maia): get the BEST logs (currently getting any old logs)
+	if res.IsDC() {
 		lastBuildLog := strings.TrimSpace(string(res.LastBuild().Log))
 		if res.LastBuild().StartTime.Before(res.PodCreationTime) &&
 			len(lastBuildLog) > 0 {

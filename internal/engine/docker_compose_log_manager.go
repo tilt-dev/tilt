@@ -36,7 +36,8 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 	}
 
 	for _, ms := range state.ManifestStates {
-		if !ms.Manifest.IsDockerCompose() {
+		dcInfo, ok := ms.Manifest.DCInfo()
+		if !ok {
 			continue
 		}
 
@@ -58,7 +59,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 			ctx:             ctx,
 			cancel:          cancel,
 			name:            ms.Manifest.Name,
-			dcConfigPath:    ms.Manifest.DCConfigPath,
+			dcConfigPath:    dcInfo.ConfigPath,
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),
 		}

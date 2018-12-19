@@ -36,7 +36,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	span.SetTag("manifest", manifest.Name.String())
 	defer span.Finish()
 
-	if manifest.IsDockerCompose() {
+	if manifest.IsDC() {
 		return store.BuildResult{}, RedirectToNextBuilderf("not implemented: DC container builds")
 	}
 

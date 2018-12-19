@@ -158,12 +158,14 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 
 func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
-	m := model.Manifest{
-		Name:         model.ManifestName(s.Name),
-		DCConfigPath: dcConfigPath,
-		DCYAMLRaw:    s.ServiceConfig,
-		DfRaw:        s.DfContents,
+	dcInfo := model.DCInfo{
+		ConfigPath: dcConfigPath,
+		YAMLRaw:    s.ServiceConfig,
+		DfRaw:      s.DfContents,
 	}
+	m := model.Manifest{
+		Name: model.ManifestName(s.Name),
+	}.WithResourceInfo(dcInfo)
 
 	if s.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.

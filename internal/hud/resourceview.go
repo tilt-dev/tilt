@@ -67,12 +67,12 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func (v *ResourceView) statusColor() tcell.Color {
-	if v.res.IsDCManifest {
-		if v.res.DCState == dockercompose.StateInProg {
+	if dcInfo, ok := v.res.DCInfo(); ok {
+		if dcInfo.Status == dockercompose.StatusInProg {
 			return cPending
-		} else if v.res.DCState == dockercompose.StateUp {
+		} else if dcInfo.Status == dockercompose.StatusUp {
 			return cGood
-		} else if v.res.DCState == dockercompose.StateDown {
+		} else if dcInfo.Status == dockercompose.StatusDown {
 			return cBad
 		}
 	} else if !v.res.CurrentBuild.Empty() && !v.res.CurrentBuild.Reason.IsCrashOnly() {
@@ -143,12 +143,13 @@ func (v *ResourceView) titleText() rty.Component {
 }
 
 func (v *ResourceView) titleTextDC() rty.Component {
-	if !v.res.IsDCManifest {
+	dcInfo, ok := v.res.DCInfo()
+	if !ok {
 		return nil
 	}
 
 	sb := rty.NewStringBuilder()
-	status := v.res.DCState
+	status := dcInfo.Status
 	if status == "" {
 		status = "Pending"
 	}
@@ -188,7 +189,7 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {
-	if !v.res.IsDCManifest {
+	if !v.res.IsDC() {
 		return rty.EmptyLayout
 	}
 

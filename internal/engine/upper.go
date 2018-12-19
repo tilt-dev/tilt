@@ -9,6 +9,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -195,7 +196,9 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		pod.UpdateStartTime = action.StartTime
 	}
 
-	ms.DCInfo.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
+	if dcState, ok := ms.DCResourceState(); ok {
+		dcState.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
+	}
 
 	// Keep the crash log around until we have a rebuild
 	// triggered by a explicit change (i.e., not a crash rebuild)
@@ -701,9 +704,13 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	}
 
 	// For now, just guess at state.
-	state, ok := evt.GuessState()
+	status, ok := evt.GuessStatus()
 	if ok {
-		ms.DCInfo.State = state
+		if dcState, ok := ms.DCResourceState(); ok {
+			dcState.Status = status
+			return
+		}
+		ms.ResourceState = &dockercompose.State{Status: status}
 	}
 }
 
@@ -723,7 +730,11 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 
-	ms.DCInfo.CurrentLog = append(ms.DCInfo.CurrentLog, action.Log...)
+	if dcState, ok := ms.DCResourceState(); ok {
+		dcState.CurrentLog = append(dcState.CurrentLog, action.Log...)
+		return
+	}
+	ms.ResourceState = &dockercompose.State{CurrentLog: action.Log}
 }
 
 // Check if the filesChangedSet only contains spurious changes that

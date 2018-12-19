@@ -70,6 +70,10 @@ func (e EngineState) IsEmpty() bool {
 	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
 }
 
+type ResourceState interface {
+	ResourceState()
+}
+
 type ManifestState struct {
 	Manifest model.Manifest
 
@@ -77,8 +81,8 @@ type ManifestState struct {
 	PodSet PodSet
 	LBs    map[k8s.ServiceName]*url.URL
 
-	// docker-compose-specific state
-	DCInfo dockercompose.Info
+	// ~~ NOTE(maia): Just for DC for now
+	ResourceState ResourceState
 
 	// Store the times of all the pending changes,
 	// so we can prioritize the oldest one first.
@@ -116,6 +120,22 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 		Manifest:           manifest,
 		PendingFileChanges: make(map[string]time.Time),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
+	}
+}
+
+// ~~TODO(maia): I'm concerned about this returning a pointer b/c all sorts of dark
+// magic will happen, but otherwise the setter methods are a PITA...
+func (ms *ManifestState) DCResourceState() (*dockercompose.State, bool) {
+	switch state := ms.ResourceState.(type) {
+	case *dockercompose.State:
+		if state != nil {
+			return state, true
+		}
+		newState := dockercompose.State{}
+		ms.ResourceState = &newState
+		return &newState, true
+	default:
+		return nil, false
 	}
 }
 
@@ -438,9 +458,7 @@ func StateToView(s EngineState) view.View {
 			PodLog:             pod.Log(),
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
-			IsDCManifest:       ms.Manifest.IsDockerCompose(),
-			DCConfigPath:       ms.Manifest.DCConfigPath,
-			DCState:            ms.DCInfo.State,
+			ResourceInfo:       resourceInfoView(ms),
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -482,11 +500,16 @@ func StateToView(s EngineState) view.View {
 	return ret
 }
 
-func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
-	if ms.Manifest.IsDockerCompose() {
-		return ms.DCInfo.Log()
+func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
+	if dcInfo, ok := ms.Manifest.DCInfo(); ok {
+		dcState, _ := ms.DCResourceState() // ~~ if this isn't here, something is wrong...?
+		return view.DcInfoView{
+			ConfigPath: dcInfo.ConfigPath,
+			Status:     dcState.Status,
+		}
 	}
-	return pod.Log()
+	// TODO: k8s
+	return nil
 }
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any
@@ -495,8 +518,8 @@ func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
 // path from the first d-c manifest we see.
 func (s EngineState) DockerComposeConfigPath() string {
 	for _, ms := range s.ManifestStates {
-		if ms.Manifest.DCConfigPath != "" {
-			return ms.Manifest.DCConfigPath
+		if dcInfo, ok := ms.Manifest.DCInfo(); ok {
+			return dcInfo.ConfigPath
 		}
 	}
 	return ""
