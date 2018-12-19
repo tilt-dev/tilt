@@ -14,11 +14,13 @@ import (
 // Collects logs from running docker-compose services.
 type DockerComposeLogManager struct {
 	watches map[model.ManifestName]dockerComposeLogWatch
+	dcc     dockercompose.DockerComposeClient
 }
 
-func NewDockerComposeLogManager() *DockerComposeLogManager {
+func NewDockerComposeLogManager(dcc dockercompose.DockerComposeClient) *DockerComposeLogManager {
 	return &DockerComposeLogManager{
 		watches: make(map[model.ManifestName]dockerComposeLogWatch),
+		dcc:     dcc,
 	}
 }
 
@@ -93,9 +95,8 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 		watch.cancel()
 	}()
 
-	dcc := dockercompose.NewDockerComposeClient()
 	name := watch.name
-	readCloser, err := dcc.Logs(watch.ctx, watch.dcConfigPath, watch.name.String())
+	readCloser, err := m.dcc.Logs(watch.ctx, watch.dcConfigPath, watch.name.String())
 	if err != nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return

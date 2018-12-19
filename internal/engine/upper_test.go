@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
+	dockercompose "github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -1712,8 +1713,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcw := NewDockerComposeEventWatcher()
-	dclm := NewDockerComposeLogManager()
+	dcc := dockercompose.NewFakeDockerComposeClient()
+	dcw := NewDockerComposeEventWatcher(dcc)
+	dclm := NewDockerComposeLogManager(dcc)
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)
 
 	go func() {

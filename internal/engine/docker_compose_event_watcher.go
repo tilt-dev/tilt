@@ -11,10 +11,13 @@ import (
 
 type DockerComposeEventWatcher struct {
 	watching bool
+	dcc      dockercompose.DockerComposeClient
 }
 
-func NewDockerComposeEventWatcher() *DockerComposeEventWatcher {
-	return &DockerComposeEventWatcher{}
+func NewDockerComposeEventWatcher(dcc dockercompose.DockerComposeClient) *DockerComposeEventWatcher {
+	return &DockerComposeEventWatcher{
+		dcc: dcc,
+	}
 }
 
 func (w *DockerComposeEventWatcher) needsWatch(st store.RStore) bool {
@@ -49,8 +52,7 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 }
 
 func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath string) (<-chan string, error) {
-	dcc := dockercompose.NewDockerComposeClient()
-	return dcc.Events(ctx, configPath)
+	return w.dcc.Events(ctx, configPath)
 }
 
 func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st store.RStore) {

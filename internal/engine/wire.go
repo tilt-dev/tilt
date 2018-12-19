@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -59,7 +60,8 @@ func provideBuildAndDeployer(
 	dir *dirs.WindmillDir,
 	env k8s.Env,
 	updateMode UpdateModeFlag,
-	sCli synclet.SyncletClient) (BuildAndDeployer, error) {
+	sCli synclet.SyncletClient,
+	dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,

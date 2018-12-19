@@ -11,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -32,6 +33,8 @@ var BaseWireSet = wire.NewSet(
 
 	docker.DefaultDockerClient,
 	wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
+
+	dockercompose.NewDockerComposeClient,
 
 	build.NewImageReaper,
 
