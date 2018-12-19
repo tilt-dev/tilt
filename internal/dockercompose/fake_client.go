@@ -1,37 +1,51 @@
 package dockercompose
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"io/ioutil"
 )
 
-type fakeDCClient struct{}
+type FakeDCClient struct {
+	// Up
+	upCounts map[string]int
+	upStdout string
+	upStderr string
+
+	// Log
+	logOutput string
+}
 
 // TODO(dmiller) make this configurable for testing
 func NewFakeDockerComposeClient() DockerComposeClient {
-	return &fakeDCClient{}
+	return &FakeDCClient{}
 }
 
-func (c *fakeDCClient) Up(ctx context.Context, pathToConfig, serviceName string, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Up(ctx context.Context, pathToConfig, serviceName string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func (c *fakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func (c *fakeDCClient) Logs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
+func (c *FakeDCClient) Logs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
+	return ioutil.NopCloser(bytes.NewReader([]byte(c.logOutput))), nil
+}
+
+func (c *FakeDCClient) Events(ctx context.Context, pathToConfig string) (<-chan string, error) {
 	return nil, nil
 }
 
-func (c *fakeDCClient) Events(ctx context.Context, pathToConfig string) (<-chan string, error) {
-	return nil, nil
-}
-
-func (c *fakeDCClient) Config(ctx context.Context, pathToConfig string) (string, error) {
+func (c *FakeDCClient) Config(ctx context.Context, pathToConfig string) (string, error) {
 	return "", nil
 }
 
-func (c *fakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
+func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
 	return "", nil
+}
+
+func (c *FakeDCClient) SetLogOutput(output string) {
+	c.logOutput = output
 }

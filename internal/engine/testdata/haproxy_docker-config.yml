@@ -1,0 +1,6 @@
+haproxy:
+  build: ./haproxy
+  links:
+    - server-yoko
+  ports:
+   - "3000:80"

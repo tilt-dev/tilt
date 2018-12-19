@@ -92,7 +92,6 @@ func (m *DockerComposeLogManager) OnChange(ctx context.Context, st store.RStore)
 func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st store.RStore) {
 	defer func() {
 		watch.terminationTime <- time.Now()
-		watch.cancel()
 	}()
 
 	name := watch.name
