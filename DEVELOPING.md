@@ -20,6 +20,7 @@ features that we have in mind and might already be in-progress.
   so that you don't need to install extra toolchains locally (e.g., the protobuf compiler).
 - **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)** (for tests)
 - **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize` (for tests)
+- **[docker compose](https://docs.docker.com/compose/install/)**: (for tests) NOTE: this doesn't need to be installed separately from Docker on macOS
 
 ## Optional Prereqs
 - **[wire](https://github.com/google/wire)**: `go get -u github.com/google/wire/cmd/wire` (to update generated dependency injection code)
