@@ -159,8 +159,8 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	m := model.Manifest{
 		Name:         model.ManifestName(s.Name),
-		DcConfigPath: dcConfigPath,
-		DcYAMLRaw:    s.ServiceConfig,
+		DCConfigPath: dcConfigPath,
+		DCYAMLRaw:    s.ServiceConfig,
 		DfRaw:        s.DfContents,
 	}
 

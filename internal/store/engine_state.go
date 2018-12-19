@@ -439,7 +439,7 @@ func StateToView(s EngineState) view.View {
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
 			IsDCManifest:       ms.Manifest.IsDockerCompose(),
-			DcConfigPath:       ms.Manifest.DcConfigPath,
+			DCConfigPath:       ms.Manifest.DCConfigPath,
 			DCState:            ms.DCInfo.State,
 		}
 
@@ -495,8 +495,8 @@ func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
 // path from the first d-c manifest we see.
 func (s EngineState) DockerComposeConfigPath() string {
 	for _, ms := range s.ManifestStates {
-		if ms.Manifest.DcConfigPath != "" {
-			return ms.Manifest.DcConfigPath
+		if ms.Manifest.DCConfigPath != "" {
+			return ms.Manifest.DCConfigPath
 		}
 	}
 	return ""
