@@ -38,7 +38,16 @@ func (f *TempDirFixture) Path() string {
 }
 
 func (f *TempDirFixture) JoinPath(path ...string) string {
-	p := []string{f.Path()}
+	p := []string{}
+	isAbs := len(path) > 0 && filepath.IsAbs(path[0])
+	if isAbs {
+		if !strings.HasPrefix(path[0], f.Path()) {
+			f.t.Fatalf("Path outside fixture tempdir are forbidden: %s", path[0])
+		}
+	} else {
+		p = append(p, f.Path())
+	}
+
 	p = append(p, path...)
 	return filepath.Join(p...)
 }
@@ -52,7 +61,7 @@ func (f *TempDirFixture) JoinPaths(paths []string) []string {
 }
 
 func (f *TempDirFixture) WriteFile(path string, contents string) {
-	fullPath := filepath.Join(f.Path(), path)
+	fullPath := f.JoinPath(path)
 	base := filepath.Dir(fullPath)
 	err := os.MkdirAll(base, os.FileMode(0777))
 	if err != nil {
@@ -65,7 +74,7 @@ func (f *TempDirFixture) WriteFile(path string, contents string) {
 }
 
 func (f *TempDirFixture) MkdirAll(path string) {
-	fullPath := filepath.Join(f.Path(), path)
+	fullPath := f.JoinPath(path)
 	err := os.MkdirAll(fullPath, os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
@@ -79,7 +88,7 @@ func (f *TempDirFixture) TouchFiles(paths []string) {
 }
 
 func (f *TempDirFixture) Rm(pathInRepo string) {
-	fullPath := filepath.Join(f.Path(), pathInRepo)
+	fullPath := f.JoinPath(pathInRepo)
 	err := os.RemoveAll(fullPath)
 	if err != nil {
 		f.t.Fatal(err)
@@ -88,6 +97,14 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 
 func (f *TempDirFixture) NewFile(prefix string) (*os.File, error) {
 	return ioutil.TempFile(f.dir.Path(), prefix)
+}
+
+func (f *TempDirFixture) TempDir(prefix string) string {
+	name, err := ioutil.TempDir(f.dir.Path(), prefix)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return name
 }
 
 func (f *TempDirFixture) TearDown() {
