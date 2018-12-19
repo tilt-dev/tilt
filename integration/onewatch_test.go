@@ -17,8 +17,11 @@ func TestOneWatch(t *testing.T) {
 	f.TiltWatch("onewatch")
 
 	// ForwardPort will fail if all the pods are not ready.
-	// TODO(nick): We should make port-forwarding a primitive in the
-	// Tiltfile since this seems generally useful, then get rid of this code.
+	//
+	// For the purposes of this integration tests, we want the test to fail if the
+	// Pod is re-created (rather than getting updated in-place).  We deliberately
+	// don't use Tilt-managed port-forwarding because it would auto-connect to the
+	// new pod.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	oneUpPods := f.WaitForAllPodsReady(ctx, "app=onewatch")

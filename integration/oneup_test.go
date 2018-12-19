@@ -15,8 +15,9 @@ func TestOneUp(t *testing.T) {
 	f.TiltUp("oneup")
 
 	// ForwardPort will fail if all the pods are not ready.
-	// TODO(nick): We should make port-forwarding a primitive in the
-	// Tiltfile since this seems generally useful, then get rid of this code.
+	//
+	// We can't use the normal Tilt-managed forwards here because
+	// Tilt doesn't setup forwards when --watch=false.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=oneup")
