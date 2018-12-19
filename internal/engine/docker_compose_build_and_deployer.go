@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"os/exec"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -29,12 +28,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", manifest.DCConfigPath, "up", "--no-deps", "--build", "--force-recreate", "-d", manifest.Name.String())
-	cmd.Stdout = logger.Get(ctx).Writer(logger.InfoLvl)
-	cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
+	dcc := dockercompose.NewDockerComposeClient()
+	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
+	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = cmd.Run()
-	err = dockercompose.FormatError(cmd, nil, err)
+	err = dcc.Up(ctx, manifest.DCConfigPath, manifest.Name.String(), stdout, stderr)
 	return store.BuildResult{}, err
 }
 

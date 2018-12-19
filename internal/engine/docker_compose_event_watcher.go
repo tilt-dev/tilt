@@ -1,10 +1,7 @@
 package engine
 
 import (
-	"bufio"
 	"context"
-	"os/exec"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -52,37 +49,8 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 }
 
 func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath string) (<-chan string, error) {
-	ch := make(chan string)
-
-	args := []string{"-f", configPath, "events", "--json"}
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return ch, errors.Wrap(err, "making stdout pipe for `docker-compose events`")
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return ch, errors.Wrapf(err, "`docker-compose %s`",
-			strings.Join(args, " "))
-	}
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			ch <- scanner.Text()
-		}
-
-		if err := scanner.Err(); err != nil {
-			logger.Get(ctx).Infof("[DOCKER-COMPOSE WATCHER] scanning `events` output: %v", err)
-		}
-
-		err = cmd.Wait()
-		if err != nil {
-			logger.Get(ctx).Infof("[DOCKER-COMPOSE WATCHER] exited with error: %v", err)
-		}
-	}()
-
-	return ch, nil
+	dcc := dockercompose.NewDockerComposeClient()
+	return dcc.Events(ctx, configPath)
 }
 
 func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st store.RStore) {

@@ -93,8 +93,9 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 		watch.cancel()
 	}()
 
+	dcc := dockercompose.NewDockerComposeClient()
 	name := watch.name
-	readCloser, err := dockercompose.LogReaderForService(watch.ctx, watch.name.String(), watch.dcConfigPath)
+	readCloser, err := dcc.Logs(watch.ctx, watch.dcConfigPath, watch.name.String())
 	if err != nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return

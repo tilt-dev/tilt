@@ -105,8 +105,8 @@ func (c Config) GetService(name string) (Service, error) {
 	return svc, nil
 }
 
-func svcNames(ctx context.Context, configPath string) ([]string, error) {
-	servicesText, err := dcOutput(ctx, configPath, "config", "--services")
+func svcNames(ctx context.Context, dcc DockerComposeClient, configPath string) ([]string, error) {
+	servicesText, err := dcc.Services(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,8 @@ func svcNames(ctx context.Context, configPath string) ([]string, error) {
 }
 
 func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
-	configOut, err := dcOutput(ctx, configPath, "config")
+	dcc := NewDockerComposeClient()
+	configOut, err := dcc.Config(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +138,7 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 		return nil, err
 	}
 
-	svcNames, err := svcNames(ctx, configPath)
+	svcNames, err := svcNames(ctx, dcc, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -178,19 +179,6 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 
 	m.Mounts = mounts
 	return m, []string{s.DfPath}, nil
-}
-
-func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
-	args = append([]string{"-f", configPath}, args...)
-	output, err := exec.CommandContext(ctx, "docker-compose", args...).Output()
-	if err != nil {
-		errorMessage := fmt.Sprintf("command 'docker-compose %q' failed.\nerror: '%v'\nstdout: '%v'", args, err, string(output))
-		if err, ok := err.(*exec.ExitError); ok {
-			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
-		}
-		err = fmt.Errorf(errorMessage)
-	}
-	return string(output), err
 }
 
 func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
