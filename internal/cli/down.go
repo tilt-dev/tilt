@@ -63,7 +63,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	if len(dcManifests) > 0 {
 		// TODO(maia): when we support up-ing from multiple docker-compose files, we'll need to support down-ing as well
 		// TODO(maia): a way to `down` specific services?
-		cmd := exec.CommandContext(ctx, "docker-compose", "-f", dcManifests[0].DcYAMLPath, "down")
+		cmd := exec.CommandContext(ctx, "docker-compose", "-f", dcManifests[0].DCConfigPath, "down")
 		cmd.Stdout = logger.Get(ctx).Writer(logger.InfoLvl)
 		cmd.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 

@@ -56,7 +56,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 			ctx:             ctx,
 			cancel:          cancel,
 			name:            ms.Manifest.Name,
-			dcYAMLPath:      ms.Manifest.DcYAMLPath,
+			dcConfigPath:    ms.Manifest.DCConfigPath,
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),
 		}
@@ -94,7 +94,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	}()
 
 	name := watch.name
-	readCloser, err := dockercompose.LogReaderForService(watch.ctx, watch.name.String(), watch.dcYAMLPath)
+	readCloser, err := dockercompose.LogReaderForService(watch.ctx, watch.name.String(), watch.dcConfigPath)
 	if err != nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
@@ -123,7 +123,7 @@ type dockerComposeLogWatch struct {
 	ctx             context.Context
 	cancel          func()
 	name            model.ManifestName
-	dcYAMLPath      string
+	dcConfigPath    string
 	startWatchTime  time.Time
 	terminationTime chan time.Time
 

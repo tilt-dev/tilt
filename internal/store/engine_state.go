@@ -439,7 +439,7 @@ func StateToView(s EngineState) view.View {
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
 			IsDCManifest:       ms.Manifest.IsDockerCompose(),
-			DCYamlPath:         ms.Manifest.DcYAMLPath,
+			DCConfigPath:       ms.Manifest.DCConfigPath,
 			DCState:            ms.DCInfo.State,
 		}
 
@@ -489,14 +489,14 @@ func logForPodOrDockerCompose(ms *ManifestState, pod Pod) string {
 	return pod.Log()
 }
 
-// DockerComposeYAMLPath returns the path to the docker-compose yaml file of any
+// DockerComposeConfigPath returns the path to the docker-compose yaml file of any
 // docker-compose manifests on this EngineState.
 // NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
 // path from the first d-c manifest we see.
-func (s EngineState) DockerComposeYAMLPath() string {
+func (s EngineState) DockerComposeConfigPath() string {
 	for _, ms := range s.ManifestStates {
-		if ms.Manifest.DcYAMLPath != "" {
-			return ms.Manifest.DcYAMLPath
+		if ms.Manifest.DCConfigPath != "" {
+			return ms.Manifest.DCConfigPath
 		}
 	}
 	return ""
