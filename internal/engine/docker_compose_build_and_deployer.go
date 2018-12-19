@@ -12,12 +12,15 @@ import (
 )
 
 type DockerComposeBuildAndDeployer struct {
+	dcc dockercompose.DockerComposeClient
 }
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
-func NewDockerComposeBuildAndDeployer() *DockerComposeBuildAndDeployer {
-	return &DockerComposeBuildAndDeployer{}
+func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient) *DockerComposeBuildAndDeployer {
+	return &DockerComposeBuildAndDeployer{
+		dcc: dcc,
+	}
 }
 
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
@@ -28,11 +31,10 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
 	}
 
-	dcc := dockercompose.NewDockerComposeClient()
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = dcc.Up(ctx, manifest.DCConfigPath, manifest.Name.String(), stdout, stderr)
+	err = bd.dcc.Up(ctx, manifest.DCConfigPath, manifest.Name.String(), stdout, stderr)
 	return store.BuildResult{}, err
 }
 
