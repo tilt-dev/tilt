@@ -2,6 +2,7 @@ package hud
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -17,9 +18,9 @@ func formatBuildDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", minutes)
 	}
 
-	seconds := int(d.Seconds())
-	if seconds > 10 {
-		return fmt.Sprintf("%ds", seconds)
+	seconds := d.Seconds()
+	if seconds >= 9.95 {
+		return fmt.Sprintf("%ds", int(math.Round(seconds)))
 	}
 
 	fractionalSeconds := float64(d) / float64(time.Second)

@@ -75,7 +75,7 @@ func (v *ResourceView) statusColor() tcell.Color {
 		} else if v.res.DCState == dockercompose.StateDown {
 			return cBad
 		}
-	} else if !v.res.CurrentBuild.StartTime.IsZero() && !v.res.CurrentBuild.Reason.IsCrashOnly() {
+	} else if !v.res.CurrentBuild.Empty() && !v.res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !v.res.PendingBuildSince.IsZero() && !v.res.PendingBuildReason.IsCrashOnly() {
 		if v.triggerMode == model.TriggerAuto {
@@ -161,7 +161,7 @@ func (v *ResourceView) titleTextBuild() rty.Component {
 }
 
 func (v *ResourceView) titleTextDeploy() rty.Component {
-	return deployTimeCell(v.res.LastDeployTime)
+	return deployTimeCell(v.res.LastDeployTime, tcell.ColorDefault)
 }
 
 func (v *ResourceView) resourceExpandedPane() rty.Component {
@@ -169,9 +169,9 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 	l.Add(rty.TextString(strings.Repeat(" ", 4)))
 
 	rhs := rty.NewConcatLayout(rty.DirVert)
+	rhs.Add(v.resourceExpandedHistory())
 	rhs.Add(v.resourceExpanded())
 	rhs.Add(v.resourceExpandedEndpoints())
-	rhs.Add(v.resourceExpandedHistory())
 	rhs.Add(v.resourceExpandedError())
 	l.AddDynamic(rhs)
 	return l
@@ -303,7 +303,7 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 		return rty.NewConcatLayout(rty.DirVert)
 	}
 
-	if len(v.res.CurrentBuild.Edits) == 0 && len(v.res.LastBuild().Edits) == 0 {
+	if v.res.CurrentBuild.Empty() && len(v.res.BuildHistory) == 0 {
 		return rty.NewConcatLayout(rty.DirVert)
 	}
 
@@ -311,24 +311,36 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 	l.Add(rty.NewStringBuilder().Fg(cLightText).Text("HISTORY: ").Build())
 
 	rows := rty.NewConcatLayout(rty.DirVert)
-	if len(v.res.CurrentBuild.Edits) != 0 {
+	rowCount := 0
+	if !v.res.CurrentBuild.Empty() {
 		rows.Add(NewEditStatusLine(buildStatus{
 			edits:    v.res.CurrentBuild.Edits,
-			duration: time.Since(v.res.CurrentBuild.StartTime),
+			reason:   v.res.CurrentBuild.Reason,
+			duration: v.res.CurrentBuild.Duration(),
 			status:   "Building",
+			muted:    true,
 		}))
+		rowCount++
 	}
-	if len(v.res.LastBuild().Edits) != 0 {
+	for _, bStatus := range v.res.BuildHistory {
+		if rowCount >= 2 {
+			// at most 2 rows
+			break
+		}
+
 		status := "OK"
-		if v.res.LastBuild().Error != nil {
+		if bStatus.Error != nil {
 			status = "Error"
 		}
+
 		rows.Add(NewEditStatusLine(buildStatus{
-			edits:      v.res.LastBuild().Edits,
-			duration:   v.res.LastBuild().Duration(),
+			edits:      bStatus.Edits,
+			reason:     bStatus.Reason,
+			duration:   bStatus.Duration(),
 			status:     status,
-			deployTime: v.res.LastDeployTime,
+			deployTime: bStatus.FinishTime,
 		}))
+		rowCount++
 	}
 	l.AddDynamic(rows)
 	return l
