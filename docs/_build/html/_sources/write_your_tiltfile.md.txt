@@ -35,7 +35,7 @@ docker_build("companyname/graphql", "graphql", args={"target": "local"})
 ## Part 3: Resources
 
 # give a resource a name that's different than the base name of the image
-k8s_resource("backend", img="companyname/backend/server")
+k8s_resource("backend", image="companyname/backend/server")
 
 # connect to a specific local port
 k8s_resource("frontend", port_forwards=9000) 
@@ -115,14 +115,14 @@ If you want to modify Tilt Resources you can make them explicit.
 ```python
 # by default, resources are named after the basename of the image (here, `server`).
 # This gives it a different name (`backend`)
-k8s_resource("backend", img="companyname/backend/server")
+k8s_resource("backend", image="companyname/backend/server")
 ```
 
 You can also add a Kubernetes port forward to this resource.
 
 ```python
 # connect to a specific local port
-k8s_resource("backend", img="companyname/backend/server", port_forwards=9000) 
+k8s_resource("backend", image="companyname/backend/server", port_forwards=9000) 
 ```
 
 ## Next steps
