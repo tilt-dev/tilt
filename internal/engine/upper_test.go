@@ -105,7 +105,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	}
 
 	// TODO(dmiller): change nextBuildResult to work with docker compose instead
-	if manifest.IsDockerCompose() {
+	if manifest.IsDC() {
 		return b.nextBuildResult(imageID), nil
 	}
 	return b.nextBuildResult(manifest.DockerRef()), nil
@@ -2034,11 +2034,12 @@ func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manif
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {
 	f.WriteFile("docker-compose.yml", DCYAMLRaw)
 	return model.Manifest{
-		Name:         model.ManifestName(name),
-		DCConfigPath: f.JoinPath("docker-compose.yml"),
-		DCYAMLRaw:    []byte(DCYAMLRaw),
-		DfRaw:        []byte(dockerfileContents),
-	}
+		Name: model.ManifestName(name),
+	}.WithDeployInfo(model.DCInfo{
+		ConfigPath: f.JoinPath("docker-compose.yml"),
+		YAMLRaw:    []byte(DCYAMLRaw),
+		DfRaw:      []byte(dockerfileContents),
+	})
 }
 
 func (f *testFixture) assertAllBuildsConsumed() {
