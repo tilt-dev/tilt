@@ -22,6 +22,12 @@ const ExampleBuildOutput1 = `{"stream":"Step 1/1 : FROM alpine"}
 	{"stream":"Successfully built 11cd0b38bc3c\n"}
 	{"stream":"Successfully tagged hi:latest\n"}
 `
+const ExampleBuildOutputV1_23 = `{"stream":"Step 1/1 : FROM alpine"}
+	{"stream":"\n"}
+	{"stream":" ---\u003e 11cd0b38bc3c\n"}
+	{"stream":"Successfully built 11cd0b38bc3c\n"}
+	{"stream":"Successfully tagged hi:latest\n"}
+`
 
 const ExamplePushSHA1 = "sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1"
 

@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+apiVersion: extensions/v1beta1 # useful for testing old k8s versions
 kind: Deployment
 metadata:
   name: tilt-docserver

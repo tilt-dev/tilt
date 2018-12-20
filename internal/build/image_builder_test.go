@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -66,6 +67,22 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 	input := docker.ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)), ioutil.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual != expected {
+		t.Errorf("Expected %s, got %s", expected, actual)
+	}
+}
+
+func TestDigestFromOutputV1_23(t *testing.T) {
+	f := newFakeDockerBuildFixture(t)
+	defer f.teardown()
+
+	input := docker.ExampleBuildOutputV1_23
+	expected := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.fakeDocker.Images["11cd0b38bc3c"] = types.ImageInspect{ID: string(expected)}
 	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)), ioutil.Discard)
 	if err != nil {
 		t.Fatal(err)
