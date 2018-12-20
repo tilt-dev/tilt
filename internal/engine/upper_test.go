@@ -104,6 +104,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		return store.BuildResult{}, err
 	}
 
+	// TODO(dmiller): change nextBuildResult to work with docker compose instead
 	if manifest.IsDockerCompose() {
 		return b.nextBuildResult(imageID), nil
 	}
@@ -1633,7 +1634,7 @@ func TestNewMountsAreWatched(t *testing.T) {
 
 func TestDockerComposeRecordsLogs(t *testing.T) {
 	f := newTestFixture(t)
-	m := f.setupHAProxy()
+	m := f.setupHAProxyDCFixture()
 	expected := "spoonerisms_1  | 2018-12-20T16:11:04.070480042Z yarn install v1.10."
 	f.dcc.SetLogOutput(expected + "\n")
 
@@ -2069,7 +2070,7 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 	f.store.Dispatch(manifestFilesChangedAction{manifestName: ConfigsManifestName, files: filenames})
 }
 
-func (f *testFixture) setupHAProxy() model.Manifest {
+func (f *testFixture) setupHAProxyDCFixture() model.Manifest {
 	dcp := filepath.Join(f.originalWD, "testdata", "haproxy_docker-config.yml")
 	dcpc, err := ioutil.ReadFile(dcp)
 	if err != nil {
