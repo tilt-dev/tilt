@@ -28,3 +28,25 @@
 
 # goreleaser binaries
 dist
+
+# web dependencies
+/web/node_modules
+/web/.pnp
+.pnp.js
+
+# web testing
+/web/coverage
+
+# web production
+/web/build
+
+# web env/misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

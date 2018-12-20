@@ -9,7 +9,14 @@ jobs:
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: docker pull registry:2
-      - run: make all
+      - run: make check-go
+      
+  build-js:
+    docker:
+      - image: circleci/node:8
+    steps:
+      - checkout
+      - run: make test-js
 
   build-integration:
     docker:
@@ -65,6 +72,7 @@ workflows:
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
+      - build-js
       - build-macos:
           requires:
             - build-linux
