@@ -142,7 +142,7 @@ type DockerComposeLogActionWriter struct {
 func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(DockerComposeLogAction{
 		ManifestName: w.manifestName,
-		Log:          p,
+		Log:          append([]byte{}, p...),
 	})
 	return len(p), nil
 }
