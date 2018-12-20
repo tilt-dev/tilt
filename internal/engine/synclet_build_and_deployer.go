@@ -49,7 +49,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
-	if manifest.IsDockerCompose() {
+	if manifest.IsDC() {
 		return store.BuildResult{}, RedirectToNextBuilderf("not implemented: DC container builds")
 	}
 

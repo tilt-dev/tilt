@@ -10,7 +10,6 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
 
@@ -52,19 +51,22 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("error deleting k8s entities: %v", err)
 	}
 
-	var dcManifests []model.Manifest
+	var dcConfigPath string
 	for _, m := range manifests {
-		if m.IsDockerCompose() {
-			dcManifests = append(dcManifests, m)
+		if dcInfo := m.DCInfo(); !dcInfo.Empty() {
+			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll
+			// need to support down-ing as well. For now, we `down` the first one we find.
+			dcConfigPath = dcInfo.ConfigPath
+			break
 		}
 	}
 
-	if len(dcManifests) > 0 {
+	if dcConfigPath != "" {
 		// TODO(maia): when we support up-ing from multiple docker-compose files, we'll need to support down-ing as well
 		// TODO(maia): a way to `down` specific services?
 
 		dcc := dockercompose.NewDockerComposeClient()
-		err = dcc.Down(ctx, dcManifests[0].DCConfigPath, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		err = dcc.Down(ctx, dcConfigPath, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
 		if err != nil {
 			logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)
 		}

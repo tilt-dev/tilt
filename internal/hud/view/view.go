@@ -1,10 +1,23 @@
 package view
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
 )
+
+type ResourceInfoView interface {
+	resourceInfoView()
+}
+
+type DCResourceInfo struct {
+	ConfigPath string
+	Status     string
+}
+
+func (DCResourceInfo) resourceInfoView() {}
+func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
 
 type Resource struct {
 	Name               model.ManifestName
@@ -28,17 +41,27 @@ type Resource struct {
 	Endpoints          []string
 	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
 
-	// Relevant to docker-compose resources
-	// TODO(maia): store as separate type
-	IsDCManifest bool
-	DCConfigPath string
-	DCState      string
+	// NOTE(maia): implement for k8s
+	ResourceInfo ResourceInfoView
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
 
 	IsYAMLManifest bool
+}
+
+func (r Resource) DCInfo() DCResourceInfo {
+	switch info := r.ResourceInfo.(type) {
+	case DCResourceInfo:
+		return info
+	default:
+		return DCResourceInfo{}
+	}
+}
+
+func (r Resource) IsDC() bool {
+	return !r.DCInfo().Empty()
 }
 
 func (r Resource) LastBuild() model.BuildStatus {

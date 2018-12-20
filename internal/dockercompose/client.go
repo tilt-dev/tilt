@@ -55,7 +55,7 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 func (c *cmdDCClient) Logs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
-	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName} // ~~ don't need -t probs
+	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName}
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

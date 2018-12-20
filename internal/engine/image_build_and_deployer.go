@@ -63,7 +63,7 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 }
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
-	if manifest.IsDockerCompose() {
+	if manifest.IsDC() {
 		return store.BuildResult{}, RedirectToNextBuilderf("dc manifest")
 	}
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")

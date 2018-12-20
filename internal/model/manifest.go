@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -19,15 +18,15 @@ func (m ManifestName) String() string { return string(m) }
 
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
-	// Properties for all builds.
+	// Properties for all manifests.
 	Name         ManifestName
 	tiltFilename string
 
-	// Properties for Docker Compose manifests
-	// TODO(maia): pull out into separate type
-	DCConfigPath string
-	DCYAMLRaw    []byte // for diff'ing when config files change
-	DfRaw        []byte // for diff'ing when config files change
+	// TODO(maia): buildInfo
+
+	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
+	// TODO(maia): move yaml stuff into here
+	deployInfo deployInfo
 
 	// Properties for all k8s builds
 	k8sYaml      string
@@ -54,8 +53,23 @@ type Manifest struct {
 
 type DockerBuildArgs map[string]string
 
-// & m.k8sYaml == "" ?
-func (m Manifest) IsDockerCompose() bool { return m.DCConfigPath != "" }
+func (m Manifest) DCInfo() DCInfo {
+	switch info := m.deployInfo.(type) {
+	case DCInfo:
+		return info
+	default:
+		return DCInfo{}
+	}
+}
+
+func (m Manifest) IsDC() bool {
+	return !m.DCInfo().Empty()
+}
+
+func (m Manifest) WithDeployInfo(info deployInfo) Manifest {
+	m.deployInfo = info
+	return m
+}
 
 func (m Manifest) WithRepos(repos []LocalGithubRepo) Manifest {
 	m.repos = append(append([]LocalGithubRepo{}, m.repos...), repos...)
@@ -143,7 +157,10 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
-	dockerComposeEqual := m1.DCConfigPath == m2.DCConfigPath && bytes.Equal(m1.DCYAMLRaw, m2.DCYAMLRaw) && bytes.Equal(m1.DfRaw, m2.DfRaw)
+
+	dc1 := m1.DCInfo()
+	dc2 := m2.DCInfo()
+	dockerComposeEqual := reflect.DeepEqual(dc1, dc2)
 
 	return primitivesMatch &&
 		entrypointMatch &&
