@@ -22,12 +22,6 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-type deployableImageManifest interface {
-	K8sYAML() string
-	ManifestName() model.ManifestName
-	DockerRef() reference.Named
-}
-
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
@@ -83,7 +77,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	ps := build.NewPipelineState(ctx, numStages)
 	defer func() { ps.End(ctx, err) }()
 
-	err = manifest.ValidateK8sManifest()
+	err = manifest.ValidateDockerK8sManifest()
 	if err != nil {
 		return store.BuildResult{}, err
 	}
@@ -182,7 +176,15 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest deployableImageManifest, ref reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest model.Manifest, ref reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
+	k8sInfo := manifest.K8sInfo()
+	if k8sInfo.Empty() {
+		// If a non-yaml manifest reaches this code, something is wrong.
+		// If we change BaD structure such that that might reasonably happen,
+		// this should be a `RedirectToNextBuilder` error.
+		return nil, "", fmt.Errorf("manifest %s has no k8s deploy info", manifest.Name)
+	}
+
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -190,7 +192,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
 	// It doesn't make much sense to re-parse it and inject labels on every deploy.
-	entities, err := k8s.ParseYAMLFromString(manifest.K8sYAML())
+	entities, err := k8s.ParseYAMLFromString(k8sInfo.YAML)
 	if err != nil {
 		return nil, "", err
 	}

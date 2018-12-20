@@ -785,7 +785,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 
 	for _, e := range entities {
 		switch e := e.(type) {
-		case deployHelper:
+		case deploymentHelper:
 			s := testyaml.SnackYaml
 			if e.image != "" {
 				s = strings.Replace(s, testyaml.SnackImage, e.image, -1)
@@ -930,20 +930,23 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
 				}
 			}
-		case deployHelper:
+		case deploymentHelper:
+			yaml := m.K8sInfo().YAML
 			found := false
-			for _, e := range f.entities(m) {
+			for _, e := range f.entities(yaml) {
 				if e.Kind.Kind == "Deployment" && f.k8sName(e) == opt.name {
 					found = true
 					break
 				}
 			}
 			if !found {
-				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, m.K8sYAML())
+				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
 		case numEntitiesHelper:
-			if opt.num != len(f.entities(m)) {
-				f.t.Fatalf("manifest %v has %v entities in %v; expected %v", m.Name, len(f.entities(m)), m.K8sYAML(), opt.num)
+			yaml := m.K8sInfo().YAML
+			entities := f.entities(yaml)
+			if opt.num != len(f.entities(yaml)) {
+				f.t.Fatalf("manifest %v has %v entities in %v; expected %v", m.Name, len(entities), yaml, opt.num)
 			}
 
 		case matchPathHelper:
@@ -986,7 +989,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 		case []model.PortForward:
-			assert.Equal(f.t, opt, m.PortForwards())
+			assert.Equal(f.t, opt, m.K8sInfo().PortForwards)
 		case dcConfigPathHelper:
 			dcInfo := m.DCInfo()
 			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
@@ -1013,9 +1016,8 @@ func (f *fixture) assertConfigFiles(filenames ...string) {
 	assert.Equal(f.t, expected, f.configFiles)
 }
 
-func (f *fixture) entities(m model.Manifest) []k8s.K8sEntity {
-	yamlText := m.K8sYAML()
-	es, err := k8s.ParseYAMLFromString(yamlText)
+func (f *fixture) entities(y string) []k8s.K8sEntity {
+	es, err := k8s.ParseYAMLFromString(y)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -1047,13 +1049,13 @@ func dcConfigPath(path string) dcConfigPathHelper {
 	return dcConfigPathHelper{path}
 }
 
-type deployHelper struct {
+type deploymentHelper struct {
 	name  string
 	image string
 }
 
-func deployment(name string, opts ...interface{}) deployHelper {
-	r := deployHelper{name: name}
+func deployment(name string, opts ...interface{}) deploymentHelper {
+	r := deploymentHelper{name: name}
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case imageHelper:

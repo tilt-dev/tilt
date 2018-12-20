@@ -501,7 +501,7 @@ func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podIn
 	podInfo.ContainerPorts = ports
 
 	forwards := PopulatePortForwards(ms.Manifest, *podInfo)
-	if len(forwards) < len(ms.Manifest.PortForwards()) {
+	if len(forwards) < len(ms.Manifest.K8sInfo().PortForwards) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			ms.Manifest.Name, podInfo.PodID)

@@ -7,6 +7,9 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 )
 
+var portFwd8000 = []PortForward{{LocalPort: 8080}}
+var portFwd8001 = []PortForward{{LocalPort: 8081}}
+
 var equalitytests = []struct {
 	m1       Manifest
 	m2       Manifest
@@ -90,37 +93,13 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{
-			portForwards: []PortForward{
-				{
-					LocalPort: 8080,
-				},
-			},
-		},
-		Manifest{
-			portForwards: []PortForward{
-				{
-					LocalPort: 8081,
-				},
-			},
-		},
+		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8001}),
 		false,
 	},
 	{
-		Manifest{
-			portForwards: []PortForward{
-				{
-					LocalPort: 8080,
-				},
-			},
-		},
-		Manifest{
-			portForwards: []PortForward{
-				{
-					LocalPort: 8080,
-				},
-			},
-		},
+		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8000}),
 		true,
 	},
 	{
@@ -300,6 +279,16 @@ var equalitytests = []struct {
 		Manifest{}.WithDeployInfo(DCInfo{DfRaw: []byte("goodbye world")}),
 		false,
 	},
+	{
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		true,
+	},
+	{
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "goodbye world"}),
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
@@ -320,7 +309,6 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		},
 	}
 	manifest := Manifest{
-		k8sYaml:        "yamlll",
 		Name:           "test",
 		dockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
 		BaseDockerfile: "FROM node",
@@ -336,18 +324,4 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	err = manifest.Validate()
 	assert.Nil(t, err)
 
-}
-
-func TestSetPortForwards(t *testing.T) {
-	m := Manifest{
-		Name: "test",
-	}
-
-	m2 := m.WithPortForwards([]PortForward{
-		PortForward{
-			LocalPort: 8080,
-		},
-	})
-
-	assert.Equal(t, 8080, m2.PortForwards()[0].LocalPort)
 }

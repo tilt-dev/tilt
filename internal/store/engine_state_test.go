@@ -46,9 +46,11 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 func TestStateToViewPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-	}.WithPortForwards([]model.PortForward{
-		{LocalPort: 8000, ContainerPort: 5000},
-		{LocalPort: 7000, ContainerPort: 5001},
+	}.WithDeployInfo(model.K8sInfo{
+		PortForwards: []model.PortForward{
+			{LocalPort: 8000, ContainerPort: 5000},
+			{LocalPort: 7000, ContainerPort: 5001},
+		},
 	})
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
 	v := StateToView(*state)

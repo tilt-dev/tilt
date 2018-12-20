@@ -9,7 +9,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 type ManifestName string
@@ -25,14 +24,11 @@ type Manifest struct {
 	// TODO(maia): buildInfo
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
-	// TODO(maia): move yaml stuff into here
 	deployInfo deployInfo
 
-	// Properties for all k8s builds
-	k8sYaml      string
-	dockerRef    reference.Named
-	portForwards []PortForward
-	cachePaths   []string
+	// All docker stuff
+	cachePaths []string
+	dockerRef  reference.Named
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -64,6 +60,19 @@ func (m Manifest) DCInfo() DCInfo {
 
 func (m Manifest) IsDC() bool {
 	return !m.DCInfo().Empty()
+}
+
+func (m Manifest) K8sInfo() K8sInfo {
+	switch info := m.deployInfo.(type) {
+	case K8sInfo:
+		return info
+	default:
+		return K8sInfo{}
+	}
+}
+
+func (m Manifest) IsK8s() bool {
+	return !m.K8sInfo().Empty()
 }
 
 func (m Manifest) WithDeployInfo(info deployInfo) Manifest {
@@ -125,12 +134,14 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
-func (m Manifest) ValidateK8sManifest() error {
+// ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
+// k8s-deployable manifest.
+func (m Manifest) ValidateDockerK8sManifest() error {
 	if m.dockerRef == nil {
 		return fmt.Errorf("[validateK8sManifest] manifest %q missing image ref", m.Name)
 	}
 
-	if m.K8sYAML() == "" {
+	if m.K8sInfo().YAML == "" {
 		return fmt.Errorf("[validateK8sManifest] manifest %q missing k8s YAML", m.Name)
 	}
 
@@ -148,12 +159,11 @@ func (m Manifest) ValidateK8sManifest() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
-	portForwardsMatch := reflect.DeepEqual(m1.portForwards, m2.portForwards)
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
@@ -162,16 +172,20 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	dc2 := m2.DCInfo()
 	dockerComposeEqual := reflect.DeepEqual(dc1, dc2)
 
+	k8s1 := m1.K8sInfo()
+	k8s2 := m2.K8sInfo()
+	k8sEqual := reflect.DeepEqual(k8s1, k8s2)
+
 	return primitivesMatch &&
 		entrypointMatch &&
 		mountsMatch &&
 		reposMatch &&
-		portForwardsMatch &&
 		stepsMatch &&
 		buildArgsMatch &&
 		cachePathsMatch &&
 		dockerignoresMatch &&
-		dockerComposeEqual
+		dockerComposeEqual &&
+		k8sEqual
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -230,41 +244,12 @@ func (m Manifest) LocalRepos() []LocalGithubRepo {
 	return m.repos
 }
 
-func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
-	m.portForwards = pf
-	return m
-}
-
-func (m Manifest) PortForwards() []PortForward {
-	return m.portForwards
-}
-
 func (m Manifest) TiltFilename() string {
 	return m.tiltFilename
 }
 
 func (m Manifest) WithTiltFilename(f string) Manifest {
 	m.tiltFilename = f
-	return m
-}
-
-func (m Manifest) K8sYAML() string {
-	return m.k8sYaml
-}
-
-func (m Manifest) AppendK8sYAML(y string) Manifest {
-	if m.k8sYaml == "" {
-		return m.WithK8sYAML(y)
-	}
-	if y == "" {
-		return m
-	}
-
-	return m.WithK8sYAML(yaml.ConcatYAML(m.k8sYaml, y))
-}
-
-func (m Manifest) WithK8sYAML(y string) Manifest {
-	m.k8sYaml = y
 	return m
 }
 
