@@ -20,7 +20,7 @@ type dockerImage struct {
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
-	tiltFilename       string
+	tiltfilePath       localPath
 	cachePaths         []string
 
 	staticDockerfilePath localPath
@@ -95,7 +95,7 @@ func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin,
 		staticDockerfile:     dockerfile.Dockerfile(bs),
 		staticBuildPath:      context,
 		ref:                  ref,
-		tiltFilename:         s.filename,
+		tiltfilePath:         s.filename,
 		staticBuildArgs:      sba,
 		cachePaths:           cachePaths,
 	}
@@ -155,7 +155,7 @@ func (s *tiltfileState) fastBuild(thread *skylark.Thread, fn *skylark.Builtin, a
 		ref:                ref,
 		entrypoint:         entrypoint,
 		cachePaths:         cachePaths,
-		tiltFilename:       s.filename,
+		tiltfilePath:       s.filename,
 	}
 	s.imagesByName[ref.Name()] = r
 	s.images = append(s.images, r)
@@ -331,6 +331,7 @@ func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGithubRep
 	maybeAddRepo(image.baseDockerfilePath)
 	maybeAddRepo(image.staticDockerfilePath)
 	maybeAddRepo(image.staticBuildPath)
+	maybeAddRepo(image.tiltfilePath)
 
 	return result
 }

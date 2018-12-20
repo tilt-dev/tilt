@@ -75,7 +75,7 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 				continue
 			}
 
-			ok, newTime := hasPendingChangesBefore(ms, earliest)
+			ok, newTime := ms.HasPendingChangesBefore(earliest)
 			if ok {
 				choiceName = mn
 				earliest = newTime
@@ -84,27 +84,6 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 	}
 
 	return choiceName
-}
-
-func hasPendingChangesBefore(ms *store.ManifestState, highWaterMark time.Time) (bool, time.Time) {
-	ok := false
-	earliest := highWaterMark
-	t := ms.PendingManifestChange
-	if t.Before(earliest) && ms.IsPendingTime(t) {
-		ok = true
-		earliest = t
-	}
-
-	spurious, _ := onlySpuriousChanges(ms.PendingFileChanges)
-	if !spurious {
-		for _, t := range ms.PendingFileChanges {
-			if t.Before(earliest) && ms.IsPendingTime(t) {
-				ok = true
-				earliest = t
-			}
-		}
-	}
-	return ok, earliest
 }
 
 func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {

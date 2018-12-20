@@ -2,10 +2,13 @@ package ignore
 
 import (
 	"context"
+	"path/filepath"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type fileChangeFilter struct {
@@ -68,10 +71,21 @@ func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 		}
 	}
 
-	// Ignore temp files created by GoLand on save
-	// TODO(matt) do this in a more principled way
+	// Filter out spurious changes that we don't want to rebuild on, like IDE
+	// temp/lock files.
+	//
+	// This isn't an ideal solution. In an ideal world, the user would put
+	// everything to ignore in their gitignore/dockerignore files. This is a
+	// stop-gap so they don't have a terrible experience if those files aren't
+	// there or aren't in the right places.
+	//
 	// https://app.clubhouse.io/windmill/story/691/filter-out-ephemeral-file-changes
-	matchers = append(matchers, model.NewGlobMatcher("*___jb_old___", "*___jb_tmp___"))
+	matchers = append(matchers,
+		// GoLand
+		model.NewGlobMatcher("*___jb_old___", "*___jb_tmp___"),
+		// Emacs
+		tempBrokenSymlinkMatcher{},
+	)
 
 	ignoreMatcher := model.NewCompositeMatcher(matchers)
 
@@ -88,4 +102,20 @@ func CreateStepMatcher(s model.Step) (model.PathMatcher, error) {
 	}
 
 	return dim, nil
+}
+
+// Emacs temp files look like:
+// .#a.txt -> [some garbage]
+type tempBrokenSymlinkMatcher struct{}
+
+func (m tempBrokenSymlinkMatcher) Matches(path string, isDir bool) (bool, error) {
+	if isDir {
+		return false, nil
+	}
+
+	if !strings.HasPrefix(filepath.Base(path), ".") {
+		return false, nil
+	}
+
+	return ospath.IsBrokenSymlink(path)
 }
