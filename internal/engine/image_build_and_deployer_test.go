@@ -21,12 +21,14 @@ func TestStaticDockerfileWithCache(t *testing.T) {
 	f := newIBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticManifest().WithCachePaths([]string{"/root/.cache"})
+	manifest := NewSanchoStaticManifestWithCache([]string{"/root/.cache"})
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expected := expectedFile{
 		Path: "Dockerfile",
@@ -44,12 +46,14 @@ func TestBaseDockerfileWithCache(t *testing.T) {
 	f := newIBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoManifest().WithCachePaths([]string{"/root/.cache"})
+	manifest := NewSanchoManifestWithCache([]string{"/root/.cache"})
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expected := expectedFile{
 		Path: "Dockerfile",
@@ -70,7 +74,9 @@ func TestDeployTwinImages(t *testing.T) {
 	sancho := NewSanchoManifest()
 	manifest := sancho.WithDeployInfo(sancho.K8sInfo().AppendYAML(SanchoTwinYAML))
 	result, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	assert.Equal(t, expectedImage, result.Image.String())

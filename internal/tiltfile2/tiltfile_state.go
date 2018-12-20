@@ -320,9 +320,10 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			m.StaticDockerfile = image.staticDockerfile.String()
 			m.StaticBuildPath = string(image.staticBuildPath.path)
 			m.StaticBuildArgs = image.staticBuildArgs
-			m = m.WithDockerRef(image.ref).
-				WithTiltFilename(image.tiltfilePath.path).
-				WithCachePaths(image.cachePaths).
+			m = m.WithBuildInfo(model.DockerInfo{
+				CachePaths: image.cachePaths,
+				DockerRef:  image.ref,
+			}).WithTiltFilename(image.tiltfilePath.path).
 				WithRepos(s.reposToDomain(image)).
 				WithDockerignores(s.dockerignoresToDomain(image))
 		}

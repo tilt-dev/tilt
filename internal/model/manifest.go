@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
@@ -18,17 +17,16 @@ func (m ManifestName) String() string { return string(m) }
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all manifests.
-	Name         ManifestName
-	tiltFilename string
+	Name          ManifestName
+	tiltFilename  string
+	dockerignores []Dockerignore
+	repos         []LocalGithubRepo
 
-	// TODO(maia): buildInfo
+	// Info needed to build an image. Can be StaticBuild, FastBuild... etc.
+	buildInfo buildInfo
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployInfo deployInfo
-
-	// All docker stuff
-	cachePaths []string
-	dockerRef  reference.Named
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -42,12 +40,23 @@ type Manifest struct {
 	StaticDockerfile string
 	StaticBuildPath  string // the absolute path to the files
 	StaticBuildArgs  DockerBuildArgs
-
-	dockerignores []Dockerignore
-	repos         []LocalGithubRepo
 }
 
 type DockerBuildArgs map[string]string
+
+func (m Manifest) WithBuildInfo(info buildInfo) Manifest {
+	m.buildInfo = info
+	return m
+}
+
+func (m Manifest) DockerInfo() DockerInfo {
+	switch info := m.buildInfo.(type) {
+	case DockerInfo:
+		return info
+	default:
+		return DockerInfo{}
+	}
+}
 
 func (m Manifest) DCInfo() DCInfo {
 	switch info := m.deployInfo.(type) {
@@ -90,16 +99,6 @@ func (m Manifest) WithDockerignores(dockerignores []Dockerignore) Manifest {
 	return m
 }
 
-func (m Manifest) WithCachePaths(paths []string) Manifest {
-	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)
-	sort.Strings(m.cachePaths)
-	return m
-}
-
-func (m Manifest) CachePaths() []string {
-	return append([]string{}, m.cachePaths...)
-}
-
 func (m Manifest) IsStaticBuild() bool {
 	return m.StaticDockerfile != ""
 }
@@ -137,21 +136,21 @@ func (m Manifest) Validate() error {
 // ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
 // k8s-deployable manifest.
 func (m Manifest) ValidateDockerK8sManifest() error {
-	if m.dockerRef == nil {
-		return fmt.Errorf("[validateK8sManifest] manifest %q missing image ref", m.Name)
+	if m.DockerInfo().DockerRef == nil {
+		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing image ref", m.Name)
 	}
 
 	if m.K8sInfo().YAML == "" {
-		return fmt.Errorf("[validateK8sManifest] manifest %q missing k8s YAML", m.Name)
+		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing k8s YAML", m.Name)
 	}
 
 	if m.IsStaticBuild() {
 		if m.StaticBuildPath == "" {
-			return fmt.Errorf("[validateK8sManifest] manifest %q missing build path", m.Name)
+			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing build path", m.Name)
 		}
 	} else {
 		if m.BaseDockerfile == "" {
-			return fmt.Errorf("[validateK8sManifest] manifest %q missing base dockerfile", m.Name)
+			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing base dockerfile", m.Name)
 		}
 	}
 
@@ -159,14 +158,17 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
-	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
+
+	docker1 := m1.DockerInfo()
+	docker2 := m2.DockerInfo()
+	dockerEqual := reflect.DeepEqual(docker1, docker2)
 
 	dc1 := m1.DCInfo()
 	dc2 := m2.DCInfo()
@@ -182,8 +184,8 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 		reposMatch &&
 		stepsMatch &&
 		buildArgsMatch &&
-		cachePathsMatch &&
 		dockerignoresMatch &&
+		dockerEqual &&
 		dockerComposeEqual &&
 		k8sEqual
 }
@@ -253,22 +255,12 @@ func (m Manifest) WithTiltFilename(f string) Manifest {
 	return m
 }
 
-func (m Manifest) DockerRef() reference.Named {
-	return m.dockerRef
-}
-
-func (m Manifest) WithDockerRef(ref reference.Named) Manifest {
-	m.dockerRef = ref
-	return m
-}
-
 type Mount struct {
 	LocalPath     string
 	ContainerPath string
 }
 
 type Dockerignore struct {
-
 	// The path to evaluate the dockerignore contents relative to
 	LocalPath string
 	Contents  string

@@ -10,6 +10,9 @@ import (
 var portFwd8000 = []PortForward{{LocalPort: 8080}}
 var portFwd8001 = []PortForward{{LocalPort: 8081}}
 
+var img1 = container.MustParseNamed("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
+var img2 = container.MustParseNamed("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
+
 var equalitytests = []struct {
 	m1       Manifest
 	m2       Manifest
@@ -230,13 +233,23 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{cachePaths: []string{"foo"}},
-		Manifest{},
+		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"foo"}}),
+		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"bar"}}),
 		false,
 	},
 	{
-		Manifest{cachePaths: []string{"foo"}},
-		Manifest{cachePaths: []string{"foo"}},
+		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"foo"}}),
+		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"foo"}}),
+		true,
+	},
+	{
+		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img1}),
+		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img2}),
+		false,
+	},
+	{
+		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img1}),
+		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img1}),
 		true,
 	},
 	{
@@ -309,10 +322,8 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		},
 	}
 	manifest := Manifest{
-		Name:           "test",
-		dockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
-		BaseDockerfile: "FROM node",
-		Mounts:         mounts,
+		Name:   "test",
+		Mounts: mounts,
 	}
 	err := manifest.Validate()
 

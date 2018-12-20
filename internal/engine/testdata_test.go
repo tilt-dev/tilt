@@ -39,9 +39,17 @@ func NewSanchoManifest() model.Manifest {
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
 	}
 
-	m = m.WithDockerRef(SanchoRef).WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
+	m = m.WithBuildInfo(model.DockerInfo{DockerRef: SanchoRef}).
+		WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 
 	return m
+}
+
+func NewSanchoManifestWithCache(paths []string) model.Manifest {
+	manifest := NewSanchoManifest()
+	dInfo := manifest.DockerInfo()
+	dInfo = dInfo.WithCachePaths(paths)
+	return manifest.WithBuildInfo(dInfo)
 }
 
 func NewSanchoStaticManifest() model.Manifest {
@@ -51,8 +59,16 @@ func NewSanchoStaticManifest() model.Manifest {
 		StaticBuildPath:  "/path/to/build",
 	}
 
-	m = m.WithDockerRef(SanchoRef).WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
+	m = m.WithBuildInfo(model.DockerInfo{DockerRef: SanchoRef}).
+		WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 	return m
+}
+
+func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
+	manifest := NewSanchoStaticManifest()
+	dInfo := manifest.DockerInfo()
+	dInfo = dInfo.WithCachePaths(paths)
+	return manifest.WithBuildInfo(dInfo)
 }
 
 var SanchoManifest = NewSanchoManifest()
