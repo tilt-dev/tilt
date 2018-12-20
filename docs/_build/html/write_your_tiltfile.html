@@ -219,7 +219,7 @@ learn to write your own Tiltfiles with gusto!</p>
 <span class="c1">## Part 3: Resources</span>
 
 <span class="c1"># give a resource a name that&#39;s different than the base name of the image</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
 
 <span class="c1"># connect to a specific local port</span>
 <span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;frontend&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
@@ -288,12 +288,12 @@ example:</p>
 <p>If you want to modify Tilt Resources you can make them explicit.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># by default, resources are named after the basename of the image (here, `server`).</span>
 <span class="c1"># This gives it a different name (`backend`)</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>You can also add a Kubernetes port forward to this resource.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># connect to a specific local port</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">img</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
 </pre></div>
 </div>
 </div>
