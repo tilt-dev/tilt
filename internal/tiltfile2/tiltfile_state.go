@@ -304,7 +304,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		m = m.WithPortForwards(s.portForwardsToDomain(r)). // FIXME(dbentley)
-									WithK8sYAML(k8sYaml)
+									WithDeployInfo(model.K8sInfo{YAML: k8sYaml})
 
 		if r.imageRef != "" {
 			image := s.imagesByName[r.imageRef]

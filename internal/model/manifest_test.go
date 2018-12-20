@@ -300,6 +300,16 @@ var equalitytests = []struct {
 		Manifest{}.WithDeployInfo(DCInfo{DfRaw: []byte("goodbye world")}),
 		false,
 	},
+	{
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		true,
+	},
+	{
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		Manifest{}.WithDeployInfo(K8sInfo{YAML: "goodbye world"}),
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
@@ -320,7 +330,6 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		},
 	}
 	manifest := Manifest{
-		k8sYaml:        "yamlll",
 		Name:           "test",
 		dockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
 		BaseDockerfile: "FROM node",

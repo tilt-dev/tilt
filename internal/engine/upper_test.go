@@ -446,7 +446,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.BaseDockerfile)
-	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sYAML())
+	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sInfo().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())

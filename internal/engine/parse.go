@@ -6,9 +6,13 @@ import (
 )
 
 func ParseYAMLFromManifests(manifests ...model.Manifest) ([]k8s.K8sEntity, error) {
-	allEntities := []k8s.K8sEntity{}
+	var allEntities []k8s.K8sEntity
 	for _, m := range manifests {
-		entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
+		k8sInfo := m.K8sInfo()
+		if k8sInfo.Empty() {
+			continue
+		}
+		entities, err := k8s.ParseYAMLFromString(k8sInfo.YAML)
 		if err != nil {
 			return nil, err
 		}

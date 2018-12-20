@@ -67,7 +67,8 @@ func TestDeployTwinImages(t *testing.T) {
 	f := newIBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoManifest().AppendK8sYAML(SanchoTwinYAML)
+	sancho := NewSanchoManifest()
+	manifest := sancho.WithDeployInfo(sancho.K8sInfo().AppendYAML(SanchoTwinYAML))
 	result, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
 	assert.NoError(t, err)
 
