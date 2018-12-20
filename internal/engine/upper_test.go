@@ -515,6 +515,50 @@ k8s_resource("quux", 'doggos.yaml')
 	f.assertAllBuildsConsumed()
 }
 
+// We had a bug where we
+func TestSecondResourceIsBuilt(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
+
+k8s_resource("baz", 'snack.yaml')
+`)
+	f.WriteFile("snack.yaml", simpleYAML)
+	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
+	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
+	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
+
+	mount1 := model.Mount{LocalPath: f.JoinPath("mount1"), ContainerPath: "/go"}
+	manifest1 := f.newManifest("baz", []model.Mount{mount1})
+
+	f.Start([]model.Manifest{manifest1}, true)
+
+	// First call: with one resource
+	call := f.nextCall("old manifest (baz)")
+	assert.Empty(t, call.manifest.BaseDockerfile)
+	assert.Equal(t, "baz", string(call.manifest.Name))
+
+	// Now add a second resource
+	f.WriteConfigFiles("Tiltfile", `
+fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
+fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
+
+k8s_resource("baz", 'snack.yaml')
+k8s_resource("quux", 'doggos.yaml')
+`)
+
+	// we expect to build quux, because it is new
+	call = f.nextCall("changed config file --> new manifest")
+	assert.Equal(t, "quux", string(call.manifest.Name))
+	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestNoOpChangeToDockerfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
