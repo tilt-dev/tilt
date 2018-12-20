@@ -35,11 +35,8 @@ type Manifest struct {
 	Steps          []Step
 	Entrypoint     Cmd
 
-	// From static_build. If StaticDockerfile is populated,
-	// we do not expect the iterative build fields to be populated.
-	StaticDockerfile string
-	StaticBuildPath  string // the absolute path to the files
-	StaticBuildArgs  DockerBuildArgs
+	StaticBuildPath string // the absolute path to the files
+	StaticBuildArgs DockerBuildArgs
 }
 
 type DockerBuildArgs map[string]string
@@ -55,6 +52,38 @@ func (m Manifest) DockerInfo() DockerInfo {
 		return info
 	default:
 		return DockerInfo{}
+	}
+}
+
+func (m Manifest) StaticBuildInfo() StaticBuild {
+	dInfo := m.DockerInfo()
+	if dInfo.Empty() {
+		return StaticBuild{}
+	}
+
+	switch info := dInfo.buildDetails.(type) {
+	case StaticBuild:
+		return info
+	default:
+		return StaticBuild{}
+	}
+}
+
+func (m Manifest) IsStaticBuild() bool {
+	return !m.StaticBuildInfo().Empty()
+}
+
+func (m Manifest) FastBuildInfo() FastBuild {
+	dInfo := m.DockerInfo()
+	if dInfo.Empty() {
+		return FastBuild{}
+	}
+
+	switch info := dInfo.buildDetails.(type) {
+	case FastBuild:
+		return info
+	default:
+		return FastBuild{}
 	}
 }
 
@@ -97,10 +126,6 @@ func (m Manifest) WithRepos(repos []LocalGithubRepo) Manifest {
 func (m Manifest) WithDockerignores(dockerignores []Dockerignore) Manifest {
 	m.dockerignores = append(append([]Dockerignore{}, m.dockerignores...), dockerignores...)
 	return m
-}
-
-func (m Manifest) IsStaticBuild() bool {
-	return m.StaticDockerfile != ""
 }
 
 func (m Manifest) Dockerignores() []Dockerignore {
@@ -158,7 +183,7 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)

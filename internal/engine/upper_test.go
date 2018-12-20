@@ -789,11 +789,16 @@ k8s_resource('foobar', 'snack.yaml')
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	manifest := f.newManifest("foobar", nil)
-	manifest.StaticDockerfile = `FROM golang
+	df := `FROM golang
 ADD ./ ./
 go build ./...
 `
+	manifest := f.newManifest("foobar", nil).WithBuildInfo(
+		model.DockerInfo{}.WithBuildDetails(model.StaticBuild{
+			Dockerfile: df,
+			BuildPath:  f.Path(),
+		}))
+
 	manifest.StaticBuildPath = f.Path()
 	f.Start([]model.Manifest{manifest}, true)
 

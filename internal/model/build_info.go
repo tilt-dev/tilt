@@ -24,6 +24,11 @@ type DockerInfo struct {
 func (DockerInfo) buildInfo()     {}
 func (di DockerInfo) Empty() bool { return reflect.DeepEqual(di, DockerInfo{}) }
 
+func (di DockerInfo) WithBuildDetails(details buildDetails) DockerInfo {
+	di.buildDetails = details
+	return di
+}
+
 func (di DockerInfo) WithCachePaths(paths []string) DockerInfo {
 	di.CachePaths = append(append([]string{}, di.CachePaths...), paths...)
 	sort.Strings(di.CachePaths)
@@ -31,18 +36,19 @@ func (di DockerInfo) WithCachePaths(paths []string) DockerInfo {
 }
 
 type StaticBuild struct {
-	StaticDockerfile string
-	StaticBuildPath  string // the absolute path to the files
-	StaticBuildArgs  DockerBuildArgs
+	Dockerfile string
+	BuildPath  string // the absolute path to the files
+	BuildArgs  DockerBuildArgs
 }
 
 func (StaticBuild) buildDetails()  {}
 func (sb StaticBuild) Empty() bool { return reflect.DeepEqual(sb, StaticBuild{}) }
 
 type FastBuild struct {
-	StaticDockerfile string
-	StaticBuildPath  string // the absolute path to the files
-	StaticBuildArgs  DockerBuildArgs
+	BaseDockerfile string
+	Mounts         []Mount
+	Steps          []Step
+	Entrypoint     Cmd
 }
 
 func (FastBuild) buildDetails()  {}

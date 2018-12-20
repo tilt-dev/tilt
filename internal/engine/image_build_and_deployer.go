@@ -286,8 +286,8 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 	}
 
 	baseDockerfile := dockerfile.Dockerfile(manifest.BaseDockerfile)
-	if manifest.IsStaticBuild() {
-		staticDockerfile := dockerfile.Dockerfile(manifest.StaticDockerfile)
+	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
+		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
 		ok := true
 		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
 		if !ok {
@@ -303,7 +303,7 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 }
 
 func (ibd *ImageBuildAndDeployer) staticDockerfile(manifest model.Manifest, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(manifest.StaticDockerfile)
+	df := dockerfile.Dockerfile(manifest.StaticBuildInfo().Dockerfile)
 	if cacheRef == nil {
 		return df
 	}

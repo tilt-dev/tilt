@@ -313,13 +313,28 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		if r.imageRef != "" {
 			image := s.imagesByName[r.imageRef]
+			staticBuild := model.StaticBuild{
+				Dockerfile: image.staticDockerfile.String(),
+				BuildPath:  string(image.staticBuildPath.path),
+				BuildArgs:  image.staticBuildArgs,
+			}
+			fastBuild := model.FastBuild{
+				BaseDockerfile: image.baseDockerfile.String(),
+				Mounts:         s.mountsToDomain(image),
+				Steps:          image.steps,
+				Entrypoint:     model.ToShellCmd(image.entrypoint),
+			}
+
+			if !staticBuild.Empty() && !fastBuild.Empty() {
+				return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
+			}
+
+			// TODO(maia): remove this
 			m.Mounts = s.mountsToDomain(image)
 			m.Entrypoint = model.ToShellCmd(image.entrypoint)
 			m.BaseDockerfile = image.baseDockerfile.String()
 			m.Steps = image.steps
-			m.StaticDockerfile = image.staticDockerfile.String()
-			m.StaticBuildPath = string(image.staticBuildPath.path)
-			m.StaticBuildArgs = image.staticBuildArgs
+
 			m = m.WithBuildInfo(model.DockerInfo{
 				CachePaths: image.cachePaths,
 				DockerRef:  image.ref,

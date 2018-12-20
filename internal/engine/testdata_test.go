@@ -53,13 +53,15 @@ func NewSanchoManifestWithCache(paths []string) model.Manifest {
 }
 
 func NewSanchoStaticManifest() model.Manifest {
+	dInfo := model.DockerInfo{
+		DockerRef: SanchoRef,
+	}.WithBuildDetails(model.StaticBuild{
+		Dockerfile: SanchoStaticDockerfile,
+		BuildPath:  "/path/to/build",
+	})
 	m := model.Manifest{
-		Name:             "sancho",
-		StaticDockerfile: SanchoStaticDockerfile,
-		StaticBuildPath:  "/path/to/build",
-	}
-
-	m = m.WithBuildInfo(model.DockerInfo{DockerRef: SanchoRef}).
+		Name: "sancho",
+	}.WithBuildInfo(dInfo).
 		WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 	return m
 }
