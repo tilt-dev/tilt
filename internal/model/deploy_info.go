@@ -1,6 +1,8 @@
 package model
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type deployInfo interface {
 	deployInfo()
@@ -14,3 +16,11 @@ type DCInfo struct {
 
 func (DCInfo) deployInfo()    {}
 func (dc DCInfo) Empty() bool { return reflect.DeepEqual(dc, DCInfo{}) }
+
+type K8sInfo struct {
+	k8sYaml      string
+	portForwards []PortForward
+}
+
+func (K8sInfo) deployInfo()     {}
+func (k8s K8sInfo) Empty() bool { return reflect.DeepEqual(k8s, K8sInfo{}) }

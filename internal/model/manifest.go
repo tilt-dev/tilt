@@ -25,14 +25,15 @@ type Manifest struct {
 	// TODO(maia): buildInfo
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
-	// TODO(maia): move yaml stuff into here
 	deployInfo deployInfo
 
 	// Properties for all k8s builds
 	k8sYaml      string
-	dockerRef    reference.Named
 	portForwards []PortForward
-	cachePaths   []string
+
+	// All docker stuff
+	cachePaths []string
+	dockerRef  reference.Named
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -64,6 +65,19 @@ func (m Manifest) DCInfo() DCInfo {
 
 func (m Manifest) IsDC() bool {
 	return !m.DCInfo().Empty()
+}
+
+func (m Manifest) K8sInfo() K8sInfo {
+	switch info := m.deployInfo.(type) {
+	case K8sInfo:
+		return info
+	default:
+		return K8sInfo{}
+	}
+}
+
+func (m Manifest) IsK8s() bool {
+	return !m.K8sInfo().Empty()
 }
 
 func (m Manifest) WithDeployInfo(info deployInfo) Manifest {
@@ -148,7 +162,7 @@ func (m Manifest) ValidateK8sManifest() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
@@ -162,6 +176,10 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	dc2 := m2.DCInfo()
 	dockerComposeEqual := reflect.DeepEqual(dc1, dc2)
 
+	k8s1 := m1.K8sInfo()
+	k8s2 := m2.K8sInfo()
+	k8sEqual := reflect.DeepEqual(k8s1, k8s2)
+
 	return primitivesMatch &&
 		entrypointMatch &&
 		mountsMatch &&
@@ -171,7 +189,8 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 		buildArgsMatch &&
 		cachePathsMatch &&
 		dockerignoresMatch &&
-		dockerComposeEqual
+		dockerComposeEqual &&
+		k8sEqual
 }
 
 func stringSlicesEqual(a, b []string) bool {
