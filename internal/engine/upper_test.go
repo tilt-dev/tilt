@@ -1643,7 +1643,13 @@ func TestDockerComposeRecordsLogs(t *testing.T) {
 	}, true)
 
 	f.waitForCompletedBuildCount(1)
+	// recorded in global log
 	assert.Contains(t, f.LogLines(), expected)
+
+	// recorded on manifest state
+	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+		assert.Contains(t, st.DCResourceState().Log(), expected)
+	})
 }
 
 type fakeTimerMaker struct {
