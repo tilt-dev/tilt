@@ -84,6 +84,7 @@ type InitAction struct {
 	GlobalYAMLManifest model.YAMLManifest
 	TiltfilePath       string
 	ConfigFiles        []string
+	InitManifests      []model.ManifestName
 	TriggerMode        model.TriggerMode
 	Err                error
 }
