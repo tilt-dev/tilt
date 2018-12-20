@@ -65,12 +65,6 @@ func DefaultOut() io.Writer {
 	return os.Stdout
 }
 
-type pushOutput struct {
-	Tag    string
-	Digest string
-	Size   int
-}
-
 var _ ImageBuilder = &dockerImageBuilder{}
 
 func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, out io.Writer, extraLabels dockerfile.Labels) *dockerImageBuilder {
@@ -297,7 +291,8 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 			l.Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	_, err = d.getDigestFromPushOutput(ctx, imagePushResponse, writer)
+
+	_, err = readDockerOutput(ctx, imagePushResponse, writer)
 	if err != nil {
 		return nil, errors.Wrapf(err, "pushing image %q", ref.Name())
 	}
@@ -478,30 +473,6 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 	return msg.ID == "moby.buildkit.trace"
-}
-
-func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
-	output, err := readDockerOutput(ctx, reader, writer)
-	if err != nil {
-		return "", err
-	}
-
-	if output.aux == nil {
-		return "", fmt.Errorf("no digest found in push output")
-	}
-
-	aux := output.aux
-	dig := pushOutput{}
-	err = json.Unmarshal(*aux, &dig)
-	if err != nil {
-		return "", errors.Wrapf(err, "getDigestFromPushOutput#Unmarshal: json string: %+v", aux)
-	}
-
-	if dig.Digest == "" {
-		return "", fmt.Errorf("getDigestFromPushOutput: Digest not found in %+v", aux)
-	}
-
-	return digest.Digest(dig.Digest), nil
 }
 
 func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, output dockerOutput) (digest.Digest, error) {
