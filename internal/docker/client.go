@@ -24,9 +24,13 @@ import (
 
 // Use client for docker 17
 // https://docs.docker.com/develop/sdk/#api-version-matrix
-// API version 1.30 is the first version where the full digest
-// shows up in the API output of BuildImage
-var minDockerVersion = semver.MustParse("1.30.0")
+//
+// This is the minimum version we've tested on.
+// A good way to test old versions is to connect to an old version of Minikube,
+// so that we connect to the docker server in minikube instead of futzing with
+// the docker version on your machine.
+// https://github.com/kubernetes/minikube/releases/tag/v0.13.1
+var minDockerVersion = semver.MustParse("1.23.0")
 
 var minDockerVersionStableBuildkit = semver.MustParse("1.39.0")
 var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")

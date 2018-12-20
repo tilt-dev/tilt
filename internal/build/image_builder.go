@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -338,17 +339,10 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
 		}
 	}()
-	result, err := readDockerOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
-	if err != nil {
-		return nil, errors.Wrap(err, "ImageBuild")
-	}
-	if result == nil {
-		return nil, fmt.Errorf("unable to read docker output: result is nil")
-	}
 
-	digest, err := getDigestFromAux(*result)
+	digest, err := d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
 	if err != nil {
-		return nil, errors.Wrap(err, "getDigestFromAux")
+		return nil, err
 	}
 
 	nt, err := d.TagImage(ctx, ref, digest)
@@ -357,6 +351,20 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	}
 
 	return nt, nil
+}
+
+func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
+	result, err := readDockerOutput(ctx, reader, writer)
+	if err != nil {
+		return "", errors.Wrap(err, "ImageBuild")
+	}
+
+	digest, err := d.getDigestFromDockerOutput(ctx, result)
+	if err != nil {
+		return "", errors.Wrap(err, "getDigestFromBuildOutput")
+	}
+
+	return digest, nil
 }
 
 // Docker API commands stream back a sequence of JSON messages.
@@ -368,11 +376,11 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (*json.RawMessage, error) {
+func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (dockerOutput, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
-	var result *json.RawMessage
+	result := dockerOutput{}
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
 
@@ -385,14 +393,21 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 		message := jsonmessage.JSONMessage{}
 		err := decoder.Decode(&message)
 		if err != nil {
-			return nil, errors.Wrap(err, "decoding docker output")
+			return dockerOutput{}, errors.Wrap(err, "decoding docker output")
 		}
 
 		if len(message.Stream) > 0 {
 			msg := message.Stream
+
+			builtDigestMatch := oldDigestRegexp.FindStringSubmatch(msg)
+			if len(builtDigestMatch) >= 2 {
+				// Old versions of docker (pre 1.30) didn't send down an aux message.
+				result.shortDigest = builtDigestMatch[1]
+			}
+
 			_, err = writer.Write([]byte(msg))
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to write docker output")
+				return dockerOutput{}, errors.Wrap(err, "failed to write docker output")
 			}
 			if strings.HasPrefix(msg, "Step") || strings.HasPrefix(msg, "Running") {
 				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
@@ -400,22 +415,22 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 		}
 
 		if message.ErrorMessage != "" {
-			return nil, errors.New(message.ErrorMessage)
+			return dockerOutput{}, errors.New(message.ErrorMessage)
 		}
 
 		if message.Error != nil {
-			return nil, errors.New(message.Error.Message)
+			return dockerOutput{}, errors.New(message.Error.Message)
 		}
 
 		if messageIsFromBuildkit(message) {
 			err := toBuildkitStatus(message.Aux, b)
 			if err != nil {
-				return nil, err
+				return dockerOutput{}, err
 			}
 		}
 
 		if message.Aux != nil && !messageIsFromBuildkit(message) {
-			result = message.Aux
+			result.aux = message.Aux
 		}
 	}
 
@@ -423,7 +438,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 		innerSpan.Finish()
 	}
 	if ctx.Err() != nil {
-		return nil, ctx.Err()
+		return dockerOutput{}, ctx.Err()
 	}
 	return result, nil
 }
@@ -465,27 +480,17 @@ func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 	return msg.ID == "moby.buildkit.trace"
 }
 
-func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
-	aux, err := readDockerOutput(ctx, reader, writer)
-	if err != nil {
-		return "", err
-	}
-	if aux == nil {
-		return "", fmt.Errorf("getDigestFromBuildOutput: No results found in docker output")
-	}
-	return getDigestFromAux(*aux)
-}
-
 func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
-	aux, err := readDockerOutput(ctx, reader, writer)
+	output, err := readDockerOutput(ctx, reader, writer)
 	if err != nil {
 		return "", err
 	}
 
-	if aux == nil {
+	if output.aux == nil {
 		return "", fmt.Errorf("no digest found in push output")
 	}
 
+	aux := output.aux
 	dig := pushOutput{}
 	err = json.Unmarshal(*aux, &dig)
 	if err != nil {
@@ -497,6 +502,22 @@ func (d *dockerImageBuilder) getDigestFromPushOutput(ctx context.Context, reader
 	}
 
 	return digest.Digest(dig.Digest), nil
+}
+
+func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, output dockerOutput) (digest.Digest, error) {
+	if output.aux != nil {
+		return getDigestFromAux(*output.aux)
+	}
+
+	if output.shortDigest != "" {
+		data, _, err := d.dcli.ImageInspectWithRaw(ctx, output.shortDigest)
+		if err != nil {
+			return "", err
+		}
+		return digest.Digest(data.ID), nil
+	}
+
+	return "", fmt.Errorf("Could not find image digest in docker output")
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
@@ -530,4 +551,11 @@ func digestMatchesRef(ref reference.NamedTagged, digest digest.Digest) bool {
 
 	tagHash := tag[len(ImageTagPrefix):]
 	return strings.HasPrefix(digestHash, tagHash)
+}
+
+var oldDigestRegexp = regexp.MustCompile("^Successfully built ([0-9a-f]+)\\s*$")
+
+type dockerOutput struct {
+	aux         *json.RawMessage
+	shortDigest string
 }
