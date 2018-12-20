@@ -181,27 +181,34 @@ func (ms *ManifestState) IsPendingTime(t time.Time) bool {
 
 // Whether changes have been made to this Manifest's mount files
 // or config since the last build.
-func (ms *ManifestState) PendingBuildSince() time.Time {
-	earliest := time.Now()
-	isPending := false
+//
+// Returns:
+// bool: whether changes have been made
+// Time: the time of the earliest change
+func (ms *ManifestState) HasPendingChanges() (bool, time.Time) {
+	return ms.HasPendingChangesBefore(time.Now())
+}
+
+// Like HasPendingChanges, but relative to a particular time.
+func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool, time.Time) {
+	ok := false
+	earliest := highWaterMark
+	t := ms.PendingManifestChange
+	if t.Before(earliest) && ms.IsPendingTime(t) {
+		ok = true
+		earliest = t
+	}
 
 	for _, t := range ms.PendingFileChanges {
 		if t.Before(earliest) && ms.IsPendingTime(t) {
+			ok = true
 			earliest = t
-			isPending = true
 		}
 	}
-
-	t := ms.PendingManifestChange
-	if t.Before(earliest) && ms.IsPendingTime(t) {
-		earliest = t
-		isPending = true
+	if !ok {
+		return ok, time.Time{}
 	}
-
-	if !isPending {
-		return time.Time{}
-	}
-	return earliest
+	return ok, earliest
 }
 
 type YAMLManifestState struct {
@@ -434,6 +441,7 @@ func StateToView(s EngineState) view.View {
 		// "most interesting" pod that's crash looping, or show logs from all pods
 		// at once).
 		pod := ms.MostRecentPod()
+		_, pendingBuildSince := ms.HasPendingChanges()
 		r := view.Resource{
 			Name:               name,
 			DirectoriesWatched: relWatchDirs,
@@ -441,7 +449,7 @@ func StateToView(s EngineState) view.View {
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
 			BuildHistory:       buildHistory,
 			PendingBuildEdits:  pendingBuildEdits,
-			PendingBuildSince:  ms.PendingBuildSince(),
+			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: ms.NextBuildReason(),
 			CurrentBuild:       currentBuild,
 			PodName:            pod.PodID.String(),

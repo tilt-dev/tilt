@@ -101,6 +101,18 @@ type localPath struct {
 	repo *gitRepo
 }
 
+// If this is the root of a git repo, automatically attach a gitRepo
+// so that we don't end up tracking .git changes
+func (s *tiltfileState) maybeAttachGitRepo(lp localPath, repoRoot string) localPath {
+	if ospath.IsDir(filepath.Join(repoRoot, ".git")) {
+		repo, err := s.newGitRepo(repoRoot)
+		if err == nil {
+			lp.repo = repo
+		}
+	}
+	return lp
+}
+
 func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
 	switch v := v.(type) {
 	case localPath:
@@ -109,16 +121,7 @@ func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, e
 		return v.makeLocalPath("."), nil
 	case skylark.String:
 		lp := localPath{path: s.absPath(string(v))}
-
-		// If this is the root of a git repo, automatically turn this into a gitRepo
-		// so that we don't end up tracking .git changes
-		if ospath.IsDir(filepath.Join(lp.path, ".git")) {
-			repo, err := s.newGitRepo(lp.path)
-			if err == nil {
-				return repo.makeLocalPath("."), nil
-			}
-		}
-
+		lp = s.maybeAttachGitRepo(lp, lp.path)
 		return lp, nil
 	default:
 		return localPath{}, fmt.Errorf("Expected local path. Actual type: %T", v)
@@ -160,7 +163,7 @@ func (s *tiltfileState) absPath(path string) string {
 }
 
 func (s *tiltfileState) absWorkingDir() string {
-	return filepath.Dir(s.filename)
+	return filepath.Dir(s.filename.path)
 }
 
 func (s *tiltfileState) recordConfigFile(f string) {
@@ -245,7 +248,7 @@ func (s *tiltfileState) local(thread *skylark.Thread, fn *skylark.Builtin, args 
 
 func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 	c := exec.Command("sh", "-c", cmd)
-	c.Dir = filepath.Dir(s.filename)
+	c.Dir = filepath.Dir(s.filename.path)
 	out, err := c.Output()
 	if err != nil {
 		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", cmd, err, string(out))

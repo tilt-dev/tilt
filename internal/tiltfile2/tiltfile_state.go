@@ -23,7 +23,7 @@ type resourceSet struct {
 type tiltfileState struct {
 	// set at creation
 	ctx      context.Context
-	filename string
+	filename localPath
 
 	// added to during execution
 	configFiles    []string
@@ -39,14 +39,17 @@ type tiltfileState struct {
 }
 
 func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
-	return &tiltfileState{
+	lp := localPath{path: filename}
+	s := &tiltfileState{
 		ctx:          ctx,
-		filename:     filename,
+		filename:     localPath{path: filename},
 		imagesByName: make(map[string]*dockerImage),
 		k8sByName:    make(map[string]*k8sResource),
 		configFiles:  []string{filename},
 		usedImages:   make(map[string]bool),
 	}
+	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
+	return s
 }
 
 func (s *tiltfileState) exec() error {
@@ -55,7 +58,7 @@ func (s *tiltfileState) exec() error {
 			logger.Get(s.ctx).Infof("%s", msg)
 		},
 	}
-	_, err := skylark.ExecFile(thread, s.filename, nil, s.builtins())
+	_, err := skylark.ExecFile(thread, s.filename.path, nil, s.builtins())
 	return err
 }
 
@@ -316,7 +319,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			m.StaticBuildPath = string(image.staticBuildPath.path)
 			m.StaticBuildArgs = image.staticBuildArgs
 			m = m.WithDockerRef(image.ref).
-				WithTiltFilename(image.tiltFilename).
+				WithTiltFilename(image.tiltfilePath.path).
 				WithCachePaths(image.cachePaths).
 				WithRepos(s.reposToDomain(image)).
 				WithDockerignores(s.dockerignoresToDomain(image))

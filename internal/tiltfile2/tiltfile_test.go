@@ -527,6 +527,46 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestGitignorePathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file(".gitignore", ".#*")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters(".#foo.yaml"),
+		fileChangeFilters(".#foo.yaml"),
+	)
+}
+
+func TestAncestorGitignorePathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file(".gitignore", ".#*")
+	f.file("foo/Dockerfile", "FROM golang:1.10")
+	f.yaml("foo/foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo/foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		buildFilters("foo/.#foo.yaml"),
+		fileChangeFilters("foo/.#foo.yaml"),
+	)
+}
+
 func TestDockerignorePathFilter(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

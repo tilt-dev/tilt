@@ -419,7 +419,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: realPath}
 
 	call = f.nextCall()
-	assert.Equal(t, []string{tmpPath, realPath}, call.state.FilesChanged())
+	assert.Equal(t, []string{realPath}, call.state.FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)

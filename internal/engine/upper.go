@@ -17,7 +17,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -295,7 +294,7 @@ func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 		return
 	}
 
-	ok, _ = hasPendingChangesBefore(ms, time.Now())
+	ok, _ = ms.HasPendingChanges()
 	if !ok {
 		return
 	}
@@ -742,30 +741,4 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 	ms.ResourceState = dockercompose.State{CurrentLog: action.Log}
-}
-
-// Check if the filesChangedSet only contains spurious changes that
-// we don't want to rebuild on, like IDE temp/lock files.
-//
-// NOTE(nick): This isn't an ideal solution. In an ideal world, the user would
-// put everything to ignore in their gitignore/dockerignore files. This is a stop-gap
-// so they don't have a terrible experience if those files aren't there or
-// aren't in the right places.
-func onlySpuriousChanges(filesChanged map[string]time.Time) (bool, error) {
-	// If a lot of files have changed, don't treat this as spurious.
-	if len(filesChanged) > 3 {
-		return false, nil
-	}
-
-	for f := range filesChanged {
-		broken, err := ospath.IsBrokenSymlink(f)
-		if err != nil {
-			return false, err
-		}
-
-		if !broken {
-			return false, nil
-		}
-	}
-	return true, nil
 }
