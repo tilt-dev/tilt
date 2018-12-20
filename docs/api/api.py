@@ -73,7 +73,7 @@ def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_f
   Args:
     name: What call this resource in the UI
     yaml: Optional YAML. If YAML, as a string or Blob is
-      not passed wwe expect to be able to extract it from an
+      not passed we expect to be able to extract it from an
       existing resource.
     image: An optional Image. If the image is not passed,
       we expect to be able to extract it from an existing resource.
