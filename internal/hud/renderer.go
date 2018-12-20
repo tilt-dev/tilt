@@ -148,7 +148,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 		}
 
 		if v.TiltfileErrorMessage != "" {
-			_, err := tiltfileError.WriteString(" • Error executing Tiltfile")
+			_, err := tiltfileError.WriteString(" • Tiltfile error")
 			if err != nil {
 				// This space intentionally left blank
 			}
@@ -331,7 +331,7 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
 	if v.TiltfileErrorMessage != "" {
 		c := rty.NewConcatLayout(rty.DirVert)
-		c.Add(rty.TextString("Error executing Tiltfile:"))
+		c.Add(rty.TextString("Tiltfile error: "))
 		c.Add(rty.TextString(v.TiltfileErrorMessage))
 		c.Add(rty.NewFillerString('─'))
 		return c

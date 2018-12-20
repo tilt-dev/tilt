@@ -378,8 +378,7 @@ func handleConfigsReloaded(
 	manifests := event.Manifests
 	err := event.Err
 	if err != nil {
-		logger.Get(ctx).Infof("Unable to parse Tiltfile: %v", err)
-		state.LastTiltfileError = err
+		handleTiltfileError(state, err)
 		return
 	}
 	newDefOrder := make([]model.ManifestName, len(manifests))
@@ -671,9 +670,12 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = manifestNames
-	engineState.LastTiltfileError = action.Err
 	engineState.GlobalYAML = action.GlobalYAMLManifest
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
+
+	if action.Err != nil {
+		handleTiltfileError(engineState, action.Err)
+	}
 
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
@@ -683,6 +685,13 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	engineState.InitialBuildCount = len(manifests)
 	return nil
+}
+
+func handleTiltfileError(state *store.EngineState, err error) {
+	state.LastTiltfileError = err
+	handleLogAction(state, LogAction{
+		Log: []byte(fmt.Sprintf("Tiltfile error:\n%v\n", err)),
+	})
 }
 
 func handleExitAction(state *store.EngineState, action hud.ExitAction) {

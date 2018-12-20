@@ -11,6 +11,6 @@ func main() {
 		_, _ = w.Write([]byte(msg))
 	})
 
-	log.Println("Serving oneup on 8000")
+	log.Println("Serving oneup on container port 8000")
 	_ = http.ListenAndServe(":8000", nil)
 }

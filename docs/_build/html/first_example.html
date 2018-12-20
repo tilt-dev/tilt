@@ -195,24 +195,30 @@ Let’s look at a simple existing project and see how easy it is to
 We’ll be looking at the <a class="reference external" href="https://github.com/windmilleng/tilt/tree/master/integration/oneup">oneup</a> project
 in <code class="docutils literal notranslate"><span class="pre">integration/oneup</span></code>.</p>
 <p>In the oneup directory, run</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tilt</span> <span class="n">up</span> <span class="n">oneup</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tilt</span> <span class="n">up</span>
 </pre></div>
 </div>
 <p>Your terminal will turn into a status box that lets you watch your server come up. When it’s ready,
 you will see the status icon turn green. The logs in the botton pane will display
-“Serving oneup on 8000.”</p>
+“Serving oneup on container port 8000.”</p>
 <p><img alt="oneup server logs" src="_images/oneup.png" /></p>
+<p>Type <code class="docutils literal notranslate"><span class="pre">b</span></code> to open <code class="docutils literal notranslate"><span class="pre">oneup</span></code> in a browser window.
+Your browser will open <code class="docutils literal notranslate"><span class="pre">http://localhost:8100</span></code>.
+You should see the text <code class="docutils literal notranslate"><span class="pre">🍄</span> <span class="pre">One-Up!</span> <span class="pre">🍄</span></code>.</p>
 <p>Congratulations! You’ve run your first server with <code class="docutils literal notranslate"><span class="pre">tilt</span></code>.</p>
 <p>Type <code class="docutils literal notranslate"><span class="pre">q</span></code> to quit the status box. When you’re finished, run</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tilt</span> <span class="n">down</span> <span class="n">oneup</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tilt</span> <span class="n">down</span>
 </pre></div>
 </div>
 <p>to turn off the server.</p>
 <div class="section" id="next-steps">
 <span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
-<p>In the next guide, we’re going to learn
+<p>How did Tilt know how to build the server?
+How did it get into the Kubernetes cluster?
+How did it start listening on <code class="docutils literal notranslate"><span class="pre">localhost:8100</span></code>?</p>
+<p>In the next guide, we’ll answer these questions while you learn
 <a class="reference external" href="first_config.html">how to configure your own project</a>
-to run with Tilt.</p>
+with Tilt.</p>
 </div>
 </div>
 
