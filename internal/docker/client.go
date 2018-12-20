@@ -22,10 +22,14 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-// Use client for docker 17
+// Version info
 // https://docs.docker.com/develop/sdk/#api-version-matrix
 //
-// This is the minimum version we've tested on.
+// The docker API docs highly recommend we set a default version,
+// so that new versions don't break us.
+const defaultVersion = "1.39"
+
+// Minimum docker version we've tested on.
 // A good way to test old versions is to connect to an old version of Minikube,
 // so that we connect to the docker server in minikube instead of futzing with
 // the docker version on your machine.
@@ -100,10 +104,25 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 		return nil, errors.Wrap(err, "newDockerClient")
 	}
 
+	if !SupportedVersion(serverVersion) {
+		return nil, fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
+			minDockerVersion, serverVersion.APIVersion)
+	}
+
 	return &DockerCli{
 		Client:           d,
 		supportsBuildkit: SupportsBuildkit(serverVersion),
 	}, nil
+}
+
+func SupportedVersion(v types.Version) bool {
+	version, err := semver.ParseTolerant(v.APIVersion)
+	if err != nil {
+		// If the server version doesn't parse, we shouldn't even start
+		return false
+	}
+
+	return version.GTE(minDockerVersion)
 }
 
 // Sadly, certain versions of docker return an error if the client requests
@@ -114,8 +133,7 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 func SupportsBuildkit(v types.Version) bool {
 	version, err := semver.ParseTolerant(v.APIVersion)
 	if err != nil {
-		// If the server version doesn't parse, we want to still start up.
-		// Just disable buildkit
+		// If the server version doesn't parse, disable buildkit
 		return false
 	}
 
@@ -162,19 +180,11 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 		result = append(result, client.WithHost(host))
 	}
 
-	versionToSet := minDockerVersion
 	if version := env("DOCKER_API_VERSION"); version != "" {
-		reqVersion, err := semver.ParseTolerant(version)
-		if err != nil {
-			return nil, fmt.Errorf("Could not parse DOCKER_API_VERSION: %s", version)
-		}
-
-		if minDockerVersion.LT(reqVersion) {
-			versionToSet = reqVersion
-		}
+		result = append(result, client.WithVersion(version))
+	} else {
+		result = append(result, client.WithVersion(defaultVersion))
 	}
-
-	result = append(result, client.WithVersion(versionToSet.String()))
 
 	return result, nil
 }
