@@ -92,21 +92,6 @@ func TestDigestFromOutputV1_23(t *testing.T) {
 	}
 }
 
-func TestDigestFromPushOutput(t *testing.T) {
-	f := newFakeDockerBuildFixture(t)
-	defer f.teardown()
-
-	input := docker.ExamplePushOutput1
-	expected := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")
-	actual, err := f.b.getDigestFromPushOutput(f.ctx, bytes.NewBuffer([]byte(input)), ioutil.Discard)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if actual != expected {
-		t.Errorf("Expected %s, got %s", expected, actual)
-	}
-}
-
 func TestConditionalRunInFakeDocker(t *testing.T) {
 	f := newFakeDockerBuildFixture(t)
 	defer f.teardown()
