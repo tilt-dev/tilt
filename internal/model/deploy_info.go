@@ -21,7 +21,7 @@ func (dc DCInfo) Empty() bool { return reflect.DeepEqual(dc, DCInfo{}) }
 
 type K8sInfo struct {
 	YAML         string
-	portForwards []PortForward
+	PortForwards []PortForward
 }
 
 func (K8sInfo) deployInfo()     {}

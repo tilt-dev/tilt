@@ -39,7 +39,7 @@ func NewSanchoManifest() model.Manifest {
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
 	}
 
-	m = m.WithDockerRef(SanchoRef).WithK8sYAML(SanchoYAML)
+	m = m.WithDockerRef(SanchoRef).WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 
 	return m
 }
@@ -51,7 +51,7 @@ func NewSanchoStaticManifest() model.Manifest {
 		StaticBuildPath:  "/path/to/build",
 	}
 
-	m = m.WithDockerRef(SanchoRef).WithK8sYAML(SanchoYAML)
+	m = m.WithDockerRef(SanchoRef).WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 	return m
 }
 

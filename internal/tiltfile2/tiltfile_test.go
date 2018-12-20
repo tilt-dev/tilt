@@ -891,19 +891,16 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case deploymentHelper:
-			k8sInfo := m.K8sInfo()
-			if k8sInfo.Empty() {
-				f.t.Fatalf("%s has no k8s deployment info", m.Name)
-			}
+			yaml := m.K8sInfo().YAML
 			found := false
-			for _, e := range f.entities(k8sInfo.YAML) {
+			for _, e := range f.entities(yaml) {
 				if e.Kind.Kind == "Deployment" && f.k8sName(e) == opt.name {
 					found = true
 					break
 				}
 			}
 			if !found {
-				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, k8sInfo.YAML)
+				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
 		case numEntitiesHelper:
 			yaml := m.K8sInfo().YAML
@@ -952,7 +949,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 		case []model.PortForward:
-			assert.Equal(f.t, opt, m.PortForwards())
+			assert.Equal(f.t, opt, m.K8sInfo().PortForwards)
 		case dcConfigPathHelper:
 			dcInfo := m.DCInfo()
 			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {

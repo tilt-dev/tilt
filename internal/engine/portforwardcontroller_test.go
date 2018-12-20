@@ -20,10 +20,12 @@ func TestPortForward(t *testing.T) {
 	m := model.Manifest{
 		Name: "fe",
 	}
-	m = m.WithPortForwards([]model.PortForward{
-		{
-			LocalPort:     8080,
-			ContainerPort: 8081,
+	m = m.WithDeployInfo(model.K8sInfo{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort:     8080,
+				ContainerPort: 8081,
+			},
 		},
 	})
 	state.ManifestStates["fe"] = &store.ManifestState{
@@ -66,9 +68,11 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	m := model.Manifest{
 		Name: "fe",
 	}
-	m = m.WithPortForwards([]model.PortForward{
-		{
-			LocalPort: 8080,
+	m = m.WithDeployInfo(model.K8sInfo{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort: 8080,
+			},
 		},
 	})
 	state.ManifestStates["fe"] = &store.ManifestState{

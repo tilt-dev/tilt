@@ -26,9 +26,6 @@ type Manifest struct {
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployInfo deployInfo
 
-	// Properties for all k8s builds
-	portForwards []PortForward
-
 	// All docker stuff
 	cachePaths []string
 	dockerRef  reference.Named
@@ -167,7 +164,6 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
-	portForwardsMatch := reflect.DeepEqual(m1.portForwards, m2.portForwards)
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
@@ -184,7 +180,6 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 		entrypointMatch &&
 		mountsMatch &&
 		reposMatch &&
-		portForwardsMatch &&
 		stepsMatch &&
 		buildArgsMatch &&
 		cachePathsMatch &&
@@ -249,15 +244,6 @@ func (m Manifest) LocalRepos() []LocalGithubRepo {
 	return m.repos
 }
 
-func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
-	m.portForwards = pf
-	return m
-}
-
-func (m Manifest) PortForwards() []PortForward {
-	return m.portForwards
-}
-
 func (m Manifest) TiltFilename() string {
 	return m.tiltFilename
 }
@@ -265,12 +251,6 @@ func (m Manifest) TiltFilename() string {
 func (m Manifest) WithTiltFilename(f string) Manifest {
 	m.tiltFilename = f
 	return m
-}
-
-func (m Manifest) WithK8sYAML(y string) Manifest {
-	k8sInfo := m.K8sInfo()
-	k8sInfo.YAML = y
-	return m.WithDeployInfo(k8sInfo)
 }
 
 func (m Manifest) DockerRef() reference.Named {

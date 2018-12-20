@@ -370,7 +370,7 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 
 	// If the user specified port-forwards in the Tiltfile, we
 	// assume that's what they want to see in the UI
-	portForwards := ms.Manifest.PortForwards()
+	portForwards := ms.Manifest.K8sInfo().PortForwards
 	if len(portForwards) > 0 {
 		for _, pf := range portForwards {
 			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
