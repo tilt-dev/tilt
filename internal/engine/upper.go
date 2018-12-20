@@ -120,6 +120,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
+		InitManifests:      manifestNames,
 		TriggerMode:        triggerMode,
 		Err:                err,
 	})
