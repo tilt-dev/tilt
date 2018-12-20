@@ -11,13 +11,13 @@ type ResourceInfoView interface {
 	resourceInfoView()
 }
 
-type DCInfo struct {
+type DCResourceInfo struct {
 	ConfigPath string
 	Status     string
 }
 
-func (DCInfo) resourceInfoView() {}
-func (dc DCInfo) Empty() bool    { return reflect.DeepEqual(dc, DCInfo{}) }
+func (DCResourceInfo) resourceInfoView() {}
+func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
 
 type Resource struct {
 	Name               model.ManifestName
@@ -51,12 +51,12 @@ type Resource struct {
 	IsYAMLManifest bool
 }
 
-func (r Resource) DCInfo() DCInfo {
+func (r Resource) DCInfo() DCResourceInfo {
 	switch info := r.ResourceInfo.(type) {
-	case DCInfo:
+	case DCResourceInfo:
 		return info
 	default:
-		return DCInfo{}
+		return DCResourceInfo{}
 	}
 }
 

@@ -497,7 +497,7 @@ func StateToView(s EngineState) view.View {
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 	if dcInfo := ms.Manifest.DCInfo(); !dcInfo.Empty() {
 		dcState := ms.DCResourceState()
-		return view.DCInfo{
+		return view.DCResourceInfo{
 			ConfigPath: dcInfo.ConfigPath,
 			Status:     dcState.Status,
 		}
