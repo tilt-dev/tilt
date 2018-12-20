@@ -121,6 +121,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		GlobalYAMLManifest: globalYAML,
 		TiltfilePath:       absTfPath,
 		ConfigFiles:        configFiles,
+		InitManifests:      manifestNames,
 		TriggerMode:        triggerMode,
 		Err:                err,
 	})
@@ -660,16 +661,10 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
-	manifests := action.Manifests
-	manifestNames := make([]model.ManifestName, len(manifests))
-	for i, m := range manifests {
-		manifestNames[i] = m.ManifestName()
-	}
-
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
-	engineState.InitManifests = manifestNames
+	engineState.InitManifests = action.InitManifests
 	engineState.GlobalYAML = action.GlobalYAMLManifest
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
@@ -677,6 +672,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 		handleTiltfileError(engineState, action.Err)
 	}
 
+	manifests := action.Manifests
 	for _, m := range manifests {
 		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
 		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
