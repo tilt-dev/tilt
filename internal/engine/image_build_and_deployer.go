@@ -22,13 +22,6 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-// ~~TODO(maia): uhhh delete this?
-// type deployableImageManifest interface {
-// 	K8sYAML() string
-// 	ManifestName() model.ManifestName
-// 	DockerRef() reference.Named
-// }
-
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
