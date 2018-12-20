@@ -948,8 +948,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.PortForwards())
 		case dcConfigPathHelper:
-			dcInfo, ok := m.DCInfo()
-			if assert.True(f.t, ok, "expected a docker-compose manifest") {
+			dcInfo := m.DCInfo()
+			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
 				assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
 			}
 		default:

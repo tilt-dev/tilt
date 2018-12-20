@@ -124,12 +124,12 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	}
 }
 
-func (ms *ManifestState) DCResourceState() (dockercompose.State, bool) {
+func (ms *ManifestState) DCResourceState() dockercompose.State {
 	switch state := ms.ResourceState.(type) {
 	case dockercompose.State:
-		return state, true
+		return state
 	default:
-		return dockercompose.State{}, false
+		return dockercompose.State{}
 	}
 }
 
@@ -495,9 +495,9 @@ func StateToView(s EngineState) view.View {
 }
 
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
-	if dcInfo, ok := ms.Manifest.DCInfo(); ok {
-		dcState, _ := ms.DCResourceState()
-		return view.DcInfoView{
+	if dcInfo := ms.Manifest.DCInfo(); !dcInfo.Empty() {
+		dcState := ms.DCResourceState()
+		return view.DCInfo{
 			ConfigPath: dcInfo.ConfigPath,
 			Status:     dcState.Status,
 		}
@@ -512,7 +512,7 @@ func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 // path from the first d-c manifest we see.
 func (s EngineState) DockerComposeConfigPath() string {
 	for _, ms := range s.ManifestStates {
-		if dcInfo, ok := ms.Manifest.DCInfo(); ok {
+		if dcInfo := ms.Manifest.DCInfo(); !dcInfo.Empty() {
 			return dcInfo.ConfigPath
 		}
 	}

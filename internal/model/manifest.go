@@ -53,18 +53,17 @@ type Manifest struct {
 
 type DockerBuildArgs map[string]string
 
-func (m Manifest) DCInfo() (DCInfo, bool) {
+func (m Manifest) DCInfo() DCInfo {
 	switch info := m.deployInfo.(type) {
 	case DCInfo:
-		return info, true
+		return info
 	default:
-		return DCInfo{}, false
+		return DCInfo{}
 	}
 }
 
 func (m Manifest) IsDC() bool {
-	_, ok := m.DCInfo()
-	return ok
+	return !m.DCInfo().Empty()
 }
 
 func (m Manifest) WithDeployInfo(info deployInfo) Manifest {
@@ -159,9 +158,9 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
 
-	dc1, isDC1 := m1.DCInfo()
-	dc2, isDC2 := m2.DCInfo()
-	dockerComposeEqual := isDC1 == isDC2 && reflect.DeepEqual(dc1, dc2)
+	dc1 := m1.DCInfo()
+	dc2 := m2.DCInfo()
+	dockerComposeEqual := reflect.DeepEqual(dc1, dc2)
 
 	return primitivesMatch &&
 		entrypointMatch &&

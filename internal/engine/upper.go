@@ -196,7 +196,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		pod.UpdateStartTime = action.StartTime
 	}
 
-	if dcState, ok := ms.DCResourceState(); ok {
+	if dcState := ms.DCResourceState(); !dcState.Empty() {
 		ms.ResourceState = dcState.WithCurrentLog([]byte{}) // TODO(maia): when reset(/not) CrashLog for DC service?
 	}
 
@@ -713,13 +713,12 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	}
 
 	// For now, just guess at state.
-	status, ok := evt.GuessStatus()
-	if ok {
-		if dcState, ok := ms.DCResourceState(); ok {
-			ms.ResourceState = dcState.WithStatus(status)
-		}
-		ms.ResourceState = dockercompose.State{Status: status}
+	status := evt.GuessStatus()
+	if dcState := ms.DCResourceState(); !dcState.Empty() {
+		ms.ResourceState = dcState.WithStatus(status)
+		return
 	}
+	ms.ResourceState = dockercompose.State{Status: status}
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
@@ -738,7 +737,7 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 
-	if dcState, ok := ms.DCResourceState(); ok {
+	if dcState := ms.DCResourceState(); !dcState.Empty() {
 		ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 		return
 	}

@@ -67,7 +67,7 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func (v *ResourceView) statusColor() tcell.Color {
-	if dcInfo, ok := v.res.DCInfo(); ok {
+	if dcInfo := v.res.DCInfo(); !dcInfo.Empty() {
 		if dcInfo.Status == dockercompose.StatusInProg {
 			return cPending
 		} else if dcInfo.Status == dockercompose.StatusUp {
@@ -143,8 +143,8 @@ func (v *ResourceView) titleText() rty.Component {
 }
 
 func (v *ResourceView) titleTextDC() rty.Component {
-	dcInfo, ok := v.res.DCInfo()
-	if !ok {
+	dcInfo := v.res.DCInfo()
+	if dcInfo.Empty() {
 		return nil
 	}
 

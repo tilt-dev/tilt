@@ -1,5 +1,7 @@
 package dockercompose
 
+import "reflect"
+
 // Three hacky states just for now to get something into the hud.
 const (
 	StatusDown   = "down"
@@ -18,12 +20,11 @@ var containerActionToStatus = map[Action]string{
 	ActionUpdate:  StatusUp, // ??
 }
 
-func (evt Event) GuessStatus() (string, bool) {
+func (evt Event) GuessStatus() string {
 	if evt.Type != TypeContainer {
-		return "", false
+		return ""
 	}
-	state, ok := containerActionToStatus[evt.Action]
-	return state, ok
+	return containerActionToStatus[evt.Action]
 }
 
 type State struct {
@@ -32,6 +33,7 @@ type State struct {
 }
 
 func (State) ResourceState() {}
+func (s State) Empty() bool  { return reflect.DeepEqual(s, State{}) }
 
 func (s State) Log() string {
 	return string(s.CurrentLog)
