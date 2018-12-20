@@ -1642,7 +1642,7 @@ func TestDockerComposeRecordsLogs(t *testing.T) {
 	}, true)
 
 	f.waitForCompletedBuildCount(1)
-	assert.Equal(t, expected, f.LogLines()[0])
+	assert.Contains(t, f.LogLines(), expected)
 }
 
 type fakeTimerMaker struct {
