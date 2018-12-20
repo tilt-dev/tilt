@@ -515,7 +515,6 @@ k8s_resource("quux", 'doggos.yaml')
 	f.assertAllBuildsConsumed()
 }
 
-// We had a bug where we
 func TestSecondResourceIsBuilt(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -549,7 +548,7 @@ k8s_resource("baz", 'snack.yaml')
 k8s_resource("quux", 'doggos.yaml')
 `)
 
-	// we expect to build quux, because it is new
+	// Expect a build of quux, the new resource
 	call = f.nextCall("changed config file --> new manifest")
 	assert.Equal(t, "quux", string(call.manifest.Name))
 	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
