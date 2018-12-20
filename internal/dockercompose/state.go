@@ -31,8 +31,18 @@ type State struct {
 	CurrentLog []byte
 }
 
-func (*State) ResourceState() {}
+func (State) ResourceState() {}
 
 func (s State) Log() string {
 	return string(s.CurrentLog)
+}
+
+func (s State) WithCurrentLog(b []byte) State {
+	s.CurrentLog = b
+	return s
+}
+
+func (s State) WithStatus(status string) State {
+	s.Status = status
+	return s
 }

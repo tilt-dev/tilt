@@ -1,7 +1,7 @@
 package model
 
-type resourceInfo interface {
-	resourceInfo()
+type deployInfo interface {
+	deployInfo()
 }
 
 type DCInfo struct {
@@ -10,4 +10,4 @@ type DCInfo struct {
 	DfRaw      []byte // for diff'ing when config files change
 }
 
-func (DCInfo) resourceInfo() {}
+func (DCInfo) deployInfo() {}

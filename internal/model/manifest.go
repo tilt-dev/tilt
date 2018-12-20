@@ -18,11 +18,15 @@ func (m ManifestName) String() string { return string(m) }
 
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
-	// Properties for all builds.
+	// Properties for all manifests.
 	Name         ManifestName
 	tiltFilename string
 
-	resourceInfo resourceInfo
+	// TODO(maia): buildInfo
+
+	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
+	// TODO(maia): move yaml stuff into here
+	deployInfo deployInfo
 
 	// Properties for all k8s builds
 	k8sYaml      string
@@ -50,7 +54,7 @@ type Manifest struct {
 type DockerBuildArgs map[string]string
 
 func (m Manifest) DCInfo() (DCInfo, bool) {
-	switch info := m.resourceInfo.(type) {
+	switch info := m.deployInfo.(type) {
 	case DCInfo:
 		return info, true
 	default:
@@ -63,8 +67,8 @@ func (m Manifest) IsDC() bool {
 	return ok
 }
 
-func (m Manifest) WithResourceInfo(info resourceInfo) Manifest {
-	m.resourceInfo = info
+func (m Manifest) WithDeployInfo(info deployInfo) Manifest {
+	m.deployInfo = info
 	return m
 }
 

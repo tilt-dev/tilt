@@ -39,7 +39,7 @@ type Resource struct {
 	Endpoints          []string
 	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
 
-	// ~~NOTE(maia): Currently just for DC
+	// NOTE(maia): implement for k8s
 	ResourceInfo ResourceInfoView
 
 	// If a pod had to be killed because it was crashing, we keep the old log around

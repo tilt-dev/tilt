@@ -165,7 +165,7 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	}
 	m := model.Manifest{
 		Name: model.ManifestName(s.Name),
-	}.WithResourceInfo(dcInfo)
+	}.WithDeployInfo(dcInfo)
 
 	if s.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.

@@ -81,7 +81,8 @@ type ManifestState struct {
 	PodSet PodSet
 	LBs    map[k8s.ServiceName]*url.URL
 
-	// ~~ NOTE(maia): Just for DC for now
+	// State of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
+	// TODO(maia): implement for k8s
 	ResourceState ResourceState
 
 	// Store the times of all the pending changes,
@@ -123,19 +124,12 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	}
 }
 
-// ~~TODO(maia): I'm concerned about this returning a pointer b/c all sorts of dark
-// magic will happen, but otherwise the setter methods are a PITA...
-func (ms *ManifestState) DCResourceState() (*dockercompose.State, bool) {
+func (ms *ManifestState) DCResourceState() (dockercompose.State, bool) {
 	switch state := ms.ResourceState.(type) {
-	case *dockercompose.State:
-		if state != nil {
-			return state, true
-		}
-		newState := dockercompose.State{}
-		ms.ResourceState = &newState
-		return &newState, true
+	case dockercompose.State:
+		return state, true
 	default:
-		return nil, false
+		return dockercompose.State{}, false
 	}
 }
 
@@ -502,13 +496,13 @@ func StateToView(s EngineState) view.View {
 
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 	if dcInfo, ok := ms.Manifest.DCInfo(); ok {
-		dcState, _ := ms.DCResourceState() // ~~ if this isn't here, something is wrong...?
+		dcState, _ := ms.DCResourceState()
 		return view.DcInfoView{
 			ConfigPath: dcInfo.ConfigPath,
 			Status:     dcState.Status,
 		}
 	}
-	// TODO: k8s
+	// TODO(maia): k8s
 	return nil
 }
 

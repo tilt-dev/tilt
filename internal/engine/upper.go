@@ -197,7 +197,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	if dcState, ok := ms.DCResourceState(); ok {
-		dcState.CurrentLog = []byte{} // TODO(maia): when reset(/not) CrashLog for DC service?
+		ms.ResourceState = dcState.WithCurrentLog([]byte{}) // TODO(maia): when reset(/not) CrashLog for DC service?
 	}
 
 	// Keep the crash log around until we have a rebuild
@@ -707,10 +707,9 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	status, ok := evt.GuessStatus()
 	if ok {
 		if dcState, ok := ms.DCResourceState(); ok {
-			dcState.Status = status
-			return
+			ms.ResourceState = dcState.WithStatus(status)
 		}
-		ms.ResourceState = &dockercompose.State{Status: status}
+		ms.ResourceState = dockercompose.State{Status: status}
 	}
 }
 
@@ -731,10 +730,10 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	}
 
 	if dcState, ok := ms.DCResourceState(); ok {
-		dcState.CurrentLog = append(dcState.CurrentLog, action.Log...)
+		ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 		return
 	}
-	ms.ResourceState = &dockercompose.State{CurrentLog: action.Log}
+	ms.ResourceState = dockercompose.State{CurrentLog: action.Log}
 }
 
 // Check if the filesChangedSet only contains spurious changes that
