@@ -118,12 +118,15 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	if fbInfo := m.FastBuildInfo(); !fbInfo.Empty() {
-		for _, mnt := range fbInfo.Mounts {
-			if !filepath.IsAbs(mnt.LocalPath) {
-				return fmt.Errorf(
-					"[validate] mount.LocalPath must be an absolute path (got: %s)", mnt.LocalPath)
-			}
+	fbInfo := m.FastBuildInfo()
+	if fbInfo.Empty() {
+		return nil
+	}
+
+	for _, mnt := range fbInfo.Mounts {
+		if !filepath.IsAbs(mnt.LocalPath) {
+			return fmt.Errorf(
+				"[validate] mount.LocalPath must be an absolute path (got: %s)", mnt.LocalPath)
 		}
 	}
 	return nil
