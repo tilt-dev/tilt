@@ -3,14 +3,14 @@ package model
 import (
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
-	_ "github.com/google/go-cmp/cmp"
-	_ "github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 type ManifestName string
@@ -160,18 +160,18 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.tiltFilename == m2.tiltFilename
-	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
-	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
+	reposMatch := DeepEqual(m1.repos, m2.repos)
+	dockerignoresMatch := DeepEqual(m1.dockerignores, m2.dockerignores)
 
-	dockerEqual := reflect.DeepEqual(m1.DockerInfo, m2.DockerInfo)
+	dockerEqual := DeepEqual(m1.DockerInfo, m2.DockerInfo)
 
 	dc1 := m1.DCInfo()
 	dc2 := m2.DCInfo()
-	dockerComposeEqual := reflect.DeepEqual(dc1, dc2)
+	dockerComposeEqual := DeepEqual(dc1, dc2)
 
 	k8s1 := m1.K8sInfo()
 	k8s2 := m2.K8sInfo()
-	k8sEqual := reflect.DeepEqual(k8s1, k8s2)
+	k8sEqual := DeepEqual(k8s1, k8s2)
 
 	return primitivesMatch &&
 		reposMatch &&
@@ -398,4 +398,23 @@ type PortForward struct {
 	// The port to connect to inside the deployed container.
 	// If 0, we will connect to the first containerPort.
 	ContainerPort int
+}
+
+var dockerInfoAllowUnexported = cmp.AllowUnexported(DockerInfo{})
+var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
+	aNil := a == nil
+	bNil := b == nil
+	if aNil && bNil {
+		return true
+	}
+
+	if aNil != bNil {
+		return false
+	}
+
+	return a.String() == b.String()
+})
+
+func DeepEqual(x, y interface{}) bool {
+	return cmp.Equal(x, y, cmpopts.EquateEmpty(), dockerInfoAllowUnexported, dockerRefEqual)
 }

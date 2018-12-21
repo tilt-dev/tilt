@@ -383,6 +383,11 @@ var equalitytests = []struct {
 		Manifest{}.WithDeployInfo(K8sInfo{YAML: "goodbye world"}),
 		false,
 	},
+	{
+		Manifest{Mounts: nil},
+		Manifest{Mounts: []Mount{}},
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
