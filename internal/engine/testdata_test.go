@@ -21,18 +21,18 @@ RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho
 `
 
+type pather interface {
+	Path() string
+}
+
 var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
 
-func NewSanchoManifest() model.Manifest {
-	m := model.Manifest{
-		Name: "sancho",
-		DockerInfo: model.DockerInfo{
-			DockerRef: SanchoRef,
-		},
+func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
+	fbInfo := model.FastBuild{
 		BaseDockerfile: SanchoBaseDockerfile,
 		Mounts: []model.Mount{
 			model.Mount{
-				LocalPath:     "/src/sancho",
+				LocalPath:     fixture.Path(),
 				ContainerPath: "/go/src/github.com/windmilleng/sancho",
 			},
 		},
@@ -41,14 +41,20 @@ func NewSanchoManifest() model.Manifest {
 		}),
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
 	}
+	m := model.Manifest{
+		Name: "sancho",
+		DockerInfo: model.DockerInfo{
+			DockerRef: SanchoRef,
+		}.WithBuildDetails(fbInfo),
+	}
 
 	m = m.WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 
 	return m
 }
 
-func NewSanchoManifestWithCache(paths []string) model.Manifest {
-	manifest := NewSanchoManifest()
+func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.Manifest {
+	manifest := NewSanchoFastBuildManifest(fixture)
 	manifest.DockerInfo = manifest.DockerInfo.WithCachePaths(paths)
 	return manifest
 }
@@ -71,6 +77,3 @@ func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
 	manifest.DockerInfo = manifest.DockerInfo.WithCachePaths(paths)
 	return manifest
 }
-
-var SanchoManifest = NewSanchoManifest()
-var SanchoStaticManifest = NewSanchoStaticManifest()

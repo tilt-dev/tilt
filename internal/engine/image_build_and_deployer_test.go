@@ -46,7 +46,7 @@ func TestBaseDockerfileWithCache(t *testing.T) {
 	f := newIBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoManifestWithCache([]string{"/root/.cache"})
+	manifest := NewSanchoFastBuildManifestWithCache(f, []string{"/root/.cache"})
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
@@ -71,7 +71,7 @@ func TestDeployTwinImages(t *testing.T) {
 	f := newIBDFixture(t)
 	defer f.TearDown()
 
-	sancho := NewSanchoManifest()
+	sancho := NewSanchoFastBuildManifest(f)
 	manifest := sancho.WithDeployInfo(sancho.K8sInfo().AppendYAML(SanchoTwinYAML))
 	result, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
 	if err != nil {

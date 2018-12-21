@@ -13,14 +13,13 @@ import (
 func TestStateToViewMultipleMounts(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-		Mounts: []model.Mount{
-			{
-				LocalPath: "/a/b",
-			},
-			{
-				LocalPath: "/a/b/c",
-			},
-		},
+		DockerInfo: model.DockerInfo{}.
+			WithBuildDetails(model.FastBuild{
+				Mounts: []model.Mount{
+					{LocalPath: "/a/b"},
+					{LocalPath: "/a/b/c"},
+				},
+			}),
 	}
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
 	ms := state.ManifestStates[m.Name]
@@ -102,15 +101,15 @@ func TestEmptyState(t *testing.T) {
 
 	m2 := model.Manifest{
 		Name: "foo",
-		Mounts: []model.Mount{
-			{
-				LocalPath: "/a/b",
-			},
-			{
-				LocalPath: "/a/b/c",
-			},
-		},
+		DockerInfo: model.DockerInfo{}.
+			WithBuildDetails(model.FastBuild{
+				Mounts: []model.Mount{
+					{LocalPath: "/a/b"},
+					{LocalPath: "/a/b/c"},
+				},
+			}),
 	}
+
 	nes = newState([]model.Manifest{m2}, model.YAMLManifest{})
 	v = StateToView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)

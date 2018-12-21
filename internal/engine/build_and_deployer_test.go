@@ -35,7 +35,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
+	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestNamespaceGKE(t *testing.T) {
 	assert.Equal(t, "", string(f.sCli.Namespace))
 	assert.Equal(t, "", string(f.k8s.LastPodQueryNamespace))
 
-	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, store.BuildStateClean)
+	result, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestNamespaceGKE(t *testing.T) {
 	assert.Equal(t, "sancho-ns", string(result.Namespace))
 
 	bs := store.NewBuildState(result, nil).WithDeployInfo(f.deployInfo())
-	result, err = f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
+	result, err = f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	defer f.TearDown()
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
-	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
+	result, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 	defer f.TearDown()
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
-	result, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
+	result, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
-	_, err := f.bd.BuildAndDeploy(ctx, SanchoManifest, bs)
+	_, err := f.bd.BuildAndDeploy(ctx, NewSanchoFastBuildManifest(f), bs)
 	msg := "Command failed with exit code: 1"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Fatalf("Expected error message %q, actual: %v", msg, err)
@@ -196,7 +196,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propogate back up")
 	}
@@ -232,8 +232,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	manifest := NewSanchoManifest()
-	manifest.Mounts[0].LocalPath = f.Path()
+	manifest := NewSanchoFastBuildManifest(f)
 	aPath := filepath.Join(f.Path(), "a.txt")
 	bPath := filepath.Join(f.Path(), "b.txt")
 	f.WriteFile("a.txt", "a")
@@ -284,8 +283,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	manifest := NewSanchoManifest()
-	manifest.Mounts[0].LocalPath = f.Path()
+	manifest := NewSanchoFastBuildManifest(f)
 	aPath := filepath.Join(f.Path(), "a.txt")
 	bPath := filepath.Join(f.Path(), "b.txt")
 	f.WriteFile("a.txt", "a")
@@ -361,7 +359,7 @@ func TestBaDForgetsImages(t *testing.T) {
 	f.k8s.SetPodsWithImageResp(pod1)
 
 	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
-	_, err := f.bd.BuildAndDeploy(f.ctx, SanchoManifest, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,8 +374,7 @@ func TestIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	ctx := output.CtxForTest()
 
-	manifest := NewSanchoManifest()
-	manifest.Mounts[0].LocalPath = f.Path()
+	manifest := NewSanchoFastBuildManifest(f)
 
 	manifest = manifest.WithRepos([]model.LocalGithubRepo{
 		model.LocalGithubRepo{

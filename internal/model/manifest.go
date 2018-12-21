@@ -31,13 +31,6 @@ type Manifest struct {
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployInfo deployInfo
-
-	// Properties for fast_build (builds that support
-	// iteration based on past artifacts)
-	BaseDockerfile string
-	Mounts         []Mount
-	Steps          []Step
-	Entrypoint     Cmd
 }
 
 type DockerBuildArgs map[string]string
@@ -104,24 +97,36 @@ func (m Manifest) Dockerignores() []Dockerignore {
 func (m Manifest) LocalPaths() []string {
 	if sbInfo := m.StaticBuildInfo(); !sbInfo.Empty() {
 		return []string{sbInfo.BuildPath}
+	} else if fbInfo := m.FastBuildInfo(); !fbInfo.Empty() {
+		result := make([]string, len(fbInfo.Mounts))
+		for i, mount := range fbInfo.Mounts {
+			result[i] = mount.LocalPath
+		}
+		return result
+	} else if dcInfo := m.DCInfo(); !dcInfo.Empty() {
+		result := make([]string, len(dcInfo.Mounts))
+		for i, mount := range fbInfo.Mounts {
+			result[i] = mount.LocalPath
+		}
 	}
 
-	result := make([]string, len(m.Mounts))
-	for i, mount := range m.Mounts {
-		result[i] = mount.LocalPath
-	}
-	return result
+	return nil
 }
 
-// TODO: implement this (validate for container build)
 func (m Manifest) Validate() error {
 	if m.Name == "" {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
-	for _, m := range m.Mounts {
-		if !filepath.IsAbs(m.LocalPath) {
+
+	fbInfo := m.FastBuildInfo()
+	if fbInfo.Empty() {
+		return nil
+	}
+
+	for _, mnt := range fbInfo.Mounts {
+		if !filepath.IsAbs(mnt.LocalPath) {
 			return fmt.Errorf(
-				"[validate] mount.LocalPath must be an absolute path (got: %s)", m.LocalPath)
+				"[validate] mount.LocalPath must be an absolute path (got: %s)", mnt.LocalPath)
 		}
 	}
 	return nil
@@ -142,22 +147,22 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 		if sbInfo.BuildPath == "" {
 			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing build path", m.Name)
 		}
-	} else {
-		if m.BaseDockerfile == "" {
+	} else if fbInfo := m.FastBuildInfo(); !fbInfo.Empty() {
+		if fbInfo.BaseDockerfile == "" {
 			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing base dockerfile", m.Name)
 		}
+	} else {
+		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q has neither StaticBuildInfo nor FastBuildInfo", m.Name)
 	}
 
 	return nil
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.tiltFilename == m2.tiltFilename
-	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
-	mountsMatch := DeepEqual(m1.Mounts, m2.Mounts)
+	primitivesMatch := m1.Name == m2.Name && m1.tiltFilename == m2.tiltFilename
 	reposMatch := DeepEqual(m1.repos, m2.repos)
-	stepsMatch := m1.stepsEqual(m2.Steps)
 	dockerignoresMatch := DeepEqual(m1.dockerignores, m2.dockerignores)
+
 	dockerEqual := DeepEqual(m1.DockerInfo, m2.DockerInfo)
 
 	dc1 := m1.DCInfo()
@@ -169,10 +174,7 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	k8sEqual := DeepEqual(k8s1, k8s2)
 
 	return primitivesMatch &&
-		entrypointMatch &&
-		mountsMatch &&
 		reposMatch &&
-		stepsMatch &&
 		dockerignoresMatch &&
 		dockerEqual &&
 		dockerComposeEqual &&
@@ -186,20 +188,6 @@ func stringSlicesEqual(a, b []string) bool {
 
 	for i := range b {
 		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) stepsEqual(s2 []Step) bool {
-	if len(m1.Steps) != len(s2) {
-		return false
-	}
-
-	for i := range s2 {
-		if !m1.Steps[i].Equal(s2[i]) {
 			return false
 		}
 	}

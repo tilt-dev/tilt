@@ -77,8 +77,8 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	if manifest.IsStaticBuild() {
-		return fmt.Errorf("container build does not support static dockerfiles")
+	if fbInfo := manifest.FastBuildInfo(); fbInfo.Empty() {
+		return fmt.Errorf("container build only supports FastBuilds")
 	}
 
 	// Can't do container update if we don't know what container manifest is running in.
@@ -95,7 +95,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	defer span.Finish()
 
 	paths, err := build.FilesToPathMappings(
-		state.FilesChanged(), manifest.Mounts)
+		state.FilesChanged(), manifest.FastBuildInfo().Mounts)
 	if err != nil {
 		return store.BuildResult{}, err
 	}
@@ -124,7 +124,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResult{}, fmt.Errorf("no deploy info")
 	}
 
-	cmds, err := build.BoilSteps(manifest.Steps, paths)
+	cmds, err := build.BoilSteps(manifest.FastBuildInfo().Steps, paths)
 	if err != nil {
 		return store.BuildResult{}, err
 	}

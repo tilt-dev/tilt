@@ -22,6 +22,40 @@ var buildArgs2 = DockerBuildArgs{
 	"beep": "boop",
 }
 
+var mount1 = Mount{
+	LocalPath:     "/foo",
+	ContainerPath: "/bar",
+}
+var mount2 = Mount{
+	LocalPath:     "/baz",
+	ContainerPath: "/beep",
+}
+
+var cmdSayHi = Cmd{Argv: []string{"bash", "-c", "echo hi"}}
+var cmdSayBye = Cmd{Argv: []string{"bash", "-c", "echo bye"}}
+var stepSayHi = Step{Cmd: cmdSayHi}
+var stepSayBye = Step{Cmd: cmdSayBye}
+var stepSayHiTriggerFoo = Step{
+	Cmd:           cmdSayHi,
+	Triggers:      []string{"foo"},
+	BaseDirectory: "/src",
+}
+var stepSayHiTriggerBar = Step{
+	Cmd:           cmdSayHi,
+	Triggers:      []string{"bar"},
+	BaseDirectory: "/src",
+}
+var stepSayHiTriggerDirA = Step{
+	Cmd:           cmdSayHi,
+	Triggers:      []string{"foo"},
+	BaseDirectory: "/dirA",
+}
+var stepSayHiTriggerDirB = Step{
+	Cmd:           cmdSayHi,
+	Triggers:      []string{"foo"},
+	BaseDirectory: "/dirB",
+}
+
 var equalitytests = []struct {
 	m1       Manifest
 	m2       Manifest
@@ -33,38 +67,100 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{},
 		Manifest{
-			BaseDockerfile: "FROM node",
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{BaseDockerfile: "FROM node"}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{BaseDockerfile: "FROM nope"}),
 		},
 		false,
 	},
 	{
 		Manifest{
-			BaseDockerfile: "FROM node",
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{BaseDockerfile: "FROM node"}),
 		},
 		Manifest{
-			BaseDockerfile: "FROM node",
-		},
-		true,
-	},
-	{
-		Manifest{
-			Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-		},
-		Manifest{
-			Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{BaseDockerfile: "FROM node"}),
 		},
 		true,
 	},
 	{
 		Manifest{
-			Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{
+					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+				}),
 		},
 		Manifest{
-			Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{
+					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+				}),
+		},
+		true,
+	},
+	{
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{
+					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+				}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{
+					Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
+				}),
 		},
 		false,
+	},
+	{
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{mount1}}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{mount1}}),
+		},
+		true,
+	},
+	{
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{mount1}}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{mount2}}),
+		},
+		false,
+	},
+	{
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{mount1}}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{mount1, mount2}}),
+		},
+		false,
+	},
+	{
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: nil}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{}}),
+		},
+		true,
 	},
 	{
 		Manifest{
@@ -116,98 +212,65 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHi}},
+			),
 		},
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHi}},
+			),
 		},
 		true,
 	},
 	{
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd: Cmd{Argv: []string{"bash", "-c", "hi"}},
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHi}},
+			),
 		},
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd: Cmd{Argv: []string{"bash", "-c", "hello"}},
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayBye}},
+			),
 		},
 		false,
 	},
 	{
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
-					Triggers:      []string{"foo"},
-					BaseDirectory: "/src",
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+			),
 		},
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
-					Triggers:      []string{"foo"},
-					BaseDirectory: "/src",
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+			),
 		},
 		true,
 	},
 	{
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
-					Triggers:      []string{"bar"},
-					BaseDirectory: "/src",
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+			),
 		},
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
-					Triggers:      []string{"foo"},
-					BaseDirectory: "/src",
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHiTriggerBar}}),
 		},
 		false,
 	},
 	{
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
-					Triggers:      []string{"foo"},
-					BaseDirectory: "/src1",
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHiTriggerDirA}},
+			),
 		},
 		Manifest{
-			Steps: []Step{
-				Step{
-					Cmd:           Cmd{Argv: []string{"bash", "-c", "hi"}},
-					Triggers:      []string{"foo"},
-					BaseDirectory: "/src2",
-				},
-			},
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Steps: []Step{stepSayHiTriggerDirB}},
+			),
 		},
 		false,
 	},
@@ -311,11 +374,6 @@ var equalitytests = []struct {
 		Manifest{}.WithDeployInfo(K8sInfo{YAML: "goodbye world"}),
 		false,
 	},
-	{
-		Manifest{Mounts: nil},
-		Manifest{Mounts: []Mount{}},
-		true,
-	},
 }
 
 func TestManifestEquality(t *testing.T) {
@@ -329,15 +387,18 @@ func TestManifestEquality(t *testing.T) {
 }
 
 func TestManifestValidateMountRelativePath(t *testing.T) {
-	mounts := []Mount{
-		Mount{
-			LocalPath:     "./hello",
-			ContainerPath: "/src",
+	fbInfo := FastBuild{
+		Mounts: []Mount{
+			Mount{
+				LocalPath:     "./hello",
+				ContainerPath: "/src",
+			},
 		},
 	}
+
 	manifest := Manifest{
-		Name:   "test",
-		Mounts: mounts,
+		Name:       "test",
+		DockerInfo: DockerInfo{}.WithBuildDetails(fbInfo),
 	}
 	err := manifest.Validate()
 
@@ -345,7 +406,8 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		assert.Contains(t, err.Error(), "must be an absolute path")
 	}
 
-	manifest.Mounts[0].LocalPath = "/abs/path/hello"
+	fbInfo.Mounts[0].LocalPath = "/abs/path/hello"
+	manifest.DockerInfo = DockerInfo{}.WithBuildDetails(fbInfo)
 	err = manifest.Validate()
 	assert.Nil(t, err)
 
