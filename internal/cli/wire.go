@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -55,6 +56,7 @@ var BaseWireSet = wire.NewSet(
 
 	provideLogActions,
 	store.NewStore,
+	wire.Bind(new(store.RStore), new(store.Store)),
 
 	engine.NewUpper,
 	provideAnalytics,
@@ -63,7 +65,9 @@ var BaseWireSet = wire.NewSet(
 	engine.ProvideFsWatcherMaker,
 	engine.ProvideTimerMaker,
 
-	provideHudAndUpper,
+	server.ProvideHeadsUpServer,
+
+	provideThreads,
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
@@ -71,18 +75,19 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	return demo.Script{}, nil
 }
 
-func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
+func wireThreads(ctx context.Context) (Threads, error) {
 	wire.Build(BaseWireSet)
-	return HudAndUpper{}, nil
+	return Threads{}, nil
 }
 
-type HudAndUpper struct {
-	hud   hud.HeadsUpDisplay
-	upper engine.Upper
+type Threads struct {
+	hud    hud.HeadsUpDisplay
+	upper  engine.Upper
+	server server.HeadsUpServer
 }
 
-func provideHudAndUpper(h hud.HeadsUpDisplay, upper engine.Upper) HudAndUpper {
-	return HudAndUpper{h, upper}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server server.HeadsUpServer) Threads {
+	return Threads{h, upper, server}
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
