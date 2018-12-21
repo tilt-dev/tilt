@@ -1,28 +1,35 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
+import ResourceList from './ResourceList';
 import './App.css';
 
 class App extends Component {
+  constructor(props) {
+    super(props)
+    this.state = {Resources: []}
+  }
+
   render() {
+    let el = null
+    if (!this.state.Resources || !this.state.Resources.length) {
+      el = <LoadingScreen />
+    } else {
+      el = <ResourceList resources={this.state.Resources} />
+    }
+
     return (
       <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </header>
+        {el}
       </div>
     );
   }
+}
+
+function LoadingScreen() {
+  return (
+    <header className="LoadingScreen">
+      Loading...
+    </header>
+  )
 }
 
 export default App;

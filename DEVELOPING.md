@@ -57,6 +57,24 @@ To install `tilt` on PATH, run
 make install
 ```
 
+## Web UI
+
+The web interface for `tilt` currently only works in development mode. To run it, start `tilt` on port 8001:
+
+```
+tilt up --port=8001
+```
+
+Then, in a separate terminal, run:
+
+```
+make dev-js
+```
+
+Eventually, production builds of Tilt will serve the JS directly from the Tilt
+binary. But development is easier with the React dev server running as a
+separate process.
+
 ## Documentation
 
 The documentation is written in Restructured Text and generated with Sphinx. We install Sphinx inside
