@@ -52,6 +52,14 @@ func TestIsBrokenSymlink(t *testing.T) {
 	f.assertBrokenSymlink("symlinkFileB", true)
 }
 
+func TestInvalidDir(t *testing.T) {
+	f := NewOspathFixture(t)
+	defer f.TearDown()
+
+	// Passing "" as dir used to make Child hang forever. Let's make sure it doesn't do that.
+	f.assertChild("", "random", "")
+}
+
 func TestTryAsCwdChildren(t *testing.T) {
 	f := NewOspathFixture(t)
 	defer f.TearDown()
