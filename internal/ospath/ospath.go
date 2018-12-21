@@ -10,6 +10,10 @@ import (
 //
 // Returns true if successful. If `file` is not under `dir`, returns false.
 func Child(dir string, file string) (string, bool) {
+	if dir == "" {
+		return "", false
+	}
+
 	current := file
 	child := "."
 	for true {
