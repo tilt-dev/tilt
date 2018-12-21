@@ -541,15 +541,17 @@ k8s_resource("baz", 'snack.yaml')
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
-	mount1 := model.Mount{LocalPath: f.JoinPath("mount1"), ContainerPath: "/go"}
-	manifest1 := f.newManifest("baz", []model.Mount{mount1})
+	manifests, _, _, err := tiltfile2.Load(f.ctx, tiltfile2.FileName, nil)
+	assert.NoError(t, err)
 
-	f.Start([]model.Manifest{manifest1}, true)
+	f.Start(manifests, true)
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Empty(t, call.manifest.BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.manifest.BaseDockerfile)
 	assert.Equal(t, "baz", string(call.manifest.Name))
+
+	f.assertNoCall()
 
 	// Now add a second resource
 	f.WriteConfigFiles("Tiltfile", `
@@ -565,7 +567,7 @@ k8s_resource("quux", 'doggos.yaml')
 	assert.Equal(t, "quux", string(call.manifest.Name))
 	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -590,9 +592,9 @@ k8s_resource('foobar', 'snack.yaml')`)
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
-	// NB(dbentley): race condition if we don't sleep here; what's the right way to do this?
-	// The race condition happens because config reloading isn't single-threaded wrt building.
-	time.Sleep(10 * time.Millisecond)
+
+	// The dockerfile hasn't changed, so there shouldn't be any builds.
+	f.assertNoCall()
 
 	f.store.Dispatch(manifestFilesChangedAction{
 		files:        []string{f.JoinPath("random_file.go")},
@@ -1691,7 +1693,13 @@ func TestDockerComposeRecordsLogs(t *testing.T) {
 	}, true)
 
 	f.waitForCompletedBuildCount(1)
+	// recorded in global log
 	assert.Contains(t, f.LogLines(), expected)
+
+	// recorded on manifest state
+	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+		assert.Contains(t, st.DCResourceState().Log(), expected)
+	})
 }
 
 type fakeTimerMaker struct {

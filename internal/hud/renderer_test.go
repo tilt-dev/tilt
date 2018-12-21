@@ -324,6 +324,20 @@ func TestRenderLogModal(t *testing.T) {
 		},
 	}
 	rtf.run("resource log during crash rebuild", 60, 20, v, vs)
+
+	v = view.View{
+		Resources: []view.Resource{
+			{
+				Name: "spoonerisms",
+				ResourceInfo: view.DCResourceInfo{
+					ConfigPath: "docker-compose.yml",
+					Status:     "building",
+					Log:        "Hi hello I'm a docker compose log",
+				},
+			},
+		},
+	}
+	rtf.run("docker compose log pane", 117, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {

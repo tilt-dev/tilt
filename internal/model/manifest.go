@@ -8,6 +8,9 @@ import (
 	"strings"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
+
+	_ "github.com/google/go-cmp/cmp"
+	_ "github.com/google/go-cmp/cmp/cmpopts"
 )
 
 type ManifestName string

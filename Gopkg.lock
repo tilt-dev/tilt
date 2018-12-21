@@ -508,6 +508,20 @@
   revision = "1e2867e5b7c01e3766e577e9ac9dae28769512c8"
 
 [[projects]]
+  digest = "1:d2754cafcab0d22c13541618a8029a70a8959eb3525ff201fe971637e2274cd0"
+  name = "github.com/google/go-cmp"
+  packages = [
+    "cmp",
+    "cmp/cmpopts",
+    "cmp/internal/diff",
+    "cmp/internal/function",
+    "cmp/internal/value",
+  ]
+  pruneopts = "UT"
+  revision = "3af367b6b30c263d47e8895973edcca9a49cf029"
+  version = "v0.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:3ee90c0d94da31b442dde97c99635aaafec68d0b8a3c12ee2075c6bdabeec6bb"
   name = "github.com/google/gofuzz"
@@ -1400,6 +1414,8 @@
     "github.com/gobwas/glob",
     "github.com/golang/protobuf/proto",
     "github.com/google/go-cloud/wire",
+    "github.com/google/go-cmp/cmp",
+    "github.com/google/go-cmp/cmp/cmpopts",
     "github.com/google/skylark",
     "github.com/google/skylark/resolve",
     "github.com/google/uuid",

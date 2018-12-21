@@ -196,14 +196,9 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	// TODO(maia): get the BEST logs (currently getting any old logs)
-	if res.IsDC() {
-		lastBuildLog := strings.TrimSpace(string(res.LastBuild().Log))
-		if res.LastBuild().StartTime.Before(res.PodCreationTime) &&
-			len(lastBuildLog) > 0 {
-			return lastBuildLog + "\n\n" + res.PodLog
-		}
-		return res.PodLog
+	// TODO(maia): get the BEST logs (currently getting all logs)
+	if dcInfo := res.DCInfo(); !dcInfo.Empty() {
+		return dcInfo.Log
 	}
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&

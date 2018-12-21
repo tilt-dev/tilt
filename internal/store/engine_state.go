@@ -508,6 +508,7 @@ func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 		return view.DCResourceInfo{
 			ConfigPath: dcInfo.ConfigPath,
 			Status:     dcState.Status,
+			Log:        dcState.Log(),
 		}
 	}
 	// TODO(maia): k8s
