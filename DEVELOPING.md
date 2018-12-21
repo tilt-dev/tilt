@@ -89,6 +89,7 @@ Cross-compiling a Linux target binary with a MacOS toolchain works fine.
 To create a new release at tag `$TAG`:
 
 ```
+git fetch --tags
 git tag -a v0.0.1 -m "my release"
 git push origin v0.0.1
 make release
