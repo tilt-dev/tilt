@@ -69,30 +69,22 @@ var equalitytests = []struct {
 	{
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					BaseDockerfile: "FROM node",
-				}),
+				FastBuild{BaseDockerfile: "FROM node"}),
 		},
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					BaseDockerfile: "FROM nope",
-				}),
+				FastBuild{BaseDockerfile: "FROM nope"}),
 		},
 		false,
 	},
 	{
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					BaseDockerfile: "FROM node",
-				}),
+				FastBuild{BaseDockerfile: "FROM node"}),
 		},
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					BaseDockerfile: "FROM node",
-				}),
+				FastBuild{BaseDockerfile: "FROM node"}),
 		},
 		true,
 	},
@@ -129,47 +121,46 @@ var equalitytests = []struct {
 	{
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Mounts: []Mount{mount1},
-				}),
+				FastBuild{Mounts: []Mount{mount1}}),
 		},
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Mounts: []Mount{mount1},
-				}),
+				FastBuild{Mounts: []Mount{mount1}}),
 		},
 		true,
 	},
 	{
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Mounts: []Mount{mount1},
-				}),
+				FastBuild{Mounts: []Mount{mount1}}),
 		},
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Mounts: []Mount{mount2},
-				}),
+				FastBuild{Mounts: []Mount{mount2}}),
 		},
 		false,
 	},
 	{
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Mounts: []Mount{mount1},
-				}),
+				FastBuild{Mounts: []Mount{mount1}}),
 		},
 		Manifest{
 			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Mounts: []Mount{mount1, mount2},
-				}),
+				FastBuild{Mounts: []Mount{mount1, mount2}}),
 		},
 		false,
+	},
+	{
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: nil}),
+		},
+		Manifest{
+			DockerInfo: DockerInfo{}.WithBuildDetails(
+				FastBuild{Mounts: []Mount{}}),
+		},
+		true,
 	},
 	{
 		Manifest{
@@ -382,11 +373,6 @@ var equalitytests = []struct {
 		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
 		Manifest{}.WithDeployInfo(K8sInfo{YAML: "goodbye world"}),
 		false,
-	},
-	{
-		Manifest{Mounts: nil},
-		Manifest{Mounts: []Mount{}},
-		true,
 	},
 }
 
