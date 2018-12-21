@@ -196,10 +196,10 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	// TODO(maia): get the BEST logs (currently getting all logs)
 	if dcInfo := res.DCInfo(); !dcInfo.Empty() {
 		return dcInfo.Log
 	}
+
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {
