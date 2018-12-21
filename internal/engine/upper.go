@@ -427,7 +427,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 		return nil, nil
 	}
 
-	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerInfo.DockerRef)
+	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerInfo.Ref)
 	if err != nil || imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
 		return nil, nil
@@ -528,7 +528,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	defer prunePods(ms)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerInfo.DockerRef)
+	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerInfo.Ref)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return

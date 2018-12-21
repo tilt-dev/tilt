@@ -135,7 +135,7 @@ func (m Manifest) Validate() error {
 // ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
 // k8s-deployable manifest.
 func (m Manifest) ValidateDockerK8sManifest() error {
-	if m.DockerInfo.DockerRef == nil {
+	if m.DockerInfo.Ref == nil {
 		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing image ref", m.Name)
 	}
 

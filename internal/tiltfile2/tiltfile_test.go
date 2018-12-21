@@ -888,7 +888,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 		switch opt := opt.(type) {
 		case dbHelper:
 			caches := m.DockerInfo.CachePaths()
-			ref := m.DockerInfo.DockerRef
+			ref := m.DockerInfo.Ref
 			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
@@ -908,7 +908,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			ref := m.DockerInfo.DockerRef
+			ref := m.DockerInfo.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}

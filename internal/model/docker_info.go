@@ -9,7 +9,7 @@ import (
 
 type DockerInfo struct {
 	cachePaths   []string
-	DockerRef    reference.Named
+	Ref          reference.Named
 	buildDetails buildDetails
 }
 
