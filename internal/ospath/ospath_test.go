@@ -1,19 +1,12 @@
 package ospath
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"testing"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
-
-func TestBullshit(t *testing.T) {
-	f := NewOspathFixture(t)
-	_, isDep := Child("", f.Path())
-	fmt.Println("result:", isDep)
-}
 
 func TestChild(t *testing.T) {
 	f := NewOspathFixture(t)
@@ -28,21 +21,14 @@ func TestChild(t *testing.T) {
 	f.TouchFiles(paths)
 
 	f.assertChild("parent", "sibling/fileD", "")
-	fmt.Println("---")
 	f.assertChild("parent/child", "parent/fileA", "")
-	fmt.Println("---")
 	f.assertChild("parent", "parent/fileA", "fileA")
-	fmt.Println("---")
 	f.assertChild("parent", "parent/child/fileB", "child/fileB")
-	fmt.Println("---")
 	f.assertChild("parent", "parent/child/grandchild/fileC", "child/grandchild/fileC")
-	fmt.Println("---")
 
 	f.assertChild("parent/child", "parent/child/fileB", "fileB")
-	fmt.Println("---")
 
 	f.assertChild("parent", "parent", ".")
-	fmt.Println("---")
 }
 
 func TestIsBrokenSymlink(t *testing.T) {

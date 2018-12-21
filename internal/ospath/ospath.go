@@ -1,7 +1,6 @@
 package ospath
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -11,14 +10,9 @@ import (
 //
 // Returns true if successful. If `file` is not under `dir`, returns false.
 func Child(dir string, file string) (string, bool) {
-	if dir == "" {
-		return "", false
-	}
-
 	current := file
 	child := "."
 	for true {
-		fmt.Printf("checking dir '%s' for current '%s' (child = %s)\n", dir, current, child)
 		if dir == current {
 			return child, true
 		}
