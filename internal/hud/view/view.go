@@ -14,6 +14,7 @@ type ResourceInfoView interface {
 type DCResourceInfo struct {
 	ConfigPath string
 	Status     string
+	Log        string
 }
 
 func (DCResourceInfo) resourceInfoView() {}
