@@ -34,9 +34,6 @@ type Manifest struct {
 	Mounts         []Mount
 	Steps          []Step
 	Entrypoint     Cmd
-
-	StaticBuildPath string // the absolute path to the files
-	StaticBuildArgs DockerBuildArgs
 }
 
 type DockerBuildArgs map[string]string
@@ -133,8 +130,8 @@ func (m Manifest) Dockerignores() []Dockerignore {
 }
 
 func (m Manifest) LocalPaths() []string {
-	if m.IsStaticBuild() {
-		return []string{m.StaticBuildPath}
+	if sbInfo := m.StaticBuildInfo(); !sbInfo.Empty() {
+		return []string{sbInfo.BuildPath}
 	}
 
 	result := make([]string, len(m.Mounts))
@@ -169,8 +166,8 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing k8s YAML", m.Name)
 	}
 
-	if m.IsStaticBuild() {
-		if m.StaticBuildPath == "" {
+	if sbInfo := m.StaticBuildInfo(); !sbInfo.Empty() {
+		if sbInfo.BuildPath == "" {
 			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing build path", m.Name)
 		}
 	} else {
@@ -183,13 +180,12 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
-	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
 
 	docker1 := m1.DockerInfo()
 	docker2 := m2.DockerInfo()
@@ -208,7 +204,6 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 		mountsMatch &&
 		reposMatch &&
 		stepsMatch &&
-		buildArgsMatch &&
 		dockerignoresMatch &&
 		dockerEqual &&
 		dockerComposeEqual &&

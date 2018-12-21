@@ -13,6 +13,15 @@ var portFwd8001 = []PortForward{{LocalPort: 8081}}
 var img1 = container.MustParseNamed("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
 var img2 = container.MustParseNamed("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
 
+var buildArgs1 = DockerBuildArgs{
+	"foo": "bar",
+	"baz": "qux",
+}
+var buildArgs2 = DockerBuildArgs{
+	"foo":  "bar",
+	"beep": "boop",
+}
+
 var equalitytests = []struct {
 	m1       Manifest
 	m2       Manifest
@@ -203,33 +212,57 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "qux",
-			},
-		},
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "quz",
-			},
-		},
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			Dockerfile: "FROM foo",
+		})),
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			Dockerfile: "FROM bar",
+		})),
 		false,
 	},
 	{
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "qux",
-			},
-		},
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "qux",
-			},
-		},
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			Dockerfile: "FROM foo",
+		})),
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			Dockerfile: "FROM foo",
+		})),
+		true,
+	},
+	{
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildPath: "foo/bar",
+		})),
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildPath: "foo/bar/baz",
+		})),
+		false,
+	},
+	{
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildPath: "foo/bar",
+		})),
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildPath: "foo/bar",
+		})),
+		true,
+	},
+	{
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildArgs: buildArgs1,
+		})),
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildArgs: buildArgs2,
+		})),
+		false,
+	},
+	{
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildArgs: buildArgs1,
+		})),
+		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
+			BuildArgs: buildArgs1,
+		})),
 		true,
 	},
 	{

@@ -113,12 +113,12 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		return nil, err
 	}
 
-	if manifest.IsStaticBuild() {
+	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
 
 		df := ibd.staticDockerfile(manifest, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest), manifest.StaticBuildArgs)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, sbInfo.BuildPath, ignore.CreateBuildContextFilter(manifest), sbInfo.BuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -286,6 +286,7 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 	}
 
 	baseDockerfile := dockerfile.Dockerfile(manifest.BaseDockerfile)
+	var buildArgs model.DockerBuildArgs
 	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
 		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
 		ok := true
@@ -293,10 +294,12 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 		if !ok {
 			return
 		}
+
+		buildArgs = sbInfo.BuildArgs
 	}
 
 	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef,
-		manifest.DockerInfo().CachePaths, manifest.StaticBuildArgs)
+		manifest.DockerInfo().CachePaths, buildArgs)
 	if err != nil {
 		logger.Get(ctx).Debugf("Could not create cache: %v", err)
 	}

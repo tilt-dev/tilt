@@ -39,7 +39,7 @@ func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
 	c.hasRunReaper = true
 	manifests := make([]model.Manifest, 0, len(state.ManifestStates))
 	for _, ms := range state.ManifestStates {
-		if ms.Manifest.DockerInfo().Empty() {
+		if ms.Manifest.DockerInfo().DockerRef == nil {
 			continue
 		}
 		manifests = append(manifests, ms.Manifest)

@@ -793,13 +793,13 @@ func TestStaticRebuildWithChangedFiles(t *testing.T) {
 ADD ./ ./
 go build ./...
 `
-	manifest := f.newManifest("foobar", nil).WithBuildInfo(
-		model.DockerInfo{}.WithBuildDetails(model.StaticBuild{
+	manifest := f.newManifest("foobar", nil)
+	manifest = manifest.WithBuildInfo(manifest.DockerInfo().
+		WithBuildDetails(model.StaticBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
 		}))
 
-	manifest.StaticBuildPath = f.Path()
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall("first build")
