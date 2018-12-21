@@ -887,12 +887,13 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
-			caches := m.CachePaths()
-			if m.DockerRef() == nil {
+			caches := m.DockerInfo.CachePaths()
+			ref := m.DockerInfo.DockerRef
+			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
-			if m.DockerRef().Name() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, m.DockerRef().Name(), opt.image.ref)
+			if ref.Name() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
@@ -907,8 +908,9 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			if m.DockerRef().Name() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, m.DockerRef().Name(), opt.image.ref)
+			ref := m.DockerInfo.DockerRef
+			if ref.Name() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
 
 			mounts := m.Mounts

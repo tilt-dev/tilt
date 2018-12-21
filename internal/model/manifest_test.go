@@ -10,6 +10,18 @@ import (
 var portFwd8000 = []PortForward{{LocalPort: 8080}}
 var portFwd8001 = []PortForward{{LocalPort: 8081}}
 
+var img1 = container.MustParseNamed("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
+var img2 = container.MustParseNamed("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
+
+var buildArgs1 = DockerBuildArgs{
+	"foo": "bar",
+	"baz": "qux",
+}
+var buildArgs2 = DockerBuildArgs{
+	"foo":  "bar",
+	"beep": "boop",
+}
+
 var equalitytests = []struct {
 	m1       Manifest
 	m2       Manifest
@@ -200,43 +212,53 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "qux",
-			},
-		},
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "quz",
-			},
-		},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM bar"})},
 		false,
 	},
 	{
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "qux",
-			},
-		},
-		Manifest{
-			StaticBuildArgs: DockerBuildArgs{
-				"foo":  "bar",
-				"baz:": "qux",
-			},
-		},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
 		true,
 	},
 	{
-		Manifest{cachePaths: []string{"foo"}},
-		Manifest{},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar/baz"})},
 		false,
 	},
 	{
-		Manifest{cachePaths: []string{"foo"}},
-		Manifest{cachePaths: []string{"foo"}},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		true,
+	},
+	{
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs2})},
+		false,
+	},
+	{
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		true,
+	},
+	{
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"bar"}}},
+		false,
+	},
+	{
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
+		true,
+	},
+	{
+		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
+		Manifest{DockerInfo: DockerInfo{DockerRef: img2}},
+		false,
+	},
+	{
+		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
+		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
 		true,
 	},
 	{
@@ -309,10 +331,8 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		},
 	}
 	manifest := Manifest{
-		Name:           "test",
-		dockerRef:      container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef"),
-		BaseDockerfile: "FROM node",
-		Mounts:         mounts,
+		Name:   "test",
+		Mounts: mounts,
 	}
 	err := manifest.Validate()
 

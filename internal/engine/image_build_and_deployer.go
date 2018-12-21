@@ -102,18 +102,20 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	name := manifest.DockerRef()
-	if manifest.IsStaticBuild() {
+	dInfo := manifest.DockerInfo
+	name := dInfo.DockerRef
+
+	cacheRef, err := ibd.fetchCache(ctx, dInfo.DockerRef, dInfo.CachePaths())
+	if err != nil {
+		return nil, err
+	}
+
+	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
 
-		cacheRef, err := ibd.fetchCache(ctx, manifest)
-		if err != nil {
-			return nil, err
-		}
-
 		df := ibd.staticDockerfile(manifest, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest), manifest.StaticBuildArgs)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, sbInfo.BuildPath, ignore.CreateBuildContextFilter(manifest), sbInfo.BuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -126,11 +128,6 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		// No existing image to build off of, need to build from scratch
 		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", name)
 		defer ps.EndPipelineStep(ctx)
-
-		cacheRef, err := ibd.fetchCache(ctx, manifest)
-		if err != nil {
-			return nil, err
-		}
 
 		df := ibd.baseDockerfile(manifest, cacheRef)
 		steps := manifest.Steps
@@ -247,7 +244,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 	}
 
 	if ref != nil && !replacedAny {
-		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef())
+		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", ref)
 	}
 
 	err = ibd.k8sClient.Upsert(ctx, newK8sEntities)
@@ -270,8 +267,8 @@ func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, 
 	return
 }
 
-func (ibd *ImageBuildAndDeployer) fetchCache(ctx context.Context, manifest model.Manifest) (reference.NamedTagged, error) {
-	return ibd.cacheBuilder.FetchCache(ctx, manifest.DockerRef(), manifest.CachePaths())
+func (ibd *ImageBuildAndDeployer) fetchCache(ctx context.Context, ref reference.Named, cachePaths []string) (reference.NamedTagged, error) {
+	return ibd.cacheBuilder.FetchCache(ctx, ref, cachePaths)
 }
 
 func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, manifest model.Manifest, oldCacheRef reference.NamedTagged) {
@@ -286,28 +283,32 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 	}
 
 	baseDockerfile := dockerfile.Dockerfile(manifest.BaseDockerfile)
-	if manifest.IsStaticBuild() {
-		staticDockerfile := dockerfile.Dockerfile(manifest.StaticDockerfile)
+	var buildArgs model.DockerBuildArgs
+	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
+		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
 		ok := true
 		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
 		if !ok {
 			return
 		}
+
+		buildArgs = sbInfo.BuildArgs
 	}
 
-	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef, manifest.CachePaths(), manifest.StaticBuildArgs)
+	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef,
+		manifest.DockerInfo.CachePaths(), buildArgs)
 	if err != nil {
 		logger.Get(ctx).Debugf("Could not create cache: %v", err)
 	}
 }
 
 func (ibd *ImageBuildAndDeployer) staticDockerfile(manifest model.Manifest, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(manifest.StaticDockerfile)
+	df := dockerfile.Dockerfile(manifest.StaticBuildInfo().Dockerfile)
 	if cacheRef == nil {
 		return df
 	}
 
-	if len(manifest.CachePaths()) == 0 {
+	if len(manifest.DockerInfo.CachePaths()) == 0 {
 		return df
 	}
 
@@ -328,7 +329,7 @@ func (ibd *ImageBuildAndDeployer) baseDockerfile(manifest model.Manifest, cacheR
 		return df
 	}
 
-	if len(manifest.CachePaths()) == 0 {
+	if len(manifest.DockerInfo.CachePaths()) == 0 {
 		return df
 	}
 

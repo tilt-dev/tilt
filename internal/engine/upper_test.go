@@ -108,7 +108,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	if manifest.IsDC() {
 		return b.nextBuildResult(imageID), nil
 	}
-	return b.nextBuildResult(manifest.DockerRef()), nil
+	return b.nextBuildResult(manifest.DockerInfo.DockerRef), nil
 }
 
 func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
@@ -791,12 +791,17 @@ k8s_resource('foobar', 'snack.yaml')
 func TestStaticRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	manifest := f.newManifest("foobar", nil)
-	manifest.StaticDockerfile = `FROM golang
+	df := `FROM golang
 ADD ./ ./
 go build ./...
 `
-	manifest.StaticBuildPath = f.Path()
+	manifest := f.newManifest("foobar", nil)
+	manifest.DockerInfo = manifest.DockerInfo.WithBuildDetails(
+		model.StaticBuild{
+			Dockerfile: df,
+			BuildPath:  f.Path(),
+		})
+
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall("first build")
@@ -2079,7 +2084,11 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
 	ref := f.imageNameForManifest(name)
-	return model.Manifest{Name: model.ManifestName(name), Mounts: mounts}.WithDockerRef(ref)
+	return model.Manifest{
+		Name:       model.ManifestName(name),
+		Mounts:     mounts,
+		DockerInfo: model.DockerInfo{DockerRef: ref},
+	}
 }
 
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {

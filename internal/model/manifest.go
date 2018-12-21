@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	_ "github.com/google/go-cmp/cmp"
@@ -21,17 +20,17 @@ func (m ManifestName) String() string { return string(m) }
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all manifests.
-	Name         ManifestName
-	tiltFilename string
+	Name          ManifestName
+	tiltFilename  string
+	dockerignores []Dockerignore
+	repos         []LocalGithubRepo
 
-	// TODO(maia): buildInfo
+	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
+	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployInfo`).
+	DockerInfo DockerInfo
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployInfo deployInfo
-
-	// All docker stuff
-	cachePaths []string
-	dockerRef  reference.Named
 
 	// Properties for fast_build (builds that support
 	// iteration based on past artifacts)
@@ -39,26 +38,33 @@ type Manifest struct {
 	Mounts         []Mount
 	Steps          []Step
 	Entrypoint     Cmd
-
-	// From static_build. If StaticDockerfile is populated,
-	// we do not expect the iterative build fields to be populated.
-	StaticDockerfile string
-	StaticBuildPath  string // the absolute path to the files
-	StaticBuildArgs  DockerBuildArgs
-
-	dockerignores []Dockerignore
-	repos         []LocalGithubRepo
 }
 
 type DockerBuildArgs map[string]string
 
-func (m Manifest) DCInfo() DCInfo {
-	switch info := m.deployInfo.(type) {
-	case DCInfo:
+func (m Manifest) StaticBuildInfo() StaticBuild {
+	if info, ok := m.DockerInfo.buildDetails.(StaticBuild); ok {
 		return info
-	default:
-		return DCInfo{}
 	}
+	return StaticBuild{}
+}
+
+func (m Manifest) IsStaticBuild() bool {
+	return !m.StaticBuildInfo().Empty()
+}
+
+func (m Manifest) FastBuildInfo() FastBuild {
+	if info, ok := m.DockerInfo.buildDetails.(FastBuild); ok {
+		return info
+	}
+	return FastBuild{}
+}
+
+func (m Manifest) DCInfo() DCInfo {
+	if info, ok := m.deployInfo.(DCInfo); ok {
+		return info
+	}
+	return DCInfo{}
 }
 
 func (m Manifest) IsDC() bool {
@@ -66,12 +72,10 @@ func (m Manifest) IsDC() bool {
 }
 
 func (m Manifest) K8sInfo() K8sInfo {
-	switch info := m.deployInfo.(type) {
-	case K8sInfo:
+	if info, ok := m.deployInfo.(K8sInfo); ok {
 		return info
-	default:
-		return K8sInfo{}
 	}
+	return K8sInfo{}
 }
 
 func (m Manifest) IsK8s() bool {
@@ -93,27 +97,13 @@ func (m Manifest) WithDockerignores(dockerignores []Dockerignore) Manifest {
 	return m
 }
 
-func (m Manifest) WithCachePaths(paths []string) Manifest {
-	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)
-	sort.Strings(m.cachePaths)
-	return m
-}
-
-func (m Manifest) CachePaths() []string {
-	return append([]string{}, m.cachePaths...)
-}
-
-func (m Manifest) IsStaticBuild() bool {
-	return m.StaticDockerfile != ""
-}
-
 func (m Manifest) Dockerignores() []Dockerignore {
 	return append([]Dockerignore{}, m.dockerignores...)
 }
 
 func (m Manifest) LocalPaths() []string {
-	if m.IsStaticBuild() {
-		return []string{m.StaticBuildPath}
+	if sbInfo := m.StaticBuildInfo(); !sbInfo.Empty() {
+		return []string{sbInfo.BuildPath}
 	}
 
 	result := make([]string, len(m.Mounts))
@@ -140,21 +130,21 @@ func (m Manifest) Validate() error {
 // ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
 // k8s-deployable manifest.
 func (m Manifest) ValidateDockerK8sManifest() error {
-	if m.dockerRef == nil {
-		return fmt.Errorf("[validateK8sManifest] manifest %q missing image ref", m.Name)
+	if m.DockerInfo.DockerRef == nil {
+		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing image ref", m.Name)
 	}
 
 	if m.K8sInfo().YAML == "" {
-		return fmt.Errorf("[validateK8sManifest] manifest %q missing k8s YAML", m.Name)
+		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing k8s YAML", m.Name)
 	}
 
-	if m.IsStaticBuild() {
-		if m.StaticBuildPath == "" {
-			return fmt.Errorf("[validateK8sManifest] manifest %q missing build path", m.Name)
+	if sbInfo := m.StaticBuildInfo(); !sbInfo.Empty() {
+		if sbInfo.BuildPath == "" {
+			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing build path", m.Name)
 		}
 	} else {
 		if m.BaseDockerfile == "" {
-			return fmt.Errorf("[validateK8sManifest] manifest %q missing base dockerfile", m.Name)
+			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing base dockerfile", m.Name)
 		}
 	}
 
@@ -162,14 +152,13 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name && m1.BaseDockerfile == m2.BaseDockerfile && m1.tiltFilename == m2.tiltFilename
 	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
 	mountsMatch := reflect.DeepEqual(m1.Mounts, m2.Mounts)
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
-	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
-	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
+	dockerEqual := reflect.DeepEqual(m1.DockerInfo, m2.DockerInfo)
 
 	dc1 := m1.DCInfo()
 	dc2 := m2.DCInfo()
@@ -184,9 +173,8 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 		mountsMatch &&
 		reposMatch &&
 		stepsMatch &&
-		buildArgsMatch &&
-		cachePathsMatch &&
 		dockerignoresMatch &&
+		dockerEqual &&
 		dockerComposeEqual &&
 		k8sEqual
 }
@@ -256,22 +244,12 @@ func (m Manifest) WithTiltFilename(f string) Manifest {
 	return m
 }
 
-func (m Manifest) DockerRef() reference.Named {
-	return m.dockerRef
-}
-
-func (m Manifest) WithDockerRef(ref reference.Named) Manifest {
-	m.dockerRef = ref
-	return m
-}
-
 type Mount struct {
 	LocalPath     string
 	ContainerPath string
 }
 
 type Dockerignore struct {
-
 	// The path to evaluate the dockerignore contents relative to
 	LocalPath string
 	Contents  string
