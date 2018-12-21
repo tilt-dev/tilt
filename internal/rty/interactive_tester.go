@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"testing"
@@ -18,6 +19,12 @@ import (
 
 const testDataDir = "testdata"
 
+// Whitelist characters allowed in a name, because they will be used to create
+// filenames.
+//
+// Forbid filenames with colons because they mess up the Windows git client :(
+var validNameRegexp = regexp.MustCompile("^[a-zA-Z0-9 .,_-]+$")
+
 type InteractiveTester struct {
 	usedNames         map[string]bool
 	dummyScreen       tcell.SimulationScreen
@@ -27,7 +34,6 @@ type InteractiveTester struct {
 }
 
 func NewInteractiveTester(t *testing.T, screen tcell.Screen) InteractiveTester {
-	t.Name()
 	dummyScreen := tcell.NewSimulationScreen("")
 	err := dummyScreen.Init()
 	assert.NoError(t, err)
@@ -66,6 +72,10 @@ func (i *InteractiveTester) runCaptureError(name string, width int, height int, 
 	_, ok := i.usedNames[name]
 	if ok {
 		i.t.Fatalf("test name '%s' was already used", name)
+	}
+
+	if !validNameRegexp.MatchString(name) {
+		i.t.Fatalf("test name has invalid characters: %s", name)
 	}
 
 	actual, err := i.render(width, height, c)
