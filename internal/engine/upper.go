@@ -197,7 +197,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	if dcState := ms.DCResourceState(); !dcState.Empty() {
-		ms.ResourceState = dcState.WithCurrentLog(dcState.CurrentLog) // TODO(maia): when reset(/not) CrashLog for DC service?
+		ms.ResourceState = dcState.WithCurrentLog(dcState.CurrentLog)
 	}
 
 	// Keep the crash log around until we have a rebuild
