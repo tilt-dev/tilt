@@ -1,6 +1,7 @@
-.PHONY: all proto install lint test integration wire-check wire ensure docs
+.PHONY: all proto install lint test test-go test-js integration wire-check wire ensure docs check-go
 
-all: lint errcheck verify_gofmt wire-check test
+check-go: lint errcheck verify_gofmt wire-check test-go
+all: check-go test-js
 
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
@@ -40,8 +41,10 @@ lint:
 build:
 	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
 
-test:
+test-go: 
 	./hide_tbd_warning go test -timeout 60s ./...
+
+test: test-go test-js
 
 # skip some tests that are slow and not always relevant
 shorttest:
@@ -49,6 +52,12 @@ shorttest:
 
 integration:
 	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration
+
+dev-js:
+	cd web && yarn install && yarn run start
+
+test-js:
+	cd web && yarn install && CI=true yarn test
 
 ensure:
 	dep ensure
