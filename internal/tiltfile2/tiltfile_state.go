@@ -325,12 +325,6 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				Entrypoint:     model.ToShellCmd(image.entrypoint),
 			}
 
-			// TODO(maia): remove this
-			m.Mounts = s.mountsToDomain(image)
-			m.Entrypoint = model.ToShellCmd(image.entrypoint)
-			m.BaseDockerfile = image.baseDockerfile.String()
-			m.Steps = image.steps
-
 			dInfo := model.DockerInfo{
 				DockerRef: image.ref,
 			}.WithCachePaths(image.cachePaths)

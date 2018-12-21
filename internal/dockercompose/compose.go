@@ -169,6 +169,7 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 
 	if s.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
+		// So, don't parse a non-existent Dockerfile for mount info.
 		return m, nil, nil
 	}
 
@@ -179,7 +180,9 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 		return model.Manifest{}, nil, err
 	}
 
-	m.Mounts = mounts
+	dcInfo.Mounts = mounts
+	m = m.WithDeployInfo(dcInfo)
+
 	return m, []string{s.DfPath}, nil
 }
 

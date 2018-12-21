@@ -57,8 +57,9 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return store.BuildResult{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	if manifest.IsStaticBuild() {
-		return store.BuildResult{}, RedirectToNextBuilderf("container build does not support static dockerfiles")
+	fbInfo := manifest.FastBuildInfo()
+	if fbInfo.Empty() {
+		return store.BuildResult{}, RedirectToNextBuilderf("container build only supports FastBuilds")
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
@@ -67,12 +68,12 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return store.BuildResult{}, RedirectToNextBuilderf("no deploy info")
 	}
 
-	cf, err := build.FilesToPathMappings(state.FilesChanged(), manifest.Mounts)
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {
 		return store.BuildResult{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	boiledSteps, err := build.BoilSteps(manifest.Steps, cf)
+	boiledSteps, err := build.BoilSteps(fbInfo.Steps, cf)
 	if err != nil {
 		return store.BuildResult{}, err
 	}

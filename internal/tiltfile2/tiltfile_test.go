@@ -913,8 +913,13 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
 
-			mounts := m.Mounts
-			steps := m.Steps
+			fbInfo := m.FastBuildInfo()
+			if fbInfo.Empty() {
+				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
+			}
+
+			mounts := fbInfo.Mounts
+			steps := fbInfo.Steps
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case addHelper:

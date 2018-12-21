@@ -50,3 +50,17 @@ type FastBuild struct {
 
 func (FastBuild) buildDetails()  {}
 func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
+
+// func (m1 Manifest) stepsEqual(s2 []Step) bool {
+// 	if len(m1.Steps) != len(s2) {
+// 		return false
+// 	}
+//
+// 	for i := range s2 {
+// 		if !m1.Steps[i].Equal(s2[i]) {
+// 			return false
+// 		}
+// 	}
+//
+// 	return true
+// }

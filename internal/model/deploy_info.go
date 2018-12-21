@@ -12,6 +12,7 @@ type deployInfo interface {
 
 type DCInfo struct {
 	ConfigPath string
+	Mounts     []Mount
 	YAMLRaw    []byte // for diff'ing when config files change
 	DfRaw      []byte // for diff'ing when config files change
 }
