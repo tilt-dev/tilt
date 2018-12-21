@@ -7,22 +7,15 @@ import (
 	"github.com/docker/distribution/reference"
 )
 
-type buildInfo interface {
-	buildInfo()
+type DockerInfo struct {
+	cachePaths   []string
+	DockerRef    reference.Named
+	buildDetails buildDetails
 }
 
 type buildDetails interface {
 	buildDetails()
 }
-
-type DockerInfo struct {
-	CachePaths   []string
-	DockerRef    reference.Named
-	buildDetails buildDetails
-}
-
-func (DockerInfo) buildInfo()     {}
-func (di DockerInfo) Empty() bool { return reflect.DeepEqual(di, DockerInfo{}) }
 
 func (di DockerInfo) WithBuildDetails(details buildDetails) DockerInfo {
 	di.buildDetails = details
@@ -30,9 +23,13 @@ func (di DockerInfo) WithBuildDetails(details buildDetails) DockerInfo {
 }
 
 func (di DockerInfo) WithCachePaths(paths []string) DockerInfo {
-	di.CachePaths = append(append([]string{}, di.CachePaths...), paths...)
-	sort.Strings(di.CachePaths)
+	di.cachePaths = append(append([]string{}, di.cachePaths...), paths...)
+	sort.Strings(di.cachePaths)
 	return di
+}
+
+func (di DockerInfo) CachePaths() []string {
+	return di.cachePaths
 }
 
 type StaticBuild struct {

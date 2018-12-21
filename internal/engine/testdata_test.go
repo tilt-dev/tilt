@@ -25,7 +25,10 @@ var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sa
 
 func NewSanchoManifest() model.Manifest {
 	m := model.Manifest{
-		Name:           "sancho",
+		Name: "sancho",
+		DockerInfo: model.DockerInfo{
+			DockerRef: SanchoRef,
+		},
 		BaseDockerfile: SanchoBaseDockerfile,
 		Mounts: []model.Mount{
 			model.Mount{
@@ -39,38 +42,34 @@ func NewSanchoManifest() model.Manifest {
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
 	}
 
-	m = m.WithBuildInfo(model.DockerInfo{DockerRef: SanchoRef}).
-		WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
+	m = m.WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 
 	return m
 }
 
 func NewSanchoManifestWithCache(paths []string) model.Manifest {
 	manifest := NewSanchoManifest()
-	dInfo := manifest.DockerInfo()
-	dInfo = dInfo.WithCachePaths(paths)
-	return manifest.WithBuildInfo(dInfo)
+	manifest.DockerInfo = manifest.DockerInfo.WithCachePaths(paths)
+	return manifest
 }
 
 func NewSanchoStaticManifest() model.Manifest {
-	dInfo := model.DockerInfo{
-		DockerRef: SanchoRef,
-	}.WithBuildDetails(model.StaticBuild{
-		Dockerfile: SanchoStaticDockerfile,
-		BuildPath:  "/path/to/build",
-	})
 	m := model.Manifest{
 		Name: "sancho",
-	}.WithBuildInfo(dInfo).
-		WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
+		DockerInfo: model.DockerInfo{
+			DockerRef: SanchoRef,
+		}.WithBuildDetails(model.StaticBuild{
+			Dockerfile: SanchoStaticDockerfile,
+			BuildPath:  "/path/to/build",
+		}),
+	}.WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
 	return m
 }
 
 func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
 	manifest := NewSanchoStaticManifest()
-	dInfo := manifest.DockerInfo()
-	dInfo = dInfo.WithCachePaths(paths)
-	return manifest.WithBuildInfo(dInfo)
+	manifest.DockerInfo = manifest.DockerInfo.WithCachePaths(paths)
+	return manifest
 }
 
 var SanchoManifest = NewSanchoManifest()

@@ -332,9 +332,8 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			m.Steps = image.steps
 
 			dInfo := model.DockerInfo{
-				CachePaths: image.cachePaths,
-				DockerRef:  image.ref,
-			}
+				DockerRef: image.ref,
+			}.WithCachePaths(image.cachePaths)
 
 			if !staticBuild.Empty() && !fastBuild.Empty() {
 				return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
@@ -344,7 +343,8 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				dInfo = dInfo.WithBuildDetails(fastBuild)
 			}
 
-			m = m.WithBuildInfo(dInfo).WithTiltFilename(image.tiltfilePath.path).
+			m.DockerInfo = dInfo
+			m = m.WithTiltFilename(image.tiltfilePath.path).
 				WithRepos(s.reposToDomain(image)).
 				WithDockerignores(s.dockerignoresToDomain(image))
 		}

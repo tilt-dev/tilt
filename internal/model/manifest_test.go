@@ -212,77 +212,53 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			Dockerfile: "FROM foo",
-		})),
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			Dockerfile: "FROM bar",
-		})),
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM bar"})},
 		false,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			Dockerfile: "FROM foo",
-		})),
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			Dockerfile: "FROM foo",
-		})),
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
 		true,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildPath: "foo/bar",
-		})),
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildPath: "foo/bar/baz",
-		})),
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar/baz"})},
 		false,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildPath: "foo/bar",
-		})),
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildPath: "foo/bar",
-		})),
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
 		true,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildArgs: buildArgs1,
-		})),
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildArgs: buildArgs2,
-		})),
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs2})},
 		false,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildArgs: buildArgs1,
-		})),
-		Manifest{}.WithBuildInfo(DockerInfo{}.WithBuildDetails(StaticBuild{
-			BuildArgs: buildArgs1,
-		})),
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
 		true,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"foo"}}),
-		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"bar"}}),
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"bar"}}},
 		false,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"foo"}}),
-		Manifest{}.WithBuildInfo(DockerInfo{CachePaths: []string{"foo"}}),
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
+		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
 		true,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img1}),
-		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img2}),
+		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
+		Manifest{DockerInfo: DockerInfo{DockerRef: img2}},
 		false,
 	},
 	{
-		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img1}),
-		Manifest{}.WithBuildInfo(DockerInfo{DockerRef: img1}),
+		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
+		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
 		true,
 	},
 	{

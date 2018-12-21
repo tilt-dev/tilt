@@ -108,7 +108,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	if manifest.IsDC() {
 		return b.nextBuildResult(imageID), nil
 	}
-	return b.nextBuildResult(manifest.DockerInfo().DockerRef), nil
+	return b.nextBuildResult(manifest.DockerInfo.DockerRef), nil
 }
 
 func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
@@ -794,11 +794,11 @@ ADD ./ ./
 go build ./...
 `
 	manifest := f.newManifest("foobar", nil)
-	manifest = manifest.WithBuildInfo(manifest.DockerInfo().
-		WithBuildDetails(model.StaticBuild{
+	manifest.DockerInfo = manifest.DockerInfo.WithBuildDetails(
+		model.StaticBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
-		}))
+		})
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -2076,8 +2076,11 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
 	ref := f.imageNameForManifest(name)
-	return model.Manifest{Name: model.ManifestName(name), Mounts: mounts}.
-		WithBuildInfo(model.DockerInfo{DockerRef: ref})
+	return model.Manifest{
+		Name:       model.ManifestName(name),
+		Mounts:     mounts,
+		DockerInfo: model.DockerInfo{DockerRef: ref},
+	}
 }
 
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {

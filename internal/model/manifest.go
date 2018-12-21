@@ -22,8 +22,9 @@ type Manifest struct {
 	dockerignores []Dockerignore
 	repos         []LocalGithubRepo
 
-	// Info needed to build an image. Can be StaticBuild, FastBuild... etc.
-	buildInfo buildInfo
+	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
+	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployInfo`).
+	DockerInfo DockerInfo
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployInfo deployInfo
@@ -38,32 +39,11 @@ type Manifest struct {
 
 type DockerBuildArgs map[string]string
 
-func (m Manifest) WithBuildInfo(info buildInfo) Manifest {
-	m.buildInfo = info
-	return m
-}
-
-func (m Manifest) DockerInfo() DockerInfo {
-	switch info := m.buildInfo.(type) {
-	case DockerInfo:
-		return info
-	default:
-		return DockerInfo{}
-	}
-}
-
 func (m Manifest) StaticBuildInfo() StaticBuild {
-	dInfo := m.DockerInfo()
-	if dInfo.Empty() {
-		return StaticBuild{}
-	}
-
-	switch info := dInfo.buildDetails.(type) {
-	case StaticBuild:
+	if info, ok := m.DockerInfo.buildDetails.(StaticBuild); ok {
 		return info
-	default:
-		return StaticBuild{}
 	}
+	return StaticBuild{}
 }
 
 func (m Manifest) IsStaticBuild() bool {
@@ -71,26 +51,17 @@ func (m Manifest) IsStaticBuild() bool {
 }
 
 func (m Manifest) FastBuildInfo() FastBuild {
-	dInfo := m.DockerInfo()
-	if dInfo.Empty() {
-		return FastBuild{}
-	}
-
-	switch info := dInfo.buildDetails.(type) {
-	case FastBuild:
+	if info, ok := m.DockerInfo.buildDetails.(FastBuild); ok {
 		return info
-	default:
-		return FastBuild{}
 	}
+	return FastBuild{}
 }
 
 func (m Manifest) DCInfo() DCInfo {
-	switch info := m.deployInfo.(type) {
-	case DCInfo:
+	if info, ok := m.deployInfo.(DCInfo); ok {
 		return info
-	default:
-		return DCInfo{}
 	}
+	return DCInfo{}
 }
 
 func (m Manifest) IsDC() bool {
@@ -98,12 +69,10 @@ func (m Manifest) IsDC() bool {
 }
 
 func (m Manifest) K8sInfo() K8sInfo {
-	switch info := m.deployInfo.(type) {
-	case K8sInfo:
+	if info, ok := m.deployInfo.(K8sInfo); ok {
 		return info
-	default:
-		return K8sInfo{}
 	}
+	return K8sInfo{}
 }
 
 func (m Manifest) IsK8s() bool {
@@ -158,7 +127,7 @@ func (m Manifest) Validate() error {
 // ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
 // k8s-deployable manifest.
 func (m Manifest) ValidateDockerK8sManifest() error {
-	if m.DockerInfo().DockerRef == nil {
+	if m.DockerInfo.DockerRef == nil {
 		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing image ref", m.Name)
 	}
 
@@ -186,10 +155,7 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	reposMatch := reflect.DeepEqual(m1.repos, m2.repos)
 	stepsMatch := m1.stepsEqual(m2.Steps)
 	dockerignoresMatch := reflect.DeepEqual(m1.dockerignores, m2.dockerignores)
-
-	docker1 := m1.DockerInfo()
-	docker2 := m2.DockerInfo()
-	dockerEqual := reflect.DeepEqual(docker1, docker2)
+	dockerEqual := reflect.DeepEqual(m1.DockerInfo, m2.DockerInfo)
 
 	dc1 := m1.DCInfo()
 	dc2 := m2.DCInfo()
