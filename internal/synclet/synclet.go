@@ -22,11 +22,10 @@ const Port = 23551
 
 type Synclet struct {
 	dcli docker.DockerClient
-	cr   *build.ContainerResolver
 }
 
-func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet {
-	return &Synclet{dcli: dcli, cr: cr}
+func NewSynclet(dcli docker.DockerClient) *Synclet {
+	return &Synclet{dcli: dcli}
 }
 
 func (s Synclet) writeFiles(ctx context.Context, containerId container.ID, tarArchive []byte) error {

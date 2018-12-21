@@ -5,7 +5,6 @@ package synclet;
 option go_package = "github.com/windmilleng/tilt/internal/synclet/proto;proto";
 
 service Synclet {
-
     // NOTE(maia): deleted method
     // rpc GetContainerIdForPod (GetContainerIdForPodRequest) returns (stream GetContainerIdForPodReply) {}
 
