@@ -1,8 +1,6 @@
 package model
 
 import (
-	"reflect"
-
 	"github.com/windmilleng/tilt/internal/yaml"
 )
 
@@ -17,7 +15,7 @@ type DCInfo struct {
 }
 
 func (DCInfo) deployInfo()    {}
-func (dc DCInfo) Empty() bool { return reflect.DeepEqual(dc, DCInfo{}) }
+func (dc DCInfo) Empty() bool { return DeepEqual(dc, DCInfo{}) }
 
 type K8sInfo struct {
 	YAML         string
@@ -25,7 +23,7 @@ type K8sInfo struct {
 }
 
 func (K8sInfo) deployInfo()     {}
-func (k8s K8sInfo) Empty() bool { return reflect.DeepEqual(k8s, K8sInfo{}) }
+func (k8s K8sInfo) Empty() bool { return DeepEqual(k8s, K8sInfo{}) }
 
 func (k8s K8sInfo) AppendYAML(y string) K8sInfo {
 	if k8s.YAML == "" {
