@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
 
@@ -51,4 +52,24 @@ func TestSanchoYAML(t *testing.T) {
 	if !strings.Contains(result, "image: gcr.io/some-project-162817/sancho") {
 		t.Errorf("image name did not appear in serialized yaml: %s", result)
 	}
+}
+
+func TestHelmGeneratedRedisYAML(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.HelmGeneratedRedisYAML)
+	assert.NoError(t, err)
+	assert.Equal(t, 7, len(entities))
+
+	kinds := []string{}
+	for _, entity := range entities {
+		kinds = append(kinds, entity.Kind.Kind)
+	}
+	assert.Equal(t, []string{
+		"Secret",
+		"ConfigMap",
+		"ConfigMap",
+		"Service",
+		"Service",
+		"Deployment",
+		"StatefulSet",
+	}, kinds)
 }
