@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -15,23 +16,32 @@ func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 	return ParseYAML(buf)
 }
 
+// Parse the YAML into entities.
+// Loosely based on
+// https://github.com/kubernetes/cli-runtime/blob/d6a36215b15f83b94578f2ffce5d00447972e8ae/pkg/genericclioptions/resource/visitor.go#L583
 func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 	reader := bufio.NewReader(k8sYaml)
-	yamlReader := yaml.NewYAMLReader(reader)
+	decoder := yaml.NewYAMLOrJSONDecoder(reader, 4096)
 
 	result := make([]K8sEntity, 0)
-	for true {
-		yamlPart, err := yamlReader.Read()
-		if err != nil && err != io.EOF {
+	for {
+		ext := runtime.RawExtension{}
+		if err := decoder.Decode(&ext); err != nil {
+			if err == io.EOF {
+				break
+			}
 			return nil, err
 		}
 
-		if err == io.EOF {
-			return result, nil
+		ext.Raw = bytes.TrimSpace(ext.Raw)
+
+		// NOTE(nick): I LOL'd at the null check, but it's what kubectl does.
+		if len(ext.Raw) == 0 || bytes.Equal(ext.Raw, []byte("null")) {
+			continue
 		}
 
 		deserializer := scheme.Codecs.UniversalDeserializer()
-		obj, groupVersionKind, err := deserializer.Decode(yamlPart, nil, nil)
+		obj, groupVersionKind, err := deserializer.Decode(ext.Raw, nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +52,7 @@ func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 		})
 	}
 
-	return nil, nil
+	return result, nil
 }
 
 func SerializeYAML(decoded []K8sEntity) (string, error) {
