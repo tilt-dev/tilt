@@ -55,7 +55,7 @@ def fast_build(img_name: str, dockerfile_path: str, entrypoint: str = "") -> Fas
   pass
 
 def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
-  """Call this with a path to a file that contains YAML, or with a string of YAML.
+  """Call this with a path to a file that contains YAML, or with a ``Blob`` of YAML.
 
   We will infer what (if any) of the k8s resources defined in your YAML
   correspond to Images defined elsewhere in your ``Tiltfile`` (matching based on
@@ -63,7 +63,7 @@ def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
   applies to your k8s cluster independently.
 
   Args:
-    yaml: Path(s) to YAML or YAML as a string
+    yaml: Path(s) to YAML or YAML as a ``Blob``.
   """
   pass
 
