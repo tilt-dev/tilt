@@ -181,20 +181,6 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 		k8sEqual
 }
 
-func stringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range b {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (m Manifest) ManifestName() ManifestName {
 	return m.Name
 }

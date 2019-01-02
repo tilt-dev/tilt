@@ -59,7 +59,6 @@ type WatchManager struct {
 	manifestWatches    map[model.ManifestName]manifestNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         timerMaker
-	tiltfileWatch      watch.Notify
 	disabledForTesting bool
 }
 

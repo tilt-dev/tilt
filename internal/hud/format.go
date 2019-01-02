@@ -3,7 +3,6 @@ package hud
 import (
 	"fmt"
 	"math"
-	"strings"
 	"time"
 )
 
@@ -44,20 +43,4 @@ func formatDeployAge(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	}
-}
-
-func formatFileList(files []string) string {
-	const maxFilesToDisplay = 3
-
-	var ret []string
-
-	for i, f := range files {
-		if i > maxFilesToDisplay {
-			ret = append(ret, fmt.Sprintf("(%d more)", len(files)-maxFilesToDisplay))
-			break
-		}
-		ret = append(ret, f)
-	}
-
-	return strings.Join(ret, ", ")
 }

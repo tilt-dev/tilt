@@ -223,14 +223,6 @@ func (b *blob) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: blob")
 }
 
-func makeBlob(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var text string
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs, "text", &text); err != nil {
-		return nil, err
-	}
-	return &blob{text: text}, nil
-}
-
 func (s *tiltfileState) local(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var command string
 	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "command", &command)

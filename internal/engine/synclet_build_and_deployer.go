@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
@@ -16,8 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
-
-const podPollTimeoutSynclet = time.Second * 30
 
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
