@@ -20,6 +20,7 @@ const unresourcedName = "k8s_yaml"
 func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
+	resolve.AllowGlobalReassign = true
 }
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
