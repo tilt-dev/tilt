@@ -196,8 +196,14 @@ func (v *ResourceView) resourceExpandedYaml() rty.Component {
 		return rty.EmptyLayout
 	}
 	yi := v.res.YamlInfo()
-	return rty.TextString(fmt.Sprintf("other k8s entities:\n%s",
-		strings.Join(yi.K8sResources, "\n")))
+
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(rty.TextString(strings.Repeat(" ", 2)))
+	rhs := rty.NewConcatLayout(rty.DirVert)
+	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("The YAML loaded from the Tiltfile includes these K8s objects:").Build())
+	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
+	l.AddDynamic(rhs)
+	return l
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {
