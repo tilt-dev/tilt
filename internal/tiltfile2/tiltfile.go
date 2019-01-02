@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/google/skylark/resolve"
 	"github.com/pkg/errors"
+	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
