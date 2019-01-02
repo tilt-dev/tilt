@@ -1,0 +1,35 @@
+.ResourceList {
+  margin: 1em 1.5em;
+  font-size: 1.4em;
+}
+
+.ResourceList-header {
+  display: flex;
+  width: 100%;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  margin-bottom: 0.4em;
+}
+
+.Resource-lhsCell {
+  flex-basis: 10em;
+  text-align: left;
+}
+
+.Resource-rhsCell {
+  flex-basis: 10em;
+  padding-right: 0.5em;
+  text-align: right;
+}
+
+.Resource-spacerCell {
+  flex-grow: 1;
+}
+
+.ResourceSummary {
+  display: flex;
+  width: 100%;
+  flex-wrap: nowrap;
+  margin-bottom: 0.2em;
+}
+

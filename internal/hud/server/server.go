@@ -36,6 +36,7 @@ func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	s.store.RUnlockState()
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000") // dev server
 	err := json.NewEncoder(w).Encode(view)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
