@@ -705,6 +705,26 @@ docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 	f.loadErrString("no such file or directory")
 }
 
+func TestTopLevelIfStatement(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+if True:
+  docker_build('gcr.io/foo', 'foo')
+  k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.load()
+
+	f.assertManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
