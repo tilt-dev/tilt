@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/google/skylark"
 	"github.com/pkg/errors"
+	skylark "go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/ospath"

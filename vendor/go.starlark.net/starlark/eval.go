@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package skylark
+package starlark
 
 import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/big"
@@ -16,21 +17,21 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/skylark/internal/compile"
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/syntax"
+	"go.starlark.net/internal/compile"
+	"go.starlark.net/resolve"
+	"go.starlark.net/syntax"
 )
 
 const debug = false
 
-// A Thread contains the state of a Skylark thread,
+// A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
 type Thread struct {
-	// frame is the current Skylark execution frame.
+	// frame is the current Starlark execution frame.
 	frame *Frame
 
-	// Print is the client-supplied implementation of the Skylark
+	// Print is the client-supplied implementation of the Starlark
 	// 'print' function. If nil, fmt.Fprintln(os.Stderr, msg) is
 	// used instead.
 	Print func(thread *Thread, msg string)
@@ -44,7 +45,7 @@ type Thread struct {
 	Load func(thread *Thread, module string) (StringDict, error)
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
-	// They are accessible to the client but not to any Skylark program.
+	// They are accessible to the client but not to any Starlark program.
 	locals map[string]interface{}
 }
 
@@ -63,7 +64,7 @@ func (thread *Thread) Local(key string) interface{} {
 }
 
 // Caller returns the frame of the caller of the current function.
-// It should only be used in built-ins called from Skylark code.
+// It should only be used in built-ins called from Starlark code.
 func (thread *Thread) Caller() *Frame { return thread.frame.parent }
 
 // TopFrame returns the topmost stack frame.
@@ -71,7 +72,7 @@ func (thread *Thread) TopFrame() *Frame { return thread.frame }
 
 // A StringDict is a mapping from names to values, and represents
 // an environment such as the global variables of a module.
-// It is not a true skylark.Value.
+// It is not a true starlark.Value.
 type StringDict map[string]Value
 
 func (d StringDict) String() string {
@@ -105,7 +106,7 @@ func (d StringDict) Freeze() {
 // Has reports whether the dictionary contains the specified key.
 func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
-// A Frame records a call to a Skylark function (including module toplevel)
+// A Frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
 type Frame struct {
 	parent   *Frame          // caller's frame (or nil)
@@ -129,8 +130,14 @@ func (fr *Frame) Position() syntax.Position {
 	if fr.posn.IsValid() {
 		return fr.posn // leaf frame only (the error)
 	}
-	if fn, ok := fr.callable.(*Function); ok {
-		return fn.funcode.Position(fr.callpc) // position of active call
+	switch c := fr.callable.(type) {
+	case *Function:
+		// Starlark function
+		return c.funcode.Position(fr.callpc) // position of active call
+	case interface{ Position() syntax.Position }:
+		// If a built-in Callable defines
+		// a Position method, use it.
+		return c.Position()
 	}
 	return syntax.MakePosition(&builtinFilename, 1, 0)
 }
@@ -143,7 +150,7 @@ func (fr *Frame) Callable() Callable { return fr.callable }
 // Parent returns the frame of the enclosing function call, if any.
 func (fr *Frame) Parent() *Frame { return fr.parent }
 
-// An EvalError is a Skylark evaluation error and its associated call stack.
+// An EvalError is a Starlark evaluation error and its associated call stack.
 type EvalError struct {
 	Msg   string
 	Frame *Frame
@@ -182,7 +189,7 @@ func (e *EvalError) Stack() []*Frame {
 	return stack
 }
 
-// A Program is a compiled Skylark program.
+// A Program is a compiled Starlark program.
 //
 // Programs are immutable, and contain no Values.
 // A Program may be created by parsing a source file (see SourceProgram)
@@ -209,12 +216,16 @@ func (prog *Program) Load(i int) (string, syntax.Position) {
 }
 
 // WriteTo writes the compiled module to the specified output stream.
-func (prog *Program) Write(out io.Writer) error { return prog.compiled.Write(out) }
+func (prog *Program) Write(out io.Writer) error {
+	data := prog.compiled.Encode()
+	_, err := out.Write(data)
+	return err
+}
 
-// ExecFile parses, resolves, and executes a Skylark file in the
+// ExecFile parses, resolves, and executes a Starlark file in the
 // specified global environment, which may be modified during execution.
 //
-// Thread is the state associated with the Skylark thread.
+// Thread is the state associated with the Starlark thread.
 //
 // The filename and src parameters are as for syntax.Parse:
 // filename is the name of the file to execute,
@@ -229,7 +240,7 @@ func (prog *Program) Write(out io.Writer) error { return prog.compiled.Write(out
 // If ExecFile fails during evaluation, it returns an *EvalError
 // containing a backtrace.
 func ExecFile(thread *Thread, filename string, src interface{}, predeclared StringDict) (StringDict, error) {
-	// Parse, resolve, and compile a Skylark source file.
+	// Parse, resolve, and compile a Starlark source file.
 	_, mod, err := SourceProgram(filename, src, predeclared.Has)
 	if err != nil {
 		return nil, err
@@ -241,7 +252,7 @@ func ExecFile(thread *Thread, filename string, src interface{}, predeclared Stri
 }
 
 // SourceProgram produces a new program by parsing, resolving,
-// and compiling a Skylark source file.
+// and compiling a Starlark source file.
 // On success, it returns the parsed file and the compiled program.
 // The filename and src parameters are as for syntax.Parse.
 //
@@ -267,7 +278,11 @@ func SourceProgram(filename string, src interface{}, isPredeclared func(string) 
 // CompiledProgram produces a new program from the representation
 // of a compiled program previously saved by Program.Write.
 func CompiledProgram(in io.Reader) (*Program, error) {
-	prog, err := compile.ReadProgram(in)
+	data, err := ioutil.ReadAll(in)
+	if err != nil {
+		return nil, err
+	}
+	prog, err := compile.DecodeProgram(data)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +295,7 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
 	toplevel := makeToplevelFunction(prog.compiled.Toplevel, predeclared)
 
-	_, err := toplevel.Call(thread, nil, nil)
+	_, err := Call(thread, toplevel, nil, nil)
 
 	// Convert the global environment to a map and freeze it.
 	// We return a (partial) map even in case of error.
@@ -288,7 +303,7 @@ func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, e
 }
 
 func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Function {
-	// Create the Skylark value denoted by each program constant c.
+	// Create the Starlark value denoted by each program constant c.
 	constants := make([]Value, len(funcode.Prog.Constants))
 	for i, c := range funcode.Prog.Constants {
 		var v Value
@@ -338,7 +353,7 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 
 	fn := makeToplevelFunction(compile.Expr(expr, locals), env)
 
-	return fn.Call(thread, nil, nil)
+	return Call(thread, fn, nil, nil)
 }
 
 // The following functions are primitive operations of the byte code interpreter.
@@ -413,8 +428,8 @@ func getIndex(fr *Frame, x, y Value) (Value, error) {
 // setIndex implements x[y] = z.
 func setIndex(fr *Frame, x, y, z Value) error {
 	switch x := x.(type) {
-	case *Dict:
-		if err := x.Set(y, z); err != nil {
+	case HasSetKey:
+		if err := x.SetKey(y, z); err != nil {
 			return err
 		}
 
@@ -500,21 +515,6 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				z = append(z, y...)
 				return z, nil
 			}
-		case *Dict:
-			// Python doesn't have dict+dict, and I can't find
-			// it documented for Skylark.  But it is used; see:
-			//   tools/build_defs/haskell/def.bzl:448
-			// TODO(adonovan): clarify spec; see b/36360157.
-			if y, ok := y.(*Dict); ok {
-				z := new(Dict)
-				for _, item := range x.Items() {
-					z.Set(item[0], item[1])
-				}
-				for _, item := range y.Items() {
-					z.Set(item[0], item[1])
-				}
-				return z, nil
-			}
 		}
 
 	case syntax.MINUS:
@@ -544,20 +544,15 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			case Float:
 				return x.Float() * y, nil
 			case String:
-				if i, err := AsInt32(x); err == nil {
-					if i < 1 {
-						return String(""), nil
-					}
-					return String(strings.Repeat(string(y), i)), nil
-				}
+				return stringRepeat(y, x)
 			case *List:
-				if i, err := AsInt32(x); err == nil {
-					return NewList(repeat(y.elems, i)), nil
+				elems, err := tupleRepeat(Tuple(y.elems), x)
+				if err != nil {
+					return nil, err
 				}
+				return NewList(elems), nil
 			case Tuple:
-				if i, err := AsInt32(x); err == nil {
-					return Tuple(repeat([]Value(y), i)), nil
-				}
+				return tupleRepeat(y, x)
 			}
 		case Float:
 			switch y := y.(type) {
@@ -568,24 +563,19 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case String:
 			if y, ok := y.(Int); ok {
-				if i, err := AsInt32(y); err == nil {
-					if i < 1 {
-						return String(""), nil
-					}
-					return String(strings.Repeat(string(x), i)), nil
-				}
+				return stringRepeat(x, y)
 			}
 		case *List:
 			if y, ok := y.(Int); ok {
-				if i, err := AsInt32(y); err == nil {
-					return NewList(repeat(x.elems, i)), nil
+				elems, err := tupleRepeat(Tuple(x.elems), y)
+				if err != nil {
+					return nil, err
 				}
+				return NewList(elems), nil
 			}
 		case Tuple:
 			if y, ok := y.(Int); ok {
-				if i, err := AsInt32(y); err == nil {
-					return Tuple(repeat([]Value(x), i)), nil
-				}
+				return tupleRepeat(x, y)
 			}
 
 		}
@@ -836,14 +826,53 @@ unknown:
 	return nil, fmt.Errorf("unknown binary op: %s %s %s", x.Type(), op, y.Type())
 }
 
-func repeat(elems []Value, n int) (res []Value) {
-	if n > 0 {
-		res = make([]Value, 0, len(elems)*n)
-		for i := 0; i < n; i++ {
-			res = append(res, elems...)
-		}
+// It's always possible to overeat in small bites but we'll
+// try to stop someone swallowing the world in one gulp.
+const maxAlloc = 1 << 30
+
+func tupleRepeat(elems Tuple, n Int) (Tuple, error) {
+	if len(elems) == 0 {
+		return nil, nil
 	}
-	return res
+	i, err := AsInt32(n)
+	if err != nil {
+		return nil, fmt.Errorf("repeat count %s too large", n)
+	}
+	if i < 1 {
+		return nil, nil
+	}
+	// Inv: i > 0, len > 0
+	sz := len(elems) * i
+	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
+		return nil, fmt.Errorf("excessive repeat (%d elements)", sz)
+	}
+	res := make([]Value, sz)
+	// copy elems into res, doubling each time
+	x := copy(res, elems)
+	for x < len(res) {
+		copy(res[x:], res[:x])
+		x *= 2
+	}
+	return res, nil
+}
+
+func stringRepeat(s String, n Int) (String, error) {
+	if s == "" {
+		return "", nil
+	}
+	i, err := AsInt32(n)
+	if err != nil {
+		return "", fmt.Errorf("repeat count %s too large", n)
+	}
+	if i < 1 {
+		return "", nil
+	}
+	// Inv: i > 0, len > 0
+	sz := len(s) * i
+	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
+		return "", fmt.Errorf("excessive repeat (%d elements)", sz)
+	}
+	return String(strings.Repeat(string(s), i)), nil
 }
 
 // Call calls the function fn with the specified positional and keyword arguments.
@@ -852,12 +881,17 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
-	res, err := c.Call(thread, args, kwargs)
-	// Sanity check: nil is not a valid Skylark value.
-	if err == nil && res == nil {
+
+	thread.frame = &Frame{parent: thread.frame, callable: c}
+	result, err := c.CallInternal(thread, args, kwargs)
+	thread.frame = thread.frame.parent
+
+	// Sanity check: nil is not a valid Starlark value.
+	if result == nil && err == nil {
 		return nil, fmt.Errorf("internal error: nil (not None) returned from %s", fn)
 	}
-	return res, err
+
+	return result, err
 }
 
 func slice(x, lo, hi, step_ Value) (Value, error) {
@@ -977,6 +1011,16 @@ func asIndex(v Value, len int, result *int) error {
 // setArgs sets the values of the formal parameters of function fn in
 // based on the actual parameter values in args and kwargs.
 func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
+	// This is adapted from the algorithm from PyEval_EvalCodeEx.
+
+	// Nullary function?
+	if fn.NumParams() == 0 {
+		if nactual := len(args) + len(kwargs); nactual > 0 {
+			return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
+		}
+		return nil
+	}
+
 	cond := func(x bool, y, z interface{}) interface{} {
 		if x {
 			return y
@@ -986,97 +1030,94 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 
 	// nparams is the number of ordinary parameters (sans * or **).
 	nparams := fn.NumParams()
+	var kwdict *Dict
+	if fn.HasKwargs() {
+		nparams--
+		kwdict = new(Dict)
+		locals[nparams] = kwdict
+	}
 	if fn.HasVarargs() {
 		nparams--
 	}
-	if fn.HasKwargs() {
-		nparams--
+
+	// Too many positional args?
+	n := len(args)
+	maxpos := nparams
+	if len(args) > maxpos {
+		if !fn.HasVarargs() {
+			return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
+				fn.Name(),
+				cond(len(fn.defaults) > 0, "at most", "exactly"),
+				maxpos,
+				cond(nparams == 1, "", "s"),
+				len(args)+len(kwargs))
+		}
+		n = maxpos
 	}
 
-	// This is the algorithm from PyEval_EvalCodeEx.
-	var kwdict *Dict
-	n := len(args)
-	if nparams > 0 || fn.HasVarargs() || fn.HasKwargs() {
-		if fn.HasKwargs() {
-			kwdict = new(Dict)
-			locals[fn.NumParams()-1] = kwdict
-		}
+	// set of defined (regular) parameters
+	var defined intset
+	defined.init(nparams)
 
-		// too many args?
-		if len(args) > nparams {
-			if !fn.HasVarargs() {
-				return fmt.Errorf("function %s takes %s %d argument%s (%d given)",
+	// ordinary parameters
+	for i := 0; i < n; i++ {
+		locals[i] = args[i]
+		defined.set(i)
+	}
+
+	// variadic arguments
+	if fn.HasVarargs() {
+		tuple := make(Tuple, len(args)-n)
+		for i := n; i < len(args); i++ {
+			tuple[i-n] = args[i]
+		}
+		locals[nparams] = tuple
+	}
+
+	// keyword arguments
+	paramIdents := fn.funcode.Locals[:nparams]
+	for _, pair := range kwargs {
+		k, v := pair[0].(String), pair[1]
+		if i := findParam(paramIdents, string(k)); i >= 0 {
+			if defined.set(i) {
+				return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+			}
+			locals[i] = v
+			continue
+		}
+		if kwdict == nil {
+			return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
+		}
+		n := kwdict.Len()
+		kwdict.SetKey(k, v)
+		if kwdict.Len() == n {
+			return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+		}
+	}
+
+	// default values
+	if n < nparams {
+		m := nparams - len(fn.defaults) // first default
+
+		// report errors for missing non-optional arguments
+		i := n
+		for ; i < m; i++ {
+			if !defined.get(i) {
+				return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
 					fn.Name(),
-					cond(len(fn.defaults) > 0, "at most", "exactly"),
-					nparams,
-					cond(nparams == 1, "", "s"),
-					len(args)+len(kwargs))
-			}
-			n = nparams
-		}
-
-		// set of defined (regular) parameters
-		var defined intset
-		defined.init(nparams)
-
-		// ordinary parameters
-		for i := 0; i < n; i++ {
-			locals[i] = args[i]
-			defined.set(i)
-		}
-
-		// variadic arguments
-		if fn.HasVarargs() {
-			tuple := make(Tuple, len(args)-n)
-			for i := n; i < len(args); i++ {
-				tuple[i-n] = args[i]
-			}
-			locals[nparams] = tuple
-		}
-
-		// keyword arguments
-		paramIdents := fn.funcode.Locals[:nparams]
-		for _, pair := range kwargs {
-			k, v := pair[0].(String), pair[1]
-			if i := findParam(paramIdents, string(k)); i >= 0 {
-				if defined.set(i) {
-					return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
-				}
-				locals[i] = v
-				continue
-			}
-			if kwdict == nil {
-				return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
-			}
-			kwdict.Set(k, v)
-		}
-
-		// default values
-		if len(args) < nparams {
-			m := nparams - len(fn.defaults) // first default
-
-			// report errors for missing non-optional arguments
-			i := len(args)
-			for ; i < m; i++ {
-				if !defined.get(i) {
-					return fmt.Errorf("function %s takes %s %d argument%s (%d given)",
-						fn.Name(),
-						cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
-						m,
-						cond(m == 1, "", "s"),
-						defined.len())
-				}
-			}
-
-			// set default values
-			for ; i < nparams; i++ {
-				if !defined.get(i) {
-					locals[i] = fn.defaults[i-m]
-				}
+					cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
+					m,
+					cond(m == 1, "", "s"),
+					defined.len())
 			}
 		}
-	} else if nactual := len(args) + len(kwargs); nactual > 0 {
-		return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
+
+		// set default values
+		for ; i < nparams; i++ {
+			if !defined.get(i) {
+				locals[i] = fn.defaults[i-m]
+			}
+		}
 	}
 	return nil
 }
@@ -1133,7 +1174,7 @@ func (is *intset) len() int {
 	return len(is.large)
 }
 
-// https://github.com/google/skylark/blob/master/doc/spec.md#string-interpolation
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)
@@ -1184,7 +1225,7 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 		}
 
-		// NOTE: Skylark does not support any of these optional Python features:
+		// NOTE: Starlark does not support any of these optional Python features:
 		// - optional conversion flags: [#0- +], etc.
 		// - optional minimum field width (number or *).
 		// - optional precision (.123 or *)
@@ -1246,7 +1287,7 @@ func interpolate(format string, x Value) (Value, error) {
 				buf.WriteRune(rune(r))
 			case String:
 				r, size := utf8.DecodeRuneInString(string(arg))
-				if size != len(arg) {
+				if size != len(arg) || len(arg) == 0 {
 					return nil, fmt.Errorf("%%c format requires a single-character string")
 				}
 				buf.WriteRune(r)

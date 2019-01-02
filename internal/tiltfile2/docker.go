@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/docker/distribution/reference"
-	"github.com/google/skylark"
+	skylark "go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"

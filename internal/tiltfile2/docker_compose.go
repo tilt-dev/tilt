@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	skylark "go.starlark.net/starlark"
 )
 
 // dcResource represents a single docker-compose config file and all its associated services

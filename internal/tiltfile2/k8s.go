@@ -3,7 +3,7 @@ package tiltfile2
 import (
 	"fmt"
 
-	"github.com/google/skylark"
+	skylark "go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"

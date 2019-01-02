@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
 	"github.com/pkg/errors"
+	skylark "go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"

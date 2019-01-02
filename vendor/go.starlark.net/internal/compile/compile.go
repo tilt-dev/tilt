@@ -1,5 +1,5 @@
-// The compile package defines the Skylark bytecode compiler.
-// It is an internal package of the Skylark interpreter and is not directly accessible to clients.
+// Package compile defines the Starlark bytecode compiler.
+// It is an internal package of the Starlark interpreter and is not directly accessible to clients.
 //
 // The compiler generates byte code with optional uint32 operands for a
 // virtual machine with the following components:
@@ -20,7 +20,7 @@
 // Operands, logically uint32s, are encoded using little-endian 7-bit
 // varints, the top bit indicating that more bytes follow.
 //
-package compile
+package compile // import "go.starlark.net/internal/compile"
 
 import (
 	"bytes"
@@ -30,14 +30,14 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/syntax"
+	"go.starlark.net/resolve"
+	"go.starlark.net/syntax"
 )
 
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 2
+const Version = 5
 
 type Opcode uint8
 
@@ -152,6 +152,7 @@ var opcodeNames = [...]string{
 	DUP2:        "dup2",
 	DUP:         "dup",
 	EQL:         "eql",
+	EXCH:        "exch",
 	FALSE:       "false",
 	FREE:        "free",
 	GE:          "ge",
@@ -271,12 +272,14 @@ var stackEffect = [...]int8{
 
 func (op Opcode) String() string {
 	if op < OpcodeMax {
-		return opcodeNames[op]
+		if name := opcodeNames[op]; name != "" {
+			return name
+		}
 	}
 	return fmt.Sprintf("illegal op (%d)", op)
 }
 
-// A Program is a Skylark file in executable form.
+// A Program is a Starlark file in executable form.
 //
 // Programs are serialized by the gobProgram function,
 // which must be updated whenever this declaration is changed.
@@ -289,7 +292,7 @@ type Program struct {
 	Toplevel  *Funcode // module initialization function
 }
 
-// A Funcode is the code of a compiled Skylark function.
+// A Funcode is the code of a compiled Starlark function.
 //
 // Funcodes are serialized by the gobFunc function,
 // which must be updated whenever this declaration is changed.
@@ -297,6 +300,7 @@ type Funcode struct {
 	Prog                  *Program
 	Pos                   syntax.Position // position of def or lambda token
 	Name                  string          // name of this function
+	Doc                   string          // docstring of this function
 	Code                  []byte          // the byte code
 	pclinetab             []uint16        // mapping from pc to linenum
 	Locals                []Ident         // for error messages and tracing
@@ -436,6 +440,7 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 			Prog:     pcomp.prog,
 			Pos:      pos,
 			Name:     name,
+			Doc:      docStringFromBody(stmts),
 			Locals:   idents(locals),
 			Freevars: idents(freevars),
 		},
@@ -591,6 +596,24 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 	}
 
 	return fn
+}
+
+func docStringFromBody(body []syntax.Stmt) string {
+	if len(body) == 0 {
+		return ""
+	}
+	expr, ok := body[0].(*syntax.ExprStmt)
+	if !ok {
+		return ""
+	}
+	lit, ok := expr.X.(*syntax.Literal)
+	if !ok {
+		return ""
+	}
+	if lit.Token != syntax.STRING {
+		return ""
+	}
+	return lit.Value.(string)
 }
 
 func (insn *insn) stackeffect() int {
@@ -804,7 +827,7 @@ func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
 // On return, the current block is unset.
 func (fcomp *fcomp) jump(b *block) {
 	if b == fcomp.block {
-		panic("self-jump") // unreachable: Skylark has no arbitrary looping constructs
+		panic("self-jump") // unreachable: Starlark has no arbitrary looping constructs
 	}
 	fcomp.block.jmp = b
 	fcomp.block = nil
@@ -977,7 +1000,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 			var set func()
 
 			// Evaluate "address" of x exactly once to avoid duplicate side-effects.
-			switch lhs := stmt.LHS.(type) {
+			switch lhs := unparen(stmt.LHS).(type) {
 			case *syntax.Ident:
 				// x = ...
 				fcomp.lookup(lhs)
@@ -1052,6 +1075,23 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 
 		fcomp.block = tail
 		fcomp.emit(ITERPOP)
+
+	case *syntax.WhileStmt:
+		head := fcomp.newBlock()
+		body := fcomp.newBlock()
+		done := fcomp.newBlock()
+
+		fcomp.jump(head)
+		fcomp.block = head
+		fcomp.ifelse(stmt.Cond, body, done)
+
+		fcomp.block = body
+		fcomp.loops = append(fcomp.loops, loop{break_: done, continue_: head})
+		fcomp.stmts(stmt.Body)
+		fcomp.loops = fcomp.loops[:len(fcomp.loops)-1]
+		fcomp.jump(head)
+
+		fcomp.block = done
 
 	case *syntax.ReturnStmt:
 		if stmt.Result != nil {
@@ -1502,11 +1542,14 @@ func (fcomp *fcomp) call(call *syntax.CallExpr) {
 func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 	var callmode int
 	// Compute the number of each kind of parameter.
-	// TODO(adonovan): do this in resolver.
 	var p, n int // number of  positional, named arguments
 	var varargs, kwargs syntax.Expr
 	for _, arg := range call.Args {
 		if binary, ok := arg.(*syntax.BinaryExpr); ok && binary.Op == syntax.EQ {
+
+			// named argument (name, value)
+			fcomp.string(binary.X.(*syntax.Ident).Name)
+			fcomp.expr(binary.Y)
 			n++
 			continue
 		}
@@ -1521,21 +1564,33 @@ func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 				continue
 			}
 		}
+
+		// positional argument
+		fcomp.expr(arg)
 		p++
 	}
 
-	// positional arguments
-	for _, elem := range call.Args[:p] {
-		fcomp.expr(elem)
-	}
-
-	// named argument pairs (name, value, ..., name, value)
-	named := call.Args[p : p+n]
-	for _, arg := range named {
-		binary := arg.(*syntax.BinaryExpr)
-		fcomp.string(binary.X.(*syntax.Ident).Name)
-		fcomp.expr(binary.Y)
-	}
+	// Python2, Python3, and Starlark-in-Java all permit named arguments
+	// to appear both before and after a *args argument:
+	//   f(1, 2, x=3, *[4], y=5, **dict(z=6))
+	//
+	// However all three implement different argument evaluation orders:
+	//  Python2: 1 2 3 5 4 6 (*args and **kwargs evaluated last)
+	//  Python3: 1 2 4 3 5 6 (positional args evaluated before named args)
+	//  Starlark-in-Java: 1 2 3 4 5 6 (lexical order)
+	//
+	// The Starlark-in-Java semantics are clean but hostile to a
+	// compiler-based implementation because they require that the
+	// compiler emit code for positional, named, *args, more named,
+	// and *kwargs arguments and provide the callee with a map of
+	// the terrain.
+	//
+	// For now we implement the Python2 semantics, but
+	// the spec needs to clarify the correct approach.
+	// Perhaps it would be best if we statically rejected
+	// named arguments after *args (e.g. y=5) so that the
+	// Python2 implementation strategy matches lexical order.
+	// Discussion in github.com/bazelbuild/starlark#13.
 
 	// *args
 	if varargs != nil {
