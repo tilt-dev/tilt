@@ -52,7 +52,7 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 }
 
 func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath string) (<-chan string, error) {
-	return w.dcc.Events(ctx, configPath)
+	return w.dcc.StreamEvents(ctx, configPath)
 }
 
 func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st store.RStore) {

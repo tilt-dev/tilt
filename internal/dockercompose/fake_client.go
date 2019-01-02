@@ -30,11 +30,11 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 	return nil
 }
 
-func (c *FakeDCClient) Logs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
 	return ioutil.NopCloser(bytes.NewReader([]byte(c.logOutput))), nil
 }
 
-func (c *FakeDCClient) Events(ctx context.Context, pathToConfig string) (<-chan string, error) {
+func (c *FakeDCClient) StreamEvents(ctx context.Context, pathToConfig string) (<-chan string, error) {
 	return nil, nil
 }
 
