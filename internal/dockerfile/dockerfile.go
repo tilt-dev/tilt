@@ -140,6 +140,9 @@ func (d Dockerfile) DeriveMounts(context string) ([]model.Mount, error) {
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	mounts := make([]model.Mount, len(nodes))
 	for i, n := range nodes {
