@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	skylark "go.starlark.net/starlark"
+	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -38,9 +38,9 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 	return &gitRepo{absPath, string(gitignoreContents)}, nil
 }
 
-func (s *tiltfileState) localGitRepo(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *tiltfileState) localGitRepo(thread *skylark.Thread, fn *skylark.Builtin
 	return s.newGitRepo(path)
 }
 
-var _ skylark.Value = &gitRepo{}
+var _ starlark.Value = &gitRepo{}
 
 func (gr *gitRepo) String() string {
 	return fmt.Sprintf("[gitRepo] '%v'", gr.basePath)
@@ -60,7 +60,7 @@ func (gr *gitRepo) Type() string {
 
 func (gr *gitRepo) Freeze() {}
 
-func (gr *gitRepo) Truth() skylark.Bool {
+func (gr *gitRepo) Truth() starlark.Bool {
 	return gr.basePath != "" || gr.gitignoreContents != ""
 }
 
@@ -68,10 +68,10 @@ func (*gitRepo) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: gitRepo")
 }
 
-func (gr *gitRepo) Attr(name string) (skylark.Value, error) {
+func (gr *gitRepo) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case "path":
-		return skylark.NewBuiltin(name, gr.path), nil
+		return starlark.NewBuiltin(name, gr.path), nil
 	default:
 		return nil, nil
 	}
@@ -82,9 +82,9 @@ func (gr *gitRepo) AttrNames() []string {
 	return []string{"path"}
 }
 
-func (gr *gitRepo) path(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (gr *gitRepo) path(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -113,13 +113,13 @@ func (s *tiltfileState) maybeAttachGitRepo(lp localPath, repoRoot string) localP
 	return lp
 }
 
-func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, error) {
+func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (localPath, error) {
 	switch v := v.(type) {
 	case localPath:
 		return v, nil
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
-	case skylark.String:
+	case starlark.String:
 		lp := localPath{path: s.absPath(string(v))}
 		lp = s.maybeAttachGitRepo(lp, lp.path)
 		return lp, nil
@@ -128,7 +128,7 @@ func (s *tiltfileState) localPathFromSkylarkValue(v skylark.Value) (localPath, e
 	}
 }
 
-var _ skylark.Value = localPath{}
+var _ starlark.Value = localPath{}
 
 func (lp localPath) String() string {
 	return lp.path
@@ -144,7 +144,7 @@ func (localPath) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: localPath")
 }
 
-func (lp localPath) Truth() skylark.Bool {
+func (lp localPath) Truth() starlark.Bool {
 	return lp != localPath{}
 }
 
@@ -175,9 +175,9 @@ func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
 	return ioutil.ReadFile(p.path)
 }
 
-func (s *tiltfileState) skylarkReadFile(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var path skylark.Value
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ type blob struct {
 	text string
 }
 
-var _ skylark.Value = &blob{}
+var _ starlark.Value = &blob{}
 
 func newBlob(text string) *blob {
 	return &blob{text: text}
@@ -215,7 +215,7 @@ func (b *blob) Type() string {
 
 func (b *blob) Freeze() {}
 
-func (b *blob) Truth() skylark.Bool {
+func (b *blob) Truth() starlark.Bool {
 	return len(b.text) > 0
 }
 
@@ -223,9 +223,9 @@ func (b *blob) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: blob")
 }
 
-func (s *tiltfileState) local(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command string
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "command", &command)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "command", &command)
 	if err != nil {
 		return nil, err
 	}
@@ -254,9 +254,9 @@ func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 	return string(out), nil
 }
 
-func (s *tiltfileState) kustomize(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var path skylark.Value
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
 	if err != nil {
 		return nil, err
 	}

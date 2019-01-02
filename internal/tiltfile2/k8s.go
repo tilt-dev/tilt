@@ -3,7 +3,7 @@ package tiltfile2
 import (
 	"fmt"
 
-	skylark "go.starlark.net/starlark"
+	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -17,9 +17,9 @@ type k8sResource struct {
 	portForwards []portForward
 }
 
-func (s *tiltfileState) k8sYaml(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var yamlValue skylark.Value
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var yamlValue starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
 	); err != nil {
 		return nil, err
@@ -31,16 +31,16 @@ func (s *tiltfileState) k8sYaml(thread *skylark.Thread, fn *skylark.Builtin, arg
 	}
 	s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
-	return skylark.None, nil
+	return starlark.None, nil
 }
 
-func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
-	var yamlValue skylark.Value
-	var imageVal skylark.Value
-	var portForwardsVal skylark.Value
+	var yamlValue starlark.Value
+	var imageVal starlark.Value
+	var portForwardsVal starlark.Value
 
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"yaml?", &yamlValue,
 		"image?", &imageVal,
@@ -66,7 +66,7 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 	switch imageVal := imageVal.(type) {
 	case nil:
 		// empty
-	case skylark.String:
+	case starlark.String:
 		imageRef = string(imageVal)
 	case *fastBuild:
 		imageRef = imageVal.img.ref.Name()
@@ -83,7 +83,7 @@ func (s *tiltfileState) k8sResource(thread *skylark.Thread, fn *skylark.Builtin,
 	r.imageRef = imageRef
 	r.portForwards = portForwards
 
-	return skylark.None, nil
+	return starlark.None, nil
 }
 
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
@@ -99,12 +99,12 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	return r, nil
 }
 
-func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v skylark.Value) ([]k8s.K8sEntity, error) {
-	if v, ok := v.(skylark.Sequence); ok {
+func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v starlark.Value) ([]k8s.K8sEntity, error) {
+	if v, ok := v.(starlark.Sequence); ok {
 		var result []k8s.K8sEntity
 		it := v.Iterate()
 		defer it.Done()
-		var i skylark.Value
+		var i starlark.Value
 		for it.Next(&i) {
 			entities, err := s.yamlEntitiesFromSkylarkValue(i)
 			if err != nil {
@@ -117,7 +117,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v skylark.Value) ([]k
 	return s.yamlEntitiesFromSkylarkValue(v)
 }
 
-func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v skylark.Value) ([]k8s.K8sEntity, error) {
+func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8sEntity, error) {
 	switch v := v.(type) {
 	case nil:
 		return nil, nil
@@ -136,12 +136,12 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v skylark.Value) ([]k8s.K8s
 	}
 }
 
-func (s *tiltfileState) convertPortForwards(name string, val skylark.Value) ([]portForward, error) {
+func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]portForward, error) {
 	if val == nil {
 		return nil, nil
 	}
 	switch val := val.(type) {
-	case skylark.Int:
+	case starlark.Int:
 		pf, err := intToPortForward(val)
 		if err != nil {
 			return nil, err
@@ -149,14 +149,14 @@ func (s *tiltfileState) convertPortForwards(name string, val skylark.Value) ([]p
 		return []portForward{pf}, nil
 	case portForward:
 		return []portForward{val}, nil
-	case skylark.Sequence:
+	case starlark.Sequence:
 		var result []portForward
 		it := val.Iterate()
 		defer it.Done()
-		var i skylark.Value
+		var i starlark.Value
 		for it.Next(&i) {
 			switch i := i.(type) {
-			case skylark.Int:
+			case starlark.Int:
 				pf, err := intToPortForward(i)
 				if err != nil {
 					return nil, err
@@ -174,11 +174,11 @@ func (s *tiltfileState) convertPortForwards(name string, val skylark.Value) ([]p
 	}
 }
 
-func (s *tiltfileState) portForward(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var local int
 	var container int
 
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs, "local", &local, "container?", &container); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "local", &local, "container?", &container); err != nil {
 		return nil, err
 	}
 
@@ -190,7 +190,7 @@ type portForward struct {
 	container int
 }
 
-var _ skylark.Value = portForward{}
+var _ starlark.Value = portForward{}
 
 func (f portForward) String() string {
 	return fmt.Sprintf("port_forward(%d, %d)", f.local, f.container)
@@ -202,7 +202,7 @@ func (f portForward) Type() string {
 
 func (f portForward) Freeze() {}
 
-func (f portForward) Truth() skylark.Bool {
+func (f portForward) Truth() starlark.Bool {
 	return f.local != 0 && f.container != 0
 }
 
@@ -210,7 +210,7 @@ func (f portForward) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: port_forward")
 }
 
-func intToPortForward(i skylark.Int) (portForward, error) {
+func intToPortForward(i starlark.Int) (portForward, error) {
 	n, ok := i.Int64()
 	if !ok {
 		return portForward{}, fmt.Errorf("portForward value %v is not representable as an int64", i)

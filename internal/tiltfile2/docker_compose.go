@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	skylark "go.starlark.net/starlark"
+	"go.starlark.net/starlark"
 )
 
 // dcResource represents a single docker-compose config file and all its associated services
@@ -17,9 +17,9 @@ type dcResource struct {
 
 func (dc dcResource) Empty() bool { return reflect.DeepEqual(dc, dcResource{}) }
 
-func (s *tiltfileState) dockerCompose(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPath string
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs, "configPath", &configPath)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "configPath", &configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -34,10 +34,10 @@ func (s *tiltfileState) dockerCompose(thread *skylark.Thread, fn *skylark.Builti
 	}
 
 	if !s.dc.Empty() {
-		return skylark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
+		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
 	}
 
 	s.dc = dcResource{configPath: configPath, services: services}
 
-	return skylark.None, nil
+	return starlark.None, nil
 }
