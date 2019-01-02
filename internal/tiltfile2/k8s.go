@@ -2,6 +2,7 @@ package tiltfile2
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/skylark"
 
@@ -132,8 +133,20 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v skylark.Value) ([]k8s.K8s
 		if err != nil {
 			return nil, err
 		}
-		return k8s.ParseYAMLFromString(string(bs))
+		entities, err := k8s.ParseYAMLFromString(string(bs))
+		return entities, handleParseYAMLFromStringErr(yamlPath.String(), err)
 	}
+}
+
+func handleParseYAMLFromStringErr(path string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "json parse error: ") {
+		return fmt.Errorf("%s is not a valid YAML file: %s", path, err)
+	}
+
+	return err
 }
 
 func (s *tiltfileState) convertPortForwards(name string, val skylark.Value) ([]portForward, error) {
