@@ -655,6 +655,56 @@ k8s_resource('foo', 'foo.yaml')
 	)
 }
 
+func TestDockerComposeResourceCreation(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("docker-compose.yml", `
+version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.load("foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	f.assertManifest("foo", dcConfigPath(configPath))
+
+	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
+func TestK8sYAMLInputBareString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.WriteFile("bar.yaml", "im not yaml")
+	f.file("Tiltfile", `
+k8s_yaml('bar.yaml')
+docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+`)
+
+	f.loadErrString("bar.yaml is not a valid YAML file")
+}
+
+func TestK8sYAMLInputFromReadFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml(str(read_file('foo.yaml')))
+docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+`)
+
+	f.loadErrString("no such file or directory")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

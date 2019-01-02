@@ -260,7 +260,7 @@ container ports 8000 and 8001, respectively).</li>
 <dl class="function">
 <dt id="api.k8s_yaml">
 <code class="descclassname">api.</code><code class="descname">k8s_yaml</code><span class="sig-paren">(</span><em>yaml</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_yaml" title="Permalink to this definition">¶</a></dt>
-<dd><p>Call this with a path to a file that contains YAML, or with a string of YAML.</p>
+<dd><p>Call this with a path to a file that contains YAML, or with a <code class="docutils literal notranslate"><span class="pre">Blob</span></code> of YAML.</p>
 <p>We will infer what (if any) of the k8s resources defined in your YAML
 correspond to Images defined elsewhere in your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> (matching based on
 the DockerImage ref and on pod selectors). Any remaining YAML is YAML that Tilt
@@ -269,7 +269,7 @@ applies to your k8s cluster independently.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Path(s) to YAML or YAML as a string</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Path(s) to YAML or YAML as a <code class="docutils literal notranslate"><span class="pre">Blob</span></code>.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
 </tr>
