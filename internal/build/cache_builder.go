@@ -113,7 +113,7 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Doc
 	logger.Get(ctx).Debugf("Copying cache directories (%s)", sourceRef.String())
 	res, err := b.dcli.ImageBuild(ctx, dockerCtx, options)
 	if err != nil {
-		return errors.Wrap(err, "CreateCacheFrom")
+		return errors.Wrap(err, "ImageBuild")
 	}
 	defer func() {
 		err := res.Body.Close()
@@ -123,7 +123,7 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Doc
 	}()
 	_, err = readDockerOutput(ctx, res.Body, writer)
 	if err != nil {
-		return errors.Wrap(err, "CreateCacheFrom")
+		return errors.Wrap(err, "readDockerOutput")
 	}
 	return nil
 }
