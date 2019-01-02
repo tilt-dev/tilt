@@ -16,8 +16,8 @@ import (
 type DockerComposeClient interface {
 	Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
-	Logs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error)
-	Events(ctx context.Context, configPath string) (<-chan string, error)
+	StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error)
+	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
 	Config(ctx context.Context, configPath string) (string, error)
 	Services(ctx context.Context, configPath string) (string, error)
 }
@@ -51,8 +51,7 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 	return nil
 }
 
-// TODO(dmiller) rename to indicate that this streams logs to the io.ReadCloser
-func (c *cmdDCClient) Logs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
 	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName}
@@ -81,8 +80,7 @@ func (c *cmdDCClient) Logs(ctx context.Context, configPath, serviceName string) 
 	return stdout, nil
 }
 
-// TODO(dmiller) rename to indicate that this streams logs to the chan string
-func (c *cmdDCClient) Events(ctx context.Context, configPath string) (<-chan string, error) {
+func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath string) (<-chan string, error) {
 	ch := make(chan string)
 
 	args := []string{"-f", configPath, "events", "--json"}
