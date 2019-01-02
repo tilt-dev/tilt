@@ -134,19 +134,15 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v skylark.Value) ([]k8s.K8s
 			return nil, err
 		}
 		entities, err := k8s.ParseYAMLFromString(string(bs))
-		return entities, handleParseYAMLFromStringErr(yamlPath.String(), err)
-	}
-}
+		if err != nil {
+			if strings.Contains(err.Error(), "json parse error: ") {
+				return entities, fmt.Errorf("%s is not a valid YAML file: %s", yamlPath.String(), err)
+			}
+			return entities, err
+		}
 
-func handleParseYAMLFromStringErr(path string, err error) error {
-	if err == nil {
-		return nil
+		return entities, nil
 	}
-	if strings.Contains(err.Error(), "json parse error: ") {
-		return fmt.Errorf("%s is not a valid YAML file: %s", path, err)
-	}
-
-	return err
 }
 
 func (s *tiltfileState) convertPortForwards(name string, val skylark.Value) ([]portForward, error) {
