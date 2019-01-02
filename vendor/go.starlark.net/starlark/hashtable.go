@@ -2,11 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package skylark
+package starlark
 
-import "fmt"
+import (
+	"fmt"
+	_ "unsafe" // for go:linkname hack
+)
 
-// hashtable is used to represent Skylark dict and set values.
+// hashtable is used to represent Starlark dict and set values.
 // It is a hash table whose key/value entries form a doubly-linked list
 // in the order the entries were inserted.
 type hashtable struct {
@@ -331,8 +334,21 @@ func (it *keyIterator) Done() {
 	}
 }
 
-// hashString computes the FNV hash of s.
+// hashString computes the hash of s.
 func hashString(s string) uint32 {
+	if len(s) >= 12 {
+		// Call the Go runtime's optimized hash implementation,
+		// which uses the AESENC instruction on amd64 machines.
+		return uint32(goStringHash(s, 0))
+	}
+	return softHashString(s)
+}
+
+//go:linkname goStringHash runtime.stringHash
+func goStringHash(s string, seed uintptr) uintptr
+
+// softHashString computes the FNV hash of s in software.
+func softHashString(s string) uint32 {
 	var h uint32
 	for i := 0; i < len(s); i++ {
 		h ^= uint32(s[i])

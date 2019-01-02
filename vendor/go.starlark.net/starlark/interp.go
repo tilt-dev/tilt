@@ -1,4 +1,4 @@
-package skylark
+package starlark
 
 // This file defines the bytecode interpreter.
 
@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/skylark/internal/compile"
-	"github.com/google/skylark/syntax"
+	"go.starlark.net/internal/compile"
+	"go.starlark.net/resolve"
+	"go.starlark.net/syntax"
 )
 
 const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of error.
@@ -18,25 +19,24 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 //   in the thread, and slicing it.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
-func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
+func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 	if debug {
 		fmt.Printf("call of %s %v %v\n", fn.Name(), args, kwargs)
 	}
 
-	// detect recursion
-	for fr := thread.frame; fr != nil; fr = fr.parent {
-		// We look for the same function code,
-		// not function value, otherwise the user could
-		// defeat the check by writing the Y combinator.
-		if frfn, ok := fr.Callable().(*Function); ok && frfn.funcode == fn.funcode {
-			return nil, fmt.Errorf("function %s called recursively", fn.Name())
+	if !resolve.AllowRecursion {
+		// detect recursion
+		for fr := thread.frame.parent; fr != nil; fr = fr.parent {
+			// We look for the same function code,
+			// not function value, otherwise the user could
+			// defeat the check by writing the Y combinator.
+			if frfn, ok := fr.Callable().(*Function); ok && frfn.funcode == fn.funcode {
+				return nil, fmt.Errorf("function %s called recursively", fn.Name())
+			}
 		}
 	}
 
-	thread.frame = &Frame{parent: thread.frame, callable: fn}
-	result, err := call(thread, args, kwargs)
-	thread.frame = thread.frame.parent
-	return result, err
+	return call(thread, args, kwargs)
 }
 
 func call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
@@ -178,7 +178,7 @@ loop:
 			var z Value
 			if xlist, ok := x.(*List); ok {
 				if yiter, ok := y.(Iterable); ok {
-					if err = xlist.checkMutable("apply += to", true); err != nil {
+					if err = xlist.checkMutable("apply += to"); err != nil {
 						break loop
 					}
 					listExtend(xlist, yiter)
@@ -379,7 +379,7 @@ loop:
 			v := stack[sp-1]
 			sp -= 3
 			oldlen := dict.Len()
-			if err2 := dict.Set(k, v); err2 != nil {
+			if err2 := dict.SetKey(k, v); err2 != nil {
 				err = err2
 				break loop
 			}

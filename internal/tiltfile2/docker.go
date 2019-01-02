@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/docker/distribution/reference"
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
@@ -29,10 +29,10 @@ type dockerImage struct {
 	staticBuildArgs      model.DockerBuildArgs
 }
 
-func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs, cacheVal skylark.Value
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+	var contextVal, dockerfilePathVal, buildArgs, cacheVal starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
 		"build_args?", &buildArgs,
@@ -65,7 +65,7 @@ func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin,
 
 	var sba map[string]string
 	if buildArgs != nil {
-		d, ok := buildArgs.(*skylark.Dict)
+		d, ok := buildArgs.(*starlark.Dict)
 		if !ok {
 			return nil, fmt.Errorf("Argument 3 (build_args): expected dict, got %T", buildArgs)
 		}
@@ -102,15 +102,15 @@ func (s *tiltfileState) dockerBuild(thread *skylark.Thread, fn *skylark.Builtin,
 	s.imagesByName[ref.Name()] = r
 	s.images = append(s.images, r)
 
-	return skylark.None, nil
+	return starlark.None, nil
 }
 
-func (s *tiltfileState) fastBuild(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 
 	var dockerRef, entrypoint string
-	var baseDockerfile skylark.Value
-	var cacheVal skylark.Value
-	err := skylark.UnpackArgs(fn.Name(), args, kwargs,
+	var baseDockerfile starlark.Value
+	var cacheVal starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"base_dockerfile", &baseDockerfile,
 		"entrypoint?", &entrypoint,
@@ -164,17 +164,17 @@ func (s *tiltfileState) fastBuild(thread *skylark.Thread, fn *skylark.Builtin, a
 	return fb, nil
 }
 
-func (s *tiltfileState) cachePathsFromSkylarkValue(val skylark.Value) ([]string, error) {
+func (s *tiltfileState) cachePathsFromSkylarkValue(val starlark.Value) ([]string, error) {
 	if val == nil {
 		return nil, nil
 	}
-	if val, ok := val.(skylark.Sequence); ok {
+	if val, ok := val.(starlark.Sequence); ok {
 		var result []string
 		it := val.Iterate()
 		defer it.Done()
-		var i skylark.Value
+		var i starlark.Value
 		for it.Next(&i) {
-			str, ok := i.(skylark.String)
+			str, ok := i.(starlark.String)
 			if !ok {
 				return nil, fmt.Errorf("cache param %v is a %T; must be a string", i, i)
 			}
@@ -182,7 +182,7 @@ func (s *tiltfileState) cachePathsFromSkylarkValue(val skylark.Value) ([]string,
 		}
 		return result, nil
 	}
-	str, ok := val.(skylark.String)
+	str, ok := val.(starlark.String)
 	if !ok {
 		return nil, fmt.Errorf("cache param %v is a %T; must be a string or a sequence of strings", val, val)
 	}
@@ -194,7 +194,7 @@ type fastBuild struct {
 	img *dockerImage
 }
 
-var _ skylark.Value = &fastBuild{}
+var _ starlark.Value = &fastBuild{}
 
 func (b *fastBuild) String() string {
 	return fmt.Sprintf("fast_build(%q)", b.img.ref.Name())
@@ -206,7 +206,7 @@ func (b *fastBuild) Type() string {
 
 func (b *fastBuild) Freeze() {}
 
-func (b *fastBuild) Truth() skylark.Bool {
+func (b *fastBuild) Truth() starlark.Bool {
 	return true
 }
 
@@ -219,14 +219,14 @@ const (
 	runN = "run"
 )
 
-func (b *fastBuild) Attr(name string) (skylark.Value, error) {
+func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case addN:
-		return skylark.NewBuiltin(name, b.add), nil
+		return starlark.NewBuiltin(name, b.add), nil
 	case runN:
-		return skylark.NewBuiltin(name, b.run), nil
+		return starlark.NewBuiltin(name, b.run), nil
 	default:
-		return skylark.None, nil
+		return starlark.None, nil
 	}
 }
 
@@ -234,15 +234,15 @@ func (b *fastBuild) AttrNames() []string {
 	return []string{addN, runN}
 }
 
-func (b *fastBuild) add(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(b.img.steps) > 0 {
 		return nil, fmt.Errorf("fast_build(%q).add() called after .run(); must add all code before runs", b.img.ref.Name())
 	}
 
-	var src skylark.Value
+	var src starlark.Value
 	var mountPoint string
 
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint); err != nil {
 		return nil, err
 	}
 
@@ -262,27 +262,27 @@ func (b *fastBuild) add(thread *skylark.Thread, fn *skylark.Builtin, args skylar
 	return b, nil
 }
 
-func (b *fastBuild) run(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var cmd string
-	var trigger skylark.Value
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &cmd, "trigger?", &trigger); err != nil {
+	var trigger starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &cmd, "trigger?", &trigger); err != nil {
 		return nil, err
 	}
 
 	var triggers []string
 	switch trigger := trigger.(type) {
-	case *skylark.List:
+	case *starlark.List:
 		l := trigger.Len()
 		triggers = make([]string, l)
 		for i := 0; i < l; i++ {
 			t := trigger.Index(i)
-			tStr, isStr := t.(skylark.String)
+			tStr, isStr := t.(starlark.String)
 			if !isStr {
-				return nil, badTypeErr(fn, skylark.String(""), t)
+				return nil, badTypeErr(fn, starlark.String(""), t)
 			}
 			triggers[i] = string(tStr)
 		}
-	case skylark.String:
+	case starlark.String:
 		triggers = []string{string(trigger)}
 	}
 

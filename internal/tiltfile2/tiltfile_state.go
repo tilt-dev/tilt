@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
-	"github.com/google/skylark"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -53,12 +53,12 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tilt
 }
 
 func (s *tiltfileState) exec() error {
-	thread := &skylark.Thread{
-		Print: func(_ *skylark.Thread, msg string) {
+	thread := &starlark.Thread{
+		Print: func(_ *starlark.Thread, msg string) {
 			logger.Get(s.ctx).Infof("%s", msg)
 		},
 	}
-	_, err := skylark.ExecFile(thread, s.filename.path, nil, s.builtins())
+	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
 	return err
 }
 
@@ -82,10 +82,10 @@ const (
 	kustomizeN    = "kustomize"
 )
 
-func (s *tiltfileState) builtins() skylark.StringDict {
-	r := make(skylark.StringDict)
-	add := func(name string, fn func(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error)) {
-		r[name] = skylark.NewBuiltin(name, fn)
+func (s *tiltfileState) builtins() starlark.StringDict {
+	r := make(starlark.StringDict)
+	add := func(name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
+		r[name] = starlark.NewBuiltin(name, fn)
 	}
 
 	add(dockerComposeN, s.dockerCompose)
@@ -362,6 +362,6 @@ func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 	return result, nil
 }
 
-func badTypeErr(b *skylark.Builtin, ex interface{}, v skylark.Value) error {
+func badTypeErr(b *starlark.Builtin, ex interface{}, v starlark.Value) error {
 	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
 }
