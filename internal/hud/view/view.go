@@ -20,6 +20,13 @@ type DCResourceInfo struct {
 func (DCResourceInfo) resourceInfoView() {}
 func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
 
+type YamlResourceInfo struct {
+	ConfigFiles  []string
+	K8sResources []string
+}
+
+func (YamlResourceInfo) resourceInfoView() {}
+
 type Resource struct {
 	Name               model.ManifestName
 	DirectoriesWatched []string
@@ -42,7 +49,6 @@ type Resource struct {
 	Endpoints          []string
 	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
 
-	// NOTE(maia): implement for k8s
 	ResourceInfo ResourceInfoView
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
@@ -63,6 +69,15 @@ func (r Resource) DCInfo() DCResourceInfo {
 
 func (r Resource) IsDC() bool {
 	return !r.DCInfo().Empty()
+}
+
+func (r Resource) YamlInfo() YamlResourceInfo {
+	switch info := r.ResourceInfo.(type) {
+	case YamlResourceInfo:
+		return info
+	default:
+		return YamlResourceInfo{}
+	}
 }
 
 func (r Resource) LastBuild() model.BuildStatus {

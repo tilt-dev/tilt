@@ -185,7 +185,20 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 	if l := v.resourceExpandedK8s(); !rty.IsEmpty(l) {
 		return l
 	}
+	if l := v.resourceExpandedYaml(); !rty.IsEmpty(l) {
+		return l
+	}
 	return rty.EmptyLayout
+}
+
+func (v *ResourceView) resourceExpandedYaml() rty.Component {
+	if !v.res.IsYAMLManifest {
+		return rty.EmptyLayout
+	}
+	yi := v.res.YamlInfo()
+	return rty.TextString(fmt.Sprintf("k8s entities loaded from: %s:\n%s",
+		strings.Join(yi.ConfigFiles, " "),
+		strings.Join(yi.K8sResources, "\n")))
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {
