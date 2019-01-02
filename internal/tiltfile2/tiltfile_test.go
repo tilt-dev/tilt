@@ -746,7 +746,7 @@ services:
 	f.assertManifest("foo", dcConfigPath(configPath))
 }
 
-func TestK8sYAMLInput(t *testing.T) {
+func TestK8sYAMLInputBareString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -758,6 +758,19 @@ docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 `)
 
 	f.loadErrString("bar.yaml is not a valid YAML file")
+}
+
+func TestK8sYAMLInputFromReadFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml(str(read_file('foo.yaml')))
+docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+`)
+
+	f.loadErrString("no such file or directory")
 }
 
 type fixture struct {
