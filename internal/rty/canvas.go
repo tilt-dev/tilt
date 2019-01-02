@@ -39,11 +39,6 @@ type TempCanvas struct {
 
 var _ Canvas = &TempCanvas{}
 
-type lineRange struct {
-	start int
-	end   int
-}
-
 func newTempCanvas(width, height int, style tcell.Style) *TempCanvas {
 	c := &TempCanvas{width: width, height: height}
 	if height != GROW {

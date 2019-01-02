@@ -33,11 +33,6 @@ func TestSupportsBuildkit(t *testing.T) {
 	}
 }
 
-type versionTestCase struct {
-	v        types.Version
-	expected bool
-}
-
 func TestSupported(t *testing.T) {
 	cases := []buildkitTestCase{
 		{types.Version{APIVersion: "1.22"}, false},

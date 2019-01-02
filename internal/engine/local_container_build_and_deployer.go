@@ -16,8 +16,6 @@ import (
 
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
-const podPollTimeoutLocal = time.Second * 3
-
 type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	analytics analytics.Analytics

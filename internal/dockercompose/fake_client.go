@@ -8,11 +8,6 @@ import (
 )
 
 type FakeDCClient struct {
-	// Up
-	upCounts map[string]int
-	upStdout string
-	upStderr string
-
 	// Log
 	logOutput string
 }

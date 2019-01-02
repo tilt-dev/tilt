@@ -115,13 +115,12 @@ func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 var _ store.Subscriber = &PortForwardController{}
 
 type portForwardEntry struct {
-	name               model.ManifestName
-	namespace          k8s.Namespace
-	podID              k8s.PodID
-	firstContainerPort int32
-	forwards           []model.PortForward
-	ctx                context.Context
-	cancel             func()
+	name      model.ManifestName
+	namespace k8s.Namespace
+	podID     k8s.PodID
+	forwards  []model.PortForward
+	ctx       context.Context
+	cancel    func()
 }
 
 // Extract the port-forward specs from the manifest. If any of them
