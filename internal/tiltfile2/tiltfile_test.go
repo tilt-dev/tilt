@@ -21,6 +21,8 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
+const simpleDockerfile = "FROM golang:1.10"
+
 func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -676,76 +678,6 @@ services:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
-func TestMultipleDockerComposeNotSupported(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("docker-compose1.yml", `
-version: '3'
-services:
-  foo:
-    build: ./foo
-    command: sleep 100
-    ports:
-      - "12312:12312"`)
-	f.file("docker-compose2.yml", `
-version: '3'
-services:
-  foo:
-    build: ./foo
-    command: sleep 100
-    ports:
-      - "12312:12312"`)
-
-	tf := `docker_compose('docker-compose1.yml')
-docker_compose('docker-compose2.yml')`
-	f.file("Tiltfile", tf)
-
-	f.loadErrString("already have a docker-compose resource declared")
-}
-
-func TestDockerComposeAndK8sNotSupported(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("docker-compose.yml", `
-version: '3'
-services:
-  foo:
-    build: ./foo
-    command: sleep 100
-    ports:
-      - "12312:12312"`)
-	tf := `docker_compose('docker-compose.yml')
-docker_build('gcr.io/foo', 'foo')
-k8s_resource('foo', 'foo.yaml')`
-	f.file("Tiltfile", tf)
-
-	f.loadErrString("can't declare both k8s resources and docker-compose resources")
-}
-
-func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.setupFoo()
-	f.file("docker-compose.yml", `
-version: '3'
-services:
-  foo:
-    build: ./foo
-    command: sleep 100
-    ports:
-      - "12312:12312"`)
-	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", configPath))
-
-	f.load("foo")
-	f.assertManifest("foo", dcConfigPath(configPath))
-}
-
 func TestK8sYAMLInputBareString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -804,7 +736,7 @@ func (f *fixture) file(path string, contents string) {
 type k8sOpts interface{}
 
 func (f *fixture) dockerfile(path string) {
-	f.file(path, "FROM golang:1.10")
+	f.file(path, simpleDockerfile)
 }
 
 func (f *fixture) yaml(path string, entities ...k8sOpts) {
@@ -1029,6 +961,16 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
 				assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
 			}
+		case dcYAMLRawHelper:
+			dcInfo := m.DCInfo()
+			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
+				assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
+			}
+		case dcDfRawHelper:
+			dcInfo := m.DCInfo()
+			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
+				assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
+			}
 		default:
 			f.t.Fatalf("unexpected arg to assertManifest: %T %v", opt, opt)
 		}
@@ -1073,14 +1015,6 @@ type secretHelper struct {
 
 func secret(name string) secretHelper {
 	return secretHelper{name: name}
-}
-
-type dcConfigPathHelper struct {
-	path string
-}
-
-func dcConfigPath(path string) dcConfigPathHelper {
-	return dcConfigPathHelper{path}
 }
 
 type deploymentHelper struct {
