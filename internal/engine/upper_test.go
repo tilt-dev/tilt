@@ -1684,15 +1684,13 @@ func TestNewMountsAreWatched(t *testing.T) {
 
 func TestDockerComposeRecordsLogs(t *testing.T) {
 	f := newTestFixture(t)
-	m := f.setupHAProxyDCFixture()
+	m, _ := f.setupDCFixture()
 	expected := "spoonerisms_1  | 2018-12-20T16:11:04.070480042Z yarn install v1.10."
 	f.dcc.SetLogOutput(expected + "\n")
 
-	f.Start([]model.Manifest{
-		m,
-	}, true)
-
+	f.Start([]model.Manifest{m}, true)
 	f.waitForCompletedBuildCount(1)
+
 	// recorded in global log
 	assert.Contains(t, f.LogLines(), expected)
 
@@ -2131,29 +2129,29 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 	f.store.Dispatch(manifestFilesChangedAction{manifestName: ConfigsManifestName, files: filenames})
 }
 
-func (f *testFixture) setupHAProxyDCFixture() model.Manifest {
-	dcp := filepath.Join(f.originalWD, "testdata", "haproxy_docker-config.yml")
+func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
+	dcp := filepath.Join(f.originalWD, "testdata", "fixture_docker-config.yml")
 	dcpc, err := ioutil.ReadFile(dcp)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.TempDirFixture.WriteFile("docker-config.yml", string(dcpc))
+	f.WriteFile("docker-compose.yml", string(dcpc))
 
-	dfp := filepath.Join(f.originalWD, "testdata", "haproxy.dockerfile")
+	dfp := filepath.Join(f.originalWD, "testdata", "server.dockerfile")
 	dfc, err := ioutil.ReadFile(dfp)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.TempDirFixture.WriteFile("Dockerfile", string(dfc))
+	f.WriteFile("Dockerfile", string(dfc))
 
-	hcp := filepath.Join(f.originalWD, "testdata", "haproxy.cfg")
-	hcc, err := ioutil.ReadFile(hcp)
+	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
+
+	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.TempDirFixture.WriteFile("haproxy.cfg", string(hcc))
 
-	return f.newDCManifest("haproxy", string(dcpc), string(dfc))
+	return manifests[0], manifests[1]
 }
 
 type fixtureSub struct {
