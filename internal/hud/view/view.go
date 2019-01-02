@@ -21,7 +21,6 @@ func (DCResourceInfo) resourceInfoView() {}
 func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
 
 type YamlResourceInfo struct {
-	ConfigFiles  []string
 	K8sResources []string
 }
 

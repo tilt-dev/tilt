@@ -486,7 +486,6 @@ func StateToView(s EngineState) view.View {
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
 			ResourceInfo: view.YamlResourceInfo{
-				ConfigFiles:  s.GlobalYAML.Dependencies(),
 				K8sResources: s.GlobalYAML.Resources(),
 			},
 			IsYAMLManifest: true,

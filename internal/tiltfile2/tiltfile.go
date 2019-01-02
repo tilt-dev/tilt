@@ -75,7 +75,7 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 
 		var resourceNames []string
 		for _, e := range unresourced {
-			resourceNames = append(resourceNames, fmt.Sprintf("%s(%s)", e.Name(), e.Kind.String()))
+			resourceNames = append(resourceNames, fmt.Sprintf("%s (%s)", e.Name(), e.Kind.Kind))
 		}
 
 		yamlManifest = model.NewYAMLManifest(unresourcedName, yaml, nil, resourceNames)

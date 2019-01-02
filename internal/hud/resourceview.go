@@ -196,8 +196,7 @@ func (v *ResourceView) resourceExpandedYaml() rty.Component {
 		return rty.EmptyLayout
 	}
 	yi := v.res.YamlInfo()
-	return rty.TextString(fmt.Sprintf("k8s entities loaded from: %s:\n%s",
-		strings.Join(yi.ConfigFiles, " "),
+	return rty.TextString(fmt.Sprintf("other k8s entities:\n%s",
 		strings.Join(yi.K8sResources, "\n")))
 }
 
