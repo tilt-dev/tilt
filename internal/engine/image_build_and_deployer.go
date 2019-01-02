@@ -103,19 +103,19 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 	var n reference.NamedTagged
 
 	dInfo := manifest.DockerInfo
-	name := dInfo.DockerRef
+	dRef := dInfo.Ref
 
-	cacheRef, err := ibd.fetchCache(ctx, dInfo.DockerRef, dInfo.CachePaths())
+	cacheRef, err := ibd.fetchCache(ctx, dInfo.Ref, dInfo.CachePaths())
 	if err != nil {
 		return nil, err
 	}
 
 	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
-		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
+		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", dRef)
 		defer ps.EndPipelineStep(ctx)
 
 		df := ibd.staticDockerfile(manifest, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, sbInfo.BuildPath, ignore.CreateBuildContextFilter(manifest), sbInfo.BuildArgs)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, dRef, df, sbInfo.BuildPath, ignore.CreateBuildContextFilter(manifest), sbInfo.BuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -127,12 +127,12 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 	} else if fbInfo := manifest.FastBuildInfo(); !fbInfo.Empty() {
 		if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
-			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", name)
+			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", dRef)
 			defer ps.EndPipelineStep(ctx)
 
 			df := ibd.baseDockerfile(fbInfo, cacheRef, manifest.DockerInfo.CachePaths())
 			steps := fbInfo.Steps
-			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, fbInfo.Mounts, ignore.CreateBuildContextFilter(manifest), steps, fbInfo.Entrypoint)
+			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, dRef, df, fbInfo.Mounts, ignore.CreateBuildContextFilter(manifest), steps, fbInfo.Entrypoint)
 
 			if err != nil {
 				return nil, err
@@ -152,7 +152,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 				return nil, err
 			}
 
-			ps.StartPipelineStep(ctx, "Building from existing: [%s]", name)
+			ps.StartPipelineStep(ctx, "Building from existing: [%s]", dRef)
 			defer ps.EndPipelineStep(ctx)
 
 			steps := fbInfo.Steps

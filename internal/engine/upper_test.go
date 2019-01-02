@@ -108,7 +108,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	if manifest.IsDC() {
 		return b.nextBuildResult(imageID), nil
 	}
-	return b.nextBuildResult(manifest.DockerInfo.DockerRef), nil
+	return b.nextBuildResult(manifest.DockerInfo.Ref), nil
 }
 
 func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
@@ -2086,7 +2086,7 @@ func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manif
 	ref := f.imageNameForManifest(name)
 	return model.Manifest{
 		Name: model.ManifestName(name),
-		DockerInfo: model.DockerInfo{DockerRef: ref}.
+		DockerInfo: model.DockerInfo{Ref: ref}.
 			WithBuildDetails(model.FastBuild{Mounts: mounts}),
 	}
 }

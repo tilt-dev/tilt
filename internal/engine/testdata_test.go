@@ -44,7 +44,7 @@ func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	m := model.Manifest{
 		Name: "sancho",
 		DockerInfo: model.DockerInfo{
-			DockerRef: SanchoRef,
+			Ref: SanchoRef,
 		}.WithBuildDetails(fbInfo),
 	}
 
@@ -63,7 +63,7 @@ func NewSanchoStaticManifest() model.Manifest {
 	m := model.Manifest{
 		Name: "sancho",
 		DockerInfo: model.DockerInfo{
-			DockerRef: SanchoRef,
+			Ref: SanchoRef,
 		}.WithBuildDetails(model.StaticBuild{
 			Dockerfile: SanchoStaticDockerfile,
 			BuildPath:  "/path/to/build",

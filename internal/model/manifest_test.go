@@ -315,13 +315,13 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
-		Manifest{DockerInfo: DockerInfo{DockerRef: img2}},
+		Manifest{DockerInfo: DockerInfo{Ref: img1}},
+		Manifest{DockerInfo: DockerInfo{Ref: img2}},
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
-		Manifest{DockerInfo: DockerInfo{DockerRef: img1}},
+		Manifest{DockerInfo: DockerInfo{Ref: img1}},
+		Manifest{DockerInfo: DockerInfo{Ref: img1}},
 		true,
 	},
 	{

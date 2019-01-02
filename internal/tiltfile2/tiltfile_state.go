@@ -326,7 +326,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			}
 
 			dInfo := model.DockerInfo{
-				DockerRef: image.ref,
+				Ref: image.ref,
 			}.WithCachePaths(image.cachePaths)
 
 			if !staticBuild.Empty() && !fastBuild.Empty() {
