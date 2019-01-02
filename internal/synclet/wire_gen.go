@@ -7,7 +7,6 @@ package synclet
 
 import (
 	"context"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
@@ -19,7 +18,6 @@ func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	if err != nil {
 		return nil, err
 	}
-	containerResolver := build.NewContainerResolver(dockerCli)
-	synclet := NewSynclet(dockerCli, containerResolver)
+	synclet := NewSynclet(dockerCli)
 	return synclet, nil
 }

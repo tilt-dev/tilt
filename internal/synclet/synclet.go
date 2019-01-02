@@ -13,10 +13,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -24,18 +22,10 @@ const Port = 23551
 
 type Synclet struct {
 	dcli docker.DockerClient
-	cr   *build.ContainerResolver
 }
 
-func NewSynclet(dcli docker.DockerClient, cr *build.ContainerResolver) *Synclet {
-	return &Synclet{dcli: dcli, cr: cr}
-}
-
-func (s Synclet) ContainerIDForPod(ctx context.Context, podID k8s.PodID, imageID reference.NamedTagged) (container.ID, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-ContainerIDForPod")
-	defer span.Finish()
-
-	return s.cr.ContainerIDForPod(ctx, podID, imageID)
+func NewSynclet(dcli docker.DockerClient) *Synclet {
+	return &Synclet{dcli: dcli}
 }
 
 func (s Synclet) writeFiles(ctx context.Context, containerId container.ID, tarArchive []byte) error {

@@ -81,15 +81,11 @@ type mockContainerUpdaterFixture struct {
 	ctx  context.Context
 	dcli *docker.FakeDockerClient
 	cu   *ContainerUpdater
-	cr   *ContainerResolver
 }
 
 func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 	fakeCli := docker.NewFakeDockerClient()
 	cu := &ContainerUpdater{
-		dcli: fakeCli,
-	}
-	cr := &ContainerResolver{
 		dcli: fakeCli,
 	}
 
@@ -99,7 +95,6 @@ func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 		ctx:            output.CtxForTest(),
 		dcli:           fakeCli,
 		cu:             cu,
-		cr:             cr,
 	}
 }
 
