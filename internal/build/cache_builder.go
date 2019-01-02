@@ -112,6 +112,9 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Doc
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	logger.Get(ctx).Debugf("Copying cache directories (%s)", sourceRef.String())
 	res, err := b.dcli.ImageBuild(ctx, dockerCtx, options)
+	if err != nil {
+		return errors.Wrap(err, "CreateCacheFrom")
+	}
 	defer func() {
 		err := res.Body.Close()
 		if err != nil {
