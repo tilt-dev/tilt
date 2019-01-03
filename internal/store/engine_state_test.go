@@ -59,7 +59,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 }
 
 func TestStateViewYAMLManifestNoYAML(t *testing.T) {
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), "", []string{})
+	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), "", []string{}, []string{})
 	state := newState([]model.Manifest{}, m)
 	v := StateToView(*state)
 
@@ -68,7 +68,7 @@ func TestStateViewYAMLManifestNoYAML(t *testing.T) {
 
 func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	yaml := "yamlyaml"
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"})
+	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"}, []string{})
 	state := newState([]model.Manifest{}, m)
 	v := StateToView(*state)
 
@@ -94,7 +94,7 @@ func TestEmptyState(t *testing.T) {
 	assert.Equal(t, emptyTiltfileMsg, v.TiltfileErrorMessage)
 
 	yaml := "yamlyaml"
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"})
+	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"}, []string{})
 	nes := newState([]model.Manifest{}, m)
 	v = StateToView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)

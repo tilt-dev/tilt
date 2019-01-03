@@ -94,7 +94,7 @@ func TestGlobalYamlFailUpsert(t *testing.T) {
 func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {
 	st := store.NewTestingStore()
 	state := store.EngineState{
-		GlobalYAML: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil),
+		GlobalYAML: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil, nil),
 	}
 	st.SetState(state)
 	return st
@@ -109,7 +109,7 @@ func newGlobalYamlBuildControllerForTest(yaml string) *TestGlobalYAMLBuildContro
 	kc := k8s.NewFakeK8sClient()
 	return &TestGlobalYAMLBuildController{
 		GlobalYAMLBuildController: GlobalYAMLBuildController{
-			lastGlobalYAMLManifest: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil),
+			lastGlobalYAMLManifest: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil, nil),
 			k8sClient:              kc,
 		},
 		k8sClient: kc,
