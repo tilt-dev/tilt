@@ -31,7 +31,7 @@ class ResourceSummary extends Component {
     let updateTime = getUpdateTime(resource)
     return (
       <div className="ResourceSummary">
-        <div className="Resource-lhsCell">{resource.Name}</div>
+        <div className="Resource-lhsCell Resource-name">{resource.Name}</div>
         <div className="Resource-spacerCell">&nbsp;</div>
         <div className="Resource-rhsCell">{k8sStatus}</div>
         <div>&nbsp;•&nbsp;</div>
