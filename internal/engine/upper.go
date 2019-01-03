@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -91,7 +91,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode) error {
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -102,7 +102,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		return err
 	}
 
-	absTfPath, err := filepath.Abs(tiltfile.FileName)
+	absTfPath, err := filepath.Abs(fileName)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfile.FileName, matching)
+	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching)
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
