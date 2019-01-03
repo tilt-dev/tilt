@@ -21,7 +21,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/tiltfile2"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
@@ -541,7 +541,7 @@ k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
-	manifests, _, _, err := tiltfile2.Load(f.ctx, tiltfile2.FileName, nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, tiltfile.FileName, nil)
 	assert.NoError(t, err)
 
 	f.Start(manifests, true)
@@ -2184,7 +2184,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile2.FileName), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2221,7 +2221,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
