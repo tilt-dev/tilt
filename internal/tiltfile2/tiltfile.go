@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/google/skylark/resolve"
 	"github.com/pkg/errors"
-	skylark "go.starlark.net/starlark"
+	"go.starlark.net/resolve"
+	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -20,6 +20,7 @@ const unresourcedName = "k8s_yaml"
 func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
+	resolve.AllowGlobalReassign = true
 }
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
@@ -38,7 +39,7 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 	}()
 
 	if err := s.exec(); err != nil {
-		if err, ok := err.(*skylark.EvalError); ok {
+		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, model.YAMLManifest{}, nil, errors.Wrap(err, err.Backtrace())
 		}
 		return nil, model.YAMLManifest{}, nil, err
@@ -79,18 +80,18 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 	return manifests, yamlManifest, s.configFiles, err
 }
 
-func skylarkStringDictToGoMap(d *skylark.Dict) (map[string]string, error) {
+func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
 	r := map[string]string{}
 
 	for _, tuple := range d.Items() {
-		kV, ok := tuple[0].(skylark.String)
+		kV, ok := tuple[0].(starlark.String)
 		if !ok {
 			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
 		}
 
 		k := string(kV)
 
-		vV, ok := tuple[1].(skylark.String)
+		vV, ok := tuple[1].(starlark.String)
 		if !ok {
 			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
 		}
