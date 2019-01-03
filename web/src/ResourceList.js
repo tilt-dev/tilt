@@ -4,7 +4,7 @@ import './text.css';
 
 function ResourceList(props) {
   let children = props.resources.map((resource) => {
-    return <ResourceSummary resource={resource} />
+    return <ResourceSummary key={resource.Name} resource={resource} />
   })
 
   return (

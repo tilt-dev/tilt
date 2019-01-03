@@ -5,15 +5,20 @@ import './App.css';
 class App extends Component {
   constructor(props) {
     super(props)
-    this.state = {Resources: []}
+    this.state = {
+      Message: '',
+      View: {Resources: []},
+    }
   }
 
   render() {
     let el = null
-    if (!this.state.Resources || !this.state.Resources.length) {
-      el = <LoadingScreen />
+    let view = this.state.View
+    let message = this.state.Message
+    if (!view || !view.Resources || !view.Resources.length) {
+      el = <LoadingScreen message={message} />
     } else {
-      el = <ResourceList resources={this.state.Resources} />
+      el = <ResourceList resources={view.Resources} />
     }
 
     return (
@@ -24,10 +29,11 @@ class App extends Component {
   }
 }
 
-function LoadingScreen() {
+function LoadingScreen(props) {
+  let message = props.message || 'Loading…'
   return (
     <header className="LoadingScreen">
-      Loading...
+      {message}
     </header>
   )
 }
