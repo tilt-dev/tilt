@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	v1 "k8s.io/api/core/v1"
@@ -106,6 +107,11 @@ func NewK8sClient(
 	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
 	pf PortForwarder) K8sClient {
+
+	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
+	writer := logger.Get(ctx).Writer(logger.DebugLvl)
+	browser.Stdout = writer
+	browser.Stderr = writer
 
 	return K8sClient{
 		env:           env,
