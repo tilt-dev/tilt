@@ -59,6 +59,10 @@ func (s *Store) AddSubscriber(sub Subscriber) {
 	s.subscribers.Add(sub)
 }
 
+func (s *Store) RemoveSubscriber(sub Subscriber) error {
+	return s.subscribers.Remove(sub)
+}
+
 // Sends messages to all the subscribers asynchronously.
 func (s *Store) NotifySubscribers(ctx context.Context) {
 	s.subscribers.NotifyAll(ctx, s)
