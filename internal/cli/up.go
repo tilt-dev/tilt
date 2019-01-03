@@ -18,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile2"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
 
@@ -53,7 +53,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&c.port, "port", 0, "Port for the Tilt HTTP server")
 	cmd.Flags().Lookup("logactions").Hidden = true
-	cmd.Flags().StringVar(&c.fileName, "file", tiltfile2.FileName, "Path to Tiltfile")
+	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
 	if err != nil {
 		panic(err)
