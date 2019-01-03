@@ -534,7 +534,7 @@ func TestSecondResourceIsBuilt(t *testing.T) {
 	f.WriteFile("Tiltfile", `
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 
-k8s_resource("baz", 'snack.yaml')
+k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 `)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
@@ -558,8 +558,8 @@ k8s_resource("baz", 'snack.yaml')
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
-k8s_resource("baz", 'snack.yaml')
-k8s_resource("quux", 'doggos.yaml')
+k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
+k8s_resource("quux", 'doggos.yaml')  # rename "doggos" --> "quux"
 `)
 
 	// Expect a build of quux, the new resource
@@ -1682,6 +1682,86 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 }
 
+func TestDockerComposeUp(t *testing.T) {
+	f := newTestFixture(t)
+	redis, server := f.setupDCFixture()
+
+	f.Start([]model.Manifest{redis, server}, true)
+	call := f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+	assert.Equal(t, redis.ManifestName(), call.manifest.Name)
+	call = f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+	assert.Equal(t, server.ManifestName(), call.manifest.Name)
+}
+
+func TestDockerComposeRedeployFromFileChange(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	f.Start([]model.Manifest{m}, true)
+
+	// Initial build
+	call := f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+
+	// Change a file -- should trigger build
+	f.fsWatcher.events <- watch.FileEvent{Path: "package.json"}
+	call = f.nextCall()
+	assert.Equal(t, []string{f.JoinPath("package.json")}, call.state.FilesChanged())
+}
+
+func TestDockerComposeEditConfigFiles(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	f.StartOnly([]model.Manifest{m}, true)
+
+	// Initial build
+	call := f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+
+	// Change Dockerfile -- will change manifest, trigger build
+	newDf := "FROM newimage"
+	f.WriteConfigFiles("Dockerfile", newDf)
+	time.Sleep(time.Second) // TODO(maia): speed up Tiltfile load for DC, this is gross 😢
+	call = f.nextCall()
+	assert.Equal(t, newDf, string(call.manifest.DCInfo().DfRaw))
+
+	// Change a quote unquote "config file" that doesn't affect the manifest -- no build
+	f.WriteConfigFiles("some/config/file", "i won't affect the manifest")
+	time.Sleep(time.Second) // TODO(maia): speed up Tiltfile load for DC, this is gross 😢
+	f.assertNoCall()
+}
+
+func TestDockerComposeEventSetsStatus(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	f.Start([]model.Manifest{m}, true)
+	f.waitForCompletedBuildCount(1)
+
+	// Send event corresponding to status = "in progress"
+	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	f.WaitUntilManifest("resource status = 'in progress'", m.ManifestName().String(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusInProg
+	})
+
+	// Send event corresponding to status = "up"
+	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	f.WaitUntilManifest("resource status = 'up'", m.ManifestName().String(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusUp
+	})
+}
+
 func TestDockerComposeRecordsLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
@@ -1795,7 +1875,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcc := &dockercompose.FakeDCClient{}
+	dcc := dockercompose.NewFakeDockerComposeClient()
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)
@@ -1826,9 +1906,25 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
+	f.startWithInitManifests(nil, manifests, watchMounts)
+}
+
+// Start ONLY the specified manifests and no others (e.g. if additional manifests
+// specified later, don't run them. Like running `tilt up <foo, bar>`.
+func (f *testFixture) StartOnly(manifests []model.Manifest, watchMounts bool) {
+	mNames := make([]model.ManifestName, len(manifests))
+	for i, m := range manifests {
+		mNames[i] = m.Name
+	}
+	f.startWithInitManifests(mNames, manifests, watchMounts)
+}
+
+// Empty `initManifests` will run start ALL manifests
+func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchMounts bool) {
 	f.Init(InitAction{
-		Manifests:   manifests,
-		WatchMounts: watchMounts,
+		InitManifests: initManifests, // equivalent to running `tilt up <foo, bar>` -- only run specified manifests
+		Manifests:     manifests,
+		WatchMounts:   watchMounts,
 	})
 }
 
@@ -2160,4 +2256,12 @@ type fixtureSub struct {
 
 func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
 	s.ch <- true
+}
+
+func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) dockercompose.Event {
+	return dockercompose.Event{
+		Type:    dockercompose.TypeContainer,
+		Action:  action,
+		Service: m.ManifestName().String(),
+	}
 }
