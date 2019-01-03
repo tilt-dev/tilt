@@ -11,15 +11,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/watch"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/docker/distribution/reference"
-	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/browser"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -107,11 +106,6 @@ func NewK8sClient(
 	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
 	pf PortForwarder) K8sClient {
-
-	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
-	writer := logger.Get(ctx).Writer(logger.DebugLvl)
-	browser.Stdout = writer
-	browser.Stderr = writer
 
 	return K8sClient{
 		env:           env,
@@ -235,6 +229,13 @@ func maybeImmutableFieldStderr(stderr string) bool {
 // Currently ignores any "not found" errors, because that seems like the correct
 // behavior for our use cases.
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+	l := logger.Get(ctx)
+	var b strings.Builder
+	for _, e := range entities {
+		b.WriteString(fmt.Sprintf("Deleting via kubectl: %s/%s\n", e.Kind.Kind, e.Name()))
+	}
+	l.Infof(b.String())
+
 	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)
 	if err != nil {
 		return errors.Wrapf(err, "kubectl delete:\nstderr: %s", stderr)
