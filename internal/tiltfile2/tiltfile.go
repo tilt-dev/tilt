@@ -40,7 +40,7 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
-			return nil, model.YAMLManifest{}, nil, errors.Wrap(err, err.Backtrace())
+			return nil, model.YAMLManifest{}, nil, errors.New(err.Backtrace())
 		}
 		return nil, model.YAMLManifest{}, nil, err
 	}
