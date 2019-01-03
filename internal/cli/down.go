@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
 )
@@ -31,7 +32,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, _, _, err := tiltfile2.Load(ctx, tiltfile2.FileName, nil)
+	manifests, globalYaml, _, err := tiltfile2.Load(ctx, tiltfile2.FileName, nil)
 	if err != nil {
 		return err
 	}
@@ -40,6 +41,11 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
+	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sYAML())
+	if err != nil {
+		return errors.Wrap(err, "Parsing global YAML")
+	}
+	entities = append(entities, gyamlEntities...)
 
 	kClient, err := wireK8sClient(ctx)
 	if err != nil {
