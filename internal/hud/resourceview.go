@@ -185,7 +185,25 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 	if l := v.resourceExpandedK8s(); !rty.IsEmpty(l) {
 		return l
 	}
+	if l := v.resourceExpandedYAML(); !rty.IsEmpty(l) {
+		return l
+	}
 	return rty.EmptyLayout
+}
+
+func (v *ResourceView) resourceExpandedYAML() rty.Component {
+	if !v.res.IsYAMLManifest {
+		return rty.EmptyLayout
+	}
+	yi := v.res.YamlInfo()
+
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(rty.TextString(strings.Repeat(" ", 2)))
+	rhs := rty.NewConcatLayout(rty.DirVert)
+	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("The YAML loaded from the Tiltfile includes these K8s objects:").Build())
+	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
+	l.AddDynamic(rhs)
+	return l
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {

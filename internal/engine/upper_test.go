@@ -127,7 +127,7 @@ func TestUpper_Up(t *testing.T) {
 	manifest := f.newManifest("foobar", nil)
 
 	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
-		testyaml.BlorgBackendYAML, []string{"foo", "bar"})
+		testyaml.BlorgBackendYAML, []string{"foo", "bar"}, []string{})
 	err := f.upper.Init(f.ctx, InitAction{
 		Manifests:          []model.Manifest{manifest},
 		GlobalYAMLManifest: gYaml,
@@ -1602,7 +1602,7 @@ func TestUpper_PodLogs(t *testing.T) {
 func TestInitWithGlobalYAML(t *testing.T) {
 	f := newTestFixture(t)
 	state := f.store.RLockState()
-	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{})
+	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{}, []string{})
 	state.GlobalYAML = ym
 	f.store.RUnlockState()
 	f.Start([]model.Manifest{}, true)
@@ -1614,7 +1614,7 @@ func TestInitWithGlobalYAML(t *testing.T) {
 		return st.GlobalYAML.K8sYAML() == testyaml.BlorgBackendYAML
 	})
 
-	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{})
+	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{}, []string{})
 	f.store.Dispatch(ConfigsReloadedAction{
 		GlobalYAML: newYM,
 	})

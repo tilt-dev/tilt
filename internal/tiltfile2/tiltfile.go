@@ -74,7 +74,12 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 			return nil, model.YAMLManifest{}, nil, err
 		}
 
-		yamlManifest = model.NewYAMLManifest(unresourcedName, yaml, nil)
+		var resourceNames []string
+		for _, e := range unresourced {
+			resourceNames = append(resourceNames, fmt.Sprintf("%s (%s)", e.Name(), e.Kind.Kind))
+		}
+
+		yamlManifest = model.NewYAMLManifest(unresourcedName, yaml, nil, resourceNames)
 	}
 
 	return manifests, yamlManifest, s.configFiles, err
