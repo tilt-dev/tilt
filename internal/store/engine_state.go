@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/ to get started."
@@ -64,6 +65,14 @@ type EngineState struct {
 
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
+}
+
+func (e EngineState) RelativeTiltfilePath() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Rel(wd, e.TiltfilePath)
 }
 
 func (e EngineState) IsEmpty() bool {

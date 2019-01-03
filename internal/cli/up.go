@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 )
 
@@ -31,6 +32,7 @@ type upCmd struct {
 	hud         bool
 	autoDeploy  bool
 	port        int
+	fileName    string
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -51,6 +53,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&c.port, "port", 0, "Port for the Tilt HTTP server")
 	cmd.Flags().Lookup("logactions").Hidden = true
+	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
 	if err != nil {
 		panic(err)
@@ -141,7 +144,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch, triggerMode)
+		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName)
 	})
 
 	err = g.Wait()

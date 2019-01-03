@@ -45,7 +45,13 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		for _, m := range initManifests {
 			matching[string(m)] = true
 		}
-		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfile.FileName, matching)
+		tiltfilePath, err := state.RelativeTiltfilePath()
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+			return
+		}
+
+		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfilePath, matching)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
