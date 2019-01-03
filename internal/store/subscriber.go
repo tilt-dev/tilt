@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
@@ -27,6 +28,20 @@ func (l *subscriberList) Add(s Subscriber) {
 	l.subscribers = append(l.subscribers, &subscriberEntry{
 		subscriber: s,
 	})
+}
+
+func (l *subscriberList) Remove(s Subscriber) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	for i, current := range l.subscribers {
+		if s == current.subscriber {
+			l.subscribers = append(l.subscribers[:i], l.subscribers[i+1:]...)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Subscriber not found: %T: %+v", s, s)
 }
 
 func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSubscriber(t *testing.T) {
@@ -38,6 +40,30 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	case <-s.onChange:
 		t.Fatal("Expected no more onChange calls")
 	case <-time.After(10 * time.Millisecond):
+	}
+}
+
+func TestRemoveSubscriber(t *testing.T) {
+	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	ctx := context.Background()
+	s := newFakeSubscriber()
+
+	st.AddSubscriber(s)
+	st.NotifySubscribers(ctx)
+	s.assertOnChangeCount(t, 1)
+
+	err := st.RemoveSubscriber(s)
+	assert.NoError(t, err)
+	st.NotifySubscribers(ctx)
+	s.assertOnChangeCount(t, 0)
+}
+
+func TestRemoveSubscriberNotFound(t *testing.T) {
+	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	s := newFakeSubscriber()
+	err := st.RemoveSubscriber(s)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Subscriber not found")
 	}
 }
 
