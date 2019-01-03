@@ -1,6 +1,8 @@
 package store
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -120,6 +122,21 @@ func TestEmptyState(t *testing.T) {
 	nes = newState([]model.Manifest{m2}, model.YAMLManifest{})
 	v = StateToView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
+}
+
+func TestRelativeTiltfilePath(t *testing.T) {
+	es := newState([]model.Manifest{}, model.YAMLManifest{})
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	es.TiltfilePath = filepath.Join(wd, "Tiltfile")
+
+	actual, err := es.RelativeTiltfilePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "Tiltfile", actual)
 }
 
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
