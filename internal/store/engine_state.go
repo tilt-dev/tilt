@@ -440,7 +440,6 @@ func StateToView(s EngineState) view.View {
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
 		// "most interesting" pod that's crash looping, or show logs from all pods
 		// at once).
-		pod := ms.MostRecentPod()
 		_, pendingBuildSince := ms.HasPendingChanges()
 		r := view.Resource{
 			Name:               name,
@@ -452,12 +451,6 @@ func StateToView(s EngineState) view.View {
 			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: ms.NextBuildReason(),
 			CurrentBuild:       currentBuild,
-			PodName:            pod.PodID.String(),
-			PodCreationTime:    pod.StartedAt,
-			PodUpdateStartTime: pod.UpdateStartTime,
-			PodStatus:          pod.Status,
-			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
-			PodLog:             pod.Log(),
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(ms),
@@ -508,14 +501,18 @@ func StateToView(s EngineState) view.View {
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 	if dcInfo := ms.Manifest.DCInfo(); !dcInfo.Empty() {
 		dcState := ms.DCResourceState()
-		return view.DCResourceInfo{
-			ConfigPath: dcInfo.ConfigPath,
-			Status:     dcState.Status,
-			Log:        dcState.Log(),
+		return view.NewDCResourceInfo(dcInfo.ConfigPath, dcState.Status, dcState.Log())
+	} else {
+		pod := ms.MostRecentPod()
+		return view.K8SResourceInfo{
+			PodName:            pod.PodID.String(),
+			PodCreationTime:    pod.StartedAt,
+			PodUpdateStartTime: pod.UpdateStartTime,
+			PodStatus:          pod.Status,
+			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
+			PodLog:             pod.Log(),
 		}
 	}
-	// TODO(maia): k8s
-	return nil
 }
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any

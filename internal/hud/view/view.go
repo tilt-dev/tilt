@@ -9,22 +9,55 @@ import (
 
 type ResourceInfoView interface {
 	resourceInfoView()
+	RuntimeLog() string
+	Status() string
 }
 
 type DCResourceInfo struct {
 	ConfigPath string
-	Status     string
+	status     string
 	Log        string
 }
 
-func (DCResourceInfo) resourceInfoView() {}
-func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
+func NewDCResourceInfo(configPath string, status string, log string) DCResourceInfo {
+	return DCResourceInfo{
+		ConfigPath: configPath,
+		status:     status,
+		Log:        log,
+	}
+}
+
+var _ ResourceInfoView = DCResourceInfo{}
+
+func (DCResourceInfo) resourceInfoView()     {}
+func (dc DCResourceInfo) Empty() bool        { return reflect.DeepEqual(dc, DCResourceInfo{}) }
+func (dc DCResourceInfo) RuntimeLog() string { return dc.Log }
+func (dc DCResourceInfo) Status() string     { return dc.status }
+
+type K8SResourceInfo struct {
+	PodName            string
+	PodCreationTime    time.Time
+	PodUpdateStartTime time.Time
+	PodStatus          string
+	PodRestarts        int
+	PodLog             string
+}
+
+var _ ResourceInfoView = K8SResourceInfo{}
+
+func (K8SResourceInfo) resourceInfoView()      {}
+func (kri K8SResourceInfo) RuntimeLog() string { return kri.PodLog }
+func (kri K8SResourceInfo) Status() string     { return kri.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string
 }
 
-func (YAMLResourceInfo) resourceInfoView() {}
+var _ ResourceInfoView = YAMLResourceInfo{}
+
+func (YAMLResourceInfo) resourceInfoView()      {}
+func (yri YAMLResourceInfo) RuntimeLog() string { return "" }
+func (yri YAMLResourceInfo) Status() string     { return "" }
 
 type Resource struct {
 	Name               model.ManifestName
@@ -39,14 +72,7 @@ type Resource struct {
 	PendingBuildEdits  []string
 	PendingBuildSince  time.Time
 
-	// Relevant to k8s resources (maybe should accomplish via interface?)
-	PodName            string
-	PodCreationTime    time.Time
-	PodUpdateStartTime time.Time
-	PodStatus          string
-	PodRestarts        int
-	Endpoints          []string
-	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
+	Endpoints []string
 
 	ResourceInfo ResourceInfoView
 
@@ -70,6 +96,16 @@ func (r Resource) IsDC() bool {
 	return !r.DCInfo().Empty()
 }
 
+func (r Resource) K8SInfo() K8SResourceInfo {
+	ret, _ := r.ResourceInfo.(K8SResourceInfo)
+	return ret
+}
+
+func (r Resource) IsK8S() bool {
+	_, ok := r.ResourceInfo.(K8SResourceInfo)
+	return ok
+}
+
 func (r Resource) YamlInfo() YAMLResourceInfo {
 	switch info := r.ResourceInfo.(type) {
 	case YAMLResourceInfo:
@@ -87,11 +123,14 @@ func (r Resource) LastBuild() model.BuildStatus {
 }
 
 func (r Resource) DefaultCollapse() bool {
-	autoExpand := r.LastBuild().Error != nil ||
+	autoExpand := false
+	if r.IsK8S() {
+		kri := r.K8SInfo()
+		autoExpand = kri.PodRestarts > 0 || kri.PodStatus == "CrashLoopBackoff" || kri.PodStatus == "Error"
+	}
+	autoExpand = autoExpand ||
+		r.LastBuild().Error != nil ||
 		r.CrashLog != "" ||
-		r.PodRestarts > 0 ||
-		r.PodStatus == "CrashLoopBackoff" ||
-		r.PodStatus == "Error" ||
 		r.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		r.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)

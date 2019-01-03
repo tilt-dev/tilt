@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell"
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -66,38 +65,31 @@ func (v *ResourceView) resourceTitle() rty.Component {
 	return rty.OneLine(l)
 }
 
-func (v *ResourceView) statusColor() tcell.Color {
-	if dcInfo := v.res.DCInfo(); !dcInfo.Empty() {
-		if dcInfo.Status == dockercompose.StatusInProg {
-			return cPending
-		} else if dcInfo.Status == dockercompose.StatusUp {
-			return cGood
-		} else if dcInfo.Status == dockercompose.StatusDown {
-			return cBad
-		}
-	} else if !v.res.CurrentBuild.Empty() && !v.res.CurrentBuild.Reason.IsCrashOnly() {
+func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
+	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
-	} else if !v.res.PendingBuildSince.IsZero() && !v.res.PendingBuildReason.IsCrashOnly() {
-		if v.triggerMode == model.TriggerAuto {
+	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
+		if triggerMode == model.TriggerAuto {
 			return cPending
 		} else {
 			return cLightText
 		}
-	} else if isCrashing(v.res) {
+	} else if isCrashing(res) {
 		return cBad
-	} else if v.res.LastBuild().Error != nil {
+	} else if res.LastBuild().Error != nil {
 		return cBad
-	} else if v.res.IsYAMLManifest && !v.res.LastDeployTime.IsZero() {
+	} else if res.IsYAMLManifest && !res.LastDeployTime.IsZero() {
 		return cGood
-	} else if !v.res.LastBuild().FinishTime.IsZero() && v.res.PodStatus == "" {
+	} else if !res.LastBuild().FinishTime.IsZero() && res.ResourceInfo.Status() == "" {
 		return cPending // pod status hasn't shown up yet
+	} else {
+		if res.ResourceInfo != nil {
+			if statusColor, ok := statusColors[res.ResourceInfo.Status()]; ok {
+				return statusColor
+			}
+		}
+		return cLightText
 	}
-
-	statusColor, ok := podStatusColors[v.res.PodStatus]
-	if !ok {
-		statusColor = cLightText
-	}
-	return statusColor
 }
 
 func (v *ResourceView) titleTextName() rty.Component {
@@ -112,7 +104,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
-	color := v.statusColor()
+	color := statusColor(v.res, v.triggerMode)
 	sb.Text(p)
 	sb.Fg(color).Textf(" ● ")
 
@@ -124,32 +116,27 @@ func (v *ResourceView) titleTextName() rty.Component {
 	return sb.Build()
 }
 
-func (v *ResourceView) titleTextK8s() rty.Component {
-	status := v.res.PodStatus
+func (v *ResourceView) titleText() rty.Component {
+	if v.res.IsDC() {
+		return titleTextDC(v.res.DCInfo())
+	} else if v.res.IsK8S() {
+		return titleTextK8s(v.res.K8SInfo())
+	} else {
+		return nil
+	}
+}
+
+func titleTextK8s(kri view.K8SResourceInfo) rty.Component {
+	status := kri.PodStatus
 	if status == "" {
 		status = "Pending"
 	}
 	return rty.TextString(status)
 }
 
-func (v *ResourceView) titleText() rty.Component {
-	if v.res.IsYAMLManifest {
-		return nil
-	}
-	if tt := v.titleTextDC(); tt != nil {
-		return tt
-	}
-	return v.titleTextK8s()
-}
-
-func (v *ResourceView) titleTextDC() rty.Component {
-	dcInfo := v.res.DCInfo()
-	if dcInfo.Empty() {
-		return nil
-	}
-
+func titleTextDC(dcInfo view.DCResourceInfo) rty.Component {
 	sb := rty.NewStringBuilder()
-	status := dcInfo.Status
+	status := dcInfo.Status()
 	if status == "" {
 		status = "Pending"
 	}
@@ -179,11 +166,10 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 }
 
 func (v *ResourceView) resourceExpanded() rty.Component {
-	if l := v.resourceExpandedDC(); !rty.IsEmpty(l) {
-		return l
-	}
-	if l := v.resourceExpandedK8s(); !rty.IsEmpty(l) {
-		return l
+	if v.res.IsDC() {
+		return v.resourceExpandedDC()
+	} else if v.res.IsK8S() {
+		return v.resourceExpandedK8s()
 	}
 	if l := v.resourceExpandedYAML(); !rty.IsEmpty(l) {
 		return l
@@ -217,8 +203,8 @@ func (v *ResourceView) resourceExpandedDC() rty.Component {
 	l.AddDynamic(rty.NewFillerString(' '))
 
 	// TODO(maia): ports
+	// TODO(matt) container age?
 
-	l.Add(v.resourceTextAge())
 	return rty.OneLine(l)
 }
 
@@ -233,25 +219,26 @@ func (v *ResourceView) endpointsNeedSecondLine() bool {
 	if len(v.res.Endpoints) > 1 {
 		return true
 	}
-	if len(v.res.Endpoints) == 1 && v.res.PodRestarts > 0 {
+	if v.res.IsK8S() && v.res.K8SInfo().PodRestarts > 0 && len(v.res.Endpoints) == 1 {
 		return true
 	}
 	return false
 }
 
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
-	if v.res.IsYAMLManifest || v.res.PodName == "" {
+	kri := v.res.K8SInfo()
+	if kri.PodName == "" {
 		return rty.EmptyLayout
 	}
 
 	l := rty.NewConcatLayout(rty.DirHor)
-	l.Add(v.resourceTextPodName())
+	l.Add(resourceTextPodName(kri))
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
 	l.Add(rty.TextString(" "))
 
-	if v.res.PodRestarts > 0 {
-		l.Add(v.resourceTextPodRestarts())
+	if kri.PodRestarts > 0 {
+		l.Add(resourceTextPodRestarts(kri))
 		l.Add(middotText())
 	}
 
@@ -262,32 +249,32 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 		}
 	}
 
-	l.Add(v.resourceTextAge())
+	l.Add(resourceTextAge(kri))
 	return rty.OneLine(l)
 }
 
-func (v *ResourceView) resourceTextPodName() rty.Component {
+func resourceTextPodName(kri view.K8SResourceInfo) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("K8S POD: ")
-	sb.Fg(tcell.ColorDefault).Text(v.res.PodName)
+	sb.Fg(tcell.ColorDefault).Text(kri.PodName)
 	return sb.Build()
 }
 
-func (v *ResourceView) resourceTextPodRestarts() rty.Component {
+func resourceTextPodRestarts(kri view.K8SResourceInfo) rty.Component {
 	s := "restarts"
-	if v.res.PodRestarts == 1 {
+	if kri.PodRestarts == 1 {
 		s = "restart"
 	}
 	return rty.NewStringBuilder().
 		Fg(cPending).
-		Textf("%d %s", v.res.PodRestarts, s).
+		Textf("%d %s", kri.PodRestarts, s).
 		Build()
 }
 
-func (v *ResourceView) resourceTextAge() rty.Component {
+func resourceTextAge(kri view.K8SResourceInfo) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("AGE ")
-	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(v.res.PodCreationTime)))
+	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(kri.PodCreationTime)))
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
 		Add(sb.Build())
@@ -299,7 +286,7 @@ func (v *ResourceView) resourceExpandedEndpoints() rty.Component {
 	}
 
 	l := rty.NewConcatLayout(rty.DirHor)
-	l.Add(v.resourceTextURL())
+	l.Add(resourceTextURLPrefix())
 
 	for i, endpoint := range v.res.Endpoints {
 		if i != 0 {
@@ -311,7 +298,7 @@ func (v *ResourceView) resourceExpandedEndpoints() rty.Component {
 	return l
 }
 
-func (v *ResourceView) resourceTextURL() rty.Component {
+func resourceTextURLPrefix() rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("URL: ")
 	return sb.Build()
@@ -368,7 +355,7 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 func (v *ResourceView) resourceExpandedError() rty.Component {
 	errPane, ok := v.resourceExpandedBuildError()
 	if !ok {
-		errPane, ok = v.resourceExpandedK8sError()
+		errPane, ok = v.resourceExpandedRuntimeError()
 	}
 
 	if !ok {
@@ -386,16 +373,15 @@ func (v *ResourceView) resourceExpandedError() rty.Component {
 	return l
 }
 
-// TODO(maia): rename this method to be generic (thiiink it already works with k8s AND dc?)
-func (v *ResourceView) resourceExpandedK8sError() (rty.Component, bool) {
+func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 	if isCrashing(v.res) {
-		podLog := v.res.CrashLog
-		if podLog == "" {
-			podLog = v.res.PodLog
+		runtimeLog := v.res.CrashLog
+		if runtimeLog == "" {
+			runtimeLog = v.res.ResourceInfo.RuntimeLog()
 		}
-		abbrevLog := abbreviateLog(podLog)
+		abbrevLog := abbreviateLog(runtimeLog)
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true
