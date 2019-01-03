@@ -20,11 +20,11 @@ type DCResourceInfo struct {
 func (DCResourceInfo) resourceInfoView() {}
 func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
 
-type YamlResourceInfo struct {
+type YAMLResourceInfo struct {
 	K8sResources []string
 }
 
-func (YamlResourceInfo) resourceInfoView() {}
+func (YAMLResourceInfo) resourceInfoView() {}
 
 type Resource struct {
 	Name               model.ManifestName
@@ -70,12 +70,12 @@ func (r Resource) IsDC() bool {
 	return !r.DCInfo().Empty()
 }
 
-func (r Resource) YamlInfo() YamlResourceInfo {
+func (r Resource) YamlInfo() YAMLResourceInfo {
 	switch info := r.ResourceInfo.(type) {
-	case YamlResourceInfo:
+	case YAMLResourceInfo:
 		return info
 	default:
-		return YamlResourceInfo{}
+		return YAMLResourceInfo{}
 	}
 }
 
