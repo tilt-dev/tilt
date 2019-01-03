@@ -55,6 +55,34 @@ type onChangeCall struct {
 	done chan bool
 }
 
+func (f fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
+	t.Helper()
+
+	for i := 0; i < count; i++ {
+		f.assertOnChange(t)
+	}
+
+	select {
+	case <-time.After(10 * time.Millisecond):
+		return
+
+	case call := <-f.onChange:
+		close(call.done)
+		t.Fatalf("Expected only %d OnChange calls. Got: %d", count, count+1)
+	}
+}
+
+func (f fakeSubscriber) assertOnChange(t *testing.T) {
+	t.Helper()
+
+	select {
+	case <-time.After(20 * time.Millisecond):
+		t.Fatalf("timed out waiting for subscriber.OnChange")
+	case call := <-f.onChange:
+		close(call.done)
+	}
+}
+
 func (f fakeSubscriber) OnChange(ctx context.Context, st RStore) {
 	call := onChangeCall{done: make(chan bool)}
 	f.onChange <- call

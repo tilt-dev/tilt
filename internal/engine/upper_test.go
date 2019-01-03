@@ -174,6 +174,8 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	assert.Equal(t, manifest, call.manifest)
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
+	f.waitForCompletedBuildCount(1)
+
 	fileRelPath := "fdas"
 	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 
@@ -186,9 +188,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	}
 	assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
 
-	f.WaitUntil("all builds complete", func(es store.EngineState) bool {
-		return es.CurrentlyBuilding == ""
-	})
+	f.waitForCompletedBuildCount(2)
 
 	f.WithManifest("foobar", func(ms store.ManifestState) {
 		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagMountFiles))
