@@ -18,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile2"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -102,7 +102,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		return err
 	}
 
-	absTfPath, err := filepath.Abs(tiltfile2.FileName)
+	absTfPath, err := filepath.Abs(tiltfile.FileName)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := tiltfile2.Load(ctx, tiltfile2.FileName, matching)
+	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfile.FileName, matching)
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
