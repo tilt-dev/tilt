@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	_ "github.com/gorilla/websocket"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
