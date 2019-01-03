@@ -25,7 +25,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -1901,9 +1901,9 @@ func (f *testFixture) StartOnly(manifests []model.Manifest, watchMounts bool) {
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchMounts bool) {
 	f.Init(InitAction{
-		InitManifests: initManifests, // equivalent to running `tilt up <foo, bar>` -- only run specified manifests
-		Manifests:     manifests,
-		WatchMounts:   watchMounts,
+		Manifests:    manifests,
+		WatchMounts:  watchMounts,
+		TiltfilePath: f.JoinPath("Tiltfile"),
 	})
 }
 
