@@ -1711,28 +1711,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	assert.Equal(t, []string{f.JoinPath("package.json")}, call.state.FilesChanged())
 }
 
-func TestDockerComposeEditConfigFiles(t *testing.T) {
-	f := newTestFixture(t)
-	_, m := f.setupDCFixture()
-
-	f.StartOnly([]model.Manifest{m}, true)
-
-	// Initial build
-	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
-
-	// Change Dockerfile -- will change manifest, trigger build
-	newDf := "FROM newimage"
-	f.WriteConfigFiles("Dockerfile", newDf)
-	time.Sleep(time.Second) // TODO(maia): speed up Tiltfile load for DC, this is gross 😢
-	call = f.nextCall()
-	assert.Equal(t, newDf, string(call.manifest.DCInfo().DfRaw))
-
-	// Change a quote unquote "config file" that doesn't affect the manifest -- no build
-	f.WriteConfigFiles("some/config/file", "i won't affect the manifest")
-	time.Sleep(time.Second) // TODO(maia): speed up Tiltfile load for DC, this is gross 😢
-	f.assertNoCall()
-}
+// TODO(maia): TestDockerComposeEditConfigFiles once DC manifests load faster (http://bit.ly/2RBX4g5)
 
 func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f := newTestFixture(t)
@@ -1875,7 +1854,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcc := dockercompose.NewFakeDockerComposeClient()
+	dcc := dockercompose.NewFakeDockerComposeClient(t)
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)

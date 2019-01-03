@@ -435,7 +435,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
-	dcc := dockercompose.NewFakeDockerComposeClient()
+	dcc := dockercompose.NewFakeDockerComposeClient(t)
 	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, mode, sCli, dcc)
 	if err != nil {
 		t.Fatal(err)
