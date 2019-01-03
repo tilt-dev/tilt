@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile2"
@@ -37,6 +38,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	}
 	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
 	go func() {
+		startTime := time.Now()
 		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged})
 
 		matching := map[string]bool{}
@@ -48,6 +50,8 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
 			ConfigFiles: configFiles,
+			StartTime:   startTime,
+			FinishTime:  time.Now(),
 			Err:         err,
 		})
 	}()
