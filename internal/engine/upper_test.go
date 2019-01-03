@@ -689,7 +689,7 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	f.WaitUntil("error set", func(st store.EngineState) bool {
-		return st.LastTiltfileError != nil
+		return st.LastTiltfileError() != nil
 	})
 
 	f.withState(func(es store.EngineState) {
@@ -718,13 +718,13 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("state is broken", func(st store.EngineState) bool {
-		return st.LastTiltfileError != nil
+		return st.LastTiltfileError() != nil
 	})
 
 	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
 	f.WaitUntil("state is restored", func(st store.EngineState) bool {
-		return st.LastTiltfileError == nil
+		return st.LastTiltfileError() == nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -760,7 +760,7 @@ k8s_resource('foobar', 'snack.yaml')
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("manifest load error", func(st store.EngineState) bool {
-		return st.LastTiltfileError != nil
+		return st.LastTiltfileError() != nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -776,7 +776,7 @@ k8s_resource('foobar', 'snack.yaml')
 
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, "", nextManifestToBuild(state).String())
-		assert.NoError(t, state.LastTiltfileError)
+		assert.NoError(t, state.LastTiltfileError())
 	})
 
 	f.withManifestState(name, func(ms store.ManifestState) {

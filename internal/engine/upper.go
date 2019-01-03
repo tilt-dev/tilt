@@ -95,6 +95,8 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
+	startTime := time.Now()
+
 	err := u.kcli.ConnectedToCluster(ctx)
 	if err != nil {
 		return err
@@ -122,6 +124,8 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		ConfigFiles:        configFiles,
 		InitManifests:      manifestNames,
 		TriggerMode:        triggerMode,
+		StartTime:          startTime,
+		FinishTime:         time.Now(),
 		Err:                err,
 	})
 }
@@ -376,11 +380,15 @@ func handleConfigsReloaded(
 	event ConfigsReloadedAction,
 ) {
 	manifests := event.Manifests
-	err := event.Err
-	if err != nil {
-		handleTiltfileError(state, err)
-		return
+
+	status := model.BuildStatus{
+		StartTime:  event.StartTime,
+		FinishTime: event.FinishTime,
+		Error:      event.Err,
+		Reason:     model.BuildReasonFlagConfig,
 	}
+	setLastTiltfileBuild(state, status)
+
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
 		ms, ok := state.ManifestStates[m.ManifestName()]
@@ -403,7 +411,6 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
-	state.LastTiltfileError = nil
 }
 
 // Get a pointer to a mutable manifest state,
@@ -667,9 +674,14 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.GlobalYAML = action.GlobalYAMLManifest
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
-	if action.Err != nil {
-		handleTiltfileError(engineState, action.Err)
+	status := model.BuildStatus{
+		StartTime:  action.StartTime,
+		FinishTime: action.FinishTime,
+		Error:      action.Err,
+		Reason:     model.BuildReasonFlagInit,
+		// TODO(nick): Send tiltfile stdout to the build status log
 	}
+	setLastTiltfileBuild(engineState, status)
 
 	manifests := action.Manifests
 	for _, m := range manifests {
@@ -682,11 +694,12 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	return nil
 }
 
-func handleTiltfileError(state *store.EngineState, err error) {
-	state.LastTiltfileError = err
-	handleLogAction(state, LogAction{
-		Log: []byte(fmt.Sprintf("Tiltfile error:\n%v\n", err)),
-	})
+func setLastTiltfileBuild(state *store.EngineState, status model.BuildStatus) {
+	if status.Error != nil {
+		log := []byte(fmt.Sprintf("Tiltfile error:\n%v\n", status.Error))
+		handleLogAction(state, LogAction{Log: log})
+	}
+	state.LastTiltfileBuild = status
 }
 
 func handleExitAction(state *store.EngineState, action hud.ExitAction) {

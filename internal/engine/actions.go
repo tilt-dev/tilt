@@ -86,7 +86,10 @@ type InitAction struct {
 	ConfigFiles        []string
 	InitManifests      []model.ManifestName
 	TriggerMode        model.TriggerMode
-	Err                error
+
+	StartTime  time.Time
+	FinishTime time.Time
+	Err        error
 }
 
 func (InitAction) Action() {}
@@ -138,7 +141,10 @@ type ConfigsReloadedAction struct {
 	Manifests   []model.Manifest
 	GlobalYAML  model.YAMLManifest
 	ConfigFiles []string
-	Err         error
+
+	StartTime  time.Time
+	FinishTime time.Time
+	Err        error
 }
 
 func (ConfigsReloadedAction) Action() {}

@@ -91,6 +91,13 @@ func TestEmptyState(t *testing.T) {
 	es := newState([]model.Manifest{}, model.YAMLManifest{})
 
 	v := StateToView(*es)
+	assert.Equal(t, "", v.TiltfileErrorMessage)
+
+	es.LastTiltfileBuild = model.BuildStatus{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	}
+	v = StateToView(*es)
 	assert.Equal(t, emptyTiltfileMsg, v.TiltfileErrorMessage)
 
 	yaml := "yamlyaml"

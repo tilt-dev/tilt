@@ -60,7 +60,7 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	LastTiltfileError error
+	LastTiltfileBuild model.BuildStatus
 
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
@@ -68,6 +68,10 @@ type EngineState struct {
 
 func (e EngineState) IsEmpty() bool {
 	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
+}
+
+func (e EngineState) LastTiltfileError() error {
+	return e.LastTiltfileBuild.Error
 }
 
 type ResourceState interface {
@@ -496,10 +500,13 @@ func StateToView(s EngineState) view.View {
 
 	ret.Log = string(s.Log)
 
-	if s.LastTiltfileError == nil && s.IsEmpty() {
-		ret.TiltfileErrorMessage = emptyTiltfileMsg
-	} else if s.LastTiltfileError != nil {
-		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
+	if !s.LastTiltfileBuild.Empty() {
+		err := s.LastTiltfileBuild.Error
+		if err == nil && s.IsEmpty() {
+			ret.TiltfileErrorMessage = emptyTiltfileMsg
+		} else if err != nil {
+			ret.TiltfileErrorMessage = err.Error()
+		}
 	}
 
 	return ret
