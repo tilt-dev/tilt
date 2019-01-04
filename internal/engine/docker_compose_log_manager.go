@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"time"
@@ -107,12 +108,14 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 
 	// TODO(maia): docker-compose already prefixes logs, but maybe we want to roll
 	// our own (as in PodWatchManager) cuz it's prettier?
-	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
+	globalLogWriter := DockerComposeGlobalLogWriter{
+		writer: logger.Get(watch.ctx).Writer(logger.InfoLvl),
+	}
 	actionWriter := DockerComposeLogActionWriter{
 		store:        st,
 		manifestName: name,
 	}
-	multiWriter := io.MultiWriter(logWriter, actionWriter)
+	multiWriter := io.MultiWriter(globalLogWriter, actionWriter)
 
 	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
@@ -140,6 +143,9 @@ type DockerComposeLogActionWriter struct {
 }
 
 func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
+	if shouldFilterDCLog(p) {
+		return len(p), nil
+	}
 	w.store.Dispatch(DockerComposeLogAction{
 		ManifestName: w.manifestName,
 		Log:          append([]byte{}, p...),
@@ -148,3 +154,23 @@ func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 }
 
 var _ store.Subscriber = &DockerComposeLogManager{}
+
+func shouldFilterDCLog(p []byte) bool {
+	if bytes.Contains(p, []byte("Attaching to")) {
+		return true
+	}
+
+	return false
+}
+
+type DockerComposeGlobalLogWriter struct {
+	writer io.Writer
+}
+
+func (w DockerComposeGlobalLogWriter) Write(p []byte) (n int, err error) {
+	if shouldFilterDCLog(p) {
+		return len(p), nil
+	}
+
+	return w.writer.Write(p)
+}
