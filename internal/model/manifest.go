@@ -105,7 +105,7 @@ func (m Manifest) LocalPaths() []string {
 		return result
 	} else if dcInfo := m.DCInfo(); !dcInfo.Empty() {
 		result := make([]string, len(dcInfo.Mounts))
-		for i, mount := range fbInfo.Mounts {
+		for i, mount := range dcInfo.Mounts {
 			result[i] = mount.LocalPath
 		}
 	}
