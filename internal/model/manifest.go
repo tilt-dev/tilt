@@ -105,7 +105,7 @@ func (m Manifest) LocalPaths() []string {
 		}
 		return result
 	default:
-		// TODO(matt?) DC mounts should probably be on BuildDetails, not
+		// TODO(matt?) DC mounts should probably be on BuildDetails, not DeployInfo
 		switch di := m.deployInfo.(type) {
 		case DCInfo:
 			result := make([]string, len(di.Mounts))
