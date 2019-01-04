@@ -169,8 +169,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleConfigsReloaded(ctx, state, action)
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
-	case DockerComposeLogAction:
-		handleDockerComposeLogAction(state, action)
 	case view.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
 	default:
@@ -636,6 +634,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 	manifestName := action.ManifestName
 	ms, ok := state.ManifestStates[manifestName]
 
+	// TODO(dmiller): is this right? Why don't we append to that log in the build history in this case?
 	if !ok || state.CurrentlyBuilding != manifestName {
 		// This is OK. The user could have edited the manifest recently.
 		return
@@ -723,17 +722,4 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	status := evt.GuessStatus()
 	dcState, _ := ms.ResourceState.(dockercompose.State)
 	ms.ResourceState = dcState.WithStatus(status)
-}
-
-func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
-	manifestName := action.ManifestName
-	ms, ok := state.ManifestStates[manifestName]
-
-	if !ok {
-		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-
-	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 }

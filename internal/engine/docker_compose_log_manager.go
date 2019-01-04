@@ -111,7 +111,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	globalLogWriter := DockerComposeGlobalLogWriter{
 		writer: logger.Get(watch.ctx).Writer(logger.InfoLvl),
 	}
-	actionWriter := DockerComposeLogActionWriter{
+	actionWriter := BuildLogActionWriter{
 		store:        st,
 		manifestName: name,
 	}
@@ -135,22 +135,6 @@ type dockerComposeLogWatch struct {
 	// TODO(maia): do we need to track these? (maybe if we implement with `docker logs <cID>`...)
 	// cID             container.ID
 	// cName           container.Name
-}
-
-type DockerComposeLogActionWriter struct {
-	store        store.RStore
-	manifestName model.ManifestName
-}
-
-func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
-	if shouldFilterDCLog(p) {
-		return len(p), nil
-	}
-	w.store.Dispatch(DockerComposeLogAction{
-		ManifestName: w.manifestName,
-		Log:          append([]byte{}, p...),
-	})
-	return len(p), nil
 }
 
 var _ store.Subscriber = &DockerComposeLogManager{}

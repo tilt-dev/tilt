@@ -202,11 +202,6 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	// TODO(matt) figure out what to do with DC logs once we have DC timestamps
-	if res.IsDC() {
-		return res.DCInfo().RuntimeLog()
-	}
-
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {
