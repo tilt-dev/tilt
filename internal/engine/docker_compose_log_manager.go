@@ -37,10 +37,10 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 	}
 
 	for _, ms := range state.ManifestStates {
-		dcInfo := ms.Manifest.DCInfo()
-		if dcInfo.Empty() {
+		if !ms.Manifest.IsDC() {
 			continue
 		}
+		dcInfo := ms.Manifest.DCInfo()
 
 		existing, isActive := m.watches[ms.Manifest.Name]
 		startWatchTime := time.Unix(0, 0)
