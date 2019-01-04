@@ -1,7 +1,6 @@
 package view
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -9,22 +8,54 @@ import (
 
 type ResourceInfoView interface {
 	resourceInfoView()
+	RuntimeLog() string
+	Status() string
 }
 
 type DCResourceInfo struct {
 	ConfigPath string
-	Status     string
-	Log        string
+	status     string
+	log        string
 }
 
-func (DCResourceInfo) resourceInfoView() {}
-func (dc DCResourceInfo) Empty() bool    { return reflect.DeepEqual(dc, DCResourceInfo{}) }
+func NewDCResourceInfo(configPath string, status string, log string) DCResourceInfo {
+	return DCResourceInfo{
+		ConfigPath: configPath,
+		status:     status,
+		log:        log,
+	}
+}
+
+var _ ResourceInfoView = DCResourceInfo{}
+
+func (DCResourceInfo) resourceInfoView()         {}
+func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
+func (dcInfo DCResourceInfo) Status() string     { return dcInfo.status }
+
+type K8SResourceInfo struct {
+	PodName            string
+	PodCreationTime    time.Time
+	PodUpdateStartTime time.Time
+	PodStatus          string
+	PodRestarts        int
+	PodLog             string
+}
+
+var _ ResourceInfoView = K8SResourceInfo{}
+
+func (K8SResourceInfo) resourceInfoView()          {}
+func (k8sInfo K8SResourceInfo) RuntimeLog() string { return k8sInfo.PodLog }
+func (k8sInfo K8SResourceInfo) Status() string     { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string
 }
 
-func (YAMLResourceInfo) resourceInfoView() {}
+var _ ResourceInfoView = YAMLResourceInfo{}
+
+func (YAMLResourceInfo) resourceInfoView()           {}
+func (yamlInfo YAMLResourceInfo) RuntimeLog() string { return "" }
+func (yamlInfo YAMLResourceInfo) Status() string     { return "" }
 
 type Resource struct {
 	Name               model.ManifestName
@@ -39,22 +70,13 @@ type Resource struct {
 	PendingBuildEdits  []string
 	PendingBuildSince  time.Time
 
-	// Relevant to k8s resources (maybe should accomplish via interface?)
-	PodName            string
-	PodCreationTime    time.Time
-	PodUpdateStartTime time.Time
-	PodStatus          string
-	PodRestarts        int
-	Endpoints          []string
-	PodLog             string // TODO(maia): rename this to just 'log' if it's the same btwn k8s and dc
+	Endpoints []string
 
 	ResourceInfo ResourceInfoView
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
-
-	IsYAMLManifest bool
 }
 
 func (r Resource) DCInfo() DCResourceInfo {
@@ -67,16 +89,28 @@ func (r Resource) DCInfo() DCResourceInfo {
 }
 
 func (r Resource) IsDC() bool {
-	return !r.DCInfo().Empty()
+	_, ok := r.ResourceInfo.(DCResourceInfo)
+	return ok
 }
 
-func (r Resource) YamlInfo() YAMLResourceInfo {
-	switch info := r.ResourceInfo.(type) {
-	case YAMLResourceInfo:
-		return info
-	default:
-		return YAMLResourceInfo{}
-	}
+func (r Resource) K8SInfo() K8SResourceInfo {
+	ret, _ := r.ResourceInfo.(K8SResourceInfo)
+	return ret
+}
+
+func (r Resource) IsK8S() bool {
+	_, ok := r.ResourceInfo.(K8SResourceInfo)
+	return ok
+}
+
+func (r Resource) YAMLInfo() YAMLResourceInfo {
+	ret, _ := r.ResourceInfo.(YAMLResourceInfo)
+	return ret
+}
+
+func (r Resource) IsYAML() bool {
+	_, ok := r.ResourceInfo.(YAMLResourceInfo)
+	return ok
 }
 
 func (r Resource) LastBuild() model.BuildStatus {
@@ -87,11 +121,14 @@ func (r Resource) LastBuild() model.BuildStatus {
 }
 
 func (r Resource) DefaultCollapse() bool {
-	autoExpand := r.LastBuild().Error != nil ||
+	autoExpand := false
+	if r.IsK8S() {
+		k8sInfo := r.K8SInfo()
+		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
+	}
+	autoExpand = autoExpand ||
+		r.LastBuild().Error != nil ||
 		r.CrashLog != "" ||
-		r.PodRestarts > 0 ||
-		r.PodStatus == "CrashLoopBackoff" ||
-		r.PodStatus == "Error" ||
 		r.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		r.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)

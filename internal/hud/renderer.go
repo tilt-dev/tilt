@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -45,12 +46,15 @@ var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
 
-var podStatusColors = map[string]tcell.Color{
-	"Running":           cGood,
-	"ContainerCreating": cPending,
-	"Pending":           cPending,
-	"Error":             cBad,
-	"CrashLoopBackOff":  cBad,
+var statusColors = map[string]tcell.Color{
+	"Running":                  cGood,
+	"ContainerCreating":        cPending,
+	"Pending":                  cPending,
+	"Error":                    cBad,
+	"CrashLoopBackOff":         cBad,
+	dockercompose.StatusInProg: cPending,
+	dockercompose.StatusUp:     cGood,
+	dockercompose.StatusDown:   cBad,
 }
 
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
@@ -185,19 +189,22 @@ func keyLegend(v view.View, vs view.ViewState) string {
 }
 
 func isInError(res view.Resource) bool {
-	return res.LastBuild().Error != nil || podStatusColors[res.PodStatus] == cBad || isCrashing(res)
+	return res.LastBuild().Error != nil ||
+		(res.ResourceInfo != nil && statusColors[res.ResourceInfo.Status()] == cBad) ||
+		isCrashing(res)
 }
 
 func isCrashing(res view.Resource) bool {
-	return res.PodRestarts > 0 ||
+	return (res.IsK8S() && res.K8SInfo().PodRestarts > 0) ||
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash)
 }
 
 func bestLogs(res view.Resource) string {
-	if dcInfo := res.DCInfo(); !dcInfo.Empty() {
-		return dcInfo.Log
+	// TODO(matt) figure out what to do with DC logs once we have DC timestamps
+	if res.IsDC() {
+		return res.DCInfo().RuntimeLog()
 	}
 
 	// A build is in progress, triggered by an explicit edit.
@@ -217,22 +224,25 @@ func bestLogs(res view.Resource) string {
 		return string(res.LastBuild().Log)
 	}
 
-	// Two cases:
-	// 1) The last build finished before this pod started
-	// 2) This log is from an in-place container update.
-	// in either case, prepend them to pod logs.
-	if (res.LastBuild().StartTime.Equal(res.PodUpdateStartTime) ||
-		res.LastBuild().StartTime.Before(res.PodCreationTime)) &&
-		len(res.LastBuild().Log) > 0 {
-		return string(res.LastBuild().Log) + "\n" + res.PodLog
+	if res.IsK8S() {
+		k8sInfo := res.K8SInfo()
+		// Two cases:
+		// 1) The last build finished before this pod started
+		// 2) This log is from an in-place container update.
+		// in either case, prepend them to pod logs.
+		if (res.LastBuild().StartTime.Equal(k8sInfo.PodUpdateStartTime) ||
+			res.LastBuild().StartTime.Before(k8sInfo.PodCreationTime)) &&
+			len(res.LastBuild().Log) > 0 {
+			return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
+		}
+
+		// The last build finished, but the pod hasn't started yet.
+		if res.LastBuild().StartTime.After(k8sInfo.PodCreationTime) {
+			return string(res.LastBuild().Log)
+		}
 	}
 
-	// The last build finished, but the pod hasn't started yet.
-	if res.LastBuild().StartTime.After(res.PodCreationTime) {
-		return string(res.LastBuild().Log)
-	}
-
-	return res.PodLog
+	return res.ResourceInfo.RuntimeLog()
 }
 
 func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {

@@ -936,12 +936,12 @@ func TestPodEvent(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
 	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].PodName == "my-pod"
+		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodName == "my-pod"
 	})
 
 	rv := f.hud.LastView.Resources[0]
-	assert.Equal(t, "my-pod", rv.PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
+	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1205,17 +1205,17 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
 	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].PodStatus == "CrashLoopBackOff"
+		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-new-pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
 	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].PodStatus == "Running"
+		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "Running"
 	})
 
 	rv := f.hud.LastView.Resources[0]
-	assert.Equal(t, "my-new-pod", rv.PodName)
-	assert.Equal(t, "Running", rv.PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
+	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1239,19 +1239,19 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 
 	f.WaitUntilHUD("pod crashes", func(view view.View) bool {
 		rv := view.Resources[0]
-		return rv.PodStatus == "CrashLoopBackOff"
+		return rv.K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime))
 
 	f.WaitUntilHUD("pod comes back", func(view view.View) bool {
 		rv := view.Resources[0]
-		return rv.PodStatus == "Running"
+		return rv.K8SInfo().PodStatus == "Running"
 	})
 
 	rv := f.hud.LastView.Resources[0]
-	assert.Equal(t, "my-pod", rv.PodName)
-	assert.Equal(t, "Running", rv.PodStatus)
+	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
+	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
 
 	err := f.Stop()
 	if err != nil {
@@ -1275,7 +1275,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-new-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].PodStatus == "CrashLoopBackOff"
+		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
@@ -1285,8 +1285,8 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.assertAllBuildsConsumed()
 
 	rv := f.hud.LastView.Resources[0]
-	assert.Equal(t, "my-new-pod", rv.PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
 }
 
 func TestPodContainerStatus(t *testing.T) {
