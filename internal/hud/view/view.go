@@ -126,6 +126,11 @@ func (r Resource) DefaultCollapse() bool {
 		k8sInfo := r.K8SInfo()
 		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
 	}
+
+	if r.IsYAML() {
+		autoExpand = true
+	}
+
 	autoExpand = autoExpand ||
 		r.LastBuild().Error != nil ||
 		r.CrashLog != "" ||
