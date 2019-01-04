@@ -110,12 +110,13 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		return nil, err
 	}
 
-	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
+	switch bd := manifest.DockerInfo.BuildDetails.(type) {
+	case model.StaticBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", dRef)
 		defer ps.EndPipelineStep(ctx)
 
 		df := ibd.staticDockerfile(manifest, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, dRef, df, sbInfo.BuildPath, ignore.CreateBuildContextFilter(manifest), sbInfo.BuildArgs)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, dRef, df, bd.BuildPath, ignore.CreateBuildContextFilter(manifest), bd.BuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -123,16 +124,15 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 		n = ref
 
 		go ibd.maybeCreateCacheFrom(ctx, ref, state, manifest, cacheRef)
-
-	} else if fbInfo := manifest.FastBuildInfo(); !fbInfo.Empty() {
+	case model.FastBuild:
 		if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
 			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", dRef)
 			defer ps.EndPipelineStep(ctx)
 
-			df := ibd.baseDockerfile(fbInfo, cacheRef, manifest.DockerInfo.CachePaths())
-			steps := fbInfo.Steps
-			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, dRef, df, fbInfo.Mounts, ignore.CreateBuildContextFilter(manifest), steps, fbInfo.Entrypoint)
+			df := ibd.baseDockerfile(bd, cacheRef, manifest.DockerInfo.CachePaths())
+			steps := bd.Steps
+			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, dRef, df, bd.Mounts, ignore.CreateBuildContextFilter(manifest), steps, bd.Entrypoint)
 
 			if err != nil {
 				return nil, err
@@ -147,7 +147,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 				return nil, err
 			}
 
-			cf, err := build.FilesToPathMappings(changed, fbInfo.Mounts)
+			cf, err := build.FilesToPathMappings(changed, bd.Mounts)
 			if err != nil {
 				return nil, err
 			}
@@ -155,14 +155,14 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 			ps.StartPipelineStep(ctx, "Building from existing: [%s]", dRef)
 			defer ps.EndPipelineStep(ctx)
 
-			steps := fbInfo.Steps
+			steps := bd.Steps
 			ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
 			if err != nil {
 				return nil, err
 			}
 			n = ref
 		}
-	} else {
+	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
 		return nil, fmt.Errorf("manifest %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", manifest.Name)
@@ -181,13 +181,14 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Mani
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest model.Manifest, ref reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
-	k8sInfo := manifest.K8sInfo()
-	if k8sInfo.Empty() {
+	if !manifest.IsK8s() {
 		// If a non-yaml manifest reaches this code, something is wrong.
 		// If we change BaD structure such that that might reasonably happen,
 		// this should be a `RedirectToNextBuilder` error.
 		return nil, "", fmt.Errorf("manifest %s has no k8s deploy info", manifest.Name)
 	}
+
+	k8sInfo := manifest.K8sInfo()
 
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
@@ -292,7 +293,8 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 	baseDockerfile := dockerfile.Dockerfile(manifest.FastBuildInfo().BaseDockerfile)
 	var buildArgs model.DockerBuildArgs
 
-	if sbInfo := manifest.StaticBuildInfo(); !sbInfo.Empty() {
+	if manifest.IsStaticBuild() {
+		sbInfo := manifest.StaticBuildInfo()
 		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
 		ok := true
 		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()

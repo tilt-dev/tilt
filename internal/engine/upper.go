@@ -199,7 +199,8 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		pod.UpdateStartTime = action.StartTime
 	}
 
-	if dcState := ms.DCResourceState(); !dcState.Empty() {
+	if ms.IsDC() {
+		dcState := ms.DCResourceState()
 		ms.ResourceState = dcState.WithCurrentLog(dcState.CurrentLog)
 	}
 
@@ -721,8 +722,8 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 	// For now, just guess at state.
 	status := evt.GuessStatus()
-	if dcState := ms.DCResourceState(); !dcState.Empty() {
-		ms.ResourceState = dcState.WithStatus(status)
+	if ms.IsDC() {
+		ms.ResourceState = ms.DCResourceState().WithStatus(status)
 		return
 	}
 	ms.ResourceState = dockercompose.State{Status: status}
@@ -737,7 +738,8 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 
-	if dcState := ms.DCResourceState(); !dcState.Empty() {
+	if ms.IsDC() {
+		dcState := ms.DCResourceState()
 		ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 		return
 	}

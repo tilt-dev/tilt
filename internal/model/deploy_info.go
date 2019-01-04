@@ -15,16 +15,14 @@ type DCInfo struct {
 	DfRaw      []byte // for diff'ing when config files change
 }
 
-func (DCInfo) deployInfo()    {}
-func (dc DCInfo) Empty() bool { return DeepEqual(dc, DCInfo{}) }
+func (DCInfo) deployInfo() {}
 
 type K8sInfo struct {
 	YAML         string
 	PortForwards []PortForward
 }
 
-func (K8sInfo) deployInfo()     {}
-func (k8s K8sInfo) Empty() bool { return DeepEqual(k8s, K8sInfo{}) }
+func (K8sInfo) deployInfo() {}
 
 func (k8s K8sInfo) AppendYAML(y string) K8sInfo {
 	if k8s.YAML == "" {

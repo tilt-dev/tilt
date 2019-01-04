@@ -138,12 +138,13 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 }
 
 func (ms *ManifestState) DCResourceState() dockercompose.State {
-	switch state := ms.ResourceState.(type) {
-	case dockercompose.State:
-		return state
-	default:
-		return dockercompose.State{}
-	}
+	ret, _ := ms.ResourceState.(dockercompose.State)
+	return ret
+}
+
+func (ms *ManifestState) IsDC() bool {
+	_, ok := ms.ResourceState.(dockercompose.State)
+	return ok
 }
 
 func (ms *ManifestState) LastBuild() model.BuildStatus {
@@ -514,9 +515,9 @@ func StateToView(s EngineState) view.View {
 }
 
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
-	if dcInfo := ms.Manifest.DCInfo(); !dcInfo.Empty() {
+	if ms.Manifest.IsDC() {
 		dcState := ms.DCResourceState()
-		return view.NewDCResourceInfo(dcInfo.ConfigPath, dcState.Status, dcState.Log())
+		return view.NewDCResourceInfo(ms.Manifest.DCInfo().ConfigPath, dcState.Status, dcState.Log())
 	} else {
 		pod := ms.MostRecentPod()
 		return view.K8SResourceInfo{
@@ -536,8 +537,8 @@ func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 // path from the first d-c manifest we see.
 func (s EngineState) DockerComposeConfigPath() string {
 	for _, ms := range s.ManifestStates {
-		if dcInfo := ms.Manifest.DCInfo(); !dcInfo.Empty() {
-			return dcInfo.ConfigPath
+		if ms.Manifest.IsDC() {
+			return ms.Manifest.DCInfo().ConfigPath
 		}
 	}
 	return ""

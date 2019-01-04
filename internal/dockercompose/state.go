@@ -1,7 +1,5 @@
 package dockercompose
 
-import "reflect"
-
 // Three hacky states just for now to get something into the hud.
 const (
 	StatusDown   = "down"
@@ -33,7 +31,6 @@ type State struct {
 }
 
 func (State) ResourceState() {}
-func (s State) Empty() bool  { return reflect.DeepEqual(s, State{}) }
 
 func (s State) Log() string {
 	return string(s.CurrentLog)

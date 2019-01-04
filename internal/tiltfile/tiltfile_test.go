@@ -977,18 +977,18 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sInfo().PortForwards)
 		case dcConfigPathHelper:
-			dcInfo := m.DCInfo()
-			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
+			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
+				dcInfo := m.DCInfo()
 				assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
 			}
 		case dcYAMLRawHelper:
 			dcInfo := m.DCInfo()
-			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
+			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
 				assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
 			}
 		case dcDfRawHelper:
-			dcInfo := m.DCInfo()
-			if assert.False(f.t, dcInfo.Empty(), "expected a docker-compose manifest") {
+			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
+				dcInfo := m.DCInfo()
 				assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
 			}
 		default:

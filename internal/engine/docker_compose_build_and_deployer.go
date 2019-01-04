@@ -27,11 +27,10 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
 	defer span.Finish()
 
-	dcInfo := manifest.DCInfo()
-	if dcInfo.Empty() {
+	if !manifest.IsDC() {
 		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
-
 	}
+	dcInfo := manifest.DCInfo()
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 
