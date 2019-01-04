@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -126,10 +125,9 @@ func (f *dockerBuildFixture) getNameFromTest() reference.Named {
 
 func (f *dockerBuildFixture) startRegistry() {
 	stdout := bufsync.NewThreadSafeBuffer()
-	stderr := bufsync.NewThreadSafeBuffer()
 	cmd := exec.Command("docker", "run", "--name", "tilt-registry", "-p", "5005:5000", "registry:2")
 	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	cmd.Stderr = stdout
 	f.registry = cmd
 
 	err := cmd.Start()
@@ -137,11 +135,7 @@ func (f *dockerBuildFixture) startRegistry() {
 		f.t.Fatal(err)
 	}
 
-	if isCircleCI() {
-		err = stderr.WaitUntilContains("listening on", 5*time.Second)
-	} else {
-		err = stdout.WaitUntilContains("listening on", 5*time.Second)
-	}
+	err = stdout.WaitUntilContains("listening on", 5*time.Second)
 	if err != nil {
 		f.t.Fatalf("Registry didn't start: %v", err)
 	}
@@ -237,8 +231,4 @@ func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *contain
 // Get a container config to run a container as-is.
 func containerConfig(imgRef reference.NamedTagged) *container.Config {
 	return &container.Config{Image: imgRef.String()}
-}
-
-func isCircleCI() bool {
-	return os.Getenv("CIRCLECI") != ""
 }
