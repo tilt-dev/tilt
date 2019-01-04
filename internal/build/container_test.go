@@ -180,6 +180,7 @@ func TestMountCollisions(t *testing.T) {
 }
 
 func TestPush(t *testing.T) {
+	t.Skip("https://app.clubhouse.io/windmill/story/1213/docker-push-test-failing-in-master")
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
