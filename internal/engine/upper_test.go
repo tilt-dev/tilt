@@ -21,11 +21,11 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/tiltfile2"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -534,14 +534,14 @@ func TestSecondResourceIsBuilt(t *testing.T) {
 	f.WriteFile("Tiltfile", `
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 
-k8s_resource("baz", 'snack.yaml')
+k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 `)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
-	manifests, _, _, err := tiltfile2.Load(f.ctx, tiltfile2.FileName, nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, tiltfile.FileName, nil)
 	assert.NoError(t, err)
 
 	f.Start(manifests, true)
@@ -558,8 +558,8 @@ k8s_resource("baz", 'snack.yaml')
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
-k8s_resource("baz", 'snack.yaml')
-k8s_resource("quux", 'doggos.yaml')
+k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
+k8s_resource("quux", 'doggos.yaml')  # rename "doggos" --> "quux"
 `)
 
 	// Expect a build of quux, the new resource
@@ -689,7 +689,7 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	f.WaitUntil("error set", func(st store.EngineState) bool {
-		return st.LastTiltfileError != nil
+		return st.LastTiltfileError() != nil
 	})
 
 	f.withState(func(es store.EngineState) {
@@ -718,13 +718,13 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("state is broken", func(st store.EngineState) bool {
-		return st.LastTiltfileError != nil
+		return st.LastTiltfileError() != nil
 	})
 
 	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
 	f.WaitUntil("state is restored", func(st store.EngineState) bool {
-		return st.LastTiltfileError == nil
+		return st.LastTiltfileError() == nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -760,7 +760,7 @@ k8s_resource('foobar', 'snack.yaml')
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("manifest load error", func(st store.EngineState) bool {
-		return st.LastTiltfileError != nil
+		return st.LastTiltfileError() != nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -776,7 +776,7 @@ k8s_resource('foobar', 'snack.yaml')
 
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, "", nextManifestToBuild(state).String())
-		assert.NoError(t, state.LastTiltfileError)
+		assert.NoError(t, state.LastTiltfileError())
 	})
 
 	f.withManifestState(name, func(ms store.ManifestState) {
@@ -1682,23 +1682,96 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 }
 
+func TestDockerComposeUp(t *testing.T) {
+	f := newTestFixture(t)
+	redis, server := f.setupDCFixture()
+
+	f.Start([]model.Manifest{redis, server}, true)
+	call := f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+	assert.Equal(t, redis.ManifestName(), call.manifest.Name)
+	call = f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+	assert.Equal(t, server.ManifestName(), call.manifest.Name)
+}
+
+func TestDockerComposeRedeployFromFileChange(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	f.Start([]model.Manifest{m}, true)
+
+	// Initial build
+	call := f.nextCall()
+	assert.True(t, call.state.IsEmpty())
+
+	// Change a file -- should trigger build
+	f.fsWatcher.events <- watch.FileEvent{Path: "package.json"}
+	call = f.nextCall()
+	assert.Equal(t, []string{f.JoinPath("package.json")}, call.state.FilesChanged())
+}
+
+// TODO(maia): TestDockerComposeEditConfigFiles once DC manifests load faster (http://bit.ly/2RBX4g5)
+
+func TestDockerComposeEventSetsStatus(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	f.Start([]model.Manifest{m}, true)
+	f.waitForCompletedBuildCount(1)
+
+	// Send event corresponding to status = "in progress"
+	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	f.WaitUntilManifest("resource status = 'in progress'", m.ManifestName().String(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusInProg
+	})
+
+	// Send event corresponding to status = "up"
+	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	f.WaitUntilManifest("resource status = 'up'", m.ManifestName().String(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusUp
+	})
+}
+
 func TestDockerComposeRecordsLogs(t *testing.T) {
 	f := newTestFixture(t)
-	m := f.setupHAProxyDCFixture()
+	m, _ := f.setupDCFixture()
 	expected := "spoonerisms_1  | 2018-12-20T16:11:04.070480042Z yarn install v1.10."
 	f.dcc.SetLogOutput(expected + "\n")
 
-	f.Start([]model.Manifest{
-		m,
-	}, true)
-
+	f.Start([]model.Manifest{m}, true)
 	f.waitForCompletedBuildCount(1)
+
 	// recorded in global log
 	assert.Contains(t, f.LogLines(), expected)
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
+	})
+}
+
+func TestDockerComposeFiltersOutAttachedToLogs(t *testing.T) {
+	f := newTestFixture(t)
+	m, _ := f.setupDCFixture()
+	attaching := "Attaching to servantes_snack_1"
+	f.dcc.SetLogOutput(attaching + "\n")
+
+	f.Start([]model.Manifest{m}, true)
+	f.waitForCompletedBuildCount(1)
+
+	assert.NotContains(t, f.LogLines(), attaching)
+
+	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotContains(t, st.DCResourceState().Log(), attaching)
 	})
 }
 
@@ -1797,7 +1870,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcc := &dockercompose.FakeDCClient{}
+	dcc := dockercompose.NewFakeDockerComposeClient(t)
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)
@@ -1828,9 +1901,25 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
+	f.startWithInitManifests(nil, manifests, watchMounts)
+}
+
+// Start ONLY the specified manifests and no others (e.g. if additional manifests
+// specified later, don't run them. Like running `tilt up <foo, bar>`.
+func (f *testFixture) StartOnly(manifests []model.Manifest, watchMounts bool) {
+	mNames := make([]model.ManifestName, len(manifests))
+	for i, m := range manifests {
+		mNames[i] = m.Name
+	}
+	f.startWithInitManifests(mNames, manifests, watchMounts)
+}
+
+// Empty `initManifests` will run start ALL manifests
+func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchMounts bool) {
 	f.Init(InitAction{
-		Manifests:   manifests,
-		WatchMounts: watchMounts,
+		Manifests:    manifests,
+		WatchMounts:  watchMounts,
+		TiltfilePath: f.JoinPath("Tiltfile"),
 	})
 }
 
@@ -2111,7 +2200,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, err := tiltfile2.Load(f.ctx, f.JoinPath(tiltfile2.FileName), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2131,29 +2220,29 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 	f.store.Dispatch(manifestFilesChangedAction{manifestName: ConfigsManifestName, files: filenames})
 }
 
-func (f *testFixture) setupHAProxyDCFixture() model.Manifest {
-	dcp := filepath.Join(f.originalWD, "testdata", "haproxy_docker-config.yml")
+func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
+	dcp := filepath.Join(f.originalWD, "testdata", "fixture_docker-config.yml")
 	dcpc, err := ioutil.ReadFile(dcp)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.TempDirFixture.WriteFile("docker-config.yml", string(dcpc))
+	f.WriteFile("docker-compose.yml", string(dcpc))
 
-	dfp := filepath.Join(f.originalWD, "testdata", "haproxy.dockerfile")
+	dfp := filepath.Join(f.originalWD, "testdata", "server.dockerfile")
 	dfc, err := ioutil.ReadFile(dfp)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.TempDirFixture.WriteFile("Dockerfile", string(dfc))
+	f.WriteFile("Dockerfile", string(dfc))
 
-	hcp := filepath.Join(f.originalWD, "testdata", "haproxy.cfg")
-	hcc, err := ioutil.ReadFile(hcp)
+	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
+
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.TempDirFixture.WriteFile("haproxy.cfg", string(hcc))
 
-	return f.newDCManifest("haproxy", string(dcpc), string(dfc))
+	return manifests[0], manifests[1]
 }
 
 type fixtureSub struct {
@@ -2162,4 +2251,12 @@ type fixtureSub struct {
 
 func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
 	s.ch <- true
+}
+
+func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) dockercompose.Event {
+	return dockercompose.Event{
+		Type:    dockercompose.TypeContainer,
+		Action:  action,
+		Service: m.ManifestName().String(),
+	}
 }

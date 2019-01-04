@@ -1,4 +1,4 @@
-package tiltfile2
+package tiltfile
 
 import (
 	"context"

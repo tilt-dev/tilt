@@ -11,7 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/tiltfile2"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 type downCmd struct {
@@ -32,7 +32,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, err := tiltfile2.Load(ctx, tiltfile2.FileName, nil)
+	manifests, globalYaml, _, err := tiltfile.Load(ctx, tiltfile.FileName, nil)
 	if err != nil {
 		return err
 	}

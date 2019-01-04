@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/ to get started."
@@ -60,14 +61,26 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	LastTiltfileError error
+	LastTiltfileBuild model.BuildStatus
 
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
 }
 
+func (e EngineState) RelativeTiltfilePath() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Rel(wd, e.TiltfilePath)
+}
+
 func (e EngineState) IsEmpty() bool {
 	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
+}
+
+func (e EngineState) LastTiltfileError() error {
+	return e.LastTiltfileBuild.Error
 }
 
 type ResourceState interface {
@@ -488,10 +501,13 @@ func StateToView(s EngineState) view.View {
 
 	ret.Log = string(s.Log)
 
-	if s.LastTiltfileError == nil && s.IsEmpty() {
-		ret.TiltfileErrorMessage = emptyTiltfileMsg
-	} else if s.LastTiltfileError != nil {
-		ret.TiltfileErrorMessage = s.LastTiltfileError.Error()
+	if !s.LastTiltfileBuild.Empty() {
+		err := s.LastTiltfileBuild.Error
+		if err == nil && s.IsEmpty() {
+			ret.TiltfileErrorMessage = emptyTiltfileMsg
+		} else if err != nil {
+			ret.TiltfileErrorMessage = err.Error()
+		}
 	}
 
 	return ret

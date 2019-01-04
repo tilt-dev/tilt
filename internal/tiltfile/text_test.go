@@ -1,4 +1,4 @@
-package tiltfile2
+package tiltfile
 
 const kustomizeFileText = `# Example configuration for the webserver
 # at https://github.com/monopole/hello
