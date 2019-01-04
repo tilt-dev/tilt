@@ -105,7 +105,7 @@ func (m Manifest) LocalPaths() []string {
 		}
 		return result
 	default:
-		// TODO(matt?) DC mounts should probably be on BuildDetails, not DeployInfo
+		// TODO(matt?) DC mounts should probably stored somewhere more consistent with Static/Fast Build
 		switch di := m.deployInfo.(type) {
 		case DCInfo:
 			result := make([]string, len(di.Mounts))
@@ -123,11 +123,10 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	if !m.IsFastBuild() {
+	fbInfo, ok := m.DockerInfo.BuildDetails.(FastBuild)
+	if !ok {
 		return nil
 	}
-
-	fbInfo := m.FastBuildInfo()
 
 	for _, mnt := range fbInfo.Mounts {
 		if !filepath.IsAbs(mnt.LocalPath) {

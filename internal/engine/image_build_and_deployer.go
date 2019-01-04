@@ -293,8 +293,7 @@ func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sour
 	baseDockerfile := dockerfile.Dockerfile(manifest.FastBuildInfo().BaseDockerfile)
 	var buildArgs model.DockerBuildArgs
 
-	if manifest.IsStaticBuild() {
-		sbInfo := manifest.StaticBuildInfo()
+	if sbInfo, ok := manifest.DockerInfo.BuildDetails.(model.StaticBuild); ok {
 		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
 		ok := true
 		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
