@@ -1,5 +1,9 @@
 package dockercompose
 
+import (
+	"time"
+)
+
 // Three hacky states just for now to get something into the hud.
 const (
 	StatusDown   = "down"
@@ -25,9 +29,17 @@ func (evt Event) GuessStatus() string {
 	return containerActionToStatus[evt.Action]
 }
 
+func (evt Event) IsStartupEvent() bool {
+	if evt.Type != TypeContainer {
+		return false
+	}
+	return evt.Action == ActionStart || evt.Action == ActionRestart || evt.Action == ActionUpdate
+}
+
 type State struct {
 	Status     string
 	CurrentLog []byte
+	StartTime  time.Time
 }
 
 func (State) ResourceState() {}
@@ -43,5 +55,10 @@ func (s State) WithCurrentLog(b []byte) State {
 
 func (s State) WithStatus(status string) State {
 	s.Status = status
+	return s
+}
+
+func (s State) WithStartTime(time time.Time) State {
+	s.StartTime = time
 	return s
 }

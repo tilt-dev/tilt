@@ -1730,6 +1730,8 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 		return ms.DCResourceState().Status == dockercompose.StatusInProg
 	})
 
+	startTime := time.Now()
+
 	// Send event corresponding to status = "up"
 	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
 	if err != nil {
@@ -1738,6 +1740,10 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 	f.WaitUntilManifest("resource status = 'up'", m.ManifestName().String(), func(ms store.ManifestState) bool {
 		return ms.DCResourceState().Status == dockercompose.StatusUp
+	})
+
+	f.withManifestState(m.ManifestName().String(), func(ms store.ManifestState) {
+		assert.True(t, ms.DCResourceState().StartTime.After(startTime))
 	})
 }
 

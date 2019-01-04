@@ -348,8 +348,13 @@ func TestRenderLogModal(t *testing.T) {
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name:         "spoonerisms",
-				ResourceInfo: view.NewDCResourceInfo("docker-compose.yml", "building", "Hi hello I'm a docker compose log"),
+				Name: "spoonerisms",
+				ResourceInfo: view.NewDCResourceInfo(
+					"docker-compose.yml",
+					"building",
+					"Hi hello I'm a docker compose log",
+					time.Now().Add(time.Second*-12),
+				),
 			},
 		},
 	}
