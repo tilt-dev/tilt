@@ -78,7 +78,7 @@ func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
 		return cBad
 	} else if res.LastBuild().Error != nil {
 		return cBad
-	} else if res.IsYAMLManifest && !res.LastDeployTime.IsZero() {
+	} else if res.IsYAML() && !res.LastDeployTime.IsZero() {
 		return cGood
 	} else if !res.LastBuild().FinishTime.IsZero() && res.ResourceInfo.Status() == "" {
 		return cPending // pod status hasn't shown up yet
@@ -117,17 +117,18 @@ func (v *ResourceView) titleTextName() rty.Component {
 }
 
 func (v *ResourceView) titleText() rty.Component {
-	if v.res.IsDC() {
-		return titleTextDC(v.res.DCInfo())
-	} else if v.res.IsK8S() {
-		return titleTextK8s(v.res.K8SInfo())
-	} else {
+	switch i := v.res.ResourceInfo.(type) {
+	case view.DCResourceInfo:
+		return titleTextDC(i)
+	case view.K8SResourceInfo:
+		return titleTextK8s(i)
+	default:
 		return nil
 	}
 }
 
-func titleTextK8s(kri view.K8SResourceInfo) rty.Component {
-	status := kri.PodStatus
+func titleTextK8s(k8sInfo view.K8SResourceInfo) rty.Component {
+	status := k8sInfo.PodStatus
 	if status == "" {
 		status = "Pending"
 	}
@@ -166,22 +167,23 @@ func (v *ResourceView) resourceExpandedPane() rty.Component {
 }
 
 func (v *ResourceView) resourceExpanded() rty.Component {
-	if v.res.IsDC() {
+	switch v.res.ResourceInfo.(type) {
+	case view.DCResourceInfo:
 		return v.resourceExpandedDC()
-	} else if v.res.IsK8S() {
+	case view.K8SResourceInfo:
 		return v.resourceExpandedK8s()
+	case view.YAMLResourceInfo:
+		return v.resourceExpandedYAML()
+	default:
+		return rty.EmptyLayout
 	}
-	if l := v.resourceExpandedYAML(); !rty.IsEmpty(l) {
-		return l
-	}
-	return rty.EmptyLayout
 }
 
 func (v *ResourceView) resourceExpandedYAML() rty.Component {
-	if !v.res.IsYAMLManifest {
+	if !v.res.IsYAML() {
 		return rty.EmptyLayout
 	}
-	yi := v.res.YamlInfo()
+	yi := v.res.YAMLInfo()
 
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
@@ -226,19 +228,19 @@ func (v *ResourceView) endpointsNeedSecondLine() bool {
 }
 
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
-	kri := v.res.K8SInfo()
-	if kri.PodName == "" {
+	k8sInfo := v.res.K8SInfo()
+	if k8sInfo.PodName == "" {
 		return rty.EmptyLayout
 	}
 
 	l := rty.NewConcatLayout(rty.DirHor)
-	l.Add(resourceTextPodName(kri))
+	l.Add(resourceTextPodName(k8sInfo))
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
 	l.Add(rty.TextString(" "))
 
-	if kri.PodRestarts > 0 {
-		l.Add(resourceTextPodRestarts(kri))
+	if k8sInfo.PodRestarts > 0 {
+		l.Add(resourceTextPodRestarts(k8sInfo))
 		l.Add(middotText())
 	}
 
@@ -249,32 +251,32 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 		}
 	}
 
-	l.Add(resourceTextAge(kri))
+	l.Add(resourceTextAge(k8sInfo))
 	return rty.OneLine(l)
 }
 
-func resourceTextPodName(kri view.K8SResourceInfo) rty.Component {
+func resourceTextPodName(k8sInfo view.K8SResourceInfo) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("K8S POD: ")
-	sb.Fg(tcell.ColorDefault).Text(kri.PodName)
+	sb.Fg(tcell.ColorDefault).Text(k8sInfo.PodName)
 	return sb.Build()
 }
 
-func resourceTextPodRestarts(kri view.K8SResourceInfo) rty.Component {
+func resourceTextPodRestarts(k8sInfo view.K8SResourceInfo) rty.Component {
 	s := "restarts"
-	if kri.PodRestarts == 1 {
+	if k8sInfo.PodRestarts == 1 {
 		s = "restart"
 	}
 	return rty.NewStringBuilder().
 		Fg(cPending).
-		Textf("%d %s", kri.PodRestarts, s).
+		Textf("%d %s", k8sInfo.PodRestarts, s).
 		Build()
 }
 
-func resourceTextAge(kri view.K8SResourceInfo) rty.Component {
+func resourceTextAge(k8sInfo view.K8SResourceInfo) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("AGE ")
-	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(kri.PodCreationTime)))
+	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(k8sInfo.PodCreationTime)))
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
 		Add(sb.Build())
@@ -305,7 +307,7 @@ func resourceTextURLPrefix() rty.Component {
 }
 
 func (v *ResourceView) resourceExpandedHistory() rty.Component {
-	if v.res.IsYAMLManifest {
+	if v.res.IsYAML() {
 		return rty.NewConcatLayout(rty.DirVert)
 	}
 

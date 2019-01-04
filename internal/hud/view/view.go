@@ -1,7 +1,6 @@
 package view
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -16,23 +15,22 @@ type ResourceInfoView interface {
 type DCResourceInfo struct {
 	ConfigPath string
 	status     string
-	Log        string
+	log        string
 }
 
 func NewDCResourceInfo(configPath string, status string, log string) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPath: configPath,
 		status:     status,
-		Log:        log,
+		log:        log,
 	}
 }
 
 var _ ResourceInfoView = DCResourceInfo{}
 
-func (DCResourceInfo) resourceInfoView()     {}
-func (dc DCResourceInfo) Empty() bool        { return reflect.DeepEqual(dc, DCResourceInfo{}) }
-func (dc DCResourceInfo) RuntimeLog() string { return dc.Log }
-func (dc DCResourceInfo) Status() string     { return dc.status }
+func (DCResourceInfo) resourceInfoView()         {}
+func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
+func (dcInfo DCResourceInfo) Status() string     { return dcInfo.status }
 
 type K8SResourceInfo struct {
 	PodName            string
@@ -45,9 +43,9 @@ type K8SResourceInfo struct {
 
 var _ ResourceInfoView = K8SResourceInfo{}
 
-func (K8SResourceInfo) resourceInfoView()      {}
-func (kri K8SResourceInfo) RuntimeLog() string { return kri.PodLog }
-func (kri K8SResourceInfo) Status() string     { return kri.PodStatus }
+func (K8SResourceInfo) resourceInfoView()          {}
+func (k8sInfo K8SResourceInfo) RuntimeLog() string { return k8sInfo.PodLog }
+func (k8sInfo K8SResourceInfo) Status() string     { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string
@@ -55,9 +53,9 @@ type YAMLResourceInfo struct {
 
 var _ ResourceInfoView = YAMLResourceInfo{}
 
-func (YAMLResourceInfo) resourceInfoView()      {}
-func (yri YAMLResourceInfo) RuntimeLog() string { return "" }
-func (yri YAMLResourceInfo) Status() string     { return "" }
+func (YAMLResourceInfo) resourceInfoView()           {}
+func (yamlInfo YAMLResourceInfo) RuntimeLog() string { return "" }
+func (yamlInfo YAMLResourceInfo) Status() string     { return "" }
 
 type Resource struct {
 	Name               model.ManifestName
@@ -79,8 +77,6 @@ type Resource struct {
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
-
-	IsYAMLManifest bool
 }
 
 func (r Resource) DCInfo() DCResourceInfo {
@@ -93,7 +89,8 @@ func (r Resource) DCInfo() DCResourceInfo {
 }
 
 func (r Resource) IsDC() bool {
-	return !r.DCInfo().Empty()
+	_, ok := r.ResourceInfo.(DCResourceInfo)
+	return ok
 }
 
 func (r Resource) K8SInfo() K8SResourceInfo {
@@ -106,13 +103,14 @@ func (r Resource) IsK8S() bool {
 	return ok
 }
 
-func (r Resource) YamlInfo() YAMLResourceInfo {
-	switch info := r.ResourceInfo.(type) {
-	case YAMLResourceInfo:
-		return info
-	default:
-		return YAMLResourceInfo{}
-	}
+func (r Resource) YAMLInfo() YAMLResourceInfo {
+	ret, _ := r.ResourceInfo.(YAMLResourceInfo)
+	return ret
+}
+
+func (r Resource) IsYAML() bool {
+	_, ok := r.ResourceInfo.(YAMLResourceInfo)
+	return ok
 }
 
 func (r Resource) LastBuild() model.BuildStatus {
@@ -125,8 +123,8 @@ func (r Resource) LastBuild() model.BuildStatus {
 func (r Resource) DefaultCollapse() bool {
 	autoExpand := false
 	if r.IsK8S() {
-		kri := r.K8SInfo()
-		autoExpand = kri.PodRestarts > 0 || kri.PodStatus == "CrashLoopBackoff" || kri.PodStatus == "Error"
+		k8sInfo := r.K8SInfo()
+		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
 	}
 	autoExpand = autoExpand ||
 		r.LastBuild().Error != nil ||

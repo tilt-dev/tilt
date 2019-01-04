@@ -202,8 +202,9 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	if dcInfo := res.DCInfo(); !dcInfo.Empty() {
-		return dcInfo.Log
+	// TODO(matt) figure out what to do with DC logs once we have DC timestamps
+	if res.IsDC() {
+		return res.DCInfo().RuntimeLog()
 	}
 
 	// A build is in progress, triggered by an explicit edit.
@@ -223,22 +224,20 @@ func bestLogs(res view.Resource) string {
 		return string(res.LastBuild().Log)
 	}
 
-	// TODO(matt) figure out what to do with DC logs once we have DC timestamps
-
 	if res.IsK8S() {
-		kri := res.K8SInfo()
+		k8sInfo := res.K8SInfo()
 		// Two cases:
 		// 1) The last build finished before this pod started
 		// 2) This log is from an in-place container update.
 		// in either case, prepend them to pod logs.
-		if (res.LastBuild().StartTime.Equal(kri.PodUpdateStartTime) ||
-			res.LastBuild().StartTime.Before(kri.PodCreationTime)) &&
+		if (res.LastBuild().StartTime.Equal(k8sInfo.PodUpdateStartTime) ||
+			res.LastBuild().StartTime.Before(k8sInfo.PodCreationTime)) &&
 			len(res.LastBuild().Log) > 0 {
 			return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
 		}
 
 		// The last build finished, but the pod hasn't started yet.
-		if res.LastBuild().StartTime.After(kri.PodCreationTime) {
+		if res.LastBuild().StartTime.After(k8sInfo.PodCreationTime) {
 			return string(res.LastBuild().Log)
 		}
 	}

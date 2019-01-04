@@ -481,7 +481,6 @@ func StateToView(s EngineState) view.View {
 			ResourceInfo: view.YAMLResourceInfo{
 				K8sResources: s.GlobalYAML.Resources(),
 			},
-			IsYAMLManifest: true,
 		}
 
 		ret.Resources = append(ret.Resources, r)

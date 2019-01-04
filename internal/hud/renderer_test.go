@@ -222,7 +222,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 					StartTime:  ts.Add(-1400 * time.Millisecond),
 				}},
 				LastDeployTime: ts,
-				IsYAMLManifest: true,
+				ResourceInfo:   view.YAMLResourceInfo{},
 			},
 		},
 	}
