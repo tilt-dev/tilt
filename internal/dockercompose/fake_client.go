@@ -31,7 +31,7 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, ctxCancel func(), pathToConfig, serviceName string) (io.ReadCloser, error) {
 	return ioutil.NopCloser(bytes.NewReader([]byte(c.logOutput))), nil
 }
 

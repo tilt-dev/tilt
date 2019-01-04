@@ -16,7 +16,7 @@ import (
 type DockerComposeClient interface {
 	Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error)
+	StreamLogs(ctx context.Context, ctxCancel func(), configPath, serviceName string) (io.ReadCloser, error)
 	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
 	Config(ctx context.Context, configPath string) (string, error)
 	Services(ctx context.Context, configPath string) (string, error)
@@ -51,7 +51,7 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, ctxCancel func(), configPath, serviceName string) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
 	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName}
@@ -76,6 +76,9 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath, serviceName st
 			logger.Get(ctx).Debugf("cmd `docker-compose %s` exited with error: \"%v\" (stderr: %s)",
 				strings.Join(args, " "), err, errBuf.String())
 		}
+
+		// Cancel the context so that whoever spun up this process knows that it's done.
+		ctxCancel()
 	}()
 	return stdout, nil
 }
