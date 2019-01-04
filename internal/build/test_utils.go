@@ -2,7 +2,6 @@ package build
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -126,10 +125,9 @@ func (f *dockerBuildFixture) getNameFromTest() reference.Named {
 
 func (f *dockerBuildFixture) startRegistry() {
 	stdout := bufsync.NewThreadSafeBuffer()
-	stderr := &bytes.Buffer{}
 	cmd := exec.Command("docker", "run", "--name", "tilt-registry", "-p", "5005:5000", "registry:2")
 	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	cmd.Stderr = stdout
 	f.registry = cmd
 
 	err := cmd.Start()

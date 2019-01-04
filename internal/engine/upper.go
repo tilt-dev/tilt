@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -735,13 +734,6 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-
-	// filter out bogus log
-	// TODO(maia): this still shows up in the top-level tilt log and it's annoying :-/
-	logStr := string(action.Log)
-	if strings.TrimSpace(logStr) == "Attaching to" {
 		return
 	}
 

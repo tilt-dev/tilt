@@ -1759,6 +1759,22 @@ func TestDockerComposeRecordsLogs(t *testing.T) {
 	})
 }
 
+func TestDockerComposeFiltersOutAttachedToLogs(t *testing.T) {
+	f := newTestFixture(t)
+	m, _ := f.setupDCFixture()
+	attaching := "Attaching to servantes_snack_1"
+	f.dcc.SetLogOutput(attaching + "\n")
+
+	f.Start([]model.Manifest{m}, true)
+	f.waitForCompletedBuildCount(1)
+
+	assert.NotContains(t, f.LogLines(), attaching)
+
+	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotContains(t, st.DCResourceState().Log(), attaching)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
