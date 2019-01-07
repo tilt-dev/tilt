@@ -655,29 +655,6 @@ k8s_resource('foo', 'foo.yaml')
 	)
 }
 
-func TestDockerComposeResourceCreation(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("docker-compose.yml", `
-version: '3'
-services:
-  foo:
-    build: ./foo
-    command: sleep 100
-    ports:
-      - "12312:12312"`)
-	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
-
-	f.load("foo")
-	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.assertManifest("foo", dcConfigPath(configPath))
-
-	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
-	f.assertConfigFiles(expectedConfFiles...)
-}
-
 func TestK8sYAMLInputBareString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -976,21 +953,6 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sInfo().PortForwards)
-		case dcConfigPathHelper:
-			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
-				dcInfo := m.DCInfo()
-				assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
-			}
-		case dcYAMLRawHelper:
-			dcInfo := m.DCInfo()
-			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
-				assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
-			}
-		case dcDfRawHelper:
-			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
-				dcInfo := m.DCInfo()
-				assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
-			}
 		default:
 			f.t.Fatalf("unexpected arg to assertManifest: %T %v", opt, opt)
 		}
