@@ -92,10 +92,11 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
-	if manifest.IsDC() {
-		output := b.buildOutput[manifest.ManifestName()]
+	output, ok := b.buildOutput[manifest.ManifestName()]
+	if ok {
 		logger.Get(ctx).Infof(output)
 	}
+
 	select {
 	case b.calls <- buildAndDeployCall{manifest, state}:
 	default:
@@ -1740,7 +1741,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "yarn install"
-	f.setDCBuildLogOutput(m.ManifestName(), expected)
+	f.setBuildLogOutput(m.ManifestName(), expected)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -1767,6 +1768,21 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
+	})
+}
+
+func TestDockerComposeFiltersRunLogs(t *testing.T) {
+	f := newTestFixture(t)
+	m, _ := f.setupDCFixture()
+	expected := "Attaching to snack\n"
+	f.setDCRunLogOutput(m.ManifestName(), expected)
+
+	f.loadAndStart()
+	f.waitForCompletedBuildCount(2)
+
+	// recorded on manifest state
+	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotContains(t, st.DCResourceState().Log(), expected)
 	})
 }
 
@@ -2240,7 +2256,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	return manifests[0], manifests[1]
 }
 
-func (f *testFixture) setDCBuildLogOutput(mn model.ManifestName, output string) {
+func (f *testFixture) setBuildLogOutput(mn model.ManifestName, output string) {
 	f.b.buildOutput[mn] = output
 }
 

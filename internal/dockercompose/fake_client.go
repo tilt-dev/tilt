@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -37,7 +36,6 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 
 func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
 	output := c.RunLogOutput[model.ManifestName(serviceName)]
-	fmt.Printf("Got output: %s for manifest %s\n", output, serviceName)
 	return ioutil.NopCloser(bytes.NewReader([]byte(output))), nil
 }
 
