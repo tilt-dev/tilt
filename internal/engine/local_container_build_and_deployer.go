@@ -55,8 +55,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 		return store.BuildResult{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	fbInfo := manifest.FastBuildInfo()
-	if fbInfo.Empty() {
+	fbInfo, ok := manifest.DockerInfo.BuildDetails.(model.FastBuild)
+	if !ok {
 		return store.BuildResult{}, RedirectToNextBuilderf("container build only supports FastBuilds")
 	}
 

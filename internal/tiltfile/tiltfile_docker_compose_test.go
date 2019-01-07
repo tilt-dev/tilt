@@ -193,10 +193,10 @@ RUN echo hi`
 func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manifest {
 	m := f.assertManifest(name)
 
-	dcInfo := m.DCInfo()
-	if dcInfo.Empty() {
+	if !m.IsDC() {
 		f.t.Error("expected a docker-compose manifest")
 	}
+	dcInfo := m.DCInfo()
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {

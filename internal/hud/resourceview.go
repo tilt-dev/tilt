@@ -180,10 +180,11 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 }
 
 func (v *ResourceView) resourceExpandedYAML() rty.Component {
-	if !v.res.IsYAML() {
+	yi := v.res.YAMLInfo()
+
+	if !v.res.IsYAML() || len(yi.K8sResources) == 0 {
 		return rty.EmptyLayout
 	}
-	yi := v.res.YAMLInfo()
 
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))

@@ -74,7 +74,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	if fbInfo := manifest.FastBuildInfo(); fbInfo.Empty() {
+	if !manifest.IsFastBuild() {
 		return fmt.Errorf("container build only supports FastBuilds")
 	}
 

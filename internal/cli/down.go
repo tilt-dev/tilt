@@ -59,10 +59,10 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 
 	var dcConfigPath string
 	for _, m := range manifests {
-		if dcInfo := m.DCInfo(); !dcInfo.Empty() {
+		if m.IsDC() {
 			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll
 			// need to support down-ing as well. For now, we `down` the first one we find.
-			dcConfigPath = dcInfo.ConfigPath
+			dcConfigPath = m.DCInfo().ConfigPath
 			break
 		}
 	}

@@ -122,10 +122,14 @@ func (r Resource) LastBuild() model.BuildStatus {
 
 func (r Resource) DefaultCollapse() bool {
 	autoExpand := false
-	if r.IsK8S() {
-		k8sInfo := r.K8SInfo()
+	if k8sInfo, ok := r.ResourceInfo.(K8SResourceInfo); ok {
 		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
 	}
+
+	if r.IsYAML() {
+		autoExpand = true
+	}
+
 	autoExpand = autoExpand ||
 		r.LastBuild().Error != nil ||
 		r.CrashLog != "" ||

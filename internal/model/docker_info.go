@@ -10,15 +10,15 @@ import (
 type DockerInfo struct {
 	cachePaths   []string
 	Ref          reference.Named
-	buildDetails buildDetails
+	BuildDetails BuildDetails
 }
 
-type buildDetails interface {
+type BuildDetails interface {
 	buildDetails()
 }
 
-func (di DockerInfo) WithBuildDetails(details buildDetails) DockerInfo {
-	di.buildDetails = details
+func (di DockerInfo) WithBuildDetails(details BuildDetails) DockerInfo {
+	di.BuildDetails = details
 	return di
 }
 

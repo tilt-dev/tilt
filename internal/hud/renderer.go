@@ -224,8 +224,7 @@ func bestLogs(res view.Resource) string {
 		return string(res.LastBuild().Log)
 	}
 
-	if res.IsK8S() {
-		k8sInfo := res.K8SInfo()
+	if k8sInfo, ok := res.ResourceInfo.(view.K8SResourceInfo); ok {
 		// Two cases:
 		// 1) The last build finished before this pod started
 		// 2) This log is from an in-place container update.

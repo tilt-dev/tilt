@@ -117,3 +117,5 @@ goreleaser will build binaries for the latest tag (using semantic version to
 determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
+After updating the release notes, update [the docs](docs/install.md)
+and [the default dev version](internal/cli/build.go).
