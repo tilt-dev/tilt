@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -48,7 +49,9 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		ModTime:    time.Now(),
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
-		Format:     tar.FormatUSTAR,
+	}
+	if runtime.GOOS == "darwin" {
+		tarHeader.Format = tar.FormatGNU
 	}
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
