@@ -1755,6 +1755,20 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 }
 
 // TODO(dmiller): add test for run time logs + filtering
+func TestDockerComposeRecordsRunLogs(t *testing.T) {
+	f := newTestFixture(t)
+	m, _ := f.setupDCFixture()
+	expected := "hello world"
+	f.setDCRunLogOutput(m.ManifestName(), expected)
+
+	f.loadAndStart()
+	f.waitForCompletedBuildCount(2)
+
+	// recorded on manifest state
+	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+		assert.Contains(t, st.DCResourceState().Log(), expected)
+	})
+}
 
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
@@ -2228,6 +2242,10 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 func (f *testFixture) setDCBuildLogOutput(mn model.ManifestName, output string) {
 	f.b.buildOutput[mn] = output
+}
+
+func (f *testFixture) setDCRunLogOutput(mn model.ManifestName, output string) {
+	f.dcc.RunLogOutput[mn] = output
 }
 
 type fixtureSub struct {
