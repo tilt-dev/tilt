@@ -189,7 +189,7 @@ func keyLegend(v view.View, vs view.ViewState) string {
 }
 
 func isInError(res view.Resource, triggerMode model.TriggerMode) bool {
-	return statusColor(res, triggerMode) == cBad || isCrashing(res)
+	return statusColor(res, triggerMode) == cBad
 }
 
 func isCrashing(res view.Resource) bool {
