@@ -8,6 +8,8 @@ Local Kubernetes development with no stress.
 Tilt helps you develop your microservices locally
 without slowing you down or making you play Twenty Questions with `kubectl`.
 
+Tilt replaces `docker build && kubectl apply` or `docker-compose`. It watches your files, updates automatically, and gives you a UI that shows you error so you don't have to spelunk with kubectl.
+
 Questions? Comments? Just want to say hi? Find us on the Kubernetes slack in [**#tilt**](https://kubernetes.slack.com/messages/CESBL84MV/).
 
 ## Overview
