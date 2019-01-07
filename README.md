@@ -5,20 +5,13 @@
 
 Local Kubernetes development with no stress.
 
-Tilt helps you develop your microservices locally
-without slowing you down or making you play Twenty Questions with `kubectl`.
-
-Tilt replaces `docker build && kubectl apply` or `docker-compose`. It watches your files, updates automatically, and gives you a UI that shows you error so you don't have to spelunk with kubectl.
-
-Questions? Comments? Just want to say hi? Find us on the Kubernetes slack in [**#tilt**](https://kubernetes.slack.com/messages/CESBL84MV/).
-
-## Overview
-
+[Tilt](https://tilt.build) helps you develop your microservices locally.
 Run `tilt up` to start working on your services in a complete dev environment
 configured for your team.
 
-Tilt watches what you're working on so that it can bring your environment
-up-to-date in real-time.
+Tilt watches your files for edits, automatically builds your container images,
+and applies any changes to bring your environment
+up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose`.
 
 The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
@@ -48,6 +41,16 @@ Configure Tilt with a `Tiltfile`, written in a small subset of Python called
 
 To get started, check out some [examples](https://docs.tilt.build/first_example.html) or dive into the
 [API reference](https://docs.tilt.build/api.html).
+
+## Community
+
+Questions? Comments? Just want to say hi?
+
+Find us on the Kubernetes slack. Get an invite at [slack.k8s.io](http://slack.k8s.io) and find
+us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
+
+We tweet at [windmill_eng](https://twitter.com/windmill_eng) and
+blog about building Tilt at [medium.com/windmill-engineering](https://medium.com/windmill-engineering).
 
 ## Development
 

@@ -178,20 +178,16 @@
   <div class="section" id="tilt-user-guide">
 <span id="tilt-user-guide"></span><h1>Tilt User Guide<a class="headerlink" href="#tilt-user-guide" title="Permalink to this headline">¶</a></h1>
 <p>Local Kubernetes development with no stress.</p>
-<p>Tilt helps you develop your microservices locally
-without slowing you down or making you play Twenty Questions with <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>.</p>
-<p>Questions? Comments? Just want to say hi? <a class="reference external" href="https://github.com/windmilleng/tilt/issues">File an issue on GitHub</a> or find us on the Kubernetes slack in <a class="reference external" href="https://kubernetes.slack.com/messages/CESBL84MV/"><strong>#tilt</strong></a>.</p>
-<div class="section" id="overview">
-<span id="overview"></span><h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
-<p>Run <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code> to start working on your services in a complete dev environment
+<p><a class="reference external" href="https://tilt.build">Tilt</a> helps you develop your microservices locally.
+Run <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code> to start working on your services in a complete dev environment
 configured for your team.</p>
-<p>Tilt watches what you’re working on so that it can bring your environment
-up-to-date in real-time.</p>
+<p>Tilt watches your files for edits, automatically builds your container images,
+and applies any changes to bring your environment
+up-to-date in real-time. Think <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">build</span> <span class="pre">&amp;&amp;</span> <span class="pre">kubectl</span> <span class="pre">apply</span></code> or <code class="docutils literal notranslate"><span class="pre">docker-compose</span></code>.</p>
 <p>The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
 or logs right in your terminal.</p>
-<p><iframe width="560" height="315" src="https://www.youtube.com/embed/MGeUUmdtdKA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></p></div>
-<div class="section" id="install-tilt">
+<p><iframe width="560" height="315" src="https://www.youtube.com/embed/MGeUUmdtdKA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></p><div class="section" id="install-tilt">
 <span id="install-tilt"></span><h2>Install Tilt<a class="headerlink" href="#install-tilt" title="Permalink to this headline">¶</a></h2>
 <p>Download the Tilt binary on
 <a class="reference external" href="https://github.com/windmilleng/tilt/releases">the github releases page</a>.</p>
@@ -206,6 +202,14 @@ to help you <code class="docutils literal notranslate"><span class="pre">tilt</s
 <a class="reference external" href="https://github.com/bazelbuild/starlark#tour">Starlark</a>.</p>
 <p>To get started, check out some <a class="reference external" href="first_example.html">examples</a> or dive into the
 <a class="reference external" href="api.html">API reference</a>.</p>
+</div>
+<div class="section" id="community">
+<span id="community"></span><h2>Community<a class="headerlink" href="#community" title="Permalink to this headline">¶</a></h2>
+<p>Questions? Comments? Just want to say hi?</p>
+<p>Find us on the Kubernetes slack. Get an invite at <a class="reference external" href="http://slack.k8s.io">slack.k8s.io</a> and find
+us in <a class="reference external" href="https://kubernetes.slack.com/messages/CESBL84MV/">the <strong>#tilt</strong> channel</a>.</p>
+<p>We tweet at <a class="reference external" href="https://twitter.com/windmill_eng">windmill_eng</a> and
+blog about building Tilt at <a class="reference external" href="https://medium.com/windmill-engineering">medium.com/windmill-engineering</a>.</p>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
