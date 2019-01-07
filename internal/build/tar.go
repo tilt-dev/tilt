@@ -48,7 +48,7 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		ModTime:    time.Now(),
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
-		Format:     tar.FormatGNU,
+		Format:     tar.FormatUSTAR,
 	}
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
