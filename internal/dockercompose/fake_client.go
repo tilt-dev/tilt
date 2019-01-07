@@ -12,7 +12,6 @@ import (
 type FakeDCClient struct {
 	t *testing.T
 
-	logOutput string
 	eventJson chan string
 }
 
@@ -32,7 +31,7 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 }
 
 func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
-	return ioutil.NopCloser(bytes.NewReader([]byte(c.logOutput))), nil
+	return ioutil.NopCloser(bytes.NewReader([]byte{})), nil
 }
 
 func (c *FakeDCClient) StreamEvents(ctx context.Context, pathToConfig string) (<-chan string, error) {
@@ -71,8 +70,4 @@ func (c *FakeDCClient) Config(ctx context.Context, pathToConfig string) (string,
 
 func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
 	return "", nil
-}
-
-func (c *FakeDCClient) SetLogOutput(output string) {
-	c.logOutput = output
 }

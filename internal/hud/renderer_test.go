@@ -356,6 +356,11 @@ func TestRenderLogModal(t *testing.T) {
 					"Hi hello I'm a docker compose log",
 					time.Now().Add(time.Second*-12),
 				),
+				BuildHistory: []model.BuildStatus{
+					model.BuildStatus{
+						Log: []byte("Hi hello I'm a docker compose build log"),
+					},
+				},
 			},
 		},
 	}

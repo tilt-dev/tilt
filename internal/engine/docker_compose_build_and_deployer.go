@@ -3,8 +3,7 @@ package engine
 import (
 	"context"
 
-	"github.com/opentracing/opentracing-go"
-
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"

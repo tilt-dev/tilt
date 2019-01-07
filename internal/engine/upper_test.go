@@ -74,6 +74,8 @@ type fakeBuildAndDeployer struct {
 
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
+
+	buildOutput map[model.ManifestName]string
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -90,6 +92,10 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
+	if manifest.IsDC() {
+		output := b.buildOutput[manifest.ManifestName()]
+		logger.Get(ctx).Infof(output)
+	}
 	select {
 	case b.calls <- buildAndDeployCall{manifest, state}:
 	default:
@@ -116,8 +122,9 @@ func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, pre
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
-		t:     t,
-		calls: make(chan buildAndDeployCall, 5),
+		t:           t,
+		calls:       make(chan buildAndDeployCall, 5),
+		buildOutput: make(map[model.ManifestName]string),
 	}
 }
 
@@ -1729,39 +1736,25 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	})
 }
 
-func TestDockerComposeRecordsLogs(t *testing.T) {
+func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
-	expected := "spoonerisms_1  | 2018-12-20T16:11:04.070480042Z yarn install v1.10."
-	f.dcc.SetLogOutput(expected + "\n")
+	expected := "yarn install"
+	f.setDCBuildLogOutput(m.ManifestName(), expected)
 
-	f.Start([]model.Manifest{m}, true)
-	f.waitForCompletedBuildCount(1)
+	f.loadAndStart()
+	f.waitForCompletedBuildCount(2)
 
 	// recorded in global log
 	assert.Contains(t, f.LogLines(), expected)
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
-		assert.Contains(t, st.DCResourceState().Log(), expected)
+		assert.Contains(t, string(st.LastBuild().Log), expected)
 	})
 }
 
-func TestDockerComposeFiltersOutAttachedToLogs(t *testing.T) {
-	f := newTestFixture(t)
-	m, _ := f.setupDCFixture()
-	attaching := "Attaching to servantes_snack_1"
-	f.dcc.SetLogOutput(attaching + "\n")
-
-	f.Start([]model.Manifest{m}, true)
-	f.waitForCompletedBuildCount(1)
-
-	assert.NotContains(t, f.LogLines(), attaching)
-
-	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
-		assert.NotContains(t, st.DCResourceState().Log(), attaching)
-	})
-}
+// TODO(dmiller): add test for run time logs + filtering
 
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
@@ -2231,6 +2224,10 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	}
 
 	return manifests[0], manifests[1]
+}
+
+func (f *testFixture) setDCBuildLogOutput(mn model.ManifestName, output string) {
+	f.b.buildOutput[mn] = output
 }
 
 type fixtureSub struct {
