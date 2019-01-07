@@ -45,10 +45,10 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		startWatchTime := time.Unix(0, 0)
 		if isActive {
 			select {
-			case <-existing.ctx.Done():
-				// The active log watcher got cancelled somehow, so we need to create
-				// a new one that picks up where it left off.
-				startWatchTime = <-existing.terminationTime
+			case termTime := <-existing.terminationTime:
+				// If we're receiving on this channel, it's because the previous watcher ended or
+				// died somehow; we need to create a new one that picks up where it left off.
+				startWatchTime = termTime
 			default:
 				// Watcher is still active, no action needed.
 				continue
@@ -97,9 +97,9 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	}()
 
 	name := watch.name
-	readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.cancel, watch.dcConfigPath, watch.name.String())
+	readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.dcConfigPath, watch.name.String())
 	if err != nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
 		return
 	}
 	defer func() {
@@ -119,7 +119,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 
 	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
 		return
 	}
 }
