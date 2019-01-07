@@ -90,7 +90,7 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 		envFunc = func(key string) string { return envMap[key] }
 	}
 
-	opts, err := CreateClientOpts(envFunc)
+	opts, err := CreateClientOpts(ctx, envFunc)
 	if err != nil {
 		return nil, errors.Wrap(err, "newDockerClient")
 	}
@@ -155,7 +155,7 @@ func SupportsBuildkit(v types.Version) bool {
 // DOCKER_API_VERSION to set the version of the API to reach, leave empty for latest.
 // DOCKER_CERT_PATH to load the TLS certificates from.
 // DOCKER_TLS_VERIFY to enable or disable TLS verification, off by default.
-func CreateClientOpts(env func(string) string) ([]func(client *client.Client) error, error) {
+func CreateClientOpts(ctx context.Context, env func(string) string) ([]func(client *client.Client) error, error) {
 	result := make([]func(client *client.Client) error, 0)
 
 	if dockerCertPath := env("DOCKER_CERT_PATH"); dockerCertPath != "" {
@@ -183,10 +183,19 @@ func CreateClientOpts(env func(string) string) ([]func(client *client.Client) er
 	if version := env("DOCKER_API_VERSION"); version != "" {
 		result = append(result, client.WithVersion(version))
 	} else {
-		result = append(result, client.WithVersion(defaultVersion))
+		// NegotateAPIVersion makes the docker client negotiate down to a lower version
+		// if 'defaultVersion' is newer than the server version.
+		result = append(result, client.WithVersion(defaultVersion), NegotiateAPIVersion(ctx))
 	}
 
 	return result, nil
+}
+
+func NegotiateAPIVersion(ctx context.Context) func(client *client.Client) error {
+	return func(client *client.Client) error {
+		client.NegotiateAPIVersion(ctx)
+		return nil
+	}
 }
 
 func (d *DockerCli) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
