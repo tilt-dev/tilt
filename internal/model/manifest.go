@@ -111,10 +111,11 @@ func (m Manifest) LocalPaths() []string {
 			result := make([]string, len(di.Mounts))
 			for i, mount := range di.Mounts {
 				result[i] = mount.LocalPath
-
 			}
+			return result
+		default:
+			return nil
 		}
-		return nil
 	}
 }
 
