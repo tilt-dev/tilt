@@ -430,12 +430,10 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("Dockerfile", ``)
 	f.WriteFile("snack.yaml", simpleYAML)
 
-	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount})
-	f.Start([]model.Manifest{manifest}, true)
+	f.loadAndStart()
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
@@ -477,16 +475,11 @@ k8s_resource("baz", 'snack.yaml')
 k8s_resource("quux", 'doggos.yaml')
 `)
 	f.WriteFile("snack.yaml", simpleYAML)
-	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
-	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
+	f.WriteFile("Dockerfile1", ``)
+	f.WriteFile("Dockerfile2", ``)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
-	mount1 := model.Mount{LocalPath: f.JoinPath("mount1"), ContainerPath: "/go"}
-	mount2 := model.Mount{LocalPath: f.JoinPath("mount2"), ContainerPath: "/go"}
-	manifest1 := f.newManifest("baz", []model.Mount{mount1})
-	manifest2 := f.newManifest("quux", []model.Mount{mount2})
-
-	f.Start([]model.Manifest{manifest1, manifest2}, true)
+	f.loadAndStart()
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
@@ -497,8 +490,10 @@ k8s_resource("quux", 'doggos.yaml')
 	assert.Empty(t, call.manifest.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.manifest.Name))
 
-	// rewrite the same config
-	f.WriteConfigFiles("Dockerfile1", `FROM iron/go:dev1`)
+	// rewrite the dockerfiles
+	f.WriteConfigFiles(
+		"Dockerfile1", `FROM iron/go:dev1`,
+		"Dockerfile2", "FROM iron/go:dev2")
 
 	// Now with the manifests from the config files
 	call = f.nextCall("manifest from config files (baz)")
@@ -541,10 +536,7 @@ k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 	f.WriteFile("Dockerfile2", `FROM iron/go:dev2`)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
-	manifests, _, _, err := tiltfile.Load(f.ctx, tiltfile.FileName, nil)
-	assert.NoError(t, err)
-
-	f.Start(manifests, true)
+	f.loadAndStart()
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
@@ -567,7 +559,7 @@ k8s_resource("quux", 'doggos.yaml')  # rename "doggos" --> "quux"
 	assert.Equal(t, "quux", string(call.manifest.Name))
 	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
 
-	err = f.Stop()
+	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -626,27 +618,17 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
 
-	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount})
+	f.loadAndStart()
 
-	f.Start([]model.Manifest{manifest}, true)
-
-	// First call: with the old manifest
+	// First call: init
 	call := f.nextCall("old manifest")
-	assert.Empty(t, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev`, call.manifest.FastBuildInfo().BaseDockerfile)
 
-	// second call: do some stuff
-	f.WriteConfigFiles("Tiltfile", simpleTiltfile)
-
-	call = f.nextCall("changed configs cause image build")
-	assert.Equal(t, "FROM iron/go:dev", call.manifest.FastBuildInfo().BaseDockerfile)
-	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
-
-	// Third call: error!
+	// Second call: error!
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
-	// fourth call: fix
+	// Third call: fix
 	f.WriteConfigFiles("Tiltfile", simpleTiltfile,
 		"Dockerfile", `FROM iron/go:dev2`)
 

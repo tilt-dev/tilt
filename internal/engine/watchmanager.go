@@ -132,19 +132,9 @@ func dependenciesMatch(d1 []string, d2 []string) bool {
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
-	for _, name := range teardown {
-		p, ok := w.manifestWatches[name]
-		if !ok {
-			continue
-		}
-		err := p.notify.Close()
-		if err != nil {
-			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
-		}
-		p.cancel()
-		delete(w.manifestWatches, name)
-	}
-
+	// setup the watch first, to avoid a gap in coverage between setup and
+	// teardown. it's ok if we get a file event twice.
+	newWatches := make(map[model.ManifestName]manifestNotifyCancel)
 	for _, manifest := range setup {
 		watcher, err := w.fsWatcherMaker()
 		if err != nil {
@@ -162,8 +152,24 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 		ctx, cancel := context.WithCancel(ctx)
 
 		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
+		newWatches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
+	}
 
-		w.manifestWatches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
+	for _, name := range teardown {
+		p, ok := w.manifestWatches[name]
+		if !ok {
+			continue
+		}
+		err := p.notify.Close()
+		if err != nil {
+			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
+		}
+		p.cancel()
+		delete(w.manifestWatches, name)
+	}
+
+	for k, v := range newWatches {
+		w.manifestWatches[k] = v
 	}
 }
 
