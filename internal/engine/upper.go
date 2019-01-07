@@ -719,10 +719,16 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 		return
 	}
 
+	state, _ := ms.ResourceState.(dockercompose.State)
+
 	// For now, just guess at state.
-	status := evt.GuessStatus()
-	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithStatus(status)
+	state = state.WithStatus(evt.GuessStatus())
+
+	if evt.IsStartupEvent() {
+		state = state.WithStartTime(time.Now())
+	}
+
+	ms.ResourceState = state
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {

@@ -16,13 +16,15 @@ type DCResourceInfo struct {
 	ConfigPath string
 	status     string
 	log        string
+	StartTime  time.Time
 }
 
-func NewDCResourceInfo(configPath string, status string, log string) DCResourceInfo {
+func NewDCResourceInfo(configPath string, status string, log string, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPath: configPath,
 		status:     status,
 		log:        log,
+		StartTime:  startTime,
 	}
 }
 

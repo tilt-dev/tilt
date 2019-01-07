@@ -206,7 +206,11 @@ func (v *ResourceView) resourceExpandedDC() rty.Component {
 	l.AddDynamic(rty.NewFillerString(' '))
 
 	// TODO(maia): ports
-	// TODO(matt) container age?
+
+	st := v.res.DCInfo().StartTime
+	if !st.IsZero() {
+		l.Add(resourceTextAge(st))
+	}
 
 	return rty.OneLine(l)
 }
@@ -252,7 +256,7 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 		}
 	}
 
-	l.Add(resourceTextAge(k8sInfo))
+	l.Add(resourceTextAge(k8sInfo.PodCreationTime))
 	return rty.OneLine(l)
 }
 
@@ -274,10 +278,10 @@ func resourceTextPodRestarts(k8sInfo view.K8SResourceInfo) rty.Component {
 		Build()
 }
 
-func resourceTextAge(k8sInfo view.K8SResourceInfo) rty.Component {
+func resourceTextAge(t time.Time) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("AGE ")
-	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(k8sInfo.PodCreationTime)))
+	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(t)))
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
 		Add(sb.Build())

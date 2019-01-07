@@ -516,7 +516,7 @@ func StateToView(s EngineState) view.View {
 
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(ms.Manifest.DCInfo().ConfigPath, dcState.Status, dcState.Log())
+		return view.NewDCResourceInfo(ms.Manifest.DCInfo().ConfigPath, dcState.Status, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := ms.MostRecentPod()
 		return view.K8SResourceInfo{
