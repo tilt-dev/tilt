@@ -3,15 +3,13 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
-	"runtime/pprof"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -40,8 +38,6 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 // When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
 const maxChangedFilesToPrint = 5
 
-const profileFileName = "tilt.profile"
-
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
@@ -69,7 +65,7 @@ func ProvideTimerMaker() timerMaker {
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager) Upper {
+	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -83,6 +79,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(cc)
 	st.AddSubscriber(dcw)
 	st.AddSubscriber(dclm)
+	st.AddSubscriber(pm)
 
 	return Upper{
 		store: st,
@@ -178,9 +175,9 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case view.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
 	case hud.StartProfilingAction:
-		handleStartProfilingAction(ctx, state)
+		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
-		handleStopProfilingAction(ctx, state)
+		handleStopProfilingAction(state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -328,39 +325,12 @@ func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 	}
 }
 
-func handleStopProfilingAction(ctx context.Context, state *store.EngineState) {
-	if !state.Profiling {
-		return
-	}
-	pprof.StopCPUProfile()
-	err := state.ProfileFile.Close()
-	if err != nil {
-		logger.Get(ctx).Infof("error closing profile file: %v", err)
-		return
-	}
-	state.Profiling = false
-
-	logger.Get(ctx).Infof("stopped pprof profile to %s", profileFileName)
+func handleStopProfilingAction(state *store.EngineState) {
+	state.IsProfiling = false
 }
 
-func handleStartProfilingAction(ctx context.Context, state *store.EngineState) {
-	if state.Profiling {
-		return
-	}
-	f, err := os.Create(profileFileName)
-	if err != nil {
-		fmt.Printf("error opening profile file %s: %v", profileFileName, err)
-		return
-	}
-	state.ProfileFile = f
-	err = pprof.StartCPUProfile(f)
-	if err != nil {
-		fmt.Printf("error starting pprof profile: %v", err)
-		return
-	}
-	state.Profiling = true
-
-	logger.Get(ctx).Infof("starting pprof profile to %s", profileFileName)
+func handleStartProfilingAction(state *store.EngineState) {
+	state.IsProfiling = true
 }
 
 func handleFSEvent(

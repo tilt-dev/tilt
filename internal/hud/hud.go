@@ -3,7 +3,6 @@ package hud
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -38,8 +37,6 @@ type Hud struct {
 	currentViewState view.ViewState
 	mu               sync.RWMutex
 	isRunning        bool
-
-	currentProfileFile *os.File
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
@@ -175,7 +172,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					Name: selected.Name,
 				})
 			case r == 'p':
-				if h.currentView.Profiling {
+				if h.currentView.IsProfiling {
 					dispatch(StopProfilingAction{})
 				} else {
 					dispatch(StartProfilingAction{})
