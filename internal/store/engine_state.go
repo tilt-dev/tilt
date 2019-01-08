@@ -65,6 +65,8 @@ type EngineState struct {
 
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
+
+	IsProfiling bool
 }
 
 func (e EngineState) RelativeTiltfilePath() (string, error) {
@@ -410,6 +412,7 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 func StateToView(s EngineState) view.View {
 	ret := view.View{
 		TriggerMode: s.TriggerMode,
+		IsProfiling: s.IsProfiling,
 	}
 
 	for _, name := range s.ManifestDefinitionOrder {

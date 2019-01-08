@@ -171,7 +171,12 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				dispatch(view.AppendToTriggerQueueAction{
 					Name: selected.Name,
 				})
-
+			case r == 'p':
+				if h.currentView.IsProfiling {
+					dispatch(StopProfilingAction{})
+				} else {
+					dispatch(StartProfilingAction{})
+				}
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()

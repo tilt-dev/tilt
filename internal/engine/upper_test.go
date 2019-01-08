@@ -1884,7 +1884,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcc := dockercompose.NewFakeDockerComposeClient(t)
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
-	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm)
+	pm := NewProfilerManager()
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, k8s, dcw, dclm, pm)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

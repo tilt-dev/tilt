@@ -157,6 +157,7 @@ type View struct {
 	Resources            []Resource
 	TiltfileErrorMessage string
 	TriggerMode          model.TriggerMode
+	IsProfiling          bool
 }
 
 type ViewState struct {

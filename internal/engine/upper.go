@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -65,7 +65,7 @@ func ProvideTimerMaker() timerMaker {
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager) Upper {
+	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -79,6 +79,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(cc)
 	st.AddSubscriber(dcw)
 	st.AddSubscriber(dclm)
+	st.AddSubscriber(pm)
 
 	return Upper{
 		store: st,
@@ -173,6 +174,10 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDockerComposeLogAction(state, action)
 	case view.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
+	case hud.StartProfilingAction:
+		handleStartProfilingAction(state)
+	case hud.StopProfilingAction:
+		handleStopProfilingAction(state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -318,6 +323,14 @@ func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 			break
 		}
 	}
+}
+
+func handleStopProfilingAction(state *store.EngineState) {
+	state.IsProfiling = false
+}
+
+func handleStartProfilingAction(state *store.EngineState) {
+	state.IsProfiling = true
 }
 
 func handleFSEvent(
