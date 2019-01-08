@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -48,6 +49,9 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		ModTime:    time.Now(),
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
+	}
+	if runtime.GOOS == "darwin" {
+		tarHeader.Format = tar.FormatUSTAR
 	}
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
@@ -139,7 +143,9 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 		}
 
 		header.Name = filepath.Clean(header.Name)
-
+		if runtime.GOOS == "darwin" {
+			header.Format = tar.FormatUSTAR
+		}
 		err = a.tw.WriteHeader(header)
 		if err != nil {
 			return errors.Wrapf(err, "%s: writing header", path)
