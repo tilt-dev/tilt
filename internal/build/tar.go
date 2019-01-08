@@ -43,15 +43,18 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
 	tarHeader := &tar.Header{
-		Name:       "Dockerfile",
-		Typeflag:   tar.TypeReg,
-		Size:       int64(len(df)),
-		ModTime:    time.Now(),
-		AccessTime: time.Now(),
-		ChangeTime: time.Now(),
+		Name:     "Dockerfile",
+		Typeflag: tar.TypeReg,
+		Size:     int64(len(df)),
 	}
 	if runtime.GOOS == "darwin" {
 		tarHeader.Format = tar.FormatUSTAR
+		tarHeader.ModTime = time.Now().Round(time.Second)
+		tarHeader.AccessTime = time.Time{}
+		tarHeader.ChangeTime = time.Time{}
+	} else {
+		tarHeader.ChangeTime = time.Now()
+		tarHeader.ModTime = time.Now()
 	}
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
@@ -145,6 +148,9 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 		header.Name = filepath.Clean(header.Name)
 		if runtime.GOOS == "darwin" {
 			header.Format = tar.FormatUSTAR
+			header.ModTime = time.Now().Round(time.Second)
+			header.AccessTime = time.Time{}
+			header.ChangeTime = time.Time{}
 		}
 		err = a.tw.WriteHeader(header)
 		if err != nil {
