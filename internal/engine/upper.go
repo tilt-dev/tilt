@@ -3,7 +3,9 @@ package engine
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -37,6 +39,8 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
 // When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
 const maxChangedFilesToPrint = 5
+
+const profileFileName = "tilt.profile"
 
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
@@ -173,6 +177,10 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDockerComposeLogAction(state, action)
 	case view.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
+	case hud.StartProfilingAction:
+		handleStartProfilingAction(ctx, state)
+	case hud.StopProfilingAction:
+		handleStopProfilingAction(ctx, state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -318,6 +326,41 @@ func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 			break
 		}
 	}
+}
+
+func handleStopProfilingAction(ctx context.Context, state *store.EngineState) {
+	if !state.Profiling {
+		return
+	}
+	pprof.StopCPUProfile()
+	err := state.ProfileFile.Close()
+	if err != nil {
+		logger.Get(ctx).Infof("error closing profile file: %v", err)
+		return
+	}
+	state.Profiling = false
+
+	logger.Get(ctx).Infof("stopped pprof profile to %s", profileFileName)
+}
+
+func handleStartProfilingAction(ctx context.Context, state *store.EngineState) {
+	if state.Profiling {
+		return
+	}
+	f, err := os.Create(profileFileName)
+	if err != nil {
+		fmt.Printf("error opening profile file %s: %v", profileFileName, err)
+		return
+	}
+	state.ProfileFile = f
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		fmt.Printf("error starting pprof profile: %v", err)
+		return
+	}
+	state.Profiling = true
+
+	logger.Get(ctx).Infof("starting pprof profile to %s", profileFileName)
 }
 
 func handleFSEvent(
