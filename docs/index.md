@@ -74,4 +74,10 @@ blog about building Tilt at [medium.com/windmill-engineering](https://medium.com
 
    fast_build
    api
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Questions
+
+   faq
 ```
