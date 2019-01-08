@@ -75,7 +75,7 @@ type fakeBuildAndDeployer struct {
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 
-	buildOutput map[model.ManifestName]string
+	buildLogOutput map[model.ManifestName]string
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -92,7 +92,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
-	output, ok := b.buildOutput[manifest.ManifestName()]
+	output, ok := b.buildLogOutput[manifest.ManifestName()]
 	if ok {
 		logger.Get(ctx).Infof(output)
 	}
@@ -123,9 +123,9 @@ func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, pre
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
-		t:           t,
-		calls:       make(chan buildAndDeployCall, 5),
-		buildOutput: make(map[model.ManifestName]string),
+		t:              t,
+		calls:          make(chan buildAndDeployCall, 5),
+		buildLogOutput: make(map[model.ManifestName]string),
 	}
 }
 
@@ -2257,7 +2257,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 }
 
 func (f *testFixture) setBuildLogOutput(mn model.ManifestName, output string) {
-	f.b.buildOutput[mn] = output
+	f.b.buildLogOutput[mn] = output
 }
 
 func (f *testFixture) setDCRunLogOutput(mn model.ManifestName, output string) {
