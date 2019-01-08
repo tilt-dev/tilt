@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -631,6 +632,27 @@ func TestBuildHistory(t *testing.T) {
 	}
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("multiple build history entries", 80, 20, v, vs)
+}
+
+func TestStatusBarDCRebuild(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:         "snack",
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, "hellllo"),
+				CurrentBuild: model.BuildStatus{
+					StartTime: now.Add(-5 * time.Second),
+					Reason:    model.BuildReasonFlagMountFiles,
+				},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseYes)
+	rtf.run("status bar after intentional DC restart", 60, 20, v, vs)
 }
 
 type rendererTestFixture struct {

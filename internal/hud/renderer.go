@@ -133,7 +133,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 	sb.Text(" ") // Indent
 	errorCount := 0
 	for _, res := range v.Resources {
-		if isInError(res) {
+		if isInError(res, v.TriggerMode) {
 			errorCount++
 		}
 	}
@@ -188,10 +188,8 @@ func keyLegend(v view.View, vs view.ViewState) string {
 	return defaultKeys
 }
 
-func isInError(res view.Resource) bool {
-	return res.LastBuild().Error != nil ||
-		(res.ResourceInfo != nil && statusColors[res.ResourceInfo.Status()] == cBad) ||
-		isCrashing(res)
+func isInError(res view.Resource, triggerMode model.TriggerMode) bool {
+	return statusColor(res, triggerMode) == cBad
 }
 
 func isCrashing(res view.Resource) bool {
