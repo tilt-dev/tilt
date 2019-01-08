@@ -7,12 +7,17 @@ import (
 	"testing"
 )
 
+const expectedUidAndGid = 0
+
 type ExpectedFile struct {
 	Path     string
 	Contents string
 
 	// If true, we will assert that the file is not in the tarball.
 	Missing bool
+
+	// If true, we will assert that UID and GIF are 0
+	AssertUidAndGidAreZero bool
 }
 
 // Asserts whether or not this file is in the tar.
@@ -52,6 +57,14 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 		if header.Typeflag != tar.TypeReg {
 			t.Errorf("Path %q exists but is not a regular file", expected.Path)
 			continue
+		}
+
+		if expected.AssertUidAndGidAreZero && header.Uid != expectedUidAndGid {
+			t.Errorf("Expected %s to have UID 0, got %d", header.Name, header.Uid)
+		}
+
+		if expected.AssertUidAndGidAreZero && header.Gid != expectedUidAndGid {
+			t.Errorf("Expected %s to have GID 0, got %d", header.Name, header.Gid)
 		}
 
 		contents := bytes.NewBuffer(nil)
