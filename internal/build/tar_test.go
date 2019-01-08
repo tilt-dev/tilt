@@ -29,8 +29,9 @@ func TestArchiveDf(t *testing.T) {
 	actual := tar.NewReader(ab.buf)
 
 	f.assertFileInTar(actual, expectedFile{
-		Path:     "Dockerfile",
-		Contents: dfText,
+		Path:                   "Dockerfile",
+		Contents:               dfText,
+		AssertUidAndGidAreZero: true,
 	})
 }
 
@@ -58,7 +59,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 		f.t.Fatal(err)
 	}
 	actual := tar.NewReader(ab.buf)
-	f.assertFileInTar(actual, expectedFile{Path: "a", Contents: "a"})
+	f.assertFileInTar(actual, expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true})
 	f.assertFileInTar(actual, expectedFile{Path: "b", Missing: true})
 }
 

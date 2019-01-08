@@ -38,6 +38,15 @@ func (a *ArchiveBuilder) close() error {
 	return a.tw.Close()
 }
 
+// NOTE(dmiller) sometimes users will have very large UID/GIDs that will cause
+// archive/tar to switch to PAX format, which will trip this Docker bug:
+// https://github.com/docker/cli/issues/1459
+// To prevent this, simply clear these out before adding to tar.
+func clearUIDAndGID(h *tar.Header) {
+	h.Uid = 0
+	h.Gid = 0
+}
+
 func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
@@ -49,6 +58,7 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
 	}
+	clearUIDAndGID(tarHeader)
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
 		return err
@@ -123,6 +133,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 		}
 
 		header, err := tar.FileInfoHeader(info, path)
+		clearUIDAndGID(header)
 		if err != nil {
 			return errors.Wrapf(err, "%s: making header", path)
 		}
