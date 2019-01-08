@@ -7,19 +7,22 @@ import (
 	"io"
 	"io/ioutil"
 	"testing"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type FakeDCClient struct {
 	t *testing.T
 
-	logOutput string
-	eventJson chan string
+	RunLogOutput map[model.ManifestName]string
+	eventJson    chan string
 }
 
 func NewFakeDockerComposeClient(t *testing.T) *FakeDCClient {
 	return &FakeDCClient{
-		t:         t,
-		eventJson: make(chan string, 100),
+		t:            t,
+		eventJson:    make(chan string, 100),
+		RunLogOutput: make(map[model.ManifestName]string),
 	}
 }
 
@@ -32,7 +35,8 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 }
 
 func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
-	return ioutil.NopCloser(bytes.NewReader([]byte(c.logOutput))), nil
+	output := c.RunLogOutput[model.ManifestName(serviceName)]
+	return ioutil.NopCloser(bytes.NewReader([]byte(output))), nil
 }
 
 func (c *FakeDCClient) StreamEvents(ctx context.Context, pathToConfig string) (<-chan string, error) {
@@ -71,8 +75,4 @@ func (c *FakeDCClient) Config(ctx context.Context, pathToConfig string) (string,
 
 func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
 	return "", nil
-}
-
-func (c *FakeDCClient) SetLogOutput(output string) {
-	c.logOutput = output
 }

@@ -200,11 +200,6 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	// TODO(matt) figure out what to do with DC logs once we have DC timestamps
-	if res.IsDC() {
-		return res.DCInfo().RuntimeLog()
-	}
-
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {
@@ -239,7 +234,7 @@ func bestLogs(res view.Resource) string {
 		}
 	}
 
-	return res.ResourceInfo.RuntimeLog()
+	return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
 }
 
 func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {
