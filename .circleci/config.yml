@@ -55,12 +55,16 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v6
-      - run: brew install go@1.10 kustomize docker-compose # bump cache version when changing this
+            - homebrew_cache_v7
+      # Bump cache version when changing this.
+      # We set HOMEBREW_NO_AUTO_UPDATE because it's both
+      # 1) not worth the cost, and
+      # 2) hits github in a way that leads to flakyness
+      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install go@1.11 kustomize docker-compose
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v6
+          key: homebrew_cache_v7
       - run: echo 'export PATH="/usr/local/opt/go@1.10/bin:$PATH"' >> $BASH_ENV
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
@@ -72,7 +76,9 @@ workflows:
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
-      - build-js
+      - build-js:
+          requires:
+            - build-linux
       - build-macos:
           requires:
             - build-linux
