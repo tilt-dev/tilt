@@ -62,7 +62,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	typ := stringToType[s]
+	typ := stringToType[s] // if type not in map, this returns 0 (i.e. TypeUnknown)
 	*t = typ
 	return nil
 }
@@ -145,7 +145,7 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	action := stringToAction[s]
+	action := stringToAction[s] // if action not in map, this returns 0 (i.e. ActionUnknown)
 	*a = action
 	return nil
 }
