@@ -197,7 +197,7 @@ func isCrashing(res view.Resource) bool {
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash) ||
-		res.IsDC() && res.DCInfo().Status() == dockercompose.StatusCrash
+		res.IsDC() && res.DockerComposeTarget().Status() == dockercompose.StatusCrash
 }
 
 func bestLogs(res view.Resource) string {

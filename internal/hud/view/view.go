@@ -133,7 +133,7 @@ func (r Resource) DefaultCollapse() bool {
 		autoExpand = true
 	}
 
-	if r.IsDC() && r.DCInfo().Status() == dockercompose.StatusCrash {
+	if r.IsDC() && r.DockerComposeTarget().Status() == dockercompose.StatusCrash {
 		autoExpand = true
 	}
 
