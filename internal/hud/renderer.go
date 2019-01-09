@@ -283,7 +283,7 @@ func (r *Renderer) renderResourceHeader(v view.View) rty.Component {
 	l.Add(rty.ColoredString("  RESOURCE NAME ", cLightText))
 	l.AddDynamic(rty.NewFillerString(' '))
 
-	k8sCell := rty.ColoredString(" K8S", cLightText)
+	k8sCell := rty.ColoredString(" DEPLOY STATUS", cLightText)
 	l.Add(k8sCell)
 	l.Add(middotText())
 

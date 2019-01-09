@@ -6,9 +6,9 @@ import (
 
 // Three hacky states just for now to get something into the hud.
 const (
-	StatusDown   = "down"
-	StatusInProg = "in progress"
-	StatusUp     = "up"
+	StatusDown   = "Down"
+	StatusInProg = "In Progress"
+	StatusUp     = "OK"
 )
 
 var containerActionToStatus = map[Action]string{
