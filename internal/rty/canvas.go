@@ -70,6 +70,9 @@ func (c *TempCanvas) makeRow() []cell {
 }
 
 func (c *TempCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
+	if mainc == 0 {
+		mainc = ' '
+	}
 	if x < 0 || x >= c.width || y < 0 || y >= c.height {
 		return fmt.Errorf("cell %v,%v outside canvas %v,%v", x, y, c.width, c.height)
 	}
@@ -138,6 +141,9 @@ func (c *SubCanvas) Close() (int, int) {
 }
 
 func (c *SubCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
+	if mainc == 0 {
+		mainc = ' '
+	}
 	if x < 0 || x >= c.width || y < 0 || y >= c.height {
 		return fmt.Errorf("coord %d,%d is outside bounds %d,%d", x, y, c.width, c.height)
 	}
@@ -161,7 +167,7 @@ func (c *SubCanvas) fill(lastFilled int) error {
 	}
 	for y := startY; y < maxY; y++ {
 		for x := 0; x < c.width; x++ {
-			if err := c.del.SetContent(c.startX+x, c.startY+y, 0, nil, c.style); err != nil {
+			if err := c.del.SetContent(c.startX+x, c.startY+y, ' ', nil, c.style); err != nil {
 				return err
 			}
 		}
@@ -189,6 +195,9 @@ func (c *ScreenCanvas) Size() (int, int) {
 }
 
 func (c *ScreenCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tcell.Style) error {
+	if mainc == 0 {
+		mainc = ' '
+	}
 	c.del.SetContent(x, y, mainc, combc, style)
 	return nil
 }
