@@ -74,7 +74,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	var ret rty.Component = l
 	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
 		ret = r.renderTiltLog(v, vs, keyLegend(v, vs), ret)
-	} else if vs.LogModal.ResourceLogNumber != 0 {
+	} else if vs.LogModal.ResourceLogNumber != 0 && len(v.Resources) > 0 {
 		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
 	}
 
