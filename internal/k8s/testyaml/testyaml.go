@@ -149,6 +149,32 @@ spec:
                 key: token
 `
 
+const SanchoExtBeta1YAML = `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: token
+            valueFrom:
+              secretKeyRef:
+                name: slacktoken
+                key: token
+`
+
 const SanchoTwinYAML = `
 apiVersion: apps/v1
 kind: Deployment
