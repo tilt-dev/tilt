@@ -3,9 +3,6 @@ kind: Deployment
 metadata:
   name: tilt-docserver
 spec:
-  selector:
-    matchLabels:
-      app: tilt-docserver
   template:
     metadata:
       labels:

@@ -107,6 +107,31 @@ func TestInjectLabelDeploymentBeta2(t *testing.T) {
 	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
 }
 
+func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.SanchoExtBeta1YAML)
+	newEntity, err := InjectLabels(entity, []LabelPair{
+		{
+			Key:   "owner",
+			Value: "me",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, strings.Count(result, "owner: me"))
+
+	// Assert that matchLabels were injected
+	assert.Contains(t, result, "matchLabels")
+	assert.Equal(t, 2, strings.Count(testyaml.SanchoBeta1YAML, "app: sancho"))
+	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
+}
+
 func TestEntityMatchesLabels(t *testing.T) {
 	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
 	if err != nil {
