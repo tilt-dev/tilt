@@ -450,7 +450,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 		return nil, nil
 	}
 
-	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerInfo.Ref)
+	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.ImageTarget.Ref)
 	if err != nil || imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
 		return nil, nil
@@ -524,7 +524,7 @@ func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podIn
 	podInfo.ContainerPorts = ports
 
 	forwards := PopulatePortForwards(ms.Manifest, *podInfo)
-	if len(forwards) < len(ms.Manifest.K8sInfo().PortForwards) {
+	if len(forwards) < len(ms.Manifest.K8sTarget().PortForwards) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			ms.Manifest.Name, podInfo.PodID)
@@ -551,7 +551,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	defer prunePods(ms)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerInfo.Ref)
+	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.ImageTarget.Ref)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return

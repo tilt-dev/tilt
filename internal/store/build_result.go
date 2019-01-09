@@ -83,7 +83,7 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 	}
 }
 
-func (b BuildState) WithDeployInfo(d DeployInfo) BuildState {
+func (b BuildState) WithDeployTarget(d DeployInfo) BuildState {
 	b.DeployInfo = d
 	return b
 }

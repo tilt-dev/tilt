@@ -99,7 +99,7 @@ func TestNamespaceGKE(t *testing.T) {
 
 	assert.Equal(t, "sancho-ns", string(result.Namespace))
 
-	bs := store.NewBuildState(result, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(result, nil).WithDeployTarget(f.deployInfo())
 	result, err = f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
 	result, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
 	result, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +165,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 
 	ctx := output.CtxForTest()
 
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
 	_, err := f.bd.BuildAndDeploy(ctx, NewSanchoFastBuildManifest(f), bs)
 	msg := "Command failed with exit code: 1"
@@ -195,7 +195,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
 	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
@@ -212,7 +212,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
 
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
 	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propogate back up")
@@ -238,7 +238,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	firstState := store.NewBuildState(alreadyBuilt, []string{aPath}).WithDeployInfo(f.deployInfo())
+	firstState := store.NewBuildState(alreadyBuilt, []string{aPath}).WithDeployTarget(f.deployInfo())
 
 	firstResult, err := f.bd.BuildAndDeploy(ctx, manifest, firstState)
 	if err != nil {
@@ -250,7 +250,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
 	}
 
-	secondState := store.NewBuildState(firstResult, []string{bPath}).WithDeployInfo(f.deployInfo())
+	secondState := store.NewBuildState(firstResult, []string{bPath}).WithDeployTarget(f.deployInfo())
 	secondResult, err := f.bd.BuildAndDeploy(ctx, manifest, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -289,7 +289,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	firstState := store.NewBuildState(alreadyBuilt, []string{aPath}).WithDeployInfo(f.deployInfo())
+	firstState := store.NewBuildState(alreadyBuilt, []string{aPath}).WithDeployTarget(f.deployInfo())
 	firstResult, err := f.bd.BuildAndDeploy(ctx, manifest, firstState)
 	if err != nil {
 		t.Fatal(err)
@@ -303,7 +303,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	// Kill the pod
 	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
 
-	secondState := store.NewBuildState(firstResult, []string{bPath}).WithDeployInfo(f.deployInfo())
+	secondState := store.NewBuildState(firstResult, []string{bPath}).WithDeployTarget(f.deployInfo())
 	secondResult, err := f.bd.BuildAndDeploy(ctx, manifest, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -358,7 +358,7 @@ func TestBaDForgetsImages(t *testing.T) {
 
 	f.k8s.SetPodsWithImageResp(pod1)
 
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployInfo(f.deployInfo())
+	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
 	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)

@@ -82,7 +82,7 @@ type Resource struct {
 	CrashLog string
 }
 
-func (r Resource) DCInfo() DCResourceInfo {
+func (r Resource) DockerComposeTarget() DCResourceInfo {
 	switch info := r.ResourceInfo.(type) {
 	case DCResourceInfo:
 		return info

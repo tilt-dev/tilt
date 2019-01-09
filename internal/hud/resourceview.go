@@ -207,7 +207,7 @@ func (v *ResourceView) resourceExpandedDC() rty.Component {
 
 	// TODO(maia): ports
 
-	st := v.res.DCInfo().StartTime
+	st := v.res.DockerComposeTarget().StartTime
 	if !st.IsZero() {
 		l.Add(resourceTextAge(st))
 	}
