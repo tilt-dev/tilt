@@ -400,6 +400,10 @@ func handleConfigsReloaded(
 		Reason:     model.BuildReasonFlagConfig,
 	}
 	setLastTiltfileBuild(state, status)
+	if event.Err != nil {
+		// There was an error, so don't update status with the new, nonexistent state
+		return
+	}
 
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
