@@ -420,6 +420,7 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 		return next, sel
 	}
 	if prev.elementIdx >= len(prev.children) {
+		// NB(dbentley): this should be impossible, but we were hitting it and it was crashing
 		next.elementIdx = 0
 		return next, ""
 	}

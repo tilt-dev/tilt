@@ -194,7 +194,9 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			am := h.activeModal()
 			if am == nil {
 				selectedIdx, r := h.selectedResource()
-
+				if selectedIdx == 0 {
+					break
+				}
 				if r.IsYAML() {
 					h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
 					break
