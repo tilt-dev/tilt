@@ -2,7 +2,6 @@ package dockercompose
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 )
 
@@ -30,12 +29,17 @@ func EventFromJsonStr(j string) (Event, error) {
 }
 
 // https://docs.docker.com/engine/reference/commandline/events/
-type Type string
+type Type int
 
 const (
-	// Add 'types' here (and to `UnmarshalJSON` below) as we support them
-	TypeContainer Type = "container"
+	// Add 'types' here (and to `stringToType` below) as we support them
+	TypeUnknown = iota
+	TypeContainer
 )
+
+var stringToType = map[string]Type{
+	"container": TypeContainer,
+}
 
 func (t *Type) UnmarshalJSON(b []byte) error {
 	s := string(b)
@@ -43,11 +47,8 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	if s == "container" {
-		*t = TypeContainer
-	} else {
-		return fmt.Errorf("unknown `Type` in docker-compose event: %s", s)
-	}
+	evtType := stringToType[s]
+	*t = evtType
 	return nil
 }
 
@@ -57,39 +58,56 @@ const (
 	// Add 'actions' here (and to `stringToAction` below`) as we support them
 
 	// CONTAINER actions
-	ActionAttach = iota
+	ActionUnknown = iota
+	ActionAttach
 	ActionCommit
 	ActionCopy
 	ActionCreate
 	ActionDestroy
 	ActionDie
-	ActionExecAttach
 	ActionExecCreate
+	ActionExecDetach
 	ActionExecDie
+	ActionExecStart
+	ActionExport
+	ActionHealthStatus
 	ActionKill
+	ActionOom
+	ActionPause
 	ActionRename
+	ActionResize
 	ActionRestart
 	ActionStart
 	ActionStop
+	ActionTop
+	ActionUnpause
 	ActionUpdate
 )
 
 var stringToAction = map[string]Action{
-	"attach":      ActionAttach,
-	"commit":      ActionCommit,
-	"copy":        ActionCopy,
-	"create":      ActionCreate,
-	"destroy":     ActionDestroy,
-	"die":         ActionDie,
-	"exec_attach": ActionExecAttach,
-	"exec_create": ActionExecCreate,
-	"exec_die":    ActionExecDie,
-	"kill":        ActionKill,
-	"rename":      ActionRename,
-	"restart":     ActionRestart,
-	"start":       ActionStart,
-	"stop":        ActionStop,
-	"update":      ActionUpdate,
+	"attach":        ActionAttach,
+	"commit":        ActionCommit,
+	"copy":          ActionCopy,
+	"create":        ActionCreate,
+	"destroy":       ActionDestroy,
+	"die":           ActionDie,
+	"exec_create":   ActionExecCreate,
+	"exec_detach":   ActionExecDetach,
+	"exec_die":      ActionExecDie,
+	"exec_start":    ActionExecStart,
+	"export":        ActionExport,
+	"health_status": ActionHealthStatus,
+	"kill":          ActionKill,
+	"oom":           ActionOom,
+	"pause":         ActionPause,
+	"rename":        ActionRename,
+	"resize":        ActionResize,
+	"restart":       ActionRestart,
+	"start":         ActionStart,
+	"stop":          ActionStop,
+	"top":           ActionTop,
+	"unpause":       ActionUnpause,
+	"update":        ActionUpdate,
 }
 
 func (a *Action) UnmarshalJSON(b []byte) error {
@@ -98,10 +116,7 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	action, ok := stringToAction[s]
-	if !ok {
-		return fmt.Errorf("unknown `Action` in docker-compose event: %s", s)
-	}
+	action := stringToAction[s]
 	*a = action
 	return nil
 }
