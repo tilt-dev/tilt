@@ -128,7 +128,7 @@ type portForwardEntry struct {
 // Quietly drop forwards that we can't populate.
 func PopulatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 	cPorts := pod.ContainerPorts
-	fwds := m.K8sInfo().PortForwards
+	fwds := m.K8sTarget().PortForwards
 	forwards := make([]model.PortForward, 0, len(fwds))
 	for _, forward := range fwds {
 		if forward.ContainerPort == 0 {

@@ -20,7 +20,7 @@ func TestPortForward(t *testing.T) {
 	m := model.Manifest{
 		Name: "fe",
 	}
-	m = m.WithDeployInfo(model.K8sInfo{
+	m = m.WithDeployTarget(model.K8sTarget{
 		PortForwards: []model.PortForward{
 			{
 				LocalPort:     8080,
@@ -68,7 +68,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	m := model.Manifest{
 		Name: "fe",
 	}
-	m = m.WithDeployInfo(model.K8sInfo{
+	m = m.WithDeployTarget(model.K8sTarget{
 		PortForwards: []model.PortForward{
 			{
 				LocalPort: 8080,
