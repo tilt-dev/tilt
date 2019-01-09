@@ -968,3 +968,41 @@ spec:
 ---
 # Source: redis/templates/redis-serviceaccount.yaml
 `
+
+// Example CRD YAML from:
+// https://github.com/martin-helmich/kubernetes-crd-example/tree/master/kubernetes
+const CRDYAML = `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: projects.example.martin-helmich.de
+spec:
+  group: example.martin-helmich.de
+  names:
+    kind: Project
+    plural: projects
+    singular: project
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            replicas:
+              minimum: 1
+              type: integer
+          required:
+          - replicas
+      required:
+      - spec
+  version: v1alpha1
+
+---
+apiVersion: example.martin-helmich.de/v1alpha1
+kind: Project
+metadata:
+  name: example-project
+  namespace: default
+spec:
+  replicas: 1
+`
