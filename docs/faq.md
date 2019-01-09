@@ -45,5 +45,43 @@ inside Minikube.  This helps performance because Tilt doesn't need to waste time
 copying Docker images around.
 
 
+Deploying Containers
+-------------------------
+
+### Q: How do I change what Kubernetes cluster Tilt uses?
+
+Tilt uses the default Kubernetes cluster configured in `kubectl`.
+
+To see what cluster `kubectl` uses, run:
+
+```
+$ kubectl config current-context
+```
+
+To see what clusters are available, run:
+
+```
+$ kubectl config get-contexts
+```
+
+To change the cluster you're deploying to, run:
+
+```
+$ kubectl config use-context docker-for-desktop
+```
+
+The most common options we see in local development are `minikube` and `docker-for-desktop` (for Docker For Mac).
+
+There is one exception to this rule:
+[Kind](https://github.com/kubernetes-sigs/kind) (Kubernetes in Docker) does not
+use `kubectl config`. Instead, you run:
+
+```
+$ KUBECONFIG="$(kind get kubeconfig-path)" tilt up
+```
+
+Tilt reads the same `KUBECONFIG` environment variable that `kubectl` uses. This variable
+sets the path to a Kubernetes config.
+
 
 

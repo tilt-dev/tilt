@@ -119,6 +119,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server">Q: How do I tell Tilt to build my images with a remote Docker server?</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#deploying-containers">Deploying Containers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#q-how-do-i-change-what-kubernetes-cluster-tilt-uses">Q: How do I change what Kubernetes cluster Tilt uses?</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -225,6 +229,34 @@ to build your images.</p>
 <p>If you are using Minikube, Tilt will automatically connect to the Docker server
 inside Minikube.  This helps performance because Tilt doesn’t need to waste time
 copying Docker images around.</p>
+</div>
+</div>
+<div class="section" id="deploying-containers">
+<span id="deploying-containers"></span><h2>Deploying Containers<a class="headerlink" href="#deploying-containers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="q-how-do-i-change-what-kubernetes-cluster-tilt-uses">
+<span id="q-how-do-i-change-what-kubernetes-cluster-tilt-uses"></span><h3>Q: How do I change what Kubernetes cluster Tilt uses?<a class="headerlink" href="#q-how-do-i-change-what-kubernetes-cluster-tilt-uses" title="Permalink to this headline">¶</a></h3>
+<p>Tilt uses the default Kubernetes cluster configured in <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>.</p>
+<p>To see what cluster <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> uses, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config current-context
+</pre></div>
+</div>
+<p>To see what clusters are available, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config get-contexts
+</pre></div>
+</div>
+<p>To change the cluster you’re deploying to, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config use-context docker-for-desktop
+</pre></div>
+</div>
+<p>The most common options we see in local development are <code class="docutils literal notranslate"><span class="pre">minikube</span></code> and <code class="docutils literal notranslate"><span class="pre">docker-for-desktop</span></code> (for Docker For Mac).</p>
+<p>There is one exception to this rule:
+<a class="reference external" href="https://github.com/kubernetes-sigs/kind">Kind</a> (Kubernetes in Docker) does not
+use <code class="docutils literal notranslate"><span class="pre">kubectl</span> <span class="pre">config</span></code>. Instead, you run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ KUBECONFIG=&quot;$(kind get kubeconfig-path)&quot; tilt up
+</pre></div>
+</div>
+<p>Tilt reads the same <code class="docutils literal notranslate"><span class="pre">KUBECONFIG</span></code> environment variable that <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> uses. This variable
+sets the path to a Kubernetes config.</p>
 </div>
 </div>
 </div>
