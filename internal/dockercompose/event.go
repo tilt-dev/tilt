@@ -2,6 +2,7 @@ package dockercompose
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -33,12 +34,26 @@ type Type int
 
 const (
 	// Add 'types' here (and to `stringToType` below) as we support them
-	TypeUnknown = iota
+	TypeUnknown Type = iota
 	TypeContainer
 )
 
 var stringToType = map[string]Type{
 	"container": TypeContainer,
+}
+
+func (t Type) String() string {
+	for str, typ := range stringToType {
+		if typ == t {
+			return str
+		}
+	}
+	return "unknown"
+}
+
+func (t Type) MarshalJSON() ([]byte, error) {
+	s := t.String()
+	return []byte(fmt.Sprintf("%q", s)), nil
 }
 
 func (t *Type) UnmarshalJSON(b []byte) error {
@@ -47,8 +62,8 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	evtType := stringToType[s]
-	*t = evtType
+	typ := stringToType[s]
+	*t = typ
 	return nil
 }
 
@@ -58,7 +73,7 @@ const (
 	// Add 'actions' here (and to `stringToAction` below`) as we support them
 
 	// CONTAINER actions
-	ActionUnknown = iota
+	ActionUnknown Action = iota
 	ActionAttach
 	ActionCommit
 	ActionCopy
@@ -108,6 +123,20 @@ var stringToAction = map[string]Action{
 	"top":           ActionTop,
 	"unpause":       ActionUnpause,
 	"update":        ActionUpdate,
+}
+
+func (a Action) String() string {
+	for str, act := range stringToAction {
+		if act == a {
+			return str
+		}
+	}
+	return "unknown"
+}
+
+func (a Action) MarshalJSON() ([]byte, error) {
+	s := a.String()
+	return []byte(fmt.Sprintf("%q", s)), nil
 }
 
 func (a *Action) UnmarshalJSON(b []byte) error {
