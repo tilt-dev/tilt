@@ -419,6 +419,10 @@ func adjustElementScroll(prevInt interface{}, newChildren []string) (*ElementScr
 		}
 		return next, sel
 	}
+	if prev.elementIdx >= len(prev.children) {
+		next.elementIdx = 0
+		return next, ""
+	}
 	prevChild := prev.children[prev.elementIdx]
 	for i, child := range newChildren {
 		if child == prevChild {
