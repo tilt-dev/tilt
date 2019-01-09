@@ -1755,7 +1755,6 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	})
 }
 
-// TODO(dmiller): add test for run time logs + filtering
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
@@ -1819,6 +1818,22 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	})
 
 	f.withManifestState(m2.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	})
+
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStop))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionRename))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionCreate))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
+
+	f.WaitUntilManifest("is not crashing", m1.ManifestName().String(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Status != dockercompose.StatusCrash
+	})
+
+	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 }
