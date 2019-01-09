@@ -51,25 +51,46 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type Action string
+type Action int
 
 const (
-	// Add 'actions' here (and to `UnmarshalJSON` below`) as we support them
+	// Add 'actions' here (and to `stringToAction` below`) as we support them
 
 	// CONTAINER actions
-	ActionAttach     Action = "attach"
-	ActionCreate     Action = "create"
-	ActionDie        Action = "die"
-	ActionExecDie    Action = "exec_die"
-	ActionExecAttach Action = "exec_attach"
-	ActionExecCreate Action = "exec_create"
-	ActionKill       Action = "kill"
-	ActionRename     Action = "rename"
-	ActionRestart    Action = "restart"
-	ActionStart      Action = "start"
-	ActionStop       Action = "stop"
-	ActionUpdate     Action = "update"
+	ActionAttach = iota
+	ActionCommit
+	ActionCopy
+	ActionCreate
+	ActionDestroy
+	ActionDie
+	ActionExecAttach
+	ActionExecCreate
+	ActionExecDie
+	ActionKill
+	ActionRename
+	ActionRestart
+	ActionStart
+	ActionStop
+	ActionUpdate
 )
+
+var stringToAction = map[string]Action{
+	"attach":      ActionAttach,
+	"commit":      ActionCommit,
+	"copy":        ActionCopy,
+	"create":      ActionCreate,
+	"destroy":     ActionDestroy,
+	"die":         ActionDie,
+	"exec_attach": ActionExecAttach,
+	"exec_create": ActionExecCreate,
+	"exec_die":    ActionExecDie,
+	"kill":        ActionKill,
+	"rename":      ActionRename,
+	"restart":     ActionRestart,
+	"start":       ActionStart,
+	"stop":        ActionStop,
+	"update":      ActionUpdate,
+}
 
 func (a *Action) UnmarshalJSON(b []byte) error {
 	s := string(b)
@@ -77,32 +98,10 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	if s == "attach" {
-		*a = ActionAttach
-	} else if s == "create" {
-		*a = ActionCreate
-	} else if s == "die" {
-		*a = ActionDie
-	} else if s == "exec_attach" {
-		*a = ActionExecAttach
-	} else if s == "exec_die" {
-		*a = ActionExecDie
-	} else if s == "exec_create" {
-		*a = ActionExecCreate
-	} else if s == "kill" {
-		*a = ActionKill
-	} else if s == "rename" {
-		*a = ActionRename
-	} else if s == "restart" {
-		*a = ActionRestart
-	} else if s == "start" {
-		*a = ActionStart
-	} else if s == "stop" {
-		*a = ActionStop
-	} else if s == "update" {
-		*a = ActionUpdate
-	} else {
+	action, ok := stringToAction[s]
+	if !ok {
 		return fmt.Errorf("unknown `Action` in docker-compose event: %s", s)
 	}
+	*a = action
 	return nil
 }
