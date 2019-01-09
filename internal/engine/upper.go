@@ -42,7 +42,6 @@ const maxChangedFilesToPrint = 5
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	store *store.Store
-	kcli  k8s.Client
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -65,7 +64,7 @@ func ProvideTimerMaker() timerMaker {
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
+	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -83,7 +82,6 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 
 	return Upper{
 		store: st,
-		kcli:  kcli,
 	}
 }
 
@@ -96,11 +94,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	defer span.Finish()
 
 	startTime := time.Now()
-
-	err := u.kcli.ConnectedToCluster(ctx)
-	if err != nil {
-		return err
-	}
 
 	absTfPath, err := filepath.Abs(fileName)
 	if err != nil {

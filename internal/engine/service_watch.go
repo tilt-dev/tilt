@@ -27,7 +27,14 @@ func NewServiceWatcher(kCli k8s.Client, nodeIP k8s.NodeIP) *ServiceWatcher {
 func (w *ServiceWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	return state.WatchMounts && !w.watching
+
+	atLeastOneK8S := false
+	for _, m := range state.Manifests() {
+		if m.IsK8s() {
+			atLeastOneK8S = true
+		}
+	}
+	return atLeastOneK8S && state.WatchMounts && !w.watching
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
