@@ -16,7 +16,7 @@ type ExpectedFile struct {
 	// If true, we will assert that the file is not in the tarball.
 	Missing bool
 
-	// If true, we will assert that UID and GIF are 0
+	// If true, we will assert that UID and GID are 0
 	AssertUidAndGidAreZero bool
 }
 
