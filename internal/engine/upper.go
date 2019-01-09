@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -743,6 +743,15 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 	if evt.IsStartupEvent() {
 		state = state.WithStartTime(time.Now())
+		state = state.WithStopping(false)
+	}
+
+	if evt.IsStopEvent() {
+		state = state.WithStopping(true)
+	}
+
+	if evt.Action == dockercompose.ActionDie && !state.IsStopping {
+		state = state.WithStatus(dockercompose.StatusCrash)
 	}
 
 	ms.ResourceState = state

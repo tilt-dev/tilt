@@ -3,6 +3,7 @@ package view
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -129,6 +130,10 @@ func (r Resource) DefaultCollapse() bool {
 	}
 
 	if r.IsYAML() {
+		autoExpand = true
+	}
+
+	if r.IsDC() && r.DCInfo().Status() == dockercompose.StatusCrash {
 		autoExpand = true
 	}
 

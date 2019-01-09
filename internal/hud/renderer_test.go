@@ -660,6 +660,57 @@ func TestStatusBarDCRebuild(t *testing.T) {
 	rtf.run("status bar after intentional DC restart", 60, 20, v, vs)
 }
 
+func TestDetectDCCrashExpanded(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:         "snack",
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, "hi im a crash", now.Add(-5*time.Second)),
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseNo)
+	rtf.run("detected docker compose build crash expanded", 80, 20, v, vs)
+}
+
+func TestDetectDCCrashNotExpanded(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:         "snack",
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, "hi im a crash", now.Add(-5*time.Second)),
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseYes)
+	rtf.run("detected docker compose build crash not expanded", 80, 20, v, vs)
+}
+
+func TestDetectDCCrashAutoExpand(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:         "snack",
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, "hi im a crash", now.Add(-5*time.Second)),
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("detected docker compose build crash auto expand", 80, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	t *testing.T
 	i rty.InteractiveTester

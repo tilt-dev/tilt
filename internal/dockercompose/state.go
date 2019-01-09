@@ -9,6 +9,7 @@ const (
 	StatusDown   = "down"
 	StatusInProg = "in progress"
 	StatusUp     = "up"
+	StatusCrash  = "crash"
 )
 
 var containerActionToStatus = map[Action]string{
@@ -36,10 +37,19 @@ func (evt Event) IsStartupEvent() bool {
 	return evt.Action == ActionStart || evt.Action == ActionRestart || evt.Action == ActionUpdate
 }
 
+func (evt Event) IsStopEvent() bool {
+	if evt.Type != TypeContainer {
+		return false
+	}
+
+	return evt.Action == ActionKill
+}
+
 type State struct {
 	Status     string
 	CurrentLog []byte
 	StartTime  time.Time
+	IsStopping bool
 }
 
 func (State) ResourceState() {}
@@ -53,6 +63,7 @@ func (s State) WithCurrentLog(b []byte) State {
 	return s
 }
 
+// TODO(dmiller): this should take a status type or something to guarantee that it's one of the valid statuses
 func (s State) WithStatus(status string) State {
 	s.Status = status
 	return s
@@ -60,5 +71,10 @@ func (s State) WithStatus(status string) State {
 
 func (s State) WithStartTime(time time.Time) State {
 	s.StartTime = time
+	return s
+}
+
+func (s State) WithStopping(stopping bool) State {
+	s.IsStopping = stopping
 	return s
 }
