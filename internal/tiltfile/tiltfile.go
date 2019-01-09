@@ -25,7 +25,6 @@ func init() {
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 func Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.YAMLManifest, configFiles []string, err error) {
-	logger.Get(ctx).Infof("Hello Dex!")
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		absFilename, _ = filepath.Abs(filename)

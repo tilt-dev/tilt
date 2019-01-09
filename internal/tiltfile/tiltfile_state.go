@@ -110,7 +110,6 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 	for _, image := range images {
-		logger.Get(s.ctx).Infof("image: %v", image.Name())
 		if _, ok := s.imagesByName[image.Name()]; !ok {
 			// only expand for images we know how to build
 			continue
@@ -213,7 +212,6 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 		}
 		var entityImages []reference.Named
 		for _, image := range images {
-			logger.Get(s.ctx).Infof("found image %v", image.Name())
 			if _, ok := s.imagesByName[image.Name()]; ok {
 				entityImages = append(entityImages, image)
 			}
