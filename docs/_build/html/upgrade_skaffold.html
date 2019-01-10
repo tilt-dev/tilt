@@ -206,17 +206,17 @@
 <div class="section" id="migrate-from-skaffold-to-tilt">
 <span id="migrate-from-skaffold-to-tilt"></span><h2>Migrate from Skaffold to Tilt<a class="headerlink" href="#migrate-from-skaffold-to-tilt" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take a relatively simple <code class="docutils literal notranslate"><span class="pre">skaffold.yaml</span></code> file with two services:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
-<span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
-<span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
-  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
-    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
-  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
-    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
-<span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
-    <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
+<span class="nt">kind</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
+<span class="nt">build</span><span class="p">:</span>
+  <span class="nt">artifacts</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
+  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
+    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+<span class="nt">deploy</span><span class="p">:</span>
+  <span class="nt">kubectl</span><span class="p">:</span>
+    <span class="nt">manifests</span><span class="p">:</span>
       <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/snack.yaml</span>
       <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
 </pre></div>
@@ -226,9 +226,9 @@
 <li>Tell Tilt about your YAML</li>
 </ol>
 <p>In Skaffold you specify your Kubernetes YAML under the <code class="docutils literal notranslate"><span class="pre">manifests</span></code> key:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">deploy</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">kubectl</span><span class="p p-Indicator">:</span>
-    <span class="l l-Scalar l-Scalar-Plain">manifests</span><span class="p p-Indicator">:</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">deploy</span><span class="p">:</span>
+  <span class="nt">kubectl</span><span class="p">:</span>
+    <span class="nt">manifests</span><span class="p">:</span>
       <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/snack.yaml</span>
       <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
 </pre></div>
@@ -241,12 +241,12 @@
 <li>Tell Tilt about your Dockerfile</li>
 </ol>
 <p>In Skaffold you specify the image tag you want to build and deploy:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">artifacts</span><span class="p p-Indicator">:</span>
-  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
-    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
-  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
-    <span class="l l-Scalar l-Scalar-Plain">context</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">build</span><span class="p">:</span>
+  <span class="nt">artifacts</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
+  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
+    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
 </pre></div>
 </div>
 <p>Similarly in Tilt you specify the image tag as well as the Docker build context (<code class="docutils literal notranslate"><span class="pre">&quot;.&quot;</span></code> in this case).</p>

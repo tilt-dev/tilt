@@ -114,6 +114,11 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the first example. What do I do?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#building-container-images">Building Container Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development">Q: All the Tilt examples store the image at <code class="docutils literal notranslate"><span class="pre">gcr.io</span></code>. Isn’t it really slow to push images up to Google’s remote repository for local development?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#q-docker-buildkit-is-cool-how-do-i-use-it">Q: Docker Buildkit is cool! How do I use it?</a></li>
@@ -194,6 +199,34 @@
             
   <div class="section" id="frequently-asked-questions">
 <span id="frequently-asked-questions"></span><h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="troubleshooting">
+<span id="troubleshooting"></span><h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">
+<span id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do"></span><h3>Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the <a class="reference external" href="first_example.html">first example</a>. What do I do?<a class="headerlink" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<p>If Tilt is trying to do a push, that means it thinks you wanted to deploy to a
+remote cluster.</p>
+<p>The tutorials will only work with a local cluster that doesn’t require an image
+push, like Docker For Mac or Minikube.</p>
+<p>See <a class="reference external" href="faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses">below</a> on how
+to configure for a local cluster.</p>
+</div>
+<div class="section" id="q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">
+<span id="q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do"></span><h3>Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?<a class="headerlink" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<p>The Kubernetes server that you’re trying to deploy to is misbehaving.</p>
+<p>Two common things to try are:</p>
+<ol class="simple">
+<li>Turn it off and turn it back on again (really!).</li>
+<li>Reset the cluster state.</li>
+</ol>
+<p>But the specific way to do these depend on your environment.</p>
+<p>If you’re using Docker For Mac, click the Docker icon in the upper-right hand
+corner of your screen. Choose “Preferences…” to open a dialog. The
+“Kubernetes” tab has a button that allows you to enable/disable Kubernetes. The
+“Reset” tab has a button that allows you to reset the cluster state.</p>
+<p>If you’re using Minikube, <code class="docutils literal notranslate"><span class="pre">minikube</span> <span class="pre">stop</span></code> and <code class="docutils literal notranslate"><span class="pre">minikube</span> <span class="pre">start</span></code> will restart the
+environment. <code class="docutils literal notranslate"><span class="pre">minikube</span> <span class="pre">delete</span></code> will reset the cluster state.</p>
+</div>
+</div>
 <div class="section" id="building-container-images">
 <span id="building-container-images"></span><h2>Building Container Images<a class="headerlink" href="#building-container-images" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development">
