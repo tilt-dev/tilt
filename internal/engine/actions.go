@@ -103,7 +103,7 @@ type ManifestReloadedAction struct {
 func (ManifestReloadedAction) Action() {}
 
 type BuildStartedAction struct {
-	Manifest     model.Manifest
+	ManifestName model.ManifestName
 	StartTime    time.Time
 	FilesChanged []string
 	Reason       model.BuildReason

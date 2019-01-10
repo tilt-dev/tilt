@@ -14,7 +14,7 @@ import (
 type FakeDCClient struct {
 	t *testing.T
 
-	RunLogOutput map[model.ManifestName]string
+	RunLogOutput map[model.TargetName]string
 	eventJson    chan string
 }
 
@@ -22,11 +22,11 @@ func NewFakeDockerComposeClient(t *testing.T) *FakeDCClient {
 	return &FakeDCClient{
 		t:            t,
 		eventJson:    make(chan string, 100),
-		RunLogOutput: make(map[model.ManifestName]string),
+		RunLogOutput: make(map[model.TargetName]string),
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, pathToConfig, serviceName string, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Up(ctx context.Context, pathToConfig string, serviceName model.TargetName, stdout, stderr io.Writer) error {
 	return nil
 }
 
@@ -34,8 +34,8 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig, serviceName string) (io.ReadCloser, error) {
-	output := c.RunLogOutput[model.ManifestName(serviceName)]
+func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig string, serviceName model.TargetName) (io.ReadCloser, error) {
+	output := c.RunLogOutput[serviceName]
 	return ioutil.NopCloser(bytes.NewReader([]byte(output))), nil
 }
 

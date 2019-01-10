@@ -185,7 +185,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 })
 
 func handleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
-	mn := action.Manifest.Name
+	mn := action.ManifestName
 	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
@@ -234,10 +234,13 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	err := cb.Error
 
-	ms, ok := engineState.ManifestState(engineState.CurrentlyBuilding)
+	mt, ok := engineState.ManifestTargets[engineState.CurrentlyBuilding]
 	if !ok {
 		return nil
 	}
+
+	ms := mt.State
+	result := cb.Result
 
 	bs := ms.CurrentBuild
 	bs.Error = err
@@ -272,7 +275,7 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		ms.LastSuccessfulDeployTime = time.Now()
-		ms.LastSuccessfulResult = cb.Result
+		ms.LastSuccessfulResult = result
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -282,8 +285,8 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-		if cb.Result.ContainerID != "" {
-			ms.ExpectedContainerID = cb.Result.ContainerID
+		if result.ContainerID != "" {
+			ms.ExpectedContainerID = result.ContainerID
 
 			bestPod := ms.MostRecentPod()
 			if bestPod.StartedAt.After(bs.StartTime) ||

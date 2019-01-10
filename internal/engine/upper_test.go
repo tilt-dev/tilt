@@ -59,10 +59,20 @@ k8s_resource('foobar', yaml='snack.yaml')
 
 // represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
-	// TODO(nick): Remove manifest from buildAndDeployCall
-	manifest model.Manifest
-	image    model.ImageTarget
-	state    store.BuildState
+	input model.Manifest
+	state store.BuildState
+}
+
+func (c buildAndDeployCall) image() model.ImageTarget {
+	return c.input.ImageTarget
+}
+
+func (c buildAndDeployCall) k8s() model.K8sTarget {
+	return c.input.K8sTarget()
+}
+
+func (c buildAndDeployCall) dc() model.DockerComposeTarget {
+	return c.input.DockerComposeTarget()
 }
 
 type fakeBuildAndDeployer struct {
@@ -78,7 +88,7 @@ type fakeBuildAndDeployer struct {
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 
-	buildLogOutput map[model.ManifestName]string
+	buildLogOutput map[model.TargetID]string
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -95,13 +105,30 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
-	output, ok := b.buildLogOutput[manifest.ManifestName()]
+	call := buildAndDeployCall{input: manifest, state: state}
+
+	buildID := model.TargetID{}
+	var buildImageRef reference.Named
+	if !call.dc().ID().Empty() {
+		buildID = call.dc().ID()
+
+		// TODO(dmiller): change nextBuildResult to work with docker compose instead
+		buildImageRef = testImageRef
+	} else if !call.image().ID().Empty() {
+		buildID = call.image().ID()
+		buildImageRef = call.image().Ref
+
+	} else {
+		b.t.Fatalf("Invalid call: %+v", call)
+	}
+
+	output, ok := b.buildLogOutput[buildID]
 	if ok {
 		logger.Get(ctx).Infof(output)
 	}
 
 	select {
-	case b.calls <- buildAndDeployCall{manifest, manifest.ImageTarget, state}:
+	case b.calls <- call:
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
@@ -114,18 +141,14 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		return store.BuildResult{}, err
 	}
 
-	// TODO(dmiller): change nextBuildResult to work with docker compose instead
-	if manifest.IsDC() {
-		return b.nextBuildResult(imageID), nil
-	}
-	return b.nextBuildResult(manifest.ImageTarget.Ref), nil
+	return b.nextBuildResult(buildImageRef), nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:              t,
 		calls:          make(chan buildAndDeployCall, 5),
-		buildLogOutput: make(map[model.ManifestName]string),
+		buildLogOutput: make(map[model.TargetID]string),
 	}
 }
 
@@ -142,11 +165,11 @@ func TestUpper_Up(t *testing.T) {
 	})
 	close(f.b.calls)
 	assert.Nil(t, err)
-	var startedManifests []model.Manifest
+	var started []model.TargetID
 	for call := range f.b.calls {
-		startedManifests = append(startedManifests, call.manifest)
+		started = append(started, call.k8s().ID())
 	}
-	assert.Equal(t, []model.Manifest{manifest}, startedManifests)
+	assert.Equal(t, []model.TargetID{manifest.K8sTarget().ID()}, started)
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
@@ -179,7 +202,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
 	f.waitForCompletedBuildCount(1)
@@ -188,7 +211,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 
 	call = f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
 	fileAbsPath, err := filepath.Abs(fileRelPath)
 	if err != nil {
@@ -216,7 +239,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
 	f.timerMaker.restTimerLock.Lock()
@@ -228,7 +251,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f.timerMaker.restTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -254,7 +277,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -267,7 +290,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.timerMaker.maxTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -445,14 +468,14 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Empty(t, call.image.FastBuildInfo().BaseDockerfile)
+	assert.Empty(t, call.image().FastBuildInfo().BaseDockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sTarget().YAML)
+	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
@@ -461,7 +484,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.state.HasImage())
@@ -491,12 +514,12 @@ k8s_resource("quux", 'doggos.yaml')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Empty(t, call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "baz", string(call.manifest.Name))
+	assert.Empty(t, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Empty(t, call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "quux", string(call.manifest.Name))
+	assert.Empty(t, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
 	f.WriteConfigFiles(
@@ -505,12 +528,12 @@ k8s_resource("quux", 'doggos.yaml')
 
 	// Now with the manifests from the config files
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "baz", string(call.manifest.Name))
+	assert.Equal(t, `FROM iron/go:dev1`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "quux", string(call.manifest.Name))
+	assert.Equal(t, `FROM iron/go:dev2`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// Now change a dockerfile
 	f.WriteConfigFiles("Dockerfile1", `FROM node:10`)
@@ -518,7 +541,7 @@ k8s_resource("quux", 'doggos.yaml')
 	// Second call: one new manifest!
 	call = f.nextCall("changed config file --> new manifest")
 
-	assert.Equal(t, "baz", string(call.manifest.Name))
+	assert.Equal(t, "baz", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -548,8 +571,8 @@ k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "baz", string(call.manifest.Name))
+	assert.Equal(t, "FROM iron/go:dev1", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	f.assertNoCall()
 
@@ -564,7 +587,7 @@ k8s_resource("quux", 'doggos.yaml')  # rename "doggos" --> "quux"
 
 	// Expect a build of quux, the new resource
 	call = f.nextCall("changed config file --> new manifest")
-	assert.Equal(t, "quux", string(call.manifest.Name))
+	assert.Equal(t, "quux", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
 
 	err := f.Stop()
@@ -588,8 +611,8 @@ k8s_resource('foobar', 'snack.yaml')`)
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifests")
-	assert.Equal(t, "FROM iron/go:dev1", call.image.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "foobar", string(call.manifest.Name))
+	assert.Equal(t, "FROM iron/go:dev1", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "foobar", string(call.k8s().Name))
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
 
@@ -605,7 +628,7 @@ k8s_resource('foobar', 'snack.yaml')`)
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
 	// hasn't changed, so the manifest hasn't changed, so we can do an incremental build.
 	call = f.nextCall("incremental build despite edited config file")
-	assert.Equal(t, "foobar", string(call.manifest.Name))
+	assert.Equal(t, "foobar", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{
 		f.JoinPath("random_file.go"),
 	}, call.state.FilesChanged())
@@ -630,7 +653,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	// First call: init
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:dev`, call.image.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev`, call.image().FastBuildInfo().BaseDockerfile)
 
 	// Second call: error!
 	f.WriteConfigFiles("Tiltfile", "borken")
@@ -641,7 +664,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 		"Dockerfile", `FROM iron/go:dev2`)
 
 	call = f.nextCall("fixed broken config")
-	assert.Equal(t, "FROM iron/go:dev2", call.image.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev2", call.image().FastBuildInfo().BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
 		return len(state.ManifestDefinitionOrder) == 1
@@ -1060,14 +1083,11 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return nextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
-		Manifest:  manifest,
-		StartTime: time.Now(),
+		ManifestName: manifest.Name,
+		StartTime:    time.Now(),
 	})
 	f.store.Dispatch(BuildCompleteAction{
-		Result: store.BuildResult{
-			Image:       nil,
-			ContainerID: "theOriginalContainer",
-		},
+		Result: containerResult(manifest, "theOriginalContainer"),
 	})
 
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
@@ -1099,17 +1119,14 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		return nextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
-		Manifest:  manifest,
-		StartTime: time.Now(),
+		ManifestName: manifest.Name,
+		StartTime:    time.Now(),
 	})
 
 	// Simulate k8s restarting the container due to a crash.
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 	f.store.Dispatch(BuildCompleteAction{
-		Result: store.BuildResult{
-			Image:       nil,
-			ContainerID: "theOriginalContainer",
-		},
+		Result: containerResult(manifest, "theOriginalContainer"),
 	})
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1140,17 +1157,14 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 	})
 
 	f.store.Dispatch(BuildStartedAction{
-		Manifest:  manifest,
-		StartTime: time.Now(),
+		ManifestName: manifest.Name,
+		StartTime:    time.Now(),
 	})
 
 	// Simulate a normal build completion
 	podStartTime := time.Now()
 	f.store.Dispatch(BuildCompleteAction{
-		Result: store.BuildResult{
-			Image:       nil,
-			ContainerID: "normal-container-id",
-		},
+		Result: containerResult(manifest, "normal-container-id"),
 	})
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
 
@@ -1163,17 +1177,14 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 		return nextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
-		Manifest:  manifest,
-		StartTime: time.Now(),
+		ManifestName: manifest.Name,
+		StartTime:    time.Now(),
 	})
 
 	// Simulate a pod crash, then a build compltion
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "funny-container-id", podStartTime))
 	f.store.Dispatch(BuildCompleteAction{
-		Result: store.BuildResult{
-			Image:       nil,
-			ContainerID: "normal-container-id",
-		},
+		Result: containerResult(manifest, "normal-container-id"),
 	})
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1332,7 +1343,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1358,7 +1369,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1681,10 +1692,12 @@ func TestDockerComposeUp(t *testing.T) {
 	f.Start([]model.Manifest{redis, server}, true)
 	call := f.nextCall()
 	assert.True(t, call.state.IsEmpty())
-	assert.Equal(t, redis.ManifestName(), call.manifest.Name)
+	assert.False(t, call.dc().ID().Empty())
+	assert.Equal(t, redis.DockerComposeTarget().ID(), call.dc().ID())
 	call = f.nextCall()
 	assert.True(t, call.state.IsEmpty())
-	assert.Equal(t, server.ManifestName(), call.manifest.Name)
+	assert.False(t, call.dc().ID().Empty())
+	assert.Equal(t, server.DockerComposeTarget().ID(), call.dc().ID())
 }
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
@@ -1755,7 +1768,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "yarn install"
-	f.setBuildLogOutput(m.ManifestName(), expected)
+	f.setBuildLogOutput(m.DockerComposeTarget().ID(), expected)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -1773,7 +1786,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
-	f.setDCRunLogOutput(m.ManifestName(), expected)
+	f.setDCRunLogOutput(m.DockerComposeTarget(), expected)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -1788,7 +1801,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "Attaching to snack\n"
-	f.setDCRunLogOutput(m.ManifestName(), expected)
+	f.setDCRunLogOutput(m.DockerComposeTarget(), expected)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -2326,12 +2339,12 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	return manifests[0], manifests[1]
 }
 
-func (f *testFixture) setBuildLogOutput(mn model.ManifestName, output string) {
-	f.b.buildLogOutput[mn] = output
+func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
+	f.b.buildLogOutput[id] = output
 }
 
-func (f *testFixture) setDCRunLogOutput(mn model.ManifestName, output string) {
-	f.dcc.RunLogOutput[mn] = output
+func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output string) {
+	f.dcc.RunLogOutput[dc.Name] = output
 }
 
 type fixtureSub struct {
@@ -2347,5 +2360,11 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 		Type:    dockercompose.TypeContainer,
 		Action:  action,
 		Service: m.ManifestName().String(),
+	}
+}
+
+func containerResult(manifest model.Manifest, id container.ID) store.BuildResult {
+	return store.BuildResult{
+		ContainerID: id,
 	}
 }

@@ -11,12 +11,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error
+	Up(ctx context.Context, configPath string, serviceName model.TargetName, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error)
+	StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error)
 	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
 	Config(ctx context.Context, configPath string) (string, error)
 	Services(ctx context.Context, configPath string) (string, error)
@@ -30,8 +31,8 @@ func NewDockerComposeClient() DockerComposeClient {
 	return &cmdDCClient{}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "--force-recreate", "-d", serviceName)
+func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, stdout, stderr io.Writer) error {
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "--force-recreate", "-d", serviceName.String())
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -51,10 +52,10 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
-	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName}
+	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName.String()}
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

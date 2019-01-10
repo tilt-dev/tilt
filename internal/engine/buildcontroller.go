@@ -153,7 +153,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 
 	go func() {
 		st.Dispatch(BuildStartedAction{
-			Manifest:     entry.manifest,
+			ManifestName: entry.manifest.Name,
 			StartTime:    time.Now(),
 			FilesChanged: entry.filesChanged,
 			Reason:       entry.buildReason,
