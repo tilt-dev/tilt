@@ -170,7 +170,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 
 	l := logger.Get(ctx)
 	if firstBuild {
-		p := logger.Blue(l).Sprintf("──┤ Building: ")
+		p := logger.Blue(l).Sprintf("\n──┤ Building: ")
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
 		l.Infof("%s%s%s", p, manifest.Name, s)
 	} else {
@@ -188,7 +188,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 			l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
 		}
 
-		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
+		rp := logger.Blue(l).Sprintf("\n──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
 		l.Infof("%s%s%s", rp, manifest.Name, rs)
 	}
