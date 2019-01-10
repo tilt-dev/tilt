@@ -44,7 +44,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	}
 
 	stateWatches := make(map[podLogKey]bool, 0)
-	for _, ms := range state.ManifestStates {
+	for _, ms := range state.ManifestStates() {
 		for _, pod := range ms.PodSet.PodList() {
 			if pod.PodID == "" {
 				continue
@@ -93,7 +93,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 			w := PodLogWatch{
 				ctx:             ctx,
 				cancel:          cancel,
-				name:            ms.Manifest.Name,
+				name:            ms.Name,
 				podID:           pod.PodID,
 				cID:             pod.ContainerID,
 				cName:           pod.ContainerName,

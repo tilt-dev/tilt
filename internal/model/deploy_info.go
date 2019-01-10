@@ -41,5 +41,5 @@ func (k8s K8sTarget) AppendYAML(y string) K8sTarget {
 	return k8s
 }
 
-var _ Target = K8sTarget{}
-var _ Target = DockerComposeTarget{}
+var _ TargetSpec = K8sTarget{}
+var _ TargetSpec = DockerComposeTarget{}

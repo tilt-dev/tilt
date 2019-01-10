@@ -151,7 +151,7 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, nil
 	}
 
-	if len(state.ManifestStates) == 0 {
+	if len(state.ManifestTargets) == 0 {
 		return false, nil
 	}
 
@@ -205,11 +205,16 @@ type LogActionsFlag bool
 // and thus might reflect changes that happened as part of the current action or any future action
 func (s *Store) cheapCopyState() EngineState {
 	ret := *s.state
-	mStates := ret.ManifestStates
-	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
-	for k, v := range mStates {
-		ms := *v
-		ret.ManifestStates[k] = &ms
+	targets := ret.ManifestTargets
+	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
+	for k, v := range targets {
+		ms := *(v.State)
+		target := &ManifestTarget{
+			Manifest: v.Manifest,
+			State:    &ms,
+		}
+
+		ret.ManifestTargets[k] = target
 	}
 	return ret
 }

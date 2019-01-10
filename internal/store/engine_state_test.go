@@ -24,7 +24,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 			}),
 	}
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
-	ms := state.ManifestStates[m.Name]
+	ms := state.ManifestTargets[m.Name].State
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
 	ms.BuildHistory = []model.BuildStatus{
 		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
@@ -142,7 +142,7 @@ func TestRelativeTiltfilePath(t *testing.T) {
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
 	ret := NewState()
 	for _, m := range manifests {
-		ret.ManifestStates[m.Name] = NewManifestState(m)
+		ret.ManifestTargets[m.Name] = NewManifestTarget(m)
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
 	}
 	ret.GlobalYAML = YAMLManifest

@@ -46,7 +46,7 @@ func (id TargetID) String() string {
 	return fmt.Sprintf("%s:%s", id.Type, id.Name)
 }
 
-type Target interface {
+type TargetSpec interface {
 	ID() TargetID
 
 	// TODO(nick): Add dependency IDs
@@ -56,4 +56,9 @@ type TargetStatus interface {
 	TargetID() TargetID
 	ActiveBuild() BuildStatus
 	LastBuild() BuildStatus
+}
+
+type Target interface {
+	Spec() TargetSpec
+	Status() TargetStatus
 }

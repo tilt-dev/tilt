@@ -150,7 +150,7 @@ func TestUpper_Up(t *testing.T) {
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
-	lines := strings.Split(string(state.ManifestStates[manifest.Name].LastBuild().Log), "\n")
+	lines := strings.Split(string(state.ManifestTargets[manifest.Name].Status().LastBuild().Log), "\n")
 	assert.Contains(t, lines, "fake building foobar")
 	assert.Equal(t, gYaml, state.GlobalYAML)
 }
@@ -198,7 +198,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	f.waitForCompletedBuildCount(2)
 
-	f.WithManifest("foobar", func(ms store.ManifestState) {
+	f.withManifestState("foobar", func(ms store.ManifestState) {
 		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagMountFiles))
 	})
 
@@ -394,7 +394,7 @@ func TestThreeBuilds(t *testing.T) {
 
 	f.waitForCompletedBuildCount(3)
 
-	f.WithManifest("fe", func(ms store.ManifestState) {
+	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, 2, len(ms.BuildHistory))
 		assert.Equal(t, []string{"/b.go"}, ms.BuildHistory[0].Edits)
 		assert.Equal(t, []string{"/a.go"}, ms.BuildHistory[1].Edits)
@@ -646,8 +646,8 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
 		return len(state.ManifestDefinitionOrder) == 1
 	})
-	f.WaitUntilManifest("LastError was cleared", "foobar", func(state store.ManifestState) bool {
-		return state.LastBuild().Error == nil
+	f.WaitUntilManifestState("LastError was cleared", "foobar", func(ms store.ManifestState) bool {
+		return ms.LastBuild().Error == nil
 	})
 
 	err := f.Stop()
@@ -683,7 +683,7 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	})
 
 	f.withState(func(es store.EngineState) {
-		assert.Equal(t, "", nextManifestToBuild(es).String())
+		assert.Equal(t, "", nextManifestNameToBuild(es).String())
 	})
 }
 
@@ -718,7 +718,7 @@ k8s_resource('foobar', yaml='snack.yaml')`
 	})
 
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, "", nextManifestToBuild(state).String())
+		assert.Equal(t, "", nextManifestNameToBuild(state).String())
 	})
 }
 
@@ -746,7 +746,7 @@ k8s_resource('foobar', 'snack.yaml')
 		return state.CompletedBuildCount == 1
 	})
 
-	name := "foobar"
+	name := model.ManifestName("foobar")
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("manifest load error", func(st store.EngineState) bool {
@@ -765,16 +765,16 @@ k8s_resource('foobar', 'snack.yaml')
 	})
 
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, "", nextManifestToBuild(state).String())
+		assert.Equal(t, "", nextManifestNameToBuild(state).String())
 		assert.NoError(t, state.LastTiltfileError())
 	})
 
-	f.withManifestState(name, func(ms store.ManifestState) {
+	f.withManifestTarget(name, func(mt store.ManifestTarget) {
 		expectedSteps := []model.Step{{
 			Cmd:           model.ToShellCmd("changed"),
 			BaseDirectory: f.Path(),
 		}}
-		assert.Equal(t, expectedSteps, ms.Manifest.FastBuildInfo().Steps)
+		assert.Equal(t, expectedSteps, mt.Manifest.FastBuildInfo().Steps)
 	})
 }
 
@@ -990,11 +990,11 @@ func TestPodEventOrdering(t *testing.T) {
 				Log:          []byte("pod b log\n"),
 			})
 
-			f.WaitUntilManifest("pod log seen", "fe", func(ms store.ManifestState) bool {
+			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
 				return strings.Contains(ms.MostRecentPod().Log(), "pod b log")
 			})
 
-			f.WithManifest("fe", func(ms store.ManifestState) {
+			f.withManifestState("fe", func(ms store.ManifestState) {
 				assert.Equal(t, 2, ms.PodSet.Len())
 				assert.Equal(t, now, ms.PodSet.Pods["pod-a"].StartedAt)
 				assert.Equal(t, now, ms.PodSet.Pods["pod-b"].StartedAt)
@@ -1014,7 +1014,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	var ref reference.NamedTagged
-	f.WaitUntilManifest("image appears", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
 		ref = ms.LastSuccessfulResult.Image
 		return ref != nil
 	})
@@ -1027,7 +1027,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	f.podEvent(pod)
 
 	podState := store.Pod{}
-	f.WaitUntilManifest("container status", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
 		return podState.PodID == "my-pod"
 	})
@@ -1057,7 +1057,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		files:        []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestToBuild(st) == manifest.Name
+		return nextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
 		Manifest:  manifest,
@@ -1072,8 +1072,8 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 
-	f.WaitUntilManifest("NeedsRebuildFromCrash set to True", "foobar", func(state store.ManifestState) bool {
-		return state.NeedsRebuildFromCrash
+	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
+		return ms.NeedsRebuildFromCrash
 	})
 	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
 	f.waitForCompletedBuildCount(1)
@@ -1096,7 +1096,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		files:        []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestToBuild(st) == manifest.Name
+		return nextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
 		Manifest:  manifest,
@@ -1112,8 +1112,8 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		},
 	})
 
-	f.WaitUntilManifest("NeedsRebuildFromCrash set to True", "foobar", func(state store.ManifestState) bool {
-		return state.NeedsRebuildFromCrash
+	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
+		return ms.NeedsRebuildFromCrash
 	})
 	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
 	f.waitForCompletedBuildCount(1)
@@ -1136,7 +1136,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 		files:        []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestToBuild(st) == manifest.Name
+		return nextManifestNameToBuild(st) == manifest.Name
 	})
 
 	f.store.Dispatch(BuildStartedAction{
@@ -1160,7 +1160,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 		files:        []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestToBuild(st) == manifest.Name
+		return nextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
 		Manifest:  manifest,
@@ -1176,8 +1176,8 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 		},
 	})
 
-	f.WaitUntilManifest("NeedsRebuildFromCrash set to True", "foobar", func(state store.ManifestState) bool {
-		return state.NeedsRebuildFromCrash
+	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
+		return ms.NeedsRebuildFromCrash
 	})
 }
 
@@ -1289,14 +1289,14 @@ func TestPodContainerStatus(t *testing.T) {
 	_ = f.nextCall()
 
 	var ref reference.NamedTagged
-	f.WaitUntilManifest("image appears", "fe", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
 		ref = ms.LastSuccessfulResult.Image
 		return ref != nil
 	})
 
 	startedAt := time.Now()
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, startedAt))
-	f.WaitUntilManifest("pod appears", "fe", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("pod appears", "fe", func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().PodID == "pod-id"
 	})
 
@@ -1305,7 +1305,7 @@ func TestPodContainerStatus(t *testing.T) {
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 	f.podEvent(pod)
 
-	f.WaitUntilManifest("container is ready", "fe", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
 		ports := ms.MostRecentPod().ContainerPorts
 		return len(ports) == 1 && ports[0] == 8080
 	})
@@ -1388,7 +1388,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.podLog(name, "second string")
 
-	f.WithManifest(name, func(ms store.ManifestState) {
+	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, "second string\n", ms.MostRecentPod().Log())
 	})
 
@@ -1410,7 +1410,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 	f.startPod(name)
 	f.podLog(name, "first string")
 
-	f.WithManifest(name, func(ms store.ManifestState) {
+	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, "first string\n", ms.MostRecentPod().Log())
 	})
 
@@ -1421,7 +1421,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 
 	f.waitForCompletedBuildCount(2)
 
-	f.WithManifest(name, func(ms store.ManifestState) {
+	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, "", ms.MostRecentPod().Log())
 		assert.Equal(t, ms.LastBuild().StartTime, ms.MostRecentPod().UpdateStartTime)
 	})
@@ -1446,7 +1446,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f.podLog(name, "third string")
 
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
-	f.WithManifest(name, func(ms store.ManifestState) {
+	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, "second string\nthird string\n", ms.MostRecentPod().Log())
 	})
 
@@ -1475,7 +1475,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	})
 
 	// The second instance is down, so we don't include the first instance's log
-	f.WithManifest(name, func(ms store.ManifestState) {
+	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.Equal(t, "second string\n", ms.MostRecentPod().Log())
 	})
 
@@ -1519,14 +1519,14 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	svc := testService("myservice", "foobar", "1.2.3.4", 8080)
 	dispatchServiceChange(f.store, svc, "")
 
-	f.WaitUntilManifest("lb updated", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.LBs) > 0
 	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
 
-	ms := f.upper.store.RLockState().ManifestStates[manifest.Name]
+	ms, _ := f.upper.store.RLockState().ManifestState(manifest.Name)
 	defer f.upper.store.RUnlockState()
 	assert.Equal(t, 1, len(ms.LBs))
 	url, ok := ms.LBs["myservice"]
@@ -1549,7 +1549,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	svc := testService("myservice", "foobar", "1.2.3.4", 8080)
 	dispatchServiceChange(f.store, svc, "")
 
-	f.WaitUntilManifest("lb url added", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
 		url := ms.LBs["myservice"]
 		if url == nil {
 			return false
@@ -1561,7 +1561,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	svc.Status = v1.ServiceStatus{}
 	dispatchServiceChange(f.store, svc, "")
 
-	f.WaitUntilManifest("lb url removed", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
 		url := ms.LBs["myservice"]
 		return url == nil
 	})
@@ -1659,8 +1659,8 @@ func TestNewMountsAreWatched(t *testing.T) {
 		Manifests: []model.Manifest{m2},
 	})
 
-	f.WaitUntilManifest("has new mounts", "mani1", func(st store.ManifestState) bool {
-		return len(st.Manifest.FastBuildInfo().Mounts) == 2
+	f.WaitUntilManifest("has new mounts", "mani1", func(mt store.ManifestTarget) bool {
+		return len(mt.Manifest.FastBuildInfo().Mounts) == 2
 	})
 
 	f.PollUntil("watches setup", func() bool {
@@ -1716,7 +1716,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 		f.T().Fatal(err)
 	}
 
-	f.WaitUntilManifest("resource status = 'in progress'", m.ManifestName().String(), func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("resource status = 'in progress'", m.ManifestName(), func(ms store.ManifestState) bool {
 		return ms.DCResourceState().Status == dockercompose.StatusInProg
 	})
 
@@ -1728,11 +1728,11 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 		f.T().Fatal(err)
 	}
 
-	f.WaitUntilManifest("resource status = 'up'", m.ManifestName().String(), func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("resource status = 'up'", m.ManifestName(), func(ms store.ManifestState) bool {
 		return ms.DCResourceState().Status == dockercompose.StatusUp
 	})
 
-	f.withManifestState(m.ManifestName().String(), func(ms store.ManifestState) {
+	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
 		assert.True(t, ms.DCResourceState().StartTime.After(startTime))
 	})
 }
@@ -1750,7 +1750,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	assert.Contains(t, f.LogLines(), expected)
 
 	// recorded on manifest state
-	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, string(st.LastBuild().Log), expected)
 	})
 }
@@ -1765,7 +1765,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// recorded on manifest state
-	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
 	})
 }
@@ -1780,7 +1780,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// recorded on manifest state
-	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.NotContains(t, st.DCResourceState().Log(), expected)
 	})
 }
@@ -1792,11 +1792,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
 
-	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 
-	f.withManifestState(m2.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 
@@ -1809,15 +1809,15 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
 
-	f.WaitUntilManifest("has a status", m1.ManifestName().String(), func(st store.ManifestState) bool {
+	f.WaitUntilManifestState("has a status", m1.ManifestName(), func(st store.ManifestState) bool {
 		return st.DCResourceState().Status != ""
 	})
 
-	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
 		assert.Equal(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 
-	f.withManifestState(m2.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 
@@ -1829,11 +1829,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionCreate))
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 
-	f.WaitUntilManifest("is not crashing", m1.ManifestName().String(), func(st store.ManifestState) bool {
+	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
 		return st.DCResourceState().Status != dockercompose.StatusCrash
 	})
 
-	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
+	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 }
@@ -2007,7 +2007,7 @@ func (f *testFixture) Init(action InitAction) {
 	}()
 
 	f.WaitUntil("manifests appear", func(st store.EngineState) bool {
-		return len(st.ManifestStates) == len(manifests) && st.WatchMounts == watchMounts
+		return len(st.ManifestTargets) == len(manifests) && st.WatchMounts == watchMounts
 	})
 
 	f.PollUntil("watches setup", func() bool {
@@ -2083,13 +2083,19 @@ func (f *testFixture) withState(tf func(store.EngineState)) {
 	tf(state)
 }
 
-func (f *testFixture) withManifestState(name string, tf func(ms store.ManifestState)) {
+func (f *testFixture) withManifestTarget(name model.ManifestName, tf func(ms store.ManifestTarget)) {
 	f.withState(func(es store.EngineState) {
-		ms, ok := es.ManifestStates[model.ManifestName(name)]
+		mt, ok := es.ManifestTargets[name]
 		if !ok {
 			f.T().Fatalf("no manifest state for name %s", name)
 		}
-		tf(*ms)
+		tf(*mt)
+	})
+}
+
+func (f *testFixture) withManifestState(name model.ManifestName, tf func(ms store.ManifestState)) {
+	f.withManifestTarget(name, func(mt store.ManifestTarget) {
+		tf(*mt.State)
 	})
 }
 
@@ -2114,24 +2120,19 @@ func (f *testFixture) PollUntil(msg string, isDone func() bool) {
 	}
 }
 
-func (f *testFixture) WithManifest(name model.ManifestName, test func(store.ManifestState)) {
-	state := f.upper.store.RLockState()
-	defer f.upper.store.RUnlockState()
-
-	ms := state.ManifestStates[name]
-	if ms == nil {
-		f.T().Fatalf("Missing manifest: %s", name)
-	}
-	test(*ms)
-}
-
-func (f *testFixture) WaitUntilManifest(msg string, name string, isDone func(store.ManifestState) bool) {
+func (f *testFixture) WaitUntilManifest(msg string, name model.ManifestName, isDone func(store.ManifestTarget) bool) {
 	f.WaitUntil(msg, func(es store.EngineState) bool {
-		ms, ok := es.ManifestStates[model.ManifestName(name)]
+		mt, ok := es.ManifestTargets[model.ManifestName(name)]
 		if !ok {
 			return false
 		}
-		return isDone(*ms)
+		return isDone(*mt)
+	})
+}
+
+func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName, isDone func(store.ManifestState) bool) {
+	f.WaitUntilManifest(msg, name, func(mt store.ManifestTarget) bool {
+		return isDone(*(mt.State))
 	})
 }
 
@@ -2171,7 +2172,7 @@ func (f *testFixture) startPod(manifestName model.ManifestName) {
 	f.pod = f.testPod(pID.String(), manifestName.String(), "Running", testContainer, time.Now())
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
-	f.WaitUntilManifest("pod appears", manifestName.String(), func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().PodID == k8s.PodID(f.pod.Name)
 	})
 }
@@ -2183,7 +2184,7 @@ func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 		Log:          []byte(s + "\n"),
 	})
 
-	f.WaitUntilManifest("pod log seen", string(manifestName), func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {
 		return strings.Contains(string(ms.MostRecentPod().CurrentLog), s)
 	})
 }
@@ -2193,7 +2194,7 @@ func (f *testFixture) restartPod() {
 	f.pod.Status.ContainerStatuses[0].RestartCount = restartCount
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
-	f.WaitUntilManifest("pod restart seen", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().ContainerRestarts == int(restartCount)
 	})
 }
@@ -2201,7 +2202,7 @@ func (f *testFixture) restartPod() {
 func (f *testFixture) notifyAndWaitForPodStatus(pred func(pod store.Pod) bool) {
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
-	f.WaitUntilManifest("pod status change seen", "foobar", func(state store.ManifestState) bool {
+	f.WaitUntilManifestState("pod status change seen", "foobar", func(state store.ManifestState) bool {
 		return pred(state.MostRecentPod())
 	})
 }
