@@ -393,7 +393,7 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 
 	// If the user specified port-forwards in the Tiltfile, we
 	// assume that's what they want to see in the UI
-	portForwards := ms.Manifest.K8sInfo().PortForwards
+	portForwards := ms.Manifest.K8sTarget().PortForwards
 	if len(portForwards) > 0 {
 		for _, pf := range portForwards {
 			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
@@ -519,7 +519,7 @@ func StateToView(s EngineState) view.View {
 
 func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(ms.Manifest.DCInfo().ConfigPath, dcState.Status, dcState.Log(), dcState.StartTime)
+		return view.NewDCResourceInfo(ms.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := ms.MostRecentPod()
 		return view.K8SResourceInfo{
@@ -540,7 +540,7 @@ func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 func (s EngineState) DockerComposeConfigPath() string {
 	for _, ms := range s.ManifestStates {
 		if ms.Manifest.IsDC() {
-			return ms.Manifest.DCInfo().ConfigPath
+			return ms.Manifest.DockerComposeTarget().ConfigPath
 		}
 	}
 	return ""

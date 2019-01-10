@@ -62,7 +62,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		if m.IsDC() {
 			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll
 			// need to support down-ing as well. For now, we `down` the first one we find.
-			dcConfigPath = m.DCInfo().ConfigPath
+			dcConfigPath = m.DockerComposeTarget().ConfigPath
 			break
 		}
 	}

@@ -30,12 +30,31 @@ func EventFromJsonStr(j string) (Event, error) {
 }
 
 // https://docs.docker.com/engine/reference/commandline/events/
-type Type string
+type Type int
 
 const (
-	// Add 'types' here (and to `UnmarshalJSON` below) as we support them
-	TypeContainer Type = "container"
+	// Add 'types' here (and to `stringToType` below) as we support them
+	TypeUnknown Type = iota
+	TypeContainer
 )
+
+var stringToType = map[string]Type{
+	"container": TypeContainer,
+}
+
+func (t Type) String() string {
+	for str, typ := range stringToType {
+		if typ == t {
+			return str
+		}
+	}
+	return "unknown"
+}
+
+func (t Type) MarshalJSON() ([]byte, error) {
+	s := t.String()
+	return []byte(fmt.Sprintf("%q", s)), nil
+}
 
 func (t *Type) UnmarshalJSON(b []byte) error {
 	s := string(b)
@@ -43,33 +62,82 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	if s == "container" {
-		*t = TypeContainer
-	} else {
-		return fmt.Errorf("unknown `Type` in docker-compose event: %s", s)
-	}
+	typ := stringToType[s] // if type not in map, this returns 0 (i.e. TypeUnknown)
+	*t = typ
 	return nil
 }
 
-type Action string
+type Action int
 
 const (
-	// Add 'actions' here (and to `UnmarshalJSON` below`) as we support them
+	// Add 'actions' here (and to `stringToAction` below`) as we support them
 
 	// CONTAINER actions
-	ActionAttach     Action = "attach"
-	ActionCreate     Action = "create"
-	ActionDie        Action = "die"
-	ActionExecDie    Action = "exec_die"
-	ActionExecAttach Action = "exec_attach"
-	ActionExecCreate Action = "exec_create"
-	ActionKill       Action = "kill"
-	ActionRename     Action = "rename"
-	ActionRestart    Action = "restart"
-	ActionStart      Action = "start"
-	ActionStop       Action = "stop"
-	ActionUpdate     Action = "update"
+	ActionUnknown Action = iota
+	ActionAttach
+	ActionCommit
+	ActionCopy
+	ActionCreate
+	ActionDestroy
+	ActionDie
+	ActionExecCreate
+	ActionExecDetach
+	ActionExecDie
+	ActionExecStart
+	ActionExport
+	ActionHealthStatus
+	ActionKill
+	ActionOom
+	ActionPause
+	ActionRename
+	ActionResize
+	ActionRestart
+	ActionStart
+	ActionStop
+	ActionTop
+	ActionUnpause
+	ActionUpdate
 )
+
+var stringToAction = map[string]Action{
+	"attach":        ActionAttach,
+	"commit":        ActionCommit,
+	"copy":          ActionCopy,
+	"create":        ActionCreate,
+	"destroy":       ActionDestroy,
+	"die":           ActionDie,
+	"exec_create":   ActionExecCreate,
+	"exec_detach":   ActionExecDetach,
+	"exec_die":      ActionExecDie,
+	"exec_start":    ActionExecStart,
+	"export":        ActionExport,
+	"health_status": ActionHealthStatus,
+	"kill":          ActionKill,
+	"oom":           ActionOom,
+	"pause":         ActionPause,
+	"rename":        ActionRename,
+	"resize":        ActionResize,
+	"restart":       ActionRestart,
+	"start":         ActionStart,
+	"stop":          ActionStop,
+	"top":           ActionTop,
+	"unpause":       ActionUnpause,
+	"update":        ActionUpdate,
+}
+
+func (a Action) String() string {
+	for str, act := range stringToAction {
+		if act == a {
+			return str
+		}
+	}
+	return "unknown"
+}
+
+func (a Action) MarshalJSON() ([]byte, error) {
+	s := a.String()
+	return []byte(fmt.Sprintf("%q", s)), nil
+}
 
 func (a *Action) UnmarshalJSON(b []byte) error {
 	s := string(b)
@@ -77,32 +145,7 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		s = unquoted
 	}
 
-	if s == "attach" {
-		*a = ActionAttach
-	} else if s == "create" {
-		*a = ActionCreate
-	} else if s == "die" {
-		*a = ActionDie
-	} else if s == "exec_attach" {
-		*a = ActionExecAttach
-	} else if s == "exec_die" {
-		*a = ActionExecDie
-	} else if s == "exec_create" {
-		*a = ActionExecCreate
-	} else if s == "kill" {
-		*a = ActionKill
-	} else if s == "rename" {
-		*a = ActionRename
-	} else if s == "restart" {
-		*a = ActionRestart
-	} else if s == "start" {
-		*a = ActionStart
-	} else if s == "stop" {
-		*a = ActionStop
-	} else if s == "update" {
-		*a = ActionUpdate
-	} else {
-		return fmt.Errorf("unknown `Action` in docker-compose event: %s", s)
-	}
+	action := stringToAction[s] // if action not in map, this returns 0 (i.e. ActionUnknown)
+	*a = action
 	return nil
 }

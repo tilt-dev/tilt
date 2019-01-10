@@ -26,57 +26,57 @@ type Manifest struct {
 	repos         []LocalGithubRepo
 
 	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
-	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployInfo`).
-	DockerInfo DockerInfo
+	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployTarget`).
+	ImageTarget ImageTarget
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
-	deployInfo deployInfo
+	deployTarget Target
 }
 
 type DockerBuildArgs map[string]string
 
 func (m Manifest) StaticBuildInfo() StaticBuild {
-	ret, _ := m.DockerInfo.BuildDetails.(StaticBuild)
+	ret, _ := m.ImageTarget.BuildDetails.(StaticBuild)
 	return ret
 }
 
 func (m Manifest) IsStaticBuild() bool {
-	_, ok := m.DockerInfo.BuildDetails.(StaticBuild)
+	_, ok := m.ImageTarget.BuildDetails.(StaticBuild)
 	return ok
 }
 
 func (m Manifest) FastBuildInfo() FastBuild {
-	ret, _ := m.DockerInfo.BuildDetails.(FastBuild)
+	ret, _ := m.ImageTarget.BuildDetails.(FastBuild)
 	return ret
 }
 
 func (m Manifest) IsFastBuild() bool {
-	_, ok := m.DockerInfo.BuildDetails.(FastBuild)
+	_, ok := m.ImageTarget.BuildDetails.(FastBuild)
 	return ok
 }
 
-func (m Manifest) DCInfo() DCInfo {
-	ret, _ := m.deployInfo.(DCInfo)
+func (m Manifest) DockerComposeTarget() DockerComposeTarget {
+	ret, _ := m.deployTarget.(DockerComposeTarget)
 	return ret
 }
 
 func (m Manifest) IsDC() bool {
-	_, ok := m.deployInfo.(DCInfo)
+	_, ok := m.deployTarget.(DockerComposeTarget)
 	return ok
 }
 
-func (m Manifest) K8sInfo() K8sInfo {
-	ret, _ := m.deployInfo.(K8sInfo)
+func (m Manifest) K8sTarget() K8sTarget {
+	ret, _ := m.deployTarget.(K8sTarget)
 	return ret
 }
 
 func (m Manifest) IsK8s() bool {
-	_, ok := m.deployInfo.(K8sInfo)
+	_, ok := m.deployTarget.(K8sTarget)
 	return ok
 }
 
-func (m Manifest) WithDeployInfo(info deployInfo) Manifest {
-	m.deployInfo = info
+func (m Manifest) WithDeployTarget(t Target) Manifest {
+	m.deployTarget = t
 	return m
 }
 
@@ -95,7 +95,7 @@ func (m Manifest) Dockerignores() []Dockerignore {
 }
 
 func (m Manifest) LocalPaths() []string {
-	switch bd := m.DockerInfo.BuildDetails.(type) {
+	switch bd := m.ImageTarget.BuildDetails.(type) {
 	case StaticBuild:
 		return []string{bd.BuildPath}
 	case FastBuild:
@@ -106,8 +106,8 @@ func (m Manifest) LocalPaths() []string {
 		return result
 	default:
 		// TODO(matt?) DC mounts should probably stored somewhere more consistent with Static/Fast Build
-		switch di := m.deployInfo.(type) {
-		case DCInfo:
+		switch di := m.deployTarget.(type) {
+		case DockerComposeTarget:
 			result := make([]string, len(di.Mounts))
 			for i, mount := range di.Mounts {
 				result[i] = mount.LocalPath
@@ -124,7 +124,7 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	fbInfo, ok := m.DockerInfo.BuildDetails.(FastBuild)
+	fbInfo, ok := m.ImageTarget.BuildDetails.(FastBuild)
 	if !ok {
 		return nil
 	}
@@ -141,15 +141,15 @@ func (m Manifest) Validate() error {
 // ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
 // k8s-deployable manifest.
 func (m Manifest) ValidateDockerK8sManifest() error {
-	if m.DockerInfo.Ref == nil {
+	if m.ImageTarget.Ref == nil {
 		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing image ref", m.Name)
 	}
 
-	if m.K8sInfo().YAML == "" {
+	if m.K8sTarget().YAML == "" {
 		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing k8s YAML", m.Name)
 	}
 
-	switch bd := m.DockerInfo.BuildDetails.(type) {
+	switch bd := m.ImageTarget.BuildDetails.(type) {
 	case StaticBuild:
 		if bd.BuildPath == "" {
 			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing build path", m.Name)
@@ -170,14 +170,14 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	reposMatch := DeepEqual(m1.repos, m2.repos)
 	dockerignoresMatch := DeepEqual(m1.dockerignores, m2.dockerignores)
 
-	dockerEqual := DeepEqual(m1.DockerInfo, m2.DockerInfo)
+	dockerEqual := DeepEqual(m1.ImageTarget, m2.ImageTarget)
 
-	dc1 := m1.DCInfo()
-	dc2 := m2.DCInfo()
+	dc1 := m1.DockerComposeTarget()
+	dc2 := m2.DockerComposeTarget()
 	dockerComposeEqual := DeepEqual(dc1, dc2)
 
-	k8s1 := m1.K8sInfo()
-	k8s2 := m2.K8sInfo()
+	k8s1 := m1.K8sTarget()
+	k8s2 := m2.K8sTarget()
 	k8sEqual := DeepEqual(k8s1, k8s2)
 
 	return primitivesMatch &&
@@ -393,7 +393,7 @@ type PortForward struct {
 	ContainerPort int
 }
 
-var dockerInfoAllowUnexported = cmp.AllowUnexported(DockerInfo{})
+var dockerInfoAllowUnexported = cmp.AllowUnexported(ImageTarget{})
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
 	bNil := b == nil

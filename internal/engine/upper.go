@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -393,6 +393,10 @@ func handleConfigsReloaded(
 		Reason:     model.BuildReasonFlagConfig,
 	}
 	setLastTiltfileBuild(state, status)
+	if event.Err != nil {
+		// There was an error, so don't update status with the new, nonexistent state
+		return
+	}
 
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
@@ -439,7 +443,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 		return nil, nil
 	}
 
-	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerInfo.Ref)
+	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.ImageTarget.Ref)
 	if err != nil || imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
 		return nil, nil
@@ -513,7 +517,7 @@ func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podIn
 	podInfo.ContainerPorts = ports
 
 	forwards := PopulatePortForwards(ms.Manifest, *podInfo)
-	if len(forwards) < len(ms.Manifest.K8sInfo().PortForwards) {
+	if len(forwards) < len(ms.Manifest.K8sTarget().PortForwards) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			ms.Manifest.Name, podInfo.PodID)
@@ -540,7 +544,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	defer prunePods(ms)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerInfo.Ref)
+	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.ImageTarget.Ref)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return
@@ -732,6 +736,15 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 	if evt.IsStartupEvent() {
 		state = state.WithStartTime(time.Now())
+		state = state.WithStopping(false)
+	}
+
+	if evt.IsStopEvent() {
+		state = state.WithStopping(true)
+	}
+
+	if evt.Action == dockercompose.ActionDie && !state.IsStopping {
+		state = state.WithStatus(dockercompose.StatusCrash)
 	}
 
 	ms.ResourceState = state

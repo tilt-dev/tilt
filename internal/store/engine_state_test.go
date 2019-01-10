@@ -15,7 +15,7 @@ import (
 func TestStateToViewMultipleMounts(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-		DockerInfo: model.DockerInfo{}.
+		ImageTarget: model.ImageTarget{}.
 			WithBuildDetails(model.FastBuild{
 				Mounts: []model.Mount{
 					{LocalPath: "/a/b"},
@@ -47,7 +47,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 func TestStateToViewPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-	}.WithDeployInfo(model.K8sInfo{
+	}.WithDeployTarget(model.K8sTarget{
 		PortForwards: []model.PortForward{
 			{LocalPort: 8000, ContainerPort: 5000},
 			{LocalPort: 7000, ContainerPort: 5001},
@@ -110,7 +110,7 @@ func TestEmptyState(t *testing.T) {
 
 	m2 := model.Manifest{
 		Name: "foo",
-		DockerInfo: model.DockerInfo{}.
+		ImageTarget: model.ImageTarget{}.
 			WithBuildDetails(model.FastBuild{
 				Mounts: []model.Mount{
 					{LocalPath: "/a/b"},

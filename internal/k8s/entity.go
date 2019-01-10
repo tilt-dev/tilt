@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -16,17 +17,35 @@ type K8sEntity struct {
 	Kind *schema.GroupVersionKind
 }
 
-func (e K8sEntity) Meta() metav1.ObjectMeta {
+type k8sMeta interface {
+	GetName() string
+	GetNamespace() string
+}
+
+type emptyMeta struct{}
+
+func (emptyMeta) GetName() string      { return "" }
+func (emptyMeta) GetNamespace() string { return "" }
+
+var _ k8sMeta = emptyMeta{}
+var _ k8sMeta = &metav1.ObjectMeta{}
+
+func (e K8sEntity) meta() k8sMeta {
+	unstructured, isUnstructured := e.Obj.(*unstructured.Unstructured)
+	if isUnstructured {
+		return unstructured
+	}
+
 	objVal := reflect.ValueOf(e.Obj)
 	if objVal.Kind() == reflect.Ptr {
 		if objVal.IsNil() {
-			return metav1.ObjectMeta{}
+			return emptyMeta{}
 		}
 		objVal = objVal.Elem()
 	}
 
 	if objVal.Kind() != reflect.Struct {
-		return metav1.ObjectMeta{}
+		return emptyMeta{}
 	}
 
 	// Find a field with type ObjectMeta
@@ -46,17 +65,17 @@ func (e K8sEntity) Meta() metav1.ObjectMeta {
 			continue
 		}
 
-		return metadata
+		return &metadata
 	}
-	return metav1.ObjectMeta{}
+	return emptyMeta{}
 }
 
 func (e K8sEntity) Name() string {
-	return e.Meta().Name
+	return e.meta().GetName()
 }
 
 func (e K8sEntity) Namespace() Namespace {
-	n := e.Meta().Namespace
+	n := e.meta().GetNamespace()
 	if n == "" {
 		return DefaultNamespace
 	}

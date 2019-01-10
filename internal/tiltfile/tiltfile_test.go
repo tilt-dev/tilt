@@ -843,8 +843,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
-			caches := m.DockerInfo.CachePaths()
-			ref := m.DockerInfo.Ref
+			caches := m.ImageTarget.CachePaths()
+			ref := m.ImageTarget.Ref
 			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
@@ -864,7 +864,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			ref := m.DockerInfo.Ref
+			ref := m.ImageTarget.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
@@ -894,7 +894,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case deploymentHelper:
-			yaml := m.K8sInfo().YAML
+			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
 				if e.Kind.Kind == "Deployment" && f.k8sName(e) == opt.name {
@@ -906,7 +906,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
 		case numEntitiesHelper:
-			yaml := m.K8sInfo().YAML
+			yaml := m.K8sTarget().YAML
 			entities := f.entities(yaml)
 			if opt.num != len(f.entities(yaml)) {
 				f.t.Fatalf("manifest %v has %v entities in %v; expected %v", m.Name, len(entities), yaml, opt.num)
@@ -952,7 +952,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 		case []model.PortForward:
-			assert.Equal(f.t, opt, m.K8sInfo().PortForwards)
+			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
 		default:
 			f.t.Fatalf("unexpected arg to assertManifest: %T %v", opt, opt)
 		}

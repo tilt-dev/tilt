@@ -158,14 +158,14 @@ func ParseConfig(ctx context.Context, configPath string) ([]Service, error) {
 
 func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
-	dcInfo := model.DCInfo{
+	dcInfo := model.DockerComposeTarget{
 		ConfigPath: dcConfigPath,
 		YAMLRaw:    s.ServiceConfig,
 		DfRaw:      s.DfContents,
 	}
 	m := model.Manifest{
 		Name: model.ManifestName(s.Name),
-	}.WithDeployInfo(dcInfo)
+	}.WithDeployTarget(dcInfo)
 
 	if s.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
@@ -181,7 +181,7 @@ func (s Service) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	}
 
 	dcInfo.Mounts = mounts
-	m = m.WithDeployInfo(dcInfo)
+	m = m.WithDeployTarget(dcInfo)
 
 	return m, []string{s.DfPath}, nil
 }

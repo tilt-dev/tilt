@@ -196,7 +196,7 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 	if !m.IsDC() {
 		f.t.Error("expected a docker-compose manifest")
 	}
-	dcInfo := m.DCInfo()
+	dcInfo := m.DockerComposeTarget()
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {

@@ -60,7 +60,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 			ctx:             ctx,
 			cancel:          cancel,
 			name:            ms.Manifest.Name,
-			dcConfigPath:    ms.Manifest.DCInfo().ConfigPath,
+			dcConfigPath:    ms.Manifest.DockerComposeTarget().ConfigPath,
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),
 		}

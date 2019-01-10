@@ -115,7 +115,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	if manifest.IsDC() {
 		return b.nextBuildResult(imageID), nil
 	}
-	return b.nextBuildResult(manifest.DockerInfo.Ref), nil
+	return b.nextBuildResult(manifest.ImageTarget.Ref), nil
 }
 
 func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
@@ -452,7 +452,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
 	assert.Equal(t, "FROM iron/go:dev", call.manifest.FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sInfo().YAML)
+	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sTarget().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.state.HasImage())
@@ -786,7 +786,7 @@ ADD ./ ./
 go build ./...
 `
 	manifest := f.newManifest("foobar", nil)
-	manifest.DockerInfo = manifest.DockerInfo.WithBuildDetails(
+	manifest.ImageTarget = manifest.ImageTarget.WithBuildDetails(
 		model.StaticBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
@@ -1755,7 +1755,6 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	})
 }
 
-// TODO(dmiller): add test for run time logs + filtering
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
@@ -1783,6 +1782,59 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName().String(), func(st store.ManifestState) {
 		assert.NotContains(t, st.DCResourceState().Log(), expected)
+	})
+}
+
+func TestDockerComposeDetectsCrashes(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := f.setupDCFixture()
+
+	f.loadAndStart()
+	f.waitForCompletedBuildCount(2)
+
+	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	})
+
+	f.withManifestState(m2.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	})
+
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStop))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionRename))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionCreate))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
+
+	f.WaitUntilManifest("has a status", m1.ManifestName().String(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Status != ""
+	})
+
+	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
+		assert.Equal(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	})
+
+	f.withManifestState(m2.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	})
+
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStop))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionRename))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionCreate))
+	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
+
+	f.WaitUntilManifest("is not crashing", m1.ManifestName().String(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Status != dockercompose.StatusCrash
+	})
+
+	f.withManifestState(m1.ManifestName().String(), func(st store.ManifestState) {
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
 	})
 }
 
@@ -2187,7 +2239,7 @@ func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manif
 	ref := f.imageNameForManifest(name)
 	return model.Manifest{
 		Name: model.ManifestName(name),
-		DockerInfo: model.DockerInfo{Ref: ref}.
+		ImageTarget: model.ImageTarget{Ref: ref}.
 			WithBuildDetails(model.FastBuild{Mounts: mounts}),
 	}
 }
@@ -2196,7 +2248,7 @@ func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileCon
 	f.WriteFile("docker-compose.yml", DCYAMLRaw)
 	return model.Manifest{
 		Name: model.ManifestName(name),
-	}.WithDeployInfo(model.DCInfo{
+	}.WithDeployTarget(model.DockerComposeTarget{
 		ConfigPath: f.JoinPath("docker-compose.yml"),
 		YAMLRaw:    []byte(DCYAMLRaw),
 		DfRaw:      []byte(dockerfileContents),

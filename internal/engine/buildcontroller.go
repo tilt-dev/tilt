@@ -115,7 +115,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	buildState := store.NewBuildState(ms.LastSuccessfulResult, filesChanged)
 
 	if !ms.NeedsRebuildFromCrash {
-		buildState = buildState.WithDeployInfo(store.NewDeployInfo(ms.PodSet))
+		buildState = buildState.WithDeployTarget(store.NewDeployInfo(ms.PodSet))
 	}
 
 	buildReason := ms.NextBuildReason()

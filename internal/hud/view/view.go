@@ -3,6 +3,7 @@ package view
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -81,7 +82,7 @@ type Resource struct {
 	CrashLog string
 }
 
-func (r Resource) DCInfo() DCResourceInfo {
+func (r Resource) DockerComposeTarget() DCResourceInfo {
 	switch info := r.ResourceInfo.(type) {
 	case DCResourceInfo:
 		return info
@@ -129,6 +130,10 @@ func (r Resource) DefaultCollapse() bool {
 	}
 
 	if r.IsYAML() {
+		autoExpand = true
+	}
+
+	if r.IsDC() && r.DockerComposeTarget().Status() == dockercompose.StatusCrash {
 		autoExpand = true
 	}
 

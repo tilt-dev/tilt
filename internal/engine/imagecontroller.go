@@ -39,7 +39,7 @@ func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
 	c.hasRunReaper = true
 	manifests := make([]model.Manifest, 0, len(state.ManifestStates))
 	for _, ms := range state.ManifestStates {
-		if ms.Manifest.DockerInfo.Ref == nil {
+		if ms.Manifest.ImageTarget.Ref == nil {
 			continue
 		}
 		manifests = append(manifests, ms.Manifest)
@@ -62,7 +62,7 @@ func (c *ImageController) OnChange(ctx context.Context, st store.RStore) {
 func (c *ImageController) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
 	for _, manifest := range manifests {
-		nameFilter := build.FilterByRefName(manifest.DockerInfo.Ref)
+		nameFilter := build.FilterByRefName(manifest.ImageTarget.Ref)
 		err := c.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
 		if err != nil {
 			return errors.Wrap(err, "reapOldWatchBuilds")
