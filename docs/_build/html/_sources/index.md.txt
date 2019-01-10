@@ -46,9 +46,10 @@ Questions? Comments? Just want to say hi?
 Find us on the Kubernetes slack. Get an invite at [slack.k8s.io](http://slack.k8s.io) and find
 us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
 
-We tweet at [windmill_eng](https://twitter.com/windmill_eng) and
+We tweet [@windmill_eng](https://twitter.com/windmill_eng) and
 blog about building Tilt at [medium.com/windmill-engineering](https://medium.com/windmill-engineering).
 
+We expect everyone in our community (users, contributors, and employees alike) to abide by our [**Code of Conduct**](code_of_conduct.html).
 
 ```eval_rst
 
@@ -77,7 +78,8 @@ blog about building Tilt at [medium.com/windmill-engineering](https://medium.com
 
 .. toctree::
    :maxdepth: 1
-   :caption: Questions
+   :caption: About
 
+   code_of_conduct
    faq
 ```
