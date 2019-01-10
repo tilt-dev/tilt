@@ -47,14 +47,14 @@ var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
 
 var statusColors = map[string]tcell.Color{
-	"Running":                  cGood,
-	"ContainerCreating":        cPending,
-	"Pending":                  cPending,
-	"Error":                    cBad,
-	"CrashLoopBackOff":         cBad,
-	dockercompose.StatusInProg: cPending,
-	dockercompose.StatusUp:     cGood,
-	dockercompose.StatusDown:   cBad,
+	"Running":                          cGood,
+	"ContainerCreating":                cPending,
+	"Pending":                          cPending,
+	"Error":                            cBad,
+	"CrashLoopBackOff":                 cBad,
+	string(dockercompose.StatusInProg): cPending,
+	string(dockercompose.StatusUp):     cGood,
+	string(dockercompose.StatusDown):   cBad,
 }
 
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
@@ -197,7 +197,7 @@ func isCrashing(res view.Resource) bool {
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash) ||
-		res.IsDC() && res.DCInfo().Status() == dockercompose.StatusCrash
+		res.IsDC() && res.DockerComposeTarget().Status() == string(dockercompose.StatusCrash)
 }
 
 func bestLogs(res view.Resource) string {

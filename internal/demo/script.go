@@ -72,11 +72,11 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 	m.hasBuildError = false
 	m.healthy = true
 
-	if len(state.ManifestStates) == 0 {
+	if len(state.ManifestTargets) == 0 {
 		m.healthy = false
 	}
 
-	for _, ms := range state.ManifestStates {
+	for _, ms := range state.ManifestStates() {
 		pod := ms.MostRecentPod()
 		if pod.Phase != v1.PodRunning {
 			m.healthy = false

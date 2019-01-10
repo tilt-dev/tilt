@@ -6,6 +6,8 @@ So you want to make a change to `tilt`!
 
 We welcome contributions, either as bug reports, feature requests, or pull requests.
 
+We want everyone to feel at home in this repo and its environs; please see our [**Code of Conduct**](https://docs.tilt.build/code_of_conduct.html) for some rules that govern everyone's participation.
+
 Most of this page describes how to get set up making & testing changes.
 
 Small PRs are better than large ones. If you have an idea for a major feature, please file

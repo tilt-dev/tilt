@@ -307,6 +307,13 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	// TODO(Han): Extend output to print without newline
 	ps.StartBuildStep(ctx, "Tarring context…")
 
+	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
+	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+		for _, pm := range paths {
+			ps.Printf(ctx, pm.prettyStr())
+		}
+	}
+
 	archive, err := tarContextAndUpdateDf(ctx, df, paths, filter)
 	if err != nil {
 		return nil, err

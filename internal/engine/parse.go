@@ -11,7 +11,7 @@ func ParseYAMLFromManifests(manifests ...model.Manifest) ([]k8s.K8sEntity, error
 		if !m.IsK8s() {
 			continue
 		}
-		entities, err := k8s.ParseYAMLFromString(m.K8sInfo().YAML)
+		entities, err := k8s.ParseYAMLFromString(m.K8sTarget().YAML)
 		if err != nil {
 			return nil, err
 		}

@@ -193,10 +193,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		case tcell.KeyEnter: // toggle log modal for selected resource
 			am := h.activeModal()
 			if am == nil {
-				selectedIdx, r := h.selectedResource()
-				if selectedIdx == 0 {
+				if len(h.currentView.Resources) == 0 {
 					break
 				}
+				selectedIdx, r := h.selectedResource()
 				if r.IsYAML() {
 					h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
 					break

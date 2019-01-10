@@ -306,7 +306,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			return nil, err
 		}
 
-		m = m.WithDeployInfo(model.K8sInfo{
+		m = m.WithDeployTarget(model.K8sTarget{
 			YAML:         k8sYaml,
 			PortForwards: s.portForwardsToDomain(r), // FIXME(dbentley)
 		})
@@ -325,7 +325,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				Entrypoint:     model.ToShellCmd(image.entrypoint),
 			}
 
-			dInfo := model.DockerInfo{
+			dInfo := model.ImageTarget{
 				Ref: image.ref,
 			}.WithCachePaths(image.cachePaths)
 
@@ -337,7 +337,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				dInfo = dInfo.WithBuildDetails(fastBuild)
 			}
 
-			m.DockerInfo = dInfo
+			m.ImageTarget = dInfo
 			m = m.WithTiltFilename(image.tiltfilePath.path).
 				WithRepos(s.reposToDomain(image)).
 				WithDockerignores(s.dockerignoresToDomain(image))

@@ -42,7 +42,6 @@ const maxChangedFilesToPrint = 5
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	store *store.Store
-	kcli  k8s.Client
 }
 
 type FsWatcherMaker func() (watch.Notify, error)
@@ -65,7 +64,7 @@ func ProvideTimerMaker() timerMaker {
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	kcli k8s.Client, dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
+	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -83,7 +82,6 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 
 	return Upper{
 		store: st,
-		kcli:  kcli,
 	}
 }
 
@@ -96,11 +94,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	defer span.Finish()
 
 	startTime := time.Now()
-
-	err := u.kcli.ConnectedToCluster(ctx)
-	if err != nil {
-		return err
-	}
 
 	absTfPath, err := filepath.Abs(fileName)
 	if err != nil {
@@ -189,7 +182,10 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 
 func handleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
 	mn := action.Manifest.Name
-	ms := state.ManifestStates[mn]
+	ms, ok := state.ManifestState(mn)
+	if !ok {
+		return
+	}
 
 	bs := model.BuildStatus{
 		Edits:     append([]string{}, action.FilesChanged...),
@@ -234,7 +230,10 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	err := cb.Error
 
-	ms := engineState.ManifestStates[engineState.CurrentlyBuilding]
+	ms, ok := engineState.ManifestState(engineState.CurrentlyBuilding)
+	if !ok {
+		return nil
+	}
 
 	bs := ms.CurrentBuild
 	bs.Error = err
@@ -298,7 +297,7 @@ func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 		return
 	}
 
-	ms, ok := state.ManifestStates[mn]
+	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
 	}
@@ -345,7 +344,11 @@ func handleFSEvent(
 		return
 	}
 
-	ms := state.ManifestStates[event.manifestName]
+	ms, ok := state.ManifestState(event.manifestName)
+	if !ok {
+		return
+	}
+
 	for _, f := range event.files {
 		ms.PendingFileChanges[f] = time.Now()
 	}
@@ -407,20 +410,20 @@ func handleConfigsReloaded(
 
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
-		ms, ok := state.ManifestStates[m.ManifestName()]
+		mt, ok := state.ManifestTargets[m.ManifestName()]
 		if !ok {
-			ms = store.NewManifestState(m)
+			mt = store.NewManifestTarget(m)
 		}
 
 		newDefOrder[i] = m.ManifestName()
-		if !m.Equal(ms.Manifest) {
-			ms.Manifest = m
+		if !m.Equal(mt.Manifest) {
+			mt.Manifest = m
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
-			ms.LastSuccessfulResult = store.BuildResult{}
-			ms.PendingManifestChange = time.Now()
+			mt.State.LastSuccessfulResult = store.BuildResult{}
+			mt.State.PendingManifestChange = time.Now()
 		}
-		state.ManifestStates[m.ManifestName()] = ms
+		state.UpsertManifestTarget(mt)
 	}
 	// TODO(dmiller) handle deleting manifests
 	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
@@ -433,7 +436,7 @@ func handleConfigsReloaded(
 // ensuring that some Pod exists on the state.
 //
 // Intended as a helper for pod-mutating events.
-func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestState, *store.Pod) {
+func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
 		return nil, nil
@@ -444,13 +447,16 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 	status := podStatusToString(*pod)
 	ns := k8s.NamespaceFromPod(pod)
 
-	ms, ok := state.ManifestStates[manifestName]
+	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
 		return nil, nil
 	}
 
-	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, ms.Manifest.DockerInfo.Ref)
+	ms := mt.State
+	manifest := mt.Manifest
+
+	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, manifest.ImageTarget.Ref)
 	if err != nil || imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
 		return nil, nil
@@ -484,7 +490,7 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 			Status:    status,
 			Namespace: ns,
 		}
-		return ms, ms.PodSet.Pods[podID]
+		return mt, ms.PodSet.Pods[podID]
 	}
 
 	podInfo, ok := ms.PodSet.Pods[podID]
@@ -500,11 +506,11 @@ func ensureManifestStateWithPod(state *store.EngineState, pod *v1.Pod) (*store.M
 	}
 
 	// (4)
-	return ms, podInfo
+	return mt, podInfo
 }
 
 // Fill in container fields on the pod state.
-func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podInfo *store.Pod, pod *v1.Pod, cStatus v1.ContainerStatus) {
+func populateContainerStatus(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod, cStatus v1.ContainerStatus) {
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
 	podInfo.ContainerName = cName
 	podInfo.ContainerReady = cStatus.Ready
@@ -523,20 +529,22 @@ func populateContainerStatus(ctx context.Context, ms *store.ManifestState, podIn
 	}
 	podInfo.ContainerPorts = ports
 
-	forwards := PopulatePortForwards(ms.Manifest, *podInfo)
-	if len(forwards) < len(ms.Manifest.K8sInfo().PortForwards) {
+	forwards := PopulatePortForwards(manifest, *podInfo)
+	if len(forwards) < len(manifest.K8sTarget().PortForwards) {
 		logger.Get(ctx).Infof(
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
-			ms.Manifest.Name, podInfo.PodID)
+			manifest.Name, podInfo.PodID)
 	}
 }
 
 func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
-	ms, podInfo := ensureManifestStateWithPod(state, pod)
-	if ms == nil || podInfo == nil {
+	mt, podInfo := ensureManifestTargetWithPod(state, pod)
+	if mt == nil || podInfo == nil {
 		return
 	}
 
+	ms := mt.State
+	manifest := mt.Manifest
 	podID := k8s.PodIDFromPod(pod)
 	if podInfo.PodID != podID {
 		// This is an event from an old pod.
@@ -551,7 +559,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	defer prunePods(ms)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, ms.Manifest.DockerInfo.Ref)
+	cStatus, err := k8s.ContainerMatching(pod, manifest.ImageTarget.Ref)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error matching container: %v", err)
 		return
@@ -559,7 +567,7 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 		return
 	}
 
-	populateContainerStatus(ctx, ms, podInfo, pod, cStatus)
+	populateContainerStatus(ctx, manifest, podInfo, pod, cStatus)
 	checkForPodCrash(ctx, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
@@ -584,7 +592,7 @@ func checkForPodCrash(ctx context.Context, ms *store.ManifestState, podInfo stor
 	ms.CrashLog = string(podInfo.CurrentLog)
 	ms.NeedsRebuildFromCrash = true
 	ms.ExpectedContainerID = ""
-	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Manifest.Name)
+	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	b := []byte(msg + "\n")
 	if len(ms.BuildHistory) > 0 {
 		ms.BuildHistory[0].Log = append(ms.BuildHistory[0].Log, b...)
@@ -622,7 +630,7 @@ func prunePods(ms *store.ManifestState) {
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	manifestName := action.ManifestName
-	ms, ok := state.ManifestStates[manifestName]
+	ms, ok := state.ManifestState(manifestName)
 
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
@@ -651,7 +659,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 	manifestName := action.ManifestName
-	ms, ok := state.ManifestStates[manifestName]
+	ms, ok := state.ManifestState(manifestName)
 
 	if !ok || state.CurrentlyBuilding != manifestName {
 		// This is OK. The user could have edited the manifest recently.
@@ -672,7 +680,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 		return
 	}
 
-	ms, ok := state.ManifestStates[manifestName]
+	ms, ok := state.ManifestState(manifestName)
 	if !ok {
 		logger.Get(ctx).Infof("error: got notified of service for unknown manifest '%s'", manifestName)
 		return
@@ -701,8 +709,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	manifests := action.Manifests
 	for _, m := range manifests {
-		engineState.ManifestDefinitionOrder = append(engineState.ManifestDefinitionOrder, m.Name)
-		engineState.ManifestStates[m.Name] = store.NewManifestState(m)
+		engineState.UpsertManifestTarget(store.NewManifestTarget(m))
 	}
 	engineState.WatchMounts = watchMounts
 
@@ -729,7 +736,7 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {
 	evt := action.Event
 	mn := evt.Service
-	ms, ok := engineState.ManifestStates[model.ManifestName(mn)]
+	ms, ok := engineState.ManifestState(model.ManifestName(mn))
 	if !ok {
 		// No corresponding manifest, nothing to do
 		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
@@ -759,7 +766,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
 	manifestName := action.ManifestName
-	ms, ok := state.ManifestStates[manifestName]
+	ms, ok := state.ManifestState(manifestName)
 
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.

@@ -72,7 +72,7 @@ func TestDeployTwinImages(t *testing.T) {
 	defer f.TearDown()
 
 	sancho := NewSanchoFastBuildManifest(f)
-	manifest := sancho.WithDeployInfo(sancho.K8sInfo().AppendYAML(SanchoTwinYAML))
+	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
 	result, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
 	if err != nil {
 		t.Fatal(err)

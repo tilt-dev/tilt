@@ -7,28 +7,35 @@ import (
 	"github.com/docker/distribution/reference"
 )
 
-type DockerInfo struct {
+type ImageTarget struct {
 	cachePaths   []string
 	Ref          reference.Named
 	BuildDetails BuildDetails
+}
+
+func (di ImageTarget) ID() TargetID {
+	return TargetID{
+		Type: TargetTypeImage,
+		Name: TargetName(di.Ref.String()),
+	}
 }
 
 type BuildDetails interface {
 	buildDetails()
 }
 
-func (di DockerInfo) WithBuildDetails(details BuildDetails) DockerInfo {
+func (di ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	di.BuildDetails = details
 	return di
 }
 
-func (di DockerInfo) WithCachePaths(paths []string) DockerInfo {
+func (di ImageTarget) WithCachePaths(paths []string) ImageTarget {
 	di.cachePaths = append(append([]string{}, di.cachePaths...), paths...)
 	sort.Strings(di.cachePaths)
 	return di
 }
 
-func (di DockerInfo) CachePaths() []string {
+func (di ImageTarget) CachePaths() []string {
 	return di.cachePaths
 }
 
@@ -50,3 +57,5 @@ type FastBuild struct {
 
 func (FastBuild) buildDetails()  {}
 func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
+
+var _ TargetSpec = ImageTarget{}

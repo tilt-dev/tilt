@@ -4,27 +4,35 @@ import (
 	"github.com/windmilleng/tilt/internal/yaml"
 )
 
-type deployInfo interface {
-	deployInfo()
-}
-
-type DCInfo struct {
+type DockerComposeTarget struct {
+	Name       TargetName
 	ConfigPath string
 	Mounts     []Mount
 	YAMLRaw    []byte // for diff'ing when config files change
 	DfRaw      []byte // for diff'ing when config files change
 }
 
-func (DCInfo) deployInfo() {}
+func (t DockerComposeTarget) ID() TargetID {
+	return TargetID{
+		Type: TargetTypeDockerCompose,
+		Name: t.Name,
+	}
+}
 
-type K8sInfo struct {
+type K8sTarget struct {
+	Name         TargetName
 	YAML         string
 	PortForwards []PortForward
 }
 
-func (K8sInfo) deployInfo() {}
+func (k8s K8sTarget) ID() TargetID {
+	return TargetID{
+		Type: TargetTypeK8s,
+		Name: k8s.Name,
+	}
+}
 
-func (k8s K8sInfo) AppendYAML(y string) K8sInfo {
+func (k8s K8sTarget) AppendYAML(y string) K8sTarget {
 	if k8s.YAML == "" {
 		k8s.YAML = y
 	} else {
@@ -32,3 +40,6 @@ func (k8s K8sInfo) AppendYAML(y string) K8sInfo {
 	}
 	return k8s
 }
+
+var _ TargetSpec = K8sTarget{}
+var _ TargetSpec = DockerComposeTarget{}

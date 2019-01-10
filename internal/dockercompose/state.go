@@ -4,15 +4,18 @@ import (
 	"time"
 )
 
+type Status string
+
 // Three hacky states just for now to get something into the hud.
 const (
-	StatusDown   = "Down"
-	StatusInProg = "In Progress"
-	StatusUp     = "OK"
-	StatusCrash  = "Crash"
+	StatusDown   = Status("Down")
+	StatusInProg = Status("In Progress")
+	StatusUp     = Status("OK")
+	StatusCrash  = Status("Crash")
+	s
 )
 
-var containerActionToStatus = map[Action]string{
+var containerActionToStatus = map[Action]Status{
 	ActionCreate:  StatusInProg,
 	ActionDie:     StatusDown,
 	ActionKill:    StatusDown,
@@ -23,7 +26,7 @@ var containerActionToStatus = map[Action]string{
 	ActionUpdate:  StatusUp, // ??
 }
 
-func (evt Event) GuessStatus() string {
+func (evt Event) GuessStatus() Status {
 	if evt.Type != TypeContainer {
 		return ""
 	}
@@ -46,7 +49,7 @@ func (evt Event) IsStopEvent() bool {
 }
 
 type State struct {
-	Status     string
+	Status     Status
 	CurrentLog []byte
 	StartTime  time.Time
 	IsStopping bool
@@ -63,8 +66,7 @@ func (s State) WithCurrentLog(b []byte) State {
 	return s
 }
 
-// TODO(dmiller): this should take a status type or something to guarantee that it's one of the valid statuses
-func (s State) WithStatus(status string) State {
+func (s State) WithStatus(status Status) State {
 	s.Status = status
 	return s
 }

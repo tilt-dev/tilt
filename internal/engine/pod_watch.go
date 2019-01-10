@@ -25,7 +25,14 @@ func NewPodWatcher(kCli k8s.Client) *PodWatcher {
 func (w *PodWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	return state.WatchMounts && !w.watching
+
+	atLeastOneK8S := false
+	for _, m := range state.Manifests() {
+		if m.IsK8s() {
+			atLeastOneK8S = true
+		}
+	}
+	return atLeastOneK8S && state.WatchMounts && !w.watching
 }
 
 func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {

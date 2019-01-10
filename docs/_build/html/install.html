@@ -117,8 +117,9 @@
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Questions</span></p>
+<p class="caption"><span class="caption-text">About</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 </ul>
 
@@ -187,7 +188,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="tilt-installation-guide">
-<span id="tilt-installation-guide"></span><h1>Tilt Installation Guide<a class="headerlink" href="#tilt-installation-guide" title="Permalink to this headline">¶</a></h1>
+<h1>Tilt Installation Guide<a class="headerlink" href="#tilt-installation-guide" title="Permalink to this headline">¶</a></h1>
 <p>Tilt is currently available for MacOS and Linux.</p>
 <p>You’ll also need:</p>
 <ul class="simple">
@@ -196,7 +197,7 @@
 <li>A local Kubernetes cluster (on MacOS, Docker For Mac works for this!)</li>
 </ul>
 <div class="section" id="on-macos">
-<span id="on-macos"></span><h2>On MacOS<a class="headerlink" href="#on-macos" title="Permalink to this headline">¶</a></h2>
+<h2>On MacOS<a class="headerlink" href="#on-macos" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Install <a class="reference external" href="https://docs.docker.com/docker-for-mac/install/">Docker For Mac</a></li>
 <li>In the Docker For Mac preferences, click <a class="reference external" href="https://docs.docker.com/docker-for-mac/#kubernetes">Enable Kubernetes</a></li>
@@ -209,7 +210,7 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.4.1/tilt.0.4.1.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.4.3/tilt.0.4.3.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
   sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
@@ -221,7 +222,7 @@ $ kubectl config use-context docker-for-desktop
 </div>
 </div>
 <div class="section" id="on-linux">
-<span id="on-linux"></span><h2>On Linux<a class="headerlink" href="#on-linux" title="Permalink to this headline">¶</a></h2>
+<h2>On Linux<a class="headerlink" href="#on-linux" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Install <a class="reference external" href="https://docs.docker.com/install/">Docker</a></li>
 <li>Setup Docker as <a class="reference external" href="https://docs.docker.com/install/linux/linux-postinstall/">a non-root user</a>.</li>
@@ -241,7 +242,7 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.4.1/tilt.0.4.1.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.4.3/tilt.0.4.3.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
     sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
@@ -253,7 +254,7 @@ $ kubectl config use-context docker-for-desktop
 </div>
 </div>
 <div class="section" id="from-source">
-<span id="from-source"></span><h2>From Source<a class="headerlink" href="#from-source" title="Permalink to this headline">¶</a></h2>
+<h2>From Source<a class="headerlink" href="#from-source" title="Permalink to this headline">¶</a></h2>
 <p>If you’d prefer to install <code class="docutils literal notranslate"><span class="pre">tilt</span></code> from source,</p>
 <ul class="simple">
 <li>Install <a class="reference external" href="https://golang.org/dl/">go 1.11</a>. Make sure the Go install directory
@@ -265,12 +266,12 @@ $ kubectl config use-context docker-for-desktop
 </div>
 <p>Verify that you installed it correctly with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-v0.4.1-dev, built 2019-01-07
+v0.4.3-dev, built 2019-01-10
 </pre></div>
 </div>
 </div>
 <div class="section" id="next-steps">
-<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>You’re ready to start using Tilt! Try it out with <a class="reference external" href="first_example.html">an example project</a>.</p>
 </div>
 </div>
@@ -320,6 +321,7 @@ v0.4.1-dev, built 2019-01-07
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

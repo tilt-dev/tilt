@@ -15,7 +15,7 @@ import (
 func TestStateToViewMultipleMounts(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-		DockerInfo: model.DockerInfo{}.
+		ImageTarget: model.ImageTarget{}.
 			WithBuildDetails(model.FastBuild{
 				Mounts: []model.Mount{
 					{LocalPath: "/a/b"},
@@ -24,7 +24,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 			}),
 	}
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
-	ms := state.ManifestStates[m.Name]
+	ms := state.ManifestTargets[m.Name].State
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
 	ms.BuildHistory = []model.BuildStatus{
 		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
@@ -47,7 +47,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 func TestStateToViewPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-	}.WithDeployInfo(model.K8sInfo{
+	}.WithDeployTarget(model.K8sTarget{
 		PortForwards: []model.PortForward{
 			{LocalPort: 8000, ContainerPort: 5000},
 			{LocalPort: 7000, ContainerPort: 5001},
@@ -110,7 +110,7 @@ func TestEmptyState(t *testing.T) {
 
 	m2 := model.Manifest{
 		Name: "foo",
-		DockerInfo: model.DockerInfo{}.
+		ImageTarget: model.ImageTarget{}.
 			WithBuildDetails(model.FastBuild{
 				Mounts: []model.Mount{
 					{LocalPath: "/a/b"},
@@ -142,7 +142,7 @@ func TestRelativeTiltfilePath(t *testing.T) {
 func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
 	ret := NewState()
 	for _, m := range manifests {
-		ret.ManifestStates[m.Name] = NewManifestState(m)
+		ret.ManifestTargets[m.Name] = NewManifestTarget(m)
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
 	}
 	ret.GlobalYAML = YAMLManifest
