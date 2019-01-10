@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud"
@@ -65,7 +66,8 @@ func ProvideTimerMaker() timerMaker {
 func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager) Upper {
+	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager,
+	sm SyncletManager) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -80,6 +82,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(dcw)
 	st.AddSubscriber(dclm)
 	st.AddSubscriber(pm)
+	st.AddSubscriber(sm)
 
 	return Upper{
 		store: st,
@@ -447,6 +450,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	startedAt := pod.CreationTimestamp.Time
 	status := podStatusToString(*pod)
 	ns := k8s.NamespaceFromPod(pod)
+	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
@@ -486,10 +490,11 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 			Pods:    make(map[k8s.PodID]*store.Pod),
 		}
 		ms.PodSet.Pods[podID] = &store.Pod{
-			PodID:     podID,
-			StartedAt: startedAt,
-			Status:    status,
-			Namespace: ns,
+			PodID:      podID,
+			StartedAt:  startedAt,
+			Status:     status,
+			Namespace:  ns,
+			HasSynclet: hasSynclet,
 		}
 		return mt, ms.PodSet.Pods[podID]
 	}
@@ -498,10 +503,11 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	if !ok {
 		// (3)
 		podInfo = &store.Pod{
-			PodID:     podID,
-			StartedAt: startedAt,
-			Status:    status,
-			Namespace: ns,
+			PodID:      podID,
+			StartedAt:  startedAt,
+			Status:     status,
+			Namespace:  ns,
+			HasSynclet: hasSynclet,
 		}
 		ms.PodSet.Pods[podID] = podInfo
 	}

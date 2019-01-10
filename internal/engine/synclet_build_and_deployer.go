@@ -3,15 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
-	"sync"
 
-	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -19,27 +16,13 @@ import (
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	sm      SyncletManager
-	deploys map[string]store.DeployInfo
-	mu      sync.Mutex
+	sm SyncletManager
 }
 
 func NewSyncletBuildAndDeployer(sm SyncletManager) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		sm:      sm,
-		deploys: make(map[string]store.DeployInfo),
+		sm: sm,
 	}
-}
-
-func (sbd *SyncletBuildAndDeployer) forgetImage(ctx context.Context, img reference.NamedTagged) error {
-	sbd.mu.Lock()
-	deployInfo := sbd.deploys[img.String()]
-	sbd.mu.Unlock()
-
-	if deployInfo.PodID != "" {
-		return sbd.sm.ForgetPod(ctx, deployInfo.PodID)
-	}
-	return nil
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
@@ -126,10 +109,6 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResult{}, err
 	}
 
-	sbd.mu.Lock()
-	sbd.deploys[state.LastResult.Image.String()] = deployInfo
-	sbd.mu.Unlock()
-
 	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.PodID, deployInfo.Namespace)
 	if err != nil {
 		return store.BuildResult{}, err
@@ -146,20 +125,4 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
 	return res, nil
-}
-
-func (sbd *SyncletBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-PostProcessBuild")
-	defer span.Finish()
-	if result.Image != nil {
-		span.SetTag("image", result.Image.String())
-	}
-
-	// TODO(nick): Warming and forgetting synclet connections should be in its own subscriber.
-	if previousResult.HasImage() && (!result.HasImage() || result.Image != previousResult.Image) {
-		err := sbd.forgetImage(ctx, previousResult.Image)
-		if err != nil {
-			logger.Get(ctx).Debugf("failed to get clean up image-related state: %v", err)
-		}
-	}
 }

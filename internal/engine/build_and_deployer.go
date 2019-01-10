@@ -18,11 +18,6 @@ type BuildAndDeployer interface {
 	// BuildResult can be used to construct a BuildState, which contains
 	// the last successful build and the files changed since that build.
 	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error)
-
-	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
-	// In general, we'll store this info ON the BuildAndDeployer that needs it.
-	// Each implementation of PostProcessBuild is responsible for executing long-running steps async.
-	PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -47,8 +42,6 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for _, builder := range composite.builders {
 		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
 		if err == nil {
-			// TODO(maia): this should be reactive (i.e. happen as a response to `BuildCompleteAction`)
-			composite.PostProcessBuild(ctx, br, currentState.LastResult)
 			return br, err
 		}
 
@@ -67,12 +60,6 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		lastErr = err
 	}
 	return store.BuildResult{}, lastErr
-}
-
-func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult) {
-	for _, builder := range composite.builders {
-		builder.PostProcessBuild(ctx, result, prevResult)
-	}
 }
 
 func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, mode UpdateMode) BuildOrder {

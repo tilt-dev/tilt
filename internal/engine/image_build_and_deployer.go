@@ -266,11 +266,6 @@ func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env.IsLocalCluster()
 }
 
-func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-	// No-op: ImageBuildAndDeployer doesn't currently need any extra info for a given build result.
-	return
-}
-
 func (ibd *ImageBuildAndDeployer) fetchCache(ctx context.Context, ref reference.Named, cachePaths []string) (reference.NamedTagged, error) {
 	return ibd.cacheBuilder.FetchCache(ctx, ref, cachePaths)
 }
