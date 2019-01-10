@@ -370,7 +370,7 @@ func dockerignoresForPaths(paths []string) []model.Dockerignore {
 	return result
 }
 
-func (s *tiltfileState) dockerIgnoresForImage(image *dockerImage) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
 	var paths []string
 
 	for _, m := range image.mounts {
