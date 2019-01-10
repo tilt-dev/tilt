@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
@@ -82,10 +83,30 @@ func (t DockerComposeTarget) Dependencies() []string {
 	return deduped
 }
 
+func (dc DockerComposeTarget) Validate() error {
+	if dc.ID().Empty() {
+		return fmt.Errorf("[Validate] DockerCompose resources missing name:\n%s", dc.YAMLRaw)
+	}
+
+	return nil
+}
+
 type K8sTarget struct {
 	Name         TargetName
 	YAML         string
 	PortForwards []PortForward
+}
+
+func (k8s K8sTarget) Validate() error {
+	if k8s.ID().Empty() {
+		return fmt.Errorf("[Validate] K8s resources missing name:\n%s", k8s.YAML)
+	}
+
+	if k8s.YAML == "" {
+		return fmt.Errorf("[Validate] K8s resources %q missing YAML", k8s.Name)
+	}
+
+	return nil
 }
 
 func (k8s K8sTarget) ID() TargetID {

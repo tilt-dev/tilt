@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -90,42 +89,18 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	fbInfo, ok := m.ImageTarget.BuildDetails.(FastBuild)
-	if !ok {
-		return nil
-	}
-
-	for _, mnt := range fbInfo.Mounts {
-		if !filepath.IsAbs(mnt.LocalPath) {
-			return fmt.Errorf(
-				"[validate] mount.LocalPath must be an absolute path (got: %s)", mnt.LocalPath)
+	if !m.ImageTarget.ID().Empty() || m.IsK8s() {
+		err := m.ImageTarget.Validate()
+		if err != nil {
+			return err
 		}
 	}
-	return nil
-}
 
-// ValidateDockerK8sManifest indicates whether this manifest is a valid Docker-buildable &
-// k8s-deployable manifest.
-func (m Manifest) ValidateDockerK8sManifest() error {
-	if m.ImageTarget.Ref == nil {
-		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing image ref", m.Name)
-	}
-
-	if m.K8sTarget().YAML == "" {
-		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing k8s YAML", m.Name)
-	}
-
-	switch bd := m.ImageTarget.BuildDetails.(type) {
-	case StaticBuild:
-		if bd.BuildPath == "" {
-			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing build path", m.Name)
+	if m.deployTarget != nil {
+		err := m.deployTarget.Validate()
+		if err != nil {
+			return err
 		}
-	case FastBuild:
-		if bd.BaseDockerfile == "" {
-			return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q missing base dockerfile", m.Name)
-		}
-	default:
-		return fmt.Errorf("[ValidateDockerK8sManifest] manifest %q has neither StaticBuildInfo nor FastBuildInfo", m.Name)
 	}
 
 	return nil

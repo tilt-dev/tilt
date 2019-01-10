@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"path/filepath"
 	"reflect"
 	"sort"
 
@@ -27,6 +29,35 @@ func (i ImageTarget) ID() TargetID {
 		Type: TargetTypeImage,
 		Name: TargetName(i.Ref.String()),
 	}
+}
+
+func (i ImageTarget) Validate() error {
+	if i.Ref == nil {
+		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
+	}
+
+	switch bd := i.BuildDetails.(type) {
+	case StaticBuild:
+		if bd.BuildPath == "" {
+			return fmt.Errorf("[Validate] Image %q missing build path", i.Ref)
+		}
+	case FastBuild:
+		if bd.BaseDockerfile == "" {
+			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.Ref)
+		}
+
+		for _, mnt := range bd.Mounts {
+			if !filepath.IsAbs(mnt.LocalPath) {
+				return fmt.Errorf(
+					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.Ref, mnt.LocalPath)
+			}
+		}
+
+	default:
+		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.Ref)
+	}
+
+	return nil
 }
 
 type BuildDetails interface {
