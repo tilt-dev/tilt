@@ -20,7 +20,7 @@ func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
 }
 
 type repoManifest interface {
-	LocalRepos() []model.LocalGithubRepo
+	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
 	TiltFilename() string
 }
@@ -51,7 +51,7 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 }
 
 type IgnorableManifest interface {
-	LocalRepos() []model.LocalGithubRepo
+	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
 }
 

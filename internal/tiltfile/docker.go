@@ -308,8 +308,8 @@ func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Mount {
 	return result
 }
 
-func pathsToRepos(paths []localPath) []model.LocalGithubRepo {
-	var result []model.LocalGithubRepo
+func pathsToRepos(paths []localPath) []model.LocalGitRepo {
+	var result []model.LocalGitRepo
 	repoSet := map[string]bool{}
 
 	for _, path := range paths {
@@ -319,7 +319,7 @@ func pathsToRepos(paths []localPath) []model.LocalGithubRepo {
 		}
 
 		repoSet[repo.basePath] = true
-		result = append(result, model.LocalGithubRepo{
+		result = append(result, model.LocalGitRepo{
 			LocalPath:         repo.basePath,
 			GitignoreContents: repo.gitignoreContents,
 		})
@@ -328,7 +328,7 @@ func pathsToRepos(paths []localPath) []model.LocalGithubRepo {
 	return result
 }
 
-func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGithubRepo {
+func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGitRepo {
 	var paths []localPath
 	for _, m := range image.mounts {
 		paths = append(paths, m.src)

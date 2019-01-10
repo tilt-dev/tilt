@@ -1346,7 +1346,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount}).
-		WithRepos([]model.LocalGithubRepo{
+		WithRepos([]model.LocalGitRepo{
 			{
 				LocalPath:         f.Path(),
 				GitignoreContents: "gignore.txt",

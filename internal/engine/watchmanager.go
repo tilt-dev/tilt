@@ -17,7 +17,7 @@ const ConfigsManifestName = "_ConfigsManifest"
 type WatchableManifest interface {
 	Dependencies() []string
 	ManifestName() model.ManifestName
-	LocalRepos() []model.LocalGithubRepo
+	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
 }
 
@@ -34,7 +34,7 @@ func (m *configsManifest) ManifestName() model.ManifestName {
 	return ConfigsManifestName
 }
 
-func (m *configsManifest) LocalRepos() []model.LocalGithubRepo {
+func (m *configsManifest) LocalRepos() []model.LocalGitRepo {
 	return nil
 }
 
