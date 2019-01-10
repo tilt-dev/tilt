@@ -134,3 +134,17 @@ func dcOutput(ctx context.Context, configPath string, args ...string) (string, e
 	}
 	return string(output), err
 }
+
+func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
+	if err == nil {
+		return nil
+	}
+	errorMessage := fmt.Sprintf("command '%q %q' failed.\nerror: '%v'\n", cmd.Path, cmd.Args, err)
+	if len(stdout) > 0 {
+		errorMessage += fmt.Sprintf("\nstdout: '%v'", string(stdout))
+	}
+	if err, ok := err.(*exec.ExitError); ok && len(err.Stderr) > 0 {
+		errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
+	}
+	return fmt.Errorf(errorMessage)
+}
