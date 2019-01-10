@@ -23,7 +23,7 @@ type Manifest struct {
 	Name          ManifestName
 	tiltFilename  string
 	dockerignores []Dockerignore
-	repos         []LocalGithubRepo
+	repos         []LocalGitRepo
 
 	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
 	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployTarget`).
@@ -80,8 +80,8 @@ func (m Manifest) WithDeployTarget(t Target) Manifest {
 	return m
 }
 
-func (m Manifest) WithRepos(repos []LocalGithubRepo) Manifest {
-	m.repos = append(append([]LocalGithubRepo{}, m.repos...), repos...)
+func (m Manifest) WithRepos(repos []LocalGitRepo) Manifest {
+	m.repos = append(append([]LocalGitRepo{}, m.repos...), repos...)
 	return m
 }
 
@@ -212,7 +212,7 @@ func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
 	return m
 }
 
-func (m Manifest) LocalRepos() []LocalGithubRepo {
+func (m Manifest) LocalRepos() []LocalGitRepo {
 	return m.repos
 }
 
@@ -236,12 +236,12 @@ type Dockerignore struct {
 	Contents  string
 }
 
-type LocalGithubRepo struct {
+type LocalGitRepo struct {
 	LocalPath         string
 	GitignoreContents string
 }
 
-func (LocalGithubRepo) IsRepo() {}
+func (LocalGitRepo) IsRepo() {}
 
 type Step struct {
 	// Required. The command to run in this step.

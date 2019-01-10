@@ -164,16 +164,16 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
 				},
 			},
 		},
 		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.so",
 				},
@@ -183,16 +183,16 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
 				},
 			},
 		},
 		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
 				},

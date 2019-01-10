@@ -376,8 +376,8 @@ func TestIgnoredFiles(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 
-	manifest = manifest.WithRepos([]model.LocalGithubRepo{
-		model.LocalGithubRepo{
+	manifest = manifest.WithRepos([]model.LocalGitRepo{
+		model.LocalGitRepo{
 			LocalPath: f.Path(),
 		},
 	})
