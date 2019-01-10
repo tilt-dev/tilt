@@ -222,9 +222,6 @@ func TestDockerComposeHonorsGitIgnore(t *testing.T) {
 	defer f.TearDown()
 
 	df := `FROM alpine
-
-ADD . /app
-COPY ./thing.go /stuff
 RUN echo hi`
 	f.file("foo/Dockerfile", df)
 

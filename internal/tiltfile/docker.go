@@ -308,7 +308,7 @@ func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Mount {
 	return result
 }
 
-func pathsToRepos(paths []localPath) []model.LocalGitRepo {
+func reposForPaths(paths []localPath) []model.LocalGitRepo {
 	var result []model.LocalGitRepo
 	repoSet := map[string]bool{}
 
@@ -328,7 +328,7 @@ func pathsToRepos(paths []localPath) []model.LocalGitRepo {
 	return result
 }
 
-func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGitRepo {
+func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	var paths []localPath
 	for _, m := range image.mounts {
 		paths = append(paths, m.src)
@@ -339,10 +339,10 @@ func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGitRepo {
 		image.staticBuildPath,
 		image.tiltfilePath)
 
-	return pathsToRepos(paths)
+	return reposForPaths(paths)
 }
 
-func pathsToDockerIgnores(paths []string) []model.Dockerignore {
+func dockerignoresForPaths(paths []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
 
@@ -370,7 +370,7 @@ func pathsToDockerIgnores(paths []string) []model.Dockerignore {
 	return result
 }
 
-func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Dockerignore {
+func (s *tiltfileState) dockerIgnoresForImage(image *dockerImage) []model.Dockerignore {
 	var paths []string
 
 	for _, m := range image.mounts {
@@ -383,5 +383,5 @@ func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Docker
 	}
 	paths = append(paths, image.staticBuildPath.path)
 
-	return pathsToDockerIgnores(paths)
+	return dockerignoresForPaths(paths)
 }

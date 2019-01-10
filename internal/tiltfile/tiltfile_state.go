@@ -339,8 +339,8 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 			m.ImageTarget = dInfo
 			m = m.WithTiltFilename(image.tiltfilePath.path).
-				WithRepos(s.reposToDomain(image)).
-				WithDockerignores(s.dockerignoresToDomain(image))
+				WithRepos(s.reposForImage(image)).
+				WithDockerignores(s.dockerIgnoresForImage(image))
 		}
 		result = append(result, m)
 	}
@@ -351,7 +351,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, svc := range dc.services {
-		m, configFiles, err := s.ToManifest(svc, dc.configPath)
+		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPath)
 		if err != nil {
 			return nil, err
 		}

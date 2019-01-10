@@ -192,7 +192,7 @@ func parseDCConfig(ctx context.Context, configPath string) ([]dcService, error) 
 	return services, nil
 }
 
-func (s *tiltfileState) ToManifest(service dcService, dcConfigPath string) (manifest model.Manifest,
+func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPath: dcConfigPath,
@@ -200,8 +200,8 @@ func (s *tiltfileState) ToManifest(service dcService, dcConfigPath string) (mani
 		DfRaw:      service.DfContents,
 	}
 
-	dockerIgnores := pathsToDockerIgnores([]string{path.Dir(service.DfPath), path.Dir(dcConfigPath)})
-	repos := pathsToRepos([]localPath{
+	dockerIgnores := dockerignoresForPaths([]string{path.Dir(service.DfPath), path.Dir(dcConfigPath)})
+	repos := reposForPaths([]localPath{
 		s.filename,
 		s.localPathFromString(dcConfigPath),
 		s.localPathFromString(service.DfPath),
