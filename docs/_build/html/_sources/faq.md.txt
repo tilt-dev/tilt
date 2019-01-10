@@ -1,6 +1,39 @@
 Frequently Asked Questions
 ==========================
 
+Troubleshooting
+----------------------------
+
+### Q: I'm getting push errors like "unauthorized: You don't have the needed permissions" when I try to build the [first example](first_example.html). What do I do?
+
+If Tilt is trying to do a push, that means it thinks you wanted to deploy to a
+remote cluster.
+
+The tutorials will only work with a local cluster that doesn't require an image
+push, like Docker For Mac or Minikube.
+
+See [below](faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses) on how
+to configure for a local cluster.
+
+### Q: Tilt fails with "Unable to connect to cluster" errors. What do I do?
+
+The Kubernetes server that you're trying to deploy to is misbehaving.
+
+Two common things to try are:
+
+1) Turn it off and turn it back on again (really!).
+2) Reset the cluster state.
+
+But the specific way to do these depend on your environment.
+
+If you're using Docker For Mac, click the Docker icon in the upper-right hand
+corner of your screen. Choose "Preferences..." to open a dialog. The
+"Kubernetes" tab has a button that allows you to enable/disable Kubernetes. The
+"Reset" tab has a button that allows you to reset the cluster state.
+
+If you're using Minikube, `minikube stop` and `minikube start` will restart the
+environment. `minikube delete` will reset the cluster state.
+
 Building Container Images
 -------------------------
 

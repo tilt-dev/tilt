@@ -1,12 +1,34 @@
 Running your First Tilt Project
 ===============================
 
-This tutorial assumes you already have `tilt` and its dependencies set up,
-and configured for a local cluster.
+Prerequisites
+-------------
 
-For your first Tilt project, let's not worry about configuring a project just yet.
-Let's look at a simple existing project and see how easy it is to
-`tilt up` and go.
+For this tutorial, you should have:
+
+- [Installed `tilt`](install.html)
+- Configured `kubectl` for a local cluster
+
+To double-check, run:
+
+```
+$ tilt version
+v0.4.2-dev, built 2019-01-09
+$ kubectl config current-context
+docker-for-desktop
+```
+
+If the cluster is NOT `docker-for-desktop` or `minikube`,
+see the FAQ on
+[how to change your cluster](faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses).
+This example will only work with these local clusters.
+
+Starting One Server
+-------------------
+
+For your first Tilt project, let's not worry about configuring a project just
+yet.  Let's look at a simple existing project and see how easy it is to `tilt
+up` and go.
 
 First, check out the Tilt repo.
 
@@ -45,6 +67,11 @@ tilt down
 
 to turn off the server.
 
+Troubleshooting
+---------------
+
+If any of the examples in this tutorial didn't work for you, see the
+[Troubleshooting FAQ](faq.html#Troubleshooting).
 
 Next Steps
 ----------
