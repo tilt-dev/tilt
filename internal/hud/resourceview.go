@@ -141,7 +141,7 @@ func titleTextDC(dcInfo view.DCResourceInfo) rty.Component {
 	if status == "" {
 		status = "Pending"
 	}
-	sb.Textf("DC %s", status)
+	sb.Text(status)
 	return sb.Build()
 }
 

@@ -1710,25 +1710,25 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f.Start([]model.Manifest{m}, true)
 	f.waitForCompletedBuildCount(1)
 
-	// Send event corresponding to status = "in progress"
+	// Send event corresponding to status = "In Progress"
 	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
 	if err != nil {
 		f.T().Fatal(err)
 	}
 
-	f.WaitUntilManifestState("resource status = 'in progress'", m.ManifestName(), func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
 		return ms.DCResourceState().Status == dockercompose.StatusInProg
 	})
 
 	startTime := time.Now()
 
-	// Send event corresponding to status = "up"
+	// Send event corresponding to status = "OK"
 	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
 	if err != nil {
 		f.T().Fatal(err)
 	}
 
-	f.WaitUntilManifestState("resource status = 'up'", m.ManifestName(), func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
 		return ms.DCResourceState().Status == dockercompose.StatusUp
 	})
 

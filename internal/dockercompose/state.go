@@ -8,10 +8,10 @@ type Status string
 
 // Three hacky states just for now to get something into the hud.
 const (
-	StatusDown   = Status("down")
-	StatusInProg = Status("in progress")
-	StatusUp     = Status("up")
-	StatusCrash  = Status("crash")
+	StatusDown   = Status("Down")
+	StatusInProg = Status("In Progress")
+	StatusUp     = Status("OK")
+	StatusCrash  = Status("Crash")
 )
 
 var containerActionToStatus = map[Action]Status{
