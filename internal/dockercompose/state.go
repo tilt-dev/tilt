@@ -12,7 +12,6 @@ const (
 	StatusInProg = Status("In Progress")
 	StatusUp     = Status("OK")
 	StatusCrash  = Status("Crash")
-	s
 )
 
 var containerActionToStatus = map[Action]Status{
