@@ -36,12 +36,13 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		return nil, nil
 	}
 
-	for _, ms := range state.ManifestStates {
-		if !ms.Manifest.IsDC() {
+	for _, mt := range state.ManifestTargets {
+		manifest := mt.Manifest
+		if !manifest.IsDC() {
 			continue
 		}
 
-		existing, isActive := m.watches[ms.Manifest.Name]
+		existing, isActive := m.watches[manifest.Name]
 		startWatchTime := time.Unix(0, 0)
 		if isActive {
 			select {
@@ -59,17 +60,17 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		w := dockerComposeLogWatch{
 			ctx:             ctx,
 			cancel:          cancel,
-			name:            ms.Manifest.Name,
-			dcConfigPath:    ms.Manifest.DockerComposeTarget().ConfigPath,
+			name:            manifest.Name,
+			dcConfigPath:    manifest.DockerComposeTarget().ConfigPath,
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),
 		}
-		m.watches[ms.Manifest.Name] = w
+		m.watches[manifest.Name] = w
 		setup = append(setup, w)
 	}
 
 	for key, value := range m.watches {
-		_, inState := state.ManifestStates[key]
+		_, inState := state.ManifestTargets[key]
 		if !inState {
 			delete(m.watches, key)
 

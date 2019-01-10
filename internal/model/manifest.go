@@ -32,7 +32,7 @@ type Manifest struct {
 	ImageTarget ImageTarget
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
-	deployTarget Target
+	deployTarget TargetSpec
 }
 
 func (m Manifest) ID() TargetID {
@@ -84,7 +84,7 @@ func (m Manifest) IsK8s() bool {
 	return ok
 }
 
-func (m Manifest) WithDeployTarget(t Target) Manifest {
+func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 	switch typedTarget := t.(type) {
 	case K8sTarget:
 		typedTarget.Name = m.Name.TargetName()
@@ -242,7 +242,7 @@ func (m Manifest) WithTiltFilename(f string) Manifest {
 	return m
 }
 
-var _ Target = Manifest{}
+var _ TargetSpec = Manifest{}
 
 type Mount struct {
 	LocalPath     string

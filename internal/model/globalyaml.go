@@ -57,4 +57,4 @@ func (y YAMLManifest) Empty() bool {
 	return y.K8sYAML() == ""
 }
 
-var _ Target = YAMLManifest{}
+var _TargetSpec = YAMLManifest{}

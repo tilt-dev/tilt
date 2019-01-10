@@ -58,4 +58,4 @@ type FastBuild struct {
 func (FastBuild) buildDetails()  {}
 func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
 
-var _ Target = ImageTarget{}
+var _ TargetSpec = ImageTarget{}

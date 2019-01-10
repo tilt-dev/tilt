@@ -84,7 +84,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.state.DeployInfo.PodID.String())
 	f.waitForCompletedBuildCount(2)
-	f.WithManifest("fe", func(ms store.ManifestState) {
+	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagMountFiles, ms.LastBuild().Reason)
 		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
 	})
@@ -95,7 +95,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	assert.True(t, call.state.DeployInfo.Empty())
 	f.waitForCompletedBuildCount(3)
 
-	f.WithManifest("fe", func(ms store.ManifestState) {
+	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
 	})
 
@@ -123,7 +123,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.ManifestStates["fe"].PendingFileChanges) > 0
+		return len(st.ManifestTargets["fe"].State.PendingFileChanges) > 0
 	})
 
 	// We don't expect a call because the trigger happened before the file event
