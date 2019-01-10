@@ -190,6 +190,58 @@ RUN echo hi`
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeHonorsDockerIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	df := `FROM alpine
+
+ADD . /app
+COPY ./thing.go /stuff
+RUN echo hi`
+	f.file("foo/Dockerfile", df)
+
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.file("foo/.dockerignore", "tmp")
+	f.file(".dockerignore", "foo/tmp2")
+
+	f.load("foo")
+
+	f.assertManifest("foo",
+		buildFilters("foo/tmp2"),
+		fileChangeFilters("foo/tmp2"),
+		buildFilters("foo/tmp"),
+		fileChangeFilters("foo/tmp"),
+	)
+}
+
+func TestDockerComposeHonorsGitIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	df := `FROM alpine
+
+ADD . /app
+COPY ./thing.go /stuff
+RUN echo hi`
+	f.file("foo/Dockerfile", df)
+
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+	f.gitInit(".")
+
+	f.file(".gitignore", "foo/tmp")
+
+	f.load("foo")
+
+	f.assertManifest("foo",
+		buildFilters("foo/tmp"),
+		fileChangeFilters("foo/tmp"),
+	)
+}
+
 func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manifest {
 	m := f.assertManifest(name)
 

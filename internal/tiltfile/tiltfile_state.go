@@ -351,7 +351,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, svc := range dc.services {
-		m, configFiles, err := svc.ToManifest(dc.configPath)
+		m, configFiles, err := s.ToManifest(svc, dc.configPath)
 		if err != nil {
 			return nil, err
 		}

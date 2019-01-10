@@ -113,6 +113,12 @@ func (s *tiltfileState) maybeAttachGitRepo(lp localPath, repoRoot string) localP
 	return lp
 }
 
+func (s *tiltfileState) localPathFromString(p string) localPath {
+	lp := localPath{path: s.absPath(p)}
+	lp = s.maybeAttachGitRepo(lp, lp.path)
+	return lp
+}
+
 func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (localPath, error) {
 	switch v := v.(type) {
 	case localPath:
@@ -120,9 +126,7 @@ func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (localPath, 
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
 	case starlark.String:
-		lp := localPath{path: s.absPath(string(v))}
-		lp = s.maybeAttachGitRepo(lp, lp.path)
-		return lp, nil
+		return s.localPathFromString(string(v)), nil
 	default:
 		return localPath{}, fmt.Errorf("Expected local path. Actual type: %T", v)
 	}
