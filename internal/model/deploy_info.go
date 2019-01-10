@@ -5,6 +5,7 @@ import (
 )
 
 type DockerComposeTarget struct {
+	Name       TargetName
 	ConfigPath string
 	Mounts     []Mount
 	YAMLRaw    []byte // for diff'ing when config files change
@@ -14,19 +15,20 @@ type DockerComposeTarget struct {
 func (t DockerComposeTarget) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeDockerCompose,
+		Name: t.Name,
 	}
 }
 
 type K8sTarget struct {
+	Name         TargetName
 	YAML         string
 	PortForwards []PortForward
 }
 
-func (K8sTarget) deployInfo() {}
-
 func (k8s K8sTarget) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeK8s,
+		Name: k8s.Name,
 	}
 }
 

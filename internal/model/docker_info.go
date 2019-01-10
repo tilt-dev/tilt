@@ -16,7 +16,7 @@ type ImageTarget struct {
 func (di ImageTarget) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeImage,
-		Name: di.Ref.String(),
+		Name: TargetName(di.Ref.String()),
 	}
 }
 

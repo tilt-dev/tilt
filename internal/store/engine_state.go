@@ -139,6 +139,10 @@ func NewManifestState(manifest model.Manifest) *ManifestState {
 	}
 }
 
+func (ms *ManifestState) TargetID() model.TargetID {
+	return ms.Manifest.ID()
+}
+
 func (ms *ManifestState) DCResourceState() dockercompose.State {
 	ret, _ := ms.ResourceState.(dockercompose.State)
 	return ret
@@ -147,6 +151,10 @@ func (ms *ManifestState) DCResourceState() dockercompose.State {
 func (ms *ManifestState) IsDC() bool {
 	_, ok := ms.ResourceState.(dockercompose.State)
 	return ok
+}
+
+func (ms *ManifestState) ActiveBuild() model.BuildStatus {
+	return ms.CurrentBuild
 }
 
 func (ms *ManifestState) LastBuild() model.BuildStatus {
@@ -227,6 +235,8 @@ func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool,
 	return ok, earliest
 }
 
+var _ model.TargetStatus = &ManifestState{}
+
 type YAMLManifestState struct {
 	HasBeenDeployed bool
 
@@ -240,6 +250,29 @@ type YAMLManifestState struct {
 func NewYAMLManifestState() *YAMLManifestState {
 	return &YAMLManifestState{}
 }
+
+func (s *YAMLManifestState) TargetID() model.TargetID {
+	return model.TargetID{
+		Type: model.TargetTypeManifest,
+		Name: model.GlobalYAMLManifestName.TargetName(),
+	}
+}
+
+func (s *YAMLManifestState) ActiveBuild() model.BuildStatus {
+	return model.BuildStatus{
+		StartTime: s.CurrentApplyStartTime,
+	}
+}
+
+func (s *YAMLManifestState) LastBuild() model.BuildStatus {
+	return model.BuildStatus{
+		StartTime:  s.LastApplyStartTime,
+		FinishTime: s.LastApplyFinishTime,
+		Error:      s.LastError,
+	}
+}
+
+var _ model.TargetStatus = &YAMLManifestState{}
 
 type PodSet struct {
 	Pods    map[k8s.PodID]*Pod
@@ -486,13 +519,9 @@ func StateToView(s EngineState) view.View {
 		r := view.Resource{
 			Name:               s.GlobalYAML.ManifestName(),
 			DirectoriesWatched: relWatches,
-			CurrentBuild:       model.BuildStatus{StartTime: s.GlobalYAMLState.CurrentApplyStartTime},
+			CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
 			BuildHistory: []model.BuildStatus{
-				model.BuildStatus{
-					StartTime:  s.GlobalYAMLState.LastApplyStartTime,
-					FinishTime: s.GlobalYAMLState.LastApplyFinishTime,
-					Error:      s.GlobalYAMLState.LastError,
-				},
+				s.GlobalYAMLState.LastBuild(),
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
 			ResourceInfo: view.YAMLResourceInfo{

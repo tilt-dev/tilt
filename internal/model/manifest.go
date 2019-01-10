@@ -13,9 +13,11 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+// TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
 type ManifestName string
 
-func (m ManifestName) String() string { return string(m) }
+func (m ManifestName) String() string         { return string(m) }
+func (m ManifestName) TargetName() TargetName { return TargetName(m) }
 
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
@@ -31,6 +33,13 @@ type Manifest struct {
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployTarget Target
+}
+
+func (m Manifest) ID() TargetID {
+	return TargetID{
+		Type: TargetTypeManifest,
+		Name: m.Name.TargetName(),
+	}
 }
 
 type DockerBuildArgs map[string]string
@@ -76,6 +85,14 @@ func (m Manifest) IsK8s() bool {
 }
 
 func (m Manifest) WithDeployTarget(t Target) Manifest {
+	switch typedTarget := t.(type) {
+	case K8sTarget:
+		typedTarget.Name = m.Name.TargetName()
+		t = typedTarget
+	case DockerComposeTarget:
+		typedTarget.Name = m.Name.TargetName()
+		t = typedTarget
+	}
 	m.deployTarget = t
 	return m
 }
@@ -224,6 +241,8 @@ func (m Manifest) WithTiltFilename(f string) Manifest {
 	m.tiltFilename = f
 	return m
 }
+
+var _ Target = Manifest{}
 
 type Mount struct {
 	LocalPath     string
