@@ -36,6 +36,8 @@ type pathMapping struct {
 	ContainerPath string
 }
 
+func (m pathMapping) prettyStr() string { return fmt.Sprintf("%s --> %s", m.LocalPath, m.ContainerPath) }
+
 func (m pathMapping) Filter(matcher model.PathMatcher) ([]pathMapping, error) {
 	result := make([]pathMapping, 0)
 	err := filepath.Walk(m.LocalPath, func(path string, info os.FileInfo, err error) error {
