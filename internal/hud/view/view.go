@@ -15,12 +15,12 @@ type ResourceInfoView interface {
 
 type DCResourceInfo struct {
 	ConfigPath string
-	status     string
+	status     dockercompose.Status
 	log        string
 	StartTime  time.Time
 }
 
-func NewDCResourceInfo(configPath string, status string, log string, startTime time.Time) DCResourceInfo {
+func NewDCResourceInfo(configPath string, status dockercompose.Status, log string, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPath: configPath,
 		status:     status,
@@ -33,7 +33,7 @@ var _ ResourceInfoView = DCResourceInfo{}
 
 func (DCResourceInfo) resourceInfoView()         {}
 func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
-func (dcInfo DCResourceInfo) Status() string     { return dcInfo.status }
+func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.status) }
 
 type K8SResourceInfo struct {
 	PodName            string
@@ -133,7 +133,7 @@ func (r Resource) DefaultCollapse() bool {
 		autoExpand = true
 	}
 
-	if r.IsDC() && r.DockerComposeTarget().Status() == dockercompose.StatusCrash {
+	if r.IsDC() && r.DockerComposeTarget().Status() == string(dockercompose.StatusCrash) {
 		autoExpand = true
 	}
 
