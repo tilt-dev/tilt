@@ -2,6 +2,8 @@ package dockercompose
 
 import (
 	"time"
+
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 type Status string
@@ -48,10 +50,11 @@ func (evt Event) IsStopEvent() bool {
 }
 
 type State struct {
-	Status     Status
-	CurrentLog []byte
-	StartTime  time.Time
-	IsStopping bool
+	Status      Status
+	ContainerID container.ID
+	CurrentLog  []byte
+	StartTime   time.Time
+	IsStopping  bool
 }
 
 func (State) ResourceState() {}
@@ -67,6 +70,11 @@ func (s State) WithCurrentLog(b []byte) State {
 
 func (s State) WithStatus(status Status) State {
 	s.Status = status
+	return s
+}
+
+func (s State) WithContainerID(cID container.ID) State {
+	s.ContainerID = cID
 	return s
 }
 

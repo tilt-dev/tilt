@@ -3,6 +3,7 @@ package view
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -14,18 +15,20 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
-	ConfigPath string
-	status     dockercompose.Status
-	log        string
-	StartTime  time.Time
+	ConfigPath  string
+	status      dockercompose.Status
+	ContainerID container.ID
+	log         string
+	StartTime   time.Time
 }
 
-func NewDCResourceInfo(configPath string, status dockercompose.Status, log string, startTime time.Time) DCResourceInfo {
+func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log string, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
-		ConfigPath: configPath,
-		status:     status,
-		log:        log,
-		StartTime:  startTime,
+		ConfigPath:  configPath,
+		status:      status,
+		ContainerID: cID,
+		log:         log,
+		StartTime:   startTime,
 	}
 }
 
@@ -89,6 +92,11 @@ func (r Resource) DockerComposeTarget() DCResourceInfo {
 	default:
 		return DCResourceInfo{}
 	}
+}
+
+func (r Resource) DCInfo() DCResourceInfo {
+	ret, _ := r.ResourceInfo.(DCResourceInfo)
+	return ret
 }
 
 func (r Resource) IsDC() bool {
