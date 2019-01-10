@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const devVersion = "0.4.1"
+const devVersion = "0.4.2"
 
 type BuildInfo struct {
 	Version string
