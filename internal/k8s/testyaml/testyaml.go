@@ -204,6 +204,37 @@ spec:
                 key: token
 `
 
+const SanchoSidecarYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: token
+            valueFrom:
+              secretKeyRef:
+                name: slacktoken
+                key: token
+      - name: sancho-sidecar
+        image: gcr.io/some-project-162817/sancho-sidecar
+`
+
 const TracerYAML = `
 apiVersion: extensions/v1beta1
 kind: Deployment
