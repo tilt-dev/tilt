@@ -13,7 +13,7 @@ To double-check, run:
 
 ```
 $ tilt version
-v0.4.2-dev, built 2019-01-09
+v0.4.3-dev, built 2019-01-10
 $ kubectl config current-context
 docker-for-desktop
 ```
