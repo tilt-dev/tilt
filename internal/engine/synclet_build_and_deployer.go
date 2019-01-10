@@ -25,39 +25,35 @@ func NewSyncletBuildAndDeployer(sm SyncletManager) *SyncletBuildAndDeployer {
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
+func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+	iTargets, kTargets := extractImageAndK8sTargets(specs)
+	if len(kTargets) != 1 || len(iTargets) != 1 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf(
+			"SyncletBuildAndDeployer requires example one image spec and one k8s deploy spec")
+	}
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
+	span.SetTag("target", kTargets[0].Name)
 	defer span.Finish()
 
-	if manifest.IsDC() {
-		return store.BuildResult{}, RedirectToNextBuilderf("not implemented: DC container builds")
+	iTarget := iTargets[0]
+	state := stateSet[iTarget.ID()]
+	if err := sbd.canSyncletBuild(ctx, iTarget, state); err != nil {
+		return store.BuildResultSet{}, WrapRedirectToNextBuilder(err)
 	}
 
-	if err := sbd.canSyncletBuild(ctx, manifest, state); err != nil {
-		return store.BuildResult{}, WrapRedirectToNextBuilder(err)
-	}
-
-	span.SetTag("manifest", manifest.Name.String())
-	return sbd.updateViaSynclet(ctx, manifest, state)
+	return sbd.updateViaSynclet(ctx, iTarget, state)
 }
 
 // canSyncletBuild returns an error if we CAN'T build this manifest via the synclet
 func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
-	manifest model.Manifest, state store.BuildState) error {
-
-	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
-	// of implementation of BuildAndDeploy?
-	err := manifest.Validate()
-	if err != nil {
-		return err
-	}
+	image model.ImageTarget, state store.BuildState) error {
 
 	// SyncletBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	image := manifest.ImageTarget
 	if !image.IsFastBuild() {
 		return fmt.Errorf("container build only supports FastBuilds")
 	}
@@ -71,60 +67,59 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 }
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
-	manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
-	defer span.Finish()
-
-	image := manifest.ImageTarget
+	image model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
 	paths, err := build.FilesToPathMappings(
 		state.FilesChanged(), image.FastBuildInfo().Mounts)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
 	// archive files to copy to container
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(image))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
-		return store.BuildResult{}, errors.Wrap(err, "archivePathsIfExists")
+		return store.BuildResultSet{}, errors.Wrap(err, "archivePathsIfExists")
 	}
 	archive, err := ab.BytesBuffer()
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
 	// get files to rm
 	toRemove, err := build.MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return store.BuildResult{}, errors.Wrap(err, "missingLocalPaths")
+		return store.BuildResultSet{}, errors.Wrap(err, "missingLocalPaths")
 	}
 	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	deployInfo := state.DeployInfo
 	if deployInfo.Empty() {
-		return store.BuildResult{}, fmt.Errorf("no deploy info")
+		return store.BuildResultSet{}, fmt.Errorf("no deploy info")
 	}
 
 	cmds, err := build.BoilSteps(image.FastBuildInfo().Steps, paths)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
 	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.PodID, deployInfo.Namespace)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
 	err = sCli.UpdateContainer(ctx, deployInfo.ContainerID, archive.Bytes(), containerPathsToRm, cmds)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
-			return store.BuildResult{}, WrapDontFallBackError(err)
+			return store.BuildResultSet{}, WrapDontFallBackError(err)
 		}
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
-	return res, nil
+
+	resultSet := store.BuildResultSet{}
+	resultSet[image.ID()] = res
+	return resultSet, nil
 }

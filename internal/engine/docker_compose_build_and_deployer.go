@@ -22,17 +22,38 @@ func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient) *Do
 	}
 }
 
-func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
+// Extract the targets we can apply into DockerComposeTargets, or nil if we can't apply all targets.
+func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) []model.DockerComposeTarget {
+	result := []model.DockerComposeTarget{}
+	for _, s := range specs {
+		dc, isDC := s.(model.DockerComposeTarget)
+		if !isDC {
+
+			return nil
+		}
+		result = append(result, dc)
+	}
+	return result
+}
+
+func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
+	dcs := bd.extract(specs)
+	if len(dcs) == 0 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("Specs not supported by DockerComposeBuildAndDeployer")
+	}
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
+	span.SetTag("target", dcs[0].Name)
 	defer span.Finish()
 
-	if !manifest.IsDC() {
-		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
-	}
-	dc := manifest.DockerComposeTarget()
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
+	for _, dc := range dcs {
+		err := bd.dcc.Up(ctx, dc.ConfigPath, dc.Name, stdout, stderr)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+	}
 
-	err = bd.dcc.Up(ctx, dc.ConfigPath, dc.Name, stdout, stderr)
-	return store.BuildResult{}, err
+	return store.BuildResultSet{}, nil
 }

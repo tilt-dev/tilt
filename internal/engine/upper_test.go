@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/pprof"
 	"strings"
 	"sync"
@@ -59,20 +60,48 @@ k8s_resource('foobar', yaml='snack.yaml')
 
 // represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
-	input model.Manifest
-	state store.BuildState
+	specs []model.TargetSpec
+	state store.BuildStateSet
 }
 
 func (c buildAndDeployCall) image() model.ImageTarget {
-	return c.input.ImageTarget
+	for _, spec := range c.specs {
+		t, ok := spec.(model.ImageTarget)
+		if ok {
+			return t
+		}
+	}
+	return model.ImageTarget{}
 }
 
 func (c buildAndDeployCall) k8s() model.K8sTarget {
-	return c.input.K8sTarget()
+	for _, spec := range c.specs {
+		t, ok := spec.(model.K8sTarget)
+		if ok {
+			return t
+		}
+	}
+	return model.K8sTarget{}
 }
 
 func (c buildAndDeployCall) dc() model.DockerComposeTarget {
-	return c.input.DockerComposeTarget()
+	for _, spec := range c.specs {
+		t, ok := spec.(model.DockerComposeTarget)
+		if ok {
+			return t
+		}
+	}
+	return model.DockerComposeTarget{}
+}
+
+func (c buildAndDeployCall) oneState() store.BuildState {
+	if len(c.state) != 1 {
+		panic(fmt.Sprintf("More than one state: %v", c.state))
+	}
+	for _, v := range c.state {
+		return v
+	}
+	panic("space/time has unravelled, sorry")
 }
 
 type fakeBuildAndDeployer struct {
@@ -104,9 +133,8 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 	}
 }
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (store.BuildResult, error) {
-	call := buildAndDeployCall{input: manifest, state: state}
-
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
+	call := buildAndDeployCall{specs: specs, state: state}
 	buildID := model.TargetID{}
 	var buildImageRef reference.Named
 	if !call.dc().ID().Empty() {
@@ -122,9 +150,14 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
 
-	output, ok := b.buildLogOutput[buildID]
-	if ok {
-		logger.Get(ctx).Infof(output)
+	ids := []model.TargetID{}
+	for _, spec := range specs {
+		id := spec.ID()
+		ids = append(ids, id)
+		output, ok := b.buildLogOutput[id]
+		if ok {
+			logger.Get(ctx).Infof(output)
+		}
 	}
 
 	select {
@@ -133,15 +166,17 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
 
-	logger.Get(ctx).Infof("fake building %s", manifest.Name)
+	logger.Get(ctx).Infof("fake building %s", ids)
 
 	err := b.nextBuildFailure
 	if err != nil {
 		b.nextBuildFailure = nil
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
-	return b.nextBuildResult(buildImageRef), nil
+	result := store.BuildResultSet{}
+	result[buildID] = b.nextBuildResult(buildImageRef)
+	return result, nil
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -174,7 +209,7 @@ func TestUpper_Up(t *testing.T) {
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
 	lines := strings.Split(string(state.ManifestTargets[manifest.Name].Status().LastBuild().Log), "\n")
-	assert.Contains(t, lines, "fake building foobar")
+	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
 	assert.Equal(t, gYaml, state.GlobalYAML)
 }
 
@@ -203,7 +238,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTarget, call.image())
-	assert.Equal(t, []string{}, call.state.FilesChanged())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.waitForCompletedBuildCount(1)
 
@@ -212,12 +247,12 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	call = f.nextCall()
 	assert.Equal(t, manifest.ImageTarget, call.image())
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 	fileAbsPath, err := filepath.Abs(fileRelPath)
 	if err != nil {
 		t.Errorf("error making abs path of %v: %v", fileRelPath, err)
 	}
-	assert.Equal(t, []string{fileAbsPath}, call.state.FilesChanged())
+	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
 
 	f.waitForCompletedBuildCount(2)
 
@@ -240,7 +275,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTarget, call.image())
-	assert.Equal(t, []string{}, call.state.FilesChanged())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.restTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
@@ -261,7 +296,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 		}
 		fileAbsPaths = append(fileAbsPaths, fileAbsPath)
 	}
-	assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
+	assert.Equal(t, fileAbsPaths, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -278,7 +313,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTarget, call.image())
-	assert.Equal(t, []string{}, call.state.FilesChanged())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.maxTimerLock.Lock()
 	f.timerMaker.restTimerLock.Lock()
@@ -300,7 +335,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 		}
 		fileAbsPaths = append(fileAbsPaths, fileAbsPath)
 	}
-	assert.Equal(t, fileAbsPaths, call.state.FilesChanged())
+	assert.Equal(t, fileAbsPaths, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -318,13 +353,13 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
 	call = f.nextCall()
-	assert.True(t, call.state.IsEmpty())
-	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+	assert.True(t, call.oneState().IsEmpty())
+	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -341,7 +376,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -369,15 +404,15 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall("first build")
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	// Simulate a change to a.go that makes the build fail.
 	f.SetNextBuildFailure(errors.New("build failed"))
 	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
 	call = f.nextCall("failed build from a.go change")
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
-	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
 	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
@@ -385,8 +420,8 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	// The next build should treat both a.go and b.go as changed, and build
 	// on the last successful result, from before a.go changed.
 	call = f.nextCall("build on last successful result")
-	assert.Equal(t, []string{"/a.go", "/b.go"}, call.state.FilesChanged())
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.state.LastImageAsString())
+	assert.Equal(t, []string{"/a.go", "/b.go"}, call.oneState().FilesChanged())
+	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -402,18 +437,18 @@ func TestThreeBuilds(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall("first build")
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
 	call = f.nextCall("second build")
-	assert.Equal(t, []string{"/a.go"}, call.state.FilesChanged())
+	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
 	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
 
 	call = f.nextCall("third build")
-	assert.Equal(t, []string{"/b.go"}, call.state.FilesChanged())
+	assert.Equal(t, []string{"/b.go"}, call.oneState().FilesChanged())
 
 	f.waitForCompletedBuildCount(3)
 
@@ -435,7 +470,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	// Simulate a change to .#a.go that's a broken symlink.
 	realPath := filepath.Join(f.Path(), "a.go")
@@ -450,7 +485,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: realPath}
 
 	call = f.nextCall()
-	assert.Equal(t, []string{realPath}, call.state.FilesChanged())
+	assert.Equal(t, []string{realPath}, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -461,14 +496,14 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", ``)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	f.loadAndStart()
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Empty(t, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
@@ -478,7 +513,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
-	assert.False(t, call.state.HasImage())
+	assert.False(t, call.oneState().HasImage())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("random_file.go")}
 
@@ -487,7 +522,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.state.HasImage())
+	assert.True(t, call.oneState().HasImage())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -506,19 +541,19 @@ k8s_resource("baz", 'snack.yaml')
 k8s_resource("quux", 'doggos.yaml')
 `)
 	f.WriteFile("snack.yaml", simpleYAML)
-	f.WriteFile("Dockerfile1", ``)
-	f.WriteFile("Dockerfile2", ``)
+	f.WriteFile("Dockerfile1", `FROM iron/go:prod`)
+	f.WriteFile("Dockerfile2", `FROM iron/go:prod`)
 	f.WriteFile("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
 	f.loadAndStart()
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Empty(t, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Empty(t, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
@@ -542,10 +577,10 @@ k8s_resource("quux", 'doggos.yaml')
 	call = f.nextCall("changed config file --> new manifest")
 
 	assert.Equal(t, "baz", string(call.k8s().Name))
-	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
+	assert.ElementsMatch(t, []string{}, call.oneState().FilesChanged())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
-	assert.False(t, call.state.HasImage())
+	assert.False(t, call.oneState().HasImage())
 
 	// Importantly the other manifest, quux, is _not_ called
 	err := f.Stop()
@@ -588,7 +623,7 @@ k8s_resource("quux", 'doggos.yaml')  # rename "doggos" --> "quux"
 	// Expect a build of quux, the new resource
 	call = f.nextCall("changed config file --> new manifest")
 	assert.Equal(t, "quux", string(call.k8s().Name))
-	assert.ElementsMatch(t, []string{}, call.state.FilesChanged())
+	assert.ElementsMatch(t, []string{}, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -631,10 +666,10 @@ k8s_resource('foobar', 'snack.yaml')`)
 	assert.Equal(t, "foobar", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{
 		f.JoinPath("random_file.go"),
-	}, call.state.FilesChanged())
+	}, call.oneState().FilesChanged())
 
 	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.state.HasImage())
+	assert.True(t, call.oneState().HasImage())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -665,7 +700,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	call = f.nextCall("fixed broken config")
 	assert.Equal(t, "FROM iron/go:dev2", call.image().FastBuildInfo().BaseDockerfile)
-	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
+	assert.False(t, call.oneState().HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
 		return len(state.ManifestDefinitionOrder) == 1
 	})
@@ -818,7 +853,7 @@ go build ./...
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall("first build")
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	// Simulate a change to main.go
 	mainPath := filepath.Join(f.Path(), "main.go")
@@ -826,7 +861,7 @@ go build ./...
 
 	// Check that this triggered a rebuild.
 	call = f.nextCall("rebuild triggered")
-	assert.Equal(t, []string{mainPath}, call.state.FilesChanged())
+	assert.Equal(t, []string{mainPath}, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -868,7 +903,7 @@ func TestHudUpdated(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	f.WaitUntilHUD("hud update", func(v view.View) bool {
 		return len(v.Resources) > 0
@@ -944,7 +979,7 @@ func TestPodEvent(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
@@ -1001,7 +1036,7 @@ func TestPodEventOrdering(t *testing.T) {
 			f.Start([]model.Manifest{manifest}, true)
 
 			call := f.nextCall()
-			assert.True(t, call.state.IsEmpty())
+			assert.True(t, call.oneState().IsEmpty())
 
 			for _, pod := range order {
 				f.podEvent(pod)
@@ -1087,7 +1122,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		StartTime:    time.Now(),
 	})
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResult(manifest, "theOriginalContainer"),
+		Result: containerResultSet(manifest, "theOriginalContainer"),
 	})
 
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
@@ -1126,7 +1161,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	// Simulate k8s restarting the container due to a crash.
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResult(manifest, "theOriginalContainer"),
+		Result: containerResultSet(manifest, "theOriginalContainer"),
 	})
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1164,7 +1199,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 	// Simulate a normal build completion
 	podStartTime := time.Now()
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResult(manifest, "normal-container-id"),
+		Result: containerResultSet(manifest, "normal-container-id"),
 	})
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
 
@@ -1184,7 +1219,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 	// Simulate a pod crash, then a build compltion
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "funny-container-id", podStartTime))
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResult(manifest, "normal-container-id"),
+		Result: containerResultSet(manifest, "normal-container-id"),
 	})
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1201,7 +1236,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
@@ -1231,7 +1266,7 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	f.waitForCompletedBuildCount(1)
 
@@ -1271,7 +1306,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-new-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
@@ -1691,11 +1726,11 @@ func TestDockerComposeUp(t *testing.T) {
 
 	f.Start([]model.Manifest{redis, server}, true)
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 	assert.False(t, call.dc().ID().Empty())
 	assert.Equal(t, redis.DockerComposeTarget().ID(), call.dc().ID())
 	call = f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 	assert.False(t, call.dc().ID().Empty())
 	assert.Equal(t, server.DockerComposeTarget().ID(), call.dc().ID())
 }
@@ -1708,12 +1743,12 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 
 	// Initial build
 	call := f.nextCall()
-	assert.True(t, call.state.IsEmpty())
+	assert.True(t, call.oneState().IsEmpty())
 
 	// Change a file -- should trigger build
 	f.fsWatcher.events <- watch.FileEvent{Path: "package.json"}
 	call = f.nextCall()
-	assert.Equal(t, []string{f.JoinPath("package.json")}, call.state.FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("package.json")}, call.oneState().FilesChanged())
 }
 
 // TODO(maia): TestDockerComposeEditConfigFiles once DC manifests load faster (http://bit.ly/2RBX4g5)
@@ -2270,8 +2305,13 @@ func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manif
 	return model.Manifest{
 		Name: model.ManifestName(name),
 		ImageTarget: model.ImageTarget{Ref: ref}.
-			WithBuildDetails(model.FastBuild{Mounts: mounts}),
-	}
+			WithBuildDetails(model.FastBuild{
+				BaseDockerfile: `from golang:1.10`,
+				Mounts:         mounts,
+			}),
+	}.WithDeployTarget(model.K8sTarget{
+		YAML: "fake-yaml",
+	})
 }
 
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {
@@ -2363,8 +2403,19 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 	}
 }
 
-func containerResult(manifest model.Manifest, id container.ID) store.BuildResult {
-	return store.BuildResult{
+func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
+	resultSet := store.BuildResultSet{}
+	resultSet[manifest.ImageTarget.ID()] = store.BuildResult{
 		ContainerID: id,
 	}
+	return resultSet
+}
+
+func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {
+	for _, line := range lines {
+		if re.MatchString(line) {
+			return
+		}
+	}
+	t.Fatalf("Expected line to match: %s. Lines: %v", re.String(), lines)
 }

@@ -18,12 +18,11 @@ type BuildController struct {
 }
 
 type buildEntry struct {
-	ctx          context.Context
-	manifest     model.Manifest
-	buildState   store.BuildState
-	buildReason  model.BuildReason
-	filesChanged []string
-	firstBuild   bool
+	name          model.ManifestName
+	targets       []model.TargetSpec
+	buildStateSet store.BuildStateSet
+	buildReason   model.BuildReason
+	firstBuild    bool
 }
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
@@ -107,34 +106,16 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	manifest := mt.Manifest
 	firstBuild := !ms.StartedFirstBuild()
 
-	filesChanged := make([]string, 0, len(ms.PendingFileChanges))
-	for file, _ := range ms.PendingFileChanges {
-		filesChanged = append(filesChanged, file)
-	}
-	sort.Strings(filesChanged)
-
-	buildState := store.NewBuildState(ms.LastSuccessfulResult, filesChanged)
-
-	if !ms.NeedsRebuildFromCrash {
-		buildState = buildState.WithDeployTarget(store.NewDeployInfo(ms.PodSet))
-	}
-
 	buildReason := ms.NextBuildReason()
-
-	// Send the logs to both the EngineState and the normal log stream.
-	actionWriter := BuildLogActionWriter{
-		store:        st,
-		manifestName: manifest.Name,
-	}
-	ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
+	targets := buildTargets(manifest)
+	buildStateSet := buildStateSet(manifest, ms)
 
 	return buildEntry{
-		ctx:          ctx,
-		manifest:     manifest,
-		firstBuild:   firstBuild,
-		buildReason:  buildReason,
-		buildState:   buildState,
-		filesChanged: filesChanged,
+		name:          manifest.Name,
+		targets:       targets,
+		firstBuild:    firstBuild,
+		buildReason:   buildReason,
+		buildStateSet: buildStateSet,
 	}, true
 }
 
@@ -152,30 +133,48 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	go func() {
+		// Send the logs to both the EngineState and the normal log stream.
+		actionWriter := BuildLogActionWriter{
+			store:        st,
+			manifestName: entry.name,
+		}
+		ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
+
+		filesChanged := entry.buildStateSet.FilesChanged()
 		st.Dispatch(BuildStartedAction{
-			ManifestName: entry.manifest.Name,
+			ManifestName: entry.name,
 			StartTime:    time.Now(),
-			FilesChanged: entry.filesChanged,
+			FilesChanged: filesChanged,
 			Reason:       entry.buildReason,
 		})
-		c.logBuildEntry(entry.ctx, entry)
-		result, err := c.b.BuildAndDeploy(entry.ctx, entry.manifest, entry.buildState)
+		c.logBuildEntry(ctx, entry, filesChanged)
+
+		result, err := c.buildAndDeploy(ctx, entry)
 		st.Dispatch(NewBuildCompleteAction(result, err))
 	}()
 }
 
-func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
+func (c *BuildController) buildAndDeploy(ctx context.Context, entry buildEntry) (store.BuildResultSet, error) {
+	targets := entry.targets
+	for _, target := range targets {
+		err := target.Validate()
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+	}
+	return c.b.BuildAndDeploy(ctx, targets, entry.buildStateSet)
+}
+
+func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, changedFiles []string) {
 	firstBuild := entry.firstBuild
-	manifest := entry.manifest
-	buildState := entry.buildState
+	name := entry.name
 
 	l := logger.Get(ctx)
 	if firstBuild {
 		p := logger.Blue(l).Sprintf("\n──┤ Building: ")
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
-		l.Infof("%s%s%s", p, manifest.Name, s)
+		l.Infof("%s%s%s", p, name, s)
 	} else {
-		changedFiles := buildState.FilesChanged()
 		var changedPathsToPrint []string
 		if len(changedFiles) > maxChangedFilesToPrint {
 			changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
@@ -191,7 +190,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 
 		rp := logger.Blue(l).Sprintf("\n──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
-		l.Infof("%s%s%s", rp, manifest.Name, rs)
+		l.Infof("%s%s%s", rp, name, rs)
 	}
 }
 
@@ -206,6 +205,51 @@ func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
 		Log:          append([]byte{}, p...),
 	})
 	return len(p), nil
+}
+
+// Extract target specs from a manifest for BuildAndDeploy.
+func buildTargets(manifest model.Manifest) []model.TargetSpec {
+	if manifest.IsDC() {
+		return []model.TargetSpec{manifest.DockerComposeTarget()}
+	}
+
+	if manifest.IsK8s() {
+		return []model.TargetSpec{manifest.ImageTarget, manifest.K8sTarget()}
+	}
+
+	return nil
+}
+
+// Extract a set of build states from a manifest for BuildAndDeploy.
+func buildStateSet(manifest model.Manifest, ms *store.ManifestState) store.BuildStateSet {
+	buildStateSet := store.BuildStateSet{}
+
+	id := manifest.ImageTarget.ID()
+	if id.Empty() {
+		id = manifest.DockerComposeTarget().ID()
+	}
+
+	if !id.Empty() {
+		filesChanged := make([]string, 0, len(ms.PendingFileChanges))
+		for file, _ := range ms.PendingFileChanges {
+			filesChanged = append(filesChanged, file)
+		}
+		sort.Strings(filesChanged)
+
+		buildState := store.NewBuildState(ms.LastSuccessfulResult, filesChanged)
+
+		// Kubernetes-based builds can update containers in-place.
+		//
+		// We don't want to pass along the kubernetes data if the pod is crashing,
+		// because we're not confident that this state is accurate (due to how k8s
+		// reschedules pods).
+		if manifest.IsK8s() && !ms.NeedsRebuildFromCrash {
+			buildState = buildState.WithDeployTarget(store.NewDeployInfo(ms.PodSet))
+		}
+		buildStateSet[id] = buildState
+	}
+
+	return buildStateSet
 }
 
 var _ store.Subscriber = &BuildController{}

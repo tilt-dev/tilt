@@ -240,7 +240,8 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	ms := mt.State
-	result := cb.Result
+	manifest := mt.Manifest
+	result := cb.Result[manifest.ImageTarget.ID()]
 
 	bs := ms.CurrentBuild
 	bs.Error = err
