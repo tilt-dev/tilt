@@ -106,7 +106,6 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	r = addBuiltin(r, localN, s.local)
 	r = addBuiltin(r, readFileN, s.skylarkReadFile)
 
-	// TODO(dmiller) this really only needs to be done once, on startup
 	r, err := starlark.ExecFile(&starlark.Thread{}, "helm.builtin", helmFunc, r)
 	if err != nil {
 		panic("this should be impossible")
