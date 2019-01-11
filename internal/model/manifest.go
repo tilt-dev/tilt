@@ -22,10 +22,8 @@ func (m ManifestName) TargetName() TargetName { return TargetName(m) }
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all manifests.
-	Name          ManifestName
-	tiltFilename  string
-	dockerignores []Dockerignore
-	repos         []LocalGitRepo
+	Name         ManifestName
+	tiltFilename string
 
 	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
 	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployTarget`).
@@ -43,26 +41,6 @@ func (m Manifest) ID() TargetID {
 }
 
 type DockerBuildArgs map[string]string
-
-func (m Manifest) StaticBuildInfo() StaticBuild {
-	ret, _ := m.ImageTarget.BuildDetails.(StaticBuild)
-	return ret
-}
-
-func (m Manifest) IsStaticBuild() bool {
-	_, ok := m.ImageTarget.BuildDetails.(StaticBuild)
-	return ok
-}
-
-func (m Manifest) FastBuildInfo() FastBuild {
-	ret, _ := m.ImageTarget.BuildDetails.(FastBuild)
-	return ret
-}
-
-func (m Manifest) IsFastBuild() bool {
-	_, ok := m.ImageTarget.BuildDetails.(FastBuild)
-	return ok
-}
 
 func (m Manifest) DockerComposeTarget() DockerComposeTarget {
 	ret, _ := m.deployTarget.(DockerComposeTarget)
@@ -97,42 +75,13 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 	return m
 }
 
-func (m Manifest) WithRepos(repos []LocalGitRepo) Manifest {
-	m.repos = append(append([]LocalGitRepo{}, m.repos...), repos...)
-	return m
-}
-
-func (m Manifest) WithDockerignores(dockerignores []Dockerignore) Manifest {
-	m.dockerignores = append(append([]Dockerignore{}, m.dockerignores...), dockerignores...)
-	return m
-}
-
-func (m Manifest) Dockerignores() []Dockerignore {
-	return append([]Dockerignore{}, m.dockerignores...)
-}
-
 func (m Manifest) LocalPaths() []string {
-	switch bd := m.ImageTarget.BuildDetails.(type) {
-	case StaticBuild:
-		return []string{bd.BuildPath}
-	case FastBuild:
-		result := make([]string, len(bd.Mounts))
-		for i, mount := range bd.Mounts {
-			result[i] = mount.LocalPath
-		}
-		return result
+	// TODO(matt?) DC mounts should probably stored somewhere more consistent with Static/Fast Build
+	switch di := m.deployTarget.(type) {
+	case DockerComposeTarget:
+		return di.LocalPaths()
 	default:
-		// TODO(matt?) DC mounts should probably stored somewhere more consistent with Static/Fast Build
-		switch di := m.deployTarget.(type) {
-		case DockerComposeTarget:
-			result := make([]string, len(di.Mounts))
-			for i, mount := range di.Mounts {
-				result[i] = mount.LocalPath
-			}
-			return result
-		default:
-			return nil
-		}
+		return m.ImageTarget.LocalPaths()
 	}
 }
 
@@ -184,9 +133,6 @@ func (m Manifest) ValidateDockerK8sManifest() error {
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name && m1.tiltFilename == m2.tiltFilename
-	reposMatch := DeepEqual(m1.repos, m2.repos)
-	dockerignoresMatch := DeepEqual(m1.dockerignores, m2.dockerignores)
-
 	dockerEqual := DeepEqual(m1.ImageTarget, m2.ImageTarget)
 
 	dc1 := m1.DockerComposeTarget()
@@ -198,8 +144,6 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	k8sEqual := DeepEqual(k8s1, k8s2)
 
 	return primitivesMatch &&
-		reposMatch &&
-		dockerignoresMatch &&
 		dockerEqual &&
 		dockerComposeEqual &&
 		k8sEqual
@@ -209,6 +153,8 @@ func (m Manifest) ManifestName() ManifestName {
 	return m.Name
 }
 
+// TODO(nick): This method should be deleted. We should just de-dupe and sort LocalPaths once
+// when we create it, rather than have a duplicate method that does the "right" thing.
 func (m Manifest) Dependencies() []string {
 	// TODO(dmiller) we can know the length of this slice
 	deps := []string{}
@@ -229,14 +175,13 @@ func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
 	return m
 }
 
-func (m Manifest) LocalRepos() []LocalGitRepo {
-	return m.repos
-}
-
 func (m Manifest) TiltFilename() string {
 	return m.tiltFilename
 }
 
+// Right now, the Tiltfile name is duplicated in the manifest and inner objects,
+// but this is just a transitional state ImageTarget and DockerComposeTarget are
+// their own top-level objects in the graph.
 func (m Manifest) WithTiltFilename(f string) Manifest {
 	m.tiltFilename = f
 	return m
@@ -412,7 +357,8 @@ type PortForward struct {
 	ContainerPort int
 }
 
-var dockerInfoAllowUnexported = cmp.AllowUnexported(ImageTarget{})
+var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
+var dcTargetAllowUnexported = cmp.AllowUnexported(DockerComposeTarget{})
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
 	bNil := b == nil
@@ -428,5 +374,9 @@ var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 })
 
 func DeepEqual(x, y interface{}) bool {
-	return cmp.Equal(x, y, cmpopts.EquateEmpty(), dockerInfoAllowUnexported, dockerRefEqual)
+	return cmp.Equal(x, y,
+		cmpopts.EquateEmpty(),
+		imageTargetAllowUnexported,
+		dcTargetAllowUnexported,
+		dockerRefEqual)
 }

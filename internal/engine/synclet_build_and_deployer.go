@@ -57,7 +57,8 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	if !manifest.IsFastBuild() {
+	image := manifest.ImageTarget
+	if !image.IsFastBuild() {
 		return fmt.Errorf("container build only supports FastBuilds")
 	}
 
@@ -74,14 +75,15 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 
+	image := manifest.ImageTarget
 	paths, err := build.FilesToPathMappings(
-		state.FilesChanged(), manifest.FastBuildInfo().Mounts)
+		state.FilesChanged(), image.FastBuildInfo().Mounts)
 	if err != nil {
 		return store.BuildResult{}, err
 	}
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(manifest))
+	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(image))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return store.BuildResult{}, errors.Wrap(err, "archivePathsIfExists")
@@ -104,7 +106,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResult{}, fmt.Errorf("no deploy info")
 	}
 
-	cmds, err := build.BoilSteps(manifest.FastBuildInfo().Steps, paths)
+	cmds, err := build.BoilSteps(image.FastBuildInfo().Steps, paths)
 	if err != nil {
 		return store.BuildResult{}, err
 	}

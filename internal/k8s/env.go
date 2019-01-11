@@ -39,7 +39,7 @@ func DetectEnv() (Env, error) {
 func EnvFromString(s string) Env {
 	if s == EnvMinikube {
 		return EnvMinikube
-	} else if s == EnvDockerDesktop {
+	} else if s == EnvDockerDesktop || s == "docker-desktop" {
 		return EnvDockerDesktop
 	} else if strings.HasPrefix(s, EnvGKE) {
 		// GKE context strings look like:
