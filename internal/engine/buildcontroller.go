@@ -34,13 +34,12 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 }
 
 // Algorithm to choose a manifest to build next.
-func nextManifestToBuild(state store.EngineState) model.ManifestName {
+func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	// First, go through all the manifests in order.
 	// If any of them haven't started yet, build them now.
-	for _, mn := range state.ManifestDefinitionOrder {
-		ms, ok := state.ManifestStates[mn]
-		if ok && !ms.StartedFirstBuild() {
-			return mn
+	for _, mt := range state.Targets() {
+		if !mt.State.StartedFirstBuild() {
+			return mt
 		}
 	}
 
@@ -48,42 +47,44 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 	// 1) all pending file changes, and
 	// 2) all pending manifest changes
 	// The earliest one is the one we want.
-	choiceName := model.ManifestName("")
+	var choice *store.ManifestTarget
 	earliest := time.Now()
 
 	// always use a stable iteration order
-	for _, mn := range state.ManifestDefinitionOrder {
-		ms, ok := state.ManifestStates[mn]
-		if !ok {
-			continue
-		}
-
+	for _, mt := range state.Targets() {
 		// Always prioritize builds that crashes and have an out-of-sync.
-		if ms.NeedsRebuildFromCrash {
-			return mn
+		if mt.State.NeedsRebuildFromCrash {
+			return mt
 		}
 	}
 
 	if state.TriggerMode == model.TriggerManual && len(state.TriggerQueue) > 0 {
-		return state.TriggerQueue[0]
+		mn := state.TriggerQueue[0]
+		mt, ok := state.ManifestTargets[mn]
+		if ok {
+			return mt
+		}
 	}
 
 	if state.TriggerMode == model.TriggerAuto {
-		for _, mn := range state.ManifestDefinitionOrder {
-			ms, ok := state.ManifestStates[mn]
-			if !ok {
-				continue
-			}
-
-			ok, newTime := ms.HasPendingChangesBefore(earliest)
+		for _, mt := range state.Targets() {
+			ok, newTime := mt.State.HasPendingChangesBefore(earliest)
 			if ok {
-				choiceName = mn
+				choice = mt
 				earliest = newTime
 			}
 		}
 	}
 
-	return choiceName
+	return choice
+}
+
+func nextManifestNameToBuild(state store.EngineState) model.ManifestName {
+	mt := nextTargetToBuild(state)
+	if mt == nil {
+		return ""
+	}
+	return mt.Manifest.Name
 }
 
 func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
@@ -96,14 +97,14 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		return buildEntry{}, false
 	}
 
-	mn := nextManifestToBuild(state)
-	if mn == "" {
+	mt := nextTargetToBuild(state)
+	if mt == nil {
 		return buildEntry{}, false
 	}
 
 	c.lastActionCount = state.BuildControllerActionCount
-	ms := state.ManifestStates[mn]
-	manifest := ms.Manifest
+	ms := mt.State
+	manifest := mt.Manifest
 	firstBuild := !ms.StartedFirstBuild()
 
 	filesChanged := make([]string, 0, len(ms.PendingFileChanges))
@@ -123,7 +124,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	// Send the logs to both the EngineState and the normal log stream.
 	actionWriter := BuildLogActionWriter{
 		store:        st,
-		manifestName: mn,
+		manifestName: manifest.Name,
 	}
 	ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
 
@@ -170,7 +171,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 
 	l := logger.Get(ctx)
 	if firstBuild {
-		p := logger.Blue(l).Sprintf("──┤ Building: ")
+		p := logger.Blue(l).Sprintf("\n──┤ Building: ")
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
 		l.Infof("%s%s%s", p, manifest.Name, s)
 	} else {
@@ -188,7 +189,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 			l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
 		}
 
-		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
+		rp := logger.Blue(l).Sprintf("\n──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
 		l.Infof("%s%s%s", rp, manifest.Name, rs)
 	}

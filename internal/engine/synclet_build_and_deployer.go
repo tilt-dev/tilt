@@ -130,7 +130,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	sbd.deploys[state.LastResult.Image.String()] = deployInfo
 	sbd.mu.Unlock()
 
-	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.PodID, state.LastResult.Namespace)
+	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.PodID, deployInfo.Namespace)
 	if err != nil {
 		return store.BuildResult{}, err
 	}

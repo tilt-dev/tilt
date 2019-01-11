@@ -97,15 +97,14 @@ func TestNamespaceGKE(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, "sancho-ns", string(result.Namespace))
-
-	bs := store.NewBuildState(result, nil).WithDeployTarget(f.deployInfo())
+	deployInfo := f.deployInfo()
+	deployInfo.Namespace = "sancho-ns"
+	bs := store.NewBuildState(result, nil).WithDeployTarget(deployInfo)
 	result, err = f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, "sancho-ns", string(result.Namespace))
 	assert.Equal(t, "sancho-ns", string(f.sCli.Namespace))
 }
 

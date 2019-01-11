@@ -82,8 +82,8 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	teardown = []model.ManifestName{}
 
 	manifestsToProcess := make(map[model.ManifestName]WatchableManifest)
-	for name, state := range state.ManifestStates {
-		manifestsToProcess[name] = state.Manifest
+	for _, m := range state.Manifests() {
+		manifestsToProcess[m.Name] = m
 	}
 
 	if len(state.ConfigFiles) > 0 {

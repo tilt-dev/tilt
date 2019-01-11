@@ -141,7 +141,7 @@ func titleTextDC(dcInfo view.DCResourceInfo) rty.Component {
 	if status == "" {
 		status = "Pending"
 	}
-	sb.Textf("DC %s", status)
+	sb.Text(status)
 	return sb.Build()
 }
 
@@ -196,12 +196,10 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {
-	if !v.res.IsDC() {
-		return rty.EmptyLayout
-	}
+	dcInfo := v.res.DCInfo()
 
 	l := rty.NewConcatLayout(rty.DirHor)
-	l.Add(v.resourceTextDCContainer())
+	l.Add(v.resourceTextDCContainer(dcInfo))
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
 
@@ -215,10 +213,14 @@ func (v *ResourceView) resourceExpandedDC() rty.Component {
 	return rty.OneLine(l)
 }
 
-func (v *ResourceView) resourceTextDCContainer() rty.Component {
+func (v *ResourceView) resourceTextDCContainer(dcInfo view.DCResourceInfo) rty.Component {
+	if dcInfo.ContainerID.String() == "" {
+		return rty.EmptyLayout
+	}
+
 	sb := rty.NewStringBuilder()
-	sb.Fg(cLightText).Text("DC container: ")
-	sb.Fg(tcell.ColorDefault).Text("not implemented sry 😅")
+	sb.Fg(cLightText).Text("Container ID: ")
+	sb.Fg(tcell.ColorDefault).Text(dcInfo.ContainerID.ShortStr())
 	return sb.Build()
 }
 

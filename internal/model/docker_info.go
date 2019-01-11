@@ -16,7 +16,7 @@ type ImageTarget struct {
 func (di ImageTarget) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeImage,
-		Name: di.Ref.String(),
+		Name: TargetName(di.Ref.String()),
 	}
 }
 
@@ -58,4 +58,4 @@ type FastBuild struct {
 func (FastBuild) buildDetails()  {}
 func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
 
-var _ Target = ImageTarget{}
+var _ TargetSpec = ImageTarget{}

@@ -24,7 +24,9 @@ type EngineState struct {
 	// saved so that we can render in order
 	ManifestDefinitionOrder []model.ManifestName
 
-	ManifestStates    map[model.ManifestName]*ManifestState
+	// TODO(nick): This will eventually be a general Target index.
+	ManifestTargets map[model.ManifestName]*ManifestTarget
+
 	CurrentlyBuilding model.ManifestName
 	WatchMounts       bool
 
@@ -69,6 +71,70 @@ type EngineState struct {
 	IsProfiling bool
 }
 
+func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
+	mn := mt.Manifest.Name
+	_, ok := e.ManifestTargets[mn]
+	if !ok {
+		e.ManifestDefinitionOrder = append(e.ManifestDefinitionOrder, mn)
+	}
+	e.ManifestTargets[mn] = mt
+}
+
+func (e EngineState) Manifest(mn model.ManifestName) (model.Manifest, bool) {
+	m, ok := e.ManifestTargets[mn]
+	if !ok {
+		return model.Manifest{}, ok
+	}
+	return m.Manifest, ok
+}
+
+func (e EngineState) ManifestState(mn model.ManifestName) (*ManifestState, bool) {
+	m, ok := e.ManifestTargets[mn]
+	if !ok {
+		return nil, ok
+	}
+	return m.State, ok
+}
+
+// Returns Manifests in a stable order
+func (e EngineState) Manifests() []model.Manifest {
+	result := make([]model.Manifest, 0, len(e.ManifestTargets))
+	for _, mn := range e.ManifestDefinitionOrder {
+		mt, ok := e.ManifestTargets[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt.Manifest)
+	}
+	return result
+}
+
+// Returns ManifestStates in a stable order
+func (e EngineState) ManifestStates() []*ManifestState {
+	result := make([]*ManifestState, 0, len(e.ManifestTargets))
+	for _, mn := range e.ManifestDefinitionOrder {
+		mt, ok := e.ManifestTargets[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt.State)
+	}
+	return result
+}
+
+// Returns ManifestTargets in a stable order
+func (e EngineState) Targets() []*ManifestTarget {
+	result := make([]*ManifestTarget, 0, len(e.ManifestTargets))
+	for _, mn := range e.ManifestDefinitionOrder {
+		mt, ok := e.ManifestTargets[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt)
+	}
+	return result
+}
+
 func (e EngineState) RelativeTiltfilePath() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -78,7 +144,7 @@ func (e EngineState) RelativeTiltfilePath() (string, error) {
 }
 
 func (e EngineState) IsEmpty() bool {
-	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
+	return len(e.ManifestTargets) == 0 && e.GlobalYAML.Empty()
 }
 
 func (e EngineState) LastTiltfileError() error {
@@ -90,14 +156,13 @@ type ResourceState interface {
 }
 
 type ManifestState struct {
-	Manifest model.Manifest
+	Name model.ManifestName
 
 	// k8s-specific state
 	PodSet PodSet
 	LBs    map[k8s.ServiceName]*url.URL
 
 	// State of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
-	// TODO(maia): implement for k8s
 	ResourceState ResourceState
 
 	// Store the times of all the pending changes,
@@ -126,16 +191,23 @@ type ManifestState struct {
 
 func NewState() *EngineState {
 	ret := &EngineState{}
-	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]bool)
 	return ret
 }
 
-func NewManifestState(manifest model.Manifest) *ManifestState {
+func newManifestState(mn model.ManifestName) *ManifestState {
 	return &ManifestState{
-		Manifest:           manifest,
+		Name:               mn,
 		PendingFileChanges: make(map[string]time.Time),
 		LBs:                make(map[k8s.ServiceName]*url.URL),
+	}
+}
+
+func (ms *ManifestState) TargetID() model.TargetID {
+	return model.TargetID{
+		Type: model.TargetTypeManifest,
+		Name: ms.Name.TargetName(),
 	}
 }
 
@@ -147,6 +219,10 @@ func (ms *ManifestState) DCResourceState() dockercompose.State {
 func (ms *ManifestState) IsDC() bool {
 	_, ok := ms.ResourceState.(dockercompose.State)
 	return ok
+}
+
+func (ms *ManifestState) ActiveBuild() model.BuildStatus {
+	return ms.CurrentBuild
 }
 
 func (ms *ManifestState) LastBuild() model.BuildStatus {
@@ -227,6 +303,8 @@ func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool,
 	return ok, earliest
 }
 
+var _ model.TargetStatus = &ManifestState{}
+
 type YAMLManifestState struct {
 	HasBeenDeployed bool
 
@@ -240,6 +318,29 @@ type YAMLManifestState struct {
 func NewYAMLManifestState() *YAMLManifestState {
 	return &YAMLManifestState{}
 }
+
+func (s *YAMLManifestState) TargetID() model.TargetID {
+	return model.TargetID{
+		Type: model.TargetTypeManifest,
+		Name: model.GlobalYAMLManifestName.TargetName(),
+	}
+}
+
+func (s *YAMLManifestState) ActiveBuild() model.BuildStatus {
+	return model.BuildStatus{
+		StartTime: s.CurrentApplyStartTime,
+	}
+}
+
+func (s *YAMLManifestState) LastBuild() model.BuildStatus {
+	return model.BuildStatus{
+		StartTime:  s.LastApplyStartTime,
+		FinishTime: s.LastApplyFinishTime,
+		Error:      s.LastError,
+	}
+}
+
+var _ model.TargetStatus = &YAMLManifestState{}
 
 type PodSet struct {
 	Pods    map[k8s.PodID]*Pod
@@ -376,24 +477,14 @@ func shortenFileList(baseDirs []string, files []string) []string {
 	return ret
 }
 
-// Returns the manifests in order.
-func (s EngineState) Manifests() []model.Manifest {
-	result := make([]model.Manifest, 0)
-	for _, name := range s.ManifestDefinitionOrder {
-		ms := s.ManifestStates[name]
-		result = append(result, ms.Manifest)
-	}
-	return result
-}
-
-func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
+func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
 		sort.Strings(endpoints)
 	}()
 
 	// If the user specified port-forwards in the Tiltfile, we
 	// assume that's what they want to see in the UI
-	portForwards := ms.Manifest.K8sTarget().PortForwards
+	portForwards := mt.Manifest.K8sTarget().PortForwards
 	if len(portForwards) > 0 {
 		for _, pf := range portForwards {
 			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
@@ -401,7 +492,7 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 		return endpoints
 	}
 
-	for _, u := range ms.LBs {
+	for _, u := range mt.State.LBs {
 		if u != nil {
 			endpoints = append(endpoints, u.String())
 		}
@@ -416,11 +507,16 @@ func StateToView(s EngineState) view.View {
 	}
 
 	for _, name := range s.ManifestDefinitionOrder {
-		ms := s.ManifestStates[name]
+		mt, ok := s.ManifestTargets[name]
+		if !ok {
+			continue
+		}
+
+		ms := mt.State
 
 		var absWatchDirs []string
 		var absWatchPaths []string
-		for _, p := range ms.Manifest.LocalPaths() {
+		for _, p := range mt.Manifest.LocalPaths() {
 			fi, err := os.Stat(p)
 			if err == nil && !fi.IsDir() {
 				absWatchPaths = append(absWatchPaths, p)
@@ -451,7 +547,7 @@ func StateToView(s EngineState) view.View {
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
 
-		endpoints := ManifestStateEndpoints(ms)
+		endpoints := ManifestTargetEndpoints(mt)
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
@@ -470,7 +566,7 @@ func StateToView(s EngineState) view.View {
 			CurrentBuild:       currentBuild,
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
-			ResourceInfo:       resourceInfoView(ms),
+			ResourceInfo:       resourceInfoView(mt),
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -486,13 +582,9 @@ func StateToView(s EngineState) view.View {
 		r := view.Resource{
 			Name:               s.GlobalYAML.ManifestName(),
 			DirectoriesWatched: relWatches,
-			CurrentBuild:       model.BuildStatus{StartTime: s.GlobalYAMLState.CurrentApplyStartTime},
+			CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
 			BuildHistory: []model.BuildStatus{
-				model.BuildStatus{
-					StartTime:  s.GlobalYAMLState.LastApplyStartTime,
-					FinishTime: s.GlobalYAMLState.LastApplyFinishTime,
-					Error:      s.GlobalYAMLState.LastError,
-				},
+				s.GlobalYAMLState.LastBuild(),
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
 			ResourceInfo: view.YAMLResourceInfo{
@@ -517,11 +609,11 @@ func StateToView(s EngineState) view.View {
 	return ret
 }
 
-func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
-	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(ms.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.Log(), dcState.StartTime)
+func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
+	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
-		pod := ms.MostRecentPod()
+		pod := mt.State.MostRecentPod()
 		return view.K8SResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
@@ -538,9 +630,9 @@ func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 // NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
 // path from the first d-c manifest we see.
 func (s EngineState) DockerComposeConfigPath() string {
-	for _, ms := range s.ManifestStates {
-		if ms.Manifest.IsDC() {
-			return ms.Manifest.DockerComposeTarget().ConfigPath
+	for _, mt := range s.ManifestTargets {
+		if mt.Manifest.IsDC() {
+			return mt.Manifest.DockerComposeTarget().ConfigPath
 		}
 	}
 	return ""

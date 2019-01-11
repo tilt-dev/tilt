@@ -3,6 +3,7 @@ package view
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -14,18 +15,20 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
-	ConfigPath string
-	status     string
-	log        string
-	StartTime  time.Time
+	ConfigPath  string
+	status      dockercompose.Status
+	ContainerID container.ID
+	log         string
+	StartTime   time.Time
 }
 
-func NewDCResourceInfo(configPath string, status string, log string, startTime time.Time) DCResourceInfo {
+func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log string, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
-		ConfigPath: configPath,
-		status:     status,
-		log:        log,
-		StartTime:  startTime,
+		ConfigPath:  configPath,
+		status:      status,
+		ContainerID: cID,
+		log:         log,
+		StartTime:   startTime,
 	}
 }
 
@@ -33,7 +36,7 @@ var _ ResourceInfoView = DCResourceInfo{}
 
 func (DCResourceInfo) resourceInfoView()         {}
 func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
-func (dcInfo DCResourceInfo) Status() string     { return dcInfo.status }
+func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.status) }
 
 type K8SResourceInfo struct {
 	PodName            string
@@ -91,6 +94,11 @@ func (r Resource) DockerComposeTarget() DCResourceInfo {
 	}
 }
 
+func (r Resource) DCInfo() DCResourceInfo {
+	ret, _ := r.ResourceInfo.(DCResourceInfo)
+	return ret
+}
+
 func (r Resource) IsDC() bool {
 	_, ok := r.ResourceInfo.(DCResourceInfo)
 	return ok
@@ -133,7 +141,7 @@ func (r Resource) DefaultCollapse() bool {
 		autoExpand = true
 	}
 
-	if r.IsDC() && r.DockerComposeTarget().Status() == dockercompose.StatusCrash {
+	if r.IsDC() && r.DockerComposeTarget().Status() == string(dockercompose.StatusCrash) {
 		autoExpand = true
 	}
 

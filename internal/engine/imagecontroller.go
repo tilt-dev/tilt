@@ -27,7 +27,7 @@ func NewImageController(reaper build.ImageReaper) *ImageController {
 func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	if !state.WatchMounts || len(state.ManifestStates) == 0 {
+	if !state.WatchMounts || len(state.ManifestTargets) == 0 {
 		return nil
 	}
 
@@ -37,12 +37,12 @@ func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
 	}
 
 	c.hasRunReaper = true
-	manifests := make([]model.Manifest, 0, len(state.ManifestStates))
-	for _, ms := range state.ManifestStates {
-		if ms.Manifest.ImageTarget.Ref == nil {
+	manifests := make([]model.Manifest, 0, len(state.ManifestTargets))
+	for _, manifest := range state.Manifests() {
+		if manifest.ImageTarget.Ref == nil {
 			continue
 		}
-		manifests = append(manifests, ms.Manifest)
+		manifests = append(manifests, manifest)
 	}
 	return manifests
 }
