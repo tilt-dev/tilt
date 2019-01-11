@@ -205,14 +205,12 @@ learn to write your own Tiltfiles with gusto!</p>
 <span class="c1"># list of yaml files</span>
 <span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span>
 
-<span class="c1"># run kustomize to generate yaml</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>
-
-<span class="c1"># run helm to generate yaml</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;chart_dir&#39;</span><span class="p">))</span>
-
 <span class="c1"># run a custom command to generate yaml</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s1">&#39;gen_k8s_yaml.py&#39;</span><span class="p">))</span>
+
+<span class="c1"># we also handle common tools to generate yaml</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;chart_dir&#39;</span><span class="p">))</span>
 
 <span class="c1">## Part 2: Images</span>
 
