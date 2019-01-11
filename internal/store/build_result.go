@@ -19,12 +19,6 @@ type BuildResult struct {
 	// If this build was a container build, containerID we built on top of
 	ContainerID container.ID
 
-	// The namespace where the pod was deployed.
-	Namespace k8s.Namespace
-
-	// The k8s entities deployed alongside the image.
-	Entities []k8s.K8sEntity
-
 	// Some of our build engines replace the files in-place, rather
 	// than building a new image. This captures how much the code
 	// running on-pod has diverged from the original image.
@@ -44,8 +38,6 @@ func (b BuildResult) HasImage() bool {
 func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
 	result := BuildResult{}
 	result.Image = b.Image
-	result.Namespace = b.Namespace
-	result.Entities = append([]k8s.K8sEntity{}, b.Entities...)
 
 	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))
 	for k, v := range b.FilesReplacedSet {
@@ -149,6 +141,7 @@ type DeployInfo struct {
 	PodID         k8s.PodID
 	ContainerID   container.ID
 	ContainerName container.Name
+	Namespace     k8s.Namespace
 }
 
 func (d DeployInfo) Empty() bool {
@@ -171,6 +164,7 @@ func NewDeployInfo(podSet PodSet) DeployInfo {
 		PodID:         pod.PodID,
 		ContainerID:   pod.ContainerID,
 		ContainerName: pod.ContainerName,
+		Namespace:     pod.Namespace,
 	}
 }
 
