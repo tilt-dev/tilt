@@ -30,7 +30,7 @@ docker_build("companyname/frontend", "frontend")
 docker_build("companyname/backend", "backend", dockerfile="backend/Dockerfile.dev")
 
 # docker build with build args
-docker_build("companyname/graphql", "graphql", args={"target": "local"})
+docker_build("companyname/graphql", "graphql", build_args={"target": "local"})
 
 ## Part 3: Resources
 
@@ -38,7 +38,7 @@ docker_build("companyname/graphql", "graphql", args={"target": "local"})
 k8s_resource("backend", image="companyname/backend/server")
 
 # connect to a specific local port
-k8s_resource("frontend", port_forwards=9000) 
+k8s_resource("frontend", port_forwards=9000)
 ```
 
 Let's dig in to each of these sections in detail.
@@ -122,7 +122,7 @@ You can also add a Kubernetes port forward to this resource.
 
 ```python
 # connect to a specific local port
-k8s_resource("backend", image="companyname/backend/server", port_forwards=9000) 
+k8s_resource("backend", image="companyname/backend/server", port_forwards=9000)
 ```
 
 ## Next steps
