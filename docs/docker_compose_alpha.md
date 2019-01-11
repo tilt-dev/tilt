@@ -49,4 +49,4 @@ Most of our functionality will still work, but we're still working on how to sur
 ### How to be an alpha user
 We're pushing new stuff every day, so don't bother waiting for releases; install from `master`!
 
-We want your feedback! If you see weird behavior, or there are features that would make you fall in love with Tilt, [file an issue](https://github.com/windmilleng/tilt/issues) and let us know!
+We want your feedback! If you see weird behavior, if we don't quiiite support your use case, or there are features that would make you fall in love with Tilt, [file an issue](https://github.com/windmilleng/tilt/issues) and let us know!
