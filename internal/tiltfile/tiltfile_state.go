@@ -15,12 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-// TODO(dmiller) this needs to add all of the files in the directory as dependencies
-const helmFunc = `
-def helm(path):
-	return local("helm template " + str(path))
-`
-
 type resourceSet struct {
 	dc  dcResource // currently only support one d-c.yml
 	k8s []*k8sResource
@@ -89,6 +83,7 @@ const (
 	localN        = "local"
 	readFileN     = "read_file"
 	kustomizeN    = "kustomize"
+	helmN         = "helm"
 )
 
 func (s *tiltfileState) builtins() starlark.StringDict {
@@ -105,14 +100,6 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, localN, s.local)
 	addBuiltin(r, readFileN, s.skylarkReadFile)
 
-	r, err := starlark.ExecFile(&starlark.Thread{}, "helm.builtin", helmFunc, r)
-	if err != nil {
-		panic("this should be impossible")
-	}
-
-	addBuiltin(r, localN, s.local)
-	addBuiltin(r, readFileN, s.skylarkReadFile)
-
 	addBuiltin(r, dockerComposeN, s.dockerCompose)
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
 	addBuiltin(r, fastBuildN, s.fastBuild)
@@ -121,6 +108,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, portForwardN, s.portForward)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
+	addBuiltin(r, helmN, s.helm)
 
 	s.builtinsMap = r
 

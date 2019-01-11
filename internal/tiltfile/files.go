@@ -285,3 +285,40 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 
 	return newBlob(string(yaml)), nil
 }
+
+func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	cmd := fmt.Sprintf("helm template %s", path)
+	yaml, err := s.execLocalCmd(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	deps := []string{}
+
+	filepath.Walk(path.String(), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing path (%s): %v", path, err)
+		}
+		if !info.IsDir() {
+			deps = append(deps, path)
+		}
+		return nil
+	})
+
+	for _, d := range deps {
+		s.recordConfigFile(d)
+	}
+
+	return newBlob(string(yaml)), nil
+}
