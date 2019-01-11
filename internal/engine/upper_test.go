@@ -59,7 +59,9 @@ k8s_resource('foobar', yaml='snack.yaml')
 
 // represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
+	// TODO(nick): Remove manifest from buildAndDeployCall
 	manifest model.Manifest
+	image    model.ImageTarget
 	state    store.BuildState
 }
 
@@ -99,7 +101,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 	}
 
 	select {
-	case b.calls <- buildAndDeployCall{manifest, state}:
+	case b.calls <- buildAndDeployCall{manifest, manifest.ImageTarget, state}:
 	default:
 		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 	}
@@ -443,13 +445,13 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Empty(t, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Empty(t, call.image.FastBuildInfo().BaseDockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.manifest.K8sTarget().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -459,7 +461,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image.FastBuildInfo().BaseDockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.state.HasImage())
@@ -489,11 +491,11 @@ k8s_resource("quux", 'doggos.yaml')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Empty(t, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Empty(t, call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.manifest.Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Empty(t, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Empty(t, call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.manifest.Name))
 
 	// rewrite the dockerfiles
@@ -503,11 +505,11 @@ k8s_resource("quux", 'doggos.yaml')
 
 	// Now with the manifests from the config files
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev1`, call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.manifest.Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev2`, call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.manifest.Name))
 
 	// Now change a dockerfile
@@ -546,7 +548,7 @@ k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.manifest.Name))
 
 	f.assertNoCall()
@@ -586,7 +588,7 @@ k8s_resource('foobar', 'snack.yaml')`)
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifests")
-	assert.Equal(t, "FROM iron/go:dev1", call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.image.FastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "foobar", string(call.manifest.Name))
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
@@ -628,7 +630,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	// First call: init
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:dev`, call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev`, call.image.FastBuildInfo().BaseDockerfile)
 
 	// Second call: error!
 	f.WriteConfigFiles("Tiltfile", "borken")
@@ -639,7 +641,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 		"Dockerfile", `FROM iron/go:dev2`)
 
 	call = f.nextCall("fixed broken config")
-	assert.Equal(t, "FROM iron/go:dev2", call.manifest.FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev2", call.image.FastBuildInfo().BaseDockerfile)
 	assert.False(t, call.state.HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
 		return len(state.ManifestDefinitionOrder) == 1
@@ -772,7 +774,7 @@ k8s_resource('foobar', 'snack.yaml')
 			Cmd:           model.ToShellCmd("changed"),
 			BaseDirectory: f.Path(),
 		}}
-		assert.Equal(t, expectedSteps, mt.Manifest.FastBuildInfo().Steps)
+		assert.Equal(t, expectedSteps, mt.Manifest.ImageTarget.FastBuildInfo().Steps)
 	})
 }
 
@@ -1318,7 +1320,8 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount}).
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.ImageTarget = manifest.ImageTarget.
 		WithDockerignores([]model.Dockerignore{
 			{
 				LocalPath: f.Path(),
@@ -1343,7 +1346,8 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Mount{mount}).
+	manifest := f.newManifest("foobar", []model.Mount{mount})
+	manifest.ImageTarget = manifest.ImageTarget.
 		WithRepos([]model.LocalGitRepo{
 			{
 				LocalPath:         f.Path(),
@@ -1658,7 +1662,7 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 
 	f.WaitUntilManifest("has new mounts", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.FastBuildInfo().Mounts) == 2
+		return len(mt.Manifest.ImageTarget.FastBuildInfo().Mounts) == 2
 	})
 
 	f.PollUntil("watches setup", func() bool {
