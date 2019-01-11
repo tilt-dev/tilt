@@ -68,6 +68,7 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
    upgrade_skaffold
    upgrade_docker_compose
+   docker_compose_alpha
 
 .. toctree::
    :maxdepth: 1

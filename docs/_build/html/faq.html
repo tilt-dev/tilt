@@ -104,6 +104,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -115,7 +116,7 @@
 <li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the <code class="docutils literal notranslate"><span class="pre">first</span> <span class="pre">example</span></code>. What do I do?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the first example. What do I do?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?</a></li>
 </ul>
 </li>
@@ -198,11 +199,11 @@
            <div itemprop="articleBody">
             
   <div class="section" id="frequently-asked-questions">
-<h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this headline">¶</a></h1>
+<span id="frequently-asked-questions"></span><h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="troubleshooting">
-<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<span id="troubleshooting"></span><h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">
-<h3>Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the <a class="reference external" href="first_example.html">first example</a>. What do I do?<a class="headerlink" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<span id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do"></span><h3>Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the <a class="reference external" href="first_example.html">first example</a>. What do I do?<a class="headerlink" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do" title="Permalink to this headline">¶</a></h3>
 <p>If Tilt is trying to do a push, that means it thinks you wanted to deploy to a
 remote cluster.</p>
 <p>The tutorials will only work with a local cluster that doesn’t require an image
@@ -211,7 +212,7 @@ push, like Docker For Mac or Minikube.</p>
 to configure for a local cluster.</p>
 </div>
 <div class="section" id="q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">
-<h3>Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?<a class="headerlink" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<span id="q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do"></span><h3>Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?<a class="headerlink" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do" title="Permalink to this headline">¶</a></h3>
 <p>The Kubernetes server that you’re trying to deploy to is misbehaving.</p>
 <p>Two common things to try are:</p>
 <ol class="simple">
@@ -228,9 +229,9 @@ environment. <code class="docutils literal notranslate"><span class="pre">miniku
 </div>
 </div>
 <div class="section" id="building-container-images">
-<h2>Building Container Images<a class="headerlink" href="#building-container-images" title="Permalink to this headline">¶</a></h2>
+<span id="building-container-images"></span><h2>Building Container Images<a class="headerlink" href="#building-container-images" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development">
-<h3>Q: All the Tilt examples store the image at <code class="docutils literal notranslate"><span class="pre">gcr.io</span></code>. Isn’t it really slow to push images up to Google’s remote repository for local development?<a class="headerlink" href="#q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development" title="Permalink to this headline">¶</a></h3>
+<span id="q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development"></span><h3>Q: All the Tilt examples store the image at <code class="docutils literal notranslate"><span class="pre">gcr.io</span></code>. Isn’t it really slow to push images up to Google’s remote repository for local development?<a class="headerlink" href="#q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development" title="Permalink to this headline">¶</a></h3>
 <p>You’re right, that would be slow!</p>
 <p>Most local Kubernetes development solutions let you build images directly inside
 the cluster. There’s no need to push the image to a remote repository.</p>
@@ -240,7 +241,7 @@ Kubernetes configs to set ImageNeverPull, so that Kubernetes will emit an error
 if it even tries to pull an image from a remote server.</p>
 </div>
 <div class="section" id="q-docker-buildkit-is-cool-how-do-i-use-it">
-<h3>Q: Docker Buildkit is cool! How do I use it?<a class="headerlink" href="#q-docker-buildkit-is-cool-how-do-i-use-it" title="Permalink to this headline">¶</a></h3>
+<span id="q-docker-buildkit-is-cool-how-do-i-use-it"></span><h3>Q: Docker Buildkit is cool! How do I use it?<a class="headerlink" href="#q-docker-buildkit-is-cool-how-do-i-use-it" title="Permalink to this headline">¶</a></h3>
 <p><a class="reference external" href="https://github.com/moby/buildkit">BuildKit</a> is a new build engine in
 Docker for building container images.</p>
 <p>Tilt will automatically enable Buildkit if your local Docker installation
@@ -249,7 +250,7 @@ supports it.</p>
 Docker v18.09+</p>
 </div>
 <div class="section" id="q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server">
-<h3>Q: How do I tell Tilt to build my images with a remote Docker server?<a class="headerlink" href="#q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server" title="Permalink to this headline">¶</a></h3>
+<span id="q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server"></span><h3>Q: How do I tell Tilt to build my images with a remote Docker server?<a class="headerlink" href="#q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server" title="Permalink to this headline">¶</a></h3>
 <p>Tilt reads the same environment variables as the <code class="docutils literal notranslate"><span class="pre">docker</span></code> command for choosing a
 server. Specifically:</p>
 <ul class="simple">
@@ -266,9 +267,9 @@ copying Docker images around.</p>
 </div>
 </div>
 <div class="section" id="deploying-containers">
-<h2>Deploying Containers<a class="headerlink" href="#deploying-containers" title="Permalink to this headline">¶</a></h2>
+<span id="deploying-containers"></span><h2>Deploying Containers<a class="headerlink" href="#deploying-containers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="q-how-do-i-change-what-kubernetes-cluster-tilt-uses">
-<h3>Q: How do I change what Kubernetes cluster Tilt uses?<a class="headerlink" href="#q-how-do-i-change-what-kubernetes-cluster-tilt-uses" title="Permalink to this headline">¶</a></h3>
+<span id="q-how-do-i-change-what-kubernetes-cluster-tilt-uses"></span><h3>Q: How do I change what Kubernetes cluster Tilt uses?<a class="headerlink" href="#q-how-do-i-change-what-kubernetes-cluster-tilt-uses" title="Permalink to this headline">¶</a></h3>
 <p>Tilt uses the default Kubernetes cluster configured in <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>.</p>
 <p>To see what cluster <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> uses, run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config current-context
@@ -340,7 +341,6 @@ sets the path to a Kubernetes config.</p>
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

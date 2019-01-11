@@ -1,0 +1,306 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Docker Compose Support (Alpha) &mdash; Tilt  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="prev" title="From Docker Compose" href="upgrade_docker_compose.html" />
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
+<script>
+ window.dataLayer = window.dataLayer || [];
+ function gtag(){dataLayer.push(arguments);}
+ gtag('js', new Date());
+
+ gtag('config', 'UA-129150759-2');
+</script>
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Docker Compose Support (Alpha)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#up-and-running-in-two-lines">Up and Running In Two Lines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-we-mean-by-alpha">What We Mean By “Alpha”</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#what-to-expect-from-tilt-x-docker-compose-by-your-use-case">What to expect from Tilt x Docker Compose, by your use case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-be-an-alpha-user">How to be an alpha user</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">About</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Tilt</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Docker Compose Support (Alpha)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/docker_compose_alpha.md" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="docker-compose-support-alpha">
+<span id="docker-compose-support-alpha"></span><h1>Docker Compose Support (Alpha)<a class="headerlink" href="#docker-compose-support-alpha" title="Permalink to this headline">¶</a></h1>
+<p>Good news, everyone: you can now run Tilt with your existing Docker Compose config! No need to write new boilerplate, or cobble together Kubernetes YAML before you’re actually running on Kubernetes. Just follow the instructions below to get started.</p>
+<div class="section" id="up-and-running-in-two-lines">
+<span id="up-and-running-in-two-lines"></span><h2>Up and Running In Two Lines<a class="headerlink" href="#up-and-running-in-two-lines" title="Permalink to this headline">¶</a></h2>
+<p>To run your Docker Compose setup via Tilt, all you need is a simple <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> that tells Tilt where to find your config:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">echo</span> <span class="s1">&#39;docker_compose(&quot;/path/to/docker-compose.yml&quot;)&#39;</span> <span class="o">&gt;</span> <span class="n">Tiltfile</span>
+<span class="n">tilt</span> <span class="n">up</span>
+</pre></div>
+</div>
+<p>And that’s it! You should see your services spinning up in Tilt, with status, errors, and logs all easily visible thanks to our Heads-Up Display.</p>
+</div>
+<div class="section" id="what-we-mean-by-alpha">
+<span id="what-we-mean-by-alpha"></span><h2>What We Mean By “Alpha”<a class="headerlink" href="#what-we-mean-by-alpha" title="Permalink to this headline">¶</a></h2>
+<p>So far, we’ve only built bare-bones Docker Compose support, but we think even the functionality we have so far can improve your life a bit, and we’re building more features every day!</p>
+<p>You might want to try the current support if:</p>
+<ul class="simple">
+<li>you’ve been curious about Tilt, and you don’t have k8s YAML at the ready, but you DO have a Docker Compose setup</li>
+<li>you’re frustrated with Docker Compose’s log barf and want to easily find logs and errors per-service</li>
+<li>you’re excited about dev tools and trying new things</li>
+<li>you enjoy filing bug reports and helping make software better</li>
+</ul>
+<p>It’s probably not for you if:</p>
+<ul class="simple">
+<li>you’re looking for a polished product to pitch to the rest of your team <em>today</em></li>
+</ul>
+<p>Additionally, there are certain use cases that the current iteration of Tilt x Docker Compose is more or less suited for:</p>
+<div class="section" id="what-to-expect-from-tilt-x-docker-compose-by-your-use-case">
+<span id="what-to-expect-from-tilt-x-docker-compose-by-your-use-case"></span><h3>What to expect from Tilt x Docker Compose, by your use case<a class="headerlink" href="#what-to-expect-from-tilt-x-docker-compose-by-your-use-case" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>You use Docker Compose for your entire development flow: it handles both building Docker images and spinning them up in the appropriate containers</li>
+</ul>
+<p>Congrats, we think that Tilt x Docker Compose as it exists today will be great for you! If you edit code locally, Tilt will automatically rebuild and redeploy the appropriate service, plus you get all the visibility of our Heads-Up Display.</p>
+<ul class="simple">
+<li>You use Docker Compose to spin up images that have been built elsewhere (e.g. you have to run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">build</span></code> before you run <code class="docutils literal notranslate"><span class="pre">docker-compose</span> <span class="pre">up</span></code>)</li>
+</ul>
+<p>You won’t get the benefits of automatic rebuild, but you’ll still have vastly better visibility into your app: you can easily get logs per-service, see status at a glance, and find crashes as soon as they happen.</p>
+<p>Don’t worry, we’re working on a way for you to get the benefits of auto-rebuilding (with some caching magic to make your builds lightning fast); but in the meantime, we think you’ll still get something out of running your Docker Compose setup via Tilt.</p>
+<ul class="simple">
+<li>You build Docker images via Docker Compose (i.e. you specify <code class="docutils literal notranslate"><span class="pre">build</span></code> in your config file) AND you make use of <code class="docutils literal notranslate"><span class="pre">MOUNT</span></code> / <code class="docutils literal notranslate"><span class="pre">VOLUME</span></code> in your <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> or <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code></li>
+</ul>
+<p>We’re still working out the kinks for this use case. We hope it’ll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a <code class="docutils literal notranslate"><span class="pre">MOUNT</span></code>ed file – which is obviously silly, since that file automatically gets updated in the container. You have been warned.</p>
+<ul class="simple">
+<li>Your containers automatically restart after crashes (i.e. you set <a class="reference external" href="https://docs.docker.com/compose/compose-file/#restart">container restart policy</a> in your config file).</li>
+</ul>
+<p>Most of our functionality will still work, but we’re still working on how to surface the right error messages to you when something goes wrong. When your containers crash and restart, you might see some odd stuff in the display. We’re working on tightening up this experience.</p>
+</div>
+<div class="section" id="how-to-be-an-alpha-user">
+<span id="how-to-be-an-alpha-user"></span><h3>How to be an alpha user<a class="headerlink" href="#how-to-be-an-alpha-user" title="Permalink to this headline">¶</a></h3>
+<p>We’re pushing new stuff every day, so don’t bother waiting for releases; install from <code class="docutils literal notranslate"><span class="pre">master</span></code>!</p>
+<p>We want your feedback! If you see weird behavior, if we don’t quiiite support your use case, or there are features that would make you fall in love with Tilt, <a class="reference external" href="https://github.com/windmilleng/tilt/issues">file an issue</a> and let us know!</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fast_build.html" class="btn btn-neutral float-right" title="Optimizing a Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="upgrade_docker_compose.html" class="btn btn-neutral" title="From Docker Compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Windmill Engineering
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

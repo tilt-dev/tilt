@@ -111,6 +111,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -188,9 +189,9 @@
            <div itemprop="articleBody">
             
   <div class="section" id="running-your-first-tilt-project">
-<h1>Running your First Tilt Project<a class="headerlink" href="#running-your-first-tilt-project" title="Permalink to this headline">¶</a></h1>
+<span id="running-your-first-tilt-project"></span><h1>Running your First Tilt Project<a class="headerlink" href="#running-your-first-tilt-project" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="prerequisites">
-<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<span id="prerequisites"></span><h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
 <p>For this tutorial, you should have:</p>
 <ul class="simple">
 <li><a class="reference external" href="install.html">Installed <code class="docutils literal notranslate"><span class="pre">tilt</span></code></a></li>
@@ -209,7 +210,7 @@ see the FAQ on
 This example will only work with these local clusters.</p>
 </div>
 <div class="section" id="starting-one-server">
-<h2>Starting One Server<a class="headerlink" href="#starting-one-server" title="Permalink to this headline">¶</a></h2>
+<span id="starting-one-server"></span><h2>Starting One Server<a class="headerlink" href="#starting-one-server" title="Permalink to this headline">¶</a></h2>
 <p>For your first Tilt project, let’s not worry about configuring a project just
 yet.  Let’s look at a simple existing project and see how easy it is to <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code> and go.</p>
 <p>First, check out the Tilt repo.</p>
@@ -227,7 +228,7 @@ in <code class="docutils literal notranslate"><span class="pre">integration/oneu
 <p>Your terminal will turn into a status box that lets you watch your server come up. When it’s ready,
 you will see the status icon turn green. The logs in the botton pane will display
 “Serving oneup on container port 8000.”</p>
-<p><img alt="_images/oneup.png" src="_images/oneup.png" />oneup server logs</p>
+<p><img alt="oneup server logs" src="_images/oneup.png" /></p>
 <p>Type <code class="docutils literal notranslate"><span class="pre">b</span></code> to open <code class="docutils literal notranslate"><span class="pre">oneup</span></code> in a browser window.
 Your browser will open <code class="docutils literal notranslate"><span class="pre">http://localhost:8100</span></code>.
 You should see the text <code class="docutils literal notranslate"><span class="pre">🍄</span> <span class="pre">One-Up!</span> <span class="pre">🍄</span></code>.</p>
@@ -239,12 +240,12 @@ You should see the text <code class="docutils literal notranslate"><span class="
 <p>to turn off the server.</p>
 </div>
 <div class="section" id="troubleshooting">
-<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<span id="troubleshooting"></span><h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
 <p>If any of the examples in this tutorial didn’t work for you, see the
 <a class="reference external" href="faq.html#Troubleshooting">Troubleshooting FAQ</a>.</p>
 </div>
 <div class="section" id="next-steps">
-<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>How did Tilt know how to build the server?
 How did it get into the Kubernetes cluster?
 How did it start listening on <code class="docutils literal notranslate"><span class="pre">localhost:8100</span></code>?</p>
@@ -299,7 +300,6 @@ with Tilt.</p>
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   
