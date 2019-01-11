@@ -704,6 +704,7 @@ if True:
 
 func TestHelm(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 
 	f.setupHelm()
 
