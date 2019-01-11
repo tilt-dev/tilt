@@ -68,7 +68,7 @@ jobs:
       - run: echo 'export PATH="/usr/local/opt/go@1.11/bin:$PATH"' >> $BASH_ENV
       - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
              tar -xz -C /tmp -f /tmp/helm.tar.gz &&
-             mv /tmp/darwin-amd64/helm /usr/bin/helm
+             mv /tmp/darwin-amd64/helm /usr/local/bin/helm
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: go test -tags 'skipcontainertests' ./...
