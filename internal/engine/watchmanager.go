@@ -19,6 +19,7 @@ type WatchableManifest interface {
 	ManifestName() model.ManifestName
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+	IgnoredLocalDirectories() []string
 }
 
 type dcManifest struct {
@@ -44,6 +45,8 @@ type configsManifest struct {
 	dependencies []string
 }
 
+var _ WatchableManifest = &configsManifest{}
+
 func (m *configsManifest) Dependencies() []string {
 	return m.dependencies
 }
@@ -57,6 +60,10 @@ func (m *configsManifest) LocalRepos() []model.LocalGitRepo {
 }
 
 func (m *configsManifest) Dockerignores() []model.Dockerignore {
+	return nil
+}
+
+func (m *configsManifest) IgnoredLocalDirectories() []string {
 	return nil
 }
 

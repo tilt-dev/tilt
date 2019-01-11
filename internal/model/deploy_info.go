@@ -17,9 +17,10 @@ type DockerComposeTarget struct {
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
 	// than duplicating it in each DockerComposeTarget.
-	tiltFilename  string
-	dockerignores []Dockerignore
-	repos         []LocalGitRepo
+	tiltFilename            string
+	dockerignores           []Dockerignore
+	repos                   []LocalGitRepo
+	ignoredLocalDirectories []string
 }
 
 func (t DockerComposeTarget) ID() TargetID {
@@ -55,12 +56,21 @@ func (t DockerComposeTarget) LocalRepos() []LocalGitRepo {
 	return t.repos
 }
 
+func (t DockerComposeTarget) IgnoredLocalDirectories() []string {
+	return t.ignoredLocalDirectories
+}
+
 func (t DockerComposeTarget) TiltFilename() string {
 	return t.tiltFilename
 }
 
 func (t DockerComposeTarget) WithTiltFilename(f string) DockerComposeTarget {
 	t.tiltFilename = f
+	return t
+}
+
+func (t DockerComposeTarget) WithIgnoredLocalDirectories(dirs []string) DockerComposeTarget {
+	t.ignoredLocalDirectories = dirs
 	return t
 }
 

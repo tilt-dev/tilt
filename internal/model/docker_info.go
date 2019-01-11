@@ -100,6 +100,10 @@ func (i ImageTarget) LocalRepos() []LocalGitRepo {
 	return i.repos
 }
 
+func (i ImageTarget) IgnoredLocalDirectories() []string {
+	return nil
+}
+
 func (i ImageTarget) TiltFilename() string {
 	return i.tiltFilename
 }

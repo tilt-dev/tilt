@@ -60,6 +60,38 @@ type dcConfig struct {
 type dcServiceConfig struct {
 	RawYAML []byte        // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
 	Build   dcBuildConfig `yaml:"build"`
+	Volumes Volumes
+}
+
+type Volumes struct {
+	Volumes []Volume
+}
+
+type Volume struct {
+	Source string
+}
+
+func (v *Volumes) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var sliceType []interface{}
+	err := unmarshal(&sliceType)
+	if err != nil {
+		return errors.Wrap(err, "unmarshalling volumes")
+	}
+
+	for _, volume := range sliceType {
+		// Volumes syntax documented here: https://docs.docker.com/compose/compose-file/#volumes
+		// This implementation far from comprehensive. It will silently ignore:
+		// 1. "short" syntax using volume keys instead of paths
+		// 2. all "long" syntax volumes
+		// Ideally, we'd let the user know we didn't handle their case, but getting a ctx here is not easy
+		switch a := volume.(type) {
+		case string:
+			parts := strings.Split(a, ":")
+			v.Volumes = append(v.Volumes, Volume{Source: parts[0]})
+		}
+	}
+
+	return nil
 }
 
 // We use a custom Unmarshal method here so that we can store the RawYAML in addition
@@ -102,9 +134,10 @@ type dcBuildConfig struct {
 
 // A docker-compose service, according to Tilt.
 type dcService struct {
-	Name    string
-	Context string
-	DfPath  string
+	Name             string
+	Context          string
+	DfPath           string
+	MountedLocalDirs []string
 
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
 	ServiceConfig []byte
@@ -123,11 +156,18 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 		df = "Dockerfile"
 	}
 
+	var mountedLocalDirs []string
+	for _, v := range svcConfig.Volumes.Volumes {
+		mountedLocalDirs = append(mountedLocalDirs, v.Source)
+	}
+
 	dfPath := filepath.Join(svcConfig.Build.Context, df)
 	svc := dcService{
-		Name:          name,
-		Context:       svcConfig.Build.Context,
-		DfPath:        dfPath,
+		Name:             name,
+		Context:          svcConfig.Build.Context,
+		DfPath:           dfPath,
+		MountedLocalDirs: mountedLocalDirs,
+
 		ServiceConfig: svcConfig.RawYAML,
 	}
 
@@ -210,7 +250,6 @@ func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath stri
 		return m, nil, nil
 	}
 
-	// TODO(maia): ignore volumes mounted via dc.yml (b/c those auto-update)
 	df := dockerfile.Dockerfile(service.DfContents)
 	mounts, err := df.DeriveMounts(service.Context)
 	if err != nil {
@@ -231,7 +270,8 @@ func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath stri
 		localPaths = append(localPaths, s.localPathFromString(p))
 	}
 	dcInfo = dcInfo.WithRepos(reposForPaths(localPaths)).
-		WithTiltFilename(s.filename.path)
+		WithTiltFilename(s.filename.path).
+		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
 	m = m.WithDeployTarget(dcInfo).
 		WithTiltFilename(s.filename.path)
