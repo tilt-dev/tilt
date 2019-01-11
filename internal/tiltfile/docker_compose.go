@@ -200,18 +200,9 @@ func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath stri
 		DfRaw:      service.DfContents,
 	}
 
-	dockerIgnores := dockerignoresForPaths([]string{path.Dir(service.DfPath), path.Dir(dcConfigPath)})
-	repos := reposForPaths([]localPath{
-		s.filename,
-		s.localPathFromString(dcConfigPath),
-		s.localPathFromString(service.DfPath),
-	})
-
 	m := model.Manifest{
 		Name: model.ManifestName(service.Name),
-	}.WithDeployTarget(dcInfo).
-		WithDockerignores(dockerIgnores).
-		WithRepos(repos)
+	}.WithDeployTarget(dcInfo)
 
 	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
@@ -228,6 +219,19 @@ func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath stri
 
 	dcInfo.Mounts = mounts
 	m = m.WithDeployTarget(dcInfo)
+
+	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
+	for _, mount := range mounts {
+		paths = append(paths, mount.LocalPath)
+	}
+
+	m = m.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
+
+	localPaths := []localPath{s.filename}
+	for _, p := range paths {
+		localPaths = append(localPaths, s.localPathFromString(p))
+	}
+	m = m.WithRepos(reposForPaths(localPaths))
 
 	return m, []string{service.DfPath}, nil
 }
