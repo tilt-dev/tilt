@@ -17,7 +17,7 @@ proto: scripts/protocc/protocc.py
 # TODO(nick): We should have a release build that bakes in a particular
 # SYNCLET_IMAGE tag.
 install:
-	./hide_tbd_warning go install ./...
+	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/cli.version=$$(<dev_version)-dev'" ./...
 
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
@@ -114,7 +114,7 @@ docs:
 	docker rm tiltdocs || exit 0
 	rm -fR docs/_build
 	docker build -t tilt/docs -f Dockerfile.docs .
-	docker run --name tiltdocs tilt/docs
+	docker run -e "TILT_VERSION=$$(<release_version)" -e "TILT_RELEASE_DATE=$$(<release_date)" --name tiltdocs tilt/docs
 	docker cp tiltdocs:/src/_build docs/
 	docker rm tiltdocs
 

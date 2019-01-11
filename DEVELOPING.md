@@ -106,13 +106,25 @@ Requirements:
 Currently, releases have to be built on MacOS due to cross-compilation issues with Apple FSEvents.
 Cross-compiling a Linux target binary with a MacOS toolchain works fine.
 
-To create a new release at tag `$TAG`:
+To create a new release:
 
 ```
-git fetch --tags
-git tag -a v0.0.1 -m "my release"
-git push origin v0.0.1
-make release
+# just to show usage - obviously you can skip this step
+$ ./release.sh
+Bumps the current release version to the current dev version.
+Builds the a new release and publishes it to github.
+Usage: ./release.sh <new dev version number> <release tag message>
+
+The current dev version number is: 0.4.4
+
+$ ./release.sh 0.4.5 "a few bug fixes"
+# after release.sh runs, 0.4.4 will be published to github
+# and you'll have changes in your local git repo that need to be merged to master
+# e.g.:
+$ git checkout -b $USER/release\_0.4.4
+$ git commit -am "release 0.4.4"
+$ git push origin $USER/release\_0.4.4
+# now open a PR as normal
 ```
 
 goreleaser will build binaries for the latest tag (using semantic version to

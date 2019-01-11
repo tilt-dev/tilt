@@ -27,7 +27,9 @@ author = 'Windmill Engineering'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = ''
+release = os.environ['TILT_VERSION']
+# The build date
+today = os.environ['TILT_RELEASE_DATE']
 
 
 # -- General configuration ---------------------------------------------------

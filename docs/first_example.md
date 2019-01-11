@@ -11,11 +11,14 @@ For this tutorial, you should have:
 
 To double-check, run:
 
-```
-$ tilt version
-v0.4.3-dev, built 2019-01-10
-$ kubectl config current-context
-docker-for-desktop
+```eval_rst
+.. parsed-literal::
+
+  $ tilt version
+  v\ |release|\ -dev, built |today|
+  $ kubectl config current-context
+  docker-for-desktop
+
 ```
 
 If the cluster is NOT `docker-for-desktop` or `minikube`,

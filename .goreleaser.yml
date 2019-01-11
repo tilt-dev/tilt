@@ -4,6 +4,8 @@ builds:
   goos:
   - linux
   - darwin
+  ldflags:
+  - -X=github.com/windmilleng/tilt/internal/cli.version={{ .Version }}
   # Cross-compiling darwin is a pain due to fsevents,
   # and we don't expect darwin/386 users anyway.
   ignore:

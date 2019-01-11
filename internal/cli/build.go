@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-const devVersion = "0.4.3"
+// replaced at link time
+var version = "unknown"
 
 type BuildInfo struct {
 	Version string
@@ -60,6 +61,6 @@ func defaultBuildDate() string {
 func defaultBuildInfo() BuildInfo {
 	return BuildInfo{
 		Date:    defaultBuildDate(),
-		Version: fmt.Sprintf("%s-dev", devVersion),
+		Version: version,
 	}
 }
