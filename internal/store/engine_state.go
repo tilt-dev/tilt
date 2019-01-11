@@ -422,6 +422,8 @@ type Pod struct {
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
+
+	HasSynclet bool
 }
 
 func (p Pod) Empty() bool {

@@ -348,26 +348,6 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 	})
 }
 
-func TestBaDForgetsImages(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
-
-	// make sBaD return an error so that we fall back to iBaD and get a new image id
-	f.sCli.UpdateContainerErrorToReturn = errors.New("blah")
-
-	f.k8s.SetPodsWithImageResp(pod1)
-
-	bs := store.NewBuildState(alreadyBuilt, nil).WithDeployTarget(f.deployInfo())
-	_, err := f.bd.BuildAndDeploy(f.ctx, NewSanchoFastBuildManifest(f), bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.sCli.ClosedCount != 1 {
-		t.Errorf("Expected 1 synclet client close, actual: %d", f.sCli.ClosedCount)
-	}
-}
-
 func TestIgnoredFiles(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()

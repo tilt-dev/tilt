@@ -46,3 +46,12 @@ var SyncletVolume = v1.Volume{
 		},
 	},
 }
+
+func PodSpecContainsSynclet(spec v1.PodSpec) bool {
+	for _, container := range spec.Containers {
+		if container.Name == SyncletContainerName {
+			return true
+		}
+	}
+	return false
+}

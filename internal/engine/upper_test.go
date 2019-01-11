@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/synclet"
 
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -116,9 +117,6 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest mode
 		return b.nextBuildResult(imageID), nil
 	}
 	return b.nextBuildResult(manifest.ImageTarget.Ref), nil
-}
-
-func (b *fakeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -1937,7 +1935,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	pm := NewProfilerManager()
-	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm)
+	sCli := synclet.NewFakeSyncletClient()
+	sm := NewSyncletManagerForTests(k8s, sCli)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)

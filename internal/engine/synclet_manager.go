@@ -8,6 +8,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/options"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 
 	"github.com/pkg/errors"
@@ -22,6 +23,9 @@ type SyncletManager struct {
 	mutex     *sync.Mutex
 	clients   map[k8s.PodID]synclet.SyncletClient
 	newClient newCliFn
+
+	// Ensures that we don't try to setup a client multiple times if it keeps failing.
+	clientWarmAttempted map[k8s.PodID]bool
 }
 
 type tunneledSyncletClient struct {
@@ -44,10 +48,11 @@ func (t tunneledSyncletClient) Close() error {
 
 func NewSyncletManager(kCli k8s.Client) SyncletManager {
 	return SyncletManager{
-		kCli:      kCli,
-		mutex:     new(sync.Mutex),
-		clients:   make(map[k8s.PodID]synclet.SyncletClient),
-		newClient: newSyncletClient,
+		kCli:                kCli,
+		mutex:               new(sync.Mutex),
+		clients:             make(map[k8s.PodID]synclet.SyncletClient),
+		clientWarmAttempted: make(map[k8s.PodID]bool),
+		newClient:           newSyncletClient,
 	}
 }
 
@@ -62,17 +67,91 @@ func NewSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) S
 	}
 
 	return SyncletManager{
-		kCli:      kCli,
-		mutex:     new(sync.Mutex),
-		clients:   make(map[k8s.PodID]synclet.SyncletClient),
-		newClient: newClientFn,
+		kCli:                kCli,
+		mutex:               new(sync.Mutex),
+		clients:             make(map[k8s.PodID]synclet.SyncletClient),
+		clientWarmAttempted: make(map[k8s.PodID]bool),
+		newClient:           newClientFn,
+	}
+}
+
+type syncletEntry struct {
+	PodID     k8s.PodID
+	Namespace k8s.Namespace
+}
+
+func (sm SyncletManager) diff(ctx context.Context, st store.RStore) (setup []syncletEntry, teardown []k8s.PodID) {
+	state := st.RLockState()
+	defer st.RUnlockState()
+
+	// We don't need synclets if we're not watching mounts.
+	if !state.WatchMounts {
+		return
+	}
+
+	activePodIDs := make(map[k8s.PodID]bool, 0)
+
+	// Look for all the pods that have synclets, and
+	// start warming the connection.
+	for _, ms := range state.ManifestStates() {
+		for _, pod := range ms.PodSet.Pods {
+			if !pod.HasSynclet {
+				continue
+			}
+
+			id := pod.PodID
+			activePodIDs[id] = true
+			_, hasClient := sm.clients[id]
+			if hasClient || sm.clientWarmAttempted[id] {
+				continue
+			}
+
+			sm.clientWarmAttempted[id] = true
+			setup = append(setup, syncletEntry{
+				PodID:     pod.PodID,
+				Namespace: pod.Namespace,
+			})
+		}
+	}
+
+	for podID := range sm.clients {
+		if !activePodIDs[podID] {
+			teardown = append(teardown, podID)
+		}
+	}
+
+	return setup, teardown
+}
+
+func (sm SyncletManager) OnChange(ctx context.Context, store store.RStore) {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+
+	setup, teardown := sm.diff(ctx, store)
+	for _, podID := range teardown {
+		logger.Get(ctx).Debugf("Closing connection to synclet: %s", podID)
+		err := sm.forgetPod(ctx, podID)
+		if err != nil {
+			logger.Get(ctx).Infof("Closing Synclet: %v", err)
+		}
+	}
+
+	for _, entry := range setup {
+		logger.Get(ctx).Debugf("Warming connection to synclet: %s", entry.PodID)
+		_, err := sm.clientForPodInternal(ctx, entry.PodID, entry.Namespace)
+		if err != nil {
+			logger.Get(ctx).Infof("Warming Synclet: %v", err)
+		}
 	}
 }
 
 func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
+	return sm.clientForPodInternal(ctx, podID, ns)
+}
 
+func (sm SyncletManager) clientForPodInternal(ctx context.Context, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
 	client, ok := sm.clients[podID]
 	if ok {
 		return client, nil
@@ -87,10 +166,7 @@ func (sm SyncletManager) ClientForPod(ctx context.Context, podID k8s.PodID, ns k
 	return client, nil
 }
 
-func (sm SyncletManager) ForgetPod(ctx context.Context, podID k8s.PodID) error {
-	sm.mutex.Lock()
-	defer sm.mutex.Unlock()
-
+func (sm SyncletManager) forgetPod(ctx context.Context, podID k8s.PodID) error {
 	client, ok := sm.clients[podID]
 	if !ok {
 		// if we don't know about the pod, it's already forgotten - noop

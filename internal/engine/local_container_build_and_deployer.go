@@ -92,6 +92,3 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, m
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
 	return res, nil
 }
-
-func (cbd *LocalContainerBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-}

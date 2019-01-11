@@ -36,7 +36,3 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 	err = bd.dcc.Up(ctx, dcInfo.ConfigPath, manifest.Name.String(), stdout, stderr)
 	return store.BuildResult{}, err
 }
-
-func (bd *DockerComposeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-	return
-}
