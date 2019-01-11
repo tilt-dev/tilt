@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/gdamore/tcell"
 )
+
+const testCID = container.ID("beep-boop")
 
 var clockForTest = func() time.Time { return time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC) }
 
@@ -353,6 +356,7 @@ func TestRenderLogModal(t *testing.T) {
 				ResourceInfo: view.NewDCResourceInfo(
 					"docker-compose.yml",
 					"building",
+					testCID,
 					"Hi hello I'm a docker compose log",
 					time.Now().Add(time.Second*-12),
 				),
@@ -647,7 +651,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, "hellllo", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, testCID, "hellllo", now.Add(-5*time.Second)),
 				CurrentBuild: model.BuildStatus{
 					StartTime: now.Add(-5 * time.Second),
 					Reason:    model.BuildReasonFlagMountFiles,
@@ -668,7 +672,7 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, "hi im a crash", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -685,7 +689,7 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, "hi im a crash", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -702,7 +706,7 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, "hi im a crash", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
 			},
 		},
 	}

@@ -611,7 +611,7 @@ func StateToView(s EngineState) view.View {
 
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.Log(), dcState.StartTime)
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
 		return view.K8SResourceInfo{

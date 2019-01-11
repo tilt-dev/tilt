@@ -8,6 +8,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	v1 "k8s.io/api/core/v1"
 
@@ -743,7 +744,14 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 		return
 	}
 
+	if evt.Type != dockercompose.TypeContainer {
+		// We currently only support Container events.
+		return
+	}
+
 	state, _ := ms.ResourceState.(dockercompose.State)
+
+	state = state.WithContainerID(container.ID(evt.ID))
 
 	// For now, just guess at state.
 	state = state.WithStatus(evt.GuessStatus())
