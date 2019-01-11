@@ -55,7 +55,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v7
+            - homebrew_cache_v8
       # Bump cache version when changing this.
       # We set HOMEBREW_NO_AUTO_UPDATE because it's both
       # 1) not worth the cost, and
@@ -64,8 +64,8 @@ jobs:
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v7
-      - run: echo 'export PATH="/usr/local/opt/go@1.10/bin:$PATH"' >> $BASH_ENV
+          key: homebrew_cache_v8
+      - run: echo 'export PATH="/usr/local/opt/go@1.11/bin:$PATH"' >> $BASH_ENV
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: go test -tags 'skipcontainertests' ./...
