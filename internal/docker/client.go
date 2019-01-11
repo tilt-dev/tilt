@@ -40,7 +40,7 @@ var minDockerVersionStableBuildkit = semver.MustParse("1.39.0")
 var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 
 // Create an interface so this can be mocked out.
-type DockerClient interface {
+type Client interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error
@@ -72,19 +72,19 @@ func IsExitError(err error) bool {
 
 var _ error = ExitError{}
 
-var _ DockerClient = &DockerCli{}
+var _ Client = &Cli{}
 
-type DockerCli struct {
+type Cli struct {
 	*client.Client
 	supportsBuildkit bool
 }
 
-func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
+func DefaultClient(ctx context.Context, env k8s.Env) (*Cli, error) {
 	envFunc := os.Getenv
 	if env == k8s.EnvMinikube {
 		envMap, err := minikube.DockerEnv(ctx)
 		if err != nil {
-			return nil, errors.Wrap(err, "newDockerClient")
+			return nil, errors.Wrap(err, "defaultDockerClient")
 		}
 
 		envFunc = func(key string) string { return envMap[key] }
@@ -92,16 +92,16 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 
 	opts, err := CreateClientOpts(ctx, envFunc)
 	if err != nil {
-		return nil, errors.Wrap(err, "newDockerClient")
+		return nil, errors.Wrap(err, "defaultDockerClient")
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "newDockerClient")
+		return nil, errors.Wrap(err, "defaultDockerClient")
 	}
 
 	serverVersion, err := d.ServerVersion(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "newDockerClient")
+		return nil, errors.Wrap(err, "defaultDockerClient")
 	}
 
 	if !SupportedVersion(serverVersion) {
@@ -109,7 +109,7 @@ func DefaultDockerClient(ctx context.Context, env k8s.Env) (*DockerCli, error) {
 			minDockerVersion, serverVersion.APIVersion)
 	}
 
-	return &DockerCli{
+	return &Cli{
 		Client:           d,
 		supportsBuildkit: SupportsBuildkit(serverVersion),
 	}, nil
@@ -198,31 +198,31 @@ func NegotiateAPIVersion(ctx context.Context) func(client *client.Client) error 
 	}
 }
 
-func (d *DockerCli) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
 	requestedBuildkit := options.Version == types.BuilderBuildKit
-	if requestedBuildkit && !d.supportsBuildkit {
+	if requestedBuildkit && !c.supportsBuildkit {
 		options.Version = types.BuilderV1
 	}
-	return d.Client.ImageBuild(ctx, buildContext, options)
+	return c.Client.ImageBuild(ctx, buildContext, options)
 }
 
-func (d *DockerCli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
+func (c *Cli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-CopyToContainerRoot")
 	defer span.Finish()
-	return d.CopyToContainer(ctx, container, "/", content, types.CopyToContainerOptions{})
+	return c.CopyToContainer(ctx, container, "/", content, types.CopyToContainerOptions{})
 }
 
-func (d *DockerCli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
+func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerRestartNoWait")
 	defer span.Finish()
 
 	// Don't wait on the container to fully start.
 	dur := time.Duration(0)
 
-	return d.ContainerRestart(ctx, containerID, &dur)
+	return c.ContainerRestart(ctx, containerID, &dur)
 }
 
-func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
+func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer")
 	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
 	defer span.Finish()
@@ -234,19 +234,19 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ID, cmd m
 		Tty:          true,
 	}
 
-	execId, err := d.ContainerExecCreate(ctx, cID.String(), cfg)
+	execId, err := c.ContainerExecCreate(ctx, cID.String(), cfg)
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#create")
 	}
 
-	connection, err := d.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
+	connection, err := c.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#attach")
 	}
 	defer connection.Close()
 
 	esSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-ExecStart")
-	err = d.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
+	err = c.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
 	esSpan.Finish()
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#start")
@@ -265,7 +265,7 @@ func (d *DockerCli) ExecInContainer(ctx context.Context, cID container.ID, cmd m
 	}
 
 	for true {
-		inspected, err := d.ContainerExecInspect(ctx, execId.ID)
+		inspected, err := c.ContainerExecInspect(ctx, execId.ID)
 		if err != nil {
 			return errors.Wrap(err, "ExecInContainer#inspect")
 		}

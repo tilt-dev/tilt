@@ -87,7 +87,7 @@ func TestDeployTwinImages(t *testing.T) {
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
-	docker *docker.FakeDockerClient
+	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
 	ibd    *ImageBuildAndDeployer
 }
@@ -95,7 +95,7 @@ type ibdFixture struct {
 func newIBDFixture(t *testing.T) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
-	docker := docker.NewFakeDockerClient()
+	docker := docker.NewFakeClient()
 	ctx := output.CtxForTest()
 	k8s := k8s.NewFakeK8sClient()
 	ibd, err := provideImageBuildAndDeployer(ctx, docker, k8s, dir)

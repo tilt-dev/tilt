@@ -30,8 +30,8 @@ type dockerBuildFixture struct {
 	*tempdir.TempDirFixture
 	t            testing.TB
 	ctx          context.Context
-	dcli         *docker.DockerCli
-	fakeDocker   *docker.FakeDockerClient
+	dCli         *docker.Cli
+	fakeDocker   *docker.FakeClient
 	b            *dockerImageBuilder
 	cb           CacheBuilder
 	registry     *exec.Cmd
@@ -42,7 +42,7 @@ type dockerBuildFixture struct {
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
-	dcli, err := docker.DefaultDockerClient(ctx, k8s.EnvGKE)
+	dCli, err := docker.DefaultClient(ctx, k8s.EnvGKE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,17 +56,17 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
-		dcli:           dcli,
-		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
-		cb:             NewCacheBuilder(dcli),
-		reaper:         NewImageReaper(dcli),
+		dCli:           dCli,
+		b:              NewDockerImageBuilder(dCli, DefaultConsole(), DefaultOut(), labels),
+		cb:             NewCacheBuilder(dCli),
+		reaper:         NewImageReaper(dCli),
 		ps:             ps,
 	}
 }
 
 func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
-	dcli := docker.NewFakeDockerClient()
+	dCli := docker.NewFakeClient()
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",
 	})
@@ -77,10 +77,10 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
-		fakeDocker:     dcli,
-		b:              NewDockerImageBuilder(dcli, DefaultConsole(), DefaultOut(), labels),
-		cb:             NewCacheBuilder(dcli),
-		reaper:         NewImageReaper(dcli),
+		fakeDocker:     dCli,
+		b:              NewDockerImageBuilder(dCli, DefaultConsole(), DefaultOut(), labels),
+		cb:             NewCacheBuilder(dCli),
+		reaper:         NewImageReaper(dCli),
 		ps:             ps,
 	}
 }
@@ -88,7 +88,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 func (f *dockerBuildFixture) teardown() {
 	for _, cID := range f.containerIDs {
 		// ignore failures
-		_ = f.dcli.ContainerRemove(f.ctx, string(cID), types.ContainerRemoveOptions{
+		_ = f.dCli.ContainerRemove(f.ctx, string(cID), types.ContainerRemoveOptions{
 			Force: true,
 		})
 	}
@@ -144,14 +144,14 @@ func (f *dockerBuildFixture) startRegistry() {
 type expectedFile = testutils.ExpectedFile
 
 func (f *dockerBuildFixture) assertImageExists(ref reference.NamedTagged) {
-	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
+	_, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())
 	if err != nil {
 		f.t.Errorf("Expected image %q to exist, got: %v", ref, err)
 	}
 }
 
 func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
-	_, _, err := f.dcli.ImageInspectWithRaw(f.ctx, ref.String())
+	_, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())
 	if err == nil || !client.IsErrNotFound(err) {
 		f.t.Errorf("Expected image %q to fail with ErrNotFound, got: %v", ref, err)
 	}
@@ -165,7 +165,7 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 func (f *dockerBuildFixture) assertFilesInContainer(
 	ctx context.Context, cID wmcontainer.ID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
-		reader, _, err := f.dcli.CopyFromContainer(ctx, cID.String(), expectedFile.Path)
+		reader, _, err := f.dCli.CopyFromContainer(ctx, cID.String(), expectedFile.Path)
 		if expectedFile.Missing {
 			if err == nil {
 				f.t.Errorf("Expected path %q to not exist", expectedFile.Path)
@@ -190,13 +190,13 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 
 // startContainer starts a container from the given config
 func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) wmcontainer.ID {
-	resp, err := f.dcli.ContainerCreate(ctx, config, nil, nil, "")
+	resp, err := f.dCli.ContainerCreate(ctx, config, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 	cID := resp.ID
 
-	err = f.dcli.ContainerStart(ctx, cID, types.ContainerStartOptions{})
+	err = f.dCli.ContainerStart(ctx, cID, types.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}

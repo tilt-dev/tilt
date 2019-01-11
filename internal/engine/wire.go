@@ -54,7 +54,7 @@ var DeployerWireSet = wire.NewSet(
 
 func provideBuildAndDeployer(
 	ctx context.Context,
-	docker docker.DockerClient,
+	docker docker.Client,
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
@@ -72,7 +72,7 @@ func provideBuildAndDeployer(
 
 func provideImageBuildAndDeployer(
 	ctx context.Context,
-	docker docker.DockerClient,
+	docker docker.Client,
 	kClient k8s.Client,
 	dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
 	wire.Build(

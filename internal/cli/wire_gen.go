@@ -60,11 +60,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager)
-	dockerCli, err := docker.DefaultDockerClient(ctx, env)
+	cli, err := docker.DefaultClient(ctx, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	containerUpdater := build.NewContainerUpdater(dockerCli)
+	containerUpdater := build.NewContainerUpdater(cli)
 	analytics, err := provideAnalytics()
 	if err != nil {
 		return demo.Script{}, err
@@ -73,9 +73,9 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	cacheBuilder := build.NewCacheBuilder(dockerCli)
+	cacheBuilder := build.NewCacheBuilder(cli)
 	engineUpdateModeFlag := provideUpdateModeFlag()
 	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
@@ -87,7 +87,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
-	imageReaper := build.NewImageReaper(dockerCli)
+	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
 	configsController := engine.NewConfigsController()
@@ -141,11 +141,11 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	syncletManager := engine.NewSyncletManager(k8sClient)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager)
-	dockerCli, err := docker.DefaultDockerClient(ctx, env)
+	cli, err := docker.DefaultClient(ctx, env)
 	if err != nil {
 		return Threads{}, err
 	}
-	containerUpdater := build.NewContainerUpdater(dockerCli)
+	containerUpdater := build.NewContainerUpdater(cli)
 	analytics, err := provideAnalytics()
 	if err != nil {
 		return Threads{}, err
@@ -154,9 +154,9 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(dockerCli, console, writer, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	cacheBuilder := build.NewCacheBuilder(dockerCli)
+	cacheBuilder := build.NewCacheBuilder(cli)
 	engineUpdateModeFlag := provideUpdateModeFlag()
 	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
 	if err != nil {
@@ -168,7 +168,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
-	imageReaper := build.NewImageReaper(dockerCli)
+	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(k8sClient)
 	configsController := engine.NewConfigsController()
@@ -204,7 +204,7 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.DetectNodeIP, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.DefaultDockerClient, wire.Bind(new(docker.DockerClient), new(docker.DockerCli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics,
+	K8sWireSet, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics,
 	provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, server.ProvideHeadsUpServer, provideThreads,
 )
 

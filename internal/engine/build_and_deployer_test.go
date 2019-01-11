@@ -389,11 +389,11 @@ func TestIgnoredFiles(t *testing.T) {
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
-// a fake DockerClient and K8sClient
+// a fake Client and K8sClient
 type bdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
-	docker *docker.FakeDockerClient
+	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
 	sCli   *synclet.FakeSyncletClient
 	bd     BuildAndDeployer
@@ -402,7 +402,7 @@ type bdFixture struct {
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
-	docker := docker.NewFakeDockerClient()
+	docker := docker.NewFakeClient()
 	docker.ContainerListOutput = map[string][]types.Container{
 		"pod": []types.Container{
 			types.Container{
