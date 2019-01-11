@@ -541,7 +541,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	}
 	touchBar := model.ToShellCmd("touch /src/bar")
 
-	cUpdater := ContainerUpdater{dcli: f.dcli}
+	cUpdater := ContainerUpdater{dCli: f.dCli}
 	err = cUpdater.UpdateInContainer(f.ctx, cID, paths, model.EmptyMatcher, []model.Cmd{touchBar}, f.ps.Writer(f.ctx))
 	if err != nil {
 		f.t.Fatal(err)

@@ -20,7 +20,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
 	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
@@ -47,7 +47,7 @@ var (
 	_wireLabelsValue = dockerfile.Labels{}
 )
 
-func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.DockerClient, kClient k8s.Client, dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
+func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
 	console := build.DefaultConsole()
 	writer := build.DefaultOut()
 	labels := _wireLabelsValue

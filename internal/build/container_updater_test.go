@@ -31,15 +31,15 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 		f.t.Fatal(err)
 	}
 
-	if assert.Equal(f.t, 1, len(f.dcli.ExecCalls), "calls to ExecInContainer") {
-		assert.Equal(f.t, docker.TestContainer, f.dcli.ExecCalls[0].Container)
+	if assert.Equal(f.t, 1, len(f.dCli.ExecCalls), "calls to ExecInContainer") {
+		assert.Equal(f.t, docker.TestContainer, f.dCli.ExecCalls[0].Container)
 		expectedCmd := model.Cmd{Argv: []string{"rm", "-rf", "/src/does-not-exist"}}
-		assert.Equal(f.t, expectedCmd, f.dcli.ExecCalls[0].Cmd)
+		assert.Equal(f.t, expectedCmd, f.dCli.ExecCalls[0].Cmd)
 	}
 
-	if assert.Equal(f.t, 1, f.dcli.CopyCount, "calls to CopyToContainer") {
-		assert.Equal(f.t, docker.TestContainer, f.dcli.CopyContainer)
-		// TODO(maia): assert that the right stuff made it into the archive (f.dcli.CopyContent)
+	if assert.Equal(f.t, 1, f.dCli.CopyCount, "calls to CopyToContainer") {
+		assert.Equal(f.t, docker.TestContainer, f.dCli.CopyContainer)
+		// TODO(maia): assert that the right stuff made it into the archive (f.dCli.CopyContent)
 	}
 }
 
@@ -60,7 +60,7 @@ func TestUpdateInContainerExecsSteps(t *testing.T) {
 		docker.ExecCall{Container: docker.TestContainer, Cmd: cmdB},
 	}
 
-	assert.Equal(f.t, expectedExecs, f.dcli.ExecCalls)
+	assert.Equal(f.t, expectedExecs, f.dCli.ExecCalls)
 }
 
 func TestUpdateInContainerRestartsContainer(t *testing.T) {
@@ -72,28 +72,28 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 		f.t.Fatal(err)
 	}
 
-	assert.Equal(f.t, f.dcli.RestartsByContainer[docker.TestContainer], 1)
+	assert.Equal(f.t, f.dCli.RestartsByContainer[docker.TestContainer], 1)
 }
 
 type mockContainerUpdaterFixture struct {
 	*tempdir.TempDirFixture
 	t    testing.TB
 	ctx  context.Context
-	dcli *docker.FakeDockerClient
+	dCli *docker.FakeClient
 	cu   *ContainerUpdater
 }
 
 func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
-	fakeCli := docker.NewFakeDockerClient()
+	fakeCli := docker.NewFakeClient()
 	cu := &ContainerUpdater{
-		dcli: fakeCli,
+		dCli: fakeCli,
 	}
 
 	return &mockContainerUpdaterFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            output.CtxForTest(),
-		dcli:           fakeCli,
+		dCli:           fakeCli,
 		cu:             cu,
 	}
 }

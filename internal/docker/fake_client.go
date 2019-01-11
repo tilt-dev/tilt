@@ -65,7 +65,7 @@ type ExecCall struct {
 	Cmd       model.Cmd
 }
 
-type FakeDockerClient struct {
+type FakeClient struct {
 	PushCount   int
 	PushImage   string
 	PushOptions types.ImagePushOptions
@@ -94,8 +94,8 @@ type FakeDockerClient struct {
 	Images map[string]types.ImageInspect
 }
 
-func NewFakeDockerClient() *FakeDockerClient {
-	return &FakeDockerClient{
+func NewFakeClient() *FakeClient {
+	return &FakeClient{
 		PushOutput:          ExamplePushOutput1,
 		BuildOutput:         ExampleBuildOutput1,
 		ContainerListOutput: make(map[string][]types.Container),
@@ -104,22 +104,22 @@ func NewFakeDockerClient() *FakeDockerClient {
 	}
 }
 
-func (c *FakeDockerClient) SetContainerListOutput(output map[string][]types.Container) {
+func (c *FakeClient) SetContainerListOutput(output map[string][]types.Container) {
 	c.ContainerListOutput = output
 }
 
-func (c *FakeDockerClient) SetDefaultContainerListOutput() {
+func (c *FakeClient) SetDefaultContainerListOutput() {
 	c.SetContainerListOutput(DefaultContainerListOutput)
 }
 
-func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+func (c *FakeClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
 	nameFilter := options.Filters.Get("name")
 	if len(nameFilter) != 1 {
 		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
 	}
 
 	if len(c.ContainerListOutput) == 0 {
-		return nil, fmt.Errorf("FakeDockerClient ContainerListOutput not set (use `SetContainerListOutput`)")
+		return nil, fmt.Errorf("FakeClient ContainerListOutput not set (use `SetContainerListOutput`)")
 	}
 	res := c.ContainerListOutput[nameFilter[0]]
 
@@ -129,12 +129,12 @@ func (c *FakeDockerClient) ContainerList(ctx context.Context, options types.Cont
 	return res, nil
 }
 
-func (c *FakeDockerClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
+func (c *FakeClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 	c.RestartsByContainer[containerID]++
 	return nil
 }
 
-func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
+func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
 	execCall := ExecCall{
 		Container: cID.String(),
 		Cmd:       cmd,
@@ -147,34 +147,34 @@ func (c *FakeDockerClient) ExecInContainer(ctx context.Context, cID container.ID
 	return err
 }
 
-func (c *FakeDockerClient) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
+func (c *FakeClient) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
 	c.CopyCount++
 	c.CopyContainer = container
 	c.CopyContent = content
 	return nil
 }
 
-func (c *FakeDockerClient) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {
+func (c *FakeClient) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {
 	c.PushCount++
 	c.PushImage = image
 	c.PushOptions = options
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
-func (c *FakeDockerClient) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
 	c.BuildCount++
 	c.BuildOptions = options
 	return types.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
 }
 
-func (c *FakeDockerClient) ImageTag(ctx context.Context, source, target string) error {
+func (c *FakeClient) ImageTag(ctx context.Context, source, target string) error {
 	c.TagCount++
 	c.TagSource = source
 	c.TagTarget = target
 	return nil
 }
 
-func (c *FakeDockerClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
+func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
 	result, ok := c.Images[imageID]
 	if ok {
 		return result, nil, nil
@@ -182,7 +182,7 @@ func (c *FakeDockerClient) ImageInspectWithRaw(ctx context.Context, imageID stri
 	return types.ImageInspect{}, nil, notFoundError{}
 }
 
-func (c *FakeDockerClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
 	summaries := make([]types.ImageSummary, c.BuildCount)
 	for i := range summaries {
 		summaries[i] = types.ImageSummary{
@@ -193,13 +193,13 @@ func (c *FakeDockerClient) ImageList(ctx context.Context, options types.ImageLis
 	return summaries, nil
 }
 
-func (c *FakeDockerClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
 	sort.Strings(c.RemovedImageIDs)
 	return nil, nil
 }
 
-var _ DockerClient = &FakeDockerClient{}
+var _ Client = &FakeClient{}
 
 type fakeDockerResponse struct {
 	*bytes.Buffer

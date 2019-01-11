@@ -17,7 +17,7 @@ import (
 )
 
 type ImageReaper struct {
-	docker docker.DockerClient
+	docker docker.Client
 }
 
 func FilterByLabel(label dockerfile.Label) filters.KeyValuePair {
@@ -32,7 +32,7 @@ func FilterByRefName(ref reference.Named) filters.KeyValuePair {
 	return filters.Arg("reference", fmt.Sprintf("%s:*", ref.Name()))
 }
 
-func NewImageReaper(docker docker.DockerClient) ImageReaper {
+func NewImageReaper(docker docker.Client) ImageReaper {
 	return ImageReaper{
 		docker: docker,
 	}

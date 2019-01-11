@@ -32,8 +32,8 @@ var K8sWireSet = wire.NewSet(
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 
-	docker.DefaultDockerClient,
-	wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
+	docker.DefaultClient,
+	wire.Bind(new(docker.Client), new(docker.Cli)),
 
 	dockercompose.NewDockerComposeClient,
 

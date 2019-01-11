@@ -13,8 +13,8 @@ import (
 
 func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
 	wire.Build(
-		docker.DefaultDockerClient,
-		wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
+		docker.DefaultClient,
+		wire.Bind(new(docker.Client), new(docker.Cli)),
 
 		NewSynclet,
 	)

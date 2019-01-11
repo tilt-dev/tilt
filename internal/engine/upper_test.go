@@ -1884,7 +1884,7 @@ type testFixture struct {
 	b                     *fakeBuildAndDeployer
 	fsWatcher             *fakeMultiWatcher
 	timerMaker            *fakeTimerMaker
-	docker                *docker.FakeDockerClient
+	docker                *docker.FakeClient
 	hud                   *hud.FakeHud
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
@@ -1906,7 +1906,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	timerMaker := makeFakeTimerMaker(t)
 
-	docker := docker.NewFakeDockerClient()
+	docker := docker.NewFakeClient()
 	reaper := build.NewImageReaper(docker)
 
 	k8s := k8s.NewFakeK8sClient()
