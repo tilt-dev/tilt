@@ -20,10 +20,10 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	f.WriteFile("hi", "hello")
 	f.WriteFile("planets/earth", "world")
 
-	paths := []pathMapping{
-		pathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
-		pathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
-		pathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
+	paths := []PathMapping{
+		PathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
+		PathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
+		PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
 	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, paths, model.EmptyMatcher, nil, ioutil.Discard)
@@ -50,7 +50,7 @@ func TestUpdateInContainerExecsSteps(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []pathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []pathMapping{}, model.EmptyMatcher, nil, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, nil, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}

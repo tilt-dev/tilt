@@ -72,7 +72,7 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 }
 
 // ArchivePathsIfExist creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
-func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []pathMapping) error {
+func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMapping) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ArchivePathsIfExist")
 	defer span.Finish()
 	for _, p := range paths {
@@ -187,7 +187,7 @@ func (a *ArchiveBuilder) len() int {
 	return a.buf.Len()
 }
 
-func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
 

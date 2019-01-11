@@ -22,7 +22,7 @@ func NewContainerUpdater(dCli docker.Client) *ContainerUpdater {
 	return &ContainerUpdater{dCli: dCli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []pathMapping, filter model.PathMatcher, steps []model.Cmd, w io.Writer) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []PathMapping, filter model.PathMatcher, steps []model.Cmd, w io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
 
@@ -77,7 +77,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	return nil
 }
 
-func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []pathMapping) error {
+func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []PathMapping) error {
 	if len(paths) == 0 {
 		return nil
 	}
@@ -95,7 +95,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID contain
 	return nil
 }
 
-func makeRmCmd(paths []pathMapping) []string {
+func makeRmCmd(paths []PathMapping) []string {
 	cmd := []string{"rm", "-rf"}
 	for _, p := range paths {
 		cmd = append(cmd, p.ContainerPath)

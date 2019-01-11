@@ -43,12 +43,12 @@ func TestArchivePathsIfExists(t *testing.T) {
 
 	f.WriteFile("a", "a")
 
-	paths := []pathMapping{
-		pathMapping{
+	paths := []PathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("a"),
 			ContainerPath: "/a",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("b"),
 			ContainerPath: "/b",
 		},
@@ -96,12 +96,12 @@ func TestDontArchiveTiltfile(t *testing.T) {
 	f.WriteFile("a", "a")
 	f.WriteFile("Tiltfile", "Tiltfile")
 
-	paths := []pathMapping{
-		pathMapping{
+	paths := []PathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("a"),
 			ContainerPath: "/a",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("Tiltfile"),
 			ContainerPath: "/Tiltfile",
 		},
