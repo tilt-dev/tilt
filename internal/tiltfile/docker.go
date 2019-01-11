@@ -308,14 +308,14 @@ func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Mount {
 	return result
 }
 
-func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGitRepo {
+func reposForPaths(paths []localPath) []model.LocalGitRepo {
 	var result []model.LocalGitRepo
 	repoSet := map[string]bool{}
 
-	maybeAddRepo := func(path localPath) {
+	for _, path := range paths {
 		repo := path.repo
 		if repo == nil || repoSet[repo.basePath] {
-			return
+			continue
 		}
 
 		repoSet[repo.basePath] = true
@@ -325,34 +325,40 @@ func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGitRepo {
 		})
 	}
 
-	for _, m := range image.mounts {
-		maybeAddRepo(m.src)
-	}
-	maybeAddRepo(image.baseDockerfilePath)
-	maybeAddRepo(image.staticDockerfilePath)
-	maybeAddRepo(image.staticBuildPath)
-	maybeAddRepo(image.tiltfilePath)
-
 	return result
 }
 
-func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Dockerignore {
+func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
+	var paths []localPath
+	for _, m := range image.mounts {
+		paths = append(paths, m.src)
+	}
+	paths = append(paths,
+		image.baseDockerfilePath,
+		image.staticDockerfilePath,
+		image.staticBuildPath,
+		image.tiltfilePath)
+
+	return reposForPaths(paths)
+}
+
+func dockerignoresForPaths(paths []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
 
-	maybeAddDockerignore := func(path string) {
+	for _, path := range paths {
 		if path == "" || dupeSet[path] {
-			return
+			continue
 		}
 		dupeSet[path] = true
 
 		if !ospath.IsDir(path) {
-			return
+			continue
 		}
 
 		contents, err := ioutil.ReadFile(filepath.Join(path, ".dockerignore"))
 		if err != nil {
-			return
+			continue
 		}
 
 		result = append(result, model.Dockerignore{
@@ -361,15 +367,21 @@ func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Docker
 		})
 	}
 
+	return result
+}
+
+func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
+	var paths []string
+
 	for _, m := range image.mounts {
-		maybeAddDockerignore(m.src.path)
+		paths = append(paths, m.src.path)
 
 		repo := m.src.repo
 		if repo != nil {
-			maybeAddDockerignore(repo.basePath)
+			paths = append(paths, repo.basePath)
 		}
 	}
-	maybeAddDockerignore(image.staticBuildPath.path)
+	paths = append(paths, image.staticBuildPath.path)
 
-	return result
+	return dockerignoresForPaths(paths)
 }

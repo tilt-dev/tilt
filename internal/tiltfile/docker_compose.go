@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -191,26 +192,27 @@ func parseDCConfig(ctx context.Context, configPath string) ([]dcService, error) 
 	return services, nil
 }
 
-func (s dcService) ToManifest(dcConfigPath string) (manifest model.Manifest,
+func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPath: dcConfigPath,
-		YAMLRaw:    s.ServiceConfig,
-		DfRaw:      s.DfContents,
+		YAMLRaw:    service.ServiceConfig,
+		DfRaw:      service.DfContents,
 	}
+
 	m := model.Manifest{
-		Name: model.ManifestName(s.Name),
+		Name: model.ManifestName(service.Name),
 	}.WithDeployTarget(dcInfo)
 
-	if s.DfPath == "" {
+	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
 		// So, don't parse a non-existent Dockerfile for mount info.
 		return m, nil, nil
 	}
 
 	// TODO(maia): ignore volumes mounted via dc.yml (b/c those auto-update)
-	df := dockerfile.Dockerfile(s.DfContents)
-	mounts, err := df.DeriveMounts(s.Context)
+	df := dockerfile.Dockerfile(service.DfContents)
+	mounts, err := df.DeriveMounts(service.Context)
 	if err != nil {
 		return model.Manifest{}, nil, err
 	}
@@ -218,5 +220,18 @@ func (s dcService) ToManifest(dcConfigPath string) (manifest model.Manifest,
 	dcInfo.Mounts = mounts
 	m = m.WithDeployTarget(dcInfo)
 
-	return m, []string{s.DfPath}, nil
+	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
+	for _, mount := range mounts {
+		paths = append(paths, mount.LocalPath)
+	}
+
+	m = m.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
+
+	localPaths := []localPath{s.filename}
+	for _, p := range paths {
+		localPaths = append(localPaths, s.localPathFromString(p))
+	}
+	m = m.WithRepos(reposForPaths(localPaths))
+
+	return m, []string{service.DfPath}, nil
 }
