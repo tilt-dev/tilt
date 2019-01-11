@@ -18,6 +18,9 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 # run kustomize to generate yaml
 k8s_yaml(kustomize('config_dir'))
 
+# run helm to generate yaml
+k8s_yaml(helm('chart_dir'))
+
 # run a custom command to generate yaml
 k8s_yaml(local('gen_k8s_yaml.py'))
 
