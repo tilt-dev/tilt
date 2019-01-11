@@ -218,20 +218,23 @@ func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath stri
 	}
 
 	dcInfo.Mounts = mounts
-	m = m.WithDeployTarget(dcInfo)
 
 	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
 	for _, mount := range mounts {
 		paths = append(paths, mount.LocalPath)
 	}
 
-	m = m.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
+	dcInfo = dcInfo.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
 
 	localPaths := []localPath{s.filename}
 	for _, p := range paths {
 		localPaths = append(localPaths, s.localPathFromString(p))
 	}
-	m = m.WithRepos(reposForPaths(localPaths))
+	dcInfo = dcInfo.WithRepos(reposForPaths(localPaths)).
+		WithTiltFilename(s.filename.path)
+
+	m = m.WithDeployTarget(dcInfo).
+		WithTiltFilename(s.filename.path)
 
 	return m, []string{service.DfPath}, nil
 }

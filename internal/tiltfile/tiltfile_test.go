@@ -864,12 +864,13 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			ref := m.ImageTarget.Ref
+			image := m.ImageTarget
+			ref := image.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
 
-			fbInfo := m.FastBuildInfo()
+			fbInfo := image.FastBuildInfo()
 			if fbInfo.Empty() {
 				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
 			}
@@ -928,11 +929,18 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 			expectedFilter := opt.missing
-			filter := ignore.CreateBuildContextFilter(m)
+			filter := ignore.CreateBuildContextFilter(m.ImageTarget)
+			if m.IsDC() {
+				filter = ignore.CreateBuildContextFilter(m.DockerComposeTarget())
+			}
 			filterName := "BuildContextFilter"
 			if opt.fileChange {
 				var err error
-				filter, err = ignore.CreateFileChangeFilter(m)
+				if m.IsDC() {
+					filter, err = ignore.CreateFileChangeFilter(m.DockerComposeTarget())
+				} else {
+					filter, err = ignore.CreateFileChangeFilter(m.ImageTarget)
+				}
 				if err != nil {
 					f.t.Fatalf("Error creating file change filter: %v", err)
 				}

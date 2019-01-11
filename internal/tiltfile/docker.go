@@ -20,7 +20,6 @@ type dockerImage struct {
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
-	tiltfilePath       localPath
 	cachePaths         []string
 
 	staticDockerfilePath localPath
@@ -95,7 +94,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		staticDockerfile:     dockerfile.Dockerfile(bs),
 		staticBuildPath:      context,
 		ref:                  ref,
-		tiltfilePath:         s.filename,
 		staticBuildArgs:      sba,
 		cachePaths:           cachePaths,
 	}
@@ -155,7 +153,6 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		ref:                ref,
 		entrypoint:         entrypoint,
 		cachePaths:         cachePaths,
-		tiltfilePath:       s.filename,
 	}
 	s.imagesByName[ref.Name()] = r
 	s.images = append(s.images, r)
@@ -337,7 +334,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 		image.baseDockerfilePath,
 		image.staticDockerfilePath,
 		image.staticBuildPath,
-		image.tiltfilePath)
+		s.filename)
 
 	return reposForPaths(paths)
 }

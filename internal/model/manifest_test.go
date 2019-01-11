@@ -164,18 +164,22 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.exe",
+			ImageTarget: ImageTarget{
+				repos: []LocalGitRepo{
+					LocalGitRepo{
+						LocalPath:         "/foo/baz",
+						GitignoreContents: "*.exe",
+					},
 				},
 			},
 		},
 		Manifest{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.so",
+			ImageTarget: ImageTarget{
+				repos: []LocalGitRepo{
+					LocalGitRepo{
+						LocalPath:         "/foo/baz",
+						GitignoreContents: "*.so",
+					},
 				},
 			},
 		},
@@ -183,18 +187,22 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.exe",
+			ImageTarget: ImageTarget{
+				repos: []LocalGitRepo{
+					LocalGitRepo{
+						LocalPath:         "/foo/baz",
+						GitignoreContents: "*.exe",
+					},
 				},
 			},
 		},
 		Manifest{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.exe",
+			ImageTarget: ImageTarget{
+				repos: []LocalGitRepo{
+					LocalGitRepo{
+						LocalPath:         "/foo/baz",
+						GitignoreContents: "*.exe",
+					},
 				},
 			},
 		},
@@ -325,13 +333,13 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
-		Manifest{dockerignores: []Dockerignore{{"b", "a"}}},
+		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}},
+		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}},
 		false,
 	},
 	{
-		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
-		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
+		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}},
+		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}},
 		true,
 	},
 	{

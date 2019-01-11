@@ -21,6 +21,24 @@ type WatchableManifest interface {
 	Dockerignores() []model.Dockerignore
 }
 
+type dcManifest struct {
+	name model.ManifestName
+	model.DockerComposeTarget
+}
+
+func (m dcManifest) ManifestName() model.ManifestName {
+	return m.name
+}
+
+type imageManifest struct {
+	name model.ManifestName
+	model.ImageTarget
+}
+
+func (m imageManifest) ManifestName() model.ManifestName {
+	return m.name
+}
+
 // configManifest makes a WatchableManifest that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
 type configsManifest struct {
 	dependencies []string
@@ -83,7 +101,11 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 
 	manifestsToProcess := make(map[model.ManifestName]WatchableManifest)
 	for _, m := range state.Manifests() {
-		manifestsToProcess[m.Name] = m
+		if m.IsDC() {
+			manifestsToProcess[m.Name] = dcManifest{name: m.Name, DockerComposeTarget: m.DockerComposeTarget()}
+		} else {
+			manifestsToProcess[m.Name] = imageManifest{name: m.Name, ImageTarget: m.ImageTarget}
+		}
 	}
 
 	if len(state.ConfigFiles) > 0 {

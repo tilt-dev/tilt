@@ -337,10 +337,11 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				dInfo = dInfo.WithBuildDetails(fastBuild)
 			}
 
-			m.ImageTarget = dInfo
-			m = m.WithTiltFilename(image.tiltfilePath.path).
+			m.ImageTarget = dInfo.
 				WithRepos(s.reposForImage(image)).
-				WithDockerignores(s.dockerignoresForImage(image))
+				WithDockerignores(s.dockerignoresForImage(image)).
+				WithTiltFilename(s.filename.path)
+			m = m.WithTiltFilename(s.filename.path)
 		}
 		result = append(result, m)
 	}
