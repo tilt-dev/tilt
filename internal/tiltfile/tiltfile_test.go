@@ -702,10 +702,8 @@ if True:
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
 
-// TODO(dmiller): test dependencies
 func TestHelm(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -717,6 +715,15 @@ k8s_yaml(yml)
 	f.load()
 
 	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		"helm/Chart.yaml",
+		"helm/values.yaml",
+		"helm/templates/_helpers.tpl",
+		"helm/templates/deployment.yaml",
+		"helm/templates/ingress.yaml",
+		"helm/templates/service.yaml",
+	)
 }
 
 func TestHelmFromRepoPath(t *testing.T) {
@@ -735,6 +742,15 @@ k8s_yaml(yml)
 	f.load()
 
 	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		"helm/Chart.yaml",
+		"helm/values.yaml",
+		"helm/templates/_helpers.tpl",
+		"helm/templates/deployment.yaml",
+		"helm/templates/ingress.yaml",
+		"helm/templates/service.yaml",
+	)
 }
 
 type fixture struct {

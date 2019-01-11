@@ -34,9 +34,6 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 	tfRoot, _ := filepath.Split(absFilename)
 
 	s := newTiltfileState(ctx, absFilename, tfRoot)
-	defer func() {
-		configFiles = s.configFiles
-	}()
 
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {

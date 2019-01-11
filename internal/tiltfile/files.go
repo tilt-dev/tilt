@@ -293,7 +293,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	_, err = s.localPathFromSkylarkValue(path)
+	localPath, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (path): %v", err)
 	}
@@ -306,7 +306,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	deps := []string{}
 
-	filepath.Walk(path.String(), func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(localPath.path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error accessing path (%s): %v", path, err)
 		}
@@ -315,6 +315,9 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	for _, d := range deps {
 		s.recordConfigFile(d)
