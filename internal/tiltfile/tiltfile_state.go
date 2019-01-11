@@ -15,6 +15,12 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+// TODO(dmiller) this needs to add all of the files in the directory as dependencies
+const helmFunc = `
+def helm(path):
+	return local("helm template " + path)
+`
+
 type resourceSet struct {
 	dc  dcResource // currently only support one d-c.yml
 	k8s []*k8sResource
@@ -58,7 +64,8 @@ func (s *tiltfileState) exec() error {
 			logger.Get(s.ctx).Infof("%s", msg)
 		},
 	}
-	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
+
+	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins(thread))
 	return err
 }
 
@@ -82,25 +89,36 @@ const (
 	kustomizeN    = "kustomize"
 )
 
-func (s *tiltfileState) builtins() starlark.StringDict {
+func addBuiltin(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) starlark.StringDict {
+	r[name] = starlark.NewBuiltin(name, fn)
+
+	return r
+}
+
+func (s *tiltfileState) builtins(thread *starlark.Thread) starlark.StringDict {
 	r := make(starlark.StringDict)
-	add := func(name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
-		r[name] = starlark.NewBuiltin(name, fn)
+
+	r = addBuiltin(r, localN, s.local)
+	r = addBuiltin(r, readFileN, s.skylarkReadFile)
+
+	// TODO(dmiller) this really only needs to be done once, on startup
+	r, err := starlark.ExecFile(thread, "helm.builtin", helmFunc, r)
+	if err != nil {
+		panic("this should be impossible")
 	}
 
-	add(dockerComposeN, s.dockerCompose)
+	r = addBuiltin(r, localN, s.local)
+	r = addBuiltin(r, readFileN, s.skylarkReadFile)
 
-	add(dockerBuildN, s.dockerBuild)
-	add(fastBuildN, s.fastBuild)
+	r = addBuiltin(r, dockerComposeN, s.dockerCompose)
+	r = addBuiltin(r, dockerBuildN, s.dockerBuild)
+	r = addBuiltin(r, fastBuildN, s.fastBuild)
+	r = addBuiltin(r, k8sYamlN, s.k8sYaml)
+	r = addBuiltin(r, k8sResourceN, s.k8sResource)
+	r = addBuiltin(r, portForwardN, s.portForward)
+	r = addBuiltin(r, localGitRepoN, s.localGitRepo)
+	r = addBuiltin(r, kustomizeN, s.kustomize)
 
-	add(k8sYamlN, s.k8sYaml)
-	add(k8sResourceN, s.k8sResource)
-	add(portForwardN, s.portForward)
-
-	add(localGitRepoN, s.localGitRepo)
-	add(localN, s.local)
-	add(readFileN, s.skylarkReadFile)
-	add(kustomizeN, s.kustomize)
 	return r
 }
 

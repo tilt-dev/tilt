@@ -10,7 +10,7 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make check-go
-      
+
   build-js:
     docker:
       - image: circleci/node:8
@@ -60,7 +60,7 @@ jobs:
       # We set HOMEBREW_NO_AUTO_UPDATE because it's both
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
-      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install go@1.11 kustomize docker-compose
+      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install go@1.11 kustomize docker-compose kubernetes-helm
       - save_cache:
           paths:
             - /usr/local/Homebrew

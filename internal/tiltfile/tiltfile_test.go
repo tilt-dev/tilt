@@ -702,6 +702,23 @@ if True:
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
 
+// TODO(dmiller): test dependencies
+func TestHelm(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertYAMLManifest("release-name-helloworld-chart")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -1155,4 +1172,14 @@ func (f *fixture) setupExpand() {
 	)
 
 	f.gitInit("")
+}
+
+func (f *fixture) setupHelm() {
+	f.file("helm/Chart.yaml", chartYAML)
+	f.file("helm/values.yaml", valuesYAML)
+
+	f.file("helm/templates/_helpers.tpl", helpersTPL)
+	f.file("helm/templates/deployment.yaml", deploymentYAML)
+	f.file("helm/templates/ingress.yaml", ingressYAML)
+	f.file("helm/templates/service.yaml", serviceYAML)
 }
