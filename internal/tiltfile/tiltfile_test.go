@@ -717,12 +717,7 @@ k8s_yaml(yml)
 	f.assertYAMLManifest("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
-		"helm/Chart.yaml",
-		"helm/values.yaml",
-		"helm/templates/_helpers.tpl",
-		"helm/templates/deployment.yaml",
-		"helm/templates/ingress.yaml",
-		"helm/templates/service.yaml",
+		"helm",
 	)
 }
 
@@ -744,12 +739,7 @@ k8s_yaml(yml)
 	f.assertYAMLManifest("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
-		"helm/Chart.yaml",
-		"helm/values.yaml",
-		"helm/templates/_helpers.tpl",
-		"helm/templates/deployment.yaml",
-		"helm/templates/ingress.yaml",
-		"helm/templates/service.yaml",
+		"helm",
 	)
 }
 

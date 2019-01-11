@@ -319,24 +319,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	deps := []string{}
-
-	err = filepath.Walk(localPath.path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("error accessing path (%s): %v", path, err)
-		}
-		if !info.IsDir() {
-			deps = append(deps, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, d := range deps {
-		s.recordConfigFile(d)
-	}
+	s.recordConfigFile(localPath.path)
 
 	return newBlob(string(yaml)), nil
 }
