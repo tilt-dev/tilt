@@ -719,6 +719,24 @@ k8s_yaml(yml)
 	f.assertYAMLManifest("release-name-helloworld-chart")
 }
 
+func TestHelmFromRepoPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit(".")
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+r = local_git_repo('.')
+yml = helm(r.path('helm'))
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertYAMLManifest("release-name-helloworld-chart")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

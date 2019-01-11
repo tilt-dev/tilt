@@ -18,7 +18,7 @@ import (
 // TODO(dmiller) this needs to add all of the files in the directory as dependencies
 const helmFunc = `
 def helm(path):
-	return local("helm template " + path)
+	return local("helm template " + str(path))
 `
 
 type resourceSet struct {
