@@ -91,37 +91,36 @@ const (
 	kustomizeN    = "kustomize"
 )
 
-func addBuiltin(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) starlark.StringDict {
-	r[name] = starlark.NewBuiltin(name, fn)
-
-	return r
-}
-
 func (s *tiltfileState) builtins() starlark.StringDict {
 	if s.builtinsMap != nil {
 		return s.builtinsMap
 	}
+
+	addBuiltin := func(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
+		r[name] = starlark.NewBuiltin(name, fn)
+	}
+
 	r := make(starlark.StringDict)
 
-	r = addBuiltin(r, localN, s.local)
-	r = addBuiltin(r, readFileN, s.skylarkReadFile)
+	addBuiltin(r, localN, s.local)
+	addBuiltin(r, readFileN, s.skylarkReadFile)
 
 	r, err := starlark.ExecFile(&starlark.Thread{}, "helm.builtin", helmFunc, r)
 	if err != nil {
 		panic("this should be impossible")
 	}
 
-	r = addBuiltin(r, localN, s.local)
-	r = addBuiltin(r, readFileN, s.skylarkReadFile)
+	addBuiltin(r, localN, s.local)
+	addBuiltin(r, readFileN, s.skylarkReadFile)
 
-	r = addBuiltin(r, dockerComposeN, s.dockerCompose)
-	r = addBuiltin(r, dockerBuildN, s.dockerBuild)
-	r = addBuiltin(r, fastBuildN, s.fastBuild)
-	r = addBuiltin(r, k8sYamlN, s.k8sYaml)
-	r = addBuiltin(r, k8sResourceN, s.k8sResource)
-	r = addBuiltin(r, portForwardN, s.portForward)
-	r = addBuiltin(r, localGitRepoN, s.localGitRepo)
-	r = addBuiltin(r, kustomizeN, s.kustomize)
+	addBuiltin(r, dockerComposeN, s.dockerCompose)
+	addBuiltin(r, dockerBuildN, s.dockerBuild)
+	addBuiltin(r, fastBuildN, s.fastBuild)
+	addBuiltin(r, k8sYamlN, s.k8sYaml)
+	addBuiltin(r, k8sResourceN, s.k8sResource)
+	addBuiltin(r, portForwardN, s.portForward)
+	addBuiltin(r, localGitRepoN, s.localGitRepo)
+	addBuiltin(r, kustomizeN, s.kustomize)
 
 	s.builtinsMap = r
 
