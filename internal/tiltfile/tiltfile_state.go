@@ -42,6 +42,8 @@ type tiltfileState struct {
 
 	// for assembly
 	usedImages map[string]bool
+
+	builtinsMap starlark.StringDict
 }
 
 func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
@@ -96,6 +98,9 @@ func addBuiltin(r starlark.StringDict, name string, fn func(thread *starlark.Thr
 }
 
 func (s *tiltfileState) builtins() starlark.StringDict {
+	if s.builtinsMap != nil {
+		return s.builtinsMap
+	}
 	r := make(starlark.StringDict)
 
 	r = addBuiltin(r, localN, s.local)
@@ -118,6 +123,8 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	r = addBuiltin(r, portForwardN, s.portForward)
 	r = addBuiltin(r, localGitRepoN, s.localGitRepo)
 	r = addBuiltin(r, kustomizeN, s.kustomize)
+
+	s.builtinsMap = r
 
 	return r
 }
