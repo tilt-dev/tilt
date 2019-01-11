@@ -65,7 +65,7 @@ func (s *tiltfileState) exec() error {
 		},
 	}
 
-	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins(thread))
+	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
 	return err
 }
 
@@ -95,14 +95,14 @@ func addBuiltin(r starlark.StringDict, name string, fn func(thread *starlark.Thr
 	return r
 }
 
-func (s *tiltfileState) builtins(thread *starlark.Thread) starlark.StringDict {
+func (s *tiltfileState) builtins() starlark.StringDict {
 	r := make(starlark.StringDict)
 
 	r = addBuiltin(r, localN, s.local)
 	r = addBuiltin(r, readFileN, s.skylarkReadFile)
 
 	// TODO(dmiller) this really only needs to be done once, on startup
-	r, err := starlark.ExecFile(thread, "helm.builtin", helmFunc, r)
+	r, err := starlark.ExecFile(&starlark.Thread{}, "helm.builtin", helmFunc, r)
 	if err != nil {
 		panic("this should be impossible")
 	}
