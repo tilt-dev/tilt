@@ -19,7 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
@@ -32,6 +32,7 @@ type ImageBuildAndDeployer struct {
 	analytics     analytics.Analytics
 	updateMode    UpdateMode
 	injectSynclet bool
+	clock         build.Clock
 }
 
 func NewImageBuildAndDeployer(
@@ -40,7 +41,8 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics analytics.Analytics,
-	updateMode UpdateMode) *ImageBuildAndDeployer {
+	updateMode UpdateMode,
+	c build.Clock) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		b:            b,
 		cacheBuilder: cacheBuilder,
@@ -48,6 +50,7 @@ func NewImageBuildAndDeployer(
 		env:          env,
 		analytics:    analytics,
 		updateMode:   updateMode,
+		clock:        c,
 	}
 }
 
@@ -74,7 +77,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	}()
 
 	numStages := 2
-	ps := build.NewPipelineState(ctx, numStages)
+	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
 	err = manifest.ValidateDockerK8sManifest()

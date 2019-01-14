@@ -18,7 +18,7 @@ func TestPipeline(t *testing.T) {
 	var err error
 	out := &bytes.Buffer{}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.InfoLvl, out))
-	ps := NewPipelineState(ctx, 1)
+	ps := NewPipelineState(ctx, 1, fakeClock{})
 	ps.StartPipelineStep(ctx, "%s %s", "hello", "world")
 	ps.Printf(ctx, "in ur step")
 	ps.EndPipelineStep(ctx)
@@ -31,7 +31,7 @@ func TestPipelineErrored(t *testing.T) {
 	err := fmt.Errorf("oh noes")
 	out := &bytes.Buffer{}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.InfoLvl, out))
-	ps := NewPipelineState(ctx, 1)
+	ps := NewPipelineState(ctx, 1, fakeClock{})
 	ps.StartPipelineStep(ctx, "%s %s", "hello", "world")
 	ps.Printf(ctx, "in ur step")
 	ps.EndPipelineStep(ctx)
@@ -44,7 +44,7 @@ func TestPipelineMultilinePrint(t *testing.T) {
 	var err error
 	out := &bytes.Buffer{}
 	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.InfoLvl, out))
-	ps := NewPipelineState(ctx, 1)
+	ps := NewPipelineState(ctx, 1, fakeClock{})
 	ps.StartPipelineStep(ctx, "%s %s", "hello", "world")
 	ps.Printf(ctx, "line 1\nline 2\n")
 	ps.EndPipelineStep(ctx)

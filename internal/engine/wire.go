@@ -65,6 +65,7 @@ func provideBuildAndDeployer(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
+		build.ProvideClock,
 	)
 
 	return nil, nil
@@ -81,6 +82,7 @@ func provideImageBuildAndDeployer(
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		wire.Value(k8s.Env(k8s.EnvDockerDesktop)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		build.ProvideClock,
 	)
 
 	return nil, nil

@@ -40,6 +40,10 @@ type dockerBuildFixture struct {
 	ps           *PipelineState
 }
 
+type fakeClock struct{}
+
+func (fakeClock) Now() time.Time { return time.Unix(0, 0) }
+
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
 	dCli, err := docker.DefaultClient(ctx, k8s.EnvGKE)
@@ -47,7 +51,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t.Fatal(err)
 	}
 
-	ps := NewPipelineState(ctx, 3)
+	ps := NewPipelineState(ctx, 3, fakeClock{})
 
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",
@@ -71,7 +75,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		TestImage: "1",
 	})
 
-	ps := NewPipelineState(ctx, 3)
+	ps := NewPipelineState(ctx, 3, realClock{})
 
 	return &dockerBuildFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
