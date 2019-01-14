@@ -82,6 +82,61 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
 }
 
+func TestExplicitDockerfileAsLocalPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+r = local_git_repo('.')
+docker_build('gcr.io/foo', 'foo', dockerfile=r.path('other/Dockerfile'))
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+}
+
+func TestExplicitDockerfileContents(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml")
+	f.assertManifest("foo", db(image("gcr.io/foo")))
+}
+
+func TestExplicitDockerfileContentsAsBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+df = read_file('other/Dockerfile')
+docker_build('gcr.io/foo', 'foo', dockerfile_contents=df)
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+	f.assertManifest("foo", db(image("gcr.io/foo")))
+}
+
+func TestCantSpecifyDFPathAndContents(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine', dockerfile='foo/Dockerfile')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.loadErrString("Cannot specify both dockerfile and dockerfile_contents")
+}
+
 func TestFastBuildSimple(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
