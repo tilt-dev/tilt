@@ -17,9 +17,9 @@ type DockerComposeTarget struct {
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
 	// than duplicating it in each DockerComposeTarget.
-	tiltFilename            string
-	dockerignores           []Dockerignore
-	repos                   []LocalGitRepo
+	tiltFilename  string
+	dockerignores []Dockerignore
+	repos         []LocalGitRepo
 	// These directories and their children will not trigger file change events
 	ignoredLocalDirectories []string
 }

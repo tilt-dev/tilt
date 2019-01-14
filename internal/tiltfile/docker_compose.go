@@ -134,9 +134,9 @@ type dcBuildConfig struct {
 
 // A docker-compose service, according to Tilt.
 type dcService struct {
-	Name             string
-	Context          string
-	DfPath           string
+	Name    string
+	Context string
+	DfPath  string
 	// these are the host machine paths that DC will mount from the local volume into the container
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
