@@ -53,6 +53,8 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 type IgnorableManifest interface {
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+
+	// These directories and their children will not trigger file change events
 	IgnoredLocalDirectories() []string
 }
 
