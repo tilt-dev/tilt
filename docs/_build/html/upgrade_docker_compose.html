@@ -189,28 +189,28 @@
            <div itemprop="articleBody">
             
   <div class="section" id="from-docker-compose">
-<span id="from-docker-compose"></span><h1>From Docker Compose<a class="headerlink" href="#from-docker-compose" title="Permalink to this headline">¶</a></h1>
+<h1>From Docker Compose<a class="headerlink" href="#from-docker-compose" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="or-try-it-directly">
-<span id="or-try-it-directly"></span><h2>Or, try it directly!<a class="headerlink" href="#or-try-it-directly" title="Permalink to this headline">¶</a></h2>
-<p>If you’re feeling adventurous, instead of following the steps below to write a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> that replicates your current Docker Compose setup, you can run Tilt directly on your <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> file: check out our doc on <a class="reference external" href="docker_compose_alpha.md">Docker Compose Support (Alpha)</a>.</p>
+<h2>Or, try it directly!<a class="headerlink" href="#or-try-it-directly" title="Permalink to this headline">¶</a></h2>
+<p>If you’re feeling adventurous, instead of following the steps below to write a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> that replicates your current Docker Compose setup, you can run Tilt directly on your <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> file: check out our doc on <a class="reference external" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a>.</p>
 </div>
 <div class="section" id="before-you-begin">
-<span id="before-you-begin"></span><h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
+<h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li><a class="reference external" href="quickstart.html">Install Tilt</a> and Kubernetes if they are not yet installed.</li>
 <li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
 </ul>
 </div>
 <div class="section" id="differences-between-docker-compose-and-tilt">
-<span id="differences-between-docker-compose-and-tilt"></span><h2>Differences between Docker Compose and Tilt<a class="headerlink" href="#differences-between-docker-compose-and-tilt" title="Permalink to this headline">¶</a></h2>
+<h2>Differences between Docker Compose and Tilt<a class="headerlink" href="#differences-between-docker-compose-and-tilt" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Docker Compose is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called
-<a class="reference external" href="https://github.com/bazelbuild/starlark#tour&gt;">Starlark</a>.</li>
+<a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>.</li>
 <li>Docker Compose uses runs services on Docker Machine or Docker Swarm. Tilt runs services natively on Kubernetes.</li>
 </ul>
 </div>
 <div class="section" id="migrate-from-docker-compose-to-tilt">
-<span id="migrate-from-docker-compose-to-tilt"></span><h2>Migrate from Docker Compose to Tilt<a class="headerlink" href="#migrate-from-docker-compose-to-tilt" title="Permalink to this headline">¶</a></h2>
+<h2>Migrate from Docker Compose to Tilt<a class="headerlink" href="#migrate-from-docker-compose-to-tilt" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take a simple <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> file with one service:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">version</span><span class="p">:</span> <span class="s">&#39;3&#39;</span>
 <span class="nt">services</span><span class="p">:</span>
@@ -347,6 +347,7 @@ In Docker Compose your service has a <code class="docutils literal notranslate">
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   
