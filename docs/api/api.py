@@ -22,14 +22,17 @@ def local_git_repo(path: str) -> Repo:
   """Creates a ``repo`` from the git repo at ``path``."""
   pass
 
-def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: str = "Dockerfile") -> None:
+def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: Union[str, LocalPath] = "Dockerfile", dockerfile_contents: Union[str, Blob]) -> None:
   """Builds a docker image.
+
+  Note that you can't set both the dockerfile and dockerfile_contents arguments.
 
   Args:
     ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
     context: The path to use as the Docker build context.
     build_args: the build-time variables that are accessed like regular environment variables in the ``RUN`` instruction of the Dockerfile. See `the Docker Build Arg documentation <https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg>`_
     dockerfile: The path to a Dockerfile
+    dockerfile_contents: the raw contents of the Dockerfile to use for this build
   """
 pass
 
