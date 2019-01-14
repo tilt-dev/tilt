@@ -235,6 +235,20 @@
 </dd></dl>
 
 <dl class="function">
+<dt id="api.helm">
+<code class="descclassname">api.</code><code class="descname">helm</code><span class="sig-paren">(</span><em>pathToChartDir</em><span class="sig-paren">)</span><a class="headerlink" href="#api.helm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run <a class="reference external" href="https://docs.helm.sh/helm/#helm-template">helm template</a> on a given directory that contains a chart and return the fully rendered YAML as a Blob</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
 <dt id="api.k8s_resource">
 <code class="descclassname">api.</code><code class="descname">k8s_resource</code><span class="sig-paren">(</span><em>name</em>, <em>yaml=''</em>, <em>image=''</em>, <em>port_forwards=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_resource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a kubernetes resource that tilt can deploy using the specified image.</p>

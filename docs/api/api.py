@@ -102,3 +102,6 @@ def read_file(file_path: Union[str, LocalPath]) -> Blob:
 def kustomize(pathToDir: str) -> Blob:
   """Run `kustomize <https://github.com/kubernetes-sigs/kustomize>`_ on a given directory and return the resulting YAML as a Blob"""
   pass
+
+def helm(pathToChartDir: Union[str, LocalPath]) -> Blob:
+  """Run `helm template <https://docs.helm.sh/helm/#helm-template>`_ on a given directory that contains a chart and return the fully rendered YAML as a Blob"""

@@ -258,6 +258,22 @@ func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 	return string(out), nil
 }
 
+func (s *tiltfileState) execLocalCmdArgv(argv ...string) (string, error) {
+	c := exec.Command(argv[0], argv[1:]...)
+	c.Dir = filepath.Dir(s.filename.path)
+	out, err := c.Output()
+	if err != nil {
+		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", argv, err, string(out))
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(exitError.Stderr))
+		}
+		return "", errors.New(errorMessage)
+	}
+
+	return string(out), nil
+}
+
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
@@ -282,6 +298,28 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 	for _, d := range deps {
 		s.recordConfigFile(d)
 	}
+
+	return newBlob(string(yaml)), nil
+}
+
+func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	localPath, err := s.localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	yaml, err := s.execLocalCmdArgv("helm", "template", localPath.path)
+	if err != nil {
+		return nil, err
+	}
+
+	s.recordConfigFile(localPath.path)
 
 	return newBlob(string(yaml)), nil
 }

@@ -36,6 +36,8 @@ type tiltfileState struct {
 
 	// for assembly
 	usedImages map[string]bool
+
+	builtinsMap starlark.StringDict
 }
 
 func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
@@ -58,6 +60,7 @@ func (s *tiltfileState) exec() error {
 			logger.Get(s.ctx).Infof("%s", msg)
 		},
 	}
+
 	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
 	return err
 }
@@ -80,27 +83,35 @@ const (
 	localN        = "local"
 	readFileN     = "read_file"
 	kustomizeN    = "kustomize"
+	helmN         = "helm"
 )
 
 func (s *tiltfileState) builtins() starlark.StringDict {
-	r := make(starlark.StringDict)
-	add := func(name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
+	if s.builtinsMap != nil {
+		return s.builtinsMap
+	}
+
+	addBuiltin := func(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
 		r[name] = starlark.NewBuiltin(name, fn)
 	}
 
-	add(dockerComposeN, s.dockerCompose)
+	r := make(starlark.StringDict)
 
-	add(dockerBuildN, s.dockerBuild)
-	add(fastBuildN, s.fastBuild)
+	addBuiltin(r, localN, s.local)
+	addBuiltin(r, readFileN, s.skylarkReadFile)
 
-	add(k8sYamlN, s.k8sYaml)
-	add(k8sResourceN, s.k8sResource)
-	add(portForwardN, s.portForward)
+	addBuiltin(r, dockerComposeN, s.dockerCompose)
+	addBuiltin(r, dockerBuildN, s.dockerBuild)
+	addBuiltin(r, fastBuildN, s.fastBuild)
+	addBuiltin(r, k8sYamlN, s.k8sYaml)
+	addBuiltin(r, k8sResourceN, s.k8sResource)
+	addBuiltin(r, portForwardN, s.portForward)
+	addBuiltin(r, localGitRepoN, s.localGitRepo)
+	addBuiltin(r, kustomizeN, s.kustomize)
+	addBuiltin(r, helmN, s.helm)
 
-	add(localGitRepoN, s.localGitRepo)
-	add(localN, s.local)
-	add(readFileN, s.skylarkReadFile)
-	add(kustomizeN, s.kustomize)
+	s.builtinsMap = r
+
 	return r
 }
 
@@ -359,7 +370,9 @@ func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 		result = append(result, m)
 		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, configFiles...))
 	}
-	s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, dc.configPath))
+	if dc.configPath != "" {
+		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, dc.configPath))
+	}
 	return result, nil
 }
 

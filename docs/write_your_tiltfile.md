@@ -15,11 +15,12 @@ k8s_yaml("k8s.yaml")
 # list of yaml files
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 
-# run kustomize to generate yaml
-k8s_yaml(kustomize('config_dir'))
-
 # run a custom command to generate yaml
 k8s_yaml(local('gen_k8s_yaml.py'))
+
+# we also handle common tools to generate yaml
+k8s_yaml(kustomize('config_dir'))
+k8s_yaml(helm('chart_dir'))
 
 ## Part 2: Images
 
