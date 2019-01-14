@@ -15,12 +15,9 @@ import (
 const ConfigsManifestName = "_ConfigsManifest"
 
 type WatchableManifest interface {
+	ignore.IgnorableManifest
 	Dependencies() []string
 	ManifestName() model.ManifestName
-	LocalRepos() []model.LocalGitRepo
-	Dockerignores() []model.Dockerignore
-	// These directories and their children will not trigger file change events
-	IgnoredLocalDirectories() []string
 }
 
 type dcManifest struct {
