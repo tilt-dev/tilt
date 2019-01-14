@@ -21,7 +21,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
@@ -44,7 +44,7 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 
 	podA := f.testPod("pod-a", "fe", "Running", testContainer, time.Now())
@@ -73,7 +73,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
+	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.state.FilesChanged())
 	f.waitForCompletedBuildCount(1)
 

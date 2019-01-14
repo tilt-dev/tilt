@@ -26,8 +26,8 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-var imageID = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
-var alreadyBuilt = store.BuildResult{Image: imageID}
+var testImageRef = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
+var alreadyBuilt = store.BuildResult{Image: testImageRef}
 
 type expectedFile = testutils.ExpectedFile
 

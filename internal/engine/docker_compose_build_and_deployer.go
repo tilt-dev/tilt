@@ -29,10 +29,10 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, man
 	if !manifest.IsDC() {
 		return store.BuildResult{}, RedirectToNextBuilderf("not a docker compose manifest")
 	}
-	dcInfo := manifest.DockerComposeTarget()
+	dc := manifest.DockerComposeTarget()
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = bd.dcc.Up(ctx, dcInfo.ConfigPath, manifest.Name.String(), stdout, stderr)
+	err = bd.dcc.Up(ctx, dc.ConfigPath, dc.Name, stdout, stderr)
 	return store.BuildResult{}, err
 }

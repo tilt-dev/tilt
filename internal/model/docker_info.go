@@ -25,9 +25,13 @@ type ImageTarget struct {
 }
 
 func (i ImageTarget) ID() TargetID {
+	name := TargetName("")
+	if i.Ref != nil {
+		name = TargetName(i.Ref.String())
+	}
 	return TargetID{
 		Type: TargetTypeImage,
-		Name: TargetName(i.Ref.String()),
+		Name: name,
 	}
 }
 
