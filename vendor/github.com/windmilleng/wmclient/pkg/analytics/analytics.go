@@ -33,8 +33,8 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func Init(appName string) (Analytics, *cobra.Command, error) {
-	a := NewDefaultRemoteAnalytics(appName)
+func Init(appName string, options ...Option) (Analytics, *cobra.Command, error) {
+	a := NewDefaultRemoteAnalytics(appName, options...)
 	c, err := initCLI()
 	if err != nil {
 		return nil, nil, err
@@ -51,12 +51,13 @@ type Analytics interface {
 }
 
 type remoteAnalytics struct {
-	cli     HTTPClient
-	app     string
-	url     string
-	userId  string
-	optedIn bool
-	wg      *sync.WaitGroup
+	cli        HTTPClient
+	app        string
+	url        string
+	userId     string
+	optedIn    bool
+	globalTags map[string]string
+	wg         *sync.WaitGroup
 }
 
 func hashMD5(in []byte) string {
@@ -83,13 +84,26 @@ func getUserID() string {
 
 // Create a remote analytics object with Windmill-specific defaults
 // for the HTTPClient, report URL, user ID, and opt-in status.
-func NewDefaultRemoteAnalytics(appName string) *remoteAnalytics {
+func NewDefaultRemoteAnalytics(appName string, options ...Option) *remoteAnalytics {
 	optedIn := optedIn()
-	return NewRemoteAnalytics(cli, appName, statsEndpt, getUserID(), optedIn)
+	return NewRemoteAnalytics(cli, appName, statsEndpt, getUserID(), optedIn, options...)
 }
 
-func NewRemoteAnalytics(cli HTTPClient, app, url, userId string, optedIn bool) *remoteAnalytics {
-	return &remoteAnalytics{cli: cli, app: app, url: url, userId: userId, optedIn: optedIn, wg: &sync.WaitGroup{}}
+// TODO(nick): Break the API and change these parameters over to use the Options api
+func NewRemoteAnalytics(cli HTTPClient, app, url, userId string, optedIn bool, options ...Option) *remoteAnalytics {
+	a := &remoteAnalytics{
+		cli:        cli,
+		app:        app,
+		url:        url,
+		userId:     userId,
+		optedIn:    optedIn,
+		wg:         &sync.WaitGroup{},
+		globalTags: make(map[string]string),
+	}
+	for _, o := range options {
+		o(a)
+	}
+	return a
 }
 
 func (a *remoteAnalytics) namespaced(name string) string {
@@ -97,6 +111,9 @@ func (a *remoteAnalytics) namespaced(name string) string {
 }
 func (a *remoteAnalytics) baseReqBody(name string, tags map[string]string) map[string]interface{} {
 	req := map[string]interface{}{keyName: a.namespaced(name), keyUser: a.userId}
+	for k, v := range a.globalTags {
+		req[k] = v
+	}
 	for k, v := range tags {
 		req[k] = v
 	}
