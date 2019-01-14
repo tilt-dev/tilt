@@ -17,6 +17,24 @@ services:
     ports:
       - "12312:12312"`
 
+const configWithMounts = `version: '3.2'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    volumes:
+      - ./foo:/foo
+      # these volumes are currently unsupported, but included here to ensure we don't blow up on them
+      - bar:/bar
+      - type: volume
+        source: baz
+        target: /baz
+    ports:
+      - "12312:12312"
+volumes:
+  bar: {}
+  baz: {}`
+
 // YAML for Foo config looks a little different from the above after being read into
 // a struct and YAML'd back out...
 func (f *fixture) simpleConfigFooYAML() string {
@@ -239,6 +257,30 @@ RUN echo hi`
 	f.assertManifest("foo",
 		buildFilters("foo/tmp"),
 		fileChangeFilters("foo/tmp"),
+	)
+}
+
+func TestDockerComposeIgnoresFileChangesOnMountedVolumes(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	df := `FROM alpine
+
+ADD . /app
+COPY ./thing.go /stuff
+RUN echo hi`
+	f.file("foo/Dockerfile", df)
+
+	f.file("docker-compose.yml", configWithMounts)
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.load("foo")
+
+	f.assertManifest("foo",
+		// ensure that DC mounts are *not* ignored for builds, because all files are still relevant to builds
+		buildMatches("foo/Dockerfile"),
+		// ensure that DC mounts *are* ignored for file watching, i.e., won't trigger builds
+		fileChangeFilters("foo/blah"),
 	)
 }
 

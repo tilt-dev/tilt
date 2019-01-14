@@ -53,6 +53,7 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 type IgnorableManifest interface {
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+	IgnoredLocalDirectories() []string
 }
 
 // Filter out files that should not trigger new builds.
@@ -69,6 +70,9 @@ func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 		if err == nil {
 			matchers = append(matchers, dim)
 		}
+	}
+	for _, p := range m.IgnoredLocalDirectories() {
+		matchers = append(matchers, directoryMatcher{p})
 	}
 
 	// Filter out spurious changes that we don't want to rebuild on, like IDE
@@ -118,4 +122,13 @@ func (m tempBrokenSymlinkMatcher) Matches(path string, isDir bool) (bool, error)
 	}
 
 	return ospath.IsBrokenSymlink(path)
+}
+
+type directoryMatcher struct {
+	dir string
+}
+
+func (d directoryMatcher) Matches(p string, isDir bool) (bool, error) {
+	_, isChild := ospath.Child(d.dir, p)
+	return isChild, nil
 }

@@ -20,6 +20,8 @@ type DockerComposeTarget struct {
 	tiltFilename  string
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
+	// These directories and their children will not trigger file change events
+	ignoredLocalDirectories []string
 }
 
 func (t DockerComposeTarget) ID() TargetID {
@@ -55,12 +57,21 @@ func (t DockerComposeTarget) LocalRepos() []LocalGitRepo {
 	return t.repos
 }
 
+func (t DockerComposeTarget) IgnoredLocalDirectories() []string {
+	return t.ignoredLocalDirectories
+}
+
 func (t DockerComposeTarget) TiltFilename() string {
 	return t.tiltFilename
 }
 
 func (t DockerComposeTarget) WithTiltFilename(f string) DockerComposeTarget {
 	t.tiltFilename = f
+	return t
+}
+
+func (t DockerComposeTarget) WithIgnoredLocalDirectories(dirs []string) DockerComposeTarget {
+	t.ignoredLocalDirectories = dirs
 	return t
 }
 
