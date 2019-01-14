@@ -111,6 +111,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -188,23 +189,23 @@
            <div itemprop="articleBody">
             
   <div class="section" id="from-skaffold">
-<h1>From Skaffold<a class="headerlink" href="#from-skaffold" title="Permalink to this headline">¶</a></h1>
+<span id="from-skaffold"></span><h1>From Skaffold<a class="headerlink" href="#from-skaffold" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="before-you-begin">
-<h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
+<span id="before-you-begin"></span><h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li><a class="reference external" href="install.html">Install Tilt</a></li>
 <li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
 </ul>
 </div>
 <div class="section" id="differences-between-skaffold-and-tilt">
-<h2>Differences between Skaffold and Tilt<a class="headerlink" href="#differences-between-skaffold-and-tilt" title="Permalink to this headline">¶</a></h2>
+<span id="differences-between-skaffold-and-tilt"></span><h2>Differences between Skaffold and Tilt<a class="headerlink" href="#differences-between-skaffold-and-tilt" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Skaffold streams the logs for all services it started. We found one combined stream of all services difficult to use and understand for anything beyond the most simple apps. Tilt instead provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.</li>
-<li>Skaffold is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called <a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>.</li>
+<li>Skaffold is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called <a class="reference external" href="https://github.com/bazelbuild/starlark#tour&gt;">Starlark</a>.</li>
 </ul>
 </div>
 <div class="section" id="migrate-from-skaffold-to-tilt">
-<h2>Migrate from Skaffold to Tilt<a class="headerlink" href="#migrate-from-skaffold-to-tilt" title="Permalink to this headline">¶</a></h2>
+<span id="migrate-from-skaffold-to-tilt"></span><h2>Migrate from Skaffold to Tilt<a class="headerlink" href="#migrate-from-skaffold-to-tilt" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take a relatively simple <code class="docutils literal notranslate"><span class="pre">skaffold.yaml</span></code> file with two services:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
 <span class="nt">kind</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
@@ -256,7 +257,7 @@
 </div>
 </div>
 <div class="section" id="that-s-it">
-<h2>That’s it!<a class="headerlink" href="#that-s-it" title="Permalink to this headline">¶</a></h2>
+<span id="that-s-it"></span><h2>That’s it!<a class="headerlink" href="#that-s-it" title="Permalink to this headline">¶</a></h2>
 <p>Now your Tiltfile should look like this:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/spoonerisms.yaml&#39;</span><span class="p">])</span>
 <span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;snack&#39;</span><span class="p">)</span>
@@ -311,7 +312,6 @@
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

@@ -108,6 +108,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -185,7 +186,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="a-simple-tiltfile">
-<h1>A Simple Tiltfile<a class="headerlink" href="#a-simple-tiltfile" title="Permalink to this headline">¶</a></h1>
+<span id="a-simple-tiltfile"></span><h1>A Simple Tiltfile<a class="headerlink" href="#a-simple-tiltfile" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial looks at a simple Tiltfile, and breaks down line-by-line what it does.</p>
 <p>We’ll be digging deeper into the <code class="docutils literal notranslate"><span class="pre">oneup</span></code> project introduced in <a class="reference external" href="first_example.html">the last tutorial</a>.</p>
 <p>Let’s look at the Tiltfile line-by-line and see what each part does.</p>
@@ -263,7 +264,7 @@ and download your image).</p>
 <code class="docutils literal notranslate"><span class="pre">containerPort</span></code> for the <code class="docutils literal notranslate"><span class="pre">oneup</span></code> container.  Tilt will wait for the server to
 come up and make the connection when its ready.</p>
 <div class="section" id="next-steps">
-<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>That’s it! In this guide, we’ve stepped through every line of a simple Tiltfile.</p>
 <p>A good way to learn how to use Tilt is run <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code>, then make edits to the
 Tiltfile, Kubernetes YAML, or Dockerfile. The Tilt UX will update in real-time
@@ -318,7 +319,6 @@ to make your development loop lightning-fast.</p>
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

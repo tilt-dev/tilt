@@ -760,7 +760,10 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	state = state.WithContainerID(container.ID(evt.ID))
 
 	// For now, just guess at state.
-	state = state.WithStatus(evt.GuessStatus())
+	status := evt.GuessStatus()
+	if status != "" {
+		state = state.WithStatus(status)
+	}
 
 	if evt.IsStartupEvent() {
 		state = state.WithStartTime(time.Now())

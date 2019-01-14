@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
-	dockercompose "github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -1722,7 +1722,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 		return ms.DCResourceState().Status == dockercompose.StatusInProg
 	})
 
-	startTime := time.Now()
+	beforeStart := time.Now()
 
 	// Send event corresponding to status = "OK"
 	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
@@ -1735,7 +1735,19 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	})
 
 	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
-		assert.True(t, ms.DCResourceState().StartTime.After(startTime))
+		assert.True(t, ms.DCResourceState().StartTime.After(beforeStart))
+
+	})
+
+	// An event unrelated to status shouldn't change the status
+	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionExecCreate))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusUp
 	})
 }
 

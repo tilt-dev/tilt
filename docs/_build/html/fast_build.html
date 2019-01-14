@@ -32,7 +32,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Tiltfile API Reference" href="api.html" />
-    <link rel="prev" title="From Docker Compose" href="upgrade_docker_compose.html" />
+    <link rel="prev" title="Docker Compose Support (Alpha)" href="docker_compose_alpha.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -105,6 +105,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul class="current">
@@ -185,10 +186,10 @@
            <div itemprop="articleBody">
             
   <div class="section" id="optimizing-a-tiltfile">
-<h1>Optimizing a Tiltfile<a class="headerlink" href="#optimizing-a-tiltfile" title="Permalink to this headline">¶</a></h1>
+<span id="optimizing-a-tiltfile"></span><h1>Optimizing a Tiltfile<a class="headerlink" href="#optimizing-a-tiltfile" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial looks at a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> with build optimizations.
 We explain what they do, and why you would want to use them.</p>
-<p>In <a class="reference internal" href="first_config.html"><span class="doc">the previous tutorial</span></a>, we introduced the <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code> function.
+<p>In <a class="reference external" href="first_config.md">the previous tutorial</a>, we introduced the <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code> function.
 This function builds a Docker image. Tilt will watch the inputs to the
 image, and rebuild it every time they change.</p>
 <p>This works well for interpreted languages like JavaScript and Python
@@ -258,7 +259,7 @@ don’t delete all their code and re-clone it from git every time we need to do 
 We re-run the command in the same directory. Modern tools then take advantage of local caches.
 Tilt runs commands with the same approach, but inside a container.</p>
 <div class="section" id="next-steps">
-<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>In this guide, we explored just a few of the functions we can use in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>
 to keep your build fast. For even more functions and tricks,
 read the complete <a class="reference external" href="api.html">Tiltfile API reference</a>.</p>
@@ -276,7 +277,7 @@ read the complete <a class="reference external" href="api.html">Tiltfile API ref
         <a href="api.html" class="btn btn-neutral float-right" title="Tiltfile API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="upgrade_docker_compose.html" class="btn btn-neutral" title="From Docker Compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="docker_compose_alpha.html" class="btn btn-neutral" title="Docker Compose Support (Alpha)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -310,7 +311,6 @@ read the complete <a class="reference external" href="api.html">Tiltfile API ref
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

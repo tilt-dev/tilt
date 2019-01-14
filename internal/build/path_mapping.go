@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-// pathMapping represents a mapping from the local path to the tarball path
+// PathMapping represents a mapping from the local path to the tarball path
 //
 // To send a local file into a container, we copy it into a tarball, send the
 // tarball to docker, and then run a sequence of steps to unpack the tarball in
@@ -31,15 +31,15 @@ import (
 // In static builds, this is no longer the case.
 //
 // TODO(nick): Do a pass on renaming all the path types
-type pathMapping struct {
+type PathMapping struct {
 	LocalPath     string
 	ContainerPath string
 }
 
-func (m pathMapping) prettyStr() string { return fmt.Sprintf("%s --> %s", m.LocalPath, m.ContainerPath) }
+func (m PathMapping) prettyStr() string { return fmt.Sprintf("%s --> %s", m.LocalPath, m.ContainerPath) }
 
-func (m pathMapping) Filter(matcher model.PathMatcher) ([]pathMapping, error) {
-	result := make([]pathMapping, 0)
+func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
+	result := make([]PathMapping, 0)
 	err := filepath.Walk(m.LocalPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -59,7 +59,7 @@ func (m pathMapping) Filter(matcher model.PathMatcher) ([]pathMapping, error) {
 			return err
 		}
 
-		result = append(result, pathMapping{
+		result = append(result, PathMapping{
 			LocalPath:     path,
 			ContainerPath: filepath.Join(m.ContainerPath, rp),
 		})
@@ -72,8 +72,8 @@ func (m pathMapping) Filter(matcher model.PathMatcher) ([]pathMapping, error) {
 	return result, nil
 }
 
-func FilterMappings(mappings []pathMapping, matcher model.PathMatcher) ([]pathMapping, error) {
-	result := make([]pathMapping, 0)
+func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMapping, error) {
+	result := make([]PathMapping, 0)
 	for _, mapping := range mappings {
 		filtered, err := mapping.Filter(matcher)
 		if err != nil {
@@ -87,7 +87,7 @@ func FilterMappings(mappings []pathMapping, matcher model.PathMatcher) ([]pathMa
 
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
 // associates local filepaths with their mounts and destination paths).
-func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, error) {
+func FilesToPathMappings(files []string, mounts []model.Mount) ([]PathMapping, error) {
 	pms, err := filesToPathMappings(files, mounts)
 	if err != nil {
 		return pms, err
@@ -95,8 +95,8 @@ func FilesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, e
 	return pms, nil
 }
 
-func filesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, *PathMappingErr) {
-	var pms []pathMapping
+func filesToPathMappings(files []string, mounts []model.Mount) ([]PathMapping, *PathMappingErr) {
+	var pms []PathMapping
 	for _, f := range files {
 		pm, err := fileToPathMapping(f, mounts)
 		if err != nil {
@@ -108,7 +108,7 @@ func filesToPathMappings(files []string, mounts []model.Mount) ([]pathMapping, *
 	return pms, nil
 }
 
-func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMappingErr) {
+func fileToPathMapping(file string, mounts []model.Mount) (PathMapping, *PathMappingErr) {
 	for _, m := range mounts {
 		// Open Q: can you mount inside of mounts?! o_0
 		// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
@@ -117,7 +117,7 @@ func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMap
 		if isChild {
 			localPathIsFile, err := isFile(m.LocalPath)
 			if err != nil {
-				return pathMapping{}, pathMappingErrf("error stat'ing: %v", err)
+				return PathMapping{}, pathMappingErrf("error stat'ing: %v", err)
 			}
 			var containerPath string
 			if endsWithSlash(m.ContainerPath) && localPathIsFile {
@@ -126,13 +126,13 @@ func fileToPathMapping(file string, mounts []model.Mount) (pathMapping, *PathMap
 			} else {
 				containerPath = filepath.Join(m.ContainerPath, relPath)
 			}
-			return pathMapping{
+			return PathMapping{
 				LocalPath:     file,
 				ContainerPath: containerPath,
 			}, nil
 		}
 	}
-	return pathMapping{}, pathMappingErrf("file %s matches no mounts", file)
+	return PathMapping{}, pathMappingErrf("file %s matches no mounts", file)
 }
 
 func endsWithSlash(path string) bool {
@@ -153,10 +153,10 @@ func FileBelongsToMount(file string, mounts []model.Mount) bool {
 	return err == nil
 }
 
-func MountsToPathMappings(mounts []model.Mount) []pathMapping {
-	pms := make([]pathMapping, len(mounts))
+func MountsToPathMappings(mounts []model.Mount) []PathMapping {
+	pms := make([]PathMapping, len(mounts))
 	for i, m := range mounts {
-		pms[i] = pathMapping{
+		pms[i] = PathMapping{
 			LocalPath:     m.LocalPath,
 			ContainerPath: m.ContainerPath,
 		}
@@ -165,10 +165,10 @@ func MountsToPathMappings(mounts []model.Mount) []pathMapping {
 }
 
 // Return all the path mappings for local paths that do not exist.
-func MissingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMapping, error) {
+func MissingLocalPaths(ctx context.Context, mappings []PathMapping) ([]PathMapping, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "MissingLocalPaths")
 	defer span.Finish()
-	result := make([]pathMapping, 0)
+	result := make([]PathMapping, 0)
 	for _, mapping := range mappings {
 		_, err := os.Stat(mapping.LocalPath)
 		if err == nil {
@@ -184,7 +184,7 @@ func MissingLocalPaths(ctx context.Context, mappings []pathMapping) ([]pathMappi
 	return result, nil
 }
 
-func PathMappingsToContainerPaths(mappings []pathMapping) []string {
+func PathMappingsToContainerPaths(mappings []PathMapping) []string {
 	res := make([]string, len(mappings))
 	for i, m := range mappings {
 		res[i] = m.ContainerPath

@@ -72,12 +72,12 @@ var BaseWireSet = wire.NewSet(
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
-	wire.Build(BaseWireSet, demo.NewScript)
+	wire.Build(BaseWireSet, demo.NewScript, build.ProvideClock)
 	return demo.Script{}, nil
 }
 
 func wireThreads(ctx context.Context) (Threads, error) {
-	wire.Build(BaseWireSet)
+	wire.Build(BaseWireSet, build.ProvideClock)
 	return Threads{}, nil
 }
 

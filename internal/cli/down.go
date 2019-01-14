@@ -15,24 +15,27 @@ import (
 )
 
 type downCmd struct {
+	fileName string
 }
 
-func (c downCmd) register() *cobra.Command {
+func (c *downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "down",
 		Short: "delete kubernetes resources",
 	}
 
+	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+
 	return cmd
 }
 
-func (c downCmd) run(ctx context.Context, args []string) error {
+func (c *downCmd) run(ctx context.Context, args []string) error {
 	analyticsService.Incr("cmd.down", map[string]string{
 		"count": fmt.Sprintf("%d", len(args)),
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, err := tiltfile.Load(ctx, tiltfile.FileName, nil)
+	manifests, globalYaml, _, err := tiltfile.Load(ctx, c.fileName, nil)
 	if err != nil {
 		return err
 	}

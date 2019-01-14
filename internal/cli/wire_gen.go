@@ -6,19 +6,19 @@
 package cli
 
 import (
-	"context"
-	"github.com/google/go-cloud/wire"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/demo"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"time"
+	context "context"
+	wire "github.com/google/go-cloud/wire"
+	build "github.com/windmilleng/tilt/internal/build"
+	demo "github.com/windmilleng/tilt/internal/demo"
+	docker "github.com/windmilleng/tilt/internal/docker"
+	dockercompose "github.com/windmilleng/tilt/internal/dockercompose"
+	dockerfile "github.com/windmilleng/tilt/internal/dockerfile"
+	engine "github.com/windmilleng/tilt/internal/engine"
+	hud "github.com/windmilleng/tilt/internal/hud"
+	server "github.com/windmilleng/tilt/internal/hud/server"
+	k8s "github.com/windmilleng/tilt/internal/k8s"
+	store "github.com/windmilleng/tilt/internal/store"
+	time "time"
 )
 
 // Injectors from wire.go:
@@ -51,8 +51,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	reducer := _wireReducerValue
-	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	logActionsFlag2 := provideLogActions()
+	store2 := store.NewStore(reducer, logActionsFlag2)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -76,12 +76,13 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(cli)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
+	updateModeFlag2 := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode)
+	clock := build.ProvideClock()
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode, clock)
 	dockerComposeClient := dockercompose.NewDockerComposeClient()
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
@@ -94,8 +95,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager)
-	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch)
+	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager)
+	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, store2, branch)
 	return script, nil
 }
 
@@ -132,8 +133,8 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	}
 	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
 	reducer := _wireReducerValue
-	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	logActionsFlag2 := provideLogActions()
+	store2 := store.NewStore(reducer, logActionsFlag2)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -157,12 +158,13 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(cli)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
+	updateModeFlag2 := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(updateModeFlag2, env)
 	if err != nil {
 		return Threads{}, err
 	}
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode)
+	clock := build.ProvideClock()
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode, clock)
 	dockerComposeClient := dockercompose.NewDockerComposeClient()
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
@@ -175,8 +177,8 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager)
-	headsUpServer := server.ProvideHeadsUpServer(storeStore)
+	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, store2, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager)
+	headsUpServer := server.ProvideHeadsUpServer(store2)
 	threads := provideThreads(headsUpDisplay, upper, headsUpServer)
 	return threads, nil
 }

@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="next" title="Docker Compose Support (Alpha)" href="docker_compose_alpha.html" />
     <link rel="prev" title="From Skaffold" href="upgrade_skaffold.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
@@ -105,11 +105,13 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">From Docker Compose</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#or-try-it-directly">Or, try it directly!</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#differences-between-docker-compose-and-tilt">Differences between Docker Compose and Tilt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#migrate-from-docker-compose-to-tilt">Migrate from Docker Compose to Tilt</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -187,24 +189,28 @@
            <div itemprop="articleBody">
             
   <div class="section" id="from-docker-compose">
-<h1>From Docker Compose<a class="headerlink" href="#from-docker-compose" title="Permalink to this headline">¶</a></h1>
+<span id="from-docker-compose"></span><h1>From Docker Compose<a class="headerlink" href="#from-docker-compose" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="or-try-it-directly">
+<span id="or-try-it-directly"></span><h2>Or, try it directly!<a class="headerlink" href="#or-try-it-directly" title="Permalink to this headline">¶</a></h2>
+<p>If you’re feeling adventurous, instead of following the steps below to write a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> that replicates your current Docker Compose setup, you can run Tilt directly on your <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> file: check out our doc on <a class="reference external" href="docker_compose_alpha.md">Docker Compose Support (Alpha)</a>.</p>
+</div>
 <div class="section" id="before-you-begin">
-<h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
+<span id="before-you-begin"></span><h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li><a class="reference external" href="quickstart.html">Install Tilt</a> and Kubernetes if they are not yet installed.</li>
 <li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
 </ul>
 </div>
 <div class="section" id="differences-between-docker-compose-and-tilt">
-<h2>Differences between Docker Compose and Tilt<a class="headerlink" href="#differences-between-docker-compose-and-tilt" title="Permalink to this headline">¶</a></h2>
+<span id="differences-between-docker-compose-and-tilt"></span><h2>Differences between Docker Compose and Tilt<a class="headerlink" href="#differences-between-docker-compose-and-tilt" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Docker Compose is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called
-<a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>.</li>
+<a class="reference external" href="https://github.com/bazelbuild/starlark#tour&gt;">Starlark</a>.</li>
 <li>Docker Compose uses runs services on Docker Machine or Docker Swarm. Tilt runs services natively on Kubernetes.</li>
 </ul>
 </div>
 <div class="section" id="migrate-from-docker-compose-to-tilt">
-<h2>Migrate from Docker Compose to Tilt<a class="headerlink" href="#migrate-from-docker-compose-to-tilt" title="Permalink to this headline">¶</a></h2>
+<span id="migrate-from-docker-compose-to-tilt"></span><h2>Migrate from Docker Compose to Tilt<a class="headerlink" href="#migrate-from-docker-compose-to-tilt" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take a simple <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> file with one service:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">version</span><span class="p">:</span> <span class="s">&#39;3&#39;</span>
 <span class="nt">services</span><span class="p">:</span>
@@ -304,7 +310,7 @@ In Docker Compose your service has a <code class="docutils literal notranslate">
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="fast_build.html" class="btn btn-neutral float-right" title="Optimizing a Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="docker_compose_alpha.html" class="btn btn-neutral float-right" title="Docker Compose Support (Alpha)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="upgrade_skaffold.html" class="btn btn-neutral" title="From Skaffold" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -341,7 +347,6 @@ In Docker Compose your service has a <code class="docutils literal notranslate">
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

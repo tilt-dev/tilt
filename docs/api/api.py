@@ -24,6 +24,7 @@ def local_git_repo(path: str) -> Repo:
 
 def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: str = "Dockerfile") -> None:
   """Builds a docker image.
+
   Args:
     ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
     context: The path to use as the Docker build context.

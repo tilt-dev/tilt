@@ -14,8 +14,8 @@ func TestBoilStepsNoTrigger(t *testing.T) {
 		},
 	}
 
-	pathMappings := []pathMapping{
-		pathMapping{
+	pathMappings := []PathMapping{
+		PathMapping{
 			LocalPath:     "/home/tilt/code/test/foo",
 			ContainerPath: "/src/foo",
 		},
@@ -38,7 +38,7 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 		},
 	}
 
-	pathMappings := []pathMapping{}
+	pathMappings := []PathMapping{}
 
 	expected := []model.Cmd{model.ToShellCmd("echo hello")}
 
@@ -60,8 +60,8 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 		},
 	}
 
-	pathMappings := []pathMapping{
-		pathMapping{
+	pathMappings := []PathMapping{
+		PathMapping{
 			LocalPath:     "/home/tilt/code/test/foo",
 			ContainerPath: "/src/foo",
 		},
@@ -87,8 +87,8 @@ func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 		},
 	}
 
-	pathMappings := []pathMapping{
-		pathMapping{
+	pathMappings := []PathMapping{
+		PathMapping{
 			LocalPath:     "/home/tilt/code/test/bar",
 			ContainerPath: "/src/bar",
 		},
@@ -121,12 +121,12 @@ func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
 		},
 	}
 
-	pathMappings := []pathMapping{
-		pathMapping{
+	pathMappings := []PathMapping{
+		PathMapping{
 			LocalPath:     "/home/tilt/code/test/baz",
 			ContainerPath: "/src/baz",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     "/home/tilt/code/test/bar",
 			ContainerPath: "/src/bar",
 		},

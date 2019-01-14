@@ -5,7 +5,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func BoilSteps(steps []model.Step, pathMappings []pathMapping) ([]model.Cmd, error) {
+func BoilSteps(steps []model.Step, pathMappings []PathMapping) ([]model.Cmd, error) {
 	res := []model.Cmd{}
 	for _, step := range steps {
 		if step.Triggers == nil {

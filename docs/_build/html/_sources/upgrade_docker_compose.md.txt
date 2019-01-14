@@ -1,4 +1,7 @@
 # From Docker Compose
+
+## Or, try it directly!
+If you're feeling adventurous, instead of following the steps below to write a `Tiltfile` that replicates your current Docker Compose setup, you can run Tilt directly on your `docker-compose.yml` file: check out our doc on [Docker Compose Support (Alpha)](docker_compose_alpha.md).
 ## Before you begin
 * [Install Tilt](quickstart.html) and Kubernetes if they are not yet installed.
 * If you're new to Tilt try stepping through [a Simple Tiltfile](first_config.html) first.

@@ -114,6 +114,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -191,7 +192,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="write-your-tiltfile">
-<h1>Write Your Tiltfile<a class="headerlink" href="#write-your-tiltfile" title="Permalink to this headline">¶</a></h1>
+<span id="write-your-tiltfile"></span><h1>Write Your Tiltfile<a class="headerlink" href="#write-your-tiltfile" title="Permalink to this headline">¶</a></h1>
 <p>A Tiltfile can be broken down in to three things: Kubernetes YAML, Docker images
 and resources.  In this doc we’ll step through all three concepts so you can
 learn to write your own Tiltfiles with gusto!</p>
@@ -219,7 +220,7 @@ learn to write your own Tiltfiles with gusto!</p>
 <span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/backend&quot;</span><span class="p">,</span> <span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">dockerfile</span><span class="o">=</span><span class="s2">&quot;backend/Dockerfile.dev&quot;</span><span class="p">)</span>
 
 <span class="c1"># docker build with build args</span>
-<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/graphql&quot;</span><span class="p">,</span> <span class="s2">&quot;graphql&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">})</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/graphql&quot;</span><span class="p">,</span> <span class="s2">&quot;graphql&quot;</span><span class="p">,</span> <span class="n">build_args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">})</span>
 
 <span class="c1">## Part 3: Resources</span>
 
@@ -227,12 +228,12 @@ learn to write your own Tiltfiles with gusto!</p>
 <span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">)</span>
 
 <span class="c1"># connect to a specific local port</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;frontend&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;frontend&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Let’s dig in to each of these sections in detail.</p>
 <div class="section" id="part-1-kubernetes-yaml">
-<h2>Part 1: Kubernetes YAML<a class="headerlink" href="#part-1-kubernetes-yaml" title="Permalink to this headline">¶</a></h2>
+<span id="part-1-kubernetes-yaml"></span><h2>Part 1: Kubernetes YAML<a class="headerlink" href="#part-1-kubernetes-yaml" title="Permalink to this headline">¶</a></h2>
 <p>Start by telling Tilt about your Kubernetes YAML:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># one yaml file</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="s2">&quot;k8s.yaml&quot;</span><span class="p">)</span>
@@ -254,7 +255,7 @@ script. Tilt supports those cases too:</p>
 </div>
 </div>
 <div class="section" id="part-2-images">
-<h2>Part 2: Images<a class="headerlink" href="#part-2-images" title="Permalink to this headline">¶</a></h2>
+<span id="part-2-images"></span><h2>Part 2: Images<a class="headerlink" href="#part-2-images" title="Permalink to this headline">¶</a></h2>
 <p>Next tell Tilt about all your Dockerfiles but to get the most out of Tilt you
 need to tell it about your Dockerfiles. You tell Tilt to build a Dockerfile like
 so:</p>
@@ -265,7 +266,7 @@ so:</p>
 <p>Tilt extracts the Kubernetes objects that reference this image in to a new
 “Resource”, discussed below.</p>
 <div class="section" id="options-to-docker-build">
-<h3>Options to Docker build<a class="headerlink" href="#options-to-docker-build" title="Permalink to this headline">¶</a></h3>
+<span id="options-to-docker-build"></span><h3>Options to Docker build<a class="headerlink" href="#options-to-docker-build" title="Permalink to this headline">¶</a></h3>
 <p>You can also specify advanced configuration options, such as custom Dockerfile
 paths or build arguments:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># docker build ./frontend</span>
@@ -281,7 +282,7 @@ paths or build arguments:</p>
 </div>
 </div>
 <div class="section" id="part-3-resources">
-<h2>Part 3: Resources<a class="headerlink" href="#part-3-resources" title="Permalink to this headline">¶</a></h2>
+<span id="part-3-resources"></span><h2>Part 3: Resources<a class="headerlink" href="#part-3-resources" title="Permalink to this headline">¶</a></h2>
 <p>Tilt automatically defines Tilt Resources. Tilt Resources represent logical
 groupings of images and Kubernetes YAML.  Tilt by default takes the last path
 segment in your image name and uses that as the name of the resource. So for
@@ -298,12 +299,12 @@ example:</p>
 </div>
 <p>You can also add a Kubernetes port forward to this resource.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># connect to a specific local port</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span> 
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s2">&quot;companyname/backend/server&quot;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="next-steps">
-<h2>Next steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<span id="next-steps"></span><h2>Next steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>That’s it! We just covered everything you need to know to get your microservices
 running locally using Tilt.  To see everything you can do with Tilt check out
 the <a class="reference external" href="api.html">Tiltfile API reference</a>.</p>
@@ -355,7 +356,6 @@ the <a class="reference external" href="api.html">Tiltfile API reference</a>.</p
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   
