@@ -17,7 +17,10 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	var analyticsCmd *cobra.Command
 	var err error
 
-	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName)
+	tagsOption := analytics.WithGlobalTags(map[string]string{
+		"version": buildInfo().Version,
+	})
+	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName, tagsOption)
 	if err != nil {
 		return err
 	}

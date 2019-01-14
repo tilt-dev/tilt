@@ -23,11 +23,16 @@ func SetBuildInfo(info BuildInfo) {
 	globalBuildInfo = info
 }
 
-func buildStamp() string {
+func buildInfo() BuildInfo {
 	info := globalBuildInfo
 	if info.empty() {
-		info = defaultBuildInfo()
+		return defaultBuildInfo()
 	}
+	return info
+}
+
+func buildStamp() string {
+	info := buildInfo()
 	version := info.Version
 	date := info.Date
 	timeIndex := strings.Index(date, "T")
