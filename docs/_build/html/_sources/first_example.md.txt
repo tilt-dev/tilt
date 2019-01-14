@@ -13,7 +13,7 @@ To double-check, run:
 
 ```
 $ tilt version
-v0.4.3-dev, built 2019-01-10
+v0.5.0-dev, built 2019-01-14
 $ kubectl config current-context
 docker-for-desktop
 ```
@@ -80,7 +80,7 @@ How did Tilt know how to build the server?
 How did it get into the Kubernetes cluster?
 How did it start listening on `localhost:8100`?
 
-In the next guide, we'll answer these questions while you learn 
+In the next guide, we'll answer these questions while you learn
 [how to configure your own project](first_config.html)
 with Tilt.
 
