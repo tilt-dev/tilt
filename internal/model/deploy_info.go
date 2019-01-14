@@ -20,6 +20,7 @@ type DockerComposeTarget struct {
 	tiltFilename            string
 	dockerignores           []Dockerignore
 	repos                   []LocalGitRepo
+	// These directories and their children will not trigger file change events
 	ignoredLocalDirectories []string
 }
 

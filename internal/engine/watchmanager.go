@@ -19,6 +19,7 @@ type WatchableManifest interface {
 	ManifestName() model.ManifestName
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+	// These directories and their children will not trigger file change events
 	IgnoredLocalDirectories() []string
 }
 

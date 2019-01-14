@@ -277,7 +277,9 @@ RUN echo hi`
 	f.load("foo")
 
 	f.assertManifest("foo",
+		// ensure that DC mounts are *not* ignored for builds, because all files are still relevant to builds
 		buildMatches("foo/Dockerfile"),
+		// ensure that DC mounts *are* ignored for file watching, i.e., won't trigger builds
 		fileChangeFilters("foo/blah"),
 	)
 }
