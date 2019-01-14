@@ -182,8 +182,183 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="tiltfile-api-reference">
-<h1>Tiltfile API Reference<a class="headerlink" href="#tiltfile-api-reference" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-api">
+<span id="tiltfile-api-reference"></span><h1>Tiltfile API Reference<a class="headerlink" href="#module-api" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="api.Blob">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">Blob</code><a class="headerlink" href="#api.Blob" title="Permalink to this definition">¶</a></dt>
+<dd><p>The result of executing a command on your local system</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="api.LocalPath">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">LocalPath</code><a class="headerlink" href="#api.LocalPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>A path on disk</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.docker_build">
+<code class="descclassname">api.</code><code class="descname">docker_build</code><span class="sig-paren">(</span><em>ref</em>, <em>context</em>, <em>build_args={}</em>, <em>dockerfile='Dockerfile'</em>, <em>dockerfile_contents=''</em><span class="sig-paren">)</span><a class="headerlink" href="#api.docker_build" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds a docker image.</p>
+<p>Note that you can’t set both the dockerfile and dockerfile_contents arguments.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ref</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – e.g. a blorgdev/backend or gcr.io/project-name/bucket-name</li>
+<li><strong>context</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The path to use as the Docker build context.</li>
+<li><strong>build_args</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – the build-time variables that are accessed like regular environment variables in the <code class="docutils literal notranslate"><span class="pre">RUN</span></code> instruction of the Dockerfile. See <a class="reference external" href="https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg">the Docker Build Arg documentation</a></li>
+<li><strong>dockerfile</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>]) – The path to a Dockerfile</li>
+<li><strong>dockerfile_contents</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – the raw contents of the Dockerfile to use for this build</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.fast_build">
+<code class="descclassname">api.</code><code class="descname">fast_build</code><span class="sig-paren">(</span><em>img_name</em>, <em>dockerfile_path</em>, <em>entrypoint=''</em><span class="sig-paren">)</span><a class="headerlink" href="#api.fast_build" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initiates a docker image build that supports <code class="docutils literal notranslate"><span class="pre">add</span></code> s and <code class="docutils literal notranslate"><span class="pre">run</span></code> s, and that uses a cache for subsequent builds.</p>
+<p>See the <a class="reference external" href="https://docs.tilt.build/fast_build.html">fast build documentation</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.helm">
+<code class="descclassname">api.</code><code class="descname">helm</code><span class="sig-paren">(</span><em>pathToChartDir</em><span class="sig-paren">)</span><a class="headerlink" href="#api.helm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run <a class="reference external" href="https://docs.helm.sh/helm/#helm-template">helm template</a> on a given directory that contains a chart and return the fully rendered YAML as a Blob</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.k8s_resource">
+<code class="descclassname">api.</code><code class="descname">k8s_resource</code><span class="sig-paren">(</span><em>name</em>, <em>yaml=''</em>, <em>image=''</em>, <em>port_forwards=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a kubernetes resource that tilt can deploy using the specified image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – What call this resource in the UI</li>
+<li><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Optional YAML. If YAML, as a string or Blob is
+not passed we expect to be able to extract it from an
+existing resource.</li>
+<li><strong>image</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – An optional Image. If the image is not passed,
+we expect to be able to extract it from an existing resource.</li>
+<li><strong>port_forwards</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]]) – Local ports to connect to the pod. If no
+target port is specified, will use the first container port.
+Example values: 9000 (connect localhost:9000 to the default container port),
+‘9000:8000’ (connect localhost:9000 to the container port 8000),
+[‘9000:8000’, ‘9001:8001’] (connect localhost:9000 and :9001 to the
+container ports 8000 and 8001, respectively).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.k8s_yaml">
+<code class="descclassname">api.</code><code class="descname">k8s_yaml</code><span class="sig-paren">(</span><em>yaml</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_yaml" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call this with a path to a file that contains YAML, or with a <code class="docutils literal notranslate"><span class="pre">Blob</span></code> of YAML.</p>
+<p>We will infer what (if any) of the k8s resources defined in your YAML
+correspond to Images defined elsewhere in your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> (matching based on
+the DockerImage ref and on pod selectors). Any remaining YAML is YAML that Tilt
+applies to your k8s cluster independently.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Path(s) to YAML or YAML as a <code class="docutils literal notranslate"><span class="pre">Blob</span></code>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.kustomize">
+<code class="descclassname">api.</code><code class="descname">kustomize</code><span class="sig-paren">(</span><em>pathToDir</em><span class="sig-paren">)</span><a class="headerlink" href="#api.kustomize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run <a class="reference external" href="https://github.com/kubernetes-sigs/kustomize">kustomize</a> on a given directory and return the resulting YAML as a Blob</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.local">
+<code class="descclassname">api.</code><code class="descname">local</code><span class="sig-paren">(</span><em>cmd</em><span class="sig-paren">)</span><a class="headerlink" href="#api.local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs cmd, waits for it to finish, and returns its stdout as a Blob</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.local_git_repo">
+<code class="descclassname">api.</code><code class="descname">local_git_repo</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="headerlink" href="#api.local_git_repo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a <code class="docutils literal notranslate"><span class="pre">repo</span></code> from the git repo at <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Repo</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.read_file">
+<code class="descclassname">api.</code><code class="descname">read_file</code><span class="sig-paren">(</span><em>file_path</em><span class="sig-paren">)</span><a class="headerlink" href="#api.read_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads file and returns its contents.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_path</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>]) – Path to the file locally</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 
 
