@@ -80,7 +80,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest m
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	err = manifest.ValidateDockerK8sManifest()
+	err = manifest.Validate()
 	if err != nil {
 		return store.BuildResult{}, err
 	}

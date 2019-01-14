@@ -49,6 +49,10 @@ func (id TargetID) String() string {
 type TargetSpec interface {
 	ID() TargetID
 
+	// Check to make sure the spec is well-formed.
+	// All TargetSpecs should throw an error in the case where the ID is empty.
+	Validate() error
+
 	// TODO(nick): Add dependency IDs
 }
 
