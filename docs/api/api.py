@@ -22,7 +22,7 @@ def local_git_repo(path: str) -> Repo:
   """Creates a ``repo`` from the git repo at ``path``."""
   pass
 
-def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: Union[str, LocalPath] = "Dockerfile", dockerfile_contents: Union[str, Blob]) -> None:
+def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: Union[str, LocalPath] = "Dockerfile", dockerfile_contents: Union[str, Blob] = "") -> None:
   """Builds a docker image.
 
   Note that you can't set both the dockerfile and dockerfile_contents arguments.
