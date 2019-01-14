@@ -55,14 +55,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	dockerfilePath := context.join("Dockerfile")
-	if dockerfilePathVal != nil {
-		dockerfilePath, err = s.localPathFromSkylarkValue(dockerfilePathVal)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	var sba map[string]string
 	if buildArgs != nil {
 		d, ok := buildArgs.(*starlark.Dict)
@@ -76,6 +68,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
+	dockerfilePath := context.join("Dockerfile")
 	var dockerfileContents string
 	if dockerfileContentsVal != nil && dockerfilePathVal != nil {
 		return nil, fmt.Errorf("Cannot specify both dockerfile and dockerfile_contents keyword arguments")
