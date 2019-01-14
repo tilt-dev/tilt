@@ -30,12 +30,13 @@ type dockerImage struct {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs, cacheVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, cacheVal, dockerfileContentsVal starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
 		"build_args?", &buildArgs,
 		"dockerfile?", &dockerfilePathVal,
+		"dockerfile_contents?", &dockerfileContentsVal,
 		"cache?", &cacheVal,
 	); err != nil {
 		return nil, err
@@ -75,9 +76,36 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
-	bs, err := s.readFile(dockerfilePath)
-	if err != nil {
-		return nil, err
+	var dockerfileContents string
+	if dockerfileContentsVal != nil && dockerfilePathVal != nil {
+		return nil, fmt.Errorf("Cannot specify both dockerfile and dockerfile_contents keyword arguments")
+	}
+	if dockerfileContentsVal != nil {
+		switch v := dockerfileContentsVal.(type) {
+		case *blob:
+			dockerfileContents = v.text
+		case starlark.String:
+			dockerfileContents = v.GoString()
+		default:
+			return nil, fmt.Errorf("Argument (dockerfile_contents): must be string or blob.")
+		}
+	} else if dockerfilePathVal != nil {
+		dockerfilePath, err = s.localPathFromSkylarkValue(dockerfilePathVal)
+		if err != nil {
+			return nil, err
+		}
+
+		bs, err := s.readFile(dockerfilePath)
+		if err != nil {
+			return nil, err
+		}
+		dockerfileContents = string(bs)
+	} else {
+		bs, err := s.readFile(dockerfilePath)
+		if err != nil {
+			return nil, err
+		}
+		dockerfileContents = string(bs)
 	}
 
 	if s.imagesByName[ref.Name()] != nil {
@@ -91,7 +119,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	r := &dockerImage{
 		staticDockerfilePath: dockerfilePath,
-		staticDockerfile:     dockerfile.Dockerfile(bs),
+		staticDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		staticBuildPath:      context,
 		ref:                  ref,
 		staticBuildArgs:      sba,
