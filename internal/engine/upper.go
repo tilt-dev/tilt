@@ -205,7 +205,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		ms.ResourceState = dcState.WithCurrentLog(dcState.CurrentLog)
+		ms.ResourceState = dcState.WithCurrentLog([]byte{})
 	}
 
 	// Keep the crash log around until we have a rebuild
