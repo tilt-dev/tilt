@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -325,7 +326,11 @@ func TestWatchNonexistantDirectory(t *testing.T) {
 	f.fsync()
 	f.events = nil
 	f.WriteFile(file, "hello")
-	f.assertEvents(parent, file)
+	if runtime.GOOS == "darwin" {
+		f.assertEvents(file)
+	} else {
+		f.assertEvents(parent, file)
+	}
 }
 
 type notifyFixture struct {
