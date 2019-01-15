@@ -61,7 +61,7 @@ We expect everyone in our community (users, contributors, and employees alike) t
    first_example
    first_config
    write_your_tiltfile
-   
+
 .. toctree::
    :maxdepth: 1
    :caption: Configs From Other Tools
@@ -69,6 +69,7 @@ We expect everyone in our community (users, contributors, and employees alike) t
    upgrade_skaffold
    upgrade_docker_compose
    docker_compose_alpha
+   helm
 
 .. toctree::
    :maxdepth: 1

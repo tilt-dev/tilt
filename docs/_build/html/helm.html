@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Python Module Index &mdash; Tilt  documentation</title>
+  <title>Helm Support in Tilt &mdash; Tilt  documentation</title>
   
 
   
@@ -28,9 +28,11 @@
 
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-
+    <link rel="next" title="Optimizing a Tiltfile" href="fast_build.html" />
+    <link rel="prev" title="Docker Compose Support (Alpha)" href="docker_compose_alpha.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -40,12 +42,6 @@
 
  gtag('config', 'UA-129150759-2');
 </script>
-
-
-    <script type="text/javascript">
-      DOCUMENTATION_OPTIONS.COLLAPSE_INDEX = true;
-    </script>
-
 
 
   
@@ -106,11 +102,11 @@
 <li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm Support in Tilt</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Helm Support in Tilt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -166,10 +162,16 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Python Module Index</li>
+      <li>Helm Support in Tilt</li>
     
     
       <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/helm.md" class="fa fa-github"> Edit on GitHub</a>
+            
+          
         
       </li>
     
@@ -181,29 +183,35 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-
-   <h1>Python Module Index</h1>
-
-   <div class="modindex-jumpbox">
-   <a href="#cap-a"><strong>a</strong></a>
-   </div>
-
-   <table class="indextable modindextable">
-     <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
-     <tr class="cap" id="cap-a"><td></td><td>
-       <strong>a</strong></td><td></td></tr>
-     <tr>
-       <td></td>
-       <td>
-       <a href="api.html#module-api"><code class="xref">api</code></a></td><td>
-       <em></em></td></tr>
-   </table>
+  <div class="section" id="helm-support-in-tilt">
+<h1>Helm Support in Tilt<a class="headerlink" href="#helm-support-in-tilt" title="Permalink to this headline">¶</a></h1>
+<p>Tilt has native support for Helm! To run <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">template</span></code> on a chart directory from Tilt simply pass the chart directory to the <code class="docutils literal notranslate"><span class="pre">helm</span></code> built-in like so:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yml</span> <span class="o">=</span> <span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">)</span>
+<span class="c1"># The result is just YAML, which you can use throughout Tilt anywhere you would normally use YAML</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">yml</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This could also be implemented as a <code class="docutils literal notranslate"><span class="pre">local</span></code> command if you require further customization:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">local</span><span class="p">(</span><span class="s2">&quot;helm template path/to/chart&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For complete documentation of both <code class="docutils literal notranslate"><span class="pre">tilt</span></code> and <code class="docutils literal notranslate"><span class="pre">local</span></code> visit the <a class="reference external" href="api.html">Tilt API reference</a>.</p>
+</div>
 
 
            </div>
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fast_build.html" class="btn btn-neutral float-right" title="Optimizing a Tiltfile" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="docker_compose_alpha.html" class="btn btn-neutral" title="Docker Compose Support (Alpha)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
