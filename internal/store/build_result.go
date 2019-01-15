@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // The results of a successful build.
@@ -49,6 +50,8 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 	result.FilesReplacedSet = newSet
 	return result
 }
+
+type BuildResultSet map[model.TargetID]BuildResult
 
 // The state of the system since the last successful build.
 // This data structure should be considered immutable.
@@ -134,6 +137,28 @@ func (b BuildState) IsEmpty() bool {
 
 func (b BuildState) HasImage() bool {
 	return b.LastResult.HasImage()
+}
+
+type BuildStateSet map[model.TargetID]BuildState
+
+func (set BuildStateSet) Empty() bool {
+	return len(set) == 0
+}
+
+func (set BuildStateSet) FilesChanged() []string {
+	resultMap := map[string]bool{}
+	for _, state := range set {
+		for k := range state.FilesChangedSet {
+			resultMap[k] = true
+		}
+	}
+
+	result := make([]string, 0, len(resultMap))
+	for k := range resultMap {
+		result = append(result, k)
+	}
+	sort.Strings(result)
+	return result
 }
 
 // The information we need to find a ready container.

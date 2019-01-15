@@ -11,13 +11,13 @@ import (
 )
 
 type BuildAndDeployer interface {
-	// BuildAndDeploy builds and deployed the specified manifest.
+	// BuildAndDeploy builds and deployed the specified target specs.
 	//
-	// Returns a BuildResult that expresses the output of the build.
+	// Returns a BuildResult that expresses the outputs(s) of the build.
 	//
-	// BuildResult can be used to construct a BuildState, which contains
-	// the last successful build and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error)
+	// BuildResult can be used to construct a set of BuildStates, which contain
+	// the last successful builds of each target and the files changed since that build.
+	BuildAndDeploy(ctx context.Context, spects []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -37,16 +37,16 @@ func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeploye
 	return &CompositeBuildAndDeployer{builders: builders}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error) {
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
-		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
+		br, err := builder.BuildAndDeploy(ctx, specs, currentState)
 		if err == nil {
 			return br, err
 		}
 
 		if !shouldFallBackForErr(err) {
-			return store.BuildResult{}, err
+			return store.BuildResultSet{}, err
 		}
 
 		if _, ok := err.(RedirectToNextBuilder); ok {
@@ -59,7 +59,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 		lastErr = err
 	}
-	return store.BuildResult{}, lastErr
+	return store.BuildResultSet{}, lastErr
 }
 
 func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, mode UpdateMode) BuildOrder {

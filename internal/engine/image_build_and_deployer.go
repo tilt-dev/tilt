@@ -59,92 +59,91 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
 }
 
-func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
-	if manifest.IsDC() {
-		return store.BuildResult{}, RedirectToNextBuilderf("dc manifest")
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
+	iTargets, kTargets := extractImageAndK8sTargets(specs)
+	if len(kTargets) != 1 || len(iTargets) != 1 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("Container-deploy limited to a single k8s image")
 	}
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
+	span.SetTag("target", kTargets[0].Name)
 	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {
 		incremental := "0"
-		if state.HasImage() {
-			incremental = "1"
+		for _, state := range stateSet {
+			if state.HasImage() {
+				incremental = "1"
+			}
 		}
 		tags := map[string]string{"incremental": incremental}
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	numStages := 2
+	numStages := len(iTargets) + len(kTargets)
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	err = manifest.Validate()
+	results := store.BuildResultSet{}
+
+	iTarget := iTargets[0]
+	kTarget := kTargets[0]
+
+	ref, err := ibd.build(ctx, iTarget, stateSet[iTarget.ID()], ps)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
-
-	ref, err := ibd.build(ctx, manifest.ImageTarget, state, ps)
-	if err != nil {
-		return store.BuildResult{}, err
-	}
-
-	if !manifest.IsK8s() {
-		// If a non-yaml manifest reaches this code, something is wrong.
-		// If we change BaD structure such that that might reasonably happen,
-		// this should be a `RedirectToNextBuilder` error.
-		return store.BuildResult{}, fmt.Errorf("manifest %s has no k8s deploy info", manifest.Name)
-	}
-
-	err = ibd.deploy(ctx, ps, manifest.K8sTarget(), ref)
-	if err != nil {
-		return store.BuildResult{}, err
-	}
-
-	return store.BuildResult{
+	results[iTarget.ID()] = store.BuildResult{
 		Image: ref,
-	}, nil
+	}
+
+	err = ibd.deploy(ctx, ps, kTarget, ref)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+
+	return results, nil
 }
 
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, image model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	ref := image.Ref
-	cacheRef, err := ibd.fetchCache(ctx, ref, image.CachePaths())
+	ref := iTarget.Ref
+	cacheRef, err := ibd.fetchCache(ctx, ref, iTarget.CachePaths())
 	if err != nil {
 		return nil, err
 	}
 
-	switch bd := image.BuildDetails.(type) {
+	switch bd := iTarget.BuildDetails.(type) {
 	case model.StaticBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", ref)
 		defer ps.EndPipelineStep(ctx)
 
-		df := ibd.staticDockerfile(image, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, ref, df, bd.BuildPath, ignore.CreateBuildContextFilter(image), bd.BuildArgs)
+		df := ibd.staticDockerfile(iTarget, cacheRef)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, ref, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
 
 		if err != nil {
 			return nil, err
 		}
 		n = ref
 
-		go ibd.maybeCreateCacheFrom(ctx, ref, state, image, cacheRef)
+		go ibd.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
 	case model.FastBuild:
 		if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
 			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", ref)
 			defer ps.EndPipelineStep(ctx)
 
-			df := ibd.baseDockerfile(bd, cacheRef, image.CachePaths())
+			df := ibd.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
 			steps := bd.Steps
-			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, ref, df, bd.Mounts, ignore.CreateBuildContextFilter(image), steps, bd.Entrypoint)
+			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, ref, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
 
 			if err != nil {
 				return nil, err
 			}
 			n = ref
-			go ibd.maybeCreateCacheFrom(ctx, ref, state, image, cacheRef)
+			go ibd.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
 
 		} else {
 			// We have an existing image, can do an iterative build
@@ -162,7 +161,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, image model.ImageTa
 			defer ps.EndPipelineStep(ctx)
 
 			steps := bd.Steps
-			ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(image), steps)
+			ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), steps)
 			if err != nil {
 				return nil, err
 			}
@@ -171,7 +170,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, image model.ImageTa
 	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
-		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", image.Ref)
+		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", iTarget.Ref)
 	}
 
 	if !ibd.canSkipPush() {
@@ -222,24 +221,23 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		if ibd.canSkipPush() {
 			policy = v1.PullNever
 		}
-		if ref != nil {
-			var replaced bool
-			e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
-			if err != nil {
-				return err
-			}
-			if replaced {
-				replacedAny = true
 
-				if ibd.injectSynclet {
-					var sidecarInjected bool
-					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
-					if err != nil {
-						return err
-					}
-					if !sidecarInjected {
-						return fmt.Errorf("Could not inject synclet: %v", e)
-					}
+		var replaced bool
+		e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
+		if err != nil {
+			return err
+		}
+		if replaced {
+			replacedAny = true
+
+			if ibd.injectSynclet {
+				var sidecarInjected bool
+				e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
+				if err != nil {
+					return err
+				}
+				if !sidecarInjected {
+					return fmt.Errorf("Could not inject synclet: %v", e)
 				}
 			}
 		}
@@ -247,7 +245,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
-	if ref != nil && !replacedAny {
+	if !replacedAny {
 		return fmt.Errorf("Docker image missing from yaml: %s", ref)
 	}
 

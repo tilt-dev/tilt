@@ -25,6 +25,12 @@ type DockerComposeTarget struct {
 	ignoredLocalDirectories []string
 }
 
+// TODO(nick): This is a temporary hack until we figure out how we want
+// to pass these IDs to the docker-compose UX.
+func (t DockerComposeTarget) ManifestName() ManifestName {
+	return ManifestName(t.Name)
+}
+
 func (t DockerComposeTarget) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeDockerCompose,

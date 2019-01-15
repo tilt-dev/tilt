@@ -29,67 +29,67 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (result store.BuildResult, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("manifest", manifest.Name.String())
-	defer span.Finish()
-
-	if manifest.IsDC() {
-		return store.BuildResult{}, RedirectToNextBuilderf("not implemented: DC container builds")
+func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+	iTargets, kTargets := extractImageAndK8sTargets(specs)
+	if len(kTargets) != 1 || len(iTargets) != 1 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf(
+			"LocalContainerBuildAndDeployer requires example one image spec and one k8s deploy spec")
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
+	span.SetTag("target", kTargets[0].Name.String())
+	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {
 		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
 	}()
 
-	// TODO(maia): put manifest.Validate() upstream if we're gonna want to call it regardless
-	// of implementation of BuildAndDeploy?
-	err = manifest.Validate()
-	if err != nil {
-		return store.BuildResult{}, WrapDontFallBackError(err)
-	}
+	iTarget := iTargets[0]
+	state := stateSet[iTarget.ID()]
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResult{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	image := manifest.ImageTarget
-	fbInfo, ok := image.BuildDetails.(model.FastBuild)
+	fbInfo, ok := iTarget.BuildDetails.(model.FastBuild)
 	if !ok {
-		return store.BuildResult{}, RedirectToNextBuilderf("container build only supports FastBuilds")
+		return store.BuildResultSet{}, RedirectToNextBuilderf("container build only supports FastBuilds")
 	}
 
 	// Otherwise, manifest has already been deployed; try to update in the running container
 	deployInfo := state.DeployInfo
 	if deployInfo.Empty() {
-		return store.BuildResult{}, RedirectToNextBuilderf("no deploy info")
+		return store.BuildResultSet{}, RedirectToNextBuilderf("no deploy info")
 	}
 
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
 	boiledSteps, err := build.BoilSteps(fbInfo.Steps, cf)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
 	// TODO - use PipelineState here when we actually do pipeline output for container builds
 	writer := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(image), boiledSteps, writer)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(iTarget), boiledSteps, writer)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
-			return store.BuildResult{}, WrapDontFallBackError(err)
+			return store.BuildResultSet{}, WrapDontFallBackError(err)
 		}
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
-	return res, nil
+
+	resultSet := store.BuildResultSet{}
+	resultSet[iTarget.ID()] = res
+	return resultSet, nil
 }

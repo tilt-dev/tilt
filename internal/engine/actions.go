@@ -65,13 +65,13 @@ type LogAction struct {
 func (LogAction) Action() {}
 
 type BuildCompleteAction struct {
-	Result store.BuildResult
+	Result store.BuildResultSet
 	Error  error
 }
 
 func (BuildCompleteAction) Action() {}
 
-func NewBuildCompleteAction(result store.BuildResult, err error) BuildCompleteAction {
+func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildCompleteAction {
 	return BuildCompleteAction{
 		Result: result,
 		Error:  err,

@@ -25,7 +25,7 @@ func TestStaticDockerfileWithCache(t *testing.T) {
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestBaseDockerfileWithCache(t *testing.T) {
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,13 +73,14 @@ func TestDeployTwinImages(t *testing.T) {
 
 	sancho := NewSanchoFastBuildManifest(f)
 	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
-	result, err := f.ibd.BuildAndDeploy(f.ctx, manifest, store.BuildStateClean)
+	result, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	id := manifest.ImageTarget.ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedImage, result.Image.String())
+	assert.Equal(t, expectedImage, result[id].Image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
