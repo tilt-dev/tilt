@@ -148,6 +148,10 @@ func (localPath) Hash() (uint32, error) {
 	return 0, errors.New("unhashable type: localPath")
 }
 
+func (lp localPath) Empty() bool {
+	return lp.path == ""
+}
+
 func (lp localPath) Truth() starlark.Bool {
 	return lp != localPath{}
 }

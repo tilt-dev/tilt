@@ -799,6 +799,36 @@ k8s_yaml(yml)
 	)
 }
 
+func TestEmptyDockerfileStaticBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("foo/Dockerfile", "")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	m := f.assertManifest("foo", db(image("gcr.io/foo")))
+	assert.True(t, m.ImageTarget.IsStaticBuild())
+	assert.False(t, m.ImageTarget.IsFastBuild())
+}
+
+func TestEmptyDockerfileFastBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("foo/Dockerfile", "")
+	f.file("Tiltfile", `
+fast_build('gcr.io/foo', 'foo/Dockerfile')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	m := f.assertManifest("foo", db(image("gcr.io/foo")))
+	assert.False(t, m.ImageTarget.IsStaticBuild())
+	assert.True(t, m.ImageTarget.IsFastBuild())
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -967,10 +997,10 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
 
-			fbInfo := image.FastBuildInfo()
-			if fbInfo.Empty() {
+			if !image.IsFastBuild() {
 				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
 			}
+			fbInfo := image.FastBuildInfo()
 
 			mounts := fbInfo.Mounts
 			steps := fbInfo.Steps

@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"sort"
 
 	"github.com/docker/distribution/reference"
@@ -172,8 +171,7 @@ type StaticBuild struct {
 	BuildArgs  DockerBuildArgs
 }
 
-func (StaticBuild) buildDetails()  {}
-func (sb StaticBuild) Empty() bool { return reflect.DeepEqual(sb, StaticBuild{}) }
+func (StaticBuild) buildDetails() {}
 
 type FastBuild struct {
 	BaseDockerfile string
@@ -182,7 +180,6 @@ type FastBuild struct {
 	Entrypoint     Cmd
 }
 
-func (FastBuild) buildDetails()  {}
-func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
+func (FastBuild) buildDetails() {}
 
 var _ TargetSpec = ImageTarget{}
