@@ -324,28 +324,30 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		if r.imageRef != "" {
 			image := s.imagesByName[r.imageRef]
-			staticBuild := model.StaticBuild{
-				Dockerfile: image.staticDockerfile.String(),
-				BuildPath:  string(image.staticBuildPath.path),
-				BuildArgs:  image.staticBuildArgs,
-			}
-			fastBuild := model.FastBuild{
-				BaseDockerfile: image.baseDockerfile.String(),
-				Mounts:         s.mountsToDomain(image),
-				Steps:          image.steps,
-				Entrypoint:     model.ToShellCmd(image.entrypoint),
-			}
+			isStaticBuild := !image.staticBuildPath.Empty()
+			isFastBuild := !image.baseDockerfilePath.Empty()
 
 			dInfo := model.ImageTarget{
 				Ref: image.ref,
 			}.WithCachePaths(image.cachePaths)
 
-			if !staticBuild.Empty() && !fastBuild.Empty() {
+			if isStaticBuild && isFastBuild {
 				return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
-			} else if !staticBuild.Empty() {
-				dInfo = dInfo.WithBuildDetails(staticBuild)
-			} else if !fastBuild.Empty() {
-				dInfo = dInfo.WithBuildDetails(fastBuild)
+			} else if isStaticBuild {
+				dInfo = dInfo.WithBuildDetails(model.StaticBuild{
+					Dockerfile: image.staticDockerfile.String(),
+					BuildPath:  string(image.staticBuildPath.path),
+					BuildArgs:  image.staticBuildArgs,
+				})
+			} else if isFastBuild {
+				dInfo = dInfo.WithBuildDetails(model.FastBuild{
+					BaseDockerfile: image.baseDockerfile.String(),
+					Mounts:         s.mountsToDomain(image),
+					Steps:          image.steps,
+					Entrypoint:     model.ToShellCmd(image.entrypoint),
+				})
+			} else {
+				return nil, fmt.Errorf("internal Tilt error: no build info for manifest %s", r.name)
 			}
 
 			m.ImageTarget = dInfo.
