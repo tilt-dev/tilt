@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Helm Support in Tilt &mdash; Tilt  documentation</title>
+  <title>For Helm Users &mdash; Tilt  documentation</title>
   
 
   
@@ -106,7 +106,7 @@
 <li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Helm Support in Tilt</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">For Helm Users</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Advanced Configs</span></p>
 <ul>
@@ -162,7 +162,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Helm Support in Tilt</li>
+      <li>For Helm Users</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -183,19 +183,25 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="helm-support-in-tilt">
-<h1>Helm Support in Tilt<a class="headerlink" href="#helm-support-in-tilt" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="for-helm-users">
+<h1>For Helm Users<a class="headerlink" href="#for-helm-users" title="Permalink to this headline">¶</a></h1>
 <p>Tilt has native support for Helm! To run <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">template</span></code> on a chart directory from Tilt simply pass the chart directory to the <code class="docutils literal notranslate"><span class="pre">helm</span></code> built-in like so:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yml</span> <span class="o">=</span> <span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">)</span>
 <span class="c1"># The result is just YAML, which you can use throughout Tilt anywhere you would normally use YAML</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">yml</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This could also be implemented as a <code class="docutils literal notranslate"><span class="pre">local</span></code> command if you require further customization:</p>
+<p>If you use Tilt to build your own Docker image and that image appears in your Helm chart we can automatically redeploy your service when the image changes.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/service&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+<span class="n">yml</span> <span class="o">=</span> <span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">)</span> <span class="c1"># the resulting yaml uses the companyname/service image</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="n">yml</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">helm</span></code> could also be implemented as a <code class="docutils literal notranslate"><span class="pre">local</span></code> command if you require further customization:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">local</span><span class="p">(</span><span class="s2">&quot;helm template path/to/chart&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For complete documentation of both <code class="docutils literal notranslate"><span class="pre">tilt</span></code> and <code class="docutils literal notranslate"><span class="pre">local</span></code> visit the <a class="reference external" href="api.html">Tilt API reference</a>.</p>
+<p>For complete documentation of both <code class="docutils literal notranslate"><span class="pre">helm</span></code> and <code class="docutils literal notranslate"><span class="pre">local</span></code> visit the <a class="reference external" href="api.html">Tilt API reference</a>.</p>
 </div>
 
 
