@@ -4,29 +4,20 @@
 
 This page is for features that the Tilt team has plans to implement.
 
-(These features are less "Wouldn't that be cool?" or "Bugs we should fix", and more "Yes! We should 
+(These features are less "Wouldn't that be cool?" or "Bugs we should fix", and more "Yes! We should
 implement this thing! And we've knocked around a few implementation ideas.")
 
 Ideas are categorized by
 - how much value we think they would add (P1 highest value, P3 lowest value)
 - how much work they would take to implement (C1 highest cost/effort, C3 lowest cost/effort)
 
-## Docker-Compose Support (P1, C1-2)
+## Docker-Compose Support (P1, C1-2) (In progress)
 
 `docker-compose.yml` is, by far, the most popular format for describing
 sets of microservices for running locally. Kubernetes YAML is nice, but much more verbose.
 Tilt should support docker-compose.yml for configuring services.
 
-The big implementation question is how this should interact with Kubernetes. We've
-experimented with docker-compose -> Kubernetes conversion tools (e.g.,
-[kompose](https://github.com/kubernetes/kompose) -- its fidelity is a mixed
-bag. [Compose on
-Kubernetes](https://blog.docker.com/2018/12/simplifying-kubernetes-with-docker-compose-and-friends/)
-looks promising but we haven't tried it yet).
-
-We've partially implemented a system that uses the docker-compose CLI
-directly. Unfortunately, it needs separate code-paths for monitoring the
-docker-compose services. It isn't production-ready quite yet.
+We currently have [alpha support for Docker-Compose](https://docs.tilt.build/docker_compose_alpha.html) in recent releases. Give it a spin and [let us know](https://github.com/windmilleng/tilt#community) what you think!
 
 Open questions:
 - docker-compose support would make it easier to try Tilt with
@@ -97,7 +88,7 @@ Open questions:
 - When do you most see the value? Maybe users would use Auto-Fast Build to learn how to write Tiltfiles
   better, but would want to write the Tiltfiles directly after that. Maybe they would use Auto-Fast Build
   all the time, and never use the Tiltfile fast_build API.
-  
+
 
 ## Domain-Specific Error Monitoring (P2, C1)
 
