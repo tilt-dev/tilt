@@ -6,7 +6,7 @@ import (
 
 const BuildHistoryLimit = 2
 
-type BuildStatus struct {
+type BuildRecord struct {
 	Edits      []string
 	Error      error
 	StartTime  time.Time
@@ -15,11 +15,11 @@ type BuildStatus struct {
 	Log        []byte `testdiff:"ignore"`
 }
 
-func (bs BuildStatus) Empty() bool {
+func (bs BuildRecord) Empty() bool {
 	return bs.StartTime.IsZero()
 }
 
-func (bs BuildStatus) Duration() time.Duration {
+func (bs BuildRecord) Duration() time.Duration {
 	if bs.StartTime.IsZero() {
 		return time.Duration(0)
 	}

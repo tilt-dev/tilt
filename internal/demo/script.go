@@ -76,6 +76,10 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 		m.healthy = false
 	}
 
+	if state.CurrentlyBuilding != "" {
+		m.healthy = false
+	}
+
 	for _, ms := range state.ManifestStates() {
 		pod := ms.MostRecentPod()
 		if pod.Phase != v1.PodRunning {
@@ -92,8 +96,10 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 			m.healthy = false
 		}
 
-		if state.CurrentlyBuilding != "" || len(ms.PendingFileChanges) > 0 {
-			m.healthy = false
+		for _, status := range ms.BuildStatuses {
+			if len(status.PendingFileChanges) > 0 {
+				m.healthy = false
+			}
 		}
 	}
 

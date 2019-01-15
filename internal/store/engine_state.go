@@ -63,7 +63,7 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	LastTiltfileBuild model.BuildStatus
+	LastTiltfileBuild model.BuildRecord
 
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
@@ -85,6 +85,16 @@ func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestN
 		}
 	}
 	return ""
+}
+
+func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
+	mn := e.ManifestNameForTargetID(id)
+	if mn == "" {
+		return BuildStatus{}
+	}
+
+	ms := e.ManifestTargets[mn].State
+	return ms.BuildStatus(id)
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -171,6 +181,22 @@ type ResourceState interface {
 	ResourceState()
 }
 
+// TODO(nick): This will eventually implement TargetStatus
+type BuildStatus struct {
+	// Stores the times of all the pending changes,
+	// so we can prioritize the oldest one first.
+	// This map is mutable.
+	PendingFileChanges map[string]time.Time
+
+	LastSuccessfulResult BuildResult
+}
+
+func newBuildStatus() *BuildStatus {
+	return &BuildStatus{
+		PendingFileChanges: make(map[string]time.Time),
+	}
+}
+
 type ManifestState struct {
 	Name model.ManifestName
 
@@ -178,22 +204,20 @@ type ManifestState struct {
 	PodSet PodSet
 	LBs    map[k8s.ServiceName]*url.URL
 
+	BuildStatuses map[model.TargetID]*BuildStatus
+
 	// State of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
 	ResourceState ResourceState
 
-	// Store the times of all the pending changes,
-	// so we can prioritize the oldest one first.
-	PendingFileChanges    map[string]time.Time
 	PendingManifestChange time.Time
 
 	// The current build
-	CurrentBuild model.BuildStatus
+	CurrentBuild model.BuildRecord
 
-	LastSuccessfulResult     BuildResult
 	LastSuccessfulDeployTime time.Time
 
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
-	BuildHistory []model.BuildStatus
+	BuildHistory []model.BuildRecord
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -214,9 +238,9 @@ func NewState() *EngineState {
 
 func newManifestState(mn model.ManifestName) *ManifestState {
 	return &ManifestState{
-		Name:               mn,
-		PendingFileChanges: make(map[string]time.Time),
-		LBs:                make(map[k8s.ServiceName]*url.URL),
+		Name:          mn,
+		BuildStatuses: make(map[model.TargetID]*BuildStatus),
+		LBs:           make(map[k8s.ServiceName]*url.URL),
 	}
 }
 
@@ -225,6 +249,23 @@ func (ms *ManifestState) TargetID() model.TargetID {
 		Type: model.TargetTypeManifest,
 		Name: ms.Name.TargetName(),
 	}
+}
+
+func (ms *ManifestState) BuildStatus(id model.TargetID) BuildStatus {
+	result, ok := ms.BuildStatuses[id]
+	if !ok {
+		return BuildStatus{}
+	}
+	return *result
+}
+
+func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
+	result, ok := ms.BuildStatuses[id]
+	if !ok {
+		result = newBuildStatus()
+		ms.BuildStatuses[id] = result
+	}
+	return result
 }
 
 func (ms *ManifestState) DCResourceState() dockercompose.State {
@@ -237,19 +278,19 @@ func (ms *ManifestState) IsDC() bool {
 	return ok
 }
 
-func (ms *ManifestState) ActiveBuild() model.BuildStatus {
+func (ms *ManifestState) ActiveBuild() model.BuildRecord {
 	return ms.CurrentBuild
 }
 
-func (ms *ManifestState) LastBuild() model.BuildStatus {
+func (ms *ManifestState) LastBuild() model.BuildRecord {
 	if len(ms.BuildHistory) == 0 {
-		return model.BuildStatus{}
+		return model.BuildRecord{}
 	}
 	return ms.BuildHistory[0]
 }
 
-func (ms *ManifestState) AddCompletedBuild(bs model.BuildStatus) {
-	ms.BuildHistory = append([]model.BuildStatus{bs}, ms.BuildHistory...)
+func (ms *ManifestState) AddCompletedBuild(bs model.BuildRecord) {
+	ms.BuildHistory = append([]model.BuildRecord{bs}, ms.BuildHistory...)
 	if len(ms.BuildHistory) > model.BuildHistoryLimit {
 		ms.BuildHistory = ms.BuildHistory[:model.BuildHistoryLimit]
 	}
@@ -265,8 +306,10 @@ func (ms *ManifestState) MostRecentPod() Pod {
 
 func (ms *ManifestState) NextBuildReason() model.BuildReason {
 	reason := model.BuildReasonNone
-	if len(ms.PendingFileChanges) > 0 {
-		reason = reason.With(model.BuildReasonFlagMountFiles)
+	for _, status := range ms.BuildStatuses {
+		if len(status.PendingFileChanges) > 0 {
+			reason = reason.With(model.BuildReasonFlagMountFiles)
+		}
 	}
 	if !ms.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
@@ -307,10 +350,12 @@ func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool,
 		earliest = t
 	}
 
-	for _, t := range ms.PendingFileChanges {
-		if t.Before(earliest) && ms.IsPendingTime(t) {
-			ok = true
-			earliest = t
+	for _, status := range ms.BuildStatuses {
+		for _, t := range status.PendingFileChanges {
+			if t.Before(earliest) && ms.IsPendingTime(t) {
+				ok = true
+				earliest = t
+			}
 		}
 	}
 	if !ok {
@@ -342,14 +387,14 @@ func (s *YAMLManifestState) TargetID() model.TargetID {
 	}
 }
 
-func (s *YAMLManifestState) ActiveBuild() model.BuildStatus {
-	return model.BuildStatus{
+func (s *YAMLManifestState) ActiveBuild() model.BuildRecord {
+	return model.BuildRecord{
 		StartTime: s.CurrentApplyStartTime,
 	}
 }
 
-func (s *YAMLManifestState) LastBuild() model.BuildStatus {
-	return model.BuildStatus{
+func (s *YAMLManifestState) LastBuild() model.BuildRecord {
+	return model.BuildRecord{
 		StartTime:  s.LastApplyStartTime,
 		FinishTime: s.LastApplyFinishTime,
 		Error:      s.LastError,
@@ -547,13 +592,15 @@ func StateToView(s EngineState) view.View {
 		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
-		for f := range ms.PendingFileChanges {
-			pendingBuildEdits = append(pendingBuildEdits, f)
+		for _, status := range ms.BuildStatuses {
+			for f := range status.PendingFileChanges {
+				pendingBuildEdits = append(pendingBuildEdits, f)
+			}
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
 
-		buildHistory := append([]model.BuildStatus{}, ms.BuildHistory...)
+		buildHistory := append([]model.BuildRecord{}, ms.BuildHistory...)
 		for i, build := range buildHistory {
 			build.Edits = shortenFileList(absWatchDirs, build.Edits)
 			buildHistory[i] = build
@@ -601,7 +648,7 @@ func StateToView(s EngineState) view.View {
 			Name:               s.GlobalYAML.ManifestName(),
 			DirectoriesWatched: relWatches,
 			CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
-			BuildHistory: []model.BuildStatus{
+			BuildHistory: []model.BuildRecord{
 				s.GlobalYAMLState.LastBuild(),
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,

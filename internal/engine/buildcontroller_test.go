@@ -123,7 +123,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.ManifestTargets["fe"].State.PendingFileChanges) > 0
+		return len(st.BuildStatus(manifest.ImageTarget.ID()).PendingFileChanges) > 0
 	})
 
 	// We don't expect a call because the trigger happened before the file event

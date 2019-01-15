@@ -69,8 +69,8 @@ type Resource struct {
 	PathsWatched       []string
 	LastDeployTime     time.Time
 
-	BuildHistory []model.BuildStatus
-	CurrentBuild model.BuildStatus
+	BuildHistory []model.BuildRecord
+	CurrentBuild model.BuildRecord
 
 	PendingBuildReason model.BuildReason
 	PendingBuildEdits  []string
@@ -124,9 +124,9 @@ func (r Resource) IsYAML() bool {
 	return ok
 }
 
-func (r Resource) LastBuild() model.BuildStatus {
+func (r Resource) LastBuild() model.BuildRecord {
 	if len(r.BuildHistory) == 0 {
-		return model.BuildStatus{}
+		return model.BuildRecord{}
 	}
 	return r.BuildHistory[0]
 }
