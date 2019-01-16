@@ -392,7 +392,6 @@ func TestIgnoredFiles(t *testing.T) {
 			LocalPath: f.Path(),
 		},
 	}).WithTiltFilename(tiltfile))
-	manifest = manifest.WithTiltFilename(tiltfile)
 
 	f.WriteFile("Tiltfile", "# hello world")
 	f.WriteFile("a.txt", "a")

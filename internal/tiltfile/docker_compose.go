@@ -275,8 +275,7 @@ func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath stri
 		WithTiltFilename(s.filename.path).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
-	m = m.WithDeployTarget(dcInfo).
-		WithTiltFilename(s.filename.path)
+	m = m.WithDeployTarget(dcInfo)
 
 	return m, []string{service.DfPath}, nil
 }

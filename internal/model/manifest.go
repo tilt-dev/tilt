@@ -2,11 +2,9 @@ package model
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/docker/distribution/reference"
-	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -21,8 +19,7 @@ func (m ManifestName) TargetName() TargetName { return TargetName(m) }
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
 	// Properties for all manifests.
-	Name         ManifestName
-	tiltFilename string
+	Name ManifestName
 
 	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
 	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployTarget`).
@@ -112,7 +109,7 @@ func (m Manifest) Validate() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.tiltFilename == m2.tiltFilename
+	primitivesMatch := m1.Name == m2.Name
 	dockerEqual := DeepEqual(m1.ImageTarget, m2.ImageTarget)
 
 	dc1 := m1.DockerComposeTarget()
@@ -131,40 +128,6 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 
 func (m Manifest) ManifestName() ManifestName {
 	return m.Name
-}
-
-// TODO(nick): This method should be deleted. We should just de-dupe and sort LocalPaths once
-// when we create it, rather than have a duplicate method that does the "right" thing.
-func (m Manifest) Dependencies() []string {
-	// TODO(dmiller) we can know the length of this slice
-	deps := []string{}
-
-	for _, p := range m.LocalPaths() {
-		deps = append(deps, p)
-	}
-
-	deduped := sliceutils.DedupeStringSlice(deps)
-
-	// Sort so that any nested paths come after their parents
-	sort.Strings(deduped)
-
-	return deduped
-}
-
-func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
-	return m
-}
-
-func (m Manifest) TiltFilename() string {
-	return m.tiltFilename
-}
-
-// Right now, the Tiltfile name is duplicated in the manifest and inner objects,
-// but this is just a transitional state ImageTarget and DockerComposeTarget are
-// their own top-level objects in the graph.
-func (m Manifest) WithTiltFilename(f string) Manifest {
-	m.tiltFilename = f
-	return m
 }
 
 var _ TargetSpec = Manifest{}
@@ -195,28 +158,6 @@ type Step struct {
 	Triggers []string
 	// Directory the Triggers are relative to
 	BaseDirectory string
-}
-
-func (s1 Step) Equal(s2 Step) bool {
-	if s1.BaseDirectory != s2.BaseDirectory {
-		return false
-	}
-
-	if !s1.Cmd.Equal(s2.Cmd) {
-		return false
-	}
-
-	if len(s1.Triggers) != len(s2.Triggers) {
-		return false
-	}
-
-	for i := range s2.Triggers {
-		if s1.Triggers[i] != s2.Triggers[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 type Cmd struct {
@@ -273,24 +214,6 @@ func (c Cmd) String() string {
 		}
 	}
 	return fmt.Sprintf("%s", strings.Join(quoted, " "))
-}
-
-func (c1 Cmd) Equal(c2 Cmd) bool {
-	if (c1.Argv == nil) != (c2.Argv == nil) {
-		return false
-	}
-
-	if len(c1.Argv) != len(c2.Argv) {
-		return false
-	}
-
-	for i := range c1.Argv {
-		if c1.Argv[i] != c2.Argv[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (c Cmd) Empty() bool {
