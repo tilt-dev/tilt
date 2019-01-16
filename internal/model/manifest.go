@@ -42,6 +42,11 @@ func (m Manifest) WithImageTarget(iTarget ImageTarget) Manifest {
 	return m
 }
 
+func (m Manifest) WithImageTargets(iTargets []ImageTarget) Manifest {
+	m.ImageTargets = append([]ImageTarget{}, iTargets...)
+	return m
+}
+
 func (m Manifest) ImageTargetAt(i int) ImageTarget {
 	if i < len(m.ImageTargets) {
 		return m.ImageTargets[i]
