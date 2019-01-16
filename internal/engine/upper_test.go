@@ -60,6 +60,7 @@ k8s_resource('foobar', yaml='snack.yaml')
 
 // represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
+	count int
 	specs []model.TargetSpec
 	state store.BuildStateSet
 }
@@ -123,7 +124,6 @@ type fakeBuildAndDeployer struct {
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildResult {
-	b.buildCount++
 	nt, _ := reference.WithTag(ref, fmt.Sprintf("tilt-%d", b.buildCount))
 	containerID := b.nextBuildContainer
 	b.nextBuildContainer = ""
@@ -134,7 +134,9 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
-	call := buildAndDeployCall{specs: specs, state: state}
+	b.buildCount++
+
+	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
 	buildID := model.TargetID{}
 	var buildImageRef reference.Named
 	if !call.dc().ID().Empty() {
@@ -236,16 +238,14 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.timerMaker.maxTimerLock.Lock()
-	call := f.nextCall()
+	call := f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
-
-	f.waitForCompletedBuildCount(1)
 
 	fileRelPath := "fdas"
 	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 
-	call = f.nextCall()
+	call = f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTarget, call.image())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 	fileAbsPath, err := filepath.Abs(fileRelPath)
@@ -253,8 +253,6 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 		t.Errorf("error making abs path of %v: %v", fileRelPath, err)
 	}
 	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
-
-	f.waitForCompletedBuildCount(2)
 
 	f.withManifestState("foobar", func(ms store.ManifestState) {
 		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagMountFiles))
@@ -403,14 +401,14 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
-	call := f.nextCall("first build")
+	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneState().IsEmpty())
 
 	// Simulate a change to a.go that makes the build fail.
 	f.SetNextBuildFailure(errors.New("build failed"))
 	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
-	call = f.nextCall("failed build from a.go change")
+	call = f.nextCallComplete("failed build from a.go change")
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
 
@@ -419,7 +417,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 	// The next build should treat both a.go and b.go as changed, and build
 	// on the last successful result, from before a.go changed.
-	call = f.nextCall("build on last successful result")
+	call = f.nextCallComplete("build on last successful result")
 	assert.Equal(t, []string{"/a.go", "/b.go"}, call.oneState().FilesChanged())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 
@@ -436,21 +434,19 @@ func TestThreeBuilds(t *testing.T) {
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
-	call := f.nextCall("first build")
+	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneState().IsEmpty())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
 
-	call = f.nextCall("second build")
+	call = f.nextCallComplete("second build")
 	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
 	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
 
-	call = f.nextCall("third build")
+	call = f.nextCallComplete("third build")
 	assert.Equal(t, []string{"/b.go"}, call.oneState().FilesChanged())
-
-	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, 2, len(ms.BuildHistory))
@@ -852,7 +848,7 @@ go build ./...
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	call := f.nextCall("first build")
+	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneState().IsEmpty())
 
 	// Simulate a change to main.go
@@ -860,7 +856,7 @@ go build ./...
 	f.fsWatcher.events <- watch.FileEvent{Path: mainPath}
 
 	// Check that this triggered a rebuild.
-	call = f.nextCall("rebuild triggered")
+	call = f.nextCallComplete("rebuild triggered")
 	assert.Equal(t, []string{mainPath}, call.oneState().FilesChanged())
 
 	err := f.Stop()
@@ -1265,10 +1261,8 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.SetNextBuildFailure(errors.New("Build failed"))
 	f.Start([]model.Manifest{manifest}, true)
 
-	call := f.nextCall()
+	call := f.nextCallComplete()
 	assert.True(t, call.oneState().IsEmpty())
-
-	f.waitForCompletedBuildCount(1)
 
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
@@ -2200,6 +2194,12 @@ func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName
 	})
 }
 
+func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeployCall {
+	call := f.nextCall(msgAndArgs...)
+	f.waitForCompletedBuildCount(call.count)
+	return call
+}
+
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {
@@ -2210,7 +2210,7 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 		select {
 		case call := <-f.b.calls:
 			return call
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			f.T().Fatal(msg)
 		}
 	}
@@ -2225,7 +2225,7 @@ func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 		select {
 		case <-f.b.calls:
 			f.T().Fatal(msg)
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			return
 		}
 	}
