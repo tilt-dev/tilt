@@ -39,6 +39,10 @@ var minDockerVersion = semver.MustParse("1.23.0")
 var minDockerVersionStableBuildkit = semver.MustParse("1.39.0")
 var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 
+// microk8s exposes its own docker socket
+// https://github.com/ubuntu/microk8s/blob/master/docs/dockerd.md
+const microK8sDockerHost = "unix:///var/snap/microk8s/current/docker.sock"
+
 // Create an interface so this can be mocked out.
 type Client interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
@@ -88,6 +92,14 @@ func DefaultClient(ctx context.Context, env k8s.Env) (*Cli, error) {
 		}
 
 		envFunc = func(key string) string { return envMap[key] }
+	} else if env == k8s.EnvMicroK8s {
+		envFunc = func(key string) string {
+			val := os.Getenv(key)
+			if val == "" && key == "DOCKER_HOST" {
+				return microK8sDockerHost
+			}
+			return val
+		}
 	}
 
 	opts, err := CreateClientOpts(ctx, envFunc)
