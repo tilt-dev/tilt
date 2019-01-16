@@ -29,7 +29,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	ms.BuildHistory = []model.BuildRecord{
 		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
 	}
-	ms.MutableBuildStatus(m.ImageTarget.ID()).PendingFileChanges =
+	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
 		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 

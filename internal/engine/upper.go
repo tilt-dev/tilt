@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
@@ -475,8 +476,21 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	ms := mt.State
 	manifest := mt.Manifest
 
-	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, manifest.ImageTarget.Ref)
-	if err != nil || imageID == nil {
+	var imageID reference.NamedTagged
+	for _, iTarget := range manifest.ImageTargets {
+		var err error
+		imageID, err = k8s.FindImageNamedTaggedMatching(pod.Spec, iTarget.Ref)
+		if err != nil {
+			// Ditto, this could happen if we get a pod from an old version of the manifest.
+			return nil, nil
+		}
+
+		if imageID != nil {
+			break
+		}
+	}
+
+	if imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
 		return nil, nil
 	}
@@ -580,11 +594,20 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	defer prunePods(ms)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, manifest.ImageTarget.Ref)
-	if err != nil {
-		logger.Get(ctx).Debugf("Error matching container: %v", err)
-		return
-	} else if cStatus.Name == "" {
+	var cStatus v1.ContainerStatus
+	var err error
+	for _, iTarget := range manifest.ImageTargets {
+		cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error matching container: %v", err)
+			return
+		}
+		if cStatus.Name != "" {
+			break
+		}
+	}
+
+	if cStatus.Name == "" {
 		return
 	}
 

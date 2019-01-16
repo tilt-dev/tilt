@@ -21,7 +21,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
@@ -44,7 +44,7 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	podA := f.testPod("pod-a", "fe", "Running", testContainer, time.Now())
@@ -73,7 +73,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
@@ -123,7 +123,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.BuildStatus(manifest.ImageTarget.ID()).PendingFileChanges) > 0
+		return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0
 	})
 
 	// We don't expect a call because the trigger happened before the file event

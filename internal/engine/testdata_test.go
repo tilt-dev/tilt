@@ -55,7 +55,7 @@ func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 
 func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.Manifest {
 	manifest := NewSanchoFastBuildManifest(fixture)
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithCachePaths(paths))
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
 	return manifest
 }
 
@@ -89,6 +89,6 @@ func NewSanchoStaticManifest() model.Manifest {
 
 func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
 	manifest := NewSanchoStaticManifest()
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithCachePaths(paths))
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
 	return manifest
 }

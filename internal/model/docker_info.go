@@ -150,19 +150,7 @@ func (i ImageTarget) WithTiltFilename(f string) ImageTarget {
 // TODO(nick): This method should be deleted. We should just de-dupe and sort LocalPaths once
 // when we create it, rather than have a duplicate method that does the "right" thing.
 func (i ImageTarget) Dependencies() []string {
-	// TODO(dmiller) we can know the length of this slice
-	deps := []string{}
-
-	for _, p := range i.LocalPaths() {
-		deps = append(deps, p)
-	}
-
-	deduped := sliceutils.DedupeStringSlice(deps)
-
-	// Sort so that any nested paths come after their parents
-	sort.Strings(deduped)
-
-	return deduped
+	return sliceutils.DedupedAndSorted(i.LocalPaths())
 }
 
 type StaticBuild struct {

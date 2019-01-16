@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -24,7 +24,7 @@ func NewImageController(reaper build.ImageReaper) *ImageController {
 	}
 }
 
-func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
+func (c *ImageController) refsToReap(st store.RStore) []reference.Named {
 	state := st.RLockState()
 	defer st.RUnlockState()
 	if !state.WatchMounts || len(state.ManifestTargets) == 0 {
@@ -37,21 +37,20 @@ func (c *ImageController) manifestsToReap(st store.RStore) []model.Manifest {
 	}
 
 	c.hasRunReaper = true
-	manifests := make([]model.Manifest, 0, len(state.ManifestTargets))
+	refs := []reference.Named{}
 	for _, manifest := range state.Manifests() {
-		if manifest.ImageTarget.Ref == nil {
-			continue
+		for _, iTarget := range manifest.ImageTargets {
+			refs = append(refs, iTarget.Ref)
 		}
-		manifests = append(manifests, manifest)
 	}
-	return manifests
+	return refs
 }
 
 func (c *ImageController) OnChange(ctx context.Context, st store.RStore) {
-	manifestsToReap := c.manifestsToReap(st)
-	if len(manifestsToReap) > 0 {
+	refsToReap := c.refsToReap(st)
+	if len(refsToReap) > 0 {
 		go func() {
-			err := c.reapOldWatchBuilds(ctx, manifestsToReap, time.Now())
+			err := c.reapOldWatchBuilds(ctx, refsToReap, time.Now())
 			if err != nil {
 				logger.Get(ctx).Debugf("Error garbage collecting builds: %v", err)
 			}
@@ -59,10 +58,10 @@ func (c *ImageController) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
-func (c *ImageController) reapOldWatchBuilds(ctx context.Context, manifests []model.Manifest, createdBefore time.Time) error {
+func (c *ImageController) reapOldWatchBuilds(ctx context.Context, refs []reference.Named, createdBefore time.Time) error {
 	watchFilter := build.FilterByLabelValue(build.BuildMode, build.BuildModeExisting)
-	for _, manifest := range manifests {
-		nameFilter := build.FilterByRefName(manifest.ImageTarget.Ref)
+	for _, ref := range refs {
+		nameFilter := build.FilterByRefName(ref)
 		err := c.reaper.RemoveTiltImages(ctx, createdBefore, false, watchFilter, nameFilter)
 		if err != nil {
 			return errors.Wrap(err, "reapOldWatchBuilds")

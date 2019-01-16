@@ -810,8 +810,8 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	m := f.assertManifest("foo", db(image("gcr.io/foo")))
-	assert.True(t, m.ImageTarget.IsStaticBuild())
-	assert.False(t, m.ImageTarget.IsFastBuild())
+	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
 func TestEmptyDockerfileFastBuild(t *testing.T) {
@@ -825,8 +825,8 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	m := f.assertManifest("foo", db(image("gcr.io/foo")))
-	assert.False(t, m.ImageTarget.IsStaticBuild())
-	assert.True(t, m.ImageTarget.IsFastBuild())
+	assert.False(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.True(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
 type fixture struct {
@@ -970,8 +970,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
-			caches := m.ImageTarget.CachePaths()
-			ref := m.ImageTarget.Ref
+			caches := m.ImageTargetAt(0).CachePaths()
+			ref := m.ImageTargetAt(0).Ref
 			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
@@ -991,7 +991,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			image := m.ImageTarget
+			image := m.ImageTargetAt(0)
 			ref := image.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
@@ -1056,7 +1056,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 			expectedFilter := opt.missing
-			filter := ignore.CreateBuildContextFilter(m.ImageTarget)
+			filter := ignore.CreateBuildContextFilter(m.ImageTargetAt(0))
 			if m.IsDC() {
 				filter = ignore.CreateBuildContextFilter(m.DockerComposeTarget())
 			}
@@ -1066,7 +1066,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				if m.IsDC() {
 					filter, err = ignore.CreateFileChangeFilter(m.DockerComposeTarget())
 				} else {
-					filter, err = ignore.CreateFileChangeFilter(m.ImageTarget)
+					filter, err = ignore.CreateFileChangeFilter(m.ImageTargetAt(0))
 				}
 				if err != nil {
 					f.t.Fatalf("Error creating file change filter: %v", err)
