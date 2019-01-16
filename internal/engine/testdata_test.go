@@ -26,6 +26,7 @@ type pather interface {
 }
 
 var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
+var SanchoSidecarRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho-sidecar")
 
 func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	fbInfo := model.FastBuild{
@@ -58,16 +59,31 @@ func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.M
 	return manifest
 }
 
-func NewSanchoStaticManifest() model.Manifest {
-	m := model.Manifest{
-		Name: "sancho",
-	}.WithImageTarget(model.ImageTarget{
+func NewSanchoStaticImageTarget() model.ImageTarget {
+	return model.ImageTarget{
 		Ref: SanchoRef,
 	}.WithBuildDetails(model.StaticBuild{
 		Dockerfile: SanchoStaticDockerfile,
 		BuildPath:  "/path/to/build",
-	}),
-	).WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
+	})
+}
+
+func NewSanchoSidecarStaticImageTarget() model.ImageTarget {
+	iTarget := NewSanchoStaticImageTarget()
+	iTarget.Ref = SanchoSidecarRef
+	return iTarget
+}
+
+func NewSanchoStaticManifest() model.Manifest {
+	m := model.Manifest{
+		Name: "sancho",
+	}.WithImageTarget(
+		NewSanchoStaticImageTarget().
+			WithBuildDetails(model.StaticBuild{
+				Dockerfile: SanchoStaticDockerfile,
+				BuildPath:  "/path/to/build",
+			})).
+		WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
 	return m
 }
 

@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
@@ -83,6 +85,33 @@ func TestDeployTwinImages(t *testing.T) {
 	assert.Equal(t, expectedImage, result[id].Image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
+}
+
+func TestDeployPodWithMultipleImages(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	iTarget1 := NewSanchoStaticImageTarget()
+	iTarget2 := NewSanchoSidecarStaticImageTarget()
+	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}
+	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
+
+	result, err := f.ibd.BuildAndDeploy(f.ctx, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, f.docker.BuildCount)
+
+	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	assert.Equal(t, expectedSanchoRef, result[iTarget1.ID()].Image.String())
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
+		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
+
+	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
+	assert.Equal(t, expectedSidecarRef, result[iTarget2.ID()].Image.String())
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
+		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
 
 type ibdFixture struct {
