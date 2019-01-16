@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -21,6 +22,7 @@ type DockerComposeClient interface {
 	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
 	Config(ctx context.Context, configPath string) (string, error)
 	Services(ctx context.Context, configPath string) (string, error)
+	ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error)
 }
 
 type cmdDCClient struct{}
@@ -121,6 +123,15 @@ func (c *cmdDCClient) Config(ctx context.Context, configPath string) (string, er
 
 func (c *cmdDCClient) Services(ctx context.Context, configPath string) (string, error) {
 	return dcOutput(ctx, configPath, "config", "--services")
+}
+
+func (c *cmdDCClient) ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error) {
+	id, err := dcOutput(ctx, configPath, "ps", "-q", serviceName.String())
+	if err != nil {
+		return container.ID(""), err
+	}
+
+	return container.ID(id), nil
 }
 
 func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
