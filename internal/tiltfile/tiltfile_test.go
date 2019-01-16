@@ -829,6 +829,47 @@ k8s_resource('foo', 'foo.yaml')
 	assert.True(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
+func TestSanchoSidecar(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("k8s.yaml", testyaml.SanchoSidecarYAML)
+	f.file("Tiltfile", `
+k8s_yaml('k8s.yaml')
+docker_build('gcr.io/some-project-162817/sancho', '.')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
+`)
+	f.load()
+
+	assert.Equal(t, 1, len(f.manifests))
+	m := f.assertManifest("sancho")
+	assert.Equal(t, 2, len(m.ImageTargets))
+	assert.Equal(t, "gcr.io/some-project-162817/sancho",
+		m.ImageTargetAt(0).Ref.String())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
+		m.ImageTargetAt(1).Ref.String())
+}
+
+func TestSanchoRedisSidecar(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("k8s.yaml", testyaml.SanchoRedisSidecarYAML)
+	f.file("Tiltfile", `
+k8s_yaml('k8s.yaml')
+docker_build('gcr.io/some-project-162817/sancho', '.')
+`)
+	f.load()
+
+	assert.Equal(t, 1, len(f.manifests))
+	m := f.assertManifest("sancho")
+	assert.Equal(t, 1, len(m.ImageTargets))
+	assert.Equal(t, "gcr.io/some-project-162817/sancho",
+		m.ImageTargetAt(0).Ref.String())
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

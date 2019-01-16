@@ -235,6 +235,37 @@ spec:
         image: gcr.io/some-project-162817/sancho-sidecar
 `
 
+const SanchoRedisSidecarYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: token
+            valueFrom:
+              secretKeyRef:
+                name: slacktoken
+                key: token
+      - name: redis-sidecar
+        image: redis:latest
+`
+
 const TracerYAML = `
 apiVersion: extensions/v1beta1
 kind: Deployment
