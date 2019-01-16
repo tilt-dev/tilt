@@ -43,10 +43,9 @@ func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	}
 	m := model.Manifest{
 		Name: "sancho",
-		ImageTarget: model.ImageTarget{
-			Ref: SanchoRef,
-		}.WithBuildDetails(fbInfo),
-	}
+	}.WithImageTarget(model.ImageTarget{
+		Ref: SanchoRef,
+	}.WithBuildDetails(fbInfo))
 
 	m = m.WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
 
@@ -55,25 +54,25 @@ func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 
 func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.Manifest {
 	manifest := NewSanchoFastBuildManifest(fixture)
-	manifest.ImageTarget = manifest.ImageTarget.WithCachePaths(paths)
+	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithCachePaths(paths))
 	return manifest
 }
 
 func NewSanchoStaticManifest() model.Manifest {
 	m := model.Manifest{
 		Name: "sancho",
-		ImageTarget: model.ImageTarget{
-			Ref: SanchoRef,
-		}.WithBuildDetails(model.StaticBuild{
-			Dockerfile: SanchoStaticDockerfile,
-			BuildPath:  "/path/to/build",
-		}),
-	}.WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
+	}.WithImageTarget(model.ImageTarget{
+		Ref: SanchoRef,
+	}.WithBuildDetails(model.StaticBuild{
+		Dockerfile: SanchoStaticDockerfile,
+		BuildPath:  "/path/to/build",
+	}),
+	).WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
 	return m
 }
 
 func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
 	manifest := NewSanchoStaticManifest()
-	manifest.ImageTarget = manifest.ImageTarget.WithCachePaths(paths)
+	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithCachePaths(paths))
 	return manifest
 }

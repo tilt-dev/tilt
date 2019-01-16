@@ -39,6 +39,11 @@ func (m Manifest) ID() TargetID {
 	}
 }
 
+func (m Manifest) WithImageTarget(iTarget ImageTarget) Manifest {
+	m.ImageTarget = iTarget
+	return m
+}
+
 type DockerBuildArgs map[string]string
 
 func (m Manifest) DockerComposeTarget() DockerComposeTarget {
