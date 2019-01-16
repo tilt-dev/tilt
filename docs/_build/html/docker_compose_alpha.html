@@ -220,22 +220,14 @@
 <p>Additionally, there are certain use cases that the current iteration of Tilt x Docker Compose is more or less suited for:</p>
 <div class="section" id="what-to-expect-from-tilt-x-docker-compose-by-your-use-case">
 <h3>What to expect from Tilt x Docker Compose, by your use case<a class="headerlink" href="#what-to-expect-from-tilt-x-docker-compose-by-your-use-case" title="Permalink to this headline">¶</a></h3>
-<ul class="simple">
-<li>You use Docker Compose for your entire development flow: it handles both building Docker images and spinning them up in the appropriate containers</li>
-</ul>
+<p><em><strong>You use Docker Compose for your entire development flow: it handles both building Docker images and spinning them up in the appropriate containers.</strong></em></p>
 <p>Congrats, we think that Tilt x Docker Compose as it exists today will be great for you! If you edit code locally, Tilt will automatically rebuild and redeploy the appropriate service, plus you get all the visibility of our Heads-Up Display.</p>
-<ul class="simple">
-<li>You use Docker Compose to spin up images that have been built elsewhere (e.g. you have to run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">build</span></code> before you run <code class="docutils literal notranslate"><span class="pre">docker-compose</span> <span class="pre">up</span></code>)</li>
-</ul>
+<p><em><strong>You use Docker Compose to spin up images that have been built elsewhere (e.g. you have to run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">build</span></code> before you run <code class="docutils literal notranslate"><span class="pre">docker-compose</span> <span class="pre">up</span></code>).</strong></em></p>
 <p>You won’t get the benefits of automatic rebuild, but you’ll still have vastly better visibility into your app: you can easily get logs per-service, see status at a glance, and find crashes as soon as they happen.</p>
 <p>Don’t worry, we’re working on a way for you to get the benefits of auto-rebuilding (with some caching magic to make your builds lightning fast); but in the meantime, we think you’ll still get something out of running your Docker Compose setup via Tilt.</p>
-<ul class="simple">
-<li>You build Docker images via Docker Compose (i.e. you specify <code class="docutils literal notranslate"><span class="pre">build</span></code> in your config file) AND you make use of <code class="docutils literal notranslate"><span class="pre">MOUNT</span></code> / <code class="docutils literal notranslate"><span class="pre">VOLUME</span></code> in your <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> or <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code></li>
-</ul>
-<p>We’re still working out the kinks for this use case. We hope it’ll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a <code class="docutils literal notranslate"><span class="pre">MOUNT</span></code>ed file – which is obviously silly, since that file automatically gets updated in the container. You have been warned.</p>
-<ul class="simple">
-<li>Your containers automatically restart after crashes (i.e. you set <a class="reference external" href="https://docs.docker.com/compose/compose-file/#restart">container restart policy</a> in your config file).</li>
-</ul>
+<p><em><strong>You build Docker images via Docker Compose (i.e. you specify <code class="docutils literal notranslate"><span class="pre">build</span></code> in your config file) AND you make use of <code class="docutils literal notranslate"><span class="pre">VOLUME</span></code> in your <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> or <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code>.</strong></em></p>
+<p>We’re still working out the kinks for this use case. We hope it’ll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a mounted file – which is obviously silly, since that file automatically gets updated in the container. You have been warned.</p>
+<p><em><strong>Your containers automatically restart after crashes (i.e. you set <a class="reference external" href="https://docs.docker.com/compose/compose-file/#restart">container restart policy</a> in your config file).</strong></em></p>
 <p>Most of our functionality will still work, but we’re still working on how to surface the right error messages to you when something goes wrong. When your containers crash and restart, you might see some odd stuff in the display. We’re working on tightening up this experience.</p>
 </div>
 <div class="section" id="how-to-be-an-alpha-user">

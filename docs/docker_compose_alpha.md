@@ -27,24 +27,23 @@ Additionally, there are certain use cases that the current iteration of Tilt x D
 
 ### What to expect from Tilt x Docker Compose, by your use case
 
-* You use Docker Compose for your entire development flow: it handles both building Docker images and spinning them up in the appropriate containers 
+***You use Docker Compose for your entire development flow: it handles both building Docker images and spinning them up in the appropriate containers.***
 
 Congrats, we think that Tilt x Docker Compose as it exists today will be great for you! If you edit code locally, Tilt will automatically rebuild and redeploy the appropriate service, plus you get all the visibility of our Heads-Up Display. 
 
-* You use Docker Compose to spin up images that have been built elsewhere (e.g. you have to run `make build` before you run `docker-compose up`) 
+***You use Docker Compose to spin up images that have been built elsewhere (e.g. you have to run `make build` before you run `docker-compose up`).***
 
 You won't get the benefits of automatic rebuild, but you'll still have vastly better visibility into your app: you can easily get logs per-service, see status at a glance, and find crashes as soon as they happen.
 
 Don't worry, we're working on a way for you to get the benefits of auto-rebuilding (with some caching magic to make your builds lightning fast); but in the meantime, we think you'll still get something out of running your Docker Compose setup via Tilt.  
 
-* You build Docker images via Docker Compose (i.e. you specify `build` in your config file) AND you make use of `MOUNT` / `VOLUME` in your `Dockerfile` or `docker-compose.yml`
+***You build Docker images via Docker Compose (i.e. you specify `build` in your config file) AND you make use of `VOLUME` in your `Dockerfile` or `docker-compose.yml`.***
 
-We're still working out the kinks for this use case. We hope it'll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a `MOUNT`ed file -- which is obviously silly, since that file automatically gets updated in the container. You have been warned.
+We're still working out the kinks for this use case. We hope it'll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a mounted file -- which is obviously silly, since that file automatically gets updated in the container. You have been warned.
 
-* Your containers automatically restart after crashes (i.e. you set [container restart policy](https://docs.docker.com/compose/compose-file/#restart) in your config file).
+***Your containers automatically restart after crashes (i.e. you set [container restart policy](https://docs.docker.com/compose/compose-file/#restart) in your config file).***
 
 Most of our functionality will still work, but we're still working on how to surface the right error messages to you when something goes wrong. When your containers crash and restart, you might see some odd stuff in the display. We're working on tightening up this experience.
-
 
 ### How to be an alpha user
 We're pushing new stuff every day, so don't bother waiting for releases; install from `master`!
