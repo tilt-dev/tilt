@@ -1815,7 +1815,10 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
-	f.setDCRunLogOutput(m.DockerComposeTarget(), expected)
+	output := make(chan string, 1)
+	output <- expected
+	defer close(output)
+	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -1830,7 +1833,10 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "Attaching to snack\n"
-	f.setDCRunLogOutput(m.DockerComposeTarget(), expected)
+	output := make(chan string, 1)
+	output <- expected
+	defer close(output)
+	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -1989,7 +1995,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcc := dockercompose.NewFakeDockerComposeClient(t)
+	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	pm := NewProfilerManager()
@@ -2383,7 +2389,7 @@ func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 	f.b.buildLogOutput[id] = output
 }
 
-func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output string) {
+func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-chan string) {
 	f.dcc.RunLogOutput[dc.Name] = output
 }
 
