@@ -310,7 +310,7 @@ func TestWatchBothDirAndFile(t *testing.T) {
 	f.assertEvents(fileB)
 }
 
-func TestWatchNonexistantDirectory(t *testing.T) {
+func TestWatchNonexistentDirectory(t *testing.T) {
 	f := newNotifyFixture(t)
 	defer f.tearDown()
 
