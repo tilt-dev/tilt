@@ -369,10 +369,10 @@ func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
 			return nil, err
 		}
 		result = append(result, m)
-		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, configFiles...))
+		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
 	}
 	if dc.configPath != "" {
-		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, dc.configPath))
+		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPath))
 	}
 	return result, nil
 }

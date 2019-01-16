@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/yaml"
@@ -85,19 +84,7 @@ func (t DockerComposeTarget) WithIgnoredLocalDirectories(dirs []string) DockerCo
 // TODO(nick): This method should be deleted. We should just de-dupe and sort LocalPaths once
 // when we create it, rather than have a duplicate method that does the "right" thing.
 func (t DockerComposeTarget) Dependencies() []string {
-	// TODO(dmiller) we can know the length of this slice
-	deps := []string{}
-
-	for _, p := range t.LocalPaths() {
-		deps = append(deps, p)
-	}
-
-	deduped := sliceutils.DedupeStringSlice(deps)
-
-	// Sort so that any nested paths come after their parents
-	sort.Strings(deduped)
-
-	return deduped
+	return sliceutils.DedupedAndSorted(t.LocalPaths())
 }
 
 func (dc DockerComposeTarget) Validate() error {

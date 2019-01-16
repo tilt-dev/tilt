@@ -1,6 +1,9 @@
 package sliceutils
 
-func DedupeStringSlice(slice []string) (result []string) {
+import "sort"
+
+// Deduplicate and sort a slice of strings.
+func DedupedAndSorted(slice []string) (result []string) {
 	seen := map[string]bool{}
 
 	for _, s := range slice {
@@ -9,5 +12,6 @@ func DedupeStringSlice(slice []string) (result []string) {
 			result = append(result, s)
 		}
 	}
+	sort.Strings(result)
 	return result
 }

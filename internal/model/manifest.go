@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -23,7 +24,7 @@ type Manifest struct {
 
 	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
 	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployTarget`).
-	ImageTarget ImageTarget
+	ImageTargets []ImageTarget
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployTarget TargetSpec
@@ -37,8 +38,15 @@ func (m Manifest) ID() TargetID {
 }
 
 func (m Manifest) WithImageTarget(iTarget ImageTarget) Manifest {
-	m.ImageTarget = iTarget
+	m.ImageTargets = []ImageTarget{iTarget}
 	return m
+}
+
+func (m Manifest) ImageTargetAt(i int) ImageTarget {
+	if i < len(m.ImageTargets) {
+		return m.ImageTargets[i]
+	}
+	return ImageTarget{}
 }
 
 type DockerBuildArgs map[string]string
@@ -82,7 +90,11 @@ func (m Manifest) LocalPaths() []string {
 	case DockerComposeTarget:
 		return di.LocalPaths()
 	default:
-		return m.ImageTarget.LocalPaths()
+		paths := []string{}
+		for _, iTarget := range m.ImageTargets {
+			paths = append(paths, iTarget.LocalPaths()...)
+		}
+		return sliceutils.DedupedAndSorted(paths)
 	}
 }
 
@@ -91,8 +103,8 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	if !m.ImageTarget.ID().Empty() || m.IsK8s() {
-		err := m.ImageTarget.Validate()
+	for _, iTarget := range m.ImageTargets {
+		err := iTarget.Validate()
 		if err != nil {
 			return err
 		}
@@ -110,7 +122,7 @@ func (m Manifest) Validate() error {
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
 	primitivesMatch := m1.Name == m2.Name
-	dockerEqual := DeepEqual(m1.ImageTarget, m2.ImageTarget)
+	dockerEqual := DeepEqual(m1.ImageTargets, m2.ImageTargets)
 
 	dc1 := m1.DockerComposeTarget()
 	dc2 := m2.DockerComposeTarget()

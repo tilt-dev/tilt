@@ -214,7 +214,12 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 	}
 
 	if manifest.IsK8s() {
-		return []model.TargetSpec{manifest.ImageTarget, manifest.K8sTarget()}
+		result := []model.TargetSpec{}
+		for _, iTarget := range manifest.ImageTargets {
+			result = append(result, iTarget)
+		}
+		result = append(result, manifest.K8sTarget())
+		return result
 	}
 
 	return nil

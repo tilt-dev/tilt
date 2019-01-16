@@ -93,8 +93,9 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		if m.IsDC() {
 			dcTarget := m.DockerComposeTarget()
 			targetsToProcess[dcTarget.ID()] = dcTarget
-		} else {
-			iTarget := m.ImageTarget
+		}
+
+		for _, iTarget := range m.ImageTargets {
 			targetsToProcess[iTarget.ID()] = iTarget
 		}
 	}

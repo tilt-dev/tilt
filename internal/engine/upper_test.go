@@ -239,14 +239,14 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	fileRelPath := "fdas"
 	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 
 	call = f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 	fileAbsPath, err := filepath.Abs(fileRelPath)
 	if err != nil {
@@ -272,7 +272,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.restTimerLock.Lock()
@@ -284,7 +284,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f.timerMaker.restTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -310,7 +310,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -323,7 +323,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.timerMaker.maxTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -828,7 +828,7 @@ k8s_resource('foobar', 'snack.yaml')
 			Cmd:           model.ToShellCmd("changed"),
 			BaseDirectory: f.Path(),
 		}}
-		assert.Equal(t, expectedSteps, mt.Manifest.ImageTarget.FastBuildInfo().Steps)
+		assert.Equal(t, expectedSteps, mt.Manifest.ImageTargetAt(0).FastBuildInfo().Steps)
 	})
 }
 
@@ -840,7 +840,7 @@ ADD ./ ./
 go build ./...
 `
 	manifest := f.newManifest("foobar", nil)
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithBuildDetails(
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithBuildDetails(
 		model.StaticBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
@@ -1069,7 +1069,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
-		ref = ms.BuildStatus(manifest.ImageTarget.ID()).LastSuccessfulResult.Image
+		ref = ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult.Image
 		return ref != nil
 	})
 
@@ -1107,7 +1107,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1143,7 +1143,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// Start a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1180,7 +1180,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 
 	// Start a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1201,7 +1201,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 
 	// Start another fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1330,7 +1330,7 @@ func TestPodContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
-		ref = ms.BuildStatus(manifest.ImageTarget.ID()).LastSuccessfulResult.Image
+		ref = ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult.Image
 		return ref != nil
 	})
 
@@ -1361,7 +1361,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithDockerignores([]model.Dockerignore{
 			{
 				LocalPath: f.Path(),
@@ -1372,7 +1372,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1387,7 +1387,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithRepos([]model.LocalGitRepo{
 			{
 				LocalPath:         f.Path(),
@@ -1398,7 +1398,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1423,7 +1423,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.podLog(name, "first string")
 
 	f.upper.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a.go"},
 	})
 
@@ -1457,7 +1457,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 	})
 
 	f.upper.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a.go"},
 	})
 
@@ -1702,11 +1702,11 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 
 	f.WaitUntilManifest("has new mounts", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTarget.FastBuildInfo().Mounts) == 2
+		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Mounts) == 2
 	})
 
 	f.PollUntil("watches setup", func() bool {
-		watches, ok := f.fwm.targetWatches[m2.ImageTarget.ID()]
+		watches, ok := f.fwm.targetWatches[m2.ImageTargetAt(0).ID()]
 		if !ok {
 			return false
 		}
@@ -2405,7 +2405,7 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
-	resultSet[manifest.ImageTarget.ID()] = store.BuildResult{
+	resultSet[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
 		ContainerID: id,
 	}
 	return resultSet

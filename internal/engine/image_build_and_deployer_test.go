@@ -80,7 +80,7 @@ func TestDeployTwinImages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id := manifest.ImageTarget.ID()
+	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	assert.Equal(t, expectedImage, result[id].Image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),

@@ -74,8 +74,10 @@ type EngineState struct {
 func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestName {
 	for mn, state := range e.ManifestTargets {
 		manifest := state.Manifest
-		if manifest.ImageTarget.ID() == id {
-			return mn
+		for _, iTarget := range manifest.ImageTargets {
+			if iTarget.ID() == id {
+				return mn
+			}
 		}
 		if manifest.K8sTarget().ID() == id {
 			return mn
