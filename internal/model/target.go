@@ -28,6 +28,9 @@ const (
 	// TODO(nick): Currenly used as the type for both Manifest and YAMLManifest, though
 	// we expect YAMLManifest to go away.
 	TargetTypeManifest TargetType = "manifest"
+
+	// Changes that affect all targets, rebuilding the target graph.
+	TargetTypeConfigs TargetType = "configs"
 )
 
 type TargetID struct {

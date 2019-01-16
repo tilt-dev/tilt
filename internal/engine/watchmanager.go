@@ -11,75 +11,59 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-// TODO(maia): throw an error if you try to name a manifest this in your Tiltfile?
-const ConfigsManifestName = "_ConfigsManifest"
+var ConfigsTargetID = model.TargetID{
+	Type: model.TargetTypeConfigs,
+	Name: "singleton",
+}
 
-type WatchableManifest interface {
-	ignore.IgnorableManifest
+type WatchableTarget interface {
+	ignore.IgnorableTarget
 	Dependencies() []string
-	ManifestName() model.ManifestName
+	ID() model.TargetID
 }
 
-type dcManifest struct {
-	name model.ManifestName
-	model.DockerComposeTarget
-}
-
-func (m dcManifest) ManifestName() model.ManifestName {
-	return m.name
-}
-
-type imageManifest struct {
-	name model.ManifestName
-	model.ImageTarget
-}
-
-func (m imageManifest) ManifestName() model.ManifestName {
-	return m.name
-}
-
-// configManifest makes a WatchableManifest that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
-type configsManifest struct {
+// configTarget makes a WatchableTarget that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
+type configsTarget struct {
 	dependencies []string
 }
 
-var _ WatchableManifest = &configsManifest{}
+var _ WatchableTarget = &configsTarget{}
 
-func (m *configsManifest) Dependencies() []string {
+func (m *configsTarget) Dependencies() []string {
 	return m.dependencies
 }
 
-func (m *configsManifest) ManifestName() model.ManifestName {
-	return ConfigsManifestName
+func (m *configsTarget) ID() model.TargetID {
+	return ConfigsTargetID
 }
 
-func (m *configsManifest) LocalRepos() []model.LocalGitRepo {
+func (m *configsTarget) LocalRepos() []model.LocalGitRepo {
 	return nil
 }
 
-func (m *configsManifest) Dockerignores() []model.Dockerignore {
+func (m *configsTarget) Dockerignores() []model.Dockerignore {
 	return nil
 }
 
-func (m *configsManifest) IgnoredLocalDirectories() []string {
+func (m *configsTarget) IgnoredLocalDirectories() []string {
 	return nil
 }
 
-type manifestFilesChangedAction struct {
-	manifestName model.ManifestName
-	files        []string
+type targetFilesChangedAction struct {
+	targetID model.TargetID
+	files    []string
 }
 
-func (manifestFilesChangedAction) Action() {}
+func (targetFilesChangedAction) Action() {}
 
-type manifestNotifyCancel struct {
-	manifest WatchableManifest
-	notify   watch.Notify
-	cancel   func()
+type targetNotifyCancel struct {
+	target WatchableTarget
+	notify watch.Notify
+	cancel func()
 }
 
 type WatchManager struct {
-	manifestWatches    map[model.ManifestName]manifestNotifyCancel
+	targetWatches      map[model.TargetID]targetNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         timerMaker
 	disabledForTesting bool
@@ -87,9 +71,9 @@ type WatchManager struct {
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchManager {
 	return &WatchManager{
-		manifestWatches: make(map[model.ManifestName]manifestNotifyCancel),
-		fsWatcherMaker:  watcherMaker,
-		timerMaker:      timerMaker,
+		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
+		fsWatcherMaker: watcherMaker,
+		timerMaker:     timerMaker,
 	}
 }
 
@@ -97,45 +81,47 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []model.ManifestName) {
+func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableTarget, teardown []model.TargetID) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	setup = []WatchableManifest{}
-	teardown = []model.ManifestName{}
+	setup = []WatchableTarget{}
+	teardown = []model.TargetID{}
 
-	manifestsToProcess := make(map[model.ManifestName]WatchableManifest)
+	targetsToProcess := make(map[model.TargetID]WatchableTarget)
 	for _, m := range state.Manifests() {
 		if m.IsDC() {
-			manifestsToProcess[m.Name] = dcManifest{name: m.Name, DockerComposeTarget: m.DockerComposeTarget()}
+			dcTarget := m.DockerComposeTarget()
+			targetsToProcess[dcTarget.ID()] = dcTarget
 		} else {
-			manifestsToProcess[m.Name] = imageManifest{name: m.Name, ImageTarget: m.ImageTarget}
+			iTarget := m.ImageTarget
+			targetsToProcess[iTarget.ID()] = iTarget
 		}
 	}
 
 	if len(state.ConfigFiles) > 0 {
-		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
+		targetsToProcess[ConfigsTargetID] = &configsTarget{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
-	for name, mnc := range w.manifestWatches {
-		m, ok := manifestsToProcess[name]
+	for name, mnc := range w.targetWatches {
+		m, ok := targetsToProcess[name]
 		if !ok {
 			teardown = append(teardown, name)
 			continue
 		}
 
-		if !dependenciesMatch(m.Dependencies(), mnc.manifest.Dependencies()) {
+		if !dependenciesMatch(m.Dependencies(), mnc.target.Dependencies()) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
 			break
 		}
 	}
 
-	for name, m := range manifestsToProcess {
-		if _, ok := w.manifestWatches[name]; !ok {
+	for name, m := range targetsToProcess {
+		if _, ok := w.targetWatches[name]; !ok {
 			setup = append(setup, m)
 		}
-		delete(manifestsToProcess, name)
+		delete(targetsToProcess, name)
 	}
 
 	return setup, teardown
@@ -161,15 +147,15 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 	// setup the watch first, to avoid a gap in coverage between setup and
 	// teardown. it's ok if we get a file event twice.
-	newWatches := make(map[model.ManifestName]manifestNotifyCancel)
-	for _, manifest := range setup {
+	newWatches := make(map[model.TargetID]targetNotifyCancel)
+	for _, target := range setup {
 		watcher, err := w.fsWatcherMaker()
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
 			continue
 		}
 
-		for _, d := range manifest.Dependencies() {
+		for _, d := range target.Dependencies() {
 			err = watcher.Add(d)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
@@ -178,12 +164,12 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
-		newWatches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
+		go w.dispatchFileChangesLoop(ctx, target, watcher, st)
+		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
 	}
 
 	for _, name := range teardown {
-		p, ok := w.manifestWatches[name]
+		p, ok := w.targetWatches[name]
 		if !ok {
 			continue
 		}
@@ -192,16 +178,16 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
 		}
 		p.cancel()
-		delete(w.manifestWatches, name)
+		delete(w.targetWatches, name)
 	}
 
 	for k, v := range newWatches {
-		w.manifestWatches[k] = v
+		w.targetWatches[k] = v
 	}
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, st store.RStore) {
-	filter, err := ignore.CreateFileChangeFilter(manifest)
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, target WatchableTarget, watcher watch.Notify, st store.RStore) {
+	filter, err := ignore.CreateFileChangeFilter(target)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))
 		return
@@ -223,7 +209,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if !ok {
 				return
 			}
-			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}
+			watchEvent := targetFilesChangedAction{targetID: target.ID()}
 
 			for _, e := range fsEvents {
 				path, err := filepath.Abs(e.Path)

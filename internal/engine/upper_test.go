@@ -654,9 +654,9 @@ k8s_resource('foobar', 'snack.yaml')`)
 	// The dockerfile hasn't changed, so there shouldn't be any builds.
 	f.assertNoCall()
 
-	f.store.Dispatch(manifestFilesChangedAction{
-		files:        []string{f.JoinPath("random_file.go")},
-		manifestName: "foobar",
+	f.store.Dispatch(targetFilesChangedAction{
+		files:    []string{f.JoinPath("random_file.go")},
+		targetID: call.image().ID(),
 	})
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
@@ -1110,9 +1110,9 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
-	f.store.Dispatch(manifestFilesChangedAction{
-		manifestName: manifest.Name,
-		files:        []string{"/go/a"},
+	f.store.Dispatch(targetFilesChangedAction{
+		targetID: manifest.ImageTarget.ID(),
+		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return nextManifestNameToBuild(st) == manifest.Name
@@ -1146,9 +1146,9 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start a fake build to set manifestState.ExpectedContainerId
-	f.store.Dispatch(manifestFilesChangedAction{
-		manifestName: manifest.Name,
-		files:        []string{"/go/a"},
+	f.store.Dispatch(targetFilesChangedAction{
+		targetID: manifest.ImageTarget.ID(),
+		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return nextManifestNameToBuild(st) == manifest.Name
@@ -1183,9 +1183,9 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start a fake build to set manifestState.ExpectedContainerId
-	f.store.Dispatch(manifestFilesChangedAction{
-		manifestName: manifest.Name,
-		files:        []string{"/go/a"},
+	f.store.Dispatch(targetFilesChangedAction{
+		targetID: manifest.ImageTarget.ID(),
+		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return nextManifestNameToBuild(st) == manifest.Name
@@ -1204,9 +1204,9 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
 
 	// Start another fake build to set manifestState.ExpectedContainerId
-	f.store.Dispatch(manifestFilesChangedAction{
-		manifestName: manifest.Name,
-		files:        []string{"/go/a"},
+	f.store.Dispatch(targetFilesChangedAction{
+		targetID: manifest.ImageTarget.ID(),
+		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return nextManifestNameToBuild(st) == manifest.Name
@@ -1428,9 +1428,9 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.startPod(name)
 	f.podLog(name, "first string")
 
-	f.upper.store.Dispatch(manifestFilesChangedAction{
-		manifestName: "foobar",
-		files:        []string{"/go/a.go"},
+	f.upper.store.Dispatch(targetFilesChangedAction{
+		targetID: manifest.ImageTarget.ID(),
+		files:    []string{"/go/a.go"},
 	})
 
 	f.waitForCompletedBuildCount(2)
@@ -1462,9 +1462,9 @@ func TestBuildResetsPodLog(t *testing.T) {
 		assert.Equal(t, "first string\n", ms.MostRecentPod().Log())
 	})
 
-	f.upper.store.Dispatch(manifestFilesChangedAction{
-		manifestName: "foobar",
-		files:        []string{"/go/a.go"},
+	f.upper.store.Dispatch(targetFilesChangedAction{
+		targetID: manifest.ImageTarget.ID(),
+		files:    []string{"/go/a.go"},
 	})
 
 	f.waitForCompletedBuildCount(2)
@@ -1712,11 +1712,11 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 
 	f.PollUntil("watches setup", func() bool {
-		watches, ok := f.fwm.manifestWatches[m2.ManifestName()]
+		watches, ok := f.fwm.targetWatches[m2.ImageTarget.ID()]
 		if !ok {
 			return false
 		}
-		return len(watches.manifest.Dependencies()) == 2
+		return len(watches.target.Dependencies()) == 2
 	})
 }
 
@@ -2075,7 +2075,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	f.PollUntil("watches setup", func() bool {
-		return !watchMounts || len(f.fwm.manifestWatches) == len(manifests)
+		return !watchMounts || len(f.fwm.targetWatches) == len(manifests)
 	})
 }
 
@@ -2351,7 +2351,7 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 		f.WriteFile(args[i], args[i+1])
 		filenames = append(filenames, args[i])
 	}
-	f.store.Dispatch(manifestFilesChangedAction{manifestName: ConfigsManifestName, files: filenames})
+	f.store.Dispatch(targetFilesChangedAction{targetID: ConfigsTargetID, files: filenames})
 }
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
