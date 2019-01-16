@@ -15,14 +15,14 @@ import (
 func TestStateToViewMultipleMounts(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-		ImageTarget: model.ImageTarget{}.
-			WithBuildDetails(model.FastBuild{
-				Mounts: []model.Mount{
-					{LocalPath: "/a/b"},
-					{LocalPath: "/a/b/c"},
-				},
-			}),
-	}
+	}.WithImageTarget(model.ImageTarget{}.
+		WithBuildDetails(model.FastBuild{
+			Mounts: []model.Mount{
+				{LocalPath: "/a/b"},
+				{LocalPath: "/a/b/c"},
+			},
+		}),
+	)
 	state := newState([]model.Manifest{m}, model.YAMLManifest{})
 	ms := state.ManifestTargets[m.Name].State
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
@@ -110,14 +110,14 @@ func TestEmptyState(t *testing.T) {
 
 	m2 := model.Manifest{
 		Name: "foo",
-		ImageTarget: model.ImageTarget{}.
-			WithBuildDetails(model.FastBuild{
-				Mounts: []model.Mount{
-					{LocalPath: "/a/b"},
-					{LocalPath: "/a/b/c"},
-				},
-			}),
-	}
+	}.WithImageTarget(model.ImageTarget{}.
+		WithBuildDetails(model.FastBuild{
+			Mounts: []model.Mount{
+				{LocalPath: "/a/b"},
+				{LocalPath: "/a/b/c"},
+			},
+		}),
+	)
 
 	nes = newState([]model.Manifest{m2}, model.YAMLManifest{})
 	v = StateToView(*nes)

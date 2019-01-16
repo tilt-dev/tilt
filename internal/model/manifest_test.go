@@ -67,145 +67,105 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM node"}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM nope"}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM node"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM nope"})),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM node"}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM node"}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM node"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM node"})),
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-				}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-				}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			})),
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-				}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
-				}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
+			})),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount2}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount2}})),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1, mount2}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1, mount2}})),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: nil}),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: nil})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{}})),
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{
-				repos: []LocalGitRepo{
-					LocalGitRepo{
-						LocalPath:         "/foo/baz",
-						GitignoreContents: "*.exe",
-					},
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.exe",
 				},
 			},
-		},
-		Manifest{
-			ImageTarget: ImageTarget{
-				repos: []LocalGitRepo{
-					LocalGitRepo{
-						LocalPath:         "/foo/baz",
-						GitignoreContents: "*.so",
-					},
+		}),
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.so",
 				},
 			},
-		},
+		}),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{
-				repos: []LocalGitRepo{
-					LocalGitRepo{
-						LocalPath:         "/foo/baz",
-						GitignoreContents: "*.exe",
-					},
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.exe",
 				},
 			},
-		},
-		Manifest{
-			ImageTarget: ImageTarget{
-				repos: []LocalGitRepo{
-					LocalGitRepo{
-						LocalPath:         "/foo/baz",
-						GitignoreContents: "*.exe",
-					},
+		}),
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
+					LocalPath:         "/foo/baz",
+					GitignoreContents: "*.exe",
 				},
 			},
-		},
+		}),
 		true,
 	},
 	{
@@ -219,127 +179,107 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHi}},
-			),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHi}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHi}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHi}},
+		)),
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHi}},
-			),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayBye}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHi}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayBye}},
+		)),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-			),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+		)),
 		true,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-			),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerBar}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerBar}})),
 		false,
 	},
 	{
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerDirA}},
-			),
-		},
-		Manifest{
-			ImageTarget: ImageTarget{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerDirB}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerDirA}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerDirB}},
+		)),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM bar"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM bar"})),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})),
 		true,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar/baz"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar/baz"})),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})),
 		true,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs2})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs2})),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
-		Manifest{ImageTarget: ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})),
 		true,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{cachePaths: []string{"foo"}}},
-		Manifest{ImageTarget: ImageTarget{cachePaths: []string{"bar"}}},
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"bar"}}),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{cachePaths: []string{"foo"}}},
-		Manifest{ImageTarget: ImageTarget{cachePaths: []string{"foo"}}},
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
 		true,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{Ref: img1}},
-		Manifest{ImageTarget: ImageTarget{Ref: img2}},
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img2}),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{Ref: img1}},
-		Manifest{ImageTarget: ImageTarget{Ref: img1}},
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
 		true,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}},
-		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}},
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}),
 		false,
 	},
 	{
-		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}},
-		Manifest{ImageTarget: ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}},
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
 		true,
 	},
 	{
@@ -406,9 +346,8 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	}
 
 	manifest := Manifest{
-		Name:        "test",
-		ImageTarget: ImageTarget{Ref: img1}.WithBuildDetails(fbInfo),
-	}
+		Name: "test",
+	}.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
 	err := manifest.Validate()
 
 	if assert.NotNil(t, err) {
@@ -416,7 +355,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	}
 
 	fbInfo.Mounts[0].LocalPath = "/abs/path/hello"
-	manifest.ImageTarget = ImageTarget{Ref: img1}.WithBuildDetails(fbInfo)
+	manifest = manifest.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
 	err = manifest.Validate()
 	assert.Nil(t, err)
 

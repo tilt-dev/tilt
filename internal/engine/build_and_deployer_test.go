@@ -387,11 +387,11 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest := NewSanchoFastBuildManifest(f)
 
 	tiltfile := filepath.Join(f.Path(), "Tiltfile")
-	manifest.ImageTarget = manifest.ImageTarget.WithRepos([]model.LocalGitRepo{
+	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithRepos([]model.LocalGitRepo{
 		model.LocalGitRepo{
 			LocalPath: f.Path(),
 		},
-	}).WithTiltFilename(tiltfile)
+	}).WithTiltFilename(tiltfile))
 	manifest = manifest.WithTiltFilename(tiltfile)
 
 	f.WriteFile("Tiltfile", "# hello world")

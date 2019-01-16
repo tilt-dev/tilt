@@ -844,11 +844,11 @@ ADD ./ ./
 go build ./...
 `
 	manifest := f.newManifest("foobar", nil)
-	manifest.ImageTarget = manifest.ImageTarget.WithBuildDetails(
+	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithBuildDetails(
 		model.StaticBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
-		})
+		}))
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1367,13 +1367,13 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest.ImageTarget = manifest.ImageTarget.
+	manifest = manifest.WithImageTarget(manifest.ImageTarget.
 		WithDockerignores([]model.Dockerignore{
 			{
 				LocalPath: f.Path(),
 				Contents:  "dignore.txt",
 			},
-		})
+		}))
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1393,13 +1393,13 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest.ImageTarget = manifest.ImageTarget.
+	manifest = manifest.WithImageTarget(manifest.ImageTarget.
 		WithRepos([]model.LocalGitRepo{
 			{
 				LocalPath:         f.Path(),
 				GitignoreContents: "gignore.txt",
 			},
-		})
+		}))
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -2304,12 +2304,12 @@ func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manif
 	ref := f.imageNameForManifest(name)
 	return model.Manifest{
 		Name: model.ManifestName(name),
-		ImageTarget: model.ImageTarget{Ref: ref}.
-			WithBuildDetails(model.FastBuild{
-				BaseDockerfile: `from golang:1.10`,
-				Mounts:         mounts,
-			}),
-	}.WithDeployTarget(model.K8sTarget{
+	}.WithImageTarget(model.ImageTarget{Ref: ref}.
+		WithBuildDetails(model.FastBuild{
+			BaseDockerfile: `from golang:1.10`,
+			Mounts:         mounts,
+		}),
+	).WithDeployTarget(model.K8sTarget{
 		YAML: "fake-yaml",
 	})
 }

@@ -350,10 +350,10 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				return nil, fmt.Errorf("internal Tilt error: no build info for manifest %s", r.name)
 			}
 
-			m.ImageTarget = dInfo.
+			m = m.WithImageTarget(dInfo.
 				WithRepos(s.reposForImage(image)).
 				WithDockerignores(s.dockerignoresForImage(image)).
-				WithTiltFilename(s.filename.path)
+				WithTiltFilename(s.filename.path))
 			m = m.WithTiltFilename(s.filename.path)
 		}
 		result = append(result, m)
