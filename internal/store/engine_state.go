@@ -71,6 +71,22 @@ type EngineState struct {
 	IsProfiling bool
 }
 
+func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestName {
+	for mn, state := range e.ManifestTargets {
+		manifest := state.Manifest
+		if manifest.ImageTarget.ID() == id {
+			return mn
+		}
+		if manifest.K8sTarget().ID() == id {
+			return mn
+		}
+		if manifest.DockerComposeTarget().ID() == id {
+			return mn
+		}
+	}
+	return ""
+}
+
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
 	mn := mt.Manifest.Name
 	_, ok := e.ManifestTargets[mn]

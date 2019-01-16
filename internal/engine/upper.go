@@ -141,7 +141,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = action.Error
 	case hud.ExitAction:
 		handleExitAction(state, action)
-	case manifestFilesChangedAction:
+	case targetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
 		handlePodEvent(ctx, state, action.Pod)
@@ -343,16 +343,21 @@ func handleStartProfilingAction(state *store.EngineState) {
 func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
-	event manifestFilesChangedAction) {
+	event targetFilesChangedAction) {
 
-	if event.manifestName == ConfigsManifestName {
+	if event.targetID.Type == model.TargetTypeConfigs {
 		for _, f := range event.files {
 			state.PendingConfigFileChanges[f] = true
 		}
 		return
 	}
 
-	ms, ok := state.ManifestState(event.manifestName)
+	mn := state.ManifestNameForTargetID(event.targetID)
+	if mn == "" {
+		return
+	}
+
+	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
 	}
