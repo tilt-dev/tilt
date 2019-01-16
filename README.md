@@ -11,7 +11,7 @@ configured for your team.
 
 Tilt watches your files for edits, automatically builds your container images,
 and applies any changes to bring your environment
-up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose`.
+up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose up`.
 
 The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
