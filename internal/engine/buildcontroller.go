@@ -108,7 +108,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildReason := ms.NextBuildReason()
 	targets := buildTargets(manifest)
-	buildStateSet := buildStateSet(manifest, ms)
+	buildStateSet := buildStateSet(manifest, targets, ms)
 
 	return buildEntry{
 		name:          manifest.Name,
@@ -221,22 +221,23 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 }
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
-func buildStateSet(manifest model.Manifest, ms *store.ManifestState) store.BuildStateSet {
+func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
 	buildStateSet := store.BuildStateSet{}
 
-	id := manifest.ImageTarget.ID()
-	if id.Empty() {
-		id = manifest.DockerComposeTarget().ID()
-	}
+	for _, spec := range specs {
+		id := spec.ID()
+		if id.Type != model.TargetTypeImage && id.Type != model.TargetTypeDockerCompose {
+			continue
+		}
 
-	if !id.Empty() {
-		filesChanged := make([]string, 0, len(ms.PendingFileChanges))
-		for file, _ := range ms.PendingFileChanges {
+		status := ms.BuildStatus(id)
+		filesChanged := make([]string, 0, len(status.PendingFileChanges))
+		for file, _ := range status.PendingFileChanges {
 			filesChanged = append(filesChanged, file)
 		}
 		sort.Strings(filesChanged)
 
-		buildState := store.NewBuildState(ms.LastSuccessfulResult, filesChanged)
+		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
 
 		// Kubernetes-based builds can update containers in-place.
 		//

@@ -191,7 +191,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		return
 	}
 
-	bs := model.BuildStatus{
+	bs := model.BuildRecord{
 		Edits:     append([]string{}, action.FilesChanged...),
 		StartTime: action.StartTime,
 		Reason:    action.Reason,
@@ -240,15 +240,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	ms := mt.State
-	manifest := mt.Manifest
-	result := cb.Result[manifest.ImageTarget.ID()]
-
 	bs := ms.CurrentBuild
 	bs.Error = err
 	bs.FinishTime = time.Now()
 	ms.AddCompletedBuild(bs)
 
-	ms.CurrentBuild = model.BuildStatus{}
+	ms.CurrentBuild = model.BuildRecord{}
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
@@ -263,10 +260,11 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		}
 	} else {
 		// Remove pending file changes that were consumed by this build.
-		for file, modTime := range ms.PendingFileChanges {
-			if modTime.Before(bs.StartTime) {
-				delete(ms.PendingFileChanges, file)
-
+		for _, status := range ms.BuildStatuses {
+			for file, modTime := range status.PendingFileChanges {
+				if modTime.Before(bs.StartTime) {
+					delete(status.PendingFileChanges, file)
+				}
 			}
 		}
 
@@ -276,7 +274,10 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		ms.LastSuccessfulDeployTime = time.Now()
-		ms.LastSuccessfulResult = result
+
+		for id, result := range cb.Result {
+			ms.MutableBuildStatus(id).LastSuccessfulResult = result
+		}
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -286,6 +287,8 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+		result := cb.Result.AsOneResult()
 		if result.ContainerID != "" {
 			ms.ExpectedContainerID = result.ContainerID
 
@@ -362,8 +365,9 @@ func handleFSEvent(
 		return
 	}
 
+	status := ms.MutableBuildStatus(event.targetID)
 	for _, f := range event.files {
-		ms.PendingFileChanges[f] = time.Now()
+		status.PendingFileChanges[f] = time.Now()
 	}
 }
 
@@ -409,7 +413,7 @@ func handleConfigsReloaded(
 ) {
 	manifests := event.Manifests
 
-	status := model.BuildStatus{
+	status := model.BuildRecord{
 		StartTime:  event.StartTime,
 		FinishTime: event.FinishTime,
 		Error:      event.Err,
@@ -433,8 +437,9 @@ func handleConfigsReloaded(
 			mt.Manifest = m
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
-			mt.State.LastSuccessfulResult = store.BuildResult{}
-			mt.State.PendingManifestChange = time.Now()
+			state := mt.State
+			state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+			state.PendingManifestChange = time.Now()
 		}
 		state.UpsertManifestTarget(mt)
 	}
@@ -714,7 +719,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.GlobalYAML = action.GlobalYAMLManifest
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
-	status := model.BuildStatus{
+	status := model.BuildRecord{
 		StartTime:  action.StartTime,
 		FinishTime: action.FinishTime,
 		Error:      action.Err,
@@ -733,7 +738,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	return nil
 }
 
-func setLastTiltfileBuild(state *store.EngineState, status model.BuildStatus) {
+func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
 		log := []byte(fmt.Sprintf("Tiltfile error:\n%v\n", status.Error))
 		handleLogAction(state, LogAction{Log: log})

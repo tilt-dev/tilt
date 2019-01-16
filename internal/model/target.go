@@ -61,8 +61,8 @@ type TargetSpec interface {
 
 type TargetStatus interface {
 	TargetID() TargetID
-	ActiveBuild() BuildStatus
-	LastBuild() BuildStatus
+	ActiveBuild() BuildRecord
+	LastBuild() BuildRecord
 }
 
 type Target interface {

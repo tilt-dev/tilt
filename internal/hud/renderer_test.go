@@ -41,7 +41,7 @@ func TestRender(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name: "a-a-a-aaaaabe vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					FinishTime: time.Now(),
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        []byte("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
@@ -56,7 +56,7 @@ func TestRender(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name: "a-a-a-aaaaabe vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					FinishTime: time.Now(),
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log: []byte(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
@@ -82,7 +82,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		Resources: []view.Resource{
 			{
 				Name: "a-a-a-aaaaabe vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Error: fmt.Errorf("oh no the build failed"),
 					Log:   []byte("1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n"),
 				}},
@@ -117,7 +117,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 		Resources: []view.Resource{
 			{
 				Name: "a-a-a-aaaaabe vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Error: fmt.Errorf("broken go code!"),
 					Log:   []byte("mashing keys is not a good way to generate code"),
 				}},
@@ -134,7 +134,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:               "a-a-a-aaaaabe vigoda",
 				DirectoriesWatched: []string{"foo", "bar"},
 				LastDeployTime:     ts,
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Edits:      []string{"main.go", "cli.go"},
 					Error:      fmt.Errorf("the build failed!"),
 					FinishTime: ts,
@@ -142,7 +142,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				}},
 				PendingBuildEdits: []string{"main.go", "cli.go", "vigoda.go"},
 				PendingBuildSince: ts,
-				CurrentBuild: model.BuildStatus{
+				CurrentBuild: model.BuildRecord{
 					Edits:     []string{"main.go"},
 					StartTime: ts,
 				},
@@ -167,11 +167,11 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:               "abe vigoda",
 				DirectoriesWatched: []string{"foo", "bar"},
 				LastDeployTime:     ts,
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Edits: []string{"main.go"},
 				}},
 				PendingBuildSince: ts,
-				CurrentBuild: model.BuildStatus{
+				CurrentBuild: model.BuildRecord{
 					StartTime: ts,
 					Reason:    model.BuildReasonFlagCrash,
 				},
@@ -194,7 +194,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name:               "vigoda",
 				DirectoriesWatched: []string{"foo", "bar"},
 				LastDeployTime:     ts,
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Edits:      []string{"main.go", "cli.go"},
 					FinishTime: ts,
 					StartTime:  ts.Add(-1400 * time.Millisecond),
@@ -221,7 +221,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		Resources: []view.Resource{
 			{
 				Name: "GlobalYAML",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					FinishTime: ts,
 					StartTime:  ts.Add(-1400 * time.Millisecond),
 				}},
@@ -240,7 +240,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 		Resources: []view.Resource{
 			{
 				Name: "vigoda",
-				CurrentBuild: model.BuildStatus{
+				CurrentBuild: model.BuildRecord{
 					StartTime: ts.Add(-5 * time.Second),
 					Edits:     []string{"main.go"},
 				},
@@ -267,7 +267,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 			{
 				Name:           "vigoda",
 				LastDeployTime: ts.Add(-5 * time.Second),
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Edits: []string{"abbot.go", "costello.go", "harold.go"},
 				}},
 				ResourceInfo: view.K8SResourceInfo{},
@@ -305,7 +305,7 @@ func TestRenderLogModal(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name: "vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					StartTime:  now.Add(-time.Minute),
 					FinishTime: now,
 					Log: []byte(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
@@ -331,10 +331,10 @@ func TestRenderLogModal(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name: "vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					FinishTime: now.Add(-time.Minute),
 				}},
-				CurrentBuild: model.BuildStatus{
+				CurrentBuild: model.BuildRecord{
 					StartTime: now,
 					Log:       []byte("building!"),
 					Reason:    model.BuildReasonFlagCrash,
@@ -360,8 +360,8 @@ func TestRenderLogModal(t *testing.T) {
 					"Hi hello I'm a docker compose log",
 					time.Now().Add(time.Second*-12),
 				),
-				BuildHistory: []model.BuildStatus{
-					model.BuildStatus{
+				BuildHistory: []model.BuildRecord{
+					model.BuildRecord{
 						Log: []byte("Hi hello I'm a docker compose build log"),
 					},
 				},
@@ -411,7 +411,7 @@ func TestAutoCollapseModes(t *testing.T) {
 			{
 				Name:               "vigoda",
 				DirectoriesWatched: []string{"bar"},
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					FinishTime: time.Now(),
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        []byte("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
@@ -438,7 +438,7 @@ func TestPodPending(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name: "vigoda",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					StartTime:  ts,
 					FinishTime: ts,
 					Log: []byte(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
@@ -479,7 +479,7 @@ func TestPodLogContainerUpdate(t *testing.T) {
 			{
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
@@ -510,7 +510,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
 				CrashLog:  "Definitely borken",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
@@ -540,7 +540,7 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 			{
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
@@ -571,7 +571,7 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
 				CrashLog:  "Definitely borken",
-				BuildHistory: []model.BuildStatus{{
+				BuildHistory: []model.BuildRecord{{
 					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
@@ -617,7 +617,7 @@ func TestBuildHistory(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name: "vigoda",
-				BuildHistory: []model.BuildStatus{
+				BuildHistory: []model.BuildRecord{
 					{
 						Edits:      []string{"main.go"},
 						StartTime:  ts.Add(-10 * time.Second),
@@ -652,7 +652,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 			{
 				Name:         "snack",
 				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, testCID, "hellllo", now.Add(-5*time.Second)),
-				CurrentBuild: model.BuildStatus{
+				CurrentBuild: model.BuildRecord{
 					StartTime: now.Add(-5 * time.Second),
 					Reason:    model.BuildReasonFlagMountFiles,
 				},
