@@ -27,7 +27,8 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, pathToConfig string, serviceName model.TargetName, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Up(ctx context.Context, pathToConfig string, serviceName model.TargetName,
+	shouldBuild bool, stdout, stderr io.Writer) error {
 	return nil
 }
 

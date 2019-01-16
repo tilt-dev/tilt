@@ -91,7 +91,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 
 	results := store.BuildResultSet{}
 
-	refs := []reference.NamedTagged{}
+	var refs []reference.NamedTagged
 	for _, iTarget := range iTargets {
 		ref, err := ibd.build(ctx, iTarget, stateSet[iTarget.ID()], ps)
 		if err != nil {
