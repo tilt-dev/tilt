@@ -93,7 +93,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 
 	var refs []reference.NamedTagged
 	for _, iTarget := range iTargets {
-		ref, err := ibd.build(ctx, iTarget, stateSet[iTarget.ID()], ps)
+		ref, err := ibd.build(ctx, iTarget, stateSet[iTarget.ID()], ps, false)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -111,7 +111,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 	return results, nil
 }
 
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState, tagLatest bool) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
 	ref := iTarget.Ref
@@ -126,7 +126,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.Image
 		defer ps.EndPipelineStep(ctx)
 
 		df := ibd.staticDockerfile(iTarget, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, ref, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
+		ref, err := ibd.b.BuildDockerfile(ctx, ps, ref, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs, tagLatest)
 
 		if err != nil {
 			return nil, err
@@ -142,7 +142,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.Image
 
 			df := ibd.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
 			steps := bd.Steps
-			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, ref, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
+			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, ref, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint, tagLatest)
 
 			if err != nil {
 				return nil, err
@@ -166,7 +166,7 @@ func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.Image
 			defer ps.EndPipelineStep(ctx)
 
 			steps := bd.Steps
-			ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), steps)
+			ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), steps, tagLatest)
 			if err != nil {
 				return nil, err
 			}
