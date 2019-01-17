@@ -1,133 +1,76 @@
-# Write Your Tiltfile
+# Setup Tilt
 
-A Tiltfile can be broken down in to three things: Kubernetes YAML, Docker images
-and resources.  In this doc we'll step through all three concepts so you can
-learn to write your own Tiltfiles with gusto!
+This guide walks you through setting up Tilt for local Kubernetes development. You'll write a `Tiltfile` for your project and be able to use Tilt with your project. This guide assumes you've installed Tilt and have a project you can already build and deploy to Kubernetes. (We also have specific guides for migrating from skaffold and docker-compose.)
 
-To start here's an illustrative example that uses most of the features of Tilt.
+Setting up Tilt should take about about 15 minutes. Before we begin, join the `#tilt` channel in Kubernetes Slack for technical or moral support.
 
+## Example Tiltfile
+At the end of this guide, your Tiltfile will look something like this:
 ```python
-## Part 1: Kubernetes YAML
+# Deploy: tell Tilt what yaml to deploy
+k8s_yaml('app.yaml')
 
-# one yaml file
-k8s_yaml("k8s.yaml")
+# Build: tell Tilt what images to build from which directories
+docker_build('companyname/frontend', 'frontend')
+docker_build('companyname/backend', 'backend')
+# ...
 
-# list of yaml files
+# Watch: tell Tilt how to connect locally (optional)
+k8s_resource('frontend', port_forwards=8080)
+```
+
+## Hello World
+
+Run `tilt up` to enter Tilt's Heads-Up Display. Instead of writing your configuration all at once, we'll use Tilt interactively. Each time you save your configuration, Tilt will reexecute it. Tilt should be complaining there's no file named `Tiltfile`. Open it in your editor and write:
+```python
+print('Hello Tiltfile')
+```
+
+Now save it. Congrats, you just ran your first `Tiltfile`. Tilt's configurations are programs in Starlark, a dialect of Python. Can you see "Hello Tiltfile" in Tilt's UI? Tilt is also warning you there are no declared resources. Let's add some.
+
+## Deploy
+Use the `k8s_yaml` function to tell Tilt about Kubernetes objects to deploy:
+```python
+k8s_yaml('app.yaml')
+```
+
+Tilt supports many deployment configuration practices (for more details, check out the YAML section of "Tiltfile Functions"):
+```python
+# multiple yaml files; can be either a list or multiple calls
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 
-# run a custom command to generate yaml
-k8s_yaml(local('gen_k8s_yaml.py'))
-
-# we also handle common tools to generate yaml
-k8s_yaml(kustomize('config_dir'))
+# run a command to generate yaml
+k8s_yaml(local('gen_k8s_yaml.py')) # a custom script
+k8s_yaml(kustomize('config_dir')) # built-in support for popular tools
 k8s_yaml(helm('chart_dir'))
-
-## Part 2: Images
-
-# docker build ./frontend
-docker_build("companyname/frontend", "frontend")
-
-# docker build with specific Dockerfile
-docker_build("companyname/backend", "backend", dockerfile="backend/Dockerfile.dev")
-
-# docker build with build args
-docker_build("companyname/graphql", "graphql", build_args={"target": "local"})
-
-## Part 3: Resources
-
-# give a resource a name that's different than the base name of the image
-k8s_resource("backend", image="companyname/backend/server")
-
-# connect to a specific local port
-k8s_resource("frontend", port_forwards=9000)
 ```
 
-Let's dig in to each of these sections in detail.
+Add code that calls `k8s_yaml`. Tilt will parse the yaml, display the found objects, and deploy them. If there are problems, update your configuration and let Tilt reexecute your Tiltfile until you see the right objects.
 
-## Part 1: Kubernetes YAML
-Start by telling Tilt about your Kubernetes YAML:
+## Build
+Tilt can build docker images, then inject them into the Kubernetes yaml and deploy. Use the `docker_build` function to tell Tilt how to build an image: (See the Build section of "Tiltfile Functions" for optional args like Dockerfile or build args)
 
 ```python
-# one yaml file
-k8s_yaml("k8s.yaml")
+# docker build -t companyname/frontend ./frontend
+docker_build('companyname/frontend', 'frontend')
 ```
 
-Now Tilt will deploy any Kubernetes objects defined in the YAML. A `k8s_yaml`
-function call is all you need to have a functioning Tiltfile.
+Edit some source code and save. Tilt starts rebuilding and will redeploy, automatically. Explore Tilt's UI (there's a legend in the bottom right; as you navigate it changes to tell you what's available from your current state). Try introducing a build error or a runtime crash and see Tilt respond.
 
-Sometimes you organize your YAML in to multiple files or generate it via a
-script. Tilt supports those cases too:
+You can optimize your builds in various ways. This especially helps for projects with slow builds that run in the a cloud cluster, but we suggest setting up your whole project first.
 
+## Watch (Optional)
+Tilt can give you consistent port forwards to running pods (whether they're running locally or in the cloud). Call the `k8s_resource` function with the name of the resource you want to access (taken from the UI):
 ```python
-# list of yaml files
-k8s_yaml(['foo.yaml', 'bar.yaml'])
-
-# run kustomize to generate yaml
-k8s_yaml(kustomize('config_dir'))
-
-# run a custom command to general yaml
-k8s_yaml(local('gen_k8s_yaml.py'))
+k8s_resource('frontend', port_forwards='9000')
 ```
 
-## Part 2: Images
+You can also use `k8s_resource` to change the resource grouping, or forward multiple ports, as described in the "Watch" section of `Tiltfile Functions`.
 
-Next tell Tilt about all your Dockerfiles but to get the most out of Tilt you
-need to tell it about your Dockerfiles. You tell Tilt to build a Dockerfile like
-so:
-
-```python
-# docker build ./frontend
-docker_build("companyname/frontend", "frontend")
-```
-
-Tilt extracts the Kubernetes objects that reference this image in to a new
-"Resource", discussed below.
-
-### Options to Docker build
-
-You can also specify advanced configuration options, such as custom Dockerfile
-paths or build arguments:
-
-```python
-# docker build ./frontend
-docker_build("companyname/frontend", "frontend")
-
-# docker build with specific Dockerfile
-docker_build("companyname/backend", "backend", dockerfile="backend/Dockerfile.dev")
-
-# docker build with build args
-docker_build("companyname/graphql", "graphql", args={"target": "local"})
-```
-
-## Part 3: Resources
-
-Tilt automatically defines Tilt Resources. Tilt Resources represent logical
-groupings of images and Kubernetes YAML.  Tilt by default takes the last path
-segment in your image name and uses that as the name of the resource. So for
-example:
-
-```python
-# name: server
-docker_build("companyname/backend/server", ".")
-```
-
-If you want to modify Tilt Resources you can make them explicit.
-
-```python
-# by default, resources are named after the basename of the image (here, `server`).
-# This gives it a different name (`backend`)
-k8s_resource("backend", image="companyname/backend/server")
-```
-
-You can also add a Kubernetes port forward to this resource.
-
-```python
-# connect to a specific local port
-k8s_resource("backend", image="companyname/backend/server", port_forwards=9000)
-```
-
-## Next steps
-
-That's it! We just covered everything you need to know to get your microservices
-running locally using Tilt.  To see everything you can do with Tilt check out
-the [Tiltfile API reference](api.html).
+## Next Steps
+You should now have Tilt working with your project. Next you can:
+* Go happily use Tilt
+* Let us know how it went (great, bad, or improvement ideas)
+* Read more about Tilt
+* Learn how to help your team adopt Tilt
+* Optimize your Tilt
