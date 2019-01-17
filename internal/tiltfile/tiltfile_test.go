@@ -383,13 +383,22 @@ type portForwardCase struct {
 	name     string
 	expr     string
 	expected []model.PortForward
+	errorMsg string
 }
 
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
-		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}},
-		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}},
-		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}},
+		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}, ""},
+		{"value_local_negative", "-1", nil, "not in the range for a port"},
+		{"value_local_large", "8000000", nil, "not in the range for a port"},
+		{"value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}, ""},
+		{"value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}, ""},
+		{"value_string_garbage", "'garbage'", nil, "not in the range for a port"},
+		{"value_string_3x80", "'80:80:80'", nil, "not in the range for a port"},
+		{"value_string_empty", "''", nil, "not in the range for a port"},
+		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
 	}
 
 	for _, c := range portForwardCases {
@@ -403,6 +412,12 @@ k8s_resource('foo', 'foo.yaml', port_forwards=EXPR)
 `
 			s = strings.Replace(s, "EXPR", c.expr, -1)
 			f.file("Tiltfile", s)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
 			f.load()
 			f.assertManifest("foo",
 				c.expected,
