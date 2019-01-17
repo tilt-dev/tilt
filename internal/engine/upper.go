@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -291,7 +290,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		state, _ := ms.ResourceState.(dockercompose.State)
 
 		cid := cb.Result.AsOneResult().ContainerID
-		spew.Dump(cb.Result)
 		if cid != "" {
 			state = state.WithContainerID(cid)
 			state = state.WithStatus(dockercompose.StatusUp)
