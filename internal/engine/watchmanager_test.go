@@ -112,7 +112,7 @@ func (f *wmFixture) TearDown() {
 
 func (f *wmFixture) ChangeFile(t *testing.T, path string) {
 	select {
-	case f.fakeMultiWatcher.events <- watch.FileEvent{f.JoinPath(path)}:
+	case f.fakeMultiWatcher.events <- watch.FileEvent{Path: f.JoinPath(path)}:
 	default:
 		t.Fatal("emitting a FileEvent would block. Perhaps there are too many events or the buffer size is too small.")
 	}
