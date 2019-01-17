@@ -1900,7 +1900,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	})
 }
 
-func TestDockerComposeBuildCompletedSetsStatusToUp(t *testing.T) {
+func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f := newTestFixture(t)
 	m1, _ := f.setupDCFixture()
 
@@ -1917,6 +1917,24 @@ func TestDockerComposeBuildCompletedSetsStatusToUp(t *testing.T) {
 		}
 		assert.Equal(t, expected, state.ContainerID)
 		assert.Equal(t, dockercompose.StatusUp, state.Status)
+	})
+}
+
+func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T) {
+	f := newTestFixture(t)
+	m1, _ := f.setupDCFixture()
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
+		state, ok := st.ResourceState.(dockercompose.State)
+		if !ok {
+			t.Fatal("expected ResourceState to be docker compose, but it wasn't")
+		}
+		assert.Empty(t, state.ContainerID)
+		assert.Empty(t, state.Status)
 	})
 }
 
