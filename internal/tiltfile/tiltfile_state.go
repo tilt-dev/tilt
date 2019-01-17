@@ -158,52 +158,35 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
-	var images []reference.Named
-	for _, e := range r.k8s {
-		entityImages, err := e.FindImages()
-		if err != nil {
-			return err
-		}
-		images = append(images, entityImages...)
-	}
-
-	for _, image := range images {
-		if _, ok := s.imagesByName[image.Name()]; !ok {
-			continue
-		}
-		if r.imageRef == "" {
-			r.imageRef = image.Name()
-		} else if r.imageRef == image.Name() {
-			continue
-		} else {
-			return fmt.Errorf("resource %q contains two images to be built: %q, %q. You can use k8s_yaml to include a lot of yaml and then Tilt will create resources automatically. If this doesn't solve your case (e.g. you have one pod that has two images that Tilt updates), please reach out so we can understand and prioritize", r.name, r.imageRef, image.Name())
-		}
-	}
-
-	if len(r.k8s) == 0 {
-		if r.imageRef == "" {
+	if len(r.entities) == 0 {
+		if len(r.providedImageRefs) == 0 {
 			return fmt.Errorf("resource %q: no matching resource", r.name)
 		}
-		return fmt.Errorf("resource %q: could not find image %q; perhaps there's a typo?", r.name, r.imageRef)
+
+		return fmt.Errorf("resource %q: could not find images %q; perhaps there's a typo?", r.name, r.providedImageRefList())
 	}
 
-	assembledImages[r.imageRef] = true
+	for ref := range r.imageRefs {
+		assembledImages[ref] = true
+	}
 
 	return nil
 }
 
 func (s *tiltfileState) findExpandTarget(image reference.Named) (*k8sResource, error) {
-	// first, match an empty resource that has this exact imageRef
+	// first, look thru all the resources that have already been created,
+	// and see if any of them already have a reference to this image.
 	for _, r := range s.k8s {
-		if len(r.k8s) == 0 && r.imageRef == image.Name() {
+		if _, ok := r.imageRefs[image.Name()]; ok {
 			return r, nil
 		}
 	}
 
-	// next, match an empty resource that has the same name
+	// next, look thru all the resources that have already been created,
+	// and see if any of them match the basename of the image.
 	name := filepath.Base(image.Name())
 	for _, r := range s.k8s {
-		if len(r.k8s) == 0 && r.name == name {
+		if r.name == name {
 			return r, nil
 		}
 	}
@@ -221,26 +204,11 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 		if err != nil {
 			return nil, err
 		}
-		var entityImages []reference.Named
-		for _, image := range images {
-			if _, ok := s.imagesByName[image.Name()]; ok {
-				entityImages = append(entityImages, image)
+		for _, img := range images {
+			if !seen[img.Name()] {
+				result = append(result, img)
+				seen[img.Name()] = true
 			}
-		}
-		if len(entityImages) == 0 {
-			continue
-		}
-		if len(entityImages) > 1 {
-			str, err := k8s.SerializeYAML([]k8s.K8sEntity{e})
-			if err != nil {
-				str = err.Error()
-			}
-			return nil, fmt.Errorf("Found an entity with multiple images registered with k8s_yaml. Tilt doesn't support this yet; please reach out so we can understand and prioritize this case. found images: %q, entity: %q.", entityImages, str)
-		}
-		img := entityImages[0]
-		if !seen[img.Name()] {
-			result = append(result, img)
-			seen[img.Name()] = true
 		}
 	}
 	return result, nil
@@ -252,7 +220,11 @@ func (s *tiltfileState) extractImage(dest *k8sResource, imageRef reference.Named
 		return err
 	}
 
-	dest.k8s = append(dest.k8s, extracted...)
+	err = dest.addEntities(extracted)
+	if err != nil {
+		return err
+	}
+
 	s.k8sUnresourced = remaining
 
 	for _, e := range extracted {
@@ -265,7 +237,10 @@ func (s *tiltfileState) extractImage(dest *k8sResource, imageRef reference.Named
 			if err != nil {
 				return err
 			}
-			dest.k8s = append(dest.k8s, extracted...)
+			err = dest.addEntities(extracted)
+			if err != nil {
+				return err
+			}
 			s.k8sUnresourced = remaining
 		}
 	}
@@ -312,7 +287,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			Name: model.ManifestName(r.name),
 		}
 
-		k8sYaml, err := k8s.SerializeYAML(r.k8s)
+		k8sYaml, err := k8s.SerializeYAML(r.entities)
 		if err != nil {
 			return nil, err
 		}
@@ -322,25 +297,30 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			PortForwards: s.portForwardsToDomain(r), // FIXME(dbentley)
 		})
 
-		if r.imageRef != "" {
-			image := s.imagesByName[r.imageRef]
+		iTargets := make([]model.ImageTarget, 0, len(r.imageRefs))
+		for _, imageRef := range r.imageRefList() {
+			image, ok := s.imagesByName[imageRef]
+			if !ok {
+				continue
+			}
+
 			isStaticBuild := !image.staticBuildPath.Empty()
 			isFastBuild := !image.baseDockerfilePath.Empty()
 
-			dInfo := model.ImageTarget{
+			iTarget := model.ImageTarget{
 				Ref: image.ref,
 			}.WithCachePaths(image.cachePaths)
 
 			if isStaticBuild && isFastBuild {
 				return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
 			} else if isStaticBuild {
-				dInfo = dInfo.WithBuildDetails(model.StaticBuild{
+				iTarget = iTarget.WithBuildDetails(model.StaticBuild{
 					Dockerfile: image.staticDockerfile.String(),
 					BuildPath:  string(image.staticBuildPath.path),
 					BuildArgs:  image.staticBuildArgs,
 				})
 			} else if isFastBuild {
-				dInfo = dInfo.WithBuildDetails(model.FastBuild{
+				iTarget = iTarget.WithBuildDetails(model.FastBuild{
 					BaseDockerfile: image.baseDockerfile.String(),
 					Mounts:         s.mountsToDomain(image),
 					Steps:          image.steps,
@@ -350,11 +330,15 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 				return nil, fmt.Errorf("internal Tilt error: no build info for manifest %s", r.name)
 			}
 
-			m = m.WithImageTarget(dInfo.
+			iTarget = iTarget.
 				WithRepos(s.reposForImage(image)).
 				WithDockerignores(s.dockerignoresForImage(image)).
-				WithTiltFilename(s.filename.path))
+				WithTiltFilename(s.filename.path)
+			iTargets = append(iTargets, iTarget)
 		}
+
+		m = m.WithImageTargets(iTargets)
+
 		result = append(result, m)
 	}
 

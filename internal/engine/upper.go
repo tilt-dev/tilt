@@ -153,7 +153,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case BuildLogAction:
 		handleBuildLogAction(state, action)
 	case BuildCompleteAction:
-		err = handleCompletedBuild(ctx, state, action)
+		err = handleBuildCompleted(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case LogAction:
@@ -219,7 +219,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	removeFromTriggerQueue(state, mn)
 }
 
-func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
+func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()

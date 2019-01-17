@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/store"
@@ -208,6 +209,29 @@ func TestIncrementalBuildFailure(t *testing.T) {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
 	f.assertContainerRestarts(0)
+}
+
+func TestIncrementalBuildKilled(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	ctx := output.CtxForTest()
+
+	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
+
+	manifest := NewSanchoFastBuildManifest(f)
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(ctx, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.docker.CopyCount)
+	assert.Equal(t, 1, len(f.docker.ExecCalls))
+
+	// Falls back to a build when the exec fails
+	assert.Equal(t, 1, f.docker.BuildCount)
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
