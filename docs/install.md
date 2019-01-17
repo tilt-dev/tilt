@@ -96,6 +96,4 @@ v0.5.0-dev, built 2019-01-14
 Next Steps
 ----------
 
-You're ready to start using Tilt! Try it out with [an example project](first_example.html).
-
-
+You're ready to start using Tilt! Try our [Tutorial](tutorial.html) to setup your project in 15 minutes.
