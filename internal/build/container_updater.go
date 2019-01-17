@@ -61,11 +61,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	for _, s := range steps {
 		err = r.dCli.ExecInContainer(ctx, cID, s, w)
 		if err != nil {
-			exitErr, isExitErr := err.(docker.ExitError)
-			if isExitErr {
-				return UserBuildFailure{ExitCode: exitErr.ExitCode}
-			}
-			return errors.Wrapf(err, "executing step %v on container %s", s.Argv, cID.ShortStr())
+			return WrapContainerExecError(err, cID, s)
 		}
 	}
 
