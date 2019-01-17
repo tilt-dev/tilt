@@ -229,8 +229,6 @@
 <p>We’re still working out the kinks for this use case. We hope it’ll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a mounted file – which is obviously silly, since that file automatically gets updated in the container. You have been warned.</p>
 <p><em><strong>Your containers automatically restart after crashes (i.e. you set <a class="reference external" href="https://docs.docker.com/compose/compose-file/#restart">container restart policy</a> in your config file).</strong></em></p>
 <p>Most of our functionality will still work, but we’re still working on how to surface the right error messages to you when something goes wrong. When your containers crash and restart, you might see some odd stuff in the display. We’re working on tightening up this experience.</p>
-<p><em><strong>You’re running a database container, or other container that ought to retain state from run to run.</strong></em></p>
-<p>Our naive first attempts at Docker Compose support always run with <code class="docutils literal notranslate"><span class="pre">--force-recreate</span></code>, which will blow away your state every time you <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code> – but we have a fix in flight.</p>
 </div>
 <div class="section" id="how-to-be-an-alpha-user">
 <h3>How to be an alpha user<a class="headerlink" href="#how-to-be-an-alpha-user" title="Permalink to this headline">¶</a></h3>
