@@ -2,6 +2,7 @@ package hud
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -344,6 +345,16 @@ func (r *Renderer) SetUp() (chan tcell.Event, error) {
 
 	screen, err := tcell.NewScreen()
 	if err != nil {
+		if err == tcell.ErrTermNotFound {
+			// The statically-compiled tcell only supports the most common TERM configs.
+			// The dynamically-compiled tcell supports more, but has distribution problems.
+			// See: https://github.com/gdamore/tcell/issues/252
+			term := os.Getenv("TERM")
+			return nil, fmt.Errorf("Tilt does not support TERM=%q. "+
+				"This is not a common Terminal config. "+
+				"If you expect that you're using a common terminal, "+
+				"you might have misconfigured $TERM in your .profile.", term)
+		}
 		return nil, err
 	}
 	if err = screen.Init(); err != nil {
