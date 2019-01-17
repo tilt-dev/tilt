@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -92,4 +93,8 @@ func (c *FakeDCClient) Config(ctx context.Context, pathToConfig string) (string,
 
 func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
 	return "", nil
+}
+
+func (c *FakeDCClient) ContainerID(ctx context.Context, pathToConfig string, serviceName model.TargetName) (container.ID, error) {
+	return container.ID(""), nil
 }
