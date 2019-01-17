@@ -15,3 +15,18 @@ func DedupedAndSorted(slice []string) (result []string) {
 	sort.Strings(result)
 	return result
 }
+
+func StringSliceEquals(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, e1 := range a {
+		e2 := b[i]
+		if e1 != e2 {
+			return false
+		}
+	}
+
+	return true
+}

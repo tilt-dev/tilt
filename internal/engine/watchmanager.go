@@ -7,6 +7,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -16,6 +17,7 @@ var ConfigsTargetID = model.TargetID{
 	Name: "singleton",
 }
 
+// If you modify this interface, you might also need to update the watchRulesMatch function below.
 type WatchableTarget interface {
 	ignore.IgnorableTarget
 	Dependencies() []string
@@ -111,7 +113,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 			continue
 		}
 
-		if !dependenciesMatch(m.Dependencies(), mnc.target.Dependencies()) {
+		if !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
 			break
@@ -128,19 +130,23 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	return setup, teardown
 }
 
-func dependenciesMatch(d1 []string, d2 []string) bool {
-	if len(d1) != len(d2) {
-		return false
-	}
-
-	for i, e1 := range d1 {
-		e2 := d2[i]
-		if e1 != e2 {
-			return false
+func watchRulesMatch(w1, w2 WatchableTarget) bool {
+	watchableTargetReposAsArrays := func(w WatchableTarget) ([]string, []string) {
+		var gitPaths, gitignores []string
+		for _, r := range w1.LocalRepos() {
+			gitPaths = append(gitPaths, r.LocalPath)
+			gitignores = append(gitignores, r.GitignoreContents)
 		}
+		return gitPaths, gitignores
 	}
 
-	return true
+	gitPaths1, gitignores1 := watchableTargetReposAsArrays(w1)
+	gitPaths2, gitignores2 := watchableTargetReposAsArrays(w2)
+
+	return sliceutils.StringSliceEquals(w1.Dependencies(), w2.Dependencies()) &&
+		sliceutils.StringSliceEquals(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories()) &&
+		sliceutils.StringSliceEquals(gitPaths1, gitPaths2) &&
+		sliceutils.StringSliceEquals(gitignores1, gitignores2)
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
