@@ -15,10 +15,11 @@ const (
 	EnvGKE               = "gke"
 	EnvMinikube          = "minikube"
 	EnvDockerDesktop     = "docker-for-desktop"
+	EnvMicroK8s          = "microk8s"
 )
 
 func (e Env) IsLocalCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
 }
 
 func DetectEnv() (Env, error) {
@@ -41,6 +42,8 @@ func EnvFromString(s string) Env {
 		return EnvMinikube
 	} else if s == EnvDockerDesktop || s == "docker-desktop" {
 		return EnvDockerDesktop
+	} else if s == EnvMicroK8s {
+		return EnvMicroK8s
 	} else if strings.HasPrefix(s, EnvGKE) {
 		// GKE context strings look like:
 		// gke_blorg-dev_us-central1-b_blorg
