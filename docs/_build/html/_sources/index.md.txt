@@ -31,13 +31,18 @@ to help you `tilt up` quickly.
 
 ## Configure Your Workflow to Share With Your Team
 
-Down with YAML!
+Tilt uses your existing `Dockerfiles` and Kubernetes `yaml`, configured in a `Tiltfile`. Here's an example Tiltfile:
 
-Configure Tilt with a `Tiltfile`, written in a small subset of Python called
-[Starlark](https://github.com/bazelbuild/starlark#tour).
+```python
+# Deploy: tell Tilt what yaml to deploy
+k8s_yaml('app.yaml')
 
-To get started, check out some [examples](first_example.html) or dive into the
-[API reference](api.html).
+# Build: tell Tilt what images to build from which directories
+docker_build('companyname/frontend', 'frontend')
+docker_build('companyname/backend', 'backend')
+```
+
+Our [Tutorial](tutorial.html) takes 15 minutes and walks you through setting up Tilt for your project.
 
 ## Community
 
@@ -58,9 +63,7 @@ We expect everyone in our community (users, contributors, and employees alike) t
    :caption: Getting Started
 
    install
-   first_example
-   first_config
-   write_your_tiltfile
+   tutorial
 
 .. toctree::
    :maxdepth: 1
@@ -73,8 +76,9 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
 .. toctree::
    :maxdepth: 1
-   :caption: Advanced Configs
+   :caption: Using Tilt
 
+   tiltfile_concepts
    fast_build
    api
 

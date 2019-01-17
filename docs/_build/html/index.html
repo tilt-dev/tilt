@@ -96,9 +96,7 @@
               <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Setup Tilt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
 <ul>
@@ -107,8 +105,9 @@
 <li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
@@ -204,11 +203,16 @@ to help you <code class="docutils literal notranslate"><span class="pre">tilt</s
 </div>
 <div class="section" id="configure-your-workflow-to-share-with-your-team">
 <h2>Configure Your Workflow to Share With Your Team<a class="headerlink" href="#configure-your-workflow-to-share-with-your-team" title="Permalink to this headline">¶</a></h2>
-<p>Down with YAML!</p>
-<p>Configure Tilt with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called
-<a class="reference external" href="https://github.com/bazelbuild/starlark#tour">Starlark</a>.</p>
-<p>To get started, check out some <a class="reference external" href="first_example.html">examples</a> or dive into the
-<a class="reference external" href="api.html">API reference</a>.</p>
+<p>Tilt uses your existing <code class="docutils literal notranslate"><span class="pre">Dockerfiles</span></code> and Kubernetes <code class="docutils literal notranslate"><span class="pre">yaml</span></code>, configured in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>. Here’s an example Tiltfile:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy: tell Tilt what yaml to deploy</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;app.yaml&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build: tell Tilt what images to build from which directories</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;companyname/frontend&#39;</span><span class="p">,</span> <span class="s1">&#39;frontend&#39;</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;companyname/backend&#39;</span><span class="p">,</span> <span class="s1">&#39;backend&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Our <a class="reference external" href="tutorial.html">Tutorial</a> takes 15 minutes and walks you through setting up Tilt for your project.</p>
 </div>
 <div class="section" id="community">
 <h2>Community<a class="headerlink" href="#community" title="Permalink to this headline">¶</a></h2>
@@ -222,9 +226,7 @@ blog about building Tilt at <a class="reference external" href="https://medium.c
 <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Setup Tilt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -237,8 +239,9 @@ blog about building Tilt at <a class="reference external" href="https://medium.c
 </ul>
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>

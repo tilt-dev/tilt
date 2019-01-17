@@ -96,9 +96,7 @@
               <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Setup Tilt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
 <ul>
@@ -107,8 +105,9 @@
 <li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
@@ -117,7 +116,7 @@
 <li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the <code class="docutils literal notranslate"><span class="pre">first</span> <span class="pre">example</span></code>. What do I do?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-what-do-i-do">Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions”. What do I do?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?</a></li>
 </ul>
 </li>
@@ -203,13 +202,10 @@
 <h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="troubleshooting">
 <h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do">
-<h3>Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions” when I try to build the <a class="reference external" href="first_example.html">first example</a>. What do I do?<a class="headerlink" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-when-i-try-to-build-the-first-example-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-what-do-i-do">
+<h3>Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions”. What do I do?<a class="headerlink" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-what-do-i-do" title="Permalink to this headline">¶</a></h3>
 <p>If Tilt is trying to do a push, that means it thinks you wanted to deploy to a
-remote cluster.</p>
-<p>The tutorials will only work with a local cluster that doesn’t require an image
-push, like Docker For Mac or Minikube.</p>
-<p>See <a class="reference external" href="faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses">below</a> on how
+remote cluster. See <a class="reference external" href="faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses">below</a> on how
 to configure for a local cluster.</p>
 </div>
 <div class="section" id="q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">

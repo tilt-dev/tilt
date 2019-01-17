@@ -4,15 +4,10 @@ Frequently Asked Questions
 Troubleshooting
 ----------------------------
 
-### Q: I'm getting push errors like "unauthorized: You don't have the needed permissions" when I try to build the [first example](first_example.html). What do I do?
+### Q: I'm getting push errors like "unauthorized: You don't have the needed permissions". What do I do?
 
 If Tilt is trying to do a push, that means it thinks you wanted to deploy to a
-remote cluster.
-
-The tutorials will only work with a local cluster that doesn't require an image
-push, like Docker For Mac or Minikube.
-
-See [below](faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses) on how
+remote cluster. See [below](faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses) on how
 to configure for a local cluster.
 
 ### Q: Tilt fails with "Unable to connect to cluster" errors. What do I do?
@@ -117,6 +112,3 @@ $ KUBECONFIG="$(kind get kubeconfig-path)" tilt up
 
 Tilt reads the same `KUBECONFIG` environment variable that `kubectl` uses. This variable
 sets the path to a Kubernetes config.
-
-
-

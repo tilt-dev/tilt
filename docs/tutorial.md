@@ -1,8 +1,8 @@
 # Tutorial
 
-This guide walks you through setting up Tilt for local Kubernetes development. You'll write a `Tiltfile` for your project and be able to use Tilt with your project. This guide assumes you've installed Tilt and have a project you can already build and deploy to Kubernetes.
+This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you've already [installed Tilt](install.html). Now's a good time to join the `#tilt` channel in Kubernetes Slack for technical or moral support.
 
-Setting up Tilt should take about about 15 minutes. Before we begin, join the `#tilt` channel in Kubernetes Slack for technical or moral support.
+Start in the directory of a project you currently build and deploy to Kubernetes or Docker Compose. If your project uses [skaffold](skaffold.html), [docker-compose](docker-compose.html) or [helm](helm.html) also open that supplement to this Tutorial. If you want to try Tilt but don't have a current Project, you can try one of our [example projects](example_projects.html).
 
 ## Example Tiltfile
 At the end of this guide, your Tiltfile will look something like this:
@@ -20,7 +20,6 @@ k8s_resource('frontend', port_forwards=8080)
 ```
 
 ## Hello World
-
 Run `tilt up` to enter Tilt's Heads-Up Display. Instead of writing your configuration all at once, we'll use Tilt interactively. Each time you save your configuration, Tilt will reexecute it. Tilt should be complaining there's no file named `Tiltfile`. Open it in your editor and write:
 ```python
 print('Hello Tiltfile')

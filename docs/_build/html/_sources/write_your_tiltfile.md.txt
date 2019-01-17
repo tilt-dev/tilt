@@ -1,6 +1,6 @@
-# Setup Tilt
+# Tutorial
 
-This guide walks you through setting up Tilt for local Kubernetes development. You'll write a `Tiltfile` for your project and be able to use Tilt with your project. This guide assumes you've installed Tilt and have a project you can already build and deploy to Kubernetes. (We also have specific guides for migrating from skaffold and docker-compose.)
+This guide walks you through setting up Tilt for local Kubernetes development. You'll write a `Tiltfile` for your project and be able to use Tilt with your project. This guide assumes you've installed Tilt and have a project you can already build and deploy to Kubernetes.
 
 Setting up Tilt should take about about 15 minutes. Before we begin, join the `#tilt` channel in Kubernetes Slack for technical or moral support.
 
@@ -28,7 +28,7 @@ print('Hello Tiltfile')
 
 Now save it. Congrats, you just ran your first `Tiltfile`. Tilt's configurations are programs in Starlark, a dialect of Python. Can you see "Hello Tiltfile" in Tilt's UI? Tilt is also warning you there are no declared resources. Let's add some.
 
-## Deploy
+## Step 1: Deploy
 Use the `k8s_yaml` function to tell Tilt about Kubernetes objects to deploy:
 ```python
 k8s_yaml('app.yaml')
@@ -47,7 +47,7 @@ k8s_yaml(helm('chart_dir'))
 
 Add code that calls `k8s_yaml`. Tilt will parse the yaml, display the found objects, and deploy them. If there are problems, update your configuration and let Tilt reexecute your Tiltfile until you see the right objects.
 
-## Build
+## Step 2: Build
 Tilt can build docker images, then inject them into the Kubernetes yaml and deploy. Use the `docker_build` function to tell Tilt how to build an image: (See the Build section of "Tiltfile Functions" for optional args like Dockerfile or build args)
 
 ```python
@@ -59,7 +59,7 @@ Edit some source code and save. Tilt starts rebuilding and will redeploy, automa
 
 You can optimize your builds in various ways. This especially helps for projects with slow builds that run in the a cloud cluster, but we suggest setting up your whole project first.
 
-## Watch (Optional)
+## Step 3: Watch (Optional)
 Tilt can give you consistent port forwards to running pods (whether they're running locally or in the cloud). Call the `k8s_resource` function with the name of the resource you want to access (taken from the UI):
 ```python
 k8s_resource('frontend', port_forwards='9000')

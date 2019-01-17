@@ -1,6 +1,6 @@
 # Tiltfile Concepts
 
-This doc describes concepts in the Tiltfile, expanding on the intro in [Tilt Your Project](tilt_your_project.html). Unlike the [API Reference](api.html), it groups functions by themes and explains why you'd choose to use a function.
+This doc describes concepts in the Tiltfile, expanding on the [Tutorial](tutorial.html). Unlike the [API Reference](api.html), it groups functions by themes and explains why you'd choose to use a function.
 
 ## Execution Model
 `Tiltfile`s are written in [Starlark](https://github.com/bazelbuild/starlark), a dialect of Python. Tilt executes the `Tiltfile` on startup.
