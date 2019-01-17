@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -73,6 +74,26 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	}
 
 	assert.Equal(f.t, f.dCli.RestartsByContainer[docker.TestContainer], 1)
+}
+
+func TestUpdateInContainerKillTask(t *testing.T) {
+	f := newRemoteDockerFixture(t)
+	defer f.teardown()
+
+	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: TaskKillExitCode}
+
+	cmdA := model.Cmd{Argv: []string{"cat"}}
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA}, ioutil.Discard)
+	msg := "killed by container engine"
+	if err == nil || !strings.Contains(err.Error(), msg) {
+		f.t.Errorf("Expected error %q, actual: %v", msg, err)
+	}
+
+	expectedExecs := []docker.ExecCall{
+		docker.ExecCall{Container: docker.TestContainer, Cmd: cmdA},
+	}
+
+	assert.Equal(f.t, expectedExecs, f.dCli.ExecCalls)
 }
 
 type mockContainerUpdaterFixture struct {
