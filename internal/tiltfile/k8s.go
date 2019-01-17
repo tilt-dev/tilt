@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -215,6 +216,14 @@ func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]
 			return nil, err
 		}
 		return []portForward{pf}, nil
+
+	case starlark.String:
+		pf, err := stringToPortForward(val)
+		if err != nil {
+			return nil, err
+		}
+		return []portForward{pf}, nil
+
 	case portForward:
 		return []portForward{val}, nil
 	case starlark.Sequence:
@@ -230,6 +239,14 @@ func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]
 					return nil, err
 				}
 				result = append(result, pf)
+
+			case starlark.String:
+				pf, err := stringToPortForward(i)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, pf)
+
 			case portForward:
 				result = append(result, i)
 			default:
@@ -287,6 +304,23 @@ func intToPortForward(i starlark.Int) (portForward, error) {
 		return portForward{}, fmt.Errorf("portForward value %v is not in the range for a port [0-65535]", n)
 	}
 	return portForward{local: int(n)}, nil
+}
+
+func stringToPortForward(s starlark.String) (portForward, error) {
+	parts := strings.SplitN(string(s), ":", 2)
+	local, err := strconv.Atoi(parts[0])
+	if err != nil || local < 0 || local > 65535 {
+		return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[0])
+	}
+
+	var container int
+	if len(parts) == 2 {
+		container, err = strconv.Atoi(parts[1])
+		if err != nil || container < 0 || container > 65535 {
+			return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[1])
+		}
+	}
+	return portForward{local: local, container: container}, nil
 }
 
 func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward {
