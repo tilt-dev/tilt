@@ -28,7 +28,6 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) []mod
 	for _, s := range specs {
 		dc, isDC := s.(model.DockerComposeTarget)
 		if !isDC {
-
 			return nil
 		}
 		result = append(result, dc)
@@ -41,11 +40,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 	if len(dcs) == 0 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("Specs not supported by DockerComposeBuildAndDeployer")
 	}
-
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("target", dcs[0].Name)
 	defer span.Finish()
 
+	brs := store.BuildResultSet{}
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 	for _, dc := range dcs {
@@ -53,7 +52,18 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+
+		// NOTE(dmiller): right now we only need this the first time. In the future
+		// it might be worth it to move this somewhere else
+		cid, err := bd.dcc.ContainerID(ctx, dc.ConfigPath, dc.Name)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
+		brs[dc.ID()] = store.BuildResult{
+			ContainerID: cid,
+		}
 	}
 
-	return store.BuildResultSet{}, nil
+	return brs, nil
 }
