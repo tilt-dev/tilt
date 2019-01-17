@@ -47,7 +47,7 @@ Most of our functionality will still work, but we're still working on how to sur
 
 ***You're running a database container, or other container that ought to retain state from run to run.***
 
-Our naive first attempts at Docker Compose support always run with `--force-recreate`, which will blow away your state every time you `tilt up` -- but we have a fix in flight, this should be fixed by EOW (1/18/19).
+Our naive first attempts at Docker Compose support always run with `--force-recreate`, which will blow away your state every time you `tilt up` -- but we have a fix in flight.
 
 ### How to be an alpha user
 We're pushing new stuff every day, so don't bother waiting for releases; install from `master`!

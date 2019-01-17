@@ -45,6 +45,10 @@ We're still working out the kinks for this use case. We hope it'll work fine, bu
 
 Most of our functionality will still work, but we're still working on how to surface the right error messages to you when something goes wrong. When your containers crash and restart, you might see some odd stuff in the display. We're working on tightening up this experience.
 
+***You're running a database container, or other container that ought to retain state from run to run.***
+
+Our naive first attempts at Docker Compose support always run with `--force-recreate`, which will blow away your state every time you `tilt up` -- but we have a fix in flight.
+
 ### How to be an alpha user
 We're pushing new stuff every day, so don't bother waiting for releases; install from `master`!
 
