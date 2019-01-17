@@ -34,7 +34,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 
-	if !assert.Equal(t, 1, len(v.Resources)) {
+	if !assert.Equal(t, 2, len(v.Resources)) {
 		return
 	}
 
@@ -67,7 +67,7 @@ func TestStateViewYAMLManifestNoYAML(t *testing.T) {
 	state := newState([]model.Manifest{}, m)
 	v := StateToView(*state)
 
-	assert.Equal(t, 0, len(v.Resources))
+	assert.Equal(t, 1, len(v.Resources))
 }
 
 func TestStateViewYAMLManifestWithYAML(t *testing.T) {
@@ -76,7 +76,7 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	state.ConfigFiles = []string{"global.yaml"}
 	v := StateToView(*state)
 
-	assert.Equal(t, 1, len(v.Resources))
+	assert.Equal(t, 2, len(v.Resources))
 
 	r := v.Resources[0]
 	assert.Equal(t, nil, r.LastBuild().Error)

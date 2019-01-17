@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
@@ -11,7 +12,6 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -38,9 +38,11 @@ type tiltfileState struct {
 	usedImages map[string]bool
 
 	builtinsMap starlark.StringDict
+
+	logger *log.Logger
 }
 
-func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
+func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:          ctx,
@@ -49,6 +51,7 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tilt
 		k8sByName:    make(map[string]*k8sResource),
 		configFiles:  []string{filename},
 		usedImages:   make(map[string]bool),
+		logger:       l,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -57,10 +60,11 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tilt
 func (s *tiltfileState) exec() error {
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) {
-			logger.Get(s.ctx).Infof("%s", msg)
+			s.logger.Printf("%s", msg)
 		},
 	}
 
+	s.logger.Printf("Beginning Tiltfile execution")
 	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
 	return err
 }

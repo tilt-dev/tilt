@@ -570,7 +570,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -967,7 +967,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -977,7 +977,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

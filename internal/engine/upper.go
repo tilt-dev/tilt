@@ -112,7 +112,9 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching)
+	// TODO(dmiller) hmm, can I do this?
+	tlw := NewTiltfileLogWriter(u.store)
+	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
@@ -176,6 +178,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
+	case TiltfileLogAction:
+		handleTiltfileLogAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -423,6 +427,7 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
+	state.TiltfileLog = []byte{}
 	state.PendingConfigFileChanges = make(map[string]bool)
 }
 
@@ -766,7 +771,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 		FinishTime: action.FinishTime,
 		Error:      action.Err,
 		Reason:     model.BuildReasonFlagInit,
-		// TODO(nick): Send tiltfile stdout to the build status log
 	}
 	setLastTiltfileBuild(engineState, status)
 
@@ -783,7 +787,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
 		log := []byte(fmt.Sprintf("Tiltfile error:\n%v\n", status.Error))
-		handleLogAction(state, LogAction{Log: log})
+		handleTiltfileLogAction(state, TiltfileLogAction{log})
 	}
 	state.LastTiltfileBuild = status
 }
@@ -848,4 +852,8 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
 	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
+}
+
+func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
+	state.TiltfileLog = append(state.TiltfileLog, action.Log...)
 }

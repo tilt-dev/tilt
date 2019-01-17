@@ -908,7 +908,7 @@ func TestHudUpdated(t *testing.T) {
 	err = f.Stop()
 	assert.Equal(t, nil, err)
 
-	assert.Equal(t, 1, len(f.hud.LastView.Resources))
+	assert.Equal(t, 2, len(f.hud.LastView.Resources))
 	rv := f.hud.LastView.Resources[0]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
 	assert.Equal(t, ".", rv.DirectoriesWatched[0])
@@ -2382,7 +2382,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2419,7 +2419,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}

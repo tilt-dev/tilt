@@ -8,7 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type ErrorAction struct {
@@ -161,3 +161,9 @@ type DockerComposeLogAction struct {
 }
 
 func (DockerComposeLogAction) Action() {}
+
+type TiltfileLogAction struct {
+	Log []byte
+}
+
+func (TiltfileLogAction) Action() {}

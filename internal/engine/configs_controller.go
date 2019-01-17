@@ -51,7 +51,9 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			return
 		}
 
-		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfilePath, matching)
+		tlw := NewTiltfileLogWriter(st)
+
+		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfilePath, matching, tlw)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
