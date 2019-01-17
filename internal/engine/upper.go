@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -284,6 +285,19 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
 			pod.OldRestarts = pod.ContainerRestarts
 		}
+	}
+
+	if mt.Manifest.IsDC() {
+		state, _ := ms.ResourceState.(dockercompose.State)
+
+		cid := cb.Result.AsOneResult().ContainerID
+		spew.Dump(cb.Result)
+		if cid != "" {
+			state = state.WithContainerID(cid)
+			state = state.WithStatus(dockercompose.StatusUp)
+		}
+
+		ms.ResourceState = state
 	}
 
 	if engineState.WatchMounts {

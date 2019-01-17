@@ -34,7 +34,7 @@ func NewDockerComposeClient() DockerComposeClient {
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "--force-recreate", "-d", serviceName.String())
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "-d", serviceName.String())
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 

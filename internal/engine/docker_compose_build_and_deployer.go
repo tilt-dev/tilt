@@ -10,6 +10,11 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
+type targetTuple struct {
+	targetID model.TargetID
+	target   model.DockerComposeTarget
+}
+
 type DockerComposeBuildAndDeployer struct {
 	dcc dockercompose.DockerComposeClient
 }
@@ -23,15 +28,15 @@ func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient) *Do
 }
 
 // Extract the targets we can apply into DockerComposeTargets, or nil if we can't apply all targets.
-func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) []model.DockerComposeTarget {
-	result := []model.DockerComposeTarget{}
+func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) []targetTuple {
+	result := []targetTuple{}
 	for _, s := range specs {
 		dc, isDC := s.(model.DockerComposeTarget)
 		if !isDC {
 
 			return nil
 		}
-		result = append(result, dc)
+		result = append(result, targetTuple{s.ID(), dc})
 	}
 	return result
 }
@@ -41,19 +46,29 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 	if len(dcs) == 0 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("Specs not supported by DockerComposeBuildAndDeployer")
 	}
-
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", dcs[0].Name)
+	span.SetTag("target", dcs[0].target.Name)
 	defer span.Finish()
 
+	brs := store.BuildResultSet{}
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
-	for _, dc := range dcs {
+	for _, t := range dcs {
+		dc := t.target
 		err := bd.dcc.Up(ctx, dc.ConfigPath, dc.Name, stdout, stderr)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+
+		cid, err := bd.dcc.ContainerID(ctx, dc.ConfigPath, dc.Name)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
+		brs[t.targetID] = store.BuildResult{
+			ContainerID: cid,
+		}
 	}
 
-	return store.BuildResultSet{}, nil
+	return brs, nil
 }
