@@ -288,15 +288,15 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsDC() {
 		state, _ := ms.ResourceState.(dockercompose.State)
-		logger.Get(ctx).Infof("dc manifest state: %+v", state)
 
 		cid := cb.Result.AsOneResult().ContainerID
 		if cid != "" {
 			state = state.WithContainerID(cid)
 		}
-		// NOTE(dmiller): if it's the first build set the status to up. This is because
-		// if the container is crashing we will get an event subsequently.
-		// Otherwise we won't get an event at all, and we'll be stuck in limbo.
+		// If we have a container ID and no status yet, set status to Up
+		// (this is an expected case when we run docker-compose up while the service
+		// is already running, and we won't get an event to tell us so).
+		// If the container is crashing we will get an event subsequently.
 		isFirstBuild := cid != "" && state.Status == ""
 		if isFirstBuild {
 			state = state.WithStatus(dockercompose.StatusUp)
