@@ -27,13 +27,13 @@ def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, docker
 
   Note that you can't set both the `dockerfile` and `dockerfile_contents` arguments (will throw an error).
 
-  Example: ``docker_build('myregistry/myproj/backend', '/path/to/code')`` is roughly equivalent to the call ``docker build /path/to/code -t myregistry/myproj/backend`` (and will look for a Dockerfile at ``/path/to/code/Dockerfile``)
+  Example: ``docker_build('myregistry/myproj/backend', '/path/to/code')`` is roughly equivalent to the call ``docker build /path/to/code -t myregistry/myproj/backend``
 
   Args:
     ref: name for this image (e.g. 'myproj/backend' or 'myregistry/myproj/backend'). If this image will be used in a k8s resource(s), this ref must match the ``spec.container.image`` param for that resource(s).
     context: path to use as the Docker build context.
     build_args: build-time variables that are accessed like regular environment variables in the ``RUN`` instruction of the Dockerfile. See `the Docker Build Arg documentation <https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg>`_
-    dockerfile: path to the Dockerfile to build (may be absolute, or relative to the build context)
+    dockerfile: path to the Dockerfile to build (may be absolute, or relative to cwd)
     dockerfile_contents: raw contents of the Dockerfile to use for this build
   """
 pass
