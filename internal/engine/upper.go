@@ -294,7 +294,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		if cid != "" {
 			state = state.WithContainerID(cid)
 		}
-		if cid != "" && state.Status == "" {
+		// NOTE(dmiller): if it's the first build set the status to up. This is because
+		// if the container is crashing we will get an event subsequently.
+		// Otherwise we won't get an event at all, and we'll be stuck in limbo.
+		isFirstBuild := cid != "" && state.Status == ""
+		if isFirstBuild {
 			state = state.WithStatus(dockercompose.StatusUp)
 		}
 

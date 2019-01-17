@@ -53,6 +53,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 			return store.BuildResultSet{}, err
 		}
 
+		// NOTE(dmiller): right now we only need this the first time. In the future
+		// it might be worth it to move this somewhere else
 		cid, err := bd.dcc.ContainerID(ctx, dc.ConfigPath, dc.Name)
 		if err != nil {
 			return store.BuildResultSet{}, err
