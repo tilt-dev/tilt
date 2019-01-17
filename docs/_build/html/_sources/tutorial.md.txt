@@ -64,7 +64,7 @@ k8s_resource('frontend', port_forwards='9000')
 
 You can also use `k8s_resource` to change the resource grouping, or forward multiple ports. Cf. the [Resources](tiltfile_concepts.html#resources) section of `Tiltfile Concepts`.
 
-## Good To Go
+## Setup Complete
 Tilt is now setup for your project. Try exploring Tilt's UI (there's a context-sensitive legend in the bottom right). Introduce a build error and then a runtime crash; see Tilt's UI respond and surface the relevant problem.
 
 We've love to [hear from you](index.html#community).

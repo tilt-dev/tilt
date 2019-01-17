@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Docker Compose Support (Alpha) &mdash; Tilt  documentation</title>
+  <title>Docker Compose (Alpha) &mdash; Tilt  documentation</title>
   
 
   
@@ -31,8 +31,8 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="For Helm Users" href="helm.html" />
-    <link rel="prev" title="From Docker Compose" href="upgrade_docker_compose.html" />
+    <link rel="next" title="Code of Conduct" href="code_of_conduct.html" />
+    <link rel="prev" title="Example Projects" href="example_projects.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -94,31 +94,36 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
-</ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Docker Compose Support (Alpha)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#up-and-running-in-two-lines">Up and Running In Two Lines</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#what-we-mean-by-alpha">What We Mean By “Alpha”</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#what-to-expect-from-tilt-x-docker-compose-by-your-use-case">What to expect from Tilt x Docker Compose, by your use case</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#how-to-be-an-alpha-user">How to be an alpha user</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Docker Compose (Alpha)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#comparison">Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tiltfile-for-docker-compose">Tiltfile for Docker Compose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-we-mean-by-alpha">What We Mean By “Alpha”</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#what-to-expect-from-tilt-x-docker-compose-by-your-use-case">What to expect from Tilt x Docker Compose, by your use case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#install-from-source">Install from Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#feedback-wanted">Feedback Wanted</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -169,7 +174,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Docker Compose Support (Alpha)</li>
+      <li>Docker Compose (Alpha)</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -190,57 +195,63 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="docker-compose-support-alpha">
-<h1>Docker Compose Support (Alpha)<a class="headerlink" href="#docker-compose-support-alpha" title="Permalink to this headline">¶</a></h1>
-<p>Good news, everyone: you can now run Tilt with your existing Docker Compose config! No need to write new boilerplate, or cobble together Kubernetes YAML before you’re actually running on Kubernetes. Just follow the instructions below to get started.</p>
-<div class="section" id="up-and-running-in-two-lines">
-<h2>Up and Running In Two Lines<a class="headerlink" href="#up-and-running-in-two-lines" title="Permalink to this headline">¶</a></h2>
-<p>To run your Docker Compose setup via Tilt, all you need is a simple <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> that tells Tilt where to find your config:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">echo</span> <span class="s1">&#39;docker_compose(&quot;/path/to/docker-compose.yml&quot;)&#39;</span> <span class="o">&gt;</span> <span class="n">Tiltfile</span>
-<span class="n">tilt</span> <span class="n">up</span>
+  <div class="section" id="docker-compose-alpha">
+<h1>Docker Compose (Alpha)<a class="headerlink" href="#docker-compose-alpha" title="Permalink to this headline">¶</a></h1>
+<p>This doc supplements our <a class="reference external" href="tutorial.html">Tutorial</a> for projects that currently use Docker Compose. Our Docker Compose support is alpha, so we’d really appreciate feedback.</p>
+<div class="section" id="comparison">
+<h2>Comparison<a class="headerlink" href="#comparison" title="Permalink to this headline">¶</a></h2>
+<p>Tilt provides a better User Experience in two ways:</p>
+<ul class="simple">
+<li>Tilt handles filesystem watching and updating without requiring manual actions or hand-rolled scripting.</li>
+<li>Tilt’s UI shows you the status at a glance, so errors can’t scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).</li>
+</ul>
+<p>Most documentation describes using Tilt to deploy to Kubernetes, but that would be a large change. For Docker Compose projects, Tilt uses Docker Compose as a backend. This allows you to use your existing configuration, debugging tricks, and muscle memory while getting a better UX.</p>
+</div>
+<div class="section" id="tiltfile-for-docker-compose">
+<h2>Tiltfile for Docker Compose<a class="headerlink" href="#tiltfile-for-docker-compose" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># point Tilt at the existing docker-compose configuration.</span>
+<span class="n">docker_compose</span><span class="p">(</span><span class="s2">&quot;./docker-compose.yml&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>And that’s it! You should see your services spinning up in Tilt, with status, errors, and logs all easily visible thanks to our Heads-Up Display.</p>
 </div>
 <div class="section" id="what-we-mean-by-alpha">
 <h2>What We Mean By “Alpha”<a class="headerlink" href="#what-we-mean-by-alpha" title="Permalink to this headline">¶</a></h2>
-<p>So far, we’ve only built bare-bones Docker Compose support, but we think even the functionality we have so far can improve your life a bit, and we’re building more features every day!</p>
+<p>Docker Compose support is our newest feature, and so isn’t as well-proven as our Kubernetes support. We think Tilt x Docker Compose is better than Docker Compose, but know there are bugs.</p>
 <p>You might want to try the current support if:</p>
 <ul class="simple">
-<li>you’ve been curious about Tilt, and you don’t have k8s YAML at the ready, but you DO have a Docker Compose setup</li>
+<li>you’ve been curious about Tilt, but use Docker Compose instead of Kubernetes for local dev</li>
 <li>you’re frustrated with Docker Compose’s log barf and want to easily find logs and errors per-service</li>
 <li>you’re excited about dev tools and trying new things</li>
 <li>you enjoy filing bug reports and helping make software better</li>
 </ul>
-<p>It’s probably not for you if:</p>
-<ul class="simple">
-<li>you’re looking for a polished product to pitch to the rest of your team <em>today</em></li>
-</ul>
+<p>It’s probably not ready for teams looking for a stable, proven tool.</p>
 <p>Additionally, there are certain use cases that the current iteration of Tilt x Docker Compose is more or less suited for:</p>
 <div class="section" id="what-to-expect-from-tilt-x-docker-compose-by-your-use-case">
 <h3>What to expect from Tilt x Docker Compose, by your use case<a class="headerlink" href="#what-to-expect-from-tilt-x-docker-compose-by-your-use-case" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li>You use Docker Compose for your entire development flow: it handles both building Docker images and spinning them up in the appropriate containers</li>
 </ul>
-<p>Congrats, we think that Tilt x Docker Compose as it exists today will be great for you! If you edit code locally, Tilt will automatically rebuild and redeploy the appropriate service, plus you get all the visibility of our Heads-Up Display.</p>
+<p>You are the ideal user for  Tilt x Docker Compose today.</p>
 <ul class="simple">
 <li>You use Docker Compose to spin up images that have been built elsewhere (e.g. you have to run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">build</span></code> before you run <code class="docutils literal notranslate"><span class="pre">docker-compose</span> <span class="pre">up</span></code>)</li>
 </ul>
-<p>You won’t get the benefits of automatic rebuild, but you’ll still have vastly better visibility into your app: you can easily get logs per-service, see status at a glance, and find crashes as soon as they happen.</p>
-<p>Don’t worry, we’re working on a way for you to get the benefits of auto-rebuilding (with some caching magic to make your builds lightning fast); but in the meantime, we think you’ll still get something out of running your Docker Compose setup via Tilt.</p>
+<p>Tilt will give you better visibility into your app, but won’t update automatically. (We’re actively working to support adding builds in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> that aren’t in your Docker Compose configuration).</p>
 <ul class="simple">
 <li>You build Docker images via Docker Compose (i.e. you specify <code class="docutils literal notranslate"><span class="pre">build</span></code> in your config file) AND you make use of <code class="docutils literal notranslate"><span class="pre">MOUNT</span></code> / <code class="docutils literal notranslate"><span class="pre">VOLUME</span></code> in your <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> or <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code></li>
 </ul>
-<p>We’re still working out the kinks for this use case. We hope it’ll work fine, but depending on the specifics of your situation, Tilt may try to kick off a rebuild when you change a <code class="docutils literal notranslate"><span class="pre">MOUNT</span></code>ed file – which is obviously silly, since that file automatically gets updated in the container. You have been warned.</p>
+<p>Tilt may have bugs that result in spurious rebuilds for files that are mounted in volumes. (There are so many corner cases of mounting that our confidence is low). Please let us know and we’ll fix it ASAP.</p>
 <ul class="simple">
 <li>Your containers automatically restart after crashes (i.e. you set <a class="reference external" href="https://docs.docker.com/compose/compose-file/#restart">container restart policy</a> in your config file).</li>
 </ul>
-<p>Most of our functionality will still work, but we’re still working on how to surface the right error messages to you when something goes wrong. When your containers crash and restart, you might see some odd stuff in the display. We’re working on tightening up this experience.</p>
+<p>Tilt will work, but may be oversensitive and report too many errors. We’d like to understand your case better, so please reach out.</p>
 </div>
-<div class="section" id="how-to-be-an-alpha-user">
-<h3>How to be an alpha user<a class="headerlink" href="#how-to-be-an-alpha-user" title="Permalink to this headline">¶</a></h3>
-<p>We’re pushing new stuff every day, so don’t bother waiting for releases; install from <code class="docutils literal notranslate"><span class="pre">master</span></code>!</p>
-<p>We want your feedback! If you see weird behavior, if we don’t quiiite support your use case, or there are features that would make you fall in love with Tilt, <a class="reference external" href="https://github.com/windmilleng/tilt/issues">file an issue</a> and let us know!</p>
+<div class="section" id="install-from-source">
+<h3>Install from Source<a class="headerlink" href="#install-from-source" title="Permalink to this headline">¶</a></h3>
+<p>We’re improving Docker Compose support daily, so your feedback will be more relevant if you <a class="reference external" href="install.html">install</a> from source instead of using a release.</p>
+</div>
+<div class="section" id="feedback-wanted">
+<h3>Feedback Wanted<a class="headerlink" href="#feedback-wanted" title="Permalink to this headline">¶</a></h3>
+<p>If you find bugs, unsupported use cases, or think of features, we’d really like to hear.</p>
 </div>
 </div>
 </div>
@@ -253,10 +264,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="helm.html" class="btn btn-neutral float-right" title="For Helm Users" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="code_of_conduct.html" class="btn btn-neutral float-right" title="Code of Conduct" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="upgrade_docker_compose.html" class="btn btn-neutral" title="From Docker Compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="example_projects.html" class="btn btn-neutral" title="Example Projects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

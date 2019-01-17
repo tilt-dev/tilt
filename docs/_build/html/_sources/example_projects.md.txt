@@ -1,0 +1,57 @@
+# Example Projects
+
+This doc supplements our [Tutorial](tutorial.html) for people who want to try Tilt but don't have a project they can easily use with Tilt. It describes two example projects we've built that use Tilt.
+
+These projects can also be useful to confirm Tilt is working as expected in your environment.
+
+## oneup
+Oneup is a simple app that starts one service.
+
+First, check out the Tilt repo.
+
+```
+git clone https://github.com/windmilleng/tilt
+cd tilt/integration/oneup
+```
+
+Under `integration`, Tilt has example projects that we use to run our integration tests.
+We'll be looking at the [oneup](https://github.com/windmilleng/tilt/tree/master/integration/oneup) project
+in `integration/oneup`.
+
+In the oneup directory, run
+
+```
+tilt up
+```
+
+Your terminal will turn into a status box that lets you watch your server come up. When it's ready,
+you will see the status icon turn green. The logs in the botton pane will display
+"Serving oneup on container port 8000."
+
+![oneup server logs](_static/oneup.png)
+
+Type `b` to open `oneup` in a browser window.
+Your browser will open `http://localhost:8100`.
+You should see the text `🍄 One-Up! 🍄`.
+
+Congratulations! You've run your first server with `tilt`.
+
+Type `q` to quit the status box. When you're finished, run
+
+```
+tilt down
+```
+
+to turn off the server.
+
+## Servantes
+[Servantes](https://github.com/windmilleng/servantes) is a personalized homepage app implemented with many microservices in multiple languages. You can run it with the commands
+
+```
+git clone https://github.com/windmilleng/servantes
+cd servantes; tilt up
+```
+
+Each widget is implemented by a different microservice backend.
+
+Servantes uses many features of Tilt, and so can be a useful reference.

@@ -31,6 +31,8 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tiltfile Concepts" href="tiltfile_concepts.html" />
+    <link rel="prev" title="Install" href="install.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -92,23 +94,34 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#example-tiltfile">Example Tiltfile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hello-world">Hello World</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-1-deploy">Step 1: Deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-2-build">Step 2: Build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-3-watch-optional">Step 3: Watch (Optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setup-complete">Setup Complete</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -166,7 +179,7 @@
         
             
             
-              <a href="https://github.com/windmilleng/tilt/blob/master/docs/write_your_tiltfile.md" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/tutorial.md" class="fa fa-github"> Edit on GitHub</a>
             
           
         
@@ -182,8 +195,8 @@
             
   <div class="section" id="tutorial">
 <h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
-<p>This guide walks you through setting up Tilt for local Kubernetes development. You’ll write a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> for your project and be able to use Tilt with your project. This guide assumes you’ve installed Tilt and have a project you can already build and deploy to Kubernetes.</p>
-<p>Setting up Tilt should take about about 15 minutes. Before we begin, join the <code class="docutils literal notranslate"><span class="pre">#tilt</span></code> channel in Kubernetes Slack for technical or moral support.</p>
+<p>This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you’ve already <a class="reference external" href="install.html">installed Tilt</a>. Before you begin, you may want to join the <code class="docutils literal notranslate"><span class="pre">#tilt</span></code> channel in <a class="reference external" href="http://slack.k8s.io">Kubernetes Slack</a> for technical or moral support.</p>
+<p>Start by <code class="docutils literal notranslate"><span class="pre">cd</span></code>’ing into a project you can already build and deploy. (We have some <a class="reference external" href="example_projects.html">example projects</a> if you just want to try Tilt). Open the appendix for <a class="reference external" href="skaffold.html">skaffold</a>, <a class="reference external" href="docker_compose_alpha.html">docker-compose</a> or <a class="reference external" href="helm.html">helm</a> if you use one of those tools.</p>
 <div class="section" id="example-tiltfile">
 <h2>Example Tiltfile<a class="headerlink" href="#example-tiltfile" title="Permalink to this headline">¶</a></h2>
 <p>At the end of this guide, your Tiltfile will look something like this:</p>
@@ -206,15 +219,15 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">print</span><span class="p">(</span><span class="s1">&#39;Hello Tiltfile&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Now save it. Congrats, you just ran your first <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>. Tilt’s configurations are programs in Starlark, a dialect of Python. Can you see “Hello Tiltfile” in Tilt’s UI? Tilt is also warning you there are no declared resources. Let’s add some.</p>
+<p>Now save the file. Congrats, you just ran your first <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>. Tilt’s configurations are programs in <a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>, a dialect of Python. Can you see “Hello Tiltfile” in Tilt’s UI? Tilt is also warning you there are no declared resources. Let’s add some.</p>
 </div>
 <div class="section" id="step-1-deploy">
 <h2>Step 1: Deploy<a class="headerlink" href="#step-1-deploy" title="Permalink to this headline">¶</a></h2>
-<p>Use the <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> function to tell Tilt about Kubernetes objects to deploy:</p>
+<p>The function <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> registers Kubernetes objects you want to deploy:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;app.yaml&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Tilt supports many deployment configuration practices (for more details, check out the YAML section of “Tiltfile Functions”):</p>
+<p>Tilt supports many deployment configuration practices (for more details, check out the <a class="reference external" href="tiltfile_concepts.html#deploy">Deploy</a> section of “Tiltfile Concepts”):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># multiple yaml files; can be either a list or multiple calls</span>
 <span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span>
 
@@ -224,17 +237,16 @@
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;chart_dir&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Add code that calls <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code>. Tilt will parse the yaml, display the found objects, and deploy them. If there are problems, update your configuration and let Tilt reexecute your Tiltfile until you see the right objects.</p>
+<p>Use the pattern that matches your project (if you’re not sure, feel free to ask in <a class="reference external" href="index.html#community">Slack</a>). You can see when it works because Tilt will display the registered objects.</p>
 </div>
 <div class="section" id="step-2-build">
 <h2>Step 2: Build<a class="headerlink" href="#step-2-build" title="Permalink to this headline">¶</a></h2>
-<p>Tilt can build docker images, then inject them into the Kubernetes yaml and deploy. Use the <code class="docutils literal notranslate"><span class="pre">docker_build</span></code> function to tell Tilt how to build an image: (See the Build section of “Tiltfile Functions” for optional args like Dockerfile or build args)</p>
+<p>The function <code class="docutils literal notranslate"><span class="pre">docker_build</span></code> tells Tilt how to build a container image. Tilt automatically builds the image, injects the ID into Kubernetes objects and deploys. (The <a class="reference external" href="tiltfile_concepts.html#build">Build</a> section of “Tiltfile Concepts” describes optional arguments.)</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># docker build -t companyname/frontend ./frontend</span>
 <span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;companyname/frontend&#39;</span><span class="p">,</span> <span class="s1">&#39;frontend&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Edit some source code and save. Tilt starts rebuilding and will redeploy, automatically. Explore Tilt’s UI (there’s a legend in the bottom right; as you navigate it changes to tell you what’s available from your current state). Try introducing a build error or a runtime crash and see Tilt respond.</p>
-<p>You can optimize your builds in various ways. This especially helps for projects with slow builds that run in the a cloud cluster, but we suggest setting up your whole project first.</p>
+<p>Try editing a source file; you should see Tilt automatically build and deploy as soon as you save. Add additional images; you should have one <code class="docutils literal notranslate"><span class="pre">docker_build</span></code> call for each container image you’re developing.</p>
 </div>
 <div class="section" id="step-3-watch-optional">
 <h2>Step 3: Watch (Optional)<a class="headerlink" href="#step-3-watch-optional" title="Permalink to this headline">¶</a></h2>
@@ -242,18 +254,13 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;frontend&#39;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="s1">&#39;9000&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>You can also use <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> to change the resource grouping, or forward multiple ports, as described in the “Watch” section of <code class="docutils literal notranslate"><span class="pre">Tiltfile</span> <span class="pre">Functions</span></code>.</p>
+<p>You can also use <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> to change the resource grouping, or forward multiple ports. Cf. the <a class="reference external" href="tiltfile_concepts.html#resources">Resources</a> section of <code class="docutils literal notranslate"><span class="pre">Tiltfile</span> <span class="pre">Concepts</span></code>.</p>
 </div>
-<div class="section" id="next-steps">
-<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
-<p>You should now have Tilt working with your project. Next you can:</p>
-<ul class="simple">
-<li>Go happily use Tilt</li>
-<li>Let us know how it went (great, bad, or improvement ideas)</li>
-<li>Read more about Tilt</li>
-<li>Learn how to help your team adopt Tilt</li>
-<li>Optimize your Tilt</li>
-</ul>
+<div class="section" id="setup-complete">
+<h2>Setup Complete<a class="headerlink" href="#setup-complete" title="Permalink to this headline">¶</a></h2>
+<p>Tilt is now setup for your project. Try exploring Tilt’s UI (there’s a context-sensitive legend in the bottom right). Introduce a build error and then a runtime crash; see Tilt’s UI respond and surface the relevant problem.</p>
+<p>We’ve love to <a class="reference external" href="index.html#community">hear from you</a>.</p>
+<p>You can read more about <a class="reference external" href="tiltfile_concepts.html">Tiltfile Concepts</a> or <a class="reference external" href="fast_build.html">Optimizing your Builds</a>.</p>
 </div>
 </div>
 
@@ -262,6 +269,15 @@
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="tiltfile_concepts.html" class="btn btn-neutral float-right" title="Tiltfile Concepts" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="install.html" class="btn btn-neutral" title="Install" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

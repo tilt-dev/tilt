@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>From Skaffold &mdash; Tilt  documentation</title>
+  <title>Skaffold &mdash; Tilt  documentation</title>
   
 
   
@@ -31,8 +31,8 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="From Docker Compose" href="upgrade_docker_compose.html" />
-    <link rel="prev" title="Tutorial" href="tutorial.html" />
+    <link rel="next" title="Helm" href="helm.html" />
+    <link rel="prev" title="Tiltfile API Reference" href="api.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -94,29 +94,30 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
-</ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">From Skaffold</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#before-you-begin">Before you begin</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#differences-between-skaffold-and-tilt">Differences between Skaffold and Tilt</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#migrate-from-skaffold-to-tilt">Migrate from Skaffold to Tilt</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#that-s-it">That’s it!</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Skaffold</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#comparison">Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#translate-skaffold-configuration">Translate Skaffold Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -167,14 +168,14 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>From Skaffold</li>
+      <li>Skaffold</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
             
-              <a href="https://github.com/windmilleng/tilt/blob/master/docs/upgrade_skaffold.md" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/skaffold.md" class="fa fa-github"> Edit on GitHub</a>
             
           
         
@@ -188,25 +189,19 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="from-skaffold">
-<h1>From Skaffold<a class="headerlink" href="#from-skaffold" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="before-you-begin">
-<h2>Before you begin<a class="headerlink" href="#before-you-begin" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="skaffold">
+<h1>Skaffold<a class="headerlink" href="#skaffold" title="Permalink to this headline">¶</a></h1>
+<p>This doc supplements our <a class="reference external" href="tutorial.html">Tutorial</a> for projects that currently use Skaffold. It compares Skaffold to Tilt and translates a Skaffold configuration to a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>.</p>
+<div class="section" id="comparison">
+<h2>Comparison<a class="headerlink" href="#comparison" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference external" href="install.html">Install Tilt</a></li>
-<li>If you’re new to Tilt try stepping through <a class="reference external" href="first_config.html">a Simple Tiltfile</a> first.</li>
+<li>Tilt’s UI shows you the status at a glance, so errors can’t scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).</li>
+<li>Tilt’s configuration is <a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>, a subset of Python. This allows simple configs to be shorter and complex configs to be possible.</li>
 </ul>
 </div>
-<div class="section" id="differences-between-skaffold-and-tilt">
-<h2>Differences between Skaffold and Tilt<a class="headerlink" href="#differences-between-skaffold-and-tilt" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li>Skaffold streams the logs for all services it started. We found one combined stream of all services difficult to use and understand for anything beyond the most simple apps. Tilt instead provides a UI right in your console to view all of your running services and other relevant errors in addition to the log view that Skaffold provides.</li>
-<li>Skaffold is configured with a static YAML config. Tilt is configured with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called <a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>.</li>
-</ul>
-</div>
-<div class="section" id="migrate-from-skaffold-to-tilt">
-<h2>Migrate from Skaffold to Tilt<a class="headerlink" href="#migrate-from-skaffold-to-tilt" title="Permalink to this headline">¶</a></h2>
-<p>Let’s take a relatively simple <code class="docutils literal notranslate"><span class="pre">skaffold.yaml</span></code> file with two services:</p>
+<div class="section" id="translate-skaffold-configuration">
+<h2>Translate Skaffold Configuration<a class="headerlink" href="#translate-skaffold-configuration" title="Permalink to this headline">¶</a></h2>
+<p>Skaffold concepts map almost directly into Tilt. Let’s translate an example Skaffold configuration with two deployments and two images:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
 <span class="nt">kind</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
 <span class="nt">build</span><span class="p">:</span>
@@ -222,43 +217,7 @@
       <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
 </pre></div>
 </div>
-<ol class="simple">
-<li>Create a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code></li>
-<li>Tell Tilt about your YAML</li>
-</ol>
-<p>In Skaffold you specify your Kubernetes YAML under the <code class="docutils literal notranslate"><span class="pre">manifests</span></code> key:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">deploy</span><span class="p">:</span>
-  <span class="nt">kubectl</span><span class="p">:</span>
-    <span class="nt">manifests</span><span class="p">:</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/snack.yaml</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
-</pre></div>
-</div>
-<p>In Tilt we specify Kubernetes YAML with the <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> function.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/spoonerisms.yaml&#39;</span><span class="p">])</span>
-</pre></div>
-</div>
-<ol class="simple">
-<li>Tell Tilt about your Dockerfile</li>
-</ol>
-<p>In Skaffold you specify the image tag you want to build and deploy:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">build</span><span class="p">:</span>
-  <span class="nt">artifacts</span><span class="p">:</span>
-  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
-    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
-  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
-    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
-</pre></div>
-</div>
-<p>Similarly in Tilt you specify the image tag as well as the Docker build context (<code class="docutils literal notranslate"><span class="pre">&quot;.&quot;</span></code> in this case).</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;snack&#39;</span><span class="p">)</span>
-<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/spoonerisms&#39;</span><span class="p">,</span> <span class="s1">&#39;spoonerisms&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="that-s-it">
-<h2>That’s it!<a class="headerlink" href="#that-s-it" title="Permalink to this headline">¶</a></h2>
-<p>Now your Tiltfile should look like this:</p>
+<p>The corresponding <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> is:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/spoonerisms.yaml&#39;</span><span class="p">])</span>
 <span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;snack&#39;</span><span class="p">)</span>
 <span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/spoonerisms&#39;</span><span class="p">,</span> <span class="s1">&#39;spoonerisms&#39;</span><span class="p">)</span>
@@ -275,10 +234,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="upgrade_docker_compose.html" class="btn btn-neutral float-right" title="From Docker Compose" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="helm.html" class="btn btn-neutral float-right" title="Helm" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="tutorial.html" class="btn btn-neutral" title="Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral" title="Tiltfile API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

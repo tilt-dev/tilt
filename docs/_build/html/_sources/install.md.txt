@@ -1,5 +1,5 @@
-Tilt Installation Guide
-=======================
+Install
+=======
 
 Tilt is currently available for MacOS and Linux.
 

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>For Helm Users &mdash; Tilt  documentation</title>
+  <title>Helm &mdash; Tilt  documentation</title>
   
 
   
@@ -31,8 +31,8 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tiltfile Concepts" href="tiltfile_concepts.html" />
-    <link rel="prev" title="Docker Compose Support (Alpha)" href="docker_compose_alpha.html" />
+    <link rel="next" title="Example Projects" href="example_projects.html" />
+    <link rel="prev" title="Skaffold" href="skaffold.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -94,23 +94,30 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">For Helm Users</a></li>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Helm</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#built-in-support">Built-in Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#further-customization">Further Customization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -161,7 +168,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>For Helm Users</li>
+      <li>Helm</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -182,25 +189,24 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="for-helm-users">
-<h1>For Helm Users<a class="headerlink" href="#for-helm-users" title="Permalink to this headline">¶</a></h1>
-<p>Tilt has native support for Helm! To run <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">template</span></code> on a chart directory from Tilt simply pass the chart directory to the <code class="docutils literal notranslate"><span class="pre">helm</span></code> built-in like so:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yml</span> <span class="o">=</span> <span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">)</span>
-<span class="c1"># The result is just YAML, which you can use throughout Tilt anywhere you would normally use YAML</span>
-<span class="n">k8s_yaml</span><span class="p">(</span><span class="n">yml</span><span class="p">)</span>
+  <div class="section" id="helm">
+<h1>Helm<a class="headerlink" href="#helm" title="Permalink to this headline">¶</a></h1>
+<p>This doc supplements our <a class="reference external" href="tutorial.html">Tutorial</a> for projects that currently use Helm.</p>
+<div class="section" id="built-in-support">
+<h2>Built-in Support<a class="headerlink" href="#built-in-support" title="Permalink to this headline">¶</a></h2>
+<p>Tilt supports Helm out-of-the-box. The <code class="docutils literal notranslate"><span class="pre">helm</span></code> function runs <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">template</span></code> on a chart directory and returns the generated yaml.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>If you use Tilt to build your own Docker image and that image appears in your Helm chart we can automatically redeploy your service when the image changes.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">docker_build</span><span class="p">(</span><span class="s2">&quot;companyname/service&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
-<span class="n">yml</span> <span class="o">=</span> <span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">)</span> <span class="c1"># the resulting yaml uses the companyname/service image</span>
-<span class="n">k8s_resource</span><span class="p">(</span><span class="n">yml</span><span class="p">)</span>
+</div>
+<div class="section" id="further-customization">
+<h2>Further Customization<a class="headerlink" href="#further-customization" title="Permalink to this headline">¶</a></h2>
+<p>You could also run <code class="docutils literal notranslate"><span class="pre">helm</span></code> with a call to <code class="docutils literal notranslate"><span class="pre">local</span></code> if you require further customization:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s2">&quot;helm template path/to/chart&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">helm</span></code> could also be implemented as a <code class="docutils literal notranslate"><span class="pre">local</span></code> command if you require further customization:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">local</span><span class="p">(</span><span class="s2">&quot;helm template path/to/chart&quot;</span><span class="p">)</span>
-</pre></div>
+<p>(We’d love to know if you run into this so we can extend our built-in support to cover your use case.)</p>
 </div>
-<p>For complete documentation of both <code class="docutils literal notranslate"><span class="pre">helm</span></code> and <code class="docutils literal notranslate"><span class="pre">local</span></code> visit the <a class="reference external" href="api.html">Tilt API reference</a>.</p>
 </div>
 
 
@@ -211,10 +217,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tiltfile_concepts.html" class="btn btn-neutral float-right" title="Tiltfile Concepts" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="example_projects.html" class="btn btn-neutral float-right" title="Example Projects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="docker_compose_alpha.html" class="btn btn-neutral" title="Docker Compose Support (Alpha)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="skaffold.html" class="btn btn-neutral" title="Skaffold" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

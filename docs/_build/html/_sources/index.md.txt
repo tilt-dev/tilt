@@ -22,18 +22,16 @@ or logs right in your terminal.
 
 ## Install Tilt
 
-Download the Tilt binary on
-[the github releases page](https://github.com/windmilleng/tilt/releases).
+Download the latest Tilt release from
+[GitHub](https://github.com/windmilleng/tilt/releases). Read the [Installation Guide](install.html) for details and prerequistes.
 
-Tilt expects that you already have Docker and `kubectl` installed.
-Read the more detailed [Installation Guide](install.html)
-to help you `tilt up` quickly.
+## Describe Your Workflow
 
-## Configure Your Workflow to Share With Your Team
-
-Tilt uses your existing `Dockerfiles` and Kubernetes `yaml`, configured in a `Tiltfile`. Here's an example Tiltfile:
+Tilt uses your existing Docker/Kubernetes configuration, connected with a simple and powerful description:
 
 ```python
+# Example Tiltfile for a k8s app with two microservices
+
 # Deploy: tell Tilt what yaml to deploy
 k8s_yaml('app.yaml')
 
@@ -42,21 +40,31 @@ docker_build('companyname/frontend', 'frontend')
 docker_build('companyname/backend', 'backend')
 ```
 
-Our [Tutorial](tutorial.html) takes 15 minutes and walks you through setting up Tilt for your project.
+Setup Tilt in 15 minutes with the [Tutorial](tutorial.html).
+
+## See More
+Stop playing 20 questions with `kubectl`. Tilt's UI pulls relevant data to the surface, automatically.
+
+You fix faster when you know what's broken.
 
 ## Community
 
-Questions? Comments? Just want to say hi?
-
-Find us on the Kubernetes slack. Get an invite at [slack.k8s.io](http://slack.k8s.io) and find
+Questions? Comments? Just want to say hi? Find us on the Kubernetes slack. Get an invite at [slack.k8s.io](http://slack.k8s.io) and find
 us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
 
 We tweet [@windmill_eng](https://twitter.com/windmill_eng) and
 blog about building Tilt at [medium.com/windmill-engineering](https://medium.com/windmill-engineering).
 
+Tilt is Open Source, developed on [GitHub](https://github.com/windmilleng/tilt).
+
 We expect everyone in our community (users, contributors, and employees alike) to abide by our [**Code of Conduct**](code_of_conduct.html).
 
 ```eval_rst
+
+.. toctree::
+  :hidden:
+
+  self
 
 .. toctree::
    :maxdepth: 1
@@ -67,20 +75,20 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
 .. toctree::
    :maxdepth: 1
-   :caption: Configs From Other Tools
-
-   upgrade_skaffold
-   upgrade_docker_compose
-   docker_compose_alpha
-   helm
-
-.. toctree::
-   :maxdepth: 1
    :caption: Using Tilt
 
    tiltfile_concepts
    fast_build
    api
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Appendix
+
+   skaffold
+   helm
+   example_projects
+   docker_compose_alpha
 
 .. toctree::
    :maxdepth: 1
