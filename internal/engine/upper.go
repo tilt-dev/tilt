@@ -288,10 +288,13 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsDC() {
 		state, _ := ms.ResourceState.(dockercompose.State)
+		logger.Get(ctx).Infof("dc manifest state: %+v", state)
 
 		cid := cb.Result.AsOneResult().ContainerID
 		if cid != "" {
 			state = state.WithContainerID(cid)
+		}
+		if cid != "" && state.Status == "" {
 			state = state.WithStatus(dockercompose.StatusUp)
 		}
 
