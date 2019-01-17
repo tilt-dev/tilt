@@ -186,27 +186,22 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 		return rty.EmptyLayout
 	}
 
-	unresourced, otherK8s := unresourcedK8sItems(yi.K8sResources)
+	unresourced := unresourcedK8sItems(yi.K8sResources)
 
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
 	rhs := rty.NewConcatLayout(rty.DirVert)
 	if unresourced != "" {
-		rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("Add Dockerfile info in Tiltfile to explore these K8s entities:").Build())
+		rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("The YAML loaded from your Tiltfile includes:").Build())
 		rhs.Add(rty.TextString(unresourced))
 		rhs.Add(rty.NewLine())
-	}
-	if otherK8s != "" {
-		rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("Other K8s entities found in YAML:").Build())
-		rhs.Add(rty.TextString(otherK8s))
 	}
 	l.AddDynamic(rhs)
 	return l
 }
 
-func unresourcedK8sItems(resources []model.YAMLManifestResource) (string, string) {
-	var unresourced []string
-	var otherK8s []string
+func unresourcedK8sItems(resources []model.YAMLManifestResource) string {
+	var rs []string
 
 	for _, r := range resources {
 		if r.Kind == "Deployment" || r.Kind == "Service" {
@@ -216,13 +211,11 @@ func unresourcedK8sItems(resources []model.YAMLManifestResource) (string, string
 					kinds = append(kinds, res.Kind)
 				}
 			}
-			unresourced = appendIfMissing(unresourced, fmt.Sprintf("- %s (%s)", r.Name, strings.Join(kinds, ", ")))
-		} else {
-			otherK8s = append(otherK8s, fmt.Sprintf("- %s (%s)", r.Name, r.Kind))
+			rs = appendIfMissing(rs, fmt.Sprintf("- %s (%s)", r.Name, strings.Join(kinds, ", ")))
 		}
 	}
 
-	return strings.Join(unresourced, "\n"), strings.Join(otherK8s, "\n")
+	return strings.Join(rs, "\n")
 }
 
 func appendIfMissing(slice []string, s string) []string {
