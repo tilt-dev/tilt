@@ -89,3 +89,18 @@ func provideImageBuildAndDeployer(
 
 	return nil, nil
 }
+
+func provideDockerComposeBuildAndDeployer(
+	ctx context.Context,
+	dcCli dockercompose.DockerComposeClient,
+	dCli docker.Client,
+	dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
+	wire.Build(
+		DeployerWireSetTest,
+		wire.Value(k8s.Env(k8s.EnvUnknown)),
+		wire.Value(mode.UpdateModeFlag(mode.UpdateModeAuto)),
+		build.ProvideClock,
+	)
+
+	return nil, nil
+}

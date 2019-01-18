@@ -74,6 +74,30 @@ var (
 	_wireUpdateModeFlagValue = mode.UpdateModeFlag(mode.UpdateModeAuto)
 )
 
+func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
+	console := build.DefaultConsole()
+	writer := build.DefaultOut()
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(dCli, console, writer, labels)
+	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
+	cacheBuilder := build.NewCacheBuilder(dCli)
+	updateModeFlag := _wireModeUpdateModeFlagValue
+	env := _wireK8sEnvValue
+	updateMode, err := mode.ProvideUpdateMode(updateModeFlag, env)
+	if err != nil {
+		return nil, err
+	}
+	imageAndCacheBuilder := build.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, updateMode)
+	clock := build.ProvideClock()
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, imageAndCacheBuilder, clock)
+	return dockerComposeBuildAndDeployer, nil
+}
+
+var (
+	_wireModeUpdateModeFlagValue = mode.UpdateModeFlag(mode.UpdateModeAuto)
+	_wireK8sEnvValue             = k8s.Env(k8s.EnvUnknown)
+)
+
 // wire.go:
 
 var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
