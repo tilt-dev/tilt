@@ -14,8 +14,18 @@ type FakeDCClient struct {
 	t   *testing.T
 	ctx context.Context
 
-	RunLogOutput map[model.TargetName]<-chan string
-	eventJson    chan string
+	RunLogOutput      map[model.TargetName]<-chan string
+	ContainerIdOutput container.ID
+	eventJson         chan string
+
+	UpCalls []UpCall
+}
+
+// Represents a single call to Up
+type UpCall struct {
+	PathToConfig string
+	ServiceName  model.TargetName
+	ShouldBuild  bool
 }
 
 func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
@@ -29,6 +39,7 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 
 func (c *FakeDCClient) Up(ctx context.Context, pathToConfig string, serviceName model.TargetName,
 	shouldBuild bool, stdout, stderr io.Writer) error {
+	c.UpCalls = append(c.UpCalls, UpCall{pathToConfig, serviceName, shouldBuild})
 	return nil
 }
 
@@ -97,5 +108,5 @@ func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (strin
 }
 
 func (c *FakeDCClient) ContainerID(ctx context.Context, pathToConfig string, serviceName model.TargetName) (container.ID, error) {
-	return container.ID(""), nil
+	return c.ContainerIdOutput, nil
 }

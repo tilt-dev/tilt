@@ -69,10 +69,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
 
+	results := store.BuildResultSet{}
+
 	if haveImage {
 		var err error
 		var ref reference.NamedTagged
-		results := store.BuildResultSet{}
 		iTarget := iTargets[0]
 		expectedRef := iTarget.Ref
 
@@ -97,7 +98,6 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		}
 	}
 
-	brs := store.BuildResultSet{}
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 	err := bd.dcc.Up(ctx, dcTarget.ConfigPath, dcTarget.Name, !haveImage, stdout, stderr)
@@ -112,11 +112,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		return store.BuildResultSet{}, err
 	}
 
-	brs[dcTarget.ID()] = store.BuildResult{
+	results[dcTarget.ID()] = store.BuildResult{
 		ContainerID: cid,
 	}
 
-	return brs, nil
+	return results, nil
 }
 
 func (bd *DockerComposeBuildAndDeployer) tagWithExpected(ctx context.Context, ref reference.NamedTagged,
