@@ -1,6 +1,10 @@
 package docker
 
-import "github.com/docker/distribution/reference"
+import (
+	"github.com/docker/distribution/reference"
+)
+
+const TagLatest = "latest"
 
 // For use storing reference.NamedTagged as a map key, since we can't rely on the
 // two different underlying representations the same name+tag combo being equivalent.

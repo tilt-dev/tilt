@@ -6,6 +6,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -14,15 +16,17 @@ import (
 
 type DockerComposeBuildAndDeployer struct {
 	dcc dockercompose.DockerComposeClient
+	dc  docker.Client
 	ibd *ImageBuildAndDeployer
 }
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
-func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient,
+func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
 	ibd *ImageBuildAndDeployer) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
 		dcc: dcc,
+		dc:  dc,
 		ibd: ibd,
 	}
 }
@@ -38,6 +42,9 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 			iTargets = append(iTargets, s)
 		case model.DockerComposeTarget:
 			dcTargets = append(dcTargets, s)
+		default:
+			// unrecognized target
+			return nil, nil
 		}
 	}
 	return iTargets, dcTargets
@@ -61,11 +68,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 	defer span.Finish()
 
 	if haveImage {
-		logger.Get(ctx).Infof("~~ i'm building ur image for: %s", dcTarget.Name)
 		var err error
 		var ref reference.NamedTagged
 		results := store.BuildResultSet{}
 		iTarget := iTargets[0]
+		expectedRef := iTarget.Ref
 
 		ps := build.NewPipelineState(ctx, 1, bd.ibd.clock)
 		defer func() { ps.End(ctx, err) }()
@@ -77,6 +84,12 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+
+		ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
 		results[iTarget.ID()] = store.BuildResult{
 			Image: ref,
 		}
@@ -102,4 +115,23 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 	}
 
 	return brs, nil
+}
+
+func (bd *DockerComposeBuildAndDeployer) tagWithExpected(ctx context.Context, ref reference.NamedTagged,
+	expected reference.Named) (reference.NamedTagged, error) {
+	var tagAs reference.NamedTagged
+	expectedNt, err := container.ParseNamedTagged(expected.String())
+	if err == nil {
+		// expected ref already includes a tag, so just tag the image as that
+		tagAs = expectedNt
+	} else {
+		// expected ref is just a name, so tag it as `latest` b/c that's what Docker Compose wants
+		tagAs, err = reference.WithTag(ref, docker.TagLatest)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = bd.dc.ImageTag(ctx, ref.String(), tagAs.String())
+	return tagAs, err
 }

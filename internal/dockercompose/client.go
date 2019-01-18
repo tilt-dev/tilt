@@ -37,6 +37,12 @@ func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName mod
 	args := []string{"-f", configPath, "up", "--no-deps", "-d"}
 	if shouldBuild {
 		args = append(args, "--build")
+	} else {
+		// !shouldBuild implies that Tilt will take care of building, which implies that
+		// we should recreate container so that we pull the new image
+		// NOTE(maia): this is maybe the WRONG thing to do if we're deploying a service
+		// but none of the code changed (i.e. it was just a dockercompose.yml change)?
+		args = append(args, "--force-recreate")
 	}
 
 	args = append(args, serviceName.String())
