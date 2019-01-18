@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 
-	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -63,17 +62,17 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, updMode mode.UpdateMode) BuildOrder {
+func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, updMode UpdateMode) BuildOrder {
 
-	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
+	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if updMode == mode.UpdateModeContainer {
+	if updMode == UpdateModeContainer {
 		return BuildOrder{cbad, dcbad, ibad}
 	}
 
-	if updMode == mode.UpdateModeSynclet {
+	if updMode == UpdateModeSynclet {
 		ibad.SetInjectSynclet(true)
 		return BuildOrder{sbad, dcbad, ibad}
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/docker/docker/api/types"
@@ -471,7 +470,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	ctx := output.CtxForTest()
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
-	mode := mode.UpdateModeFlag(mode.UpdateModeAuto)
+	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc)
 	if err != nil {

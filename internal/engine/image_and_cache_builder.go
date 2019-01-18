@@ -1,33 +1,33 @@
-package build
+package engine
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-type ImageAndCacheBuilder struct {
-	ib         ImageBuilder
-	cb         CacheBuilder
-	updateMode mode.UpdateMode
+type imageAndCacheBuilder struct {
+	ib         build.ImageBuilder
+	cb         build.CacheBuilder
+	updateMode UpdateMode
 }
 
-func NewImageAndCacheBuilder(ib ImageBuilder, cb CacheBuilder, updateMode mode.UpdateMode) *ImageAndCacheBuilder {
-	return &ImageAndCacheBuilder{
+func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, updateMode UpdateMode) *imageAndCacheBuilder {
+	return &imageAndCacheBuilder{
 		ib:         ib,
 		cb:         cb,
 		updateMode: updateMode,
 	}
 }
 
-func (icb *ImageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *PipelineState, canSkipPush bool) (reference.NamedTagged, error) {
+func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState, canSkipPush bool) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
 	ref := iTarget.Ref
@@ -51,7 +51,7 @@ func (icb *ImageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 		go icb.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
 	case model.FastBuild:
-		if !state.HasImage() || icb.updateMode == mode.UpdateModeNaive {
+		if !state.HasImage() || icb.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
 			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", ref)
 			defer ps.EndPipelineStep(ctx)
@@ -73,7 +73,7 @@ func (icb *ImageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 				return nil, err
 			}
 
-			cf, err := FilesToPathMappings(changed, bd.Mounts)
+			cf, err := build.FilesToPathMappings(changed, bd.Mounts)
 			if err != nil {
 				return nil, err
 			}
@@ -105,7 +105,7 @@ func (icb *ImageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	return n, nil
 }
 
-func (icb *ImageAndCacheBuilder) staticDockerfile(image model.ImageTarget, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
+func (icb *imageAndCacheBuilder) staticDockerfile(image model.ImageTarget, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
 	df := dockerfile.Dockerfile(image.StaticBuildInfo().Dockerfile)
 	if cacheRef == nil {
 		return df
@@ -122,11 +122,11 @@ func (icb *ImageAndCacheBuilder) staticDockerfile(image model.ImageTarget, cache
 
 	// Replace all the lines before the ADD with a load from the Tilt cache.
 	return dockerfile.FromExisting(cacheRef).
-		WithLabel(CacheImage, "0"). // sadly there's no way to unset a label :sob:
+		WithLabel(build.CacheImage, "0"). // sadly there's no way to unset a label :sob:
 		Append(restDf)
 }
 
-func (icb *ImageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
+func (icb *imageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
 	cacheRef reference.NamedTagged, cachePaths []string) dockerfile.Dockerfile {
 	df := dockerfile.Dockerfile(fbInfo.BaseDockerfile)
 	if cacheRef == nil {
@@ -139,10 +139,10 @@ func (icb *ImageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
 
 	// Use the cache as the new base dockerfile.
 	return dockerfile.FromExisting(cacheRef).
-		WithLabel(CacheImage, "0") // sadly there's no way to unset a label :sob:
+		WithLabel(build.CacheImage, "0") // sadly there's no way to unset a label :sob:
 }
 
-func (icb *ImageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
+func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
 	// Only create the cache the first time we build the image.
 	if !state.LastResult.IsEmpty() {
 		return

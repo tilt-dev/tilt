@@ -1,29 +1,28 @@
 package engine
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
-	icb           *build.ImageAndCacheBuilder
+	icb           *imageAndCacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
 	analytics     analytics.Analytics
@@ -37,10 +36,10 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics analytics.Analytics,
-	updMode mode.UpdateMode,
+	updMode UpdateMode,
 	c build.Clock) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		icb:       build.NewImageAndCacheBuilder(b, cacheBuilder, updMode),
+		icb:       NewImageAndCacheBuilder(b, cacheBuilder, updMode),
 		k8sClient: k8sClient,
 		env:       env,
 		analytics: analytics,

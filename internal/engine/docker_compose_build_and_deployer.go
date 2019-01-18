@@ -17,14 +17,14 @@ import (
 type DockerComposeBuildAndDeployer struct {
 	dcc   dockercompose.DockerComposeClient
 	dc    docker.Client
-	icb   *build.ImageAndCacheBuilder
+	icb   *imageAndCacheBuilder
 	clock build.Clock
 }
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	icb *build.ImageAndCacheBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
+	icb *imageAndCacheBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
 		dcc:   dcc,
 		dc:    dc,

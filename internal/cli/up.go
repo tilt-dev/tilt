@@ -10,7 +10,6 @@ import (
 	"github.com/fatih/color"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
-	"github.com/windmilleng/tilt/internal/mode"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -23,7 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tracer"
 )
 
-var updateModeFlag string = string(mode.UpdateModeAuto)
+var updateModeFlag string = string(engine.UpdateModeAuto)
 var logActionsFlag bool = false
 
 type upCmd struct {
@@ -44,8 +43,8 @@ func (c *upCmd) register() *cobra.Command {
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&c.browserMode, "browser", "", "deprecated. TODO(nick): remove this flag")
-	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(mode.UpdateModeAuto),
-		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", mode.AllUpdateModes))
+	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
+		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
@@ -161,8 +160,8 @@ func logOutput(s string) {
 	log.Printf(color.GreenString(s))
 }
 
-func provideUpdateModeFlag() mode.UpdateModeFlag {
-	return mode.UpdateModeFlag(updateModeFlag)
+func provideUpdateModeFlag() engine.UpdateModeFlag {
+	return engine.UpdateModeFlag(updateModeFlag)
 }
 
 func provideLogActions() store.LogActionsFlag {

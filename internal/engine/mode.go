@@ -1,4 +1,4 @@
-package mode
+package engine
 
 import (
 	"fmt"
