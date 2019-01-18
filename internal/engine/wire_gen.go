@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -20,7 +21,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode mode.UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
 	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
@@ -32,14 +33,15 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env)
+	modeUpdateMode, err := mode.ProvideUpdateMode(updateMode, env)
 	if err != nil {
 		return nil, err
 	}
 	clock := build.ProvideClock()
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8s2, env, memoryAnalytics, engineUpdateMode, clock)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuildAndDeployer)
-	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8s2, env, memoryAnalytics, modeUpdateMode, clock)
+	imageAndCacheBuilder := build.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, modeUpdateMode)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, imageAndCacheBuilder, clock)
+	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, modeUpdateMode)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }
@@ -58,7 +60,7 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	env := _wireEnvValue
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	updateModeFlag := _wireUpdateModeFlagValue
-	updateMode, err := ProvideUpdateMode(updateModeFlag, env)
+	updateMode, err := mode.ProvideUpdateMode(updateModeFlag, env)
 	if err != nil {
 		return nil, err
 	}
@@ -69,17 +71,14 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 
 var (
 	_wireEnvValue            = k8s.Env(k8s.EnvDockerDesktop)
-	_wireUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
+	_wireUpdateModeFlagValue = mode.UpdateModeFlag(mode.UpdateModeAuto)
 )
 
 // wire.go:
 
 var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
-	NewDockerComposeBuildAndDeployer,
-	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
-	ProvideUpdateMode,
-	NewGlobalYAMLBuildController,
+	NewDockerComposeBuildAndDeployer, build.NewImageAndCacheBuilder, DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, mode.ProvideUpdateMode, NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(

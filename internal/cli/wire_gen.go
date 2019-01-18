@@ -17,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 	"time"
 )
@@ -76,15 +77,16 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(cli)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
+	modeUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
 	clock := build.ProvideClock()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode, clock)
 	dockerComposeClient := dockercompose.NewDockerComposeClient()
-	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, cli, imageBuildAndDeployer)
+	imageAndCacheBuilder := build.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, updateMode)
+	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, cli, imageAndCacheBuilder, clock)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
@@ -158,15 +160,16 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(cli)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env)
+	modeUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env)
 	if err != nil {
 		return Threads{}, err
 	}
 	clock := build.ProvideClock()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8sClient, env, analytics, updateMode, clock)
 	dockerComposeClient := dockercompose.NewDockerComposeClient()
-	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, cli, imageBuildAndDeployer)
+	imageAndCacheBuilder := build.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, updateMode)
+	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, cli, imageAndCacheBuilder, clock)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)

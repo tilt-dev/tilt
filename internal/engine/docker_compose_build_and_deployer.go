@@ -15,19 +15,21 @@ import (
 )
 
 type DockerComposeBuildAndDeployer struct {
-	dcc dockercompose.DockerComposeClient
-	dc  docker.Client
-	ibd *ImageBuildAndDeployer
+	dcc   dockercompose.DockerComposeClient
+	dc    docker.Client
+	icb   *build.ImageAndCacheBuilder
+	clock build.Clock
 }
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	ibd *ImageBuildAndDeployer) *DockerComposeBuildAndDeployer {
+	icb *build.ImageAndCacheBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
-		dcc: dcc,
-		dc:  dc,
-		ibd: ibd,
+		dcc:   dcc,
+		dc:    dc,
+		icb:   icb,
+		clock: c,
 	}
 }
 
@@ -74,13 +76,13 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		iTarget := iTargets[0]
 		expectedRef := iTarget.Ref
 
-		ps := build.NewPipelineState(ctx, 1, bd.ibd.clock)
+		ps := build.NewPipelineState(ctx, 1, bd.clock)
 		defer func() { ps.End(ctx, err) }()
 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		ref, err = bd.ibd.build(ctx, iTarget, currentState[iTarget.ID()], ps)
+		ref, err = bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps, true)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
