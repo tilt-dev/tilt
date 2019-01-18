@@ -209,20 +209,19 @@ func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
 
 // Extract target specs from a manifest for BuildAndDeploy.
 func buildTargets(manifest model.Manifest) []model.TargetSpec {
+	var result []model.TargetSpec
+
+	for _, iTarget := range manifest.ImageTargets {
+		result = append(result, iTarget)
+	}
+
 	if manifest.IsDC() {
-		return []model.TargetSpec{manifest.DockerComposeTarget()}
-	}
-
-	if manifest.IsK8s() {
-		result := []model.TargetSpec{}
-		for _, iTarget := range manifest.ImageTargets {
-			result = append(result, iTarget)
-		}
+		result = append(result, manifest.DockerComposeTarget())
+	} else if manifest.IsK8s() {
 		result = append(result, manifest.K8sTarget())
-		return result
 	}
 
-	return nil
+	return result
 }
 
 // Extract a set of build states from a manifest for BuildAndDeploy.

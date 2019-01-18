@@ -6,16 +6,16 @@
 package engine
 
 import (
-	context "context"
-	wire "github.com/google/go-cloud/wire"
-	build "github.com/windmilleng/tilt/internal/build"
-	docker "github.com/windmilleng/tilt/internal/docker"
-	dockercompose "github.com/windmilleng/tilt/internal/dockercompose"
-	dockerfile "github.com/windmilleng/tilt/internal/dockerfile"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
-	synclet "github.com/windmilleng/tilt/internal/synclet"
-	analytics "github.com/windmilleng/wmclient/pkg/analytics"
-	dirs "github.com/windmilleng/wmclient/pkg/dirs"
+	"context"
+	"github.com/google/go-cloud/wire"
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
@@ -32,14 +32,15 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
-	updateMode2, err := ProvideUpdateMode(updateMode, env)
+	engineUpdateMode, err := ProvideUpdateMode(updateMode, env)
 	if err != nil {
 		return nil, err
 	}
 	clock := build.ProvideClock()
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8s2, env, memoryAnalytics, updateMode2, clock)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc)
-	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode2)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8s2, env, memoryAnalytics, engineUpdateMode, clock)
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, engineUpdateMode)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
+	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }
@@ -72,11 +73,36 @@ var (
 	_wireUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
 )
 
+func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
+	console := build.DefaultConsole()
+	writer := build.DefaultOut()
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(dCli, console, writer, labels)
+	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
+	cacheBuilder := build.NewCacheBuilder(dCli)
+	updateModeFlag := _wireEngineUpdateModeFlagValue
+	env := _wireK8sEnvValue
+	updateMode, err := ProvideUpdateMode(updateModeFlag, env)
+	if err != nil {
+		return nil, err
+	}
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, updateMode)
+	clock := build.ProvideClock()
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, engineImageAndCacheBuilder, clock)
+	return dockerComposeBuildAndDeployer, nil
+}
+
+var (
+	_wireEngineUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
+	_wireK8sEnvValue               = k8s.Env(k8s.EnvUnknown)
+)
+
 // wire.go:
 
 var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, build.DefaultOut, wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
+	NewImageAndCacheBuilder,
 	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
 	NewGlobalYAMLBuildController,

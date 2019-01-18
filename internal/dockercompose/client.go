@@ -16,7 +16,7 @@ import (
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, configPath string, serviceName model.TargetName, stdout, stderr io.Writer) error
+	Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
 	StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error)
 	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
@@ -33,8 +33,20 @@ func NewDockerComposeClient() DockerComposeClient {
 	return &cmdDCClient{}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "-d", serviceName.String())
+func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+	args := []string{"-f", configPath, "up", "--no-deps", "-d"}
+	if shouldBuild {
+		args = append(args, "--build")
+	} else {
+		// !shouldBuild implies that Tilt will take care of building, which implies that
+		// we should recreate container so that we pull the new image
+		// NOTE(maia): this is maybe the WRONG thing to do if we're deploying a service
+		// but none of the code changed (i.e. it was just a dockercompose.yml change)?
+		args = append(args, "--force-recreate")
+	}
+
+	args = append(args, serviceName.String())
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
