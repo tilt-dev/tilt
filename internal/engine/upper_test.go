@@ -1823,6 +1823,10 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
 
+	f.WaitUntilManifestState("wait until manifest state has a log", m.ManifestName(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Log() != ""
+	})
+
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
