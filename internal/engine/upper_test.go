@@ -1918,7 +1918,7 @@ func (f fakeTimerMaker) maker() timerMaker {
 		default:
 			// if you hit this, someone (you!?) might have added a new timer with a new duration, and you probably
 			// want to add a case above
-			panic("makeTimer called on unsupported duration")
+			f.t.Error("makeTimer called on unsupported duration")
 		}
 		ret := make(chan time.Time, 1)
 		go func() {
