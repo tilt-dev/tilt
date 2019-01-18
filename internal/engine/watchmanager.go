@@ -7,7 +7,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -131,22 +130,47 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 }
 
 func watchRulesMatch(w1, w2 WatchableTarget) bool {
-	watchableTargetReposAsArrays := func(w WatchableTarget) ([]string, []string) {
-		var gitPaths, gitignores []string
-		for _, r := range w1.LocalRepos() {
-			gitPaths = append(gitPaths, r.LocalPath)
-			gitignores = append(gitignores, r.GitignoreContents)
+	if len(w1.LocalRepos()) != len(w2.LocalRepos()) {
+		return false
+	}
+	for i, r := range w1.LocalRepos() {
+		or := w2.LocalRepos()[i]
+		if r.LocalPath != or.LocalPath || r.GitignoreContents != or.GitignoreContents {
+			return false
 		}
-		return gitPaths, gitignores
 	}
 
-	gitPaths1, gitignores1 := watchableTargetReposAsArrays(w1)
-	gitPaths2, gitignores2 := watchableTargetReposAsArrays(w2)
+	if len(w1.Dockerignores()) != len(w2.Dockerignores()) {
+		return false
+	}
+	for i, di := range w1.Dockerignores() {
+		odi := w2.Dockerignores()[i]
+		if di.LocalPath != odi.LocalPath || di.Contents != odi.Contents {
+			return false
+		}
+	}
 
-	return sliceutils.StringSliceEquals(w1.Dependencies(), w2.Dependencies()) &&
-		sliceutils.StringSliceEquals(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories()) &&
-		sliceutils.StringSliceEquals(gitPaths1, gitPaths2) &&
-		sliceutils.StringSliceEquals(gitignores1, gitignores2)
+	if len(w1.Dependencies()) != len(w2.Dependencies()) {
+		return false
+	}
+	for i, d := range w1.Dependencies() {
+		od := w2.Dependencies()[i]
+		if d != od {
+			return false
+		}
+	}
+
+	if len(w1.IgnoredLocalDirectories()) != len(w2.IgnoredLocalDirectories()) {
+		return false
+	}
+	for i, d := range w1.IgnoredLocalDirectories() {
+		od := w2.IgnoredLocalDirectories()[i]
+		if d != od {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
