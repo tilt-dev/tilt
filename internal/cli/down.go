@@ -44,7 +44,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sYAML())
+	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sTarget().YAML)
 	if err != nil {
 		return errors.Wrap(err, "Parsing global YAML")
 	}

@@ -24,11 +24,11 @@ func init() {
 }
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.YAMLManifest, configFiles []string, err error) {
+func Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.Manifest, configFiles []string, err error) {
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		absFilename, _ = filepath.Abs(filename)
-		return nil, model.YAMLManifest{}, []string{absFilename}, err
+		return nil, model.Manifest{}, []string{absFilename}, err
 	}
 
 	tfRoot, _ := filepath.Split(absFilename)
@@ -40,46 +40,39 @@ func Load(ctx context.Context, filename string, matching map[string]bool) (manif
 
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
-			return nil, model.YAMLManifest{}, nil, errors.New(err.Backtrace())
+			return nil, model.Manifest{}, nil, errors.New(err.Backtrace())
 		}
-		return nil, model.YAMLManifest{}, nil, err
+		return nil, model.Manifest{}, nil, err
 	}
 
 	resources, unresourced, err := s.assemble()
 	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+		return nil, model.Manifest{}, nil, err
 	}
 
 	if len(resources.k8s) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
 		if err != nil {
-			return nil, model.YAMLManifest{}, nil, err
+			return nil, model.Manifest{}, nil, err
 		}
 	} else {
 		manifests, err = s.translateDC(resources.dc)
 		if err != nil {
-			return nil, model.YAMLManifest{}, nil, err
+			return nil, model.Manifest{}, nil, err
 		}
 	}
 
 	manifests, err = match(manifests, matching)
 	if err != nil {
-		return nil, model.YAMLManifest{}, nil, err
+		return nil, model.Manifest{}, nil, err
 	}
 
-	yamlManifest := model.YAMLManifest{}
+	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
-		yaml, err := k8s.SerializeYAML(unresourced)
+		yamlManifest, err = k8s.NewK8sOnlyManifest(unresourcedName, unresourced)
 		if err != nil {
-			return nil, model.YAMLManifest{}, nil, err
+			return nil, model.Manifest{}, nil, err
 		}
-
-		var resourceNames []string
-		for _, e := range unresourced {
-			resourceNames = append(resourceNames, fmt.Sprintf("%s (%s)", e.Name(), e.Kind.Kind))
-		}
-
-		yamlManifest = model.NewYAMLManifest(unresourcedName, yaml, nil, resourceNames)
 	}
 
 	return manifests, yamlManifest, s.configFiles, err

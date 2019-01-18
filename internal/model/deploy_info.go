@@ -96,9 +96,10 @@ func (dc DockerComposeTarget) Validate() error {
 }
 
 type K8sTarget struct {
-	Name         TargetName
-	YAML         string
-	PortForwards []PortForward
+	Name          TargetName
+	YAML          string
+	PortForwards  []PortForward
+	ResourceNames []string
 }
 
 func (k8s K8sTarget) Validate() error {

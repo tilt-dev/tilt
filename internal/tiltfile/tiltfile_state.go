@@ -283,19 +283,17 @@ func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manife
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, r := range resources {
+		mn := model.ManifestName(r.name)
 		m := model.Manifest{
-			Name: model.ManifestName(r.name),
+			Name: mn,
 		}
 
-		k8sYaml, err := k8s.SerializeYAML(r.entities)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r))
 		if err != nil {
 			return nil, err
 		}
 
-		m = m.WithDeployTarget(model.K8sTarget{
-			YAML:         k8sYaml,
-			PortForwards: s.portForwardsToDomain(r), // FIXME(dbentley)
-		})
+		m = m.WithDeployTarget(k8sTarget)
 
 		iTargets := make([]model.ImageTarget, 0, len(r.imageRefs))
 		for _, imageRef := range r.imageRefList() {

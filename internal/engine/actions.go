@@ -81,7 +81,7 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 type InitAction struct {
 	WatchMounts        bool
 	Manifests          []model.Manifest
-	GlobalYAMLManifest model.YAMLManifest
+	GlobalYAMLManifest model.Manifest
 	TiltfilePath       string
 	ConfigFiles        []string
 	InitManifests      []model.ManifestName
@@ -139,7 +139,7 @@ func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
 	Manifests   []model.Manifest
-	GlobalYAML  model.YAMLManifest
+	GlobalYAML  model.Manifest
 	ConfigFiles []string
 
 	StartTime  time.Time
