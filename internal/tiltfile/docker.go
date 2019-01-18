@@ -101,7 +101,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dockerfileContents = string(bs)
 	}
 
-	if s.imagesByName[ref.Name()] != nil {
+	if s.imagesByRef[ref.String()] != nil {
 		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
 	}
 
@@ -118,7 +118,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		staticBuildArgs:      sba,
 		cachePaths:           cachePaths,
 	}
-	s.imagesByName[ref.Name()] = r
+	s.imagesByRef[ref.String()] = r
 	s.images = append(s.images, r)
 
 	return starlark.None, nil
@@ -149,7 +149,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	if s.imagesByName[ref.Name()] != nil {
+	if s.imagesByRef[ref.String()] != nil {
 		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
 	}
 
@@ -175,7 +175,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		entrypoint:         entrypoint,
 		cachePaths:         cachePaths,
 	}
-	s.imagesByName[ref.Name()] = r
+	s.imagesByRef[ref.String()] = r
 	s.images = append(s.images, r)
 
 	fb := &fastBuild{s: s, img: r}

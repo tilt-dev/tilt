@@ -28,7 +28,7 @@ type tiltfileState struct {
 	// added to during execution
 	configFiles    []string
 	images         []*dockerImage
-	imagesByName   map[string]*dockerImage
+	imagesByRef    map[string]*dockerImage
 	k8s            []*k8sResource
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
@@ -43,12 +43,12 @@ type tiltfileState struct {
 func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
-		ctx:          ctx,
-		filename:     localPath{path: filename},
-		imagesByName: make(map[string]*dockerImage),
-		k8sByName:    make(map[string]*k8sResource),
-		configFiles:  []string{filename},
-		usedImages:   make(map[string]bool),
+		ctx:         ctx,
+		filename:    localPath{path: filename},
+		imagesByRef: make(map[string]*dockerImage),
+		k8sByName:   make(map[string]*k8sResource),
+		configFiles: []string{filename},
+		usedImages:  make(map[string]bool),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -121,7 +121,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 	for _, image := range images {
-		if _, ok := s.imagesByName[image.Name()]; !ok {
+		if _, ok := s.imagesByRef[image.Name()]; !ok {
 			// only expand for images we know how to build
 			continue
 		}
@@ -141,7 +141,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		}
 	}
 
-	for k, _ := range s.imagesByName {
+	for k, _ := range s.imagesByRef {
 		if !assembledImages[k] {
 			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
 		}
@@ -299,7 +299,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		iTargets := make([]model.ImageTarget, 0, len(r.imageRefs))
 		for _, imageRef := range r.imageRefList() {
-			image, ok := s.imagesByName[imageRef]
+			image, ok := s.imagesByRef[imageRef]
 			if !ok {
 				continue
 			}
