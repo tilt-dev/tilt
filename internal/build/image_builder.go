@@ -30,8 +30,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TagLatest = "latest"
-
 type dockerImageBuilder struct {
 	dCli    docker.Client
 	console console.Console
@@ -45,11 +43,11 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
-	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string, tagLatest bool) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd, tagLatest bool) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, steps []model.Step, tagLatest bool) (reference.NamedTagged, error)
+	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
-	TagImage(ctx context.Context, name reference.Named, dig digest.Digest, tagLatest bool) (reference.NamedTagged, error)
+	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
 
 func DefaultImageBuilder(b *dockerImageBuilder) ImageBuilder {
@@ -78,7 +76,7 @@ func NewDockerImageBuilder(dCli docker.Client, console console.Console, out io.W
 	}
 }
 
-func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string, tagLatest bool) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildDockerfile")
 	defer span.Finish()
 
@@ -88,12 +86,12 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 			ContainerPath: "/",
 		},
 	}
-	return d.buildFromDf(ctx, ps, df, paths, filter, ref, buildArgs, tagLatest)
+	return d.buildFromDf(ctx, ps, df, paths, filter, ref, buildArgs)
 }
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
 	mounts []model.Mount, filter model.PathMatcher,
-	steps []model.Step, entrypoint model.Cmd, tagLatest bool) (reference.NamedTagged, error) {
+	steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
 	defer span.Finish()
@@ -114,11 +112,11 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 	}
 
 	df = d.applyLabels(df, BuildModeScratch)
-	return d.buildFromDf(ctx, ps, df, paths, filter, ref, model.DockerBuildArgs{}, tagLatest)
+	return d.buildFromDf(ctx, ps, df, paths, filter, ref, model.DockerBuildArgs{})
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged,
-	paths []PathMapping, filter model.PathMatcher, steps []model.Step, tagLatest bool) (reference.NamedTagged, error) {
+	paths []PathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
@@ -133,7 +131,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 	}
 
 	df = d.addRemainingSteps(df, steps)
-	return d.buildFromDf(ctx, ps, df, paths, filter, existing, model.DockerBuildArgs{}, tagLatest)
+	return d.buildFromDf(ctx, ps, df, paths, filter, existing, model.DockerBuildArgs{})
 }
 
 func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {
@@ -217,17 +215,10 @@ func (d *dockerImageBuilder) addRemainingSteps(df dockerfile.Dockerfile, remaini
 }
 
 // Tag the digest with the given name and wm-tilt tag.
-func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, dig digest.Digest, tagLatest bool) (reference.NamedTagged, error) {
-	var tag string
-	var err error
-	if tagLatest {
-		// TODO(maia): if ref already has a tag, we probably don't want to tag as Latest, just return from here?
-		tag = TagLatest
-	} else {
-		tag, err = digestAsTag(dig)
-		if err != nil {
-			return nil, errors.Wrap(err, "TagImage")
-		}
+func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+	tag, err := digestAsTag(dig)
+	if err != nil {
+		return nil, errors.Wrap(err, "TagImage")
 	}
 
 	namedTagged, err := reference.WithTag(ref, tag)
@@ -309,7 +300,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs, tagLatest bool) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -351,12 +342,12 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		}
 	}()
 
-	dig, err := d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
+	digest, err := d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	nt, err := d.TagImage(ctx, ref, dig, tagLatest)
+	nt, err := d.TagImage(ctx, ref, digest)
 	if err != nil {
 		return nil, errors.Wrap(err, "PushImage")
 	}

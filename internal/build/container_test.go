@@ -33,7 +33,7 @@ ADD dir/c.txt .
 	f.WriteFile("dir/c.txt", "c")
 	f.WriteFile("missing.txt", "missing")
 
-	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, model.DockerBuildArgs{}, false)
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, model.DockerBuildArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ ADD $some_variable_name /test.txt`)
 	ba := model.DockerBuildArgs{
 		"some_variable_name": "awesome_variable",
 	}
-	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, ba, false)
+	ref, err := f.b.BuildDockerfile(f.ctx, f.ps, f.getNameFromTest(), df, f.Path(), model.EmptyMatcher, ba)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestMount(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestMountFileToDirectory(t *testing.T) {
 		ContainerPath: "/src/",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestMultipleMounts(t *testing.T) {
 		ContainerPath: "goodbye_there",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestMountCollisions(t *testing.T) {
 		ContainerPath: "/hello_there",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestPushInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestBuildOneStep(t *testing.T) {
 		model.ToShellCmd("echo -n hello >> hi"),
 	})
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestBuildMultipleSteps(t *testing.T) {
 		model.ToShellCmd("echo -n sup >> hi2"),
 	})
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +291,7 @@ func TestBuildMultipleStepsRemoveFiles(t *testing.T) {
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
 	})
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,7 @@ func TestBuildFailingStep(t *testing.T) {
 		model.ToShellCmd("echo hello && exit 1"),
 	})
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{}, false)
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
 
@@ -330,7 +330,7 @@ func TestEntrypoint(t *testing.T) {
 	defer f.teardown()
 
 	entrypoint := model.ToShellCmd("echo -n hello >> hi")
-	d, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, nil, entrypoint, false)
+	d, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, nil, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestDockerfileWithEntrypointPermitted(t *testing.T) {
 	df := dockerfile.Dockerfile(`FROM alpine
 ENTRYPOINT ["sleep", "100000"]`)
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df, nil, model.EmptyMatcher, nil, model.Cmd{}, false)
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df, nil, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
@@ -375,7 +375,7 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 		},
 	}
 
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, mounts, model.EmptyMatcher, nil, model.Cmd{}, false)
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, mounts, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +389,7 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 		f.t.Fatal("FilesToPathMappings:", err)
 	}
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, pms, model.EmptyMatcher, nil, false)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, pms, model.EmptyMatcher, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 		ContainerPath: "/src",
 	}
 
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestExecStepsOnExisting(t *testing.T) {
 	step := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
 	steps := model.ToSteps(f.Path(), []model.Cmd{step})
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, steps, false)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, steps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +444,7 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	}
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, entrypoint, false)
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +453,7 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, nil, false)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,7 +481,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
 	steps := model.ToSteps(f.Path(), []model.Cmd{step})
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, steps, entrypoint, false)
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, steps, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +490,7 @@ func TestBuildDockerWithStepsFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, steps, false)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, steps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,7 +526,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 210")
 
 	steps := model.ToSteps(f.Path(), []model.Cmd{initStartcount})
-	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, steps, entrypoint, false)
+	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, steps, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -567,7 +567,7 @@ func TestReapOneImage(t *testing.T) {
 	}
 
 	df1 := simpleDockerfile
-	ref1, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df1, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref1, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df1, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -575,7 +575,7 @@ func TestReapOneImage(t *testing.T) {
 	label := dockerfile.Label("tilt.reaperTest")
 	f.b.extraLabels[label] = "1"
 	df2 := simpleDockerfile.Run(model.ToShellCmd("echo hi >> hi.txt"))
-	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df2, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df2, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +609,7 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1, step2}, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Step{step1, step2}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}

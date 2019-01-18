@@ -15,7 +15,7 @@ func BenchmarkExecInContainer(b *testing.B) {
 	f := newDockerBuildFixture(b)
 	defer f.teardown()
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, nil, model.Cmd{}, false)
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		b.Fatal(err)
 	}
