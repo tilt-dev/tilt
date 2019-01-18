@@ -93,6 +93,13 @@ $ tilt version
 v0.5.1-dev, built 2019-01-14
 ```
 
+Troubleshooting
+---------------
+
+If you have any trouble installing Tilt, look for the error message in the
+[Troubleshooting FAQ](faq.html#Troubleshooting).
+
+
 Next Steps
 ----------
 
