@@ -102,7 +102,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	if s.imagesByRef[ref.String()] != nil {
-		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
+		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.String())
 	}
 
 	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
