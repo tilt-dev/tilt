@@ -34,7 +34,7 @@ func NewDockerComposeClient() DockerComposeClient {
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
-	args := []string{"-f", configPath, "up", "--no-deps", "--force-recreate", "-d"}
+	args := []string{"-f", configPath, "up", "--no-deps", "-d"}
 	if shouldBuild {
 		args = append(args, "--build")
 	}

@@ -82,6 +82,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		}
 	}
 
+	brs := store.BuildResultSet{}
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 	err := bd.dcc.Up(ctx, dcTarget.ConfigPath, dcTarget.Name, !haveImage, stdout, stderr)
@@ -89,5 +90,16 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		return store.BuildResultSet{}, err
 	}
 
-	return store.BuildResultSet{}, nil
+	// NOTE(dmiller): right now we only need this the first time. In the future
+	// it might be worth it to move this somewhere else
+	cid, err := bd.dcc.ContainerID(ctx, dcTarget.ConfigPath, dcTarget.Name)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+
+	brs[dcTarget.ID()] = store.BuildResult{
+		ContainerID: cid,
+	}
+
+	return brs, nil
 }
