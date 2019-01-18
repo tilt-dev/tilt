@@ -69,7 +69,7 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 
 	screenEvents, err := h.r.SetUp()
 	if err != nil {
-		return errors.Wrap(err, "error initializing renderer")
+		return errors.Wrap(err, "setting up screen")
 	}
 
 	defer h.Close()
