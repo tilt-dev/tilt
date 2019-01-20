@@ -29,6 +29,7 @@ type Namespace string
 type PodID string
 type NodeID string
 type ServiceName string
+type KubeContext string
 
 const DefaultNamespace = Namespace("default")
 
@@ -95,6 +96,7 @@ type K8sClient struct {
 	core          apiv1.CoreV1Interface
 	restConfig    *rest.Config
 	portForwarder PortForwarder
+	kubeContext   KubeContext
 }
 
 var _ Client = K8sClient{}
@@ -106,7 +108,8 @@ func NewK8sClient(
 	env Env,
 	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
-	pf PortForwarder) K8sClient {
+	pf PortForwarder,
+	kubeContext KubeContext) K8sClient {
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -119,6 +122,7 @@ func NewK8sClient(
 		core:          core,
 		restConfig:    restConfig,
 		portForwarder: pf,
+		kubeContext:   kubeContext,
 	}
 }
 
@@ -211,7 +215,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 }
 
 func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"cluster-info"})
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, k.kubeContext, []string{"cluster-info"})
 	if err != nil {
 		return errors.Wrapf(err, "Unable to connect to cluster via `kubectl cluster-info`:\nstdout: %s\nstderr: %s", stdout, stderr)
 	}
@@ -257,7 +261,7 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	}
 	stdin := bytes.NewReader([]byte(rawYAML))
 
-	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+	return k.kubectlRunner.execWithStdin(ctx, k.kubeContext, args, stdin)
 }
 
 func ProvideCoreInterface(cfg *rest.Config) (apiv1.CoreV1Interface, error) {

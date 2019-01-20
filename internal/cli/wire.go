@@ -20,6 +20,7 @@ import (
 )
 
 var K8sWireSet = wire.NewSet(
+	k8s.DetectKubeContext,
 	k8s.DetectEnv,
 	k8s.DetectNodeIP,
 
