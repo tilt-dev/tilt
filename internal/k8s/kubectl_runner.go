@@ -3,20 +3,26 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os/exec"
 )
 
 type kubectlRunner interface {
-	exec(ctx context.Context, argv []string) (stdout string, stderr string, err error)
-	execWithStdin(ctx context.Context, argv []string, stdin io.Reader) (stdout string, stderr string, err error)
+	exec(ctx context.Context, kubeContext KubeContext, argv []string) (stdout string, stderr string, err error)
+	execWithStdin(ctx context.Context, kubeContext KubeContext, argv []string, stdin io.Reader) (stdout string, stderr string, err error)
 }
 
 type realKubectlRunner struct{}
 
 var _ kubectlRunner = realKubectlRunner{}
 
-func (k realKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
+func prependKubeContext(kubeContext KubeContext, args []string) []string {
+	return append([]string{fmt.Sprintf("--context=%s", kubeContext)}, args...)
+}
+
+func (k realKubectlRunner) exec(ctx context.Context, kubeContext KubeContext, args []string) (stdout string, stderr string, err error) {
+	args = prependKubeContext(kubeContext, args)
 	c := exec.CommandContext(ctx, "kubectl", args...)
 
 	stdoutBuf := &bytes.Buffer{}
@@ -28,7 +34,8 @@ func (k realKubectlRunner) exec(ctx context.Context, args []string) (stdout stri
 	return stdoutBuf.String(), stderrBuf.String(), err
 }
 
-func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+func (k realKubectlRunner) execWithStdin(ctx context.Context, kubeContext KubeContext, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+	args = prependKubeContext(kubeContext, args)
 	c := exec.CommandContext(ctx, "kubectl", args...)
 	c.Stdin = stdin
 

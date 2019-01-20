@@ -30,7 +30,7 @@ func TestUpsert(t *testing.T) {
 	err = f.client.Upsert(f.ctx, postgres)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(f.runner.calls))
-	assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
+	assert.Equal(t, []string{"--context=unknown", "apply", "-f", "-"}, f.runner.calls[0].argv)
 }
 
 func TestUpsertStatefulsetForbidden(t *testing.T) {
@@ -42,8 +42,8 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	err = f.client.Upsert(f.ctx, postgres)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(f.runner.calls))
-	assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
-	assert.Equal(t, []string{"replace", "--force", "-f", "-"}, f.runner.calls[1].argv)
+	assert.Equal(t, []string{"--context=unknown", "apply", "-f", "-"}, f.runner.calls[0].argv)
+	assert.Equal(t, []string{"--context=unknown", "replace", "--force", "-f", "-"}, f.runner.calls[1].argv)
 }
 
 type call struct {
@@ -59,11 +59,12 @@ type fakeKubectlRunner struct {
 	calls []call
 }
 
-func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, kubeContext KubeContext, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
 	b, err := ioutil.ReadAll(stdin)
 	if err != nil {
 		return "", "", errors.Wrap(err, "reading stdin")
 	}
+	args = prependKubeContext(kubeContext, args)
 	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
 
 	defer func() {
@@ -74,7 +75,8 @@ func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, st
 	return f.stdout, f.stderr, f.err
 }
 
-func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
+func (f *fakeKubectlRunner) exec(ctx context.Context, kubeContext KubeContext, args []string) (stdout string, stderr string, err error) {
+	args = prependKubeContext(kubeContext, args)
 	f.calls = append(f.calls, call{argv: args})
 	defer func() {
 		f.stdout = ""
@@ -122,7 +124,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.tracker = tracker
 
 	core := cs.CoreV1()
-	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder}
+	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, KubeContext("unknown")}
 	return ret
 }
 
