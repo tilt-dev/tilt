@@ -18,7 +18,7 @@ $ kubectl config current-context
 docker-for-desktop
 ```
 
-If the cluster is NOT ``docker-for-desktop`, `docker-desktop`, or `minikube`,
+If the cluster is NOT `docker-for-desktop`, `docker-desktop`, or `minikube`,
 see the FAQ on
 [how to change your cluster](faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses).
 This example will only work with these local clusters.
