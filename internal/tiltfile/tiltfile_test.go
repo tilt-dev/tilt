@@ -892,7 +892,7 @@ type fixture struct {
 
 	// created by load
 	manifests    []model.Manifest
-	yamlManifest model.YAMLManifest
+	yamlManifest model.Manifest
 	configFiles  []string
 }
 
@@ -998,13 +998,13 @@ func (f *fixture) gitInit(path string) {
 }
 
 func (f *fixture) assertNoYAMLManifest(name string) {
-	assert.Equal(f.t, model.YAMLManifest{}, f.yamlManifest)
+	assert.Equal(f.t, model.Manifest{}, f.yamlManifest)
 }
 
 func (f *fixture) assertYAMLManifest(resNames ...string) {
 	assert.Equal(f.t, unresourcedName, f.yamlManifest.ManifestName().String())
 
-	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sYAML()))
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sTarget().YAML))
 	assert.NoError(f.t, err)
 
 	entityNames := make([]string, len(entities))

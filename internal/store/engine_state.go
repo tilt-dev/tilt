@@ -53,7 +53,7 @@ type EngineState struct {
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
 	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
-	GlobalYAML      model.YAMLManifest
+	GlobalYAML      model.Manifest
 	GlobalYAMLState *YAMLManifestState
 
 	TiltfilePath             string
@@ -172,7 +172,7 @@ func (e EngineState) RelativeTiltfilePath() (string, error) {
 }
 
 func (e EngineState) IsEmpty() bool {
-	return len(e.ManifestTargets) == 0 && e.GlobalYAML.Empty()
+	return len(e.ManifestTargets) == 0 && e.GlobalYAML.Name == ""
 }
 
 func (e EngineState) LastTiltfileError() error {
@@ -639,9 +639,9 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	if s.GlobalYAML.K8sYAML() != "" {
+	if s.GlobalYAML.K8sTarget().YAML != "" {
 		var absWatches []string
-		for _, p := range s.GlobalYAML.Dependencies() {
+		for _, p := range s.ConfigFiles {
 			absWatches = append(absWatches, p)
 		}
 		relWatches := ospath.TryAsCwdChildren(absWatches)
@@ -655,7 +655,7 @@ func StateToView(s EngineState) view.View {
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
 			ResourceInfo: view.YAMLResourceInfo{
-				K8sResources: s.GlobalYAML.Resources(),
+				K8sResources: s.GlobalYAML.K8sTarget().ResourceNames,
 			},
 		}
 
