@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -16,6 +18,7 @@ var ConfigsTargetID = model.TargetID{
 	Name: "singleton",
 }
 
+// If you modify this interface, you might also need to update the watchRulesMatch function below.
 type WatchableTarget interface {
 	ignore.IgnorableTarget
 	Dependencies() []string
@@ -111,7 +114,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 			continue
 		}
 
-		if !dependenciesMatch(m.Dependencies(), mnc.target.Dependencies()) {
+		if !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
 			break
@@ -128,19 +131,11 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	return setup, teardown
 }
 
-func dependenciesMatch(d1 []string, d2 []string) bool {
-	if len(d1) != len(d2) {
-		return false
-	}
-
-	for i, e1 := range d1 {
-		e2 := d2[i]
-		if e1 != e2 {
-			return false
-		}
-	}
-
-	return true
+func watchRulesMatch(w1, w2 WatchableTarget) bool {
+	return cmp.Equal(w1.LocalRepos(), w2.LocalRepos()) &&
+		cmp.Equal(w1.Dockerignores(), w2.Dockerignores()) &&
+		cmp.Equal(w1.Dependencies(), w2.Dependencies()) &&
+		cmp.Equal(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories())
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
