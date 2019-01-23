@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -130,47 +132,10 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 }
 
 func watchRulesMatch(w1, w2 WatchableTarget) bool {
-	if len(w1.LocalRepos()) != len(w2.LocalRepos()) {
-		return false
-	}
-	for i, r := range w1.LocalRepos() {
-		or := w2.LocalRepos()[i]
-		if r.LocalPath != or.LocalPath || r.GitignoreContents != or.GitignoreContents {
-			return false
-		}
-	}
-
-	if len(w1.Dockerignores()) != len(w2.Dockerignores()) {
-		return false
-	}
-	for i, di := range w1.Dockerignores() {
-		odi := w2.Dockerignores()[i]
-		if di.LocalPath != odi.LocalPath || di.Contents != odi.Contents {
-			return false
-		}
-	}
-
-	if len(w1.Dependencies()) != len(w2.Dependencies()) {
-		return false
-	}
-	for i, d := range w1.Dependencies() {
-		od := w2.Dependencies()[i]
-		if d != od {
-			return false
-		}
-	}
-
-	if len(w1.IgnoredLocalDirectories()) != len(w2.IgnoredLocalDirectories()) {
-		return false
-	}
-	for i, d := range w1.IgnoredLocalDirectories() {
-		od := w2.IgnoredLocalDirectories()[i]
-		if d != od {
-			return false
-		}
-	}
-
-	return true
+	return cmp.Equal(w1.LocalRepos(), w2.LocalRepos()) &&
+		cmp.Equal(w1.Dockerignores(), w2.Dockerignores()) &&
+		cmp.Equal(w1.Dependencies(), w2.Dependencies()) &&
+		cmp.Equal(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories())
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {

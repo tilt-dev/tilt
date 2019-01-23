@@ -2,8 +2,6 @@ package ignore
 
 import (
 	"context"
-	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -141,12 +139,9 @@ type directoryMatcher struct {
 var _ model.PathMatcher = directoryMatcher{}
 
 func newDirectoryMatcher(dir string) (directoryMatcher, error) {
-	if !path.IsAbs(dir) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return directoryMatcher{}, err
-		}
-		dir = path.Join(wd, dir)
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return directoryMatcher{}, errors.Wrapf(err, "failed to get abs path of '%s'", dir)
 	}
 	return directoryMatcher{dir}, nil
 }
