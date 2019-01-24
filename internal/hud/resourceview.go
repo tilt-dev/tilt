@@ -66,8 +66,10 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
-	if res.IsTiltfile {
+	if res.IsTiltfile && res.CrashLog == "" {
 		return cGood
+	} else if res.IsTiltfile && res.CrashLog != "" {
+		return cBad
 	}
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
