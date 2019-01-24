@@ -70,7 +70,7 @@ type EngineState struct {
 
 	IsProfiling bool
 
-	TiltfileLog []byte `testdiff:"ignore"`
+	CurrentTiltfileBuild model.BuildRecord
 }
 
 func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestName {
@@ -664,9 +664,8 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	// TODO(dmiller): we might not want to grab this build
 	tfb := s.LastTiltfileBuild
-	tfb.Log = s.TiltfileLog
+	tfb.Log = s.CurrentTiltfileBuild.Log
 	tr := view.Resource{
 		Name:         "(Tiltfile)",
 		IsTiltfile:   true,

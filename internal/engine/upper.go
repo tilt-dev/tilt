@@ -427,7 +427,7 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
-	state.TiltfileLog = []byte{}
+	state.CurrentTiltfileBuild = model.BuildRecord{}
 	state.PendingConfigFileChanges = make(map[string]bool)
 }
 
@@ -855,5 +855,5 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 }
 
 func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
-	state.TiltfileLog = append(state.TiltfileLog, action.Log...)
+	state.CurrentTiltfileBuild.Log = append(state.CurrentTiltfileBuild.Log, action.Log...)
 }

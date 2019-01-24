@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -30,6 +31,9 @@ func Load(ctx context.Context, filename string, matching map[string]bool, logs i
 	l := log.New(logs, "", log.LstdFlags)
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, model.Manifest{}, nil, fmt.Errorf("No Tiltfile found at %s. Check out https://docs.tilt.build/write_your_tiltfile.html", filename)
+		}
 		absFilename, _ = filepath.Abs(filename)
 		return nil, model.Manifest{}, []string{absFilename}, err
 	}

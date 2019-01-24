@@ -27,7 +27,7 @@ func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.loadErrString("no such file")
+	f.loadErrString("No Tiltfile found at")
 }
 
 func TestEmpty(t *testing.T) {
