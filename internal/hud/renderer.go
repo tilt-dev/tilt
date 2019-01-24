@@ -201,12 +201,6 @@ func isCrashing(res view.Resource) bool {
 }
 
 func bestLogs(res view.Resource) string {
-	if res.IsTiltfile && res.CrashLog != "" {
-		return string(res.CrashLog)
-	}
-	if res.IsTiltfile {
-		return string(res.CurrentBuild.Log)
-	}
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {
@@ -239,6 +233,10 @@ func bestLogs(res view.Resource) string {
 		if res.LastBuild().StartTime.After(k8sInfo.PodCreationTime) {
 			return string(res.LastBuild().Log)
 		}
+	}
+
+	if res.IsTiltfile {
+		return string(res.CurrentBuild.Log)
 	}
 
 	return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
