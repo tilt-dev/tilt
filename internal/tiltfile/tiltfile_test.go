@@ -151,7 +151,28 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	f.assertManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
+		deployment("foo"),
+	)
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+func TestFastBuildHotReload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi") \
+  .hot_reload()
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertManifest("foo",
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
 	)
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
@@ -1073,6 +1094,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 					steps = steps[1:]
 					assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
 					assert.Equal(f.t, matcher.triggers, step.Triggers)
+				case hotReloadHelper:
+					assert.Equal(f.t, matcher.on, fbInfo.HotReload)
 				default:
 					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -1301,6 +1324,14 @@ type runHelper struct {
 
 func run(cmd string, triggers ...string) runHelper {
 	return runHelper{cmd, triggers}
+}
+
+type hotReloadHelper struct {
+	on bool
+}
+
+func hotReload(on bool) hotReloadHelper {
+	return hotReloadHelper{on: on}
 }
 
 // useful scenarios to setup

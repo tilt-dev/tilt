@@ -21,6 +21,7 @@ type dockerImage struct {
 	steps              []model.Step
 	entrypoint         string
 	cachePaths         []string
+	hotReload          bool
 
 	staticDockerfilePath localPath
 	staticDockerfile     dockerfile.Dockerfile
@@ -233,8 +234,9 @@ func (b *fastBuild) Hash() (uint32, error) {
 }
 
 const (
-	addN = "add"
-	runN = "run"
+	addN       = "add"
+	runN       = "run"
+	hotReloadN = "hot_reload"
 )
 
 func (b *fastBuild) Attr(name string) (starlark.Value, error) {
@@ -243,6 +245,8 @@ func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 		return starlark.NewBuiltin(name, b.add), nil
 	case runN:
 		return starlark.NewBuiltin(name, b.run), nil
+	case hotReloadN:
+		return starlark.NewBuiltin(name, b.hotReload), nil
 	default:
 		return starlark.None, nil
 	}
@@ -250,6 +254,16 @@ func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 
 func (b *fastBuild) AttrNames() []string {
 	return []string{addN, runN}
+}
+
+func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs); err != nil {
+		return nil, err
+	}
+
+	b.img.hotReload = true
+
+	return b, nil
 }
 
 func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

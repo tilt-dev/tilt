@@ -27,7 +27,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 		PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, paths, model.EmptyMatcher, nil, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, paths, model.EmptyMatcher, nil, false, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestUpdateInContainerExecsSteps(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, false, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -68,12 +68,24 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, nil, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, nil, false, ioutil.Discard)
 	if err != nil {
 		f.t.Fatal(err)
 	}
 
 	assert.Equal(f.t, f.dCli.RestartsByContainer[docker.TestContainer], 1)
+}
+
+func TestUpdateInContainerHotReloadDoesNotRestartContainer(t *testing.T) {
+	f := newRemoteDockerFixture(t)
+	defer f.teardown()
+
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, nil, true, ioutil.Discard)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	assert.Equal(f.t, 0, len(f.dCli.RestartsByContainer))
 }
 
 func TestUpdateInContainerKillTask(t *testing.T) {
@@ -83,7 +95,7 @@ func TestUpdateInContainerKillTask(t *testing.T) {
 	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: TaskKillExitCode}
 
 	cmdA := model.Cmd{Argv: []string{"cat"}}
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA}, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA}, false, ioutil.Discard)
 	msg := "killed by container engine"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		f.t.Errorf("Expected error %q, actual: %v", msg, err)
