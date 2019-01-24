@@ -786,7 +786,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
-		log := []byte(fmt.Sprintf("Tiltfile error:\n%v\n", status.Error))
+		log := []byte(fmt.Sprintf("%v\n", status.Error))
 		handleTiltfileLogAction(state, TiltfileLogAction{log})
 	}
 	state.LastTiltfileBuild = status
