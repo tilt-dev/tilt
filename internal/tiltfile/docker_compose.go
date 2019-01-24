@@ -51,6 +51,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	return starlark.None, nil
 }
 
+// DCResource allows you to adjust specific settings on a DC resource that we assume
+// to be defined in a `docker_compose.yml`
+func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.None, fmt.Errorf("dc_resource: not yet impelemented")
+}
+
 // Go representations of docker-compose.yml
 // (Add fields as we need to support more things)
 type dcConfig struct {

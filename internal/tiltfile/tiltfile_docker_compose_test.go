@@ -146,7 +146,8 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')`
 	f.file("Tiltfile", tf)
 
-	f.loadErrString("can't declare both k8s resources and docker-compose resources")
+	f.loadErrString("can't declare both k8s " +
+		"resources/entities and docker-compose resources")
 }
 
 func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {
