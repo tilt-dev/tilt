@@ -7,5 +7,6 @@ img = fast_build('gcr.io/windmill-public-containers/tilt-docserver',
                  'cd _build/html && python -m http.server 8000')
 img.add(repo.path('docs'), '/src/')
 img.run('make html')
+img.hot_reload()
 
 k8s_resource('tilt-docserver', port_forwards=10000)

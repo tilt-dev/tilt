@@ -323,6 +323,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 					Mounts:         s.mountsToDomain(image),
 					Steps:          image.steps,
 					Entrypoint:     model.ToShellCmd(image.entrypoint),
+					HotReload:      image.hotReload,
 				})
 			} else {
 				return nil, fmt.Errorf("internal Tilt error: no build info for manifest %s", r.name)

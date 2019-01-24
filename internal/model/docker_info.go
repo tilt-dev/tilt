@@ -166,6 +166,10 @@ type FastBuild struct {
 	Mounts         []Mount
 	Steps          []Step
 	Entrypoint     Cmd
+
+	// A HotReload container image knows how to automatically
+	// reload any changes in the container. No need to restart it.
+	HotReload bool
 }
 
 func (FastBuild) buildDetails() {}
