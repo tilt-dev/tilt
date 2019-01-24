@@ -65,7 +65,6 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 		l.Add(rty.NewLine())
 	}
 
-	l.Add(r.renderTiltfileError(v))
 	l.Add(r.renderResourceHeader(v))
 	l.Add(r.renderResources(v, vs))
 	l.Add(r.renderPaneHeader(vs))
@@ -236,6 +235,10 @@ func bestLogs(res view.Resource) string {
 		}
 	}
 
+	if res.IsTiltfile {
+		return string(res.CurrentBuild.Log)
+	}
+
 	return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
 }
 
@@ -325,18 +328,6 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 
 func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, triggerMode model.TriggerMode, selected bool) rty.Component {
 	return NewResourceView(res, rv, triggerMode, selected, r.clock).Build()
-}
-
-func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
-	if v.TiltfileErrorMessage != "" {
-		c := rty.NewConcatLayout(rty.DirVert)
-		c.Add(rty.TextString("Tiltfile error: "))
-		c.Add(rty.TextString(v.TiltfileErrorMessage))
-		c.Add(rty.NewFillerString('─'))
-		return c
-	}
-
-	return rty.NewLines()
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {

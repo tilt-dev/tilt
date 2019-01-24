@@ -69,6 +69,8 @@ type EngineState struct {
 	TriggerQueue []model.ManifestName
 
 	IsProfiling bool
+
+	CurrentTiltfileBuild model.BuildRecord
 }
 
 func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestName {
@@ -662,16 +664,29 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	ret.Log = string(s.Log)
-
+	tfb := s.LastTiltfileBuild
+	tfb.Log = s.CurrentTiltfileBuild.Log
+	tr := view.Resource{
+		Name:         "(Tiltfile)",
+		IsTiltfile:   true,
+		CurrentBuild: tfb,
+		BuildHistory: []model.BuildRecord{
+			tfb,
+		},
+	}
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error
 		if err == nil && s.IsEmpty() {
+			tr.CrashLog = emptyTiltfileMsg
 			ret.TiltfileErrorMessage = emptyTiltfileMsg
 		} else if err != nil {
+			tr.CrashLog = err.Error()
 			ret.TiltfileErrorMessage = err.Error()
 		}
 	}
+	ret.Resources = append(ret.Resources, tr)
+
+	ret.Log = string(s.Log)
 
 	return ret
 }

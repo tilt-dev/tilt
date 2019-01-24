@@ -3,6 +3,9 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -24,16 +27,20 @@ func init() {
 }
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.Manifest, configFiles []string, err error) {
+func Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, err error) {
+	l := log.New(logs, "", log.LstdFlags)
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, model.Manifest{}, nil, fmt.Errorf("No Tiltfile found at %s. Check out https://docs.tilt.build/write_your_tiltfile.html", filename)
+		}
 		absFilename, _ = filepath.Abs(filename)
 		return nil, model.Manifest{}, []string{absFilename}, err
 	}
 
 	tfRoot, _ := filepath.Split(absFilename)
 
-	s := newTiltfileState(ctx, absFilename, tfRoot)
+	s := newTiltfileState(ctx, absFilename, tfRoot, l)
 	defer func() {
 		configFiles = s.configFiles
 	}()

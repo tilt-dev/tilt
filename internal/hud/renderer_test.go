@@ -383,17 +383,6 @@ func TestRenderNarrationMessage(t *testing.T) {
 	rtf.run("narration message", 60, 20, v, vs)
 }
 
-func TestRenderTiltfileError(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-	v := view.View{
-		TiltfileErrorMessage: "Tiltfile error!",
-	}
-
-	vs := view.ViewState{}
-
-	rtf.run("tiltfile error", 60, 20, v, vs)
-}
-
 func TestAutoCollapseModes(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 

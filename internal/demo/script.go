@@ -20,7 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"golang.org/x/sync/errgroup"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type RepoBranch string
@@ -174,7 +174,8 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		manifests, _, _, err := tiltfile.Load(ctx, tfPath, nil)
+		// TODO(dmiller): not this?
+		manifests, _, _, err := tiltfile.Load(ctx, tfPath, nil, os.Stdout)
 		if err != nil {
 			return err
 		}

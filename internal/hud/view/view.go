@@ -83,6 +83,8 @@ type Resource struct {
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
+
+	IsTiltfile bool
 }
 
 func (r Resource) DockerComposeTarget() DCResourceInfo {
