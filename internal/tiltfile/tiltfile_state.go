@@ -130,15 +130,16 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 
-	for k, _ := range s.imagesByName {
-		if !assembledImages[k] {
-			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
-		}
-	}
-
 	if !s.dc.Empty() && (len(s.k8s) > 0 || len(s.k8sUnresourced) > 0) {
 		return resourceSet{}, nil, fmt.Errorf("can't declare both k8s " +
 			"resources/entities and docker-compose resources")
+	}
+
+	dcImagesUsed := s.dc.imagesUsed()
+	for k, _ := range s.imagesByName {
+		if !(assembledImages[k] || dcImagesUsed[k]) {
+			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
+		}
 	}
 
 	return resourceSet{
