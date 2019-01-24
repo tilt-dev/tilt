@@ -17,14 +17,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// dcResource represents a single docker-compose config file and all its associated services
-type dcResource struct {
+// dcResourceSet represents a single docker-compose config file and all its associated services
+type dcResourceSet struct {
 	configPath string
 
 	services []dcService
 }
 
-func (dc dcResource) Empty() bool { return reflect.DeepEqual(dc, dcResource{}) }
+func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPath string
@@ -46,7 +46,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
 	}
 
-	s.dc = dcResource{configPath: configPath, services: services}
+	s.dc = dcResourceSet{configPath: configPath, services: services}
 
 	return starlark.None, nil
 }

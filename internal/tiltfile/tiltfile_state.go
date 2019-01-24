@@ -16,7 +16,7 @@ import (
 )
 
 type resourceSet struct {
-	dc  dcResource // currently only support one d-c.yml
+	dc  dcResourceSet // currently only support one d-c.yml
 	k8s []*k8sResource
 }
 
@@ -32,7 +32,7 @@ type tiltfileState struct {
 	k8s            []*k8sResource
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
-	dc             dcResource // currently only support one d-c.yml
+	dc             dcResourceSet // currently only support one d-c.yml
 
 	// for assembly
 	usedImages map[string]bool
@@ -365,7 +365,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	return result, nil
 }
 
-func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
+func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, svc := range dc.services {
 		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPath)
