@@ -91,7 +91,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
 	}
 
-	svc, err := s.dcServiceByName(name)
+	svc, err := s.getDCService(name)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) dcServiceByName(name string) (*dcService, error) {
+func (s *tiltfileState) getDCService(name string) (*dcService, error) {
 	allNames := make([]string, len(s.dc.services))
 	for i, svc := range s.dc.services {
 		if svc.Name == name {
@@ -202,8 +202,8 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
-	// Ref of an image described via docker_build call; explicitly linked
-	// to this service via dc_service call
+	// Ref of an image described via docker_build || fast_build call
+	// (explicitly linked to this service via dc_service call)
 	ImageRef string
 
 	// Currently just use these to diff against when config files are edited to see if manifest has changed

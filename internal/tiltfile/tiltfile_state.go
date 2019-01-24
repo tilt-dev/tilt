@@ -125,7 +125,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 }
 
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
-	assembledImages, err := s.assembleK8s()
+	k8sImgsUsed, err := s.assembleK8s()
 	if err != nil {
 		return resourceSet{}, nil, err
 	}
@@ -135,9 +135,9 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 			"resources/entities and docker-compose resources")
 	}
 
-	dcImagesUsed := s.dc.imagesUsed()
+	dcImgsUsed := s.dc.imagesUsed()
 	for k, _ := range s.imagesByName {
-		if !(assembledImages[k] || dcImagesUsed[k]) {
+		if !(k8sImgsUsed[k] || dcImgsUsed[k]) {
 			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
 		}
 	}
