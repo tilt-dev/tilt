@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"go.starlark.net/starlark"
 
@@ -124,20 +125,21 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 }
 
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
-	assembledImages, err := s.assembleK8s()
+	k8sImgsUsed, err := s.assembleK8s()
 	if err != nil {
 		return resourceSet{}, nil, err
-	}
-
-	for k, _ := range s.imagesByName {
-		if !assembledImages[k] {
-			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
-		}
 	}
 
 	if !s.dc.Empty() && (len(s.k8s) > 0 || len(s.k8sUnresourced) > 0) {
 		return resourceSet{}, nil, fmt.Errorf("can't declare both k8s " +
 			"resources/entities and docker-compose resources")
+	}
+
+	dcImgsUsed := s.dc.imagesUsed()
+	for k, _ := range s.imagesByName {
+		if !(k8sImgsUsed[k] || dcImgsUsed[k]) {
+			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
+		}
 	}
 
 	return resourceSet{
@@ -321,45 +323,9 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithDeployTarget(k8sTarget)
 
-		iTargets := make([]model.ImageTarget, 0, len(r.imageRefs))
-		for _, imageRef := range r.imageRefList() {
-			image, ok := s.imagesByName[imageRef]
-			if !ok {
-				continue
-			}
-
-			isStaticBuild := !image.staticBuildPath.Empty()
-			isFastBuild := !image.baseDockerfilePath.Empty()
-
-			iTarget := model.ImageTarget{
-				Ref: image.ref,
-			}.WithCachePaths(image.cachePaths)
-
-			if isStaticBuild && isFastBuild {
-				return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
-			} else if isStaticBuild {
-				iTarget = iTarget.WithBuildDetails(model.StaticBuild{
-					Dockerfile: image.staticDockerfile.String(),
-					BuildPath:  string(image.staticBuildPath.path),
-					BuildArgs:  image.staticBuildArgs,
-				})
-			} else if isFastBuild {
-				iTarget = iTarget.WithBuildDetails(model.FastBuild{
-					BaseDockerfile: image.baseDockerfile.String(),
-					Mounts:         s.mountsToDomain(image),
-					Steps:          image.steps,
-					Entrypoint:     model.ToShellCmd(image.entrypoint),
-					HotReload:      image.hotReload,
-				})
-			} else {
-				return nil, fmt.Errorf("internal Tilt error: no build info for manifest %s", r.name)
-			}
-
-			iTarget = iTarget.
-				WithRepos(s.reposForImage(image)).
-				WithDockerignores(s.dockerignoresForImage(image)).
-				WithTiltFilename(s.filename.path)
-			iTargets = append(iTargets, iTarget)
+		iTargets, err := s.imgTargetsForRefs(r.imageRefList())
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
 
 		m = m.WithImageTargets(iTargets)
@@ -370,6 +336,50 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	return result, nil
 }
 
+func (s *tiltfileState) imgTargetsForRefs(refs []string) ([]model.ImageTarget, error) {
+	iTargets := make([]model.ImageTarget, 0, len(refs))
+	for _, imageRef := range refs {
+		image, ok := s.imagesByName[imageRef]
+		if !ok {
+			continue
+		}
+
+		isStaticBuild := !image.staticBuildPath.Empty()
+		isFastBuild := !image.baseDockerfilePath.Empty()
+
+		iTarget := model.ImageTarget{
+			Ref: image.ref,
+		}.WithCachePaths(image.cachePaths)
+
+		if isStaticBuild && isFastBuild {
+			return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
+		} else if isStaticBuild {
+			iTarget = iTarget.WithBuildDetails(model.StaticBuild{
+				Dockerfile: image.staticDockerfile.String(),
+				BuildPath:  string(image.staticBuildPath.path),
+				BuildArgs:  image.staticBuildArgs,
+			})
+		} else if isFastBuild {
+			iTarget = iTarget.WithBuildDetails(model.FastBuild{
+				BaseDockerfile: image.baseDockerfile.String(),
+				Mounts:         s.mountsToDomain(image),
+				Steps:          image.steps,
+				Entrypoint:     model.ToShellCmd(image.entrypoint),
+				HotReload:      image.hotReload,
+			})
+		} else {
+			return nil, fmt.Errorf("no build info for image %s", image.ref)
+		}
+
+		iTarget = iTarget.
+			WithRepos(s.reposForImage(image)).
+			WithDockerignores(s.dockerignoresForImage(image)).
+			WithTiltFilename(s.filename.path)
+		iTargets = append(iTargets, iTarget)
+	}
+	return iTargets, nil
+}
+
 func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, svc := range dc.services {
@@ -377,7 +387,19 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		if err != nil {
 			return nil, err
 		}
+
+		if svc.ImageRef != "" {
+			iTargets, err := s.imgTargetsForRefs([]string{svc.ImageRef})
+			if err != nil {
+				return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
+			}
+			m = m.WithImageTargets(iTargets)
+		}
+
 		result = append(result, m)
+
+		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
+		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
 		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
 	}
 	if dc.configPath != "" {
