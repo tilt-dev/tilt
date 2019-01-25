@@ -69,7 +69,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"image?", &imageVal,
+		"image", &imageVal, // in future this will be optional
 	); err != nil {
 		return nil, err
 	}
@@ -81,8 +81,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var imageRef string
 	switch imageVal := imageVal.(type) {
 	case nil:
-		// right now, nothing to do if no image passed
-		return starlark.None, nil
+		return nil, fmt.Errorf("must specify an image arg (string or fast_build)")
 	case starlark.String:
 		imageRef = string(imageVal)
 	case *fastBuild:
