@@ -1040,9 +1040,23 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	if len(f.manifests) == 0 {
 		f.t.Fatalf("no more manifests; trying to find %q", name)
 	}
-
-	m := f.manifests[0]
-	f.manifests = f.manifests[1:]
+	var m model.Manifest
+	var found bool
+	for i, man := range f.manifests {
+		if man.Name == model.ManifestName(name) {
+			m = man
+			found = true
+			remaining := append([]model.Manifest{}, f.manifests[:i]...)
+			if len(f.manifests) > i+i {
+				remaining = append(remaining, f.manifests[i+1:]...)
+			}
+			f.manifests = remaining
+			break
+		}
+	}
+	if !found {
+		f.t.Fatalf("could not find manifest %q", name)
+	}
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {

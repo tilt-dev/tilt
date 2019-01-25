@@ -91,7 +91,7 @@ services:
 
 	f.load("bar")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.assertDcManifest("foo",
+	f.assertDcManifest("bar",
 		dcConfigPath(configPath),
 		dcYAMLRaw("image: redis:alpine"),
 		dcDfRaw(""),
@@ -361,7 +361,7 @@ dc_resource('bar', 'gcr.io/bar')
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
-	bar := f.assertManifest("foo", db(image("gcr.io/bar")))
+	bar := f.assertManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
