@@ -47,7 +47,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	services, err := parseDCConfig(s.ctx, configPath)
+	services, err := parseDCConfig(s.ctx, s.dcCli, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -114,10 +114,11 @@ func (s *tiltfileState) getDCService(name string) (*dcService, error) {
 // Go representations of docker-compose.yml
 // (Add fields as we need to support more things)
 type dcConfig struct {
-	Services map[string]dcServiceConfig
+	Services []dcServiceConfig
 }
 
 type dcServiceConfig struct {
+	Name    string
 	RawYAML []byte        // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
 	Build   dcBuildConfig `yaml:"build"`
 	Volumes Volumes
@@ -158,7 +159,7 @@ func (v *Volumes) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // to unmarshaling the fields we care about into structs.
 func (c *dcConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	aux := struct {
-		Services map[string]interface{} `yaml:"services"`
+		Services yaml.MapSlice `yaml:"services"`
 	}{}
 	err := unmarshal(&aux)
 	if err != nil {
@@ -166,11 +167,11 @@ func (c *dcConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	if c.Services == nil {
-		c.Services = make(map[string]dcServiceConfig)
+		c.Services = make([]dcServiceConfig, len(aux.Services))
 	}
 
-	for k, v := range aux.Services {
-		b, err := yaml.Marshal(v) // so we can unmarshal it again
+	for i, svc := range aux.Services {
+		b, err := yaml.Marshal(svc.Value) // so we can unmarshal it again
 		if err != nil {
 			return err
 		}
@@ -182,7 +183,13 @@ func (c *dcConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 
 		svcConf.RawYAML = b
-		c.Services[k] = *svcConf
+		keyStr, ok := svc.Key.(string)
+		if !ok {
+			return fmt.Errorf("can't convert `services` key to string: %v", svc.Key)
+		}
+		svcConf.Name = keyStr
+
+		c.Services[i] = *svcConf
 	}
 	return nil
 }
@@ -210,31 +217,26 @@ type dcService struct {
 	DfContents    []byte
 }
 
-func (c dcConfig) GetService(name string) (dcService, error) {
-	svcConfig, ok := c.Services[name]
-	if !ok {
-		return dcService{}, fmt.Errorf("no service %s found in config", name)
-	}
-
-	df := svcConfig.Build.Dockerfile
-	if df == "" && svcConfig.Build.Context != "" {
+func (svcConf dcServiceConfig) toService() (dcService, error) {
+	df := svcConf.Build.Dockerfile
+	if df == "" && svcConf.Build.Context != "" {
 		// We only expect a Dockerfile if there's a build context specified.
 		df = "Dockerfile"
 	}
 
 	var mountedLocalDirs []string
-	for _, v := range svcConfig.Volumes.Volumes {
+	for _, v := range svcConf.Volumes.Volumes {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
 	}
 
-	dfPath := filepath.Join(svcConfig.Build.Context, df)
+	dfPath := filepath.Join(svcConf.Build.Context, df)
 	svc := dcService{
-		Name:             name,
-		Context:          svcConfig.Build.Context,
+		Name:             svcConf.Name,
+		Context:          svcConf.Build.Context,
 		DfPath:           dfPath,
 		MountedLocalDirs: mountedLocalDirs,
 
-		ServiceConfig: svcConfig.RawYAML,
+		ServiceConfig: svcConf.RawYAML,
 	}
 
 	if dfPath != "" {
@@ -247,29 +249,8 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 	return svc, nil
 }
 
-func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]string, error) {
-	servicesText, err := dcc.Services(ctx, configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	serviceNames := strings.Split(servicesText, "\n")
-
-	var result []string
-
-	for _, name := range serviceNames {
-		if name == "" {
-			continue
-		}
-		result = append(result, name)
-	}
-
-	return result, nil
-}
-
-func parseDCConfig(ctx context.Context, configPath string) ([]*dcService, error) {
-	dcc := dockercompose.NewDockerComposeClient()
-	configOut, err := dcc.Config(ctx, configPath)
+func parseDCConfig(ctx context.Context, dcCli dockercompose.DockerComposeClient, configPath string) ([]*dcService, error) {
+	configOut, err := dcCli.Config(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -280,17 +261,12 @@ func parseDCConfig(ctx context.Context, configPath string) ([]*dcService, error)
 		return nil, err
 	}
 
-	svcNames, err := svcNames(ctx, dcc, configPath)
-	if err != nil {
-		return nil, err
-	}
-
 	var services []*dcService
 
-	for _, name := range svcNames {
-		svc, err := config.GetService(name)
+	for _, svcConfig := range config.Services {
+		svc, err := svcConfig.toService()
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting service %s", name)
+			return nil, errors.Wrapf(err, "getting service %s", svcConfig.Name)
 		}
 		services = append(services, &svc)
 	}
