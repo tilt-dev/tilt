@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"time"
 
@@ -94,7 +95,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string) error {
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -112,8 +113,12 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	// TODO(dmiller) hmm, can I do this?
-	tlw := NewTiltfileLogWriter(u.store)
+	var tlw io.Writer
+	if useActionWriter {
+		tlw = NewTiltfileLogWriter(u.store)
+	} else {
+		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
+	}
 	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
 
 	return u.Init(ctx, InitAction{
