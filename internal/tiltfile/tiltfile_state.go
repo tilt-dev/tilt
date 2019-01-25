@@ -184,11 +184,13 @@ func (s *tiltfileState) assembleK8s() (map[string]bool, error) {
 
 func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
 	if len(r.entities) == 0 {
-		if len(r.providedImageRefs) == 0 {
-			return fmt.Errorf("resource %q: no matching resource", r.name)
-		}
+		if len(r.providedImageRefs) > 0 {
 
-		return fmt.Errorf("resource %q: could not find images %q; perhaps there's a typo?", r.name, r.providedImageRefList())
+			return fmt.Errorf("resource %q: could not find k8s entities matching "+
+				"image(s) %q; perhaps there's a typo?",
+				r.name, strings.Join(r.providedImageRefList(), "; "))
+		}
+		return fmt.Errorf("resource %q: you never associated any image refs with this resource", r.name)
 	}
 
 	for ref := range r.imageRefs {
