@@ -319,6 +319,28 @@ dc_resource('foo', 'gcr.io/foo')
 	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)
 }
 
+// I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
+func TestDockerComposeWithDockerBuildLocalRef(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `docker_build('fooimage', './foo')
+docker_compose('docker-compose.yml')
+dc_resource('foo', 'fooimage')
+`)
+
+	f.load()
+
+	m := f.assertManifest("foo", db(imageNormalized("fooimage")))
+	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
+
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)
+}
+
 func TestDockerComposeWithFastBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
