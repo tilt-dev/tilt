@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/docker"
 
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -65,6 +66,27 @@ k8s_resource('foo', 'foo.yaml')
 
 	f.assertManifest("foo",
 		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+// I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
+func TestLocalImageRef(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+docker_build('fooimage', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.load()
+
+	f.assertManifest("foo",
+		db(imageNormalized("fooimage")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
@@ -1279,6 +1301,10 @@ type imageHelper struct {
 
 func image(ref string) imageHelper {
 	return imageHelper{ref: ref}
+}
+
+func imageNormalized(ref string) imageHelper {
+	return imageHelper{ref: docker.MustNormalizeRefName(ref)}
 }
 
 // match a docker_build
