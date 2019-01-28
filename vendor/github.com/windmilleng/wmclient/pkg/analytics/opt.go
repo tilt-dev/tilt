@@ -93,11 +93,11 @@ func readChoiceFile() (string, error) {
 	return strings.TrimSpace(txt), nil
 }
 
-func optedIn() bool {
+func optedIn() (bool, error) {
 	opt, err := OptStatus()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "analytics.optedIn: %v\n", err)
+		return false, fmt.Errorf("analytics.optedIn: %v", err)
 	}
 
-	return opt == OptIn
+	return opt == OptIn, nil
 }
