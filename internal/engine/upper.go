@@ -152,7 +152,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case targetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
-		handlePodEvent(ctx, state, action.Pod)
+		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case PodLogAction:
@@ -601,7 +601,7 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	}
 }
 
-func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
+func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
 	mt, podInfo := ensureManifestTargetWithPod(state, pod)
 	if mt == nil || podInfo == nil {
 		return
