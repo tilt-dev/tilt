@@ -701,7 +701,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
-			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
+			PodRestarts:        (pod.ContainerRestarts - 1) - pod.OldRestarts,
 			PodLog:             pod.Log(),
 		}
 	}
