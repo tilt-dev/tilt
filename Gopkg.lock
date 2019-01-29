@@ -987,7 +987,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c1a095633842044ec6b31597da9a22081326c9f004e7a28709c71030b80dae14"
+  digest = "1:965dcc0d40681eb7557000d8d120a4e9b7c1d236820a1d6293977d8d5b8bd7a4"
   name = "github.com/windmilleng/wmclient"
   packages = [
     "pkg/analytics",
@@ -996,7 +996,7 @@
     "pkg/os/temp",
   ]
   pruneopts = "UT"
-  revision = "21a7c9452b40e59b70004dcb1aeace95cb61df63"
+  revision = "3495bc985ff0902506446ffc826d2cb6369778f9"
 
 [[projects]]
   branch = "options"

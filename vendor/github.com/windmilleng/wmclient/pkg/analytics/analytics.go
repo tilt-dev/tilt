@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -38,7 +37,11 @@ type Logger interface {
 	Printf(format string, v ...interface{})
 }
 
-var stdLogger = log.New(os.Stderr, "", log.LstdFlags)
+type stdLogger struct{}
+
+func (stdLogger) Printf(format string, v ...interface{}) {
+	log.Printf("[analytics] %s", fmt.Sprintf(format, v...))
+}
 
 func Init(appName string, options ...Option) (Analytics, *cobra.Command, error) {
 	a, err := NewRemoteAnalytics(appName, options...)
@@ -108,7 +111,7 @@ func NewRemoteAnalytics(appName string, options ...Option) (*remoteAnalytics, er
 		url:        statsEndpt,
 		userID:     getUserID(),
 		enabled:    enabled,
-		logger:     stdLogger,
+		logger:     stdLogger{},
 		wg:         &sync.WaitGroup{},
 		globalTags: make(map[string]string),
 	}
@@ -164,17 +167,17 @@ func (a *remoteAnalytics) count(name string, tags map[string]string, n int) {
 	req, err := a.countReq(name, tags, n)
 	if err != nil {
 		// Stat reporter can't return errs, just print it.
-		a.logger.Printf("[analytics] %v\n", err)
+		a.logger.Printf("Error: %v\n", err)
 		return
 	}
 
 	resp, err := a.cli.Do(req)
 	if err != nil {
-		a.logger.Printf("[analytics] http.Post: %v\n", err)
+		a.logger.Printf("http.Post: %v\n", err)
 		return
 	}
 	if resp.StatusCode != 200 {
-		a.logger.Printf("[analytics] http.Post returned status: %s\n", resp.Status)
+		a.logger.Printf("http.Post returned status: %s\n", resp.Status)
 	}
 }
 
@@ -205,17 +208,17 @@ func (a *remoteAnalytics) timer(name string, dur time.Duration, tags map[string]
 	req, err := a.timerReq(name, dur, tags)
 	if err != nil {
 		// Stat reporter can't return errs, just print it.
-		a.logger.Printf("[analytics] %v\n", err)
+		a.logger.Printf("Error: %v\n", err)
 		return
 	}
 
 	resp, err := a.cli.Do(req)
 	if err != nil {
-		a.logger.Printf("[analytics] http.Post: %v\n", err)
+		a.logger.Printf("http.Post: %v\n", err)
 		return
 	}
 	if resp.StatusCode != 200 {
-		a.logger.Printf("[analytics] http.Post returned status: %s\n", resp.Status)
+		a.logger.Printf("http.Post returned status: %s\n", resp.Status)
 	}
 
 }
