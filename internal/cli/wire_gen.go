@@ -30,21 +30,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	kubeContext := k8s.DetectKubeContext(ctx)
-	env, err := k8s.DetectEnv(kubeContext)
+	env := k8s.DetectEnv(ctx)
+	k8sClient, err := k8s.ProvideK8sClient(ctx, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	config, err := k8s.ProvideRESTConfig()
-	if err != nil {
-		return demo.Script{}, err
-	}
-	coreV1Interface, err := k8s.ProvideRESTClient(config)
-	if err != nil {
-		return demo.Script{}, err
-	}
-	portForwarder := k8s.ProvidePortForwarder()
-	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder, kubeContext)
 	podWatcher := engine.NewPodWatcher(k8sClient)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
@@ -114,21 +104,11 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	kubeContext := k8s.DetectKubeContext(ctx)
-	env, err := k8s.DetectEnv(kubeContext)
+	env := k8s.DetectEnv(ctx)
+	k8sClient, err := k8s.ProvideK8sClient(ctx, env)
 	if err != nil {
 		return Threads{}, err
 	}
-	config, err := k8s.ProvideRESTConfig()
-	if err != nil {
-		return Threads{}, err
-	}
-	coreV1Interface, err := k8s.ProvideRESTClient(config)
-	if err != nil {
-		return Threads{}, err
-	}
-	portForwarder := k8s.ProvidePortForwarder()
-	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder, kubeContext)
 	podWatcher := engine.NewPodWatcher(k8sClient)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
@@ -188,27 +168,17 @@ func wireThreads(ctx context.Context) (Threads, error) {
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	kubeContext := k8s.DetectKubeContext(ctx)
-	env, err := k8s.DetectEnv(kubeContext)
+	env := k8s.DetectEnv(ctx)
+	k8sClient, err := k8s.ProvideK8sClient(ctx, env)
 	if err != nil {
 		return nil, err
 	}
-	config, err := k8s.ProvideRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-	coreV1Interface, err := k8s.ProvideRESTClient(config)
-	if err != nil {
-		return nil, err
-	}
-	portForwarder := k8s.ProvidePortForwarder()
-	k8sClient := k8s.NewK8sClient(ctx, env, coreV1Interface, config, portForwarder, kubeContext)
 	return k8sClient, nil
 }
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.DetectKubeContext, k8s.DetectEnv, k8s.DetectNodeIP, k8s.ProvidePortForwarder, k8s.ProvideRESTClient, k8s.ProvideRESTConfig, k8s.NewK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
+var K8sWireSet = wire.NewSet(k8s.DetectEnv, k8s.DetectNodeIP, k8s.ProvideK8sClient, wire.Bind(new(k8s.Client), k8s.K8sClient{}))
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics,

@@ -2,9 +2,11 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
@@ -23,26 +25,30 @@ func (e Env) IsLocalCluster() bool {
 	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
 }
 
-func DetectEnv(kubeContext KubeContext) (Env, error) {
-	return EnvFromString(string(kubeContext)), nil
+func DetectEnv(ctx context.Context) Env {
+	kubeContext, err := detectKubeContext()
+	if err != nil {
+		logger.Get(ctx).Debugf(err.Error())
+		return EnvNone
+	}
+	return EnvFromString(string(kubeContext))
 }
 
-func DetectKubeContext(ctx context.Context) KubeContext {
+func detectKubeContext() (KubeContext, error) {
 	cmd := exec.Command("kubectl", "config", "current-context")
 	outputBytes, err := cmd.Output()
 
 	if err != nil {
 		exitErr, isExit := err.(*exec.ExitError)
 		if isExit {
-			logger.Get(ctx).Debugf("DetectKubeContext failed. Output:\n%s", string(exitErr.Stderr))
+			return KubeContext(""), fmt.Errorf("DetectKubeContext failed. Output:\n%s", string(exitErr.Stderr))
 		} else {
-			logger.Get(ctx).Debugf("DetectKubeContext failed: %v", err)
+			return KubeContext(""), errors.Wrap(err, "DetectKubeContext failed")
 		}
-		return KubeContextNone
 	}
 
 	output := strings.TrimSpace(string(outputBytes))
-	return KubeContext(output)
+	return KubeContext(output), nil
 }
 
 func EnvFromString(s string) Env {

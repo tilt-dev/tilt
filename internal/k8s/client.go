@@ -35,7 +35,6 @@ type ServiceName string
 type KubeContext string
 
 const DefaultNamespace = Namespace("default")
-const KubeContextNone = KubeContext(EnvNone) // stand-in for when k8s not running
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
@@ -107,13 +106,31 @@ var _ Client = K8sClient{}
 
 type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
+func ProvideK8sClient(ctx context.Context, env Env) (K8sClient, error) {
+	if env == EnvNone {
+		// No k8s, so no need to get any further configs
+		return K8sClient{env: env}, nil
+	}
+
+	config, err := ProvideRESTConfig()
+	if err != nil {
+		return K8sClient{}, err
+	}
+	coreV1Interface, err := ProvideRESTClient(config)
+	if err != nil {
+		return K8sClient{}, err
+	}
+	portForwarder := ProvidePortForwarder()
+	k8sClient := NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
+	return k8sClient, nil
+}
+
 func NewK8sClient(
 	ctx context.Context,
 	env Env,
 	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
-	pf PortForwarder,
-	kubeContext KubeContext) K8sClient {
+	pf PortForwarder) K8sClient {
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -126,7 +143,6 @@ func NewK8sClient(
 		core:          core,
 		restConfig:    restConfig,
 		portForwarder: pf,
-		kubeContext:   kubeContext,
 	}
 }
 

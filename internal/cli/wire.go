@@ -20,14 +20,10 @@ import (
 )
 
 var K8sWireSet = wire.NewSet(
-	k8s.DetectKubeContext,
 	k8s.DetectEnv,
 	k8s.DetectNodeIP,
 
-	k8s.ProvidePortForwarder,
-	k8s.ProvideRESTClient,
-	k8s.ProvideRESTConfig,
-	k8s.NewK8sClient,
+	k8s.ProvideK8sClient,
 	wire.Bind(new(k8s.Client), k8s.K8sClient{}))
 
 var BaseWireSet = wire.NewSet(
