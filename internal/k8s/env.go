@@ -52,7 +52,7 @@ func EnvFromString(s string) Env {
 		return EnvDockerDesktop
 	} else if s == EnvMicroK8s {
 		return EnvMicroK8s
-	} else if s == string(KubeContextNone) {
+	} else if s == EnvNone {
 		return EnvNone
 	} else if strings.HasPrefix(s, EnvGKE) {
 		// GKE context strings look like:
