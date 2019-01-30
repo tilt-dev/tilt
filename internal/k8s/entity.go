@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/docker/distribution/reference"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,8 +85,7 @@ func (e K8sEntity) Namespace() Namespace {
 // Most entities can be updated once running, but a few cannot.
 func (e K8sEntity) ImmutableOnceCreated() bool {
 	if e.Kind != nil {
-		// TODO(nick): Add more entities.
-		return e.Kind.Kind == "Job"
+		return e.Kind.Kind == "Job" || e.Kind.Kind == "Pod"
 	}
 	return false
 }

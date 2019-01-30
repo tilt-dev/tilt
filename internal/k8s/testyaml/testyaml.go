@@ -356,6 +356,19 @@ spec:
   backoffLimit: 4
 `
 
+const PodYAML = `apiVersion: v1
+kind: Pod
+metadata:
+ name: sleep
+ labels:
+   app: sleep
+spec:
+  restartPolicy: OnFailure
+  containers:
+  - name: sleep
+    image: gcr.io/windmill-public-containers/servantes/sleep
+`
+
 const MultipleContainersYAML = `
 apiVersion: batch/v1
 kind: Job
