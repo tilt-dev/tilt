@@ -97,7 +97,12 @@
               <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Tilt Installation Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#option-a-installing-tilt-with-homebrew-recommended">Option A) Installing Tilt with Homebrew (recommended)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#option-b-installing-tilt-from-release-binaries">Option B) Installing Tilt from release binaries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#verifying">Verifying</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#on-linux">On Linux</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#from-source">From Source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
@@ -210,18 +215,30 @@
 $ kubectl config use-context docker-for-desktop
 </pre></div>
 </div>
-<ul class="simple">
-<li>Install the Tilt binary with:</li>
-</ul>
+<div class="section" id="option-a-installing-tilt-with-homebrew-recommended">
+<h3>Option A) Installing Tilt with Homebrew (recommended)<a class="headerlink" href="#option-a-installing-tilt-with-homebrew-recommended" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brew tap windmilleng/tap
+$ brew install windmilleng/tap/tilt
+</pre></div>
+</div>
+<p>Verify that you installed Tilt correctly with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
+</pre></div>
+</div>
+</div>
+<div class="section" id="option-b-installing-tilt-from-release-binaries">
+<h3>Option B) Installing Tilt from release binaries<a class="headerlink" href="#option-b-installing-tilt-from-release-binaries" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.1/tilt.0.5.1.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
   sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
-<ul class="simple">
-<li>Verify that you installed it correctly with:</li>
-</ul>
+</div>
+<div class="section" id="verifying">
+<h3>Verifying<a class="headerlink" href="#verifying" title="Permalink to this headline">¶</a></h3>
+<p>Verify that you installed it correctly with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
 </pre></div>
+</div>
 </div>
 </div>
 <div class="section" id="on-linux">

@@ -23,14 +23,29 @@ $ kubectl config get-contexts
 $ kubectl config use-context docker-for-desktop
 ```
 
-- Install the Tilt binary with:
+### Option A) Installing Tilt with Homebrew (recommended)
+
+```
+$ brew tap windmilleng/tap
+$ brew install windmilleng/tap/tilt
+```
+
+Verify that you installed Tilt correctly with:
+
+```
+$ tilt version
+```
+
+### Option B) Installing Tilt from release binaries
 
 ```
 $ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.1/tilt.0.5.1.mac.x86_64.tar.gz | tar -xzv tilt && \
   sudo mv tilt /usr/local/bin/tilt
 ```
 
-- Verify that you installed it correctly with:
+### Verifying
+
+Verify that you installed it correctly with:
 
 ```
 $ tilt version
