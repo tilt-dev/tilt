@@ -1,5 +1,5 @@
 # Tutorial: First 15 Minutes
-This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you've already [installed Tilt](install.html). Before you begin, you may want to join the `#tilt` channel in [Kubernetes Slack](http://slack.k8s.io). We offer technical support, and can chat about your use case to help you get the most out of Tilt.
+This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you've already [installed Tilt](install.html). Before you begin, you may want to join the `#tilt` channel in [Kubernetes Slack](http://slack.k8s.io) for technical and moral support.
 
 Start by `cd`'ing into a project you can already build and deploy.
 
@@ -63,9 +63,9 @@ k8s_resource('frontend', port_forwards='9000')
 
 You can also use `k8s_resource` to change the resource grouping, or forward multiple ports. Cf. the [Resources](tiltfile_concepts.html#resources) section of `Tiltfile Concepts`.
 
-## Good To Go
+## Congrats
 Tilt is now setup for your project. Try exploring Tilt's UI (there's a context-sensitive legend in the bottom right). Introduce a build error and then a runtime crash; see Tilt's UI respond and surface the relevant problem.
 
-We've love to [hear from you](index.html#community).
+Now's a great time to file bugs, feature requests, or [talk to us](index.html#community) about your use case. If you say hi in the `#tilt` channel of Kubernetes slack we can find time to chat.
 
-You can read more about [Tiltfile Concepts](tiltfile_concepts.html) or [Optimizing your Builds](fast_build.html).
+You can learn more about Tilt's features like  [Tiltfile Concepts](tiltfile_concepts.html) or [Optimizing your Builds](fast_build.html).
