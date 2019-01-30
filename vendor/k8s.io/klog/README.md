@@ -1,3 +1,10 @@
+klog
+====
+
+klog is a permanant fork of https://github.com/golang/glog. original README from glog is below
+
+----
+
 glog
 ====
 
