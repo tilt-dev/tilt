@@ -32,6 +32,7 @@ type ServiceName string
 type KubeContext string
 
 const DefaultNamespace = Namespace("default")
+const KubeContextNone = KubeContext("none") // stand-in for when k8s not running
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }

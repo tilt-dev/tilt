@@ -30,10 +30,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	kubeContext, err := k8s.DetectKubeContext()
-	if err != nil {
-		return demo.Script{}, err
-	}
+	kubeContext := k8s.DetectKubeContext(ctx)
 	env, err := k8s.DetectEnv(kubeContext)
 	if err != nil {
 		return demo.Script{}, err
@@ -117,10 +114,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	kubeContext, err := k8s.DetectKubeContext()
-	if err != nil {
-		return Threads{}, err
-	}
+	kubeContext := k8s.DetectKubeContext(ctx)
 	env, err := k8s.DetectEnv(kubeContext)
 	if err != nil {
 		return Threads{}, err
@@ -194,10 +188,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	kubeContext, err := k8s.DetectKubeContext()
-	if err != nil {
-		return nil, err
-	}
+	kubeContext := k8s.DetectKubeContext(ctx)
 	env, err := k8s.DetectEnv(kubeContext)
 	if err != nil {
 		return nil, err
