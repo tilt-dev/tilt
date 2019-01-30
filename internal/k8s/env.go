@@ -1,11 +1,11 @@
 package k8s
 
 import (
-	"fmt"
+	"context"
 	"os/exec"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 type Env string
@@ -16,6 +16,7 @@ const (
 	EnvMinikube          = "minikube"
 	EnvDockerDesktop     = "docker-for-desktop"
 	EnvMicroK8s          = "microk8s"
+	EnvNone              = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
 func (e Env) IsLocalCluster() bool {
@@ -26,20 +27,22 @@ func DetectEnv(kubeContext KubeContext) (Env, error) {
 	return EnvFromString(string(kubeContext)), nil
 }
 
-func DetectKubeContext() (KubeContext, error) {
+func DetectKubeContext(ctx context.Context) KubeContext {
 	cmd := exec.Command("kubectl", "config", "current-context")
 	outputBytes, err := cmd.Output()
 
 	if err != nil {
 		exitErr, isExit := err.(*exec.ExitError)
 		if isExit {
-			return KubeContext(""), fmt.Errorf("DetectKubeContext failed. Output:\n%s", string(exitErr.Stderr))
+			logger.Get(ctx).Debugf("DetectKubeContext failed. Output:\n%s", string(exitErr.Stderr))
+		} else {
+			logger.Get(ctx).Debugf("DetectKubeContext failed: %v", err)
 		}
-		return KubeContext(""), errors.Wrap(err, "DetectKubeContext")
+		return KubeContextNone
 	}
 
 	output := strings.TrimSpace(string(outputBytes))
-	return KubeContext(output), nil
+	return KubeContext(output)
 }
 
 func EnvFromString(s string) Env {
@@ -49,6 +52,8 @@ func EnvFromString(s string) Env {
 		return EnvDockerDesktop
 	} else if s == EnvMicroK8s {
 		return EnvMicroK8s
+	} else if s == EnvNone {
+		return EnvNone
 	} else if strings.HasPrefix(s, EnvGKE) {
 		// GKE context strings look like:
 		// gke_blorg-dev_us-central1-b_blorg
