@@ -194,8 +194,8 @@ func TestUpper_Up(t *testing.T) {
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
 
-	gYaml := model.NewYAMLManifest(model.ManifestName("my-global_yaml"),
-		testyaml.BlorgBackendYAML, []string{"foo", "bar"}, []string{})
+	gYaml := k8s.NewK8sOnlyManifestForTesting(model.ManifestName("my-global_yaml"),
+		testyaml.BlorgBackendYAML)
 	err := f.upper.Init(f.ctx, InitAction{
 		Manifests:          []model.Manifest{manifest},
 		GlobalYAMLManifest: gYaml,
@@ -239,14 +239,14 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	fileRelPath := "fdas"
 	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
 
 	call = f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 	fileAbsPath, err := filepath.Abs(fileRelPath)
 	if err != nil {
@@ -272,7 +272,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.restTimerLock.Lock()
@@ -284,7 +284,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f.timerMaker.restTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -310,7 +310,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -323,7 +323,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.timerMaker.maxTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -828,7 +828,7 @@ k8s_resource('foobar', 'snack.yaml')
 			Cmd:           model.ToShellCmd("changed"),
 			BaseDirectory: f.Path(),
 		}}
-		assert.Equal(t, expectedSteps, mt.Manifest.ImageTarget.FastBuildInfo().Steps)
+		assert.Equal(t, expectedSteps, mt.Manifest.ImageTargetAt(0).FastBuildInfo().Steps)
 	})
 }
 
@@ -840,7 +840,7 @@ ADD ./ ./
 go build ./...
 `
 	manifest := f.newManifest("foobar", nil)
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithBuildDetails(
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithBuildDetails(
 		model.StaticBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
@@ -908,7 +908,7 @@ func TestHudUpdated(t *testing.T) {
 	err = f.Stop()
 	assert.Equal(t, nil, err)
 
-	assert.Equal(t, 1, len(f.hud.LastView.Resources))
+	assert.Equal(t, 2, len(f.hud.LastView.Resources))
 	rv := f.hud.LastView.Resources[0]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
 	assert.Equal(t, ".", rv.DirectoriesWatched[0])
@@ -1069,7 +1069,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
-		ref = ms.LastSuccessfulResult.Image
+		ref = ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult.Image
 		return ref != nil
 	})
 
@@ -1107,7 +1107,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1143,7 +1143,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// Start a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1180,7 +1180,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 
 	// Start a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1201,7 +1201,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 
 	// Start another fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
@@ -1330,7 +1330,7 @@ func TestPodContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
-		ref = ms.LastSuccessfulResult.Image
+		ref = ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult.Image
 		return ref != nil
 	})
 
@@ -1361,7 +1361,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithDockerignores([]model.Dockerignore{
 			{
 				LocalPath: f.Path(),
@@ -1372,7 +1372,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1387,7 +1387,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithRepos([]model.LocalGitRepo{
 			{
 				LocalPath:         f.Path(),
@@ -1398,7 +1398,7 @@ func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTarget, call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1423,7 +1423,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.podLog(name, "first string")
 
 	f.upper.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a.go"},
 	})
 
@@ -1457,7 +1457,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 	})
 
 	f.upper.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTarget.ID(),
+		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a.go"},
 	})
 
@@ -1634,7 +1634,7 @@ func TestUpper_PodLogs(t *testing.T) {
 func TestInitWithGlobalYAML(t *testing.T) {
 	f := newTestFixture(t)
 	state := f.store.RLockState()
-	ym := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgBackendYAML, []string{}, []string{})
+	ym := k8s.NewK8sOnlyManifestForTesting("global", testyaml.BlorgBackendYAML)
 	state.GlobalYAML = ym
 	f.store.RUnlockState()
 	f.Start([]model.Manifest{}, true)
@@ -1643,16 +1643,16 @@ func TestInitWithGlobalYAML(t *testing.T) {
 		GlobalYAMLManifest: ym,
 	})
 	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
-		return st.GlobalYAML.K8sYAML() == testyaml.BlorgBackendYAML
+		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgBackendYAML
 	})
 
-	newYM := model.NewYAMLManifest(model.ManifestName("global"), testyaml.BlorgJobYAML, []string{}, []string{})
+	newYM := k8s.NewK8sOnlyManifestForTesting("global", testyaml.BlorgJobYAML)
 	f.store.Dispatch(ConfigsReloadedAction{
 		GlobalYAML: newYM,
 	})
 
 	f.WaitUntil("global YAML manifest gets updated", func(st store.EngineState) bool {
-		return st.GlobalYAML.K8sYAML() == testyaml.BlorgJobYAML
+		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgJobYAML
 	})
 }
 
@@ -1702,11 +1702,11 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 
 	f.WaitUntilManifest("has new mounts", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTarget.FastBuildInfo().Mounts) == 2
+		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Mounts) == 2
 	})
 
 	f.PollUntil("watches setup", func() bool {
-		watches, ok := f.fwm.targetWatches[m2.ImageTarget.ID()]
+		watches, ok := f.fwm.targetWatches[m2.ImageTargetAt(0).ID()]
 		if !ok {
 			return false
 		}
@@ -1815,10 +1815,17 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
-	f.setDCRunLogOutput(m.DockerComposeTarget(), expected)
+	output := make(chan string, 1)
+	output <- expected
+	defer close(output)
+	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
+
+	f.WaitUntilManifestState("wait until manifest state has a log", m.ManifestName(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Log() != ""
+	})
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
@@ -1830,7 +1837,10 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "Attaching to snack\n"
-	f.setDCRunLogOutput(m.DockerComposeTarget(), expected)
+	output := make(chan string, 1)
+	output <- expected
+	defer close(output)
+	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -1891,6 +1901,44 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 
 	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	})
+}
+
+func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
+	f := newTestFixture(t)
+	m1, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextBuildContainer = expected
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
+		state, ok := st.ResourceState.(dockercompose.State)
+		if !ok {
+			t.Fatal("expected ResourceState to be docker compose, but it wasn't")
+		}
+		assert.Equal(t, expected, state.ContainerID)
+		assert.Equal(t, dockercompose.StatusUp, state.Status)
+	})
+}
+
+func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T) {
+	f := newTestFixture(t)
+	m1, _ := f.setupDCFixture()
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
+		state, ok := st.ResourceState.(dockercompose.State)
+		if !ok {
+			t.Fatal("expected ResourceState to be docker compose, but it wasn't")
+		}
+		assert.Empty(t, state.ContainerID)
+		assert.Empty(t, state.Status)
 	})
 }
 
@@ -1989,7 +2037,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
 	cc := NewConfigsController()
-	dcc := dockercompose.NewFakeDockerComposeClient(t)
+	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	pm := NewProfilerManager()
@@ -2334,7 +2382,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2371,7 +2419,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, _, err := tiltfile.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2383,7 +2431,7 @@ func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 	f.b.buildLogOutput[id] = output
 }
 
-func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output string) {
+func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-chan string) {
 	f.dcc.RunLogOutput[dc.Name] = output
 }
 
@@ -2405,7 +2453,7 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
-	resultSet[manifest.ImageTarget.ID()] = store.BuildResult{
+	resultSet[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
 		ContainerID: id,
 	}
 	return resultSet

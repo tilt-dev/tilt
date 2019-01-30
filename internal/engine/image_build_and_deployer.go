@@ -1,36 +1,31 @@
 package engine
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
-	b             build.ImageBuilder
-	cacheBuilder  build.CacheBuilder
+	icb           *imageAndCacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
 	analytics     analytics.Analytics
-	updateMode    UpdateMode
 	injectSynclet bool
 	clock         build.Clock
 }
@@ -41,16 +36,14 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics analytics.Analytics,
-	updateMode UpdateMode,
+	updMode UpdateMode,
 	c build.Clock) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		b:            b,
-		cacheBuilder: cacheBuilder,
-		k8sClient:    k8sClient,
-		env:          env,
-		analytics:    analytics,
-		updateMode:   updateMode,
-		clock:        c,
+		icb:       NewImageAndCacheBuilder(b, cacheBuilder, updMode),
+		k8sClient: k8sClient,
+		env:       env,
+		analytics: analytics,
+		clock:     c,
 	}
 }
 
@@ -91,9 +84,9 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 
 	results := store.BuildResultSet{}
 
-	refs := []reference.NamedTagged{}
+	var refs []reference.NamedTagged
 	for _, iTarget := range iTargets {
-		ref, err := ibd.build(ctx, iTarget, stateSet[iTarget.ID()], ps)
+		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -109,84 +102,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 	}
 
 	return results, nil
-}
-
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
-	var n reference.NamedTagged
-
-	ref := iTarget.Ref
-	cacheRef, err := ibd.fetchCache(ctx, ref, iTarget.CachePaths())
-	if err != nil {
-		return nil, err
-	}
-
-	switch bd := iTarget.BuildDetails.(type) {
-	case model.StaticBuild:
-		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", ref)
-		defer ps.EndPipelineStep(ctx)
-
-		df := ibd.staticDockerfile(iTarget, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, ref, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
-
-		if err != nil {
-			return nil, err
-		}
-		n = ref
-
-		go ibd.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
-	case model.FastBuild:
-		if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
-			// No existing image to build off of, need to build from scratch
-			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", ref)
-			defer ps.EndPipelineStep(ctx)
-
-			df := ibd.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
-			steps := bd.Steps
-			ref, err := ibd.b.BuildImageFromScratch(ctx, ps, ref, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
-
-			if err != nil {
-				return nil, err
-			}
-			n = ref
-			go ibd.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
-
-		} else {
-			// We have an existing image, can do an iterative build
-			changed, err := state.FilesChangedSinceLastResultImage()
-			if err != nil {
-				return nil, err
-			}
-
-			cf, err := build.FilesToPathMappings(changed, bd.Mounts)
-			if err != nil {
-				return nil, err
-			}
-
-			ps.StartPipelineStep(ctx, "Building from existing: [%s]", ref)
-			defer ps.EndPipelineStep(ctx)
-
-			steps := bd.Steps
-			ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), steps)
-			if err != nil {
-				return nil, err
-			}
-			n = ref
-		}
-	default:
-		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
-		// If we get here, something is very wrong.
-		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", iTarget.Ref)
-	}
-
-	if !ibd.canSkipPush() {
-		var err error
-		n, err = ibd.b.PushImage(ctx, n, ps.Writer(ctx))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return n, nil
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
@@ -249,7 +164,6 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 					}
 				}
 			}
-
 			newK8sEntities = append(newK8sEntities, e)
 		}
 	}
@@ -269,77 +183,4 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env.IsLocalCluster()
-}
-
-func (ibd *ImageBuildAndDeployer) fetchCache(ctx context.Context, ref reference.Named, cachePaths []string) (reference.NamedTagged, error) {
-	return ibd.cacheBuilder.FetchCache(ctx, ref, cachePaths)
-}
-
-func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
-	// Only create the cache the first time we build the image.
-	if !state.LastResult.IsEmpty() {
-		return
-	}
-
-	// Only create the cache if there is no existing cache
-	if oldCacheRef != nil {
-		return
-	}
-
-	baseDockerfile := dockerfile.Dockerfile(image.FastBuildInfo().BaseDockerfile)
-	var buildArgs model.DockerBuildArgs
-
-	if sbInfo, ok := image.BuildDetails.(model.StaticBuild); ok {
-		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
-		ok := true
-		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
-		if !ok {
-			return
-		}
-
-		buildArgs = sbInfo.BuildArgs
-	}
-
-	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef,
-		image.CachePaths(), buildArgs)
-	if err != nil {
-		logger.Get(ctx).Debugf("Could not create cache: %v", err)
-	}
-}
-
-func (ibd *ImageBuildAndDeployer) staticDockerfile(image model.ImageTarget, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(image.StaticBuildInfo().Dockerfile)
-	if cacheRef == nil {
-		return df
-	}
-
-	if len(image.CachePaths()) == 0 {
-		return df
-	}
-
-	_, restDf, ok := df.SplitIntoBaseDockerfile()
-	if !ok {
-		return df
-	}
-
-	// Replace all the lines before the ADD with a load from the Tilt cache.
-	return dockerfile.FromExisting(cacheRef).
-		WithLabel(build.CacheImage, "0"). // sadly there's no way to unset a label :sob:
-		Append(restDf)
-}
-
-func (ibd *ImageBuildAndDeployer) baseDockerfile(fbInfo model.FastBuild,
-	cacheRef reference.NamedTagged, cachePaths []string) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(fbInfo.BaseDockerfile)
-	if cacheRef == nil {
-		return df
-	}
-
-	if len(cachePaths) == 0 {
-		return df
-	}
-
-	// Use the cache as the new base dockerfile.
-	return dockerfile.FromExisting(cacheRef).
-		WithLabel(build.CacheImage, "0") // sadly there's no way to unset a label :sob:
 }

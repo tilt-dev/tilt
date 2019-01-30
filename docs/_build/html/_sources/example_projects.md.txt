@@ -1,6 +1,6 @@
 # Example Projects
 
-This doc supplements our [Tutorial](tutorial.html) for people who want to try Tilt but don't have a project they can easily use with Tilt. It describes two example projects we've built that use Tilt.
+Tilt's best when you use it with your project. We've built our [Tutorial](tutorial.html) to make it easy to get started even if you've never used Tilt before. If you don't have such a project, but still want to try Tilt, this doc describes two example projects we've built that use Tilt.
 
 These projects can also be useful to confirm Tilt is working as expected in your environment.
 

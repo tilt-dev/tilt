@@ -2,6 +2,8 @@ package tiltfile
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -11,11 +13,61 @@ import (
 )
 
 type k8sResource struct {
-	name     string
-	k8s      []k8s.K8sEntity
-	imageRef string
+	// The name of this group, for display in the UX.
+	name string
+
+	// All k8s resources to be deployed.
+	entities []k8s.K8sEntity
+
+	// Image refs that the user manually asked to be associated with this resource.
+	providedImageRefs map[string]bool
+
+	// All image refs, including:
+	// 1) one that the user manually asked to be associated with this resources, and
+	// 2) images that were auto-inferred from the included k8s resources.
+	imageRefs map[string]bool
 
 	portForwards []portForward
+}
+
+func (r *k8sResource) addProvidedImageRef(ref string) {
+	r.providedImageRefs[ref] = true
+	r.imageRefs[ref] = true
+}
+
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
+	r.entities = append(r.entities, entities...)
+
+	for _, entity := range entities {
+		images, err := entity.FindImages()
+		if err != nil {
+			return err
+		}
+		for _, image := range images {
+			r.imageRefs[image.String()] = true
+		}
+	}
+	return nil
+}
+
+// Return the provided image refs in a deterministic order.
+func (r k8sResource) providedImageRefList() []string {
+	result := make([]string, 0, len(r.providedImageRefs))
+	for ref := range r.providedImageRefs {
+		result = append(result, ref)
+	}
+	sort.Strings(result)
+	return result
+}
+
+// Return the image refs in a deterministic order.
+func (r k8sResource) imageRefList() []string {
+	result := make([]string, 0, len(r.imageRefs))
+	for ref := range r.imageRefs {
+		result = append(result, ref)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -80,8 +132,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	r.k8s = entities
-	r.imageRef = imageRef
+	err = r.addEntities(entities)
+	if err != nil {
+		return nil, err
+	}
+
+	if imageRef != "" {
+		r.addProvidedImageRef(imageRef)
+	}
 	r.portForwards = portForwards
 
 	return starlark.None, nil
@@ -92,7 +150,9 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
 	}
 	r := &k8sResource{
-		name: name,
+		name:              name,
+		providedImageRefs: make(map[string]bool),
+		imageRefs:         make(map[string]bool),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
@@ -156,6 +216,14 @@ func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]
 			return nil, err
 		}
 		return []portForward{pf}, nil
+
+	case starlark.String:
+		pf, err := stringToPortForward(val)
+		if err != nil {
+			return nil, err
+		}
+		return []portForward{pf}, nil
+
 	case portForward:
 		return []portForward{val}, nil
 	case starlark.Sequence:
@@ -171,6 +239,14 @@ func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]
 					return nil, err
 				}
 				result = append(result, pf)
+
+			case starlark.String:
+				pf, err := stringToPortForward(i)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, pf)
+
 			case portForward:
 				result = append(result, i)
 			default:
@@ -228,6 +304,23 @@ func intToPortForward(i starlark.Int) (portForward, error) {
 		return portForward{}, fmt.Errorf("portForward value %v is not in the range for a port [0-65535]", n)
 	}
 	return portForward{local: int(n)}, nil
+}
+
+func stringToPortForward(s starlark.String) (portForward, error) {
+	parts := strings.SplitN(string(s), ":", 2)
+	local, err := strconv.Atoi(parts[0])
+	if err != nil || local < 0 || local > 65535 {
+		return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[0])
+	}
+
+	var container int
+	if len(parts) == 2 {
+		container, err = strconv.Atoi(parts[1])
+		if err != nil || container < 0 || container > 65535 {
+			return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[1])
+		}
+	}
+	return portForward{local: local, container: container}, nil
 }
 
 func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward {

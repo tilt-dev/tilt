@@ -13,7 +13,7 @@ import (
 
 type GlobalYAMLBuildController struct {
 	disabledForTesting     bool
-	lastGlobalYAMLManifest model.YAMLManifest
+	lastGlobalYAMLManifest model.Manifest
 	k8sClient              k8s.Client
 }
 
@@ -32,7 +32,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 	m := state.GlobalYAML
 	st.RUnlockState()
 
-	if m.K8sYAML() != c.lastGlobalYAMLManifest.K8sYAML() {
+	if m.K8sTarget().YAML != c.lastGlobalYAMLManifest.K8sTarget().YAML {
 		c.lastGlobalYAMLManifest = m
 		st.Dispatch(GlobalYAMLApplyStartedAction{})
 
@@ -46,8 +46,8 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 	}
 }
 
-func handleGlobalYamlChange(ctx context.Context, m model.YAMLManifest, kCli k8s.Client) error {
-	entities, err := k8s.ParseYAMLFromString(m.K8sYAML())
+func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Client) error {
+	entities, err := k8s.ParseYAMLFromString(m.K8sTarget().YAML)
 	if err != nil {
 		return errors.Wrap(err, "Error parsing global_yaml")
 	}

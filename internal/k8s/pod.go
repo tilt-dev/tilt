@@ -112,7 +112,7 @@ func NodeIDFromPod(pod *v1.Pod) NodeID {
 
 func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
 	jsonPath := "-o=jsonpath={.spec.nodeName}"
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", podID.String(), jsonPath})
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, k.kubeContext, []string{"get", "pods", podID.String(), jsonPath})
 
 	if err != nil {
 		return NodeID(""), errors.Wrapf(err, "error finding node for pod '%s':\nstderr: '%s'", podID.String(), stderr)
@@ -162,7 +162,7 @@ func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName str
 	}
 	args = append(args, jsonPath)
 
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, args)
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, k.kubeContext, args)
 
 	if err != nil {
 		return PodID(""), errors.Wrapf(err, "error finding app with %s:\nstderr: '%s'", filterDesc, stderr)

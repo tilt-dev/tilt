@@ -4,6 +4,17 @@ Frequently Asked Questions
 Troubleshooting
 ----------------------------
 
+### Q: When I run `tilt version`, I see "template engine not found for: version". What do I do?
+
+There is another project called Tilt for
+[developing Ruby templates](https://github.com/rtomayko/tilt).
+
+You're accidentally running that Tilt instead.
+
+Common fixes include deleting the other Tilt, always using an absolute path, or
+renaming Tilt to avoid the conflict. Tilt is a static binary so it is OK to
+rename it.
+
 ### Q: I'm getting push errors like "unauthorized: You don't have the needed permissions". What do I do?
 
 If Tilt is trying to do a push, that means it thinks you wanted to deploy to a

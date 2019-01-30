@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
@@ -74,7 +76,11 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 		}
 	}
 	for _, p := range m.IgnoredLocalDirectories() {
-		matchers = append(matchers, directoryMatcher{p})
+		dm, err := newDirectoryMatcher(p)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating directory matcher")
+		}
+		matchers = append(matchers, dm)
 	}
 
 	// Filter out spurious changes that we don't want to rebuild on, like IDE
@@ -128,6 +134,16 @@ func (m tempBrokenSymlinkMatcher) Matches(path string, isDir bool) (bool, error)
 
 type directoryMatcher struct {
 	dir string
+}
+
+var _ model.PathMatcher = directoryMatcher{}
+
+func newDirectoryMatcher(dir string) (directoryMatcher, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return directoryMatcher{}, errors.Wrapf(err, "failed to get abs path of '%s'", dir)
+	}
+	return directoryMatcher{dir}, nil
 }
 
 func (d directoryMatcher) Matches(p string, isDir bool) (bool, error) {

@@ -22,7 +22,7 @@ func NewContainerUpdater(dCli docker.Client) *ContainerUpdater {
 	return &ContainerUpdater{dCli: dCli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []PathMapping, filter model.PathMatcher, steps []model.Cmd, w io.Writer) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []PathMapping, filter model.PathMatcher, steps []model.Cmd, hotReload bool, w io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
 
@@ -61,15 +61,17 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	for _, s := range steps {
 		err = r.dCli.ExecInContainer(ctx, cID, s, w)
 		if err != nil {
-			exitErr, isExitErr := err.(docker.ExitError)
-			if isExitErr {
-				return UserBuildFailure{ExitCode: exitErr.ExitCode}
-			}
-			return errors.Wrapf(err, "executing step %v on container %s", s.Argv, cID.ShortStr())
+			return WrapContainerExecError(err, cID, s)
 		}
 	}
 
+	if hotReload {
+		logger.Get(ctx).Debugf("Hot reload on, skipping container restart: %s", cID.ShortStr())
+		return nil
+	}
+
 	// Restart container so that entrypoint restarts with the updated files etc.
+	logger.Get(ctx).Debugf("Restarting container: %s", cID.ShortStr())
 	err = r.dCli.ContainerRestartNoWait(ctx, cID.String())
 	if err != nil {
 		return errors.Wrap(err, "ContainerRestart")

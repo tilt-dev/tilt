@@ -69,8 +69,8 @@ type Resource struct {
 	PathsWatched       []string
 	LastDeployTime     time.Time
 
-	BuildHistory []model.BuildStatus
-	CurrentBuild model.BuildStatus
+	BuildHistory []model.BuildRecord
+	CurrentBuild model.BuildRecord
 
 	PendingBuildReason model.BuildReason
 	PendingBuildEdits  []string
@@ -83,6 +83,8 @@ type Resource struct {
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
+
+	IsTiltfile bool
 }
 
 func (r Resource) DockerComposeTarget() DCResourceInfo {
@@ -124,9 +126,9 @@ func (r Resource) IsYAML() bool {
 	return ok
 }
 
-func (r Resource) LastBuild() model.BuildStatus {
+func (r Resource) LastBuild() model.BuildRecord {
 	if len(r.BuildHistory) == 0 {
-		return model.BuildStatus{}
+		return model.BuildRecord{}
 	}
 	return r.BuildHistory[0]
 }

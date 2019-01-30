@@ -33,7 +33,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 || len(iTargets) != 1 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf(
-			"LocalContainerBuildAndDeployer requires example one image spec and one k8s deploy spec")
+			"LocalContainerBuildAndDeployer requires exactly one image spec and one k8s deploy spec")
 	}
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
@@ -77,7 +77,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	// TODO - use PipelineState here when we actually do pipeline output for container builds
 	writer := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(iTarget), boiledSteps, writer)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(iTarget), boiledSteps, fbInfo.HotReload, writer)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return store.BuildResultSet{}, WrapDontFallBackError(err)

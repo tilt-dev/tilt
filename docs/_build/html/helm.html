@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Example Projects" href="example_projects.html" />
+    <link rel="next" title="Docker Compose" href="docker_compose.html" />
     <link rel="prev" title="Skaffold" href="skaffold.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
@@ -98,26 +98,22 @@
 <li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Helm</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#further-customization">Further Customization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
-</ul>
-<p class="caption"><span class="caption-text">Appendix</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Helm</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#built-in-support">Built-in Support</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#further-customization">Further Customization</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -191,13 +187,9 @@
             
   <div class="section" id="helm">
 <h1>Helm<a class="headerlink" href="#helm" title="Permalink to this headline">¶</a></h1>
-<p>This doc supplements our <a class="reference external" href="tutorial.html">Tutorial</a> for projects that currently use Helm.</p>
-<div class="section" id="built-in-support">
-<h2>Built-in Support<a class="headerlink" href="#built-in-support" title="Permalink to this headline">¶</a></h2>
-<p>Tilt supports Helm out-of-the-box. The <code class="docutils literal notranslate"><span class="pre">helm</span></code> function runs <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">template</span></code> on a chart directory and returns the generated yaml.</p>
+<p>Tilt supports Helm out-of-the-box. The <code class="docutils literal notranslate"><span class="pre">helm</span></code> function runs <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">template</span></code> on a chart directory and returns the generated yaml. Use this function in the Deploy step of our <a class="reference external" href="tutorial.html">Tutorial</a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;path/to/chart&#39;</span><span class="p">))</span>
 </pre></div>
-</div>
 </div>
 <div class="section" id="further-customization">
 <h2>Further Customization<a class="headerlink" href="#further-customization" title="Permalink to this headline">¶</a></h2>
@@ -217,7 +209,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="example_projects.html" class="btn btn-neutral float-right" title="Example Projects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="docker_compose.html" class="btn btn-neutral float-right" title="Docker Compose" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="skaffold.html" class="btn btn-neutral" title="Skaffold" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

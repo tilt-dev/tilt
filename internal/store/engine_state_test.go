@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -23,16 +24,17 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 			},
 		}),
 	)
-	state := newState([]model.Manifest{m}, model.YAMLManifest{})
+	state := newState([]model.Manifest{m}, model.Manifest{})
 	ms := state.ManifestTargets[m.Name].State
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
-	ms.BuildHistory = []model.BuildStatus{
+	ms.BuildHistory = []model.BuildRecord{
 		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
 	}
-	ms.PendingFileChanges = map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
+	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
+		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 
-	if !assert.Equal(t, 1, len(v.Resources)) {
+	if !assert.Equal(t, 2, len(v.Resources)) {
 		return
 	}
 
@@ -53,7 +55,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 			{LocalPort: 7000, ContainerPort: 5001},
 		},
 	})
-	state := newState([]model.Manifest{m}, model.YAMLManifest{})
+	state := newState([]model.Manifest{m}, model.Manifest{})
 	v := StateToView(*state)
 	assert.Equal(t,
 		[]string{"http://localhost:7000/", "http://localhost:8000/"},
@@ -61,20 +63,20 @@ func TestStateToViewPortForwards(t *testing.T) {
 }
 
 func TestStateViewYAMLManifestNoYAML(t *testing.T) {
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), "", []string{}, []string{})
-	state := newState([]model.Manifest{}, m)
-	v := StateToView(*state)
-
-	assert.Equal(t, 0, len(v.Resources))
-}
-
-func TestStateViewYAMLManifestWithYAML(t *testing.T) {
-	yaml := "yamlyaml"
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"}, []string{})
+	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "")
 	state := newState([]model.Manifest{}, m)
 	v := StateToView(*state)
 
 	assert.Equal(t, 1, len(v.Resources))
+}
+
+func TestStateViewYAMLManifestWithYAML(t *testing.T) {
+	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "yamlyaml")
+	state := newState([]model.Manifest{}, m)
+	state.ConfigFiles = []string{"global.yaml"}
+	v := StateToView(*state)
+
+	assert.Equal(t, 2, len(v.Resources))
 
 	r := v.Resources[0]
 	assert.Equal(t, nil, r.LastBuild().Error)
@@ -90,12 +92,12 @@ func TestMostRecentPod(t *testing.T) {
 }
 
 func TestEmptyState(t *testing.T) {
-	es := newState([]model.Manifest{}, model.YAMLManifest{})
+	es := newState([]model.Manifest{}, model.Manifest{})
 
 	v := StateToView(*es)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
 
-	es.LastTiltfileBuild = model.BuildStatus{
+	es.LastTiltfileBuild = model.BuildRecord{
 		StartTime:  time.Now(),
 		FinishTime: time.Now(),
 	}
@@ -103,8 +105,9 @@ func TestEmptyState(t *testing.T) {
 	assert.Equal(t, emptyTiltfileMsg, v.TiltfileErrorMessage)
 
 	yaml := "yamlyaml"
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"}, []string{})
+	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", yaml)
 	nes := newState([]model.Manifest{}, m)
+	nes.ConfigFiles = []string{"global.yaml"}
 	v = StateToView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
 
@@ -119,13 +122,13 @@ func TestEmptyState(t *testing.T) {
 		}),
 	)
 
-	nes = newState([]model.Manifest{m2}, model.YAMLManifest{})
+	nes = newState([]model.Manifest{m2}, model.Manifest{})
 	v = StateToView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {
-	es := newState([]model.Manifest{}, model.YAMLManifest{})
+	es := newState([]model.Manifest{}, model.Manifest{})
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +142,7 @@ func TestRelativeTiltfilePath(t *testing.T) {
 	assert.Equal(t, "Tiltfile", actual)
 }
 
-func newState(manifests []model.Manifest, YAMLManifest model.YAMLManifest) *EngineState {
+func newState(manifests []model.Manifest, YAMLManifest model.Manifest) *EngineState {
 	ret := NewState()
 	for _, m := range manifests {
 		ret.ManifestTargets[m.Name] = NewManifestTarget(m)

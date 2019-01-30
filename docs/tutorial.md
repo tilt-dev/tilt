@@ -1,8 +1,7 @@
-# Tutorial
+# Tutorial: First 15 Minutes
+This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you've already [installed Tilt](install.html). Before you begin, you may want to join the `#tilt` channel in [Kubernetes Slack](http://slack.k8s.io). We offer technical support, and can chat about your use case to help you get the most out of Tilt.
 
-This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you've already [installed Tilt](install.html). Before you begin, you may want to join the `#tilt` channel in [Kubernetes Slack](http://slack.k8s.io) for technical or moral support.
-
-Start by `cd`'ing into a project you can already build and deploy. (We have some [example projects](example_projects.html) if you just want to try Tilt). Open the appendix for [skaffold](skaffold.html), [docker-compose](docker_compose_alpha.html) or [helm](helm.html) if you use one of those tools.
+Start by `cd`'ing into a project you can already build and deploy.
 
 ## Example Tiltfile
 At the end of this guide, your Tiltfile will look something like this:

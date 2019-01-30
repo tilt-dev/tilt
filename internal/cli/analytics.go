@@ -10,6 +10,7 @@ import (
 )
 
 const tiltAppName = "tilt"
+const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
 
 var analyticsService analytics.Analytics
 
@@ -17,10 +18,14 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	var analyticsCmd *cobra.Command
 	var err error
 
-	tagsOption := analytics.WithGlobalTags(map[string]string{
+	options := []analytics.Option{}
+	options = append(options, analytics.WithGlobalTags(map[string]string{
 		"version": buildInfo().Version,
-	})
-	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName, tagsOption)
+	}))
+	if isAnalyticsDisabledFromEnv() {
+		options = append(options, analytics.WithEnabled(false))
+	}
+	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName, options...)
 	if err != nil {
 		return err
 	}
@@ -68,6 +73,10 @@ func initAnalytics(rootCmd *cobra.Command) error {
 
 	rootCmd.AddCommand(analyticsCmd)
 	return nil
+}
+
+func isAnalyticsDisabledFromEnv() bool {
+	return os.Getenv(disableAnalyticsEnvVar) != ""
 }
 
 func provideAnalytics() (analytics.Analytics, error) {

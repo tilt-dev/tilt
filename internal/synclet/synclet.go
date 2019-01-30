@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -72,11 +72,7 @@ func (s Synclet) execCmds(ctx context.Context, containerId container.ID, cmds []
 		l := logger.Get(ctx)
 		err := s.dCli.ExecInContainer(ctx, containerId, c, l.Writer(logger.InfoLvl))
 		if err != nil {
-			exitError, isExitError := err.(docker.ExitError)
-			if isExitError {
-				return build.UserBuildFailure{ExitCode: exitError.ExitCode}
-			}
-			return err
+			return build.WrapContainerExecError(err, containerId, c)
 		}
 	}
 	return nil

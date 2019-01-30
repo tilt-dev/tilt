@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/docker"
 
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -27,7 +28,7 @@ func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.loadErrString("no such file")
+	f.loadErrString("No Tiltfile found at")
 }
 
 func TestEmpty(t *testing.T) {
@@ -65,6 +66,27 @@ k8s_resource('foo', 'foo.yaml')
 
 	f.assertManifest("foo",
 		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+// I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
+func TestLocalImageRef(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+docker_build('fooimage', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.load()
+
+	f.assertManifest("foo",
+		db(imageNormalized("fooimage")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
@@ -151,7 +173,28 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	f.assertManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
+		deployment("foo"),
+	)
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+func TestFastBuildHotReload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi") \
+  .hot_reload()
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertManifest("foo",
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
 	)
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
@@ -383,13 +426,22 @@ type portForwardCase struct {
 	name     string
 	expr     string
 	expected []model.PortForward
+	errorMsg string
 }
 
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
-		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}},
-		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}},
-		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}},
+		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}, ""},
+		{"value_local_negative", "-1", nil, "not in the range for a port"},
+		{"value_local_large", "8000000", nil, "not in the range for a port"},
+		{"value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}, ""},
+		{"value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}, ""},
+		{"value_string_garbage", "'garbage'", nil, "not in the range for a port"},
+		{"value_string_3x80", "'80:80:80'", nil, "not in the range for a port"},
+		{"value_string_empty", "''", nil, "not in the range for a port"},
+		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
 	}
 
 	for _, c := range portForwardCases {
@@ -403,6 +455,12 @@ k8s_resource('foo', 'foo.yaml', port_forwards=EXPR)
 `
 			s = strings.Replace(s, "EXPR", c.expr, -1)
 			f.file("Tiltfile", s)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
 			f.load()
 			f.assertManifest("foo",
 				c.expected,
@@ -555,7 +613,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -810,8 +868,8 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	m := f.assertManifest("foo", db(image("gcr.io/foo")))
-	assert.True(t, m.ImageTarget.IsStaticBuild())
-	assert.False(t, m.ImageTarget.IsFastBuild())
+	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
 func TestEmptyDockerfileFastBuild(t *testing.T) {
@@ -825,8 +883,49 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	m := f.assertManifest("foo", db(image("gcr.io/foo")))
-	assert.False(t, m.ImageTarget.IsStaticBuild())
-	assert.True(t, m.ImageTarget.IsFastBuild())
+	assert.False(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.True(t, m.ImageTargetAt(0).IsFastBuild())
+}
+
+func TestSanchoSidecar(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("k8s.yaml", testyaml.SanchoSidecarYAML)
+	f.file("Tiltfile", `
+k8s_yaml('k8s.yaml')
+docker_build('gcr.io/some-project-162817/sancho', '.')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
+`)
+	f.load()
+
+	assert.Equal(t, 1, len(f.manifests))
+	m := f.assertManifest("sancho")
+	assert.Equal(t, 2, len(m.ImageTargets))
+	assert.Equal(t, "gcr.io/some-project-162817/sancho",
+		m.ImageTargetAt(0).Ref.String())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
+		m.ImageTargetAt(1).Ref.String())
+}
+
+func TestSanchoRedisSidecar(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("k8s.yaml", testyaml.SanchoRedisSidecarYAML)
+	f.file("Tiltfile", `
+k8s_yaml('k8s.yaml')
+docker_build('gcr.io/some-project-162817/sancho', '.')
+`)
+	f.load()
+
+	assert.Equal(t, 1, len(f.manifests))
+	m := f.assertManifest("sancho")
+	assert.Equal(t, 1, len(m.ImageTargets))
+	assert.Equal(t, "gcr.io/some-project-162817/sancho",
+		m.ImageTargetAt(0).Ref.String())
 }
 
 type fixture struct {
@@ -836,7 +935,7 @@ type fixture struct {
 
 	// created by load
 	manifests    []model.Manifest
-	yamlManifest model.YAMLManifest
+	yamlManifest model.Manifest
 	configFiles  []string
 }
 
@@ -911,7 +1010,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -921,7 +1020,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
@@ -942,13 +1041,13 @@ func (f *fixture) gitInit(path string) {
 }
 
 func (f *fixture) assertNoYAMLManifest(name string) {
-	assert.Equal(f.t, model.YAMLManifest{}, f.yamlManifest)
+	assert.Equal(f.t, model.Manifest{}, f.yamlManifest)
 }
 
 func (f *fixture) assertYAMLManifest(resNames ...string) {
 	assert.Equal(f.t, unresourcedName, f.yamlManifest.ManifestName().String())
 
-	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sYAML()))
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sTarget().YAML))
 	assert.NoError(f.t, err)
 
 	entityNames := make([]string, len(entities))
@@ -970,8 +1069,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
-			caches := m.ImageTarget.CachePaths()
-			ref := m.ImageTarget.Ref
+			caches := m.ImageTargetAt(0).CachePaths()
+			ref := m.ImageTargetAt(0).Ref
 			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
@@ -991,7 +1090,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			image := m.ImageTarget
+			image := m.ImageTargetAt(0)
 			ref := image.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
@@ -1017,6 +1116,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 					steps = steps[1:]
 					assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
 					assert.Equal(f.t, matcher.triggers, step.Triggers)
+				case hotReloadHelper:
+					assert.Equal(f.t, matcher.on, fbInfo.HotReload)
 				default:
 					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -1056,7 +1157,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 			expectedFilter := opt.missing
-			filter := ignore.CreateBuildContextFilter(m.ImageTarget)
+			filter := ignore.CreateBuildContextFilter(m.ImageTargetAt(0))
 			if m.IsDC() {
 				filter = ignore.CreateBuildContextFilter(m.DockerComposeTarget())
 			}
@@ -1066,7 +1167,7 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				if m.IsDC() {
 					filter, err = ignore.CreateFileChangeFilter(m.DockerComposeTarget())
 				} else {
-					filter, err = ignore.CreateFileChangeFilter(m.ImageTarget)
+					filter, err = ignore.CreateFileChangeFilter(m.ImageTargetAt(0))
 				}
 				if err != nil {
 					f.t.Fatalf("Error creating file change filter: %v", err)
@@ -1202,6 +1303,10 @@ func image(ref string) imageHelper {
 	return imageHelper{ref: ref}
 }
 
+func imageNormalized(ref string) imageHelper {
+	return imageHelper{ref: docker.MustNormalizeRefName(ref)}
+}
+
 // match a docker_build
 type dbHelper struct {
 	image    imageHelper
@@ -1245,6 +1350,14 @@ type runHelper struct {
 
 func run(cmd string, triggers ...string) runHelper {
 	return runHelper{cmd, triggers}
+}
+
+type hotReloadHelper struct {
+	on bool
+}
+
+func hotReload(on bool) hotReloadHelper {
+	return hotReloadHelper{on: on}
 }
 
 // useful scenarios to setup

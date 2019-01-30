@@ -3,9 +3,11 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
@@ -93,7 +95,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string) error {
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -111,7 +113,13 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching)
+	var tlw io.Writer
+	if useActionWriter {
+		tlw = NewTiltfileLogWriter(u.store)
+	} else {
+		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
+	}
+	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
@@ -152,7 +160,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case BuildLogAction:
 		handleBuildLogAction(state, action)
 	case BuildCompleteAction:
-		err = handleCompletedBuild(ctx, state, action)
+		err = handleBuildCompleted(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case LogAction:
@@ -175,6 +183,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
+	case TiltfileLogAction:
+		handleTiltfileLogAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -191,7 +201,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		return
 	}
 
-	bs := model.BuildStatus{
+	bs := model.BuildRecord{
 		Edits:     append([]string{}, action.FilesChanged...),
 		StartTime: action.StartTime,
 		Reason:    action.Reason,
@@ -218,7 +228,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	removeFromTriggerQueue(state, mn)
 }
 
-func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
+func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -240,15 +250,12 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	ms := mt.State
-	manifest := mt.Manifest
-	result := cb.Result[manifest.ImageTarget.ID()]
-
 	bs := ms.CurrentBuild
 	bs.Error = err
 	bs.FinishTime = time.Now()
 	ms.AddCompletedBuild(bs)
 
-	ms.CurrentBuild = model.BuildStatus{}
+	ms.CurrentBuild = model.BuildRecord{}
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
@@ -263,10 +270,11 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		}
 	} else {
 		// Remove pending file changes that were consumed by this build.
-		for file, modTime := range ms.PendingFileChanges {
-			if modTime.Before(bs.StartTime) {
-				delete(ms.PendingFileChanges, file)
-
+		for _, status := range ms.BuildStatuses {
+			for file, modTime := range status.PendingFileChanges {
+				if modTime.Before(bs.StartTime) {
+					delete(status.PendingFileChanges, file)
+				}
 			}
 		}
 
@@ -276,7 +284,10 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		ms.LastSuccessfulDeployTime = time.Now()
-		ms.LastSuccessfulResult = result
+
+		for id, result := range cb.Result {
+			ms.MutableBuildStatus(id).LastSuccessfulResult = result
+		}
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
@@ -284,8 +295,29 @@ func handleCompletedBuild(ctx context.Context, engineState *store.EngineState, c
 		}
 	}
 
+	if mt.Manifest.IsDC() {
+		state, _ := ms.ResourceState.(dockercompose.State)
+
+		cid := cb.Result.AsOneResult().ContainerID
+		if cid != "" {
+			state = state.WithContainerID(cid)
+		}
+		// If we have a container ID and no status yet, set status to Up
+		// (this is an expected case when we run docker-compose up while the service
+		// is already running, and we won't get an event to tell us so).
+		// If the container is crashing we will get an event subsequently.
+		isFirstBuild := cid != "" && state.Status == ""
+		if isFirstBuild {
+			state = state.WithStatus(dockercompose.StatusUp)
+		}
+
+		ms.ResourceState = state
+	}
+
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
+
+		result := cb.Result.AsOneResult()
 		if result.ContainerID != "" {
 			ms.ExpectedContainerID = result.ContainerID
 
@@ -362,8 +394,9 @@ func handleFSEvent(
 		return
 	}
 
+	status := ms.MutableBuildStatus(event.targetID)
 	for _, f := range event.files {
-		ms.PendingFileChanges[f] = time.Now()
+		status.PendingFileChanges[f] = time.Now()
 	}
 }
 
@@ -399,6 +432,7 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
+	state.CurrentTiltfileBuild = model.BuildRecord{}
 	state.PendingConfigFileChanges = make(map[string]bool)
 }
 
@@ -409,7 +443,7 @@ func handleConfigsReloaded(
 ) {
 	manifests := event.Manifests
 
-	status := model.BuildStatus{
+	status := model.BuildRecord{
 		StartTime:  event.StartTime,
 		FinishTime: event.FinishTime,
 		Error:      event.Err,
@@ -433,8 +467,9 @@ func handleConfigsReloaded(
 			mt.Manifest = m
 
 			// Manifest has changed, ensure we do an image build so that we apply the changes
-			mt.State.LastSuccessfulResult = store.BuildResult{}
-			mt.State.PendingManifestChange = time.Now()
+			state := mt.State
+			state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+			state.PendingManifestChange = time.Now()
 		}
 		state.UpsertManifestTarget(mt)
 	}
@@ -470,8 +505,21 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	ms := mt.State
 	manifest := mt.Manifest
 
-	imageID, err := k8s.FindImageNamedTaggedMatching(pod.Spec, manifest.ImageTarget.Ref)
-	if err != nil || imageID == nil {
+	var imageID reference.NamedTagged
+	for _, iTarget := range manifest.ImageTargets {
+		var err error
+		imageID, err = k8s.FindImageNamedTaggedMatching(pod.Spec, iTarget.Ref)
+		if err != nil {
+			// Ditto, this could happen if we get a pod from an old version of the manifest.
+			return nil, nil
+		}
+
+		if imageID != nil {
+			break
+		}
+	}
+
+	if imageID == nil {
 		// Ditto, this could happen if we get a pod from an old version of the manifest.
 		return nil, nil
 	}
@@ -575,11 +623,20 @@ func handlePodEvent(ctx context.Context, state *store.EngineState, pod *v1.Pod) 
 	defer prunePods(ms)
 
 	// Check if the container is ready.
-	cStatus, err := k8s.ContainerMatching(pod, manifest.ImageTarget.Ref)
-	if err != nil {
-		logger.Get(ctx).Debugf("Error matching container: %v", err)
-		return
-	} else if cStatus.Name == "" {
+	var cStatus v1.ContainerStatus
+	var err error
+	for _, iTarget := range manifest.ImageTargets {
+		cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error matching container: %v", err)
+			return
+		}
+		if cStatus.Name != "" {
+			break
+		}
+	}
+
+	if cStatus.Name == "" {
 		return
 	}
 
@@ -714,12 +771,11 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.GlobalYAML = action.GlobalYAMLManifest
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
-	status := model.BuildStatus{
+	status := model.BuildRecord{
 		StartTime:  action.StartTime,
 		FinishTime: action.FinishTime,
 		Error:      action.Err,
 		Reason:     model.BuildReasonFlagInit,
-		// TODO(nick): Send tiltfile stdout to the build status log
 	}
 	setLastTiltfileBuild(engineState, status)
 
@@ -733,10 +789,10 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	return nil
 }
 
-func setLastTiltfileBuild(state *store.EngineState, status model.BuildStatus) {
+func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
-		log := []byte(fmt.Sprintf("Tiltfile error:\n%v\n", status.Error))
-		handleLogAction(state, LogAction{Log: log})
+		log := []byte(fmt.Sprintf("%v\n", status.Error))
+		handleTiltfileLogAction(state, TiltfileLogAction{log})
 	}
 	state.LastTiltfileBuild = status
 }
@@ -801,4 +857,8 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
 	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
+}
+
+func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
+	state.CurrentTiltfileBuild.Log = append(state.CurrentTiltfileBuild.Log, action.Log...)
 }

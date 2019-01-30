@@ -1,5 +1,5 @@
 # Skaffold
-This doc supplements our [Tutorial](tutorial.html) for projects that currently use Skaffold. It compares Skaffold to Tilt and translates a Skaffold configuration to a `Tiltfile`.
+Tilt is a great upgrade to [Skaffold](https://skaffold.dev) for local dev. This doc compares Tilt to Skaffold and describes how to translate your configuration, which makes our 15 Minute [Tutorial](tutorial.html) even easier.
 
 ## Comparison
 * Tilt's UI shows you the status at a glance, so errors can't scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).

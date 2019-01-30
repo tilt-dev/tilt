@@ -51,7 +51,7 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env) (UpdateMode, error) {
 
 	mode := UpdateMode(flag)
 	if mode == UpdateModeContainer && !env.IsLocalCluster() {
-		return "", fmt.Errorf("Update mode %q is only valid with local clusters like Minikube or DockerForDesktop", flag)
+		return "", fmt.Errorf("Update mode %q is only valid with local clusters like Docker For Mac, Minikube, and MicroK8s", flag)
 	}
 
 	return mode, nil

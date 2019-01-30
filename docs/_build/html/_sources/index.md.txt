@@ -8,7 +8,7 @@ configured for your team.
 
 Tilt watches your files for edits, automatically builds your container images,
 and applies any changes to bring your environment
-up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose`.
+up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose up`.
 
 The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
@@ -72,6 +72,10 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
    install
    tutorial
+   skaffold
+   helm
+   docker_compose
+   example_projects
 
 .. toctree::
    :maxdepth: 1
@@ -80,15 +84,6 @@ We expect everyone in our community (users, contributors, and employees alike) t
    tiltfile_concepts
    fast_build
    api
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Appendix
-
-   skaffold
-   helm
-   example_projects
-   docker_compose_alpha
 
 .. toctree::
    :maxdepth: 1

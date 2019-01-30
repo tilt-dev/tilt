@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -35,7 +36,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, err := tiltfile.Load(ctx, c.fileName, nil)
+	manifests, globalYaml, _, err := tiltfile.Load(ctx, c.fileName, nil, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sYAML())
+	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sTarget().YAML)
 	if err != nil {
 		return errors.Wrap(err, "Parsing global YAML")
 	}

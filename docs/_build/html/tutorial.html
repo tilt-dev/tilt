@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial &mdash; Tilt  documentation</title>
+  <title>Tutorial: First 15 Minutes &mdash; Tilt  documentation</title>
   
 
   
@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tiltfile Concepts" href="tiltfile_concepts.html" />
+    <link rel="next" title="Skaffold" href="skaffold.html" />
     <link rel="prev" title="Install" href="install.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
@@ -100,28 +100,25 @@
 <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial: First 15 Minutes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#example-tiltfile">Example Tiltfile</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hello-world">Hello World</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-1-deploy">Step 1: Deploy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-2-build">Step 2: Build</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-3-watch-optional">Step 3: Watch (Optional)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#setup-complete">Setup Complete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#good-to-go">Good To Go</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
-</ul>
-<p class="caption"><span class="caption-text">Appendix</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
-<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -172,7 +169,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Tutorial</li>
+      <li>Tutorial: First 15 Minutes</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -193,10 +190,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="tutorial">
-<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
-<p>This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you’ve already <a class="reference external" href="install.html">installed Tilt</a>. Before you begin, you may want to join the <code class="docutils literal notranslate"><span class="pre">#tilt</span></code> channel in <a class="reference external" href="http://slack.k8s.io">Kubernetes Slack</a> for technical or moral support.</p>
-<p>Start by <code class="docutils literal notranslate"><span class="pre">cd</span></code>’ing into a project you can already build and deploy. (We have some <a class="reference external" href="example_projects.html">example projects</a> if you just want to try Tilt). Open the appendix for <a class="reference external" href="skaffold.html">skaffold</a>, <a class="reference external" href="docker_compose_alpha.html">docker-compose</a> or <a class="reference external" href="helm.html">helm</a> if you use one of those tools.</p>
+  <div class="section" id="tutorial-first-15-minutes">
+<h1>Tutorial: First 15 Minutes<a class="headerlink" href="#tutorial-first-15-minutes" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you’ve already <a class="reference external" href="install.html">installed Tilt</a>. Before you begin, you may want to join the <code class="docutils literal notranslate"><span class="pre">#tilt</span></code> channel in <a class="reference external" href="http://slack.k8s.io">Kubernetes Slack</a>. We offer technical support, and can chat about your use case to help you get the most out of Tilt.</p>
+<p>Start by <code class="docutils literal notranslate"><span class="pre">cd</span></code>’ing into a project you can already build and deploy.</p>
 <div class="section" id="example-tiltfile">
 <h2>Example Tiltfile<a class="headerlink" href="#example-tiltfile" title="Permalink to this headline">¶</a></h2>
 <p>At the end of this guide, your Tiltfile will look something like this:</p>
@@ -256,8 +253,8 @@
 </div>
 <p>You can also use <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> to change the resource grouping, or forward multiple ports. Cf. the <a class="reference external" href="tiltfile_concepts.html#resources">Resources</a> section of <code class="docutils literal notranslate"><span class="pre">Tiltfile</span> <span class="pre">Concepts</span></code>.</p>
 </div>
-<div class="section" id="setup-complete">
-<h2>Setup Complete<a class="headerlink" href="#setup-complete" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="good-to-go">
+<h2>Good To Go<a class="headerlink" href="#good-to-go" title="Permalink to this headline">¶</a></h2>
 <p>Tilt is now setup for your project. Try exploring Tilt’s UI (there’s a context-sensitive legend in the bottom right). Introduce a build error and then a runtime crash; see Tilt’s UI respond and surface the relevant problem.</p>
 <p>We’ve love to <a class="reference external" href="index.html#community">hear from you</a>.</p>
 <p>You can read more about <a class="reference external" href="tiltfile_concepts.html">Tiltfile Concepts</a> or <a class="reference external" href="fast_build.html">Optimizing your Builds</a>.</p>
@@ -272,7 +269,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tiltfile_concepts.html" class="btn btn-neutral float-right" title="Tiltfile Concepts" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="skaffold.html" class="btn btn-neutral float-right" title="Skaffold" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="install.html" class="btn btn-neutral" title="Install" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

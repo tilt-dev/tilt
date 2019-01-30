@@ -34,6 +34,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
+	NewImageAndCacheBuilder,
 	DefaultBuildOrder,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
@@ -81,6 +82,21 @@ func provideImageBuildAndDeployer(
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		wire.Value(k8s.Env(k8s.EnvDockerDesktop)),
+		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		build.ProvideClock,
+	)
+
+	return nil, nil
+}
+
+func provideDockerComposeBuildAndDeployer(
+	ctx context.Context,
+	dcCli dockercompose.DockerComposeClient,
+	dCli docker.Client,
+	dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
+	wire.Build(
+		DeployerWireSetTest,
+		wire.Value(k8s.Env(k8s.EnvUnknown)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
 	)

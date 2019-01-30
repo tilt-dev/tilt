@@ -8,7 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type ErrorAction struct {
@@ -81,7 +81,7 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 type InitAction struct {
 	WatchMounts        bool
 	Manifests          []model.Manifest
-	GlobalYAMLManifest model.YAMLManifest
+	GlobalYAMLManifest model.Manifest
 	TiltfilePath       string
 	ConfigFiles        []string
 	InitManifests      []model.ManifestName
@@ -139,7 +139,7 @@ func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
 	Manifests   []model.Manifest
-	GlobalYAML  model.YAMLManifest
+	GlobalYAML  model.Manifest
 	ConfigFiles []string
 
 	StartTime  time.Time
@@ -161,3 +161,9 @@ type DockerComposeLogAction struct {
 }
 
 func (DockerComposeLogAction) Action() {}
+
+type TiltfileLogAction struct {
+	Log []byte
+}
+
+func (TiltfileLogAction) Action() {}

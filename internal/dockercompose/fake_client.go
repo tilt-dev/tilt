@@ -1,32 +1,45 @@
 package dockercompose
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
 type FakeDCClient struct {
-	t *testing.T
+	t   *testing.T
+	ctx context.Context
 
-	RunLogOutput map[model.TargetName]string
-	eventJson    chan string
+	RunLogOutput      map[model.TargetName]<-chan string
+	ContainerIdOutput container.ID
+	eventJson         chan string
+
+	UpCalls []UpCall
 }
 
-func NewFakeDockerComposeClient(t *testing.T) *FakeDCClient {
+// Represents a single call to Up
+type UpCall struct {
+	PathToConfig string
+	ServiceName  model.TargetName
+	ShouldBuild  bool
+}
+
+func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
 	return &FakeDCClient{
 		t:            t,
+		ctx:          ctx,
 		eventJson:    make(chan string, 100),
-		RunLogOutput: make(map[model.TargetName]string),
+		RunLogOutput: make(map[model.TargetName]<-chan string),
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, pathToConfig string, serviceName model.TargetName, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Up(ctx context.Context, pathToConfig string, serviceName model.TargetName,
+	shouldBuild bool, stdout, stderr io.Writer) error {
+	c.UpCalls = append(c.UpCalls, UpCall{pathToConfig, serviceName, shouldBuild})
 	return nil
 }
 
@@ -36,7 +49,24 @@ func (c *FakeDCClient) Down(ctx context.Context, pathToConfig string, stdout, st
 
 func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig string, serviceName model.TargetName) (io.ReadCloser, error) {
 	output := c.RunLogOutput[serviceName]
-	return ioutil.NopCloser(bytes.NewReader([]byte(output))), nil
+	reader, writer := io.Pipe()
+	go func() {
+		done := false
+		for !done {
+			select {
+			case <-ctx.Done():
+				done = true
+			case s, ok := <-output:
+				if !ok {
+					done = true
+				} else {
+					_, _ = writer.Write([]byte(s))
+				}
+			}
+		}
+		_ = writer.Close()
+	}()
+	return reader, nil
 }
 
 func (c *FakeDCClient) StreamEvents(ctx context.Context, pathToConfig string) (<-chan string, error) {
@@ -75,4 +105,8 @@ func (c *FakeDCClient) Config(ctx context.Context, pathToConfig string) (string,
 
 func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
 	return "", nil
+}
+
+func (c *FakeDCClient) ContainerID(ctx context.Context, pathToConfig string, serviceName model.TargetName) (container.ID, error) {
+	return c.ContainerIdOutput, nil
 }

@@ -32,6 +32,12 @@ func makeBuildStatus(res view.Resource, triggerMode model.TriggerMode) buildStat
 	deployTime := time.Time{}
 	reason := model.BuildReason(0)
 
+	if res.IsTiltfile {
+		return buildStatus{
+			status: "OK",
+		}
+	}
+
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		status = "Building"
 		duration = time.Since(res.CurrentBuild.StartTime)

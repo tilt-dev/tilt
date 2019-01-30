@@ -18,7 +18,7 @@ func TestGlobalYAMLOnChange(t *testing.T) {
 
 	bc.OnChange(output.CtxForTest(), st)
 
-	assert.Equal(t, testyaml.DoggosServiceYaml, bc.lastGlobalYAMLManifest.K8sYAML())
+	assert.Equal(t, testyaml.DoggosServiceYaml, bc.lastGlobalYAMLManifest.K8sTarget().YAML)
 
 	expectedActions := []store.Action{
 		GlobalYAMLApplyStartedAction{},
@@ -33,7 +33,7 @@ func TestNoChangeToGlobalYAML(t *testing.T) {
 
 	bc.OnChange(output.CtxForTest(), st)
 
-	assert.Equal(t, testyaml.SecretYaml, bc.lastGlobalYAMLManifest.K8sYAML())
+	assert.Equal(t, testyaml.SecretYaml, bc.lastGlobalYAMLManifest.K8sTarget().YAML)
 	assert.Empty(t, st.Actions, "expect unchanged global yaml to dispatch no actions")
 }
 
@@ -45,7 +45,7 @@ func TestGlobalYamlParseError(t *testing.T) {
 
 	// even in an error case, we should update lastGlobalYAMLManifest
 	// (so we don't try to re-apply the same bad yaml multiple times)
-	assert.Equal(t, "some invalid yaml", bc.lastGlobalYAMLManifest.K8sYAML())
+	assert.Equal(t, "some invalid yaml", bc.lastGlobalYAMLManifest.K8sTarget().YAML)
 
 	if len(st.Actions) != 2 {
 		t.Errorf("expect 2 action dispatched, got %d: %#v", len(st.Actions), st.Actions)
@@ -71,7 +71,7 @@ func TestGlobalYamlFailUpsert(t *testing.T) {
 	bc.k8sClient.UpsertError = errors.New("upsert error!")
 	bc.OnChange(output.CtxForTest(), st)
 
-	assert.Equal(t, yaml, bc.lastGlobalYAMLManifest.K8sYAML())
+	assert.Equal(t, yaml, bc.lastGlobalYAMLManifest.K8sTarget().YAML)
 	if len(st.Actions) != 2 {
 		t.Errorf("expect 2 action dispatched, got %d: %#v", len(st.Actions), st.Actions)
 		return
@@ -94,7 +94,7 @@ func TestGlobalYamlFailUpsert(t *testing.T) {
 func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {
 	st := store.NewTestingStore()
 	state := store.EngineState{
-		GlobalYAML: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil, nil),
+		GlobalYAML: k8s.NewK8sOnlyManifestForTesting(model.GlobalYAMLManifestName, yaml),
 	}
 	st.SetState(state)
 	return st
@@ -109,7 +109,7 @@ func newGlobalYamlBuildControllerForTest(yaml string) *TestGlobalYAMLBuildContro
 	kc := k8s.NewFakeK8sClient()
 	return &TestGlobalYAMLBuildController{
 		GlobalYAMLBuildController: GlobalYAMLBuildController{
-			lastGlobalYAMLManifest: model.NewYAMLManifest(model.GlobalYAMLManifestName, yaml, nil, nil),
+			lastGlobalYAMLManifest: k8s.NewK8sOnlyManifestForTesting(model.GlobalYAMLManifestName, yaml),
 			k8sClient:              kc,
 		},
 		k8sClient: kc,

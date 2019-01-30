@@ -96,7 +96,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	log.SetOutput(l.Writer(logger.InfoLvl))
 
-	logOutput(fmt.Sprintf("Starting Tilt (%s)…\n", buildStamp()))
+	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
+
+	if isAnalyticsDisabledFromEnv() {
+		logOutput("Tilt analytics manually disabled by environment")
+	}
 
 	if trace {
 		traceID, err := tracer.TraceID(ctx)
@@ -144,7 +148,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName)
+		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName, c.hud)
 	})
 
 	err = g.Wait()

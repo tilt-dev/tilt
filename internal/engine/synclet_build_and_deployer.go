@@ -29,7 +29,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 || len(iTargets) != 1 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf(
-			"SyncletBuildAndDeployer requires example one image spec and one k8s deploy spec")
+			"SyncletBuildAndDeployer requires exactly one image spec and one k8s deploy spec")
 	}
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")

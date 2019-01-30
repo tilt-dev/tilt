@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
@@ -17,14 +18,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// dcResource represents a single docker-compose config file and all its associated services
-type dcResource struct {
+// dcResourceSet represents a single docker-compose config file and all its associated services
+type dcResourceSet struct {
 	configPath string
 
-	services []dcService
+	services []*dcService
 }
 
-func (dc dcResource) Empty() bool { return reflect.DeepEqual(dc, dcResource{}) }
+func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
+
+func (dc dcResourceSet) imagesUsed() map[string]bool {
+	imgs := make(map[string]bool)
+	for _, svc := range dc.services {
+		if svc.ImageRef != "" {
+			imgs[svc.ImageRef] = true
+		}
+	}
+	return imgs
+}
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPath string
@@ -46,9 +57,63 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
 	}
 
-	s.dc = dcResource{configPath: configPath, services: services}
+	s.dc = dcResourceSet{configPath: configPath, services: services}
 
 	return starlark.None, nil
+}
+
+// DCResource allows you to adjust specific settings on a DC resource that we assume
+// to be defined in a `docker_compose.yml`
+func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name string
+	var imageVal starlark.Value
+
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"name", &name,
+		"image", &imageVal, // in future this will be optional
+	); err != nil {
+		return nil, err
+	}
+
+	if name == "" {
+		return nil, fmt.Errorf("dc_resource: `name` must not be empty")
+	}
+
+	var imageRef string
+	switch imageVal := imageVal.(type) {
+	case nil:
+		return nil, fmt.Errorf("must specify an image arg (string or fast_build)")
+	case starlark.String:
+		imageRef = string(imageVal)
+	case *fastBuild:
+		imageRef = imageVal.img.ref.Name()
+	default:
+		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
+	}
+
+	svc, err := s.getDCService(name)
+	if err != nil {
+		return nil, err
+	}
+	normalized, err := docker.NormalizeRefName(imageRef)
+	if err != nil {
+		return nil, err
+	}
+	svc.ImageRef = normalized
+
+	return starlark.None, nil
+}
+
+func (s *tiltfileState) getDCService(name string) (*dcService, error) {
+	allNames := make([]string, len(s.dc.services))
+	for i, svc := range s.dc.services {
+		if svc.Name == name {
+			return svc, nil
+		}
+		allNames[i] = svc.Name
+	}
+	return nil, fmt.Errorf("no Docker Compose service found with name '%s'. "+
+		"Found these instead:\n\t%s", name, strings.Join(allNames, "; "))
 }
 
 // Go representations of docker-compose.yml
@@ -141,6 +206,10 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
+	// Ref of an image described via docker_build || fast_build call
+	// (explicitly linked to this service via dc_service call)
+	ImageRef string
+
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
 	ServiceConfig []byte
 	DfContents    []byte
@@ -203,7 +272,7 @@ func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, config
 	return result, nil
 }
 
-func parseDCConfig(ctx context.Context, configPath string) ([]dcService, error) {
+func parseDCConfig(ctx context.Context, configPath string) ([]*dcService, error) {
 	dcc := dockercompose.NewDockerComposeClient()
 	configOut, err := dcc.Config(ctx, configPath)
 	if err != nil {
@@ -221,20 +290,20 @@ func parseDCConfig(ctx context.Context, configPath string) ([]dcService, error) 
 		return nil, err
 	}
 
-	var services []dcService
+	var services []*dcService
 
 	for _, name := range svcNames {
 		svc, err := config.GetService(name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting service %s", name)
 		}
-		services = append(services, svc)
+		services = append(services, &svc)
 	}
 
 	return services, nil
 }
 
-func (s *tiltfileState) dcServiceToManifest(service dcService, dcConfigPath string) (manifest model.Manifest,
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPath: dcConfigPath,

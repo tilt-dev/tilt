@@ -3,20 +3,21 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
 type resourceSet struct {
-	dc  dcResource // currently only support one d-c.yml
+	dc  dcResourceSet // currently only support one d-c.yml
 	k8s []*k8sResource
 }
 
@@ -32,15 +33,17 @@ type tiltfileState struct {
 	k8s            []*k8sResource
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
-	dc             dcResource // currently only support one d-c.yml
+	dc             dcResourceSet // currently only support one d-c.yml
 
 	// for assembly
 	usedImages map[string]bool
 
 	builtinsMap starlark.StringDict
+
+	logger *log.Logger
 }
 
-func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tiltfileState {
+func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:          ctx,
@@ -49,6 +52,7 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tilt
 		k8sByName:    make(map[string]*k8sResource),
 		configFiles:  []string{filename},
 		usedImages:   make(map[string]bool),
+		logger:       l,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -57,10 +61,11 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string) *tilt
 func (s *tiltfileState) exec() error {
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) {
-			logger.Get(s.ctx).Infof("%s", msg)
+			s.logger.Printf("%s", msg)
 		},
 	}
 
+	s.logger.Printf("Beginning Tiltfile execution")
 	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
 	return err
 }
@@ -69,9 +74,12 @@ func (s *tiltfileState) exec() error {
 
 const (
 	// build functions
+	dockerBuildN = "docker_build"
+	fastBuildN   = "fast_build"
+
+	// docker compose functions
 	dockerComposeN = "docker_compose"
-	dockerBuildN   = "docker_build"
-	fastBuildN     = "fast_build"
+	dcResourceN    = "dc_resource"
 
 	// k8s functions
 	k8sYamlN     = "k8s_yaml"
@@ -100,9 +108,10 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, localN, s.local)
 	addBuiltin(r, readFileN, s.skylarkReadFile)
 
-	addBuiltin(r, dockerComposeN, s.dockerCompose)
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
 	addBuiltin(r, fastBuildN, s.fastBuild)
+	addBuiltin(r, dockerComposeN, s.dockerCompose)
+	addBuiltin(r, dcResourceN, s.dcResource)
 	addBuiltin(r, k8sYamlN, s.k8sYaml)
 	addBuiltin(r, k8sResourceN, s.k8sResource)
 	addBuiltin(r, portForwardN, s.portForward)
@@ -116,39 +125,21 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 }
 
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
-	images, err := s.findUnresourcedImages()
+	k8sImgsUsed, err := s.assembleK8s()
 	if err != nil {
 		return resourceSet{}, nil, err
 	}
-	for _, image := range images {
-		if _, ok := s.imagesByName[image.Name()]; !ok {
-			// only expand for images we know how to build
-			continue
-		}
-		target, err := s.findExpandTarget(image)
-		if err != nil {
-			return resourceSet{}, nil, err
-		}
-		if err := s.extractImage(target, image); err != nil {
-			return resourceSet{}, nil, err
-		}
+
+	if !s.dc.Empty() && (len(s.k8s) > 0 || len(s.k8sUnresourced) > 0) {
+		return resourceSet{}, nil, fmt.Errorf("can't declare both k8s " +
+			"resources/entities and docker-compose resources")
 	}
 
-	assembledImages := map[string]bool{}
-	for _, r := range s.k8s {
-		if err := s.validateK8s(r, assembledImages); err != nil {
-			return resourceSet{}, nil, err
-		}
-	}
-
+	dcImgsUsed := s.dc.imagesUsed()
 	for k, _ := range s.imagesByName {
-		if !assembledImages[k] {
+		if !(k8sImgsUsed[k] || dcImgsUsed[k]) {
 			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
 		}
-	}
-
-	if !s.dc.Empty() && len(s.k8s) > 0 {
-		return resourceSet{}, nil, fmt.Errorf("can't declare both k8s resources and docker-compose resources")
 	}
 
 	return resourceSet{
@@ -157,53 +148,74 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	}, s.k8sUnresourced, nil
 }
 
-func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
-	var images []reference.Named
-	for _, e := range r.k8s {
-		entityImages, err := e.FindImages()
-		if err != nil {
-			return err
-		}
-		images = append(images, entityImages...)
-	}
+// assembleK8s matches images we know how to build with any k8s entities that use that image
+// (returning the set of images that we added to resources)
+func (s *tiltfileState) assembleK8s() (map[string]bool, error) {
+	assembledImages := make(map[string]bool)
 
+	// find all images mentioned in k8s entities that don't yet belong to k8sResources
+	images, err := s.findUnresourcedImages()
+	if err != nil {
+		return nil, err
+	}
 	for _, image := range images {
 		if _, ok := s.imagesByName[image.Name()]; !ok {
+			// only expand for images we know how to build
 			continue
 		}
-		if r.imageRef == "" {
-			r.imageRef = image.Name()
-		} else if r.imageRef == image.Name() {
-			continue
-		} else {
-			return fmt.Errorf("resource %q contains two images to be built: %q, %q. You can use k8s_yaml to include a lot of yaml and then Tilt will create resources automatically. If this doesn't solve your case (e.g. you have one pod that has two images that Tilt updates), please reach out so we can understand and prioritize", r.name, r.imageRef, image.Name())
+		target, err := s.k8sResourceForImage(image)
+		if err != nil {
+			return nil, err
+		}
+		// find k8s entities that use this image; pull them out of pool of
+		// unresourced entities and instead attach them to the target k8sResource
+		if err := s.extractEntities(target, image); err != nil {
+			return nil, err
 		}
 	}
 
-	if len(r.k8s) == 0 {
-		if r.imageRef == "" {
-			return fmt.Errorf("resource %q: no matching resource", r.name)
+	for _, r := range s.k8s {
+		if err := s.validateK8s(r, assembledImages); err != nil {
+			return nil, err
 		}
-		return fmt.Errorf("resource %q: could not find image %q; perhaps there's a typo?", r.name, r.imageRef)
+	}
+	return assembledImages, nil
+}
+
+func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
+	if len(r.entities) == 0 {
+		if len(r.providedImageRefs) > 0 {
+
+			return fmt.Errorf("resource %q: could not find k8s entities matching "+
+				"image(s) %q; perhaps there's a typo?",
+				r.name, strings.Join(r.providedImageRefList(), "; "))
+		}
+		return fmt.Errorf("resource %q: you never associated any image refs with this resource", r.name)
 	}
 
-	assembledImages[r.imageRef] = true
+	for ref := range r.imageRefs {
+		assembledImages[ref] = true
+	}
 
 	return nil
 }
 
-func (s *tiltfileState) findExpandTarget(image reference.Named) (*k8sResource, error) {
-	// first, match an empty resource that has this exact imageRef
+// k8sResourceForImage returns the k8sResource with which this image is associated
+// (either an existing resource or a new one).
+func (s *tiltfileState) k8sResourceForImage(image reference.Named) (*k8sResource, error) {
+	// first, look thru all the resources that have already been created,
+	// and see if any of them already have a reference to this image.
 	for _, r := range s.k8s {
-		if len(r.k8s) == 0 && r.imageRef == image.Name() {
+		if _, ok := r.imageRefs[image.Name()]; ok {
 			return r, nil
 		}
 	}
 
-	// next, match an empty resource that has the same name
+	// next, look thru all the resources that have already been created,
+	// and see if any of them match the basename of the image.
 	name := filepath.Base(image.Name())
 	for _, r := range s.k8s {
-		if len(r.k8s) == 0 && r.name == name {
+		if r.name == name {
 			return r, nil
 		}
 	}
@@ -221,38 +233,28 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 		if err != nil {
 			return nil, err
 		}
-		var entityImages []reference.Named
-		for _, image := range images {
-			if _, ok := s.imagesByName[image.Name()]; ok {
-				entityImages = append(entityImages, image)
+		for _, img := range images {
+			if !seen[img.Name()] {
+				result = append(result, img)
+				seen[img.Name()] = true
 			}
-		}
-		if len(entityImages) == 0 {
-			continue
-		}
-		if len(entityImages) > 1 {
-			str, err := k8s.SerializeYAML([]k8s.K8sEntity{e})
-			if err != nil {
-				str = err.Error()
-			}
-			return nil, fmt.Errorf("Found an entity with multiple images registered with k8s_yaml. Tilt doesn't support this yet; please reach out so we can understand and prioritize this case. found images: %q, entity: %q.", entityImages, str)
-		}
-		img := entityImages[0]
-		if !seen[img.Name()] {
-			result = append(result, img)
-			seen[img.Name()] = true
 		}
 	}
 	return result, nil
 }
 
-func (s *tiltfileState) extractImage(dest *k8sResource, imageRef reference.Named) error {
+// extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
+func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef reference.Named) error {
 	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef)
 	if err != nil {
 		return err
 	}
 
-	dest.k8s = append(dest.k8s, extracted...)
+	err = dest.addEntities(extracted)
+	if err != nil {
+		return err
+	}
+
 	s.k8sUnresourced = remaining
 
 	for _, e := range extracted {
@@ -265,7 +267,10 @@ func (s *tiltfileState) extractImage(dest *k8sResource, imageRef reference.Named
 			if err != nil {
 				return err
 			}
-			dest.k8s = append(dest.k8s, extracted...)
+			err = dest.addEntities(extracted)
+			if err != nil {
+				return err
+			}
 			s.k8sUnresourced = remaining
 		}
 	}
@@ -308,71 +313,99 @@ func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manife
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, r := range resources {
+		mn := model.ManifestName(r.name)
 		m := model.Manifest{
-			Name: model.ManifestName(r.name),
+			Name: mn,
 		}
 
-		k8sYaml, err := k8s.SerializeYAML(r.k8s)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r))
 		if err != nil {
 			return nil, err
 		}
 
-		m = m.WithDeployTarget(model.K8sTarget{
-			YAML:         k8sYaml,
-			PortForwards: s.portForwardsToDomain(r), // FIXME(dbentley)
-		})
+		m = m.WithDeployTarget(k8sTarget)
 
-		if r.imageRef != "" {
-			image := s.imagesByName[r.imageRef]
-			isStaticBuild := !image.staticBuildPath.Empty()
-			isFastBuild := !image.baseDockerfilePath.Empty()
-
-			dInfo := model.ImageTarget{
-				Ref: image.ref,
-			}.WithCachePaths(image.cachePaths)
-
-			if isStaticBuild && isFastBuild {
-				return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
-			} else if isStaticBuild {
-				dInfo = dInfo.WithBuildDetails(model.StaticBuild{
-					Dockerfile: image.staticDockerfile.String(),
-					BuildPath:  string(image.staticBuildPath.path),
-					BuildArgs:  image.staticBuildArgs,
-				})
-			} else if isFastBuild {
-				dInfo = dInfo.WithBuildDetails(model.FastBuild{
-					BaseDockerfile: image.baseDockerfile.String(),
-					Mounts:         s.mountsToDomain(image),
-					Steps:          image.steps,
-					Entrypoint:     model.ToShellCmd(image.entrypoint),
-				})
-			} else {
-				return nil, fmt.Errorf("internal Tilt error: no build info for manifest %s", r.name)
-			}
-
-			m = m.WithImageTarget(dInfo.
-				WithRepos(s.reposForImage(image)).
-				WithDockerignores(s.dockerignoresForImage(image)).
-				WithTiltFilename(s.filename.path))
+		iTargets, err := s.imgTargetsForRefs(r.imageRefList())
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
+
+		m = m.WithImageTargets(iTargets)
+
 		result = append(result, m)
 	}
 
 	return result, nil
 }
 
-func (s *tiltfileState) translateDC(dc dcResource) ([]model.Manifest, error) {
+func (s *tiltfileState) imgTargetsForRefs(refs []string) ([]model.ImageTarget, error) {
+	iTargets := make([]model.ImageTarget, 0, len(refs))
+	for _, imageRef := range refs {
+		image, ok := s.imagesByName[imageRef]
+		if !ok {
+			continue
+		}
+
+		isStaticBuild := !image.staticBuildPath.Empty()
+		isFastBuild := !image.baseDockerfilePath.Empty()
+
+		iTarget := model.ImageTarget{
+			Ref: image.ref,
+		}.WithCachePaths(image.cachePaths)
+
+		if isStaticBuild && isFastBuild {
+			return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
+		} else if isStaticBuild {
+			iTarget = iTarget.WithBuildDetails(model.StaticBuild{
+				Dockerfile: image.staticDockerfile.String(),
+				BuildPath:  string(image.staticBuildPath.path),
+				BuildArgs:  image.staticBuildArgs,
+			})
+		} else if isFastBuild {
+			iTarget = iTarget.WithBuildDetails(model.FastBuild{
+				BaseDockerfile: image.baseDockerfile.String(),
+				Mounts:         s.mountsToDomain(image),
+				Steps:          image.steps,
+				Entrypoint:     model.ToShellCmd(image.entrypoint),
+				HotReload:      image.hotReload,
+			})
+		} else {
+			return nil, fmt.Errorf("no build info for image %s", image.ref)
+		}
+
+		iTarget = iTarget.
+			WithRepos(s.reposForImage(image)).
+			WithDockerignores(s.dockerignoresForImage(image)).
+			WithTiltFilename(s.filename.path)
+		iTargets = append(iTargets, iTarget)
+	}
+	return iTargets, nil
+}
+
+func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) {
 	var result []model.Manifest
 	for _, svc := range dc.services {
 		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPath)
 		if err != nil {
 			return nil, err
 		}
+
+		if svc.ImageRef != "" {
+			iTargets, err := s.imgTargetsForRefs([]string{svc.ImageRef})
+			if err != nil {
+				return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
+			}
+			m = m.WithImageTargets(iTargets)
+		}
+
 		result = append(result, m)
-		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, configFiles...))
+
+		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
+		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
+		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
 	}
 	if dc.configPath != "" {
-		s.configFiles = sliceutils.DedupeStringSlice(append(s.configFiles, dc.configPath))
+		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPath))
 	}
 	return result, nil
 }

@@ -62,17 +62,17 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, mode UpdateMode) BuildOrder {
+func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, updMode UpdateMode) BuildOrder {
 
-	if mode == UpdateModeImage || mode == UpdateModeNaive {
+	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if mode == UpdateModeContainer {
+	if updMode == UpdateModeContainer {
 		return BuildOrder{cbad, dcbad, ibad}
 	}
 
-	if mode == UpdateModeSynclet {
+	if updMode == UpdateModeSynclet {
 		ibad.SetInjectSynclet(true)
 		return BuildOrder{sbad, dcbad, ibad}
 	}

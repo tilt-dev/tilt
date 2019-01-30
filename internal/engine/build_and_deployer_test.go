@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/store"
@@ -147,7 +148,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	}
 	f.assertContainerRestarts(1)
 
-	id := manifest.ImageTarget.ID()
+	id := manifest.ImageTargetAt(0).ID()
 	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
 }
 
@@ -173,7 +174,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
 	}
 
-	id := manifest.ImageTarget.ID()
+	id := manifest.ImageTargetAt(0).ID()
 	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
 }
 
@@ -208,6 +209,29 @@ func TestIncrementalBuildFailure(t *testing.T) {
 		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
 	f.assertContainerRestarts(0)
+}
+
+func TestIncrementalBuildKilled(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	ctx := output.CtxForTest()
+
+	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
+
+	manifest := NewSanchoFastBuildManifest(f)
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(ctx, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.docker.CopyCount)
+	assert.Equal(t, 1, len(f.docker.ExecCalls))
+
+	// Falls back to a build when the exec fails
+	assert.Equal(t, 1, f.docker.BuildCount)
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
@@ -272,7 +296,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id := manifest.ImageTarget.ID()
+	id := manifest.ImageTargetAt(0).ID()
 	rSet := firstResult[id].FilesReplacedSet
 	if len(rSet) != 1 || !rSet[aPath] {
 		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
@@ -324,7 +348,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id := manifest.ImageTarget.ID()
+	id := manifest.ImageTargetAt(0).ID()
 	rSet := firstResult[id].FilesReplacedSet
 	if len(rSet) != 1 || !rSet[aPath] {
 		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
@@ -387,7 +411,7 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest := NewSanchoFastBuildManifest(f)
 
 	tiltfile := filepath.Join(f.Path(), "Tiltfile")
-	manifest = manifest.WithImageTarget(manifest.ImageTarget.WithRepos([]model.LocalGitRepo{
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithRepos([]model.LocalGitRepo{
 		model.LocalGitRepo{
 			LocalPath: f.Path(),
 		},
@@ -447,8 +471,8 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
-	dcc := dockercompose.NewFakeDockerComposeClient(t)
-	bd, err := provideBuildAndDeployer(output.CtxForTest(), docker, k8s, dir, env, mode, sCli, dcc)
+	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc)
 	if err != nil {
 		t.Fatal(err)
 	}

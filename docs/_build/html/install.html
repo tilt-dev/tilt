@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tutorial" href="tutorial.html" />
+    <link rel="next" title="Tutorial: First 15 Minutes" href="tutorial.html" />
     <link rel="prev" title="Tilt User Guide" href="index.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
@@ -103,23 +103,21 @@
 <li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#on-linux">On Linux</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#from-source">From Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
-</ul>
-<p class="caption"><span class="caption-text">Appendix</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
-<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose (Alpha)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">About</span></p>
 <ul>
@@ -214,7 +212,7 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.0/tilt.0.5.0.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.1/tilt.0.5.1.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
   sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
@@ -246,7 +244,7 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.0/tilt.0.5.0.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.1/tilt.0.5.1.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
     sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
@@ -270,9 +268,14 @@ $ kubectl config use-context docker-for-desktop
 </div>
 <p>Verify that you installed it correctly with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-v0.5.0-dev, built 2019-01-14
+v0.5.1-dev, built 2019-01-14
 </pre></div>
 </div>
+</div>
+<div class="section" id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<p>If you have any trouble installing Tilt, look for the error message in the
+<a class="reference external" href="faq.html#Troubleshooting">Troubleshooting FAQ</a>.</p>
 </div>
 <div class="section" id="next-steps">
 <h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
@@ -288,7 +291,7 @@ v0.5.0-dev, built 2019-01-14
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial: First 15 Minutes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral" title="Tilt User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

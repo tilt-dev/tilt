@@ -20,7 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"golang.org/x/sync/errgroup"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type RepoBranch string
@@ -76,6 +76,10 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 		m.healthy = false
 	}
 
+	if state.CurrentlyBuilding != "" {
+		m.healthy = false
+	}
+
 	for _, ms := range state.ManifestStates() {
 		pod := ms.MostRecentPod()
 		if pod.Phase != v1.PodRunning {
@@ -92,8 +96,10 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 			m.healthy = false
 		}
 
-		if state.CurrentlyBuilding != "" || len(ms.PendingFileChanges) > 0 {
-			m.healthy = false
+		for _, status := range ms.BuildStatuses {
+			if len(status.PendingFileChanges) > 0 {
+				m.healthy = false
+			}
 		}
 	}
 
@@ -136,7 +142,7 @@ func (m *podMonitor) waitUntilCond(ctx context.Context, f func() bool) error {
 
 func (s Script) Run(ctx context.Context) error {
 	if !s.env.IsLocalCluster() {
-		_, _ = fmt.Fprintf(os.Stderr, "tilt demo mode only supports Docker For Mac or Minikube\n")
+		_, _ = fmt.Fprintf(os.Stderr, "tilt demo mode only supports Docker For Mac, Minikube, and MicroK8s\n")
 		_, _ = fmt.Fprintf(os.Stderr, "check your current cluster with:\n")
 		_, _ = fmt.Fprintf(os.Stderr, "\nkubectl config get-contexts\n\n")
 		return nil
@@ -168,7 +174,8 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		manifests, _, _, err := tiltfile.Load(ctx, tfPath, nil)
+		// TODO(dmiller): not this?
+		manifests, _, _, err := tiltfile.Load(ctx, tfPath, nil, os.Stdout)
 		if err != nil {
 			return err
 		}

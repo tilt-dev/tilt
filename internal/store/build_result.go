@@ -53,6 +53,15 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 
 type BuildResultSet map[model.TargetID]BuildResult
 
+func (set BuildResultSet) AsOneResult() BuildResult {
+	if len(set) == 1 {
+		for _, result := range set {
+			return result
+		}
+	}
+	return BuildResult{}
+}
+
 // The state of the system since the last successful build.
 // This data structure should be considered immutable.
 // All methods that return a new BuildState should first clone the existing build state.
