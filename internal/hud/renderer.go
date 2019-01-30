@@ -175,7 +175,7 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 }
 
 func keyLegend(v view.View, vs view.ViewState) string {
-	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (q)uit  "
+	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
 	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
 		return "Scroll (↓ ↑) ┊ cycle (l)og view "
 	} else if vs.LogModal.ResourceLogNumber != 0 {
