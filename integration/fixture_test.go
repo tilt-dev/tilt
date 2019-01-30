@@ -171,6 +171,7 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	cmd := exec.CommandContext(f.ctx, "go", args...)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
+	cmd.Env = append(os.Environ(), "TILT_DISABLE_ANALYTICS=true")
 	return cmd
 }
 
