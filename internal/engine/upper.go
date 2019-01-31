@@ -448,6 +448,7 @@ func handleConfigsReloaded(
 		FinishTime: event.FinishTime,
 		Error:      event.Err,
 		Reason:     model.BuildReasonFlagConfig,
+		Edits:      []string{state.TiltfilePath},
 	}
 	setLastTiltfileBuild(state, status)
 	if event.Err != nil {
