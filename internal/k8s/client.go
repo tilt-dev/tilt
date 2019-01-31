@@ -23,6 +23,9 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
+	// Client auth plugins! They will auto-init if we import them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 type Namespace string
@@ -32,6 +35,7 @@ type ServiceName string
 type KubeContext string
 
 const DefaultNamespace = Namespace("default")
+const KubeContextNone = KubeContext(EnvNone) // stand-in for when k8s not running
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }

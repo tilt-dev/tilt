@@ -27,12 +27,12 @@ Download the latest Tilt release from
 
 ## Describe Your Workflow
 
-Tilt uses your existing Docker/Kubernetes configuration, connected with a simple and powerful description:
+A Tiltfile is a program that connects your existing Docker and Kubernetes configurations:
 
 ```python
 # Example Tiltfile for a k8s app with two microservices
 
-# Deploy: tell Tilt what yaml to deploy
+# Deploy: tell Tilt what yaml to apply
 k8s_yaml('app.yaml')
 
 # Build: tell Tilt what images to build from which directories
@@ -40,7 +40,7 @@ docker_build('companyname/frontend', 'frontend')
 docker_build('companyname/backend', 'backend')
 ```
 
-Setup Tilt in 15 minutes with the [Tutorial](tutorial.html).
+Set up Tilt in 15 minutes with the [Tutorial](tutorial.html).
 
 ## See More
 Stop playing 20 questions with `kubectl`. Tilt's UI pulls relevant data to the surface, automatically.

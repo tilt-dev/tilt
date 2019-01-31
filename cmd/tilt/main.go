@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"github.com/windmilleng/tilt/internal/cli"
+	"k8s.io/klog"
 )
 
 // Magic variables set by goreleaser
@@ -22,16 +24,17 @@ func main() {
 	cli.Execute()
 }
 
-// HACK(nick): The Kubernetes libs we use sometimes use glog to log things to
+// HACK(nick): The Kubernetes libs we use sometimes use klog to log things to
 // os.Stderr. There are no API hooks to configure this. And printing to Stderr
 // scrambles the HUD tty.
 //
-// Fortunately, glog does initialize itself from flags, so we can backdoor
-// configure it by setting our own flags. Don't do this at home! This works
-// OK because we use Cobra for flags.
+// Fortunately, klog does initialize itself from flags, so we can backdoor
+// configure it by setting our own flags. Don't do this at home!
 func disableGlog() {
-	err := flag.CommandLine.Parse([]string{
-		"--stderrthreshold", "FATAL",
+	var tmpFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	klog.InitFlags(tmpFlagSet)
+	err := tmpFlagSet.Parse([]string{
+		"--stderrthreshold", "ERROR",
 	})
 	if err != nil {
 		log.Fatal(err)

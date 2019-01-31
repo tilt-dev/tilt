@@ -56,6 +56,7 @@ var statusColors = map[string]tcell.Color{
 	string(dockercompose.StatusInProg): cPending,
 	string(dockercompose.StatusUp):     cGood,
 	string(dockercompose.StatusDown):   cBad,
+	"Completed":                        cGood,
 }
 
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {

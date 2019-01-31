@@ -580,6 +580,34 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 	rtf.run("non-crashing pod displays no logs inline even if crash log if present", 70, 20, v, vs)
 }
 
+func TestCompletedPod(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:      "vigoda",
+				Endpoints: []string{"1.2.3.4:8080"},
+				BuildHistory: []model.BuildRecord{{
+					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
+					StartTime:  ts,
+					FinishTime: ts,
+				}},
+				ResourceInfo: view.K8SResourceInfo{
+					PodName:            "vigoda-pod",
+					PodStatus:          "Completed",
+					PodUpdateStartTime: ts,
+					PodCreationTime:    ts.Add(-time.Minute),
+				},
+				LastDeployTime: ts,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("Completed is a good status", 70, 20, v, vs)
+}
+
 func TestPendingBuildInManualTriggerMode(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 	ts := time.Now().Add(-30 * time.Second)
