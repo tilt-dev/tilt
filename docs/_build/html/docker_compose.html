@@ -191,7 +191,7 @@
             
   <div class="section" id="docker-compose">
 <h1>Docker Compose<a class="headerlink" href="#docker-compose" title="Permalink to this headline">¶</a></h1>
-<p>Tilt can use <code class="docutils literal notranslate"><span class="pre">docker-compose</span></code> to orchestrate your services (instead of Kubernetes). This doc describes how you can get Tilt’s UX for your Docker Compose project with a one-line Tiltfile. This is simpler than the  config for Kubernetes projects described in the <a class="reference external" href="tutorial.html">Tutorial</a>.</p>
+<p>Tilt can use <code class="docutils literal notranslate"><span class="pre">docker-compose</span></code> to orchestrate your services (instead of Kubernetes). This doc describes how you can get Tilt’s UX for your Docker Compose project using the same config and tools plus a one-line Tiltfile. (This is simpler than the config for Kubernetes projects described in the <a class="reference external" href="tutorial.html">Tutorial</a>.)</p>
 <div class="section" id="comparison">
 <h2>Comparison<a class="headerlink" href="#comparison" title="Permalink to this headline">¶</a></h2>
 <p>Tilt provides a better User Experience in two ways:</p>
@@ -199,7 +199,7 @@
 <li>Tilt’s UI shows you status at a glance, so errors can’t scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).</li>
 <li>Tilt handles filesystem watching and updating without requiring manual actions or hand-rolled scripting.</li>
 </ul>
-<p>Most of our documentation describes using Tilt to deploy to Kubernetes, but that would be a large change. For Docker Compose projects, Tilt uses Docker Compose as a backend. This allows you to use your existing configuration, debugging tricks, and muscle memory while getting a better UX.</p>
+<p>Most of our documentation describes using Tilt to deploy to Kubernetes, but it’s not worth switching to Kubernetes just for Tilt’s UX. For Docker Compose projects, Tilt uses Docker Compose as a backend. This allows you to use your existing configuration, debugging tricks, and muscle memory while getting a better UX.</p>
 </div>
 <div class="section" id="tiltfile-for-docker-compose">
 <h2>Tiltfile for Docker Compose<a class="headerlink" href="#tiltfile-for-docker-compose" title="Permalink to this headline">¶</a></h2>
@@ -210,7 +210,7 @@
 </div>
 <div class="section" id="caveats">
 <h2>Caveats<a class="headerlink" href="#caveats" title="Permalink to this headline">¶</a></h2>
-<p>Our Docker Compose support is newer than (and largely separate from) Tilt’s Kubernetes support. You may hit more/different bugs, which we want to fix.</p>
+<p>Our Docker Compose support is newer than (and largely separate from) Tilt’s Kubernetes support. You may hit more/different bugs, which we want to fix – please file issues or tell us in Slack.</p>
 </div>
 <div class="section" id="docker-compose-under-the-hood">
 <h2>Docker Compose Under The Hood<a class="headerlink" href="#docker-compose-under-the-hood" title="Permalink to this headline">¶</a></h2>

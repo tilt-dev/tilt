@@ -1,7 +1,7 @@
 # Tutorial: First 15 Minutes
 This tutorial walks you through setting up Tilt for your project. It should take 15 minutes, and assumes you've already [installed Tilt](install.html). Before you begin, you may want to join the `#tilt` channel in [Kubernetes Slack](http://slack.k8s.io) for technical and moral support.
 
-Start by `cd`'ing into a project you can already build and deploy.
+Start by `cd`'ing into a project you can already build and deploy to Kubernetes.
 
 ## Example Tiltfile
 At the end of this guide, your Tiltfile will look something like this:
@@ -19,7 +19,10 @@ k8s_resource('frontend', port_forwards=8080)
 ```
 
 ## Hello World
-Run `tilt up` to enter Tilt's Heads-Up Display. Instead of writing your configuration all at once, we'll use Tilt interactively. Each time you save your configuration, Tilt will reexecute it. Tilt should be complaining there's no file named `Tiltfile`. Open it in your editor and write:
+Run `tilt up` to enter Tilt's Heads-Up Display. Instead of writing your configuration all at once, we'll use Tilt interactively. Each time you save your configuration, Tilt will reexecute it.
+
+
+Right now, Tilt should be complaining there's no file named `Tiltfile`. Open it in your editor and write:
 ```python
 print('Hello Tiltfile')
 ```
@@ -68,4 +71,4 @@ Tilt is now setup for your project. Try exploring Tilt's UI (there's a context-s
 
 Now's a great time to file bugs, feature requests, or [talk to us](index.html#community) about your use case. If you say hi in the `#tilt` channel of Kubernetes slack we can find time to chat.
 
-You can learn more about Tilt's features like  [Tiltfile Concepts](tiltfile_concepts.html) or [Optimizing your Builds](fast_build.html).
+You can read in more detail about [Tiltfile Concepts](tiltfile_concepts.html) or [Optimizing your Builds](fast_build.html).
