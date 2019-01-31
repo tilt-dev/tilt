@@ -120,6 +120,9 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
 	}
 	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
+	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
+		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/write_your_tiltfile.html to get started!")
+	}
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
