@@ -7,6 +7,10 @@ import (
 	"io"
 	"time"
 
+	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
@@ -42,11 +46,11 @@ type FakeK8sClient struct {
 	UpsertError error
 }
 
-func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
+func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
 	return nil, nil
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
+func (c *FakeK8sClient) WatchPods(ctx context.Context, lps labels.Set) (<-chan *v1.Pod, error) {
 	return nil, nil
 }
 
@@ -145,7 +149,7 @@ func FakePodSpec(image reference.NamedTagged) v1.PodSpec {
 	}
 }
 
-func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error) {
 	c.LastPodQueryImage = image
 	c.LastPodQueryNamespace = n
 
@@ -186,7 +190,7 @@ func (c *FakeK8sClient) SetPollForPodsWithImageDelay(dur time.Duration) {
 	c.PollForPodsWithImageDelay = dur
 }
 
-func (c *FakeK8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+func (c *FakeK8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
 	defer c.SetPollForPodsWithImageDelay(0)
 
 	if c.PollForPodsWithImageDelay > timeout {

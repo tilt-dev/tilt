@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -28,6 +30,9 @@ type k8sResource struct {
 	imageRefs map[string]bool
 
 	portForwards []portForward
+
+	// labels for pods that we should watch and associate with this resource
+	extraPodLabels []labels.Set
 }
 
 func (r *k8sResource) addProvidedImageRef(ref string) {
@@ -92,12 +97,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	var yamlValue starlark.Value
 	var imageVal starlark.Value
 	var portForwardsVal starlark.Value
+	var extraPodLabelsVal starlark.Value
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"yaml?", &yamlValue,
 		"image?", &imageVal,
 		"port_forwards?", &portForwardsVal,
+		"extra_pod_labels?", &extraPodLabelsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -142,7 +149,55 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 	r.portForwards = portForwards
 
+	r.extraPodLabels, err = podLabelsFromSkylarkValue(extraPodLabelsVal)
+	if err != nil {
+		return nil, err
+	}
+
 	return starlark.None, nil
+}
+
+func podLabelsFromSkylarkValue(p starlark.Value) ([]labels.Set, error) {
+	if p == nil {
+		return nil, nil
+	}
+
+	var ret []labels.Set
+
+	seq, ok := p.(starlark.Sequence)
+	if !ok {
+		return nil, fmt.Errorf("pod labels must be a sequence; got %T", p)
+	}
+
+	it := seq.Iterate()
+	defer it.Done()
+	var i starlark.Value
+	for it.Next(&i) {
+		cur := make(labels.Set)
+		dict, ok := i.(*starlark.Dict)
+		if !ok {
+			return nil, fmt.Errorf("pod labels elements must be dicts; got %T", i)
+		}
+
+		for _, t := range dict.Items() {
+			kVal := t[0]
+			k, ok := kVal.(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("pod label keys must be strings; got '%s' of type %T", kVal.String(), kVal)
+			}
+			vVal := t[1]
+			v, ok := vVal.(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("pod label values must be strings; got '%s' of type %T", vVal.String(), vVal)
+			}
+			cur[string(k)] = string(v)
+		}
+		if len(cur) > 0 {
+			ret = append(ret, cur)
+		}
+	}
+
+	return ret, nil
 }
 
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {

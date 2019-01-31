@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
 
@@ -928,6 +930,49 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 		m.ImageTargetAt(0).Ref.String())
 }
 
+func TestExtraPodLabels(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodLabels("[{'baz': 'quu'}]")
+	f.load()
+
+	f.assertManifest("foo",
+		extraPodLabels(labels.Set{"baz": "quu"}))
+}
+
+func TestExtraPodLabelsNotList(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodLabels("'hello'")
+	f.loadErrString("must be a sequence", "starlark.String")
+}
+
+func TestExtraPodLabelsElementNotDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodLabels("['hello']")
+	f.loadErrString("must be dicts", "starlark.String")
+}
+
+func TestExtraPodLabelsKeyNotString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodLabels("[{54321: 'hello'}]")
+	f.loadErrString("keys must be strings", "54321")
+}
+
+func TestExtraPodLabelsValueNotString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodLabels("[{'hello': 54321}]")
+	f.loadErrString("values must be strings", "54321")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -1134,6 +1179,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case extraPodLabelsHelper:
+			assert.Equal(f.t, opt.labels, m.K8sTarget().ExtraPodLabels)
 		case numEntitiesHelper:
 			yaml := m.K8sTarget().YAML
 			entities := f.entities(yaml)
@@ -1251,6 +1298,14 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 		}
 	}
 	return r
+}
+
+type extraPodLabelsHelper struct {
+	labels []labels.Set
+}
+
+func extraPodLabels(labels ...labels.Set) extraPodLabelsHelper {
+	return extraPodLabelsHelper{labels}
 }
 
 type numEntitiesHelper struct {
@@ -1405,4 +1460,15 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+}
+
+func (f *fixture) setupExtraPodLabels(s string) {
+	f.setupFoo()
+
+	tiltfile := fmt.Sprintf(`
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml', extra_pod_labels=%s)
+`, s)
+
+	f.file("Tiltfile", tiltfile)
 }

@@ -318,7 +318,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			Name: mn,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r))
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodLabels)
 		if err != nil {
 			return nil, err
 		}

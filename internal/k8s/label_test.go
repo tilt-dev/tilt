@@ -5,13 +5,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
 
 func TestInjectLabelPod(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.LonelyPodYAML)
-	newEntity, err := InjectLabels(entity, []LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "tier",
 			Value: "test",
@@ -33,7 +35,7 @@ func TestInjectLabelPod(t *testing.T) {
 
 func TestInjectLabelDeployment(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoYAML)
-	newEntity, err := InjectLabels(entity, []LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "tier",
 			Value: "test",
@@ -59,7 +61,7 @@ func TestInjectLabelDeployment(t *testing.T) {
 
 func TestInjectLabelDeploymentBeta1(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta1YAML)
-	newEntity, err := InjectLabels(entity, []LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
@@ -84,7 +86,7 @@ func TestInjectLabelDeploymentBeta1(t *testing.T) {
 
 func TestInjectLabelDeploymentBeta2(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta2YAML)
-	newEntity, err := InjectLabels(entity, []LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
@@ -109,7 +111,7 @@ func TestInjectLabelDeploymentBeta2(t *testing.T) {
 
 func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoExtBeta1YAML)
-	newEntity, err := InjectLabels(entity, []LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",

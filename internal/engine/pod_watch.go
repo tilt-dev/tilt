@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/store"
 
@@ -12,8 +14,8 @@ import (
 )
 
 type PodWatcher struct {
-	kCli     k8s.Client
-	watching bool
+	kCli    k8s.Client
+	watches []PodWatch
 }
 
 func NewPodWatcher(kCli k8s.Client) *PodWatcher {
@@ -22,33 +24,74 @@ func NewPodWatcher(kCli k8s.Client) *PodWatcher {
 	}
 }
 
-func (w *PodWatcher) needsWatch(st store.RStore) bool {
+type PodWatch struct {
+	labels labels.Set
+	cancel context.CancelFunc
+}
+
+// returns all elements of `a` that are not in `b`
+func subtract(a, b []PodWatch) []PodWatch {
+	var ret []PodWatch
+	// silly O(n^3) diff here on assumption that lists will be trivially small
+	for _, pwa := range a {
+		inB := false
+		for _, pwb := range b {
+			if !labels.Equals(pwa.labels, pwb.labels) {
+				inB = true
+				break
+			}
+		}
+		if !inB {
+			ret = append(ret, pwa)
+		}
+	}
+	return ret
+}
+
+func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatch, teardown []PodWatch) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	atLeastOneK8S := false
+	var neededWatches []PodWatch
 	for _, m := range state.Manifests() {
 		if m.IsK8s() {
 			atLeastOneK8S = true
+			for _, lp := range m.K8sTarget().ExtraPodLabels {
+				if len(lp) > 0 {
+					neededWatches = append(neededWatches, PodWatch{labels: lp})
+				}
+			}
 		}
 	}
-	return atLeastOneK8S && state.WatchMounts && !w.watching
+	if atLeastOneK8S {
+		trl := TiltRunLabel()
+
+		neededWatches = append(neededWatches, PodWatch{labels: labels.Set{trl.Key: trl.Value}})
+	}
+
+	return subtract(neededWatches, w.watches), subtract(w.watches, neededWatches)
 }
 
 func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
-	if !w.needsWatch(st) {
-		return
-	}
-	w.watching = true
+	setup, teardown := w.diff(ctx, st)
 
-	ch, err := w.kCli.WatchPods(ctx, []k8s.LabelPair{TiltRunLabel()})
-	if err != nil {
-		err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
-		st.Dispatch(NewErrorAction(err))
-		return
+	for _, pw := range setup {
+		ctx, cancel := context.WithCancel(ctx)
+		w.watches = append(w.watches, PodWatch{labels: pw.labels, cancel: cancel})
+		ch, err := w.kCli.WatchPods(ctx, pw.labels)
+		if err != nil {
+			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
+			st.Dispatch(NewErrorAction(err))
+			return
+		}
+		go dispatchPodChangesLoop(ctx, ch, st)
 	}
 
-	go dispatchPodChangesLoop(ctx, ch, st)
+	for _, pw := range teardown {
+		pw.cancel()
+	}
+
 }
 
 func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {

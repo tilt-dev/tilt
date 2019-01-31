@@ -123,7 +123,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		}
 
 		for _, e := range entities {
-			e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: k8sTarget.Name.String()}})
+			e, err = k8s.InjectLabels(e, []model.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: k8sTarget.Name.String()}})
 			if err != nil {
 				return errors.Wrap(err, "deploy")
 			}

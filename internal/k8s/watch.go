@@ -3,18 +3,15 @@ package k8s
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func (kCli K8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
+func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Set) (<-chan *v1.Pod, error) {
 	ch := make(chan *v1.Pod)
-
-	ls := labels.Set{}
-	for _, lp := range lps {
-		ls[lp.Key] = lp.Value
-	}
 
 	// passing "" gets us all namespaces
 	watcher, err := kCli.core.Pods("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
@@ -52,7 +49,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
+func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
 	ch := make(chan *v1.Service)
 
 	ls := labels.Set{}
