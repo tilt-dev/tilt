@@ -100,11 +100,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#option-a-installing-tilt-with-homebrew-recommended">Option A) Installing Tilt with Homebrew (recommended)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#option-b-installing-tilt-from-release-binaries">Option B) Installing Tilt from release binaries</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#verifying">Verifying</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#on-linux">On Linux</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#from-source">From Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verifying">Verifying</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
@@ -221,22 +221,11 @@ $ kubectl config use-context docker-for-desktop
 $ brew install windmilleng/tap/tilt
 </pre></div>
 </div>
-<p>Verify that you installed Tilt correctly with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-</pre></div>
-</div>
 </div>
 <div class="section" id="option-b-installing-tilt-from-release-binaries">
 <h3>Option B) Installing Tilt from release binaries<a class="headerlink" href="#option-b-installing-tilt-from-release-binaries" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.5.1/tilt.0.5.1.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
   sudo mv tilt /usr/local/bin/tilt
-</pre></div>
-</div>
-</div>
-<div class="section" id="verifying">
-<h3>Verifying<a class="headerlink" href="#verifying" title="Permalink to this headline">¶</a></h3>
-<p>Verify that you installed it correctly with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
 </pre></div>
 </div>
 </div>
@@ -266,12 +255,6 @@ $ brew install windmilleng/tap/tilt
     sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
-<ul class="simple">
-<li>Verify that you installed it correctly with:</li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-</pre></div>
-</div>
 </div>
 <div class="section" id="from-source">
 <h2>From Source<a class="headerlink" href="#from-source" title="Permalink to this headline">¶</a></h2>
@@ -284,9 +267,12 @@ $ brew install windmilleng/tap/tilt
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ go get -u github.com/windmilleng/tilt/cmd/tilt
 </pre></div>
 </div>
-<p>Verify that you installed it correctly with:</p>
+</div>
+<div class="section" id="verifying">
+<h2>Verifying<a class="headerlink" href="#verifying" title="Permalink to this headline">¶</a></h2>
+<p>After you install Tilt, verify that you installed it correctly with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-v0.5.1-dev, built 2019-01-14
+v0.5.1, built 2019-01-14
 </pre></div>
 </div>
 </div>
