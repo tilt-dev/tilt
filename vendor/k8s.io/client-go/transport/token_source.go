@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rest
+package transport
 
 import (
 	"fmt"
@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"golang.org/x/oauth2"
+	"k8s.io/klog"
 )
 
 // TokenSourceWrapTransport returns a WrapTransport that injects bearer tokens
@@ -42,17 +42,19 @@ func TokenSourceWrapTransport(ts oauth2.TokenSource) func(http.RoundTripper) htt
 	}
 }
 
-func newCachedPathTokenSource(path string) oauth2.TokenSource {
+// NewCachedFileTokenSource returns a oauth2.TokenSource reads a token from a
+// file at a specified path and periodically reloads it.
+func NewCachedFileTokenSource(path string) oauth2.TokenSource {
 	return &cachingTokenSource{
 		now:    time.Now,
-		leeway: 1 * time.Minute,
+		leeway: 10 * time.Second,
 		base: &fileTokenSource{
 			path: path,
-			// This period was picked because it is half of the minimum validity
-			// duration for a token provisioned by they TokenRequest API. This is
-			// unsophisticated and should induce rotation at a frequency that should
-			// work with the token volume source.
-			period: 5 * time.Minute,
+			// This period was picked because it is half of the duration between when the kubelet
+			// refreshes a projected service account token and when the original token expires.
+			// Default token lifetime is 10 minutes, and the kubelet starts refreshing at 80% of lifetime.
+			// This should induce re-reading at a frequency that works with the token volume source.
+			period: time.Minute,
 		},
 	}
 }
@@ -129,7 +131,7 @@ func (ts *cachingTokenSource) Token() (*oauth2.Token, error) {
 		if ts.tok == nil {
 			return nil, err
 		}
-		glog.Errorf("Unable to rotate token: %v", err)
+		klog.Errorf("Unable to rotate token: %v", err)
 		return ts.tok, nil
 	}
 
