@@ -27,6 +27,9 @@ type dockerImage struct {
 	staticDockerfile     dockerfile.Dockerfile
 	staticBuildPath      localPath
 	staticBuildArgs      model.DockerBuildArgs
+
+	// Whether this has been matched up yet to a deploy resource.
+	matched bool
 }
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -102,10 +105,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dockerfileContents = string(bs)
 	}
 
-	if s.imagesByName[ref.Name()] != nil {
-		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
-	}
-
 	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
 	if err != nil {
 		return nil, err
@@ -119,8 +118,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		staticBuildArgs:      sba,
 		cachePaths:           cachePaths,
 	}
-	s.imagesByName[ref.Name()] = r
-	s.images = append(s.images, r)
+	err = s.buildIndex.addImage(r)
+	if err != nil {
+		return nil, err
+	}
 
 	return starlark.None, nil
 }
@@ -150,10 +151,6 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	if s.imagesByName[ref.Name()] != nil {
-		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
-	}
-
 	bs, err := s.readFile(baseDockerfilePath)
 	if err != nil {
 		return nil, err
@@ -176,8 +173,10 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		entrypoint:         entrypoint,
 		cachePaths:         cachePaths,
 	}
-	s.imagesByName[ref.Name()] = r
-	s.images = append(s.images, r)
+	err = s.buildIndex.addImage(r)
+	if err != nil {
+		return nil, err
+	}
 
 	fb := &fastBuild{s: s, img: r}
 	return fb, nil

@@ -28,8 +28,7 @@ type tiltfileState struct {
 
 	// added to during execution
 	configFiles    []string
-	images         []*dockerImage
-	imagesByName   map[string]*dockerImage
+	buildIndex     *buildIndex
 	k8s            []*k8sResource
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
@@ -46,13 +45,13 @@ type tiltfileState struct {
 func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
-		ctx:          ctx,
-		filename:     localPath{path: filename},
-		imagesByName: make(map[string]*dockerImage),
-		k8sByName:    make(map[string]*k8sResource),
-		configFiles:  []string{filename},
-		usedImages:   make(map[string]bool),
-		logger:       l,
+		ctx:         ctx,
+		filename:    localPath{path: filename},
+		buildIndex:  newBuildIndex(),
+		k8sByName:   make(map[string]*k8sResource),
+		configFiles: []string{filename},
+		usedImages:  make(map[string]bool),
+		logger:      l,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -125,9 +124,15 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 }
 
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
-	k8sImgsUsed, err := s.assembleK8s()
+	err := s.assembleK8s()
 	if err != nil {
 		return resourceSet{}, nil, err
+	}
+
+	for _, svc := range s.dc.services {
+		if svc.ImageRef != nil {
+			s.buildIndex.matchRefInDeployTarget(svc.ImageRef)
+		}
 	}
 
 	if !s.dc.Empty() && (len(s.k8s) > 0 || len(s.k8sUnresourced) > 0) {
@@ -135,11 +140,9 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 			"resources/entities and docker-compose resources")
 	}
 
-	dcImgsUsed := s.dc.imagesUsed()
-	for k, _ := range s.imagesByName {
-		if !(k8sImgsUsed[k] || dcImgsUsed[k]) {
-			return resourceSet{}, nil, fmt.Errorf("image %v is not used in any resource", k)
-		}
+	err = s.buildIndex.assertAllMatched()
+	if err != nil {
+		return resourceSet{}, nil, err
 	}
 
 	return resourceSet{
@@ -150,51 +153,51 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 // assembleK8s matches images we know how to build with any k8s entities that use that image
 // (returning the set of images that we added to resources)
-func (s *tiltfileState) assembleK8s() (map[string]bool, error) {
-	assembledImages := make(map[string]bool)
-
+func (s *tiltfileState) assembleK8s() error {
 	// find all images mentioned in k8s entities that don't yet belong to k8sResources
-	images, err := s.findUnresourcedImages()
+	k8sRefs, err := s.findUnresourcedImages()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	for _, image := range images {
-		if _, ok := s.imagesByName[image.Name()]; !ok {
+	for _, k8sRef := range k8sRefs {
+		image := s.buildIndex.matchRefInDeployTarget(k8sRef)
+		if image == nil {
 			// only expand for images we know how to build
 			continue
 		}
-		target, err := s.k8sResourceForImage(image)
+
+		ref := image.ref
+		target, err := s.k8sResourceForImage(ref)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		// find k8s entities that use this image; pull them out of pool of
 		// unresourced entities and instead attach them to the target k8sResource
-		if err := s.extractEntities(target, image); err != nil {
-			return nil, err
+		if err := s.extractEntities(target, ref); err != nil {
+			return err
 		}
 	}
 
 	for _, r := range s.k8s {
-		if err := s.validateK8s(r, assembledImages); err != nil {
-			return nil, err
+		if err := s.validateK8s(r); err != nil {
+			return err
 		}
 	}
-	return assembledImages, nil
+	return nil
 }
 
-func (s *tiltfileState) validateK8s(r *k8sResource, assembledImages map[string]bool) error {
+func (s *tiltfileState) validateK8s(r *k8sResource) error {
 	if len(r.entities) == 0 {
-		if len(r.providedImageRefs) > 0 {
-
+		if len(r.providedImageRefNames) > 0 {
 			return fmt.Errorf("resource %q: could not find k8s entities matching "+
 				"image(s) %q; perhaps there's a typo?",
-				r.name, strings.Join(r.providedImageRefList(), "; "))
+				r.name, strings.Join(r.providedImageRefNameList(), "; "))
 		}
 		return fmt.Errorf("resource %q: you never associated any image refs with this resource", r.name)
 	}
 
-	for ref := range r.imageRefs {
-		assembledImages[ref] = true
+	for _, ref := range r.imageRefs {
+		s.buildIndex.matchRefInDeployTarget(ref)
 	}
 
 	return nil
@@ -206,7 +209,7 @@ func (s *tiltfileState) k8sResourceForImage(image reference.Named) (*k8sResource
 	// first, look thru all the resources that have already been created,
 	// and see if any of them already have a reference to this image.
 	for _, r := range s.k8s {
-		if _, ok := r.imageRefs[image.Name()]; ok {
+		if _, ok := r.imageRefNames[image.Name()]; ok {
 			return r, nil
 		}
 	}
@@ -325,7 +328,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithDeployTarget(k8sTarget)
 
-		iTargets, err := s.imgTargetsForRefs(r.imageRefList())
+		iTargets, err := s.imgTargetsForRefs(r.imageRefs)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
@@ -338,11 +341,11 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	return result, nil
 }
 
-func (s *tiltfileState) imgTargetsForRefs(refs []string) ([]model.ImageTarget, error) {
+func (s *tiltfileState) imgTargetsForRefs(refs []reference.Named) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0, len(refs))
 	for _, imageRef := range refs {
-		image, ok := s.imagesByName[imageRef]
-		if !ok {
+		image := s.buildIndex.matchRefInDeployTarget(imageRef)
+		if image == nil {
 			continue
 		}
 
@@ -390,8 +393,8 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			return nil, err
 		}
 
-		if svc.ImageRef != "" {
-			iTargets, err := s.imgTargetsForRefs([]string{svc.ImageRef})
+		if svc.ImageRef != nil {
+			iTargets, err := s.imgTargetsForRefs([]reference.Named{svc.ImageRef})
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 			}

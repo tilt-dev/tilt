@@ -8,9 +8,16 @@ import (
 
 	"go.starlark.net/starlark"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
+
+type referenceList []reference.Named
+
+func (l referenceList) Len() int           { return len(l) }
+func (l referenceList) Less(i, j int) bool { return l[i].String() < l[j].String() }
+func (l referenceList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 
 type k8sResource struct {
 	// The name of this group, for display in the UX.
@@ -20,19 +27,23 @@ type k8sResource struct {
 	entities []k8s.K8sEntity
 
 	// Image refs that the user manually asked to be associated with this resource.
-	providedImageRefs map[string]bool
+	providedImageRefNames map[string]bool
 
 	// All image refs, including:
 	// 1) one that the user manually asked to be associated with this resources, and
 	// 2) images that were auto-inferred from the included k8s resources.
-	imageRefs map[string]bool
+	imageRefNames map[string]bool
+
+	imageRefs referenceList
 
 	portForwards []portForward
 }
 
-func (r *k8sResource) addProvidedImageRef(ref string) {
-	r.providedImageRefs[ref] = true
-	r.imageRefs[ref] = true
+func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
+	r.providedImageRefNames[ref.Name()] = true
+	r.imageRefNames[ref.Name()] = true
+	r.imageRefs = append(r.imageRefs, ref)
+	sort.Sort(r.imageRefs)
 }
 
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
@@ -44,16 +55,17 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
 			return err
 		}
 		for _, image := range images {
-			r.imageRefs[image.String()] = true
+			r.imageRefNames[image.Name()] = true
+			r.imageRefs = append(r.imageRefs, image)
 		}
 	}
 	return nil
 }
 
 // Return the provided image refs in a deterministic order.
-func (r k8sResource) providedImageRefList() []string {
-	result := make([]string, 0, len(r.providedImageRefs))
-	for ref := range r.providedImageRefs {
+func (r k8sResource) providedImageRefNameList() []string {
+	result := make([]string, 0, len(r.providedImageRefNames))
+	for ref := range r.providedImageRefNames {
 		result = append(result, ref)
 	}
 	sort.Strings(result)
@@ -61,9 +73,9 @@ func (r k8sResource) providedImageRefList() []string {
 }
 
 // Return the image refs in a deterministic order.
-func (r k8sResource) imageRefList() []string {
-	result := make([]string, 0, len(r.imageRefs))
-	for ref := range r.imageRefs {
+func (r k8sResource) imageRefNameList() []string {
+	result := make([]string, 0, len(r.imageRefNames))
+	for ref := range r.imageRefNames {
 		result = append(result, ref)
 	}
 	sort.Strings(result)
@@ -115,14 +127,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	var imageRef string
+	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
 	case nil:
 		// empty
 	case starlark.String:
-		imageRef = string(imageVal)
+		imageRefAsStr = string(imageVal)
 	case *fastBuild:
-		imageRef = imageVal.img.ref.Name()
+		imageRefAsStr = imageVal.img.ref.String()
 	default:
 		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
 	}
@@ -137,7 +149,11 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	if imageRef != "" {
+	if imageRefAsStr != "" {
+		imageRef, err := reference.ParseNormalizedNamed(imageRefAsStr)
+		if err != nil {
+			return nil, err
+		}
 		r.addProvidedImageRef(imageRef)
 	}
 	r.portForwards = portForwards
@@ -150,9 +166,9 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
 	}
 	r := &k8sResource{
-		name:              name,
-		providedImageRefs: make(map[string]bool),
-		imageRefs:         make(map[string]bool),
+		name:                  name,
+		providedImageRefNames: make(map[string]bool),
+		imageRefNames:         make(map[string]bool),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
