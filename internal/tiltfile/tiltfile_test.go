@@ -928,6 +928,54 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 		m.ImageTargetAt(0).Ref.String())
 }
 
+func TestDockerBuildMatchingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		deployment("foo"),
+	)
+}
+
+func TestDockerBuildButK8sMissingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+}
+
+func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:beta")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
