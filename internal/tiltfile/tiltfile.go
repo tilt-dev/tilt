@@ -32,7 +32,7 @@ func Load(ctx context.Context, filename string, matching map[string]bool, logs i
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, model.Manifest{}, nil, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.build/write_your_tiltfile.html", filename)
+			return nil, model.Manifest{}, []string{filename}, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.build/write_your_tiltfile.html", filename)
 		}
 		absFilename, _ = filepath.Abs(filename)
 		return nil, model.Manifest{}, []string{absFilename}, err

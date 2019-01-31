@@ -29,6 +29,7 @@ func TestNoTiltfile(t *testing.T) {
 	defer f.TearDown()
 
 	f.loadErrString("No Tiltfile found at")
+	f.assertConfigFiles("Tiltfile")
 }
 
 func TestEmpty(t *testing.T) {
