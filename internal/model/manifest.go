@@ -147,6 +147,10 @@ func (m Manifest) ManifestName() ManifestName {
 	return m.Name
 }
 
+func (m Manifest) Empty() bool {
+	return m.Equal(Manifest{})
+}
+
 var _ TargetSpec = Manifest{}
 
 type Mount struct {

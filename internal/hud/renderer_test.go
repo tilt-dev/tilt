@@ -732,6 +732,22 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 	rtf.run("detected docker compose build crash auto expand", 80, 20, v, vs)
 }
 
+func TestTiltfileResource(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:       "(Tiltfile)",
+				IsTiltfile: true,
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseNo)
+	rtf.run("Tiltfile resource", 80, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	t *testing.T
 	i rty.InteractiveTester
