@@ -107,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#comparison">Comparison</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#tiltfile-for-docker-compose">Tiltfile for Docker Compose</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#caveats">Caveats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#docker-compose-under-the-hood">Docker Compose Under The Hood</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#use-the-tutorial">Use the Tutorial</a></li>
 </ul>
 </li>
@@ -190,15 +191,15 @@
             
   <div class="section" id="docker-compose">
 <h1>Docker Compose<a class="headerlink" href="#docker-compose" title="Permalink to this headline">¶</a></h1>
-<p>Tilt supports <code class="docutils literal notranslate"><span class="pre">docker-compose</span></code> as a runtime, which makes it easy to get Tilt’s better UX without changing your config or tools. This doc describes how you can get started with a one-line config, which is even simpler than the <a class="reference external" href="tutorial.html">Tutorial</a> for Kubernetes projects.</p>
+<p>Tilt can use <code class="docutils literal notranslate"><span class="pre">docker-compose</span></code> to orchestrate your services (instead of Kubernetes). This doc describes how you can get Tilt’s UX for your Docker Compose project with a one-line Tiltfile. This is simpler than the  config for Kubernetes projects described in the <a class="reference external" href="tutorial.html">Tutorial</a>.</p>
 <div class="section" id="comparison">
 <h2>Comparison<a class="headerlink" href="#comparison" title="Permalink to this headline">¶</a></h2>
 <p>Tilt provides a better User Experience in two ways:</p>
 <ul class="simple">
+<li>Tilt’s UI shows you status at a glance, so errors can’t scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).</li>
 <li>Tilt handles filesystem watching and updating without requiring manual actions or hand-rolled scripting.</li>
-<li>Tilt’s UI shows you the status at a glance, so errors can’t scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).</li>
 </ul>
-<p>Most documentation describes using Tilt to deploy to Kubernetes, but that would be a large change. For Docker Compose projects, Tilt uses Docker Compose as a backend. This allows you to use your existing configuration, debugging tricks, and muscle memory while getting a better UX.</p>
+<p>Most of our documentation describes using Tilt to deploy to Kubernetes, but that would be a large change. For Docker Compose projects, Tilt uses Docker Compose as a backend. This allows you to use your existing configuration, debugging tricks, and muscle memory while getting a better UX.</p>
 </div>
 <div class="section" id="tiltfile-for-docker-compose">
 <h2>Tiltfile for Docker Compose<a class="headerlink" href="#tiltfile-for-docker-compose" title="Permalink to this headline">¶</a></h2>
@@ -209,7 +210,11 @@
 </div>
 <div class="section" id="caveats">
 <h2>Caveats<a class="headerlink" href="#caveats" title="Permalink to this headline">¶</a></h2>
-<p>Our Docker Compose support is newer than and largely separate from our Kubernetes support. You may hit more/different bugs, which we want to fix.</p>
+<p>Our Docker Compose support is newer than (and largely separate from) Tilt’s Kubernetes support. You may hit more/different bugs, which we want to fix.</p>
+</div>
+<div class="section" id="docker-compose-under-the-hood">
+<h2>Docker Compose Under The Hood<a class="headerlink" href="#docker-compose-under-the-hood" title="Permalink to this headline">¶</a></h2>
+<p>Tilt uses Docker Compose to run your services, so you can also use <code class="docutils literal notranslate"><span class="pre">docker-compose</span></code> to examine state outside Tilt.</p>
 </div>
 <div class="section" id="use-the-tutorial">
 <h2>Use the Tutorial<a class="headerlink" href="#use-the-tutorial" title="Permalink to this headline">¶</a></h2>

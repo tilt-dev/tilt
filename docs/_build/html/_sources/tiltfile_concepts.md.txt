@@ -5,9 +5,9 @@ This doc describes concepts in the Tiltfile, expanding on the [Tutorial](tutoria
 ## Execution Model
 `Tiltfile`s are written in [Starlark](https://github.com/bazelbuild/starlark), a dialect of Python. Tilt executes the `Tiltfile` on startup.
 
-Functions like `k8s_yaml` and `docker_build` register information. At the end of the execution, Tilt uses the resulting configuration. In addition to the final configuration, Tilt records file accesses. Tilt listens to these files, and reexecutes when one changes (but not on every source file change).
+Functions like `k8s_yaml` and `docker_build` register information. At the end of the execution, Tilt uses the resulting configuration. In addition to the final configuration, Tilt records file accesses; Tilt watches these files, and reexecutes when one changes (but not on every source file change).
 
-Because Tilt uses a programming language, you can configure it with familiar constructs like loops, functions, arrays, etc. This makes Tilt more extensible than a configuration that requires hard-coding all possible options up-front.
+Because your Tiltfile is a program, you can configure it with familiar constructs like loops, functions, arrays, etc. This makes Tilt more extensible than a configuration that requires hard-coding all possible options up-front.
 
 ## Deploy
 The first function in a `Tiltfile` is generally a call to `k8s_yaml`. You can call `k8s_yaml` in a variety of ways, depending on how your project organizes or generates yaml. Let's look at some alternatives:
@@ -31,7 +31,7 @@ k8s_yaml(helm('chart_dir'))
 Tilt has built-in functions to generate kubernetes yaml with `kustomize` or `helm`. (If you think we're overlooking a popular tool, let us know so we can add it.)
 
 ## Custom Commands
-If your project uses a custom tool to generate kubernetes yaml, you can still use Tilt. You don't have to wait for us to add support or fork Tilt and implement it yourself. Use the `local` function:
+If your project uses a custom tool to generate kubernetes yaml, you can still use Tilt. You don't have to wait for us to add support or fork Tilt and implement it yourself. Run a custom command with the `local` function:
 ```python
 text = local('./foo.py') # runs command foo.py
 k8s_yaml(text)

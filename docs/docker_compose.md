@@ -1,5 +1,5 @@
 # Docker Compose
-Tilt can use `docker-compose` to orchestrate your services (instead of Kubernetes). This doc describes how you can get Tilt's UX for your Docker Compose project with a one-line Tiltfile. This is simpler than the  config for Kubernetes projects described in the [Tutorial](tutorial.html).
+Tilt can use `docker-compose` to orchestrate your services (instead of Kubernetes). This doc describes how you can get Tilt's UX for your Docker Compose project using the same config and tools plus a one-line Tiltfile. (This is simpler than the config for Kubernetes projects described in the [Tutorial](tutorial.html).)
 
 
 ## Comparison
@@ -16,7 +16,7 @@ docker_compose("./docker-compose.yml")
 ```
 
 ## Caveats
-Our Docker Compose support is newer than (and largely separate from) Tilt's Kubernetes support. You may hit more/different bugs, which we want to fix.
+Our Docker Compose support is newer than (and largely separate from) Tilt's Kubernetes support. You may hit more/different bugs, which we want to fix -- please file issues or tell us in Slack.
 
 ## Docker Compose Under The Hood
 Tilt uses Docker Compose to run your services, so you can also use `docker-compose` to examine state outside Tilt.

@@ -1,6 +1,6 @@
 # Example Projects
 
-This doc supplements our [Tutorial](tutorial.html) for people who want to try Tilt but don't have a project they can easily use with Tilt. It describes two example projects we've built that use Tilt.
+This doc supplements our [Tutorial](tutorial.html) for people who want to try Tilt but don't have a suitable project on hand. It describes two example projects we've built that use Tilt.
 
 These projects can also be useful to confirm Tilt is working as expected in your environment.
 
@@ -14,7 +14,6 @@ git clone https://github.com/windmilleng/tilt
 cd tilt/integration/oneup
 ```
 
-Under `integration`, Tilt has example projects that we use to run our integration tests.
 We'll be looking at the [oneup](https://github.com/windmilleng/tilt/tree/master/integration/oneup) project
 in `integration/oneup`.
 

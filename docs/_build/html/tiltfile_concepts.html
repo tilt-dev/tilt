@@ -196,8 +196,8 @@
 <div class="section" id="execution-model">
 <h2>Execution Model<a class="headerlink" href="#execution-model" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>s are written in <a class="reference external" href="https://github.com/bazelbuild/starlark">Starlark</a>, a dialect of Python. Tilt executes the <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> on startup.</p>
-<p>Functions like <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">docker_build</span></code> register information. At the end of the execution, Tilt uses the resulting configuration. In addition to the final configuration, Tilt records file accesses. Tilt listens to these files, and reexecutes when one changes (but not on every source file change).</p>
-<p>Because Tilt uses a programming language, you can configure it with familiar constructs like loops, functions, arrays, etc. This makes Tilt more extensible than a configuration that requires hard-coding all possible options up-front.</p>
+<p>Functions like <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">docker_build</span></code> register information. At the end of the execution, Tilt uses the resulting configuration. In addition to the final configuration, Tilt records file accesses; Tilt watches these files, and reexecutes when one changes (but not on every source file change).</p>
+<p>Because your Tiltfile is a program, you can configure it with familiar constructs like loops, functions, arrays, etc. This makes Tilt more extensible than a configuration that requires hard-coding all possible options up-front.</p>
 </div>
 <div class="section" id="deploy">
 <h2>Deploy<a class="headerlink" href="#deploy" title="Permalink to this headline">¶</a></h2>
@@ -221,7 +221,7 @@
 </div>
 <div class="section" id="custom-commands">
 <h2>Custom Commands<a class="headerlink" href="#custom-commands" title="Permalink to this headline">¶</a></h2>
-<p>If your project uses a custom tool to generate kubernetes yaml, you can still use Tilt. You don’t have to wait for us to add support or fork Tilt and implement it yourself. Use the <code class="docutils literal notranslate"><span class="pre">local</span></code> function:</p>
+<p>If your project uses a custom tool to generate kubernetes yaml, you can still use Tilt. You don’t have to wait for us to add support or fork Tilt and implement it yourself. Run a custom command with the <code class="docutils literal notranslate"><span class="pre">local</span></code> function:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">text</span> <span class="o">=</span> <span class="n">local</span><span class="p">(</span><span class="s1">&#39;./foo.py&#39;</span><span class="p">)</span> <span class="c1"># runs command foo.py</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 </pre></div>
