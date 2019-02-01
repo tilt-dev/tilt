@@ -1950,7 +1950,7 @@ func TestEmptyTiltfile(t *testing.T) {
 		return !st.LastTiltfileBuild.Empty()
 	})
 	f.withState(func(st store.EngineState) {
-		assert.EqualError(t, st.LastTiltfileBuild.Error, "No resources found. Check out https://docs.tilt.build/write_your_tiltfile.html to get started!")
+		assert.Contains(t, st.LastTiltfileBuild.Error.Error(), "No resources found. Check out ")
 	})
 }
 
