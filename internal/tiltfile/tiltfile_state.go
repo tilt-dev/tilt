@@ -91,6 +91,9 @@ const (
 	readFileN     = "read_file"
 	kustomizeN    = "kustomize"
 	helmN         = "helm"
+
+	// other functions
+	failN = "fail"
 )
 
 func (s *tiltfileState) builtins() starlark.StringDict {
@@ -117,6 +120,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
+	addBuiltin(r, failN, s.fail)
 
 	s.builtinsMap = r
 
