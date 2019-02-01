@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
@@ -26,16 +26,6 @@ type dcResourceSet struct {
 }
 
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
-
-func (dc dcResourceSet) imagesUsed() map[string]bool {
-	imgs := make(map[string]bool)
-	for _, svc := range dc.services {
-		if svc.ImageRef != "" {
-			imgs[svc.ImageRef] = true
-		}
-	}
-	return imgs
-}
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPath string
@@ -79,14 +69,14 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("dc_resource: `name` must not be empty")
 	}
 
-	var imageRef string
+	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
 	case nil:
 		return nil, fmt.Errorf("must specify an image arg (string or fast_build)")
 	case starlark.String:
-		imageRef = string(imageVal)
+		imageRefAsStr = string(imageVal)
 	case *fastBuild:
-		imageRef = imageVal.img.ref.Name()
+		imageRefAsStr = imageVal.img.ref.String()
 	default:
 		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
 	}
@@ -95,7 +85,8 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, err
 	}
-	normalized, err := docker.NormalizeRefName(imageRef)
+
+	normalized, err := reference.ParseNormalizedNamed(imageRefAsStr)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +199,7 @@ type dcService struct {
 
 	// Ref of an image described via docker_build || fast_build call
 	// (explicitly linked to this service via dc_service call)
-	ImageRef string
+	ImageRef reference.Named
 
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
 	ServiceConfig []byte

@@ -94,22 +94,21 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Tiltfile API Reference</a></li>
 </ul>
@@ -273,11 +272,11 @@ Example values: 9000 (connect localhost:9000 to the default container port),
 ‘9000:8000’ (connect localhost:9000 to the container port 8000),
 [‘9000:8000’, ‘9001:8001’] (connect localhost:9000 and :9001 to the
 container ports 8000 and 8001, respectively).</li>
-<li><strong>extra_pod_selectors</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – In addition to relying on Tilt’s heuristics to automatically
+<li><strong>extra_pod_selectors</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]]) – In addition to relying on Tilt’s heuristics to automatically
 find K8S resources associated with this resource, a user may specify extra
 labelsets to force entities to be associated with this resource. An entity
 will be associated with this resource if it has all of the labels in at
-least one of the entries in this list (but still also if it meets any of
+least one of the entries specified (but still also if it meets any of
 Tilt’s usual mechanisms).</li>
 </ul>
 </td>

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Python Module Index &mdash; Tilt  documentation</title>
+  <title>Skaffold &mdash; Tilt  documentation</title>
   
 
   
@@ -28,9 +28,11 @@
 
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-
+    <link rel="next" title="Helm" href="helm.html" />
+    <link rel="prev" title="Tutorial: First 15 Minutes" href="tutorial.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -40,12 +42,6 @@
 
  gtag('config', 'UA-129150759-2');
 </script>
-
-
-    <script type="text/javascript">
-      DOCUMENTATION_OPTIONS.COLLAPSE_INDEX = true;
-    </script>
-
 
 
   
@@ -102,10 +98,14 @@
 <li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Skaffold</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#comparison">Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#translate-skaffold-configuration">Translate Skaffold Configuration</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
@@ -165,10 +165,16 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Python Module Index</li>
+      <li>Skaffold</li>
     
     
       <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/skaffold.md" class="fa fa-github"> Edit on GitHub</a>
+            
+          
         
       </li>
     
@@ -180,29 +186,57 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-
-   <h1>Python Module Index</h1>
-
-   <div class="modindex-jumpbox">
-   <a href="#cap-a"><strong>a</strong></a>
-   </div>
-
-   <table class="indextable modindextable">
-     <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
-     <tr class="cap" id="cap-a"><td></td><td>
-       <strong>a</strong></td><td></td></tr>
-     <tr>
-       <td></td>
-       <td>
-       <a href="api.html#module-api"><code class="xref">api</code></a></td><td>
-       <em></em></td></tr>
-   </table>
+  <div class="section" id="skaffold">
+<h1>Skaffold<a class="headerlink" href="#skaffold" title="Permalink to this headline">¶</a></h1>
+<p>Tilt is a great upgrade to <a class="reference external" href="https://skaffold.dev">Skaffold</a> for local dev. This doc compares Tilt to Skaffold and describes how to translate your configuration, which makes our 15 Minute <a class="reference external" href="tutorial.html">Tutorial</a> even easier.</p>
+<div class="section" id="comparison">
+<h2>Comparison<a class="headerlink" href="#comparison" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Tilt’s UI shows you status at a glance, so errors can’t scroll off-screen. You can navigate the UI in your terminal and dig into the logs for just one service. (Tilt also has a global log if you do want the full firehose).</li>
+<li>Tilt’s configuration is <a class="reference external" href="https://github.com/bazelbuild/starlark#tour%3E">Starlark</a>, a subset of Python. This allows simple configs to be shorter and complex configs to be possible.</li>
+</ul>
+</div>
+<div class="section" id="translate-skaffold-configuration">
+<h2>Translate Skaffold Configuration<a class="headerlink" href="#translate-skaffold-configuration" title="Permalink to this headline">¶</a></h2>
+<p>Skaffold concepts map almost directly into Tilt. Let’s translate an example Skaffold configuration with two deployments and two images:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">skaffold/v1alpha5</span>
+<span class="nt">kind</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Config</span>
+<span class="nt">build</span><span class="p">:</span>
+  <span class="nt">artifacts</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/snack</span>
+    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">snack</span>
+  <span class="p p-Indicator">-</span> <span class="nt">image</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">gcr.io/windmill-public-containers/servantes/spoonerisms</span>
+    <span class="nt">context</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">spoonerisms</span>
+<span class="nt">deploy</span><span class="p">:</span>
+  <span class="nt">kubectl</span><span class="p">:</span>
+    <span class="nt">manifests</span><span class="p">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/snack.yaml</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">deployments/spoonerisms.yaml</span>
+</pre></div>
+</div>
+<p>The corresponding <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> is:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;deployments/snack.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;deployments/spoonerisms.yaml&#39;</span><span class="p">])</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/snack&#39;</span><span class="p">,</span> <span class="s1">&#39;snack&#39;</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;gcr.io/windmill-public-containers/servantes/spoonerisms&#39;</span><span class="p">,</span> <span class="s1">&#39;spoonerisms&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
 
 
            </div>
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="helm.html" class="btn btn-neutral float-right" title="Helm" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="tutorial.html" class="btn btn-neutral" title="Tutorial: First 15 Minutes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

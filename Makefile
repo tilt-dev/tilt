@@ -41,8 +41,8 @@ lint:
 build:
 	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
 
-test-go: 
-	./hide_tbd_warning go test -timeout 60s ./...
+test-go:
+	./hide_tbd_warning go test -timeout 120s ./...
 
 test: test-go test-js
 
@@ -117,4 +117,3 @@ docs:
 	docker run --name tiltdocs tilt/docs
 	docker cp tiltdocs:/src/_build docs/
 	docker rm tiltdocs
-

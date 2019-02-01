@@ -31,6 +31,7 @@ func TestNoTiltfile(t *testing.T) {
 	defer f.TearDown()
 
 	f.loadErrString("No Tiltfile found at")
+	f.assertConfigFiles("Tiltfile")
 }
 
 func TestEmpty(t *testing.T) {
@@ -981,6 +982,54 @@ func TestExtraPodSelectorsValueNotString(t *testing.T) {
 
 	f.setupExtraPodSelectors("[{'hello': 54321}]")
 	f.loadErrString("values must be strings", "54321")
+}
+
+func TestDockerBuildMatchingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertManifest("foo",
+		deployment("foo"),
+	)
+}
+
+func TestDockerBuildButK8sMissingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+}
+
+func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:beta")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
 }
 
 type fixture struct {

@@ -34,7 +34,12 @@ func NewDockerComposeClient() DockerComposeClient {
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
-	args := []string{"-f", configPath, "up", "--no-deps", "-d"}
+	var args []string
+	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+		args = []string{"--verbose"}
+	}
+
+	args = append(args, "-f", configPath, "up", "--no-deps", "-d")
 	if shouldBuild {
 		args = append(args, "--build")
 	} else {
@@ -54,7 +59,12 @@ func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName mod
 }
 
 func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "down")
+	var args []string
+	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+		args = []string{"--verbose"}
+	}
+	args = append(args, "-f", configPath, "down")
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
