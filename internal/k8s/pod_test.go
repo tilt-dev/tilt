@@ -107,7 +107,7 @@ func TestPodsWithImageLabels(t *testing.T) {
 	f.addObject(&pod2)
 	nt := container.MustParseNamedTagged("cockroachdb/cockroach:v2.0.5")
 
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []model.LabelPair{{"type", "primary"}})
+	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []model.LabelPair{{Key: "type", Value: "primary"}})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestPodsWithImageLabels(t *testing.T) {
 		assert.Equal(t, "primary", pods[0].ObjectMeta.Labels["type"])
 	}
 
-	pods, err = f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []model.LabelPair{{"type", "replica"}})
+	pods, err = f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []model.LabelPair{{Key: "type", Value: "replica"}})
 	if err != nil {
 		f.t.Fatal(err)
 	}

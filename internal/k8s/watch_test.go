@@ -72,7 +72,7 @@ func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 
 func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	lps := []model.LabelPair{{"foo", "bar"}, {"baz", "quu"}}
+	lps := []model.LabelPair{{Key: "foo", Value: "bar"}, {Key: "baz", Value: "quu"}}
 	tf.testServiceLabels(lps, lps)
 }
 
@@ -118,7 +118,7 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 
 	tf.w.Stop()
 
-	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Set{})
+	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
@@ -176,7 +176,7 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 }
 
 func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {
-	_, err := tf.kCli.WatchPods(tf.ctx, input)
+	_, err := tf.kCli.WatchPods(tf.ctx, input.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
