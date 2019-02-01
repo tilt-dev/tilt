@@ -42,7 +42,12 @@ build:
 	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
 
 test-go:
-	./hide_tbd_warning go test -timeout 120s ./...
+	if [[ -z $$CIRCLE_CI ]]; then \
+		./hide_tbd_warning go test -timeout 120s ./...; \
+	else \
+		mkdir -p test-results; \
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -timeout 120s; \
+	fi
 
 test: test-go test-js
 
