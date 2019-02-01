@@ -977,6 +977,19 @@ k8s_yaml('foo.yaml')
 	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
 }
 
+func TestFail(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+fail("this is an error")
+print("not this")
+fail("or this")
+`)
+
+	f.loadErrString("this is an error")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
