@@ -988,7 +988,6 @@ fail("or this")
 `)
 
 	f.loadErrString("this is an error")
-
 }
 
 type fixture struct {
