@@ -4,7 +4,7 @@ Optimizing a Tiltfile
 This tutorial looks at a `Tiltfile` with build optimizations.
 We explain what they do, and why you would want to use them.
 
-In [the previous tutorial](first_config.html), we introduced the `docker_build()` function.
+In the [Tutorial](tutorial.html), we introduced the `docker_build()` function.
 This function builds a Docker image. Tilt will watch the inputs to the
 image, and rebuild it every time they change.
 
@@ -92,9 +92,6 @@ This is much closer to how we normally run commands for local development. Real 
 don't delete all their code and re-clone it from git every time we need to do a new build!
 We re-run the command in the same directory. Modern tools then take advantage of local caches.
 Tilt runs commands with the same approach, but inside a container.
-
-Next Steps
-----------
 
 In this guide, we explored just a few of the functions we can use in a `Tiltfile`
 to keep your build fast. For even more functions and tricks,

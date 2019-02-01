@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tilt Installation Guide" href="install.html" />
+    <link rel="next" title="Install" href="install.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -93,22 +93,21 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tilt User Guide</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
@@ -196,49 +195,54 @@ starting multiple microservices, making changes to them, and seeing any new erro
 or logs right in your terminal.</p>
 <p><iframe width="560" height="315" src="https://www.youtube.com/embed/MGeUUmdtdKA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></p><div class="section" id="install-tilt">
 <h2>Install Tilt<a class="headerlink" href="#install-tilt" title="Permalink to this headline">¶</a></h2>
-<p>Download the Tilt binary on
-<a class="reference external" href="https://github.com/windmilleng/tilt/releases">the github releases page</a>.</p>
-<p>Tilt expects that you already have Docker and <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> installed.
-Read the more detailed <a class="reference external" href="install.html">Installation Guide</a>
-to help you <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">up</span></code> quickly.</p>
+<p>Download the latest Tilt release from
+<a class="reference external" href="https://github.com/windmilleng/tilt/releases">GitHub</a>. Read the <a class="reference external" href="install.html">Installation Guide</a> for details and prerequistes.</p>
 </div>
-<div class="section" id="configure-your-workflow-to-share-with-your-team">
-<h2>Configure Your Workflow to Share With Your Team<a class="headerlink" href="#configure-your-workflow-to-share-with-your-team" title="Permalink to this headline">¶</a></h2>
-<p>Down with YAML!</p>
-<p>Configure Tilt with a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>, written in a small subset of Python called
-<a class="reference external" href="https://github.com/bazelbuild/starlark#tour">Starlark</a>.</p>
-<p>To get started, check out some <a class="reference external" href="first_example.html">examples</a> or dive into the
-<a class="reference external" href="api.html">API reference</a>.</p>
+<div class="section" id="describe-your-workflow">
+<h2>Describe Your Workflow<a class="headerlink" href="#describe-your-workflow" title="Permalink to this headline">¶</a></h2>
+<p>A Tiltfile is a program that connects your existing Docker and Kubernetes configurations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example Tiltfile for a k8s app with two microservices</span>
+
+<span class="c1"># Deploy: tell Tilt what yaml to apply</span>
+<span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;app.yaml&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build: tell Tilt what images to build from which directories</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;companyname/frontend&#39;</span><span class="p">,</span> <span class="s1">&#39;frontend&#39;</span><span class="p">)</span>
+<span class="n">docker_build</span><span class="p">(</span><span class="s1">&#39;companyname/backend&#39;</span><span class="p">,</span> <span class="s1">&#39;backend&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Set up Tilt in 15 minutes with the <a class="reference external" href="tutorial.html">Tutorial</a>.</p>
+</div>
+<div class="section" id="see-more">
+<h2>See More<a class="headerlink" href="#see-more" title="Permalink to this headline">¶</a></h2>
+<p>Stop playing 20 questions with <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>. Tilt’s UI pulls relevant data to the surface, automatically.</p>
+<p>You fix faster when you know what’s broken.</p>
 </div>
 <div class="section" id="community">
 <h2>Community<a class="headerlink" href="#community" title="Permalink to this headline">¶</a></h2>
-<p>Questions? Comments? Just want to say hi?</p>
-<p>Find us on the Kubernetes slack. Get an invite at <a class="reference external" href="http://slack.k8s.io">slack.k8s.io</a> and find
+<p>Questions? Comments? Just want to say hi? Find us on the Kubernetes slack. Get an invite at <a class="reference external" href="http://slack.k8s.io">slack.k8s.io</a> and find
 us in <a class="reference external" href="https://kubernetes.slack.com/messages/CESBL84MV/">the <strong>#tilt</strong> channel</a>.</p>
 <p>We tweet <a class="reference external" href="https://twitter.com/windmill_eng">&#64;windmill_eng</a> and
 blog about building Tilt at <a class="reference external" href="https://medium.com/windmill-engineering">medium.com/windmill-engineering</a>.</p>
+<p>Tilt is Open Source, developed on <a class="reference external" href="https://github.com/windmilleng/tilt">GitHub</a>.</p>
 <p>We expect everyone in our community (users, contributors, and employees alike) to abide by our <a class="reference external" href="code_of_conduct.html"><strong>Code of Conduct</strong></a>.</p>
+<div class="toctree-wrapper compound">
+</div>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docker_compose_alpha.html">Docker Compose Support (Alpha)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helm.html">For Helm Users</a></li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
-<ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
 </ul>
@@ -261,7 +265,7 @@ blog about building Tilt at <a class="reference external" href="https://medium.c
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="install.html" class="btn btn-neutral float-right" title="Tilt Installation Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="install.html" class="btn btn-neutral float-right" title="Install" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>

@@ -1,25 +1,15 @@
-# For Helm Users
-
-Tilt has native support for Helm! To run `helm template` on a chart directory from Tilt simply pass the chart directory to the `helm` built-in like so:
-
-```python
-yml = helm('path/to/chart')
-# The result is just YAML, which you can use throughout Tilt anywhere you would normally use YAML
-k8s_yaml(yml)
-```
-
-If you use Tilt to build your own Docker image and that image appears in your Helm chart we can automatically redeploy your service when the image changes.
+# Helm
+Tilt supports Helm out-of-the-box. The `helm` function runs `helm template` on a chart directory and returns the generated yaml. Use this function in the Deploy step of our [Tutorial](tutorial.html).
 
 ```python
-docker_build("companyname/service", ".")
-yml = helm('path/to/chart') # the resulting yaml uses the companyname/service image
-k8s_resource(yml)
+k8s_yaml(helm('path/to/chart'))
 ```
 
-`helm` could also be implemented as a `local` command if you require further customization:
+## Further Customization
+You could also run `helm` with a call to `local` if you require further customization:
 
 ```python
-local("helm template path/to/chart")
+k8s_yaml(local("helm template path/to/chart"))
 ```
 
-For complete documentation of both `helm` and `local` visit the [Tilt API reference](api.html).
+(If you need to do this, let us know: we'd love to extend our built-in support to cover your use case.)

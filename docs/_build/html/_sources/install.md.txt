@@ -1,5 +1,5 @@
-Tilt Installation Guide
-=======================
+Install
+=======
 
 Tilt is currently available for MacOS and Linux.
 
@@ -101,6 +101,4 @@ If you have any trouble installing Tilt, look for the error message in the
 Next Steps
 ----------
 
-You're ready to start using Tilt! Try it out with [an example project](first_example.html).
-
-
+You're ready to start using Tilt! Try our [Tutorial](tutorial.html) to setup your project in 15 minutes.
