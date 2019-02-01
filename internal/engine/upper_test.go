@@ -1942,6 +1942,18 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 	})
 }
 
+func TestEmptyTiltfile(t *testing.T) {
+	f := newTestFixture(t)
+	f.WriteFile("Tiltfile", "")
+	go f.upper.Start(context.Background(), []string{}, false, model.TriggerAuto, "Tiltfile", true)
+	f.WaitUntil("build is set", func(st store.EngineState) bool {
+		return !st.LastTiltfileBuild.Empty()
+	})
+	f.withState(func(st store.EngineState) {
+		assert.EqualError(t, st.LastTiltfileBuild.Error, "No resources found. Check out https://docs.tilt.build/write_your_tiltfile.html to get started!")
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
