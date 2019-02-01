@@ -121,7 +121,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	}
 	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
 	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/write_your_tiltfile.html to get started!")
+		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
 	}
 
 	return u.Init(ctx, InitAction{

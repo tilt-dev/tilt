@@ -18,7 +18,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/ to get started."
+const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/tutorial.html to get started."
 
 type EngineState struct {
 	// saved so that we can render in order
