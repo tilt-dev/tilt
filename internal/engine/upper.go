@@ -489,11 +489,11 @@ func handleConfigsReloaded(
 func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
-		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodLabels
+		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodSelectors
 		for _, m := range state.Manifests() {
 			if m.IsK8s() {
-				for _, lps := range m.K8sTarget().ExtraPodLabels {
-					if lps.AsSelector().Matches(labels.Set(pod.ObjectMeta.GetLabels())) {
+				for _, lps := range m.K8sTarget().ExtraPodSelectors {
+					if lps.Matches(labels.Set(pod.ObjectMeta.GetLabels())) {
 						manifestName = m.Name
 						break
 					}

@@ -102,8 +102,8 @@ type K8sTarget struct {
 	YAML         string
 	PortForwards []PortForward
 	// labels for pods that we should watch and associate with this resource
-	ExtraPodLabels []labels.Set
-	ResourceNames  []string
+	ExtraPodSelectors []labels.Selector
+	ResourceNames     []string
 }
 
 func (k8s K8sTarget) Validate() error {

@@ -254,7 +254,7 @@
 
 <dl class="function">
 <dt id="api.k8s_resource">
-<code class="descclassname">api.</code><code class="descname">k8s_resource</code><span class="sig-paren">(</span><em>name</em>, <em>yaml=''</em>, <em>image=''</em>, <em>port_forwards=[]</em>, <em>extra_pod_labels=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_resource" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">api.</code><code class="descname">k8s_resource</code><span class="sig-paren">(</span><em>name</em>, <em>yaml=''</em>, <em>image=''</em>, <em>port_forwards=[]</em>, <em>extra_pod_selectors=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.k8s_resource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a kubernetes resource that tilt can deploy using the specified image.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -273,7 +273,12 @@ Example values: 9000 (connect localhost:9000 to the default container port),
 ‘9000:8000’ (connect localhost:9000 to the container port 8000),
 [‘9000:8000’, ‘9001:8001’] (connect localhost:9000 and :9001 to the
 container ports 8000 and 8001, respectively).</li>
-<li><strong>extra_pod_labels</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – In addition to relying on TIlt’s heuristics to automatically find K8S resources associated with this resource, a user may specify extra labelsets to force entities to be associated with this resource. An entity will be associated with this resource if it has all of the labels in at least one of the entries in this list (but still also if it meets any of Tilt’s usual mechanisms).</li>
+<li><strong>extra_pod_selectors</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – In addition to relying on Tilt’s heuristics to automatically
+find K8S resources associated with this resource, a user may specify extra
+labelsets to force entities to be associated with this resource. An entity
+will be associated with this resource if it has all of the labels in at
+least one of the entries in this list (but still also if it meets any of
+Tilt’s usual mechanisms).</li>
 </ul>
 </td>
 </tr>

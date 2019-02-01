@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -43,15 +44,61 @@ type FakeK8sClient struct {
 	LastForwardPortPodID      PodID
 	LastForwardPortRemotePort int
 
+	watcherMu sync.Mutex
+	watches   []fakePodWatch
+
 	UpsertError error
+}
+
+type fakePodWatch struct {
+	ls labels.Selector
+	ch chan *v1.Pod
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
 	return nil, nil
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, lps labels.Set) (<-chan *v1.Pod, error) {
-	return nil, nil
+func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
+	c.watcherMu.Lock()
+	defer c.watcherMu.Unlock()
+	var ret []labels.Selector
+	for _, w := range c.watches {
+		ret = append(ret, w.ls)
+	}
+	return ret
+}
+
+func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
+	c.watcherMu.Lock()
+	defer c.watcherMu.Unlock()
+	for _, w := range c.watches {
+		if SelectorEqual(ls, w.ls) {
+			w.ch <- p
+		}
+	}
+}
+
+func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
+	c.watcherMu.Lock()
+	ch := make(chan *v1.Pod, 20)
+	c.watches = append(c.watches, fakePodWatch{ls, ch})
+	c.watcherMu.Unlock()
+
+	go func() {
+		// when ctx is canceled, remove the label selector from the list of watched label selectors
+		<-ctx.Done()
+		c.watcherMu.Lock()
+		var newWatches []fakePodWatch
+		for _, e := range c.watches {
+			if !SelectorEqual(e.ls, ls) {
+				newWatches = append(newWatches, e)
+			}
+		}
+		c.watches = newWatches
+		c.watcherMu.Unlock()
+	}()
+	return ch, nil
 }
 
 func NewFakeK8sClient() *FakeK8sClient {

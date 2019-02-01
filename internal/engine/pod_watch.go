@@ -25,7 +25,7 @@ func NewPodWatcher(kCli k8s.Client) *PodWatcher {
 }
 
 type PodWatch struct {
-	labels labels.Set
+	labels labels.Selector
 	cancel context.CancelFunc
 }
 
@@ -36,7 +36,7 @@ func subtract(a, b []PodWatch) []PodWatch {
 	for _, pwa := range a {
 		inB := false
 		for _, pwb := range b {
-			if !labels.Equals(pwa.labels, pwb.labels) {
+			if k8s.SelectorEqual(pwa.labels, pwb.labels) {
 				inB = true
 				break
 			}
@@ -57,17 +57,15 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 	for _, m := range state.Manifests() {
 		if m.IsK8s() {
 			atLeastOneK8S = true
-			for _, lp := range m.K8sTarget().ExtraPodLabels {
-				if len(lp) > 0 {
-					neededWatches = append(neededWatches, PodWatch{labels: lp})
+			for _, ls := range m.K8sTarget().ExtraPodSelectors {
+				if !ls.Empty() {
+					neededWatches = append(neededWatches, PodWatch{labels: ls})
 				}
 			}
 		}
 	}
 	if atLeastOneK8S {
-		trl := TiltRunLabel()
-
-		neededWatches = append(neededWatches, PodWatch{labels: labels.Set{trl.Key: trl.Value}})
+		neededWatches = append(neededWatches, PodWatch{labels: TiltRunSelector()})
 	}
 
 	return subtract(neededWatches, w.watches), subtract(w.watches, neededWatches)
@@ -78,7 +76,8 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 
 	for _, pw := range setup {
 		ctx, cancel := context.WithCancel(ctx)
-		w.watches = append(w.watches, PodWatch{labels: pw.labels, cancel: cancel})
+		pw = PodWatch{labels: pw.labels, cancel: cancel}
+		w.watches = append(w.watches, pw)
 		ch, err := w.kCli.WatchPods(ctx, pw.labels)
 		if err != nil {
 			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
@@ -90,8 +89,18 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 
 	for _, pw := range teardown {
 		pw.cancel()
+		w.removeWatch(pw)
 	}
+}
 
+func (w *PodWatcher) removeWatch(toRemove PodWatch) {
+	oldWatches := append([]PodWatch{}, w.watches...)
+	w.watches = nil
+	for _, e := range oldWatches {
+		if !k8s.SelectorEqual(e.labels, toRemove.labels) {
+			w.watches = append(w.watches, e)
+		}
+	}
 }
 
 func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {

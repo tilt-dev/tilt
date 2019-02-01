@@ -930,46 +930,56 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 		m.ImageTargetAt(0).Ref.String())
 }
 
-func TestExtraPodLabels(t *testing.T) {
+func TestExtraPodSelectors(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupExtraPodLabels("[{'baz': 'quu'}]")
+	f.setupExtraPodSelectors("[{'foo': 'bar', 'baz': 'qux'}, {'quux': 'corge'}]")
 	f.load()
 
 	f.assertManifest("foo",
-		extraPodLabels(labels.Set{"baz": "quu"}))
+		extraPodSelectors(labels.Set{"foo": "bar", "baz": "qux"}, labels.Set{"quux": "corge"}))
 }
 
-func TestExtraPodLabelsNotList(t *testing.T) {
+func TestExtraPodSelectorsNotList(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupExtraPodLabels("'hello'")
-	f.loadErrString("must be a sequence", "starlark.String")
+	f.setupExtraPodSelectors("'hello'")
+	f.loadErrString("got starlark.String", "dict or a list")
 }
 
-func TestExtraPodLabelsElementNotDict(t *testing.T) {
+func TestExtraPodSelectorsDict(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupExtraPodLabels("['hello']")
+	f.setupExtraPodSelectors("{'foo': 'bar'}")
+	f.load()
+	f.assertManifest("foo",
+		extraPodSelectors(labels.Set{"foo": "bar"}))
+}
+
+func TestExtraPodSelectorsElementNotDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("['hello']")
 	f.loadErrString("must be dicts", "starlark.String")
 }
 
-func TestExtraPodLabelsKeyNotString(t *testing.T) {
+func TestExtraPodSelectorsKeyNotString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupExtraPodLabels("[{54321: 'hello'}]")
+	f.setupExtraPodSelectors("[{54321: 'hello'}]")
 	f.loadErrString("keys must be strings", "54321")
 }
 
-func TestExtraPodLabelsValueNotString(t *testing.T) {
+func TestExtraPodSelectorsValueNotString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupExtraPodLabels("[{'hello': 54321}]")
+	f.setupExtraPodSelectors("[{'hello': 54321}]")
 	f.loadErrString("values must be strings", "54321")
 }
 
@@ -1179,8 +1189,8 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
-		case extraPodLabelsHelper:
-			assert.Equal(f.t, opt.labels, m.K8sTarget().ExtraPodLabels)
+		case extraPodSelectorsHelper:
+			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
 		case numEntitiesHelper:
 			yaml := m.K8sTarget().YAML
 			entities := f.entities(yaml)
@@ -1300,12 +1310,16 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 	return r
 }
 
-type extraPodLabelsHelper struct {
-	labels []labels.Set
+type extraPodSelectorsHelper struct {
+	labels []labels.Selector
 }
 
-func extraPodLabels(labels ...labels.Set) extraPodLabelsHelper {
-	return extraPodLabelsHelper{labels}
+func extraPodSelectors(labels ...labels.Set) extraPodSelectorsHelper {
+	ret := extraPodSelectorsHelper{}
+	for _, ls := range labels {
+		ret.labels = append(ret.labels, ls.AsSelector())
+	}
+	return ret
 }
 
 type numEntitiesHelper struct {
@@ -1462,12 +1476,12 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/service.yaml", serviceYAML)
 }
 
-func (f *fixture) setupExtraPodLabels(s string) {
+func (f *fixture) setupExtraPodSelectors(s string) {
 	f.setupFoo()
 
 	tiltfile := fmt.Sprintf(`
 docker_build('gcr.io/foo', 'foo')
-k8s_resource('foo', 'foo.yaml', extra_pod_labels=%s)
+k8s_resource('foo', 'foo.yaml', extra_pod_selectors=%s)
 `, s)
 
 	f.file("Tiltfile", tiltfile)

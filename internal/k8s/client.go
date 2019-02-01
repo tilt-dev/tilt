@@ -89,7 +89,7 @@ type Client interface {
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error)
 
-	WatchPods(ctx context.Context, lps labels.Set) (<-chan *v1.Pod, error)
+	WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error)
 
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 

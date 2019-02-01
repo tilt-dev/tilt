@@ -12,7 +12,7 @@ func NewTarget(
 	name model.TargetName,
 	entities []K8sEntity,
 	portForwards []model.PortForward,
-	extraPodLabels []labels.Set) (model.K8sTarget, error) {
+	extraPodSelectors []labels.Selector) (model.K8sTarget, error) {
 	yaml, err := SerializeYAML(entities)
 	if err != nil {
 		return model.K8sTarget{}, err
@@ -24,11 +24,11 @@ func NewTarget(
 	}
 
 	return model.K8sTarget{
-		Name:           name,
-		YAML:           yaml,
-		ResourceNames:  resourceNames,
-		PortForwards:   portForwards,
-		ExtraPodLabels: extraPodLabels,
+		Name:              name,
+		YAML:              yaml,
+		ResourceNames:     resourceNames,
+		PortForwards:      portForwards,
+		ExtraPodSelectors: extraPodSelectors,
 	}, nil
 }
 

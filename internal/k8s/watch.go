@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Set) (<-chan *v1.Pod, error) {
+func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
 	ch := make(chan *v1.Pod)
 
 	// passing "" gets us all namespaces
