@@ -46,6 +46,8 @@ services:
     image: bar-image
     expose:
       - "3000"
+    depends_on:
+      - foo
 `
 
 // YAML for Foo config looks a little different from the above after being read into
@@ -91,7 +93,7 @@ services:
 
 	f.load("bar")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.assertDcManifest("foo",
+	f.assertDcManifest("bar",
 		dcConfigPath(configPath),
 		dcYAMLRaw("image: redis:alpine"),
 		dcDfRaw(""),
@@ -241,7 +243,7 @@ RUN echo hi`
 
 	f.load("foo")
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("foo/tmp2"),
 		fileChangeFilters("foo/tmp2"),
 		buildFilters("foo/tmp"),
@@ -268,7 +270,7 @@ RUN echo hi`
 
 	f.load("foo")
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("foo/tmp"),
 		fileChangeFilters("foo/tmp"),
 	)
@@ -290,7 +292,7 @@ RUN echo hi`
 
 	f.load("foo")
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		// ensure that DC mounts are *not* ignored for builds, because all files are still relevant to builds
 		buildMatches("foo/Dockerfile"),
 		// ensure that DC mounts *are* ignored for file watching, i.e., won't trigger builds
@@ -311,7 +313,7 @@ dc_resource('foo', 'gcr.io/foo')
 
 	f.load()
 
-	m := f.assertManifest("foo", db(image("gcr.io/foo")))
+	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
@@ -333,7 +335,7 @@ dc_resource('foo', 'fooimage')
 
 	f.load()
 
-	m := f.assertManifest("foo", db(imageNormalized("fooimage")))
+	m := f.assertNextManifest("foo", db(imageNormalized("fooimage")))
 	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
@@ -356,7 +358,7 @@ dc_resource('foo', 'gcr.io/foo')
 `)
 
 	f.load()
-	m := f.assertManifest("foo",
+	m := f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)))
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
@@ -379,11 +381,11 @@ dc_resource('bar', 'gcr.io/bar')
 
 	f.load()
 
-	foo := f.assertManifest("foo", db(image("gcr.io/foo")))
+	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
-	bar := f.assertManifest("foo", db(image("gcr.io/bar")))
+	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
@@ -406,11 +408,11 @@ dc_resource('foo', img_name)
 
 	f.load()
 
-	foo := f.assertManifest("foo", db(image("gcr.io/foo")))
+	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
-	bar := f.assertManifest("bar")
+	bar := f.assertNextManifest("bar")
 	assert.Empty(t, bar.ImageTargets)
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
@@ -432,7 +434,7 @@ dc_resource('no-svc-with-this-name-eek', 'gcr.io/foo')
 }
 
 func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manifest {
-	m := f.assertManifest(name)
+	m := f.assertNextManifest(name)
 
 	if !m.IsDC() {
 		f.t.Error("expected a docker-compose manifest")

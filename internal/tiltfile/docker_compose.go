@@ -38,7 +38,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	services, err := parseDCConfig(s.ctx, configPath)
+	services, err := parseDCConfig(s.ctx, s.dcCli, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -263,8 +263,7 @@ func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, config
 	return result, nil
 }
 
-func parseDCConfig(ctx context.Context, configPath string) ([]*dcService, error) {
-	dcc := dockercompose.NewDockerComposeClient()
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]*dcService, error) {
 	configOut, err := dcc.Config(ctx, configPath)
 	if err != nil {
 		return nil, err

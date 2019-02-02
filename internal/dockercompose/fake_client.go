@@ -17,6 +17,8 @@ type FakeDCClient struct {
 	RunLogOutput      map[model.TargetName]<-chan string
 	ContainerIdOutput container.ID
 	eventJson         chan string
+	ConfigOutput      string
+	ServicesOutput    string
 
 	UpCalls []UpCall
 }
@@ -100,11 +102,11 @@ func (c *FakeDCClient) SendEvent(evt Event) error {
 }
 
 func (c *FakeDCClient) Config(ctx context.Context, pathToConfig string) (string, error) {
-	return "", nil
+	return c.ConfigOutput, nil
 }
 
 func (c *FakeDCClient) Services(ctx context.Context, pathToConfig string) (string, error) {
-	return "", nil
+	return c.ServicesOutput, nil
 }
 
 func (c *FakeDCClient) ContainerID(ctx context.Context, pathToConfig string, serviceName model.TargetName) (container.ID, error) {

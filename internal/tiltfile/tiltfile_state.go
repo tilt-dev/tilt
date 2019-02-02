@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"go.starlark.net/starlark"
 
@@ -25,6 +26,7 @@ type tiltfileState struct {
 	// set at creation
 	ctx      context.Context
 	filename localPath
+	dcCli    dockercompose.DockerComposeClient
 
 	// added to during execution
 	configFiles    []string
@@ -47,6 +49,7 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *lo
 	s := &tiltfileState{
 		ctx:         ctx,
 		filename:    localPath{path: filename},
+		dcCli:       dockercompose.NewDockerComposeClient(),
 		buildIndex:  newBuildIndex(),
 		k8sByName:   make(map[string]*k8sResource),
 		configFiles: []string{filename},
