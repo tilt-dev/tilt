@@ -60,7 +60,7 @@ func TestGlobalYamlParseError(t *testing.T) {
 		t.Errorf("expected a `GlobalYAMLApplyCompleteAction` action, got: %#v", st.Actions[1])
 		return
 	}
-	assert.Contains(t, gYAMLErr.Error.Error(), "Error parsing global_yaml")
+	assert.Contains(t, gYAMLErr.Error.Error(), "Error parsing k8s_yaml")
 }
 
 func TestGlobalYamlFailUpsert(t *testing.T) {
