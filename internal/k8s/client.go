@@ -106,10 +106,11 @@ var _ Client = K8sClient{}
 
 type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
-func ProvideK8sClient(ctx context.Context, env Env) (Client, error) {
+func ProvideK8sClient(ctx context.Context, envOrErr EnvOrError) (Client, error) {
+	env := envOrErr.Env
 	if env == EnvNone {
 		// No k8s, so no need to get any further configs
-		return &explodingClient{}, nil
+		return &explodingClient{err: envOrErr.Err}, nil
 	}
 
 	config, err := ProvideRESTConfig()

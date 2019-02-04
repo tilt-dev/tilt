@@ -25,13 +25,23 @@ func (e Env) IsLocalCluster() bool {
 	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
 }
 
-func DetectEnv(ctx context.Context) Env {
+// If something goes wrong getting k8s Env, we want to hold onto err in case we need to
+// surface for debugging, but it might be an expected case so we don't want to stop wiring.
+type EnvOrError struct {
+	Env Env
+	Err error
+}
+
+func ProvideEnvOrError(ctx context.Context) EnvOrError {
 	kubeContext, err := detectKubeContext()
 	if err != nil {
 		logger.Get(ctx).Debugf(err.Error())
-		return EnvNone
+		return EnvOrError{
+			Env: EnvNone,
+			Err: err,
+		}
 	}
-	return EnvFromString(string(kubeContext))
+	return EnvOrError{Env: EnvFromString(string(kubeContext))}
 }
 
 func detectKubeContext() (KubeContext, error) {
@@ -66,4 +76,8 @@ func EnvFromString(s string) Env {
 		return EnvGKE
 	}
 	return EnvUnknown
+}
+
+func ProideEnv(envOrErr EnvOrError) Env {
+	return envOrErr.Env
 }
