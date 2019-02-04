@@ -72,7 +72,7 @@ type FakeClient struct {
 	PushOutput  string
 
 	BuildCount   int
-	BuildOptions types.ImageBuildOptions
+	BuildOptions BuildOptions
 	BuildOutput  string
 
 	TagCount  int
@@ -161,7 +161,7 @@ func (c *FakeClient) ImagePush(ctx context.Context, image string, options types.
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
-func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
 	c.BuildCount++
 	c.BuildOptions = options
 	return types.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil

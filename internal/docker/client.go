@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,19 +12,20 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/docker/cli/cli/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/moby/buildkit/identity"
+	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/model"
-
-	_ "github.com/moby/buildkit/identity"
-	_ "github.com/moby/buildkit/session"
-	_ "github.com/moby/buildkit/session/auth/authprovider"
 )
 
 // Version info
@@ -47,6 +49,9 @@ var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 // https://github.com/ubuntu/microk8s/blob/master/docs/dockerd.md
 const microK8sDockerHost = "unix:///var/snap/microk8s/current/docker.sock"
 
+// generate a session key
+var sessionSharedKey = identity.NewID()
+
 // Create an interface so this can be mocked out.
 type Client interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
@@ -58,7 +63,7 @@ type Client interface {
 	ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error
 
 	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
-	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
+	ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
@@ -85,6 +90,10 @@ var _ Client = &Cli{}
 type Cli struct {
 	*client.Client
 	supportsBuildkit bool
+
+	creds     dockerCreds
+	initError error
+	initDone  chan bool
 }
 
 func DefaultClient(ctx context.Context, env k8s.Env) (*Cli, error) {
@@ -125,10 +134,15 @@ func DefaultClient(ctx context.Context, env k8s.Env) (*Cli, error) {
 			minDockerVersion, serverVersion.APIVersion)
 	}
 
-	return &Cli{
+	cli := &Cli{
 		Client:           d,
 		supportsBuildkit: SupportsBuildkit(serverVersion),
-	}, nil
+		initDone:         make(chan bool),
+	}
+
+	go cli.backgroundInit(ctx)
+
+	return cli, nil
 }
 
 func SupportedVersion(v types.Version) bool {
@@ -214,12 +228,102 @@ func NegotiateAPIVersion(ctx context.Context) func(client *client.Client) error 
 	}
 }
 
-func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
-	requestedBuildkit := options.Version == types.BuilderBuildKit
-	if requestedBuildkit && !c.supportsBuildkit {
-		options.Version = types.BuilderV1
+type dockerCreds struct {
+	authConfigs map[string]types.AuthConfig
+	sessionID   string
+}
+
+// When we pull from a private docker registry, we have to get credentials
+// from somewhere. These credentials are not stored on the server. The client
+// is responsible for managing them.
+//
+// Docker uses two different protocols:
+// 1) In the legacy build engine, you have to get all the creds ahead of time
+//    and pass them in the ImageBuild call.
+// 2) In BuildKit, you have to create a persistent session. The client
+//    side of the session manages a miniature server that just responds
+//    to credential requests as the server asks for them.
+//
+// Protocol (1) is very slow. If you're using the gcloud credential store,
+// fetching all the creds ahead of time can take ~3 seconds.
+// Protocol (2) is more efficient, but also more complex to manage.
+func (c *Cli) initCreds(ctx context.Context) dockerCreds {
+	creds := dockerCreds{}
+
+	if c.supportsBuildkit {
+		session, _ := session.NewSession(ctx, "tilt", sessionSharedKey)
+		if session != nil {
+			session.Allow(authprovider.NewDockerAuthProvider())
+			go func() {
+				defer func() {
+					_ = session.Close()
+				}()
+
+				// Start the server
+				_ = session.Run(ctx, c.Client.DialSession)
+			}()
+			creds.sessionID = session.ID()
+		}
+	} else {
+		configFile := config.LoadDefaultConfigFile(ioutil.Discard)
+
+		// If we fail to get credentials for some reason, that's OK.
+		// even the docker CLI ignores this:
+		// https://github.com/docker/cli/blob/23446275646041f9b598d64c51be24d5d0e49376/cli/command/image/build.go#L386
+		authConfigs, _ := configFile.GetAllCredentials()
+		creds.authConfigs = authConfigs
 	}
-	return c.Client.ImageBuild(ctx, buildContext, options)
+
+	return creds
+}
+
+// Initialization that we do in the background, because
+// it may need to read from files or call out to gcloud.
+//
+// TODO(nick): Update ImagePush to use these auth credentials. This is less important
+// for local k8s (Minikube, Docker-for-Mac, MicroK8s) because they don't push.
+func (c *Cli) backgroundInit(ctx context.Context) {
+	result := make(chan dockerCreds, 1)
+
+	go func() {
+		result <- c.initCreds(ctx)
+	}()
+
+	select {
+	case creds := <-result:
+		c.creds = creds
+	case <-time.After(10 * time.Second):
+		// TODO(nick): If we move logging before the wire() call, we should
+		// print here instead of logging indirectly
+		c.initError = fmt.Errorf("Timeout fetching docker auth credentials")
+	}
+
+	close(c.initDone)
+}
+
+func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+	<-c.initDone
+
+	if c.initError != nil {
+		logger.Get(ctx).Verbosef("%v", c.initError)
+	}
+
+	opts := types.ImageBuildOptions{}
+	if c.supportsBuildkit {
+		opts.Version = types.BuilderBuildKit
+	} else {
+		opts.Version = types.BuilderV1
+	}
+
+	opts.AuthConfigs = c.creds.authConfigs
+	opts.SessionID = c.creds.sessionID
+	opts.Remove = options.Remove
+	opts.Context = options.Context
+	opts.BuildArgs = options.BuildArgs
+	opts.Dockerfile = options.Dockerfile
+	opts.Tags = options.Tags
+
+	return c.Client.ImageBuild(ctx, buildContext, opts)
 }
 
 func (c *Cli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
