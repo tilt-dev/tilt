@@ -327,3 +327,13 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	return newBlob(string(yaml)), nil
 }
+
+func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var input starlark.String
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &input)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	return newBlob(input.GoString()), nil
+}

@@ -1045,6 +1045,20 @@ fail("or this")
 	f.loadErrString("this is an error")
 }
 
+func TestBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(
+		"Tiltfile",
+		fmt.Sprintf(`k8s_yaml(blob('''%s'''))`, testyaml.SanchoSidecarYAML),
+	)
+
+	f.load()
+
+	f.assertYAMLManifest("sancho")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
