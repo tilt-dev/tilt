@@ -20,6 +20,10 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/model"
+
+	_ "github.com/moby/buildkit/identity"
+	_ "github.com/moby/buildkit/session"
+	_ "github.com/moby/buildkit/session/auth/authprovider"
 )
 
 // Version info
