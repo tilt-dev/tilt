@@ -120,3 +120,6 @@ def helm(pathToChartDir: Union[str, LocalPath]) -> Blob:
 
 def fail(msg: str) -> None:
   """Raises an error that cannot be intercepted. Can be used anywhere in a Tiltfile."""
+
+def blob(input: str) -> Blob:
+  """Creates a blob that wraps the provided string. Useful for passing strings in to functions like ``k8s_yaml``"""
