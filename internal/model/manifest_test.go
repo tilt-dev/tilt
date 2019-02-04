@@ -3,6 +3,8 @@ package model
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/container"
 )
@@ -320,6 +322,24 @@ var equalitytests = []struct {
 	{
 		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
 		Manifest{}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		false,
+	},
+	{
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+		}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+		}),
+		true,
+	},
+	{
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+		}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "baz"}.AsSelector()},
+		}),
 		false,
 	},
 }

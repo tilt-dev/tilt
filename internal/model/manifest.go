@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
@@ -283,6 +285,8 @@ type PortForward struct {
 
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
 var dcTargetAllowUnexported = cmp.AllowUnexported(DockerComposeTarget{})
+var labelRequirementAllowUnexported = cmp.AllowUnexported(labels.Requirement{})
+
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
 	bNil := b == nil
@@ -302,5 +306,6 @@ func DeepEqual(x, y interface{}) bool {
 		cmpopts.EquateEmpty(),
 		imageTargetAllowUnexported,
 		dcTargetAllowUnexported,
+		labelRequirementAllowUnexported,
 		dockerRefEqual)
 }

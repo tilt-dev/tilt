@@ -223,6 +223,20 @@
 </dd></dl>
 
 <dl class="function">
+<dt id="api.fail">
+<code class="descclassname">api.</code><code class="descname">fail</code><span class="sig-paren">(</span><em>msg</em><span class="sig-paren">)</span><a class="headerlink" href="#api.fail" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raises an error that cannot be intercepted. Can be used anywhere in a Tiltfile.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
 <dt id="api.fast_build">
 <code class="descclassname">api.</code><code class="descname">fast_build</code><span class="sig-paren">(</span><em>img_name</em>, <em>dockerfile_path</em>, <em>entrypoint=''</em><span class="sig-paren">)</span><a class="headerlink" href="#api.fast_build" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initiates a docker image build that supports <code class="docutils literal notranslate"><span class="pre">add</span></code> s and <code class="docutils literal notranslate"><span class="pre">run</span></code> s, and that uses a cache for subsequent builds.</p>

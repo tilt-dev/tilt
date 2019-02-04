@@ -117,3 +117,6 @@ def kustomize(pathToDir: str) -> Blob:
 
 def helm(pathToChartDir: Union[str, LocalPath]) -> Blob:
   """Run `helm template <https://docs.helm.sh/helm/#helm-template>`_ on a given directory that contains a chart and return the fully rendered YAML as a Blob"""
+
+def fail(msg: str) -> None:
+  """Raises an error that cannot be intercepted. Can be used anywhere in a Tiltfile."""

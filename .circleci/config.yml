@@ -10,6 +10,8 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: make check-go
+      - store_test_results:
+          path: test-results
 
   build-js:
     docker:
