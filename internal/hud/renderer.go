@@ -237,7 +237,7 @@ func bestLogs(res view.Resource) string {
 	}
 
 	if res.IsTiltfile {
-		return string(res.CurrentBuild.Log)
+		return string(res.LastBuild().Log)
 	}
 
 	return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
