@@ -51,7 +51,12 @@ build:
 	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
 test-go:
-	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./...
+	if [[ -z $$CIRCLE_CI ]]; then \
+		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./...; \
+	else \
+		mkdir -p test-results; \
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 60s; \
+	fi
 
 test: test-go test-js
 
