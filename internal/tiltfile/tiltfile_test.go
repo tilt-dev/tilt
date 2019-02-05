@@ -1051,7 +1051,7 @@ func TestBlob(t *testing.T) {
 
 	f.file(
 		"Tiltfile",
-		fmt.Sprintf(`k8s_yaml(blob('''%s'''))`, testyaml.SanchoSidecarYAML),
+		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SanchoSidecarYAML),
 	)
 
 	f.load()
@@ -1065,7 +1065,7 @@ func TestBlobErr(t *testing.T) {
 
 	f.file(
 		"Tiltfile",
-		`k8s_yaml(blob(42))`,
+		`k8s_yaml(yaml(42))`,
 	)
 
 	f.loadErrString("for parameter 1: got int, want string")
