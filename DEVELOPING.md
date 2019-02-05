@@ -122,3 +122,6 @@ release ought to be.
 
 After updating the release notes, update [the docs](docs/install.md)
 and [the default dev version](internal/cli/build.go).
+
+### Version numbers
+Our rule of thumb pre 1.0 is only bump the minor version if you would write a blog post about it. (We haven't always followed this rule, but we'd like to start!)
