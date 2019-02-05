@@ -59,6 +59,23 @@ func extractObjectMetas(obj interface{}) ([]*metav1.ObjectMeta, error) {
 	return result, nil
 }
 
+func extractEnvVars(obj interface{}) ([]*v1.EnvVar, error) {
+	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.EnvVar{}))
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*v1.EnvVar, len(extracted))
+	for i, e := range extracted {
+		ev, ok := e.(*v1.EnvVar)
+		if !ok {
+			return nil, fmt.Errorf("extractEnvVars: expected %T, actual %T", v1.EnvVar{}, e)
+		}
+		result[i] = ev
+	}
+	return result, nil
+}
+
 func extractContainers(obj interface{}) ([]*v1.Container, error) {
 	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.Container{}))
 	if err != nil {
