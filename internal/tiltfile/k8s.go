@@ -275,6 +275,8 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8
 		return nil, nil
 	case *blob:
 		return k8s.ParseYAMLFromString(v.String())
+	case *yamlValue:
+		return k8s.ParseYAMLFromString(v.String())
 	default:
 		yamlPath, err := s.localPathFromSkylarkValue(v)
 		if err != nil {

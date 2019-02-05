@@ -6,6 +6,9 @@ class LocalPath:
 class Blob:
   """The result of executing a command on your local system"""
 
+class Yaml:
+  """A string that represents YAML that can be parsed"""
+
 class Repo:
   def path(self, path: str) -> LocalPath:
     """Returns the absolute path to the file specified at ``path`` in the repo.
@@ -120,3 +123,6 @@ def helm(pathToChartDir: Union[str, LocalPath]) -> Blob:
 
 def fail(msg: str) -> None:
   """Raises an error that cannot be intercepted. Can be used anywhere in a Tiltfile."""
+
+def yaml(contents: str) -> Yaml:
+  """Creates a Yaml object that wraps the provided string. Useful for passing strings in to functions that expect YAML like ``k8s_yaml``"""
