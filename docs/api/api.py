@@ -10,9 +10,12 @@ class Yaml:
   """A string that represents YAML that can be parsed"""
 
 class Repo:
+  """Represents a version control repository"""
   def path(self, path: str) -> LocalPath:
     """Returns the absolute path to the file specified at ``path`` in the repo.
     path must be a relative path.
+
+    Respects ``.gitignore``.
 
     Args:
       path: relative path in repository
@@ -39,9 +42,10 @@ def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, docker
     dockerfile: path to the Dockerfile to build (may be absolute, or relative to cwd)
     dockerfile_contents: raw contents of the Dockerfile to use for this build
   """
-pass
+  pass
 
 class FastBuild:
+  """An image that was created with ```fast_build```"""
   def add(src: Union[LocalPath, Repo], dest: str) -> 'FastBuild':
     """Adds the content from ``src`` into the image at path ``dest``."""
     pass
