@@ -59,6 +59,12 @@ class FastBuild:
     """
     pass
 
+  def hot_reload() -> None:
+    """Setting this on a ``FastBuild`` image tells Tilt that this container knows how to automatically reload any changes in the container. As a result there is no need to restart it.
+
+    This is useful for containers that run something like nodemon or webpack Hot Module Replacement to update running processes quickly."""
+    pass
+
 
 def fast_build(img_name: str, dockerfile_path: str, entrypoint: str = "") -> FastBuild:
   """Initiates a docker image build that supports ``add`` s and ``run`` s, and that uses a cache for subsequent builds.
