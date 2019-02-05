@@ -8,7 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type GlobalYAMLBuildController struct {
@@ -49,7 +49,7 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Client) error {
 	entities, err := k8s.ParseYAMLFromString(m.K8sTarget().YAML)
 	if err != nil {
-		return errors.Wrap(err, "Error parsing global_yaml")
+		return errors.Wrap(err, "Error parsing k8s_yaml")
 	}
 
 	newK8sEntities := []k8s.K8sEntity{}
@@ -57,7 +57,7 @@ func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Clie
 	for _, e := range entities {
 		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
 		if err != nil {
-			return errors.Wrap(err, "Error injecting labels in to global_yaml")
+			return errors.Wrap(err, "Error injecting labels in to k8s_yaml")
 		}
 
 		// For development, image pull policy should never be set to "Always",
@@ -65,7 +65,7 @@ func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Clie
 		// set "Always" for development are shooting their own feet.
 		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 		if err != nil {
-			return errors.Wrap(err, "Error injecting image pull policy in to global_yaml")
+			return errors.Wrap(err, "Error injecting image pull policy in to k8s_yaml")
 		}
 
 		newK8sEntities = append(newK8sEntities, e)
@@ -73,7 +73,7 @@ func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Clie
 
 	err = kCli.Upsert(ctx, newK8sEntities)
 	if err != nil {
-		return errors.Wrap(err, "Error upserting global_yaml")
+		return errors.Wrap(err, "Error upserting k8s_yaml")
 	}
 
 	return nil
