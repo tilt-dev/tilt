@@ -1059,6 +1059,18 @@ func TestBlob(t *testing.T) {
 	f.assertYAMLManifest("sancho")
 }
 
+func TestBlobErr(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(
+		"Tiltfile",
+		`k8s_yaml(blob(42))`,
+	)
+
+	f.loadErrString("for parameter 1: got int, want string")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
