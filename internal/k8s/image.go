@@ -51,22 +51,29 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 	}
 
 	replaced := false
-	for _, f := range []func(K8sEntity, reference.Named) (K8sEntity, bool, error){
-		func(entity K8sEntity, named reference.Named) (K8sEntity, bool, error) {
-			return injectImageDigestInContainers(entity, named, policy)
-		},
-		injectImageDigestInEnvVars,
-		injectImageDigestInUnstructured,
-	} {
-		var r bool
-		var err error
-		entity, r, err = f(entity, injectRef)
-		if err != nil {
-			return K8sEntity{}, false, err
-		}
-		if r {
-			replaced = true
-		}
+
+	entity, r, err := injectImageDigestInContainers(entity, injectRef, policy)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
+	}
+
+	entity, r, err = injectImageDigestInEnvVars(entity, injectRef)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
+	}
+
+	entity, r, err = injectImageDigestInUnstructured(entity, injectRef)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
 	}
 
 	return entity, replaced, nil
