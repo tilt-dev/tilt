@@ -34,7 +34,7 @@ func disableGlog() {
 	var tmpFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(tmpFlagSet)
 	err := tmpFlagSet.Parse([]string{
-		"--stderrthreshold", "ERROR",
+		"--stderrthreshold", "FATAL",
 	})
 	if err != nil {
 		log.Fatal(err)
