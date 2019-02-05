@@ -9,19 +9,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/browser"
-	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/validation"
-	"k8s.io/apimachinery/pkg/watch"
-	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/rest"
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/browser"
+	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	// Client auth plugins! They will auto-init if we import them.
@@ -35,7 +37,6 @@ type ServiceName string
 type KubeContext string
 
 const DefaultNamespace = Namespace("default")
-const KubeContextNone = KubeContext(EnvNone) // stand-in for when k8s not running
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
@@ -63,11 +64,11 @@ type Client interface {
 	Delete(ctx context.Context, entities []K8sEntity) error
 
 	// Find all the pods that match the given image, namespace, and labels.
-	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error)
+	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error)
 
 	// Find all the pods matching the given parameters, stopping on timeout or
 	// when we have at least one pod.
-	PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error)
+	PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
@@ -87,9 +88,9 @@ type Client interface {
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error)
 
-	WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error)
+	WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error)
 
-	WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error)
+	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
 	ConnectedToCluster(ctx context.Context) error
 }
@@ -107,13 +108,32 @@ var _ Client = K8sClient{}
 
 type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
+func ProvideK8sClient(ctx context.Context, envOrErr EnvOrError) (Client, error) {
+	env := envOrErr.Env
+	if env == EnvNone {
+		// No k8s, so no need to get any further configs
+		return &explodingClient{err: envOrErr.Err}, nil
+	}
+
+	config, err := ProvideRESTConfig()
+	if err != nil {
+		return K8sClient{}, err
+	}
+	coreV1Interface, err := ProvideRESTClient(config)
+	if err != nil {
+		return K8sClient{}, err
+	}
+	portForwarder := ProvidePortForwarder()
+	k8sClient := NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
+	return k8sClient, nil
+}
+
 func NewK8sClient(
 	ctx context.Context,
 	env Env,
 	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
-	pf PortForwarder,
-	kubeContext KubeContext) K8sClient {
+	pf PortForwarder) K8sClient {
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -126,7 +146,6 @@ func NewK8sClient(
 		core:          core,
 		restConfig:    restConfig,
 		portForwarder: pf,
-		kubeContext:   kubeContext,
 	}
 }
 

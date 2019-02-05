@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -43,8 +45,8 @@ func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 
 func TestK8sClient_WatchPodsLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	lps := []LabelPair{{"foo", "bar"}, {"baz", "quu"}}
-	tf.testPodLabels(lps, lps)
+	ls := labels.Set{"foo": "bar", "baz": "quu"}
+	tf.testPodLabels(ls, ls)
 }
 
 func TestK8sClient_WatchServices(t *testing.T) {
@@ -70,7 +72,7 @@ func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 
 func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	lps := []LabelPair{{"foo", "bar"}, {"baz", "quu"}}
+	lps := []model.LabelPair{{Key: "foo", Value: "bar"}, {Key: "baz", Value: "quu"}}
 	tf.testServiceLabels(lps, lps)
 }
 
@@ -116,7 +118,7 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 
 	tf.w.Stop()
 
-	ch, err := tf.kCli.WatchPods(tf.ctx, []LabelPair{})
+	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
@@ -148,7 +150,7 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 
 	tf.w.Stop()
 
-	ch, err := tf.kCli.WatchServices(tf.ctx, []LabelPair{})
+	ch, err := tf.kCli.WatchServices(tf.ctx, []model.LabelPair{})
 	if !assert.NoError(tf.t, err) {
 		return
 	}
@@ -173,23 +175,18 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 	assert.Equal(tf.t, expectedOutput, observedServices)
 }
 
-func (tf *watchTestFixture) testPodLabels(input []LabelPair, expectedLabels []LabelPair) {
-	_, err := tf.kCli.WatchPods(tf.ctx, input)
+func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {
+	_, err := tf.kCli.WatchPods(tf.ctx, input.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
 	assert.Equal(tf.t, fields.Everything(), tf.watchRestrictions.Fields)
 
-	ls := labels.Set{}
-	for _, l := range expectedLabels {
-		ls[l.Key] = l.Value
-	}
-	expectedLabelSelector := labels.SelectorFromSet(ls)
-	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
+	assert.Equal(tf.t, expectedLabels.String(), input.String())
 }
 
-func (tf *watchTestFixture) testServiceLabels(input []LabelPair, expectedLabels []LabelPair) {
+func (tf *watchTestFixture) testServiceLabels(input []model.LabelPair, expectedLabels []model.LabelPair) {
 	_, err := tf.kCli.WatchServices(tf.ctx, input)
 	if !assert.NoError(tf.t, err) {
 		return

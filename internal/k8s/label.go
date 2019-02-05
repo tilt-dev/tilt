@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"github.com/windmilleng/tilt/internal/model"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
@@ -9,12 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-type LabelPair struct {
-	Key   string
-	Value string
-}
-
-func makeLabelSet(lps []LabelPair) labels.Set {
+func makeLabelSet(lps []model.LabelPair) labels.Set {
 	ls := labels.Set{}
 	for _, lp := range lps {
 		ls[lp.Key] = lp.Value
@@ -22,11 +18,11 @@ func makeLabelSet(lps []LabelPair) labels.Set {
 	return ls
 }
 
-func makeLabelSelector(lps []LabelPair) string {
+func makeLabelSelector(lps []model.LabelPair) string {
 	return labels.SelectorFromSet(makeLabelSet(lps)).String()
 }
 
-func InjectLabels(entity K8sEntity, labels []LabelPair) (K8sEntity, error) {
+func InjectLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
 	switch obj := entity.Obj.(type) {

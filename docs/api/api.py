@@ -73,7 +73,8 @@ def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
   """
   pass
 
-def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_forwards: Union[str, int, List[int]] = []) -> None:
+def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "",
+    port_forwards: Union[str, int, List[int]] = [], extra_pod_selectors: Union[Dict[str, str], List[Dict[str, str]]] = []) -> None:
   """Creates a kubernetes resource that tilt can deploy using the specified image.
 
   Args:
@@ -89,6 +90,12 @@ def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_f
       '9000:8000' (connect localhost:9000 to the container port 8000),
       ['9000:8000', '9001:8001'] (connect localhost:9000 and :9001 to the
       container ports 8000 and 8001, respectively).
+    extra_pod_selectors: In addition to relying on Tilt's heuristics to automatically
+      find K8S resources associated with this resource, a user may specify extra
+      labelsets to force entities to be associated with this resource. An entity
+      will be associated with this resource if it has all of the labels in at
+      least one of the entries specified (but still also if it meets any of
+      Tilt's usual mechanisms).
   """
   pass
 
