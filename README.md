@@ -28,7 +28,7 @@ If you don't know where to start, start here:
 Download the Tilt binary on
 [the github releases page](https://github.com/windmilleng/tilt/releases).
 
-Tilt expects that you already have Docker and `kubectl` installed.
+Tilt expects that you already have Docker and `kubectl` installed. (Alternately, you can skip Kubernetes altogether and run Tilt with your pre-existing `docker-compose.yml`.)
 Read the more detailed [Installation Guide](https://docs.tilt.build/install.html)
 to help you `tilt up` quickly.
 
