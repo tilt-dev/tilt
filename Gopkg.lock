@@ -226,6 +226,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:ecaca8524449859fb08112667afb43c090a0fd5a7e51e5d7e10853a144e0973e"
+  name = "github.com/denisbrodbeck/machineid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e2e48f90c87f1f77286682531a46ff99e95d8089"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
@@ -1044,7 +1052,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:965dcc0d40681eb7557000d8d120a4e9b7c1d236820a1d6293977d8d5b8bd7a4"
+  digest = "1:7e986d1e9856d450aa04f836edd4ffc6c7311e5edf1a13022ebbb9d21fcdf953"
   name = "github.com/windmilleng/wmclient"
   packages = [
     "pkg/analytics",
@@ -1053,7 +1061,7 @@
     "pkg/os/temp",
   ]
   pruneopts = "UT"
-  revision = "3495bc985ff0902506446ffc826d2cb6369778f9"
+  revision = "1ae9d14ff820ee5bf828577042af23faab7e208a"
 
 [[projects]]
   digest = "1:2ae8314c44cd413cfdb5b1df082b350116dd8d2fff973e62c01b285b7affd89e"
@@ -1149,11 +1157,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9c99029818a3d4f53bcfd6c0158ca068aeacfecb29283f82a1f9c79b8d2a7da4"
+  digest = "1:5ebcbadd8f6a3d1c1ac51a8d52723e909ad42aa40b88a2380e31fd464909b243"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
+    "windows/registry",
   ]
   pruneopts = "UT"
   revision = "d99a578cf41bfccdeaf48b0845c823a4b8b0ad5e"
@@ -1521,6 +1530,7 @@
     "github.com/containerd/console",
     "github.com/davecgh/go-spew/spew",
     "github.com/docker/cli/cli/command",
+    "github.com/docker/cli/cli/config",
     "github.com/docker/cli/cli/flags",
     "github.com/docker/distribution/reference",
     "github.com/docker/docker/api/types",
@@ -1589,6 +1599,7 @@
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer/json",
+    "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/kubernetes",
