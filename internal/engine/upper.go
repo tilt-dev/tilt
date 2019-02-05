@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -494,7 +496,17 @@ func handleConfigsReloaded(
 func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
 	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
 	if manifestName == "" {
-		return nil, nil
+		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodSelectors
+		for _, m := range state.Manifests() {
+			if m.IsK8s() {
+				for _, lps := range m.K8sTarget().ExtraPodSelectors {
+					if lps.Matches(labels.Set(pod.ObjectMeta.GetLabels())) {
+						manifestName = m.Name
+						break
+					}
+				}
+			}
+		}
 	}
 
 	podID := k8s.PodIDFromPod(pod)

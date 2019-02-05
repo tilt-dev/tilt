@@ -55,7 +55,7 @@ func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Clie
 	newK8sEntities := []k8s.K8sEntity{}
 
 	for _, e := range entities {
-		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
+		e, err = k8s.InjectLabels(e, []model.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: m.ManifestName().String()}})
 		if err != nil {
 			return errors.Wrap(err, "Error injecting labels in to k8s_yaml")
 		}

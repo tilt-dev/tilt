@@ -88,7 +88,7 @@ After you install Tilt, verify that you installed it correctly with:
 
 ```
 $ tilt version
-v0.7.0, built 2019-01-31
+v0.7.0, built 2019-02-01
 ```
 
 Troubleshooting

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -45,7 +47,7 @@ func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod
 	return k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
 }
 
-func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodsWithImage")
 	span.SetTag("img", image.String())
 	defer span.Finish()
@@ -68,7 +70,7 @@ func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.Nam
 
 // PodsWithImage returns the ID of the pod running the given image. If too many matches, throw
 // an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodsWithImage")
 	defer span.Finish()
 

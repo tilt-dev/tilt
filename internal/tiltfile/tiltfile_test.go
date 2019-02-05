@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
 
@@ -929,6 +931,59 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 		m.ImageTargetAt(0).Ref.String())
 }
 
+func TestExtraPodSelectors(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("[{'foo': 'bar', 'baz': 'qux'}, {'quux': 'corge'}]")
+	f.load()
+
+	f.assertNextManifest("foo",
+		extraPodSelectors(labels.Set{"foo": "bar", "baz": "qux"}, labels.Set{"quux": "corge"}))
+}
+
+func TestExtraPodSelectorsNotList(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("'hello'")
+	f.loadErrString("got starlark.String", "dict or a list")
+}
+
+func TestExtraPodSelectorsDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("{'foo': 'bar'}")
+	f.load()
+	f.assertNextManifest("foo",
+		extraPodSelectors(labels.Set{"foo": "bar"}))
+}
+
+func TestExtraPodSelectorsElementNotDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("['hello']")
+	f.loadErrString("must be dicts", "starlark.String")
+}
+
+func TestExtraPodSelectorsKeyNotString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("[{54321: 'hello'}]")
+	f.loadErrString("keys must be strings", "54321")
+}
+
+func TestExtraPodSelectorsValueNotString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("[{'hello': 54321}]")
+	f.loadErrString("values must be strings", "54321")
+}
+
 func TestDockerBuildMatchingTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1200,6 +1255,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case extraPodSelectorsHelper:
+			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
 		case numEntitiesHelper:
 			yaml := m.K8sTarget().YAML
 			entities := f.entities(yaml)
@@ -1317,6 +1374,18 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 		}
 	}
 	return r
+}
+
+type extraPodSelectorsHelper struct {
+	labels []labels.Selector
+}
+
+func extraPodSelectors(labels ...labels.Set) extraPodSelectorsHelper {
+	ret := extraPodSelectorsHelper{}
+	for _, ls := range labels {
+		ret.labels = append(ret.labels, ls.AsSelector())
+	}
+	return ret
 }
 
 type numEntitiesHelper struct {
@@ -1471,4 +1540,15 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+}
+
+func (f *fixture) setupExtraPodSelectors(s string) {
+	f.setupFoo()
+
+	tiltfile := fmt.Sprintf(`
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml', extra_pod_selectors=%s)
+`, s)
+
+	f.file("Tiltfile", tiltfile)
 }

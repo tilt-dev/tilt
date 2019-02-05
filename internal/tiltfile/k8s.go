@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"go.starlark.net/starlark"
 
 	"github.com/docker/distribution/reference"
@@ -37,6 +39,9 @@ type k8sResource struct {
 	imageRefs referenceList
 
 	portForwards []portForward
+
+	// labels for pods that we should watch and associate with this resource
+	extraPodSelectors []labels.Selector
 }
 
 func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
@@ -104,12 +109,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	var yamlValue starlark.Value
 	var imageVal starlark.Value
 	var portForwardsVal starlark.Value
+	var extraPodSelectorsVal starlark.Value
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"yaml?", &yamlValue,
 		"image?", &imageVal,
 		"port_forwards?", &portForwardsVal,
+		"extra_pod_selectors?", &extraPodSelectorsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -158,7 +165,75 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 	r.portForwards = portForwards
 
+	r.extraPodSelectors, err = podLabelsFromStarlarkValue(extraPodSelectorsVal)
+	if err != nil {
+		return nil, err
+	}
+
 	return starlark.None, nil
+}
+
+func selectorFromSkylarkDict(d *starlark.Dict) (labels.Selector, error) {
+	ret := make(labels.Set)
+
+	for _, t := range d.Items() {
+		kVal := t[0]
+		k, ok := kVal.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("pod label keys must be strings; got '%s' of type %T", kVal.String(), kVal)
+		}
+		vVal := t[1]
+		v, ok := vVal.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("pod label values must be strings; got '%s' of type %T", vVal.String(), vVal)
+		}
+		ret[string(k)] = string(v)
+	}
+	if len(ret) > 0 {
+		return ret.AsSelector(), nil
+	} else {
+		return nil, nil
+	}
+}
+
+func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	switch x := v.(type) {
+	case *starlark.Dict:
+		s, err := selectorFromSkylarkDict(x)
+		if err != nil {
+			return nil, err
+		} else if s == nil {
+			return nil, nil
+		} else {
+			return []labels.Selector{s}, nil
+		}
+	case *starlark.List:
+		var ret []labels.Selector
+
+		it := x.Iterate()
+		defer it.Done()
+		var i starlark.Value
+		for it.Next(&i) {
+			d, ok := i.(*starlark.Dict)
+			if !ok {
+				return nil, fmt.Errorf("pod labels elements must be dicts; got %T", i)
+			}
+			s, err := selectorFromSkylarkDict(d)
+			if err != nil {
+				return nil, err
+			} else if s != nil {
+				ret = append(ret, s)
+			}
+		}
+
+		return ret, nil
+	default:
+		return nil, fmt.Errorf("pod labels must be a dict or a list; got %T", v)
+	}
 }
 
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {

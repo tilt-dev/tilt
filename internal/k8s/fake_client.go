@@ -5,7 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
+
+	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -39,15 +44,61 @@ type FakeK8sClient struct {
 	LastForwardPortPodID      PodID
 	LastForwardPortRemotePort int
 
+	watcherMu sync.Mutex
+	watches   []fakePodWatch
+
 	UpsertError error
 }
 
-func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
+type fakePodWatch struct {
+	ls labels.Selector
+	ch chan *v1.Pod
+}
+
+func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
 	return nil, nil
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
-	return nil, nil
+func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
+	c.watcherMu.Lock()
+	defer c.watcherMu.Unlock()
+	var ret []labels.Selector
+	for _, w := range c.watches {
+		ret = append(ret, w.ls)
+	}
+	return ret
+}
+
+func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
+	c.watcherMu.Lock()
+	defer c.watcherMu.Unlock()
+	for _, w := range c.watches {
+		if SelectorEqual(ls, w.ls) {
+			w.ch <- p
+		}
+	}
+}
+
+func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
+	c.watcherMu.Lock()
+	ch := make(chan *v1.Pod, 20)
+	c.watches = append(c.watches, fakePodWatch{ls, ch})
+	c.watcherMu.Unlock()
+
+	go func() {
+		// when ctx is canceled, remove the label selector from the list of watched label selectors
+		<-ctx.Done()
+		c.watcherMu.Lock()
+		var newWatches []fakePodWatch
+		for _, e := range c.watches {
+			if !SelectorEqual(e.ls, ls) {
+				newWatches = append(newWatches, e)
+			}
+		}
+		c.watches = newWatches
+		c.watcherMu.Unlock()
+	}()
+	return ch, nil
 }
 
 func NewFakeK8sClient() *FakeK8sClient {
@@ -145,7 +196,7 @@ func FakePodSpec(image reference.NamedTagged) v1.PodSpec {
 	}
 }
 
-func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error) {
 	c.LastPodQueryImage = image
 	c.LastPodQueryNamespace = n
 
@@ -186,7 +237,7 @@ func (c *FakeK8sClient) SetPollForPodsWithImageDelay(dur time.Duration) {
 	c.PollForPodsWithImageDelay = dur
 }
 
-func (c *FakeK8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+func (c *FakeK8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
 	defer c.SetPollForPodsWithImageDelay(0)
 
 	if c.PollForPodsWithImageDelay > timeout {

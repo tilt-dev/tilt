@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/yaml"
 )
@@ -96,10 +98,12 @@ func (dc DockerComposeTarget) Validate() error {
 }
 
 type K8sTarget struct {
-	Name          TargetName
-	YAML          string
-	PortForwards  []PortForward
-	ResourceNames []string
+	Name         TargetName
+	YAML         string
+	PortForwards []PortForward
+	// labels for pods that we should watch and associate with this resource
+	ExtraPodSelectors []labels.Selector
+	ResourceNames     []string
 }
 
 func (k8s K8sTarget) Validate() error {
