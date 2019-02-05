@@ -15,6 +15,8 @@ GO_PARALLEL_JOBS := 8
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
+CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
+
 scripts/protocc/protocc.py: scripts/protocc
 	git submodule init
 	git submodule update
@@ -51,12 +53,12 @@ build:
 	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
 test-go:
-	if [[ -z $$CIRCLE_CI ]]; then \
-		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./...; \
-	else \
-		mkdir -p test-results; \
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 60s; \
-	fi
+ifneq ($(CIRCLECI),true)
+		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./...
+else
+		mkdir -p test-results
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 60s
+endif
 
 test: test-go test-js
 
