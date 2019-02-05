@@ -8,7 +8,9 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/model"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
@@ -26,11 +28,11 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+func (ec *explodingClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, lp []model.LabelPair) ([]v1.Pod, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+func (ec *explodingClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, lp []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
@@ -58,11 +60,11 @@ func (ec *explodingClient) ForwardPort(ctx context.Context, namespace Namespace,
 	return 0, nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchPods(ctx context.Context, lps []LabelPair) (<-chan *v1.Pod, error) {
+func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchServices(ctx context.Context, lps []LabelPair) (<-chan *v1.Service, error) {
+func (ec *explodingClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
