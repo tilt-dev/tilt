@@ -9,6 +9,9 @@ You'll also need:
 - Kubectl, to cuddle your cluster
 - A local Kubernetes cluster (on MacOS, Docker For Mac works for this!)
 
+
+Already use Docker Compose for local dev? You can also use Tilt to [run your existing Docker Compose setup](docker_compose.html), in which case all you need to have installed (besides Tilt) is Docker Compose, and you can ignore Kubernetes-specific instructions on this page.
+
 On MacOS
 --------
 
