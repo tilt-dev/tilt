@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -54,6 +55,9 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		tlw := NewTiltfileLogWriter(st)
 
 		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfilePath, matching, tlw)
+		if err != nil {
+			logger.Get(ctx).Infof(err.Error())
+		}
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,

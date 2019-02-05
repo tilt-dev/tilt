@@ -123,6 +123,9 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
 		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
 	}
+	if err != nil {
+		logger.Get(ctx).Infof(err.Error())
+	}
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:        watchMounts,
