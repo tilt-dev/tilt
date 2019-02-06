@@ -216,6 +216,21 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="api.FastBuild.hot_reload">
+<code class="descname">hot_reload</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.hot_reload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setting this on a <code class="docutils literal notranslate"><span class="pre">FastBuild</span></code> image tells Tilt that this container knows how to automatically reload any changes in the container. As a result there is no need to restart it.</p>
+<p>This is useful for containers that run something like nodemon or webpack Hot Module Replacement to update running processes quickly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="api.FastBuild.run">
 <code class="descname">run</code><span class="sig-paren">(</span><em>cmd</em>, <em>trigger=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.run" title="Permalink to this definition">¶</a></dt>
 <dd><p>Runs <code class="docutils literal notranslate"><span class="pre">cmd</span></code> as a build step in the image.</p>
