@@ -29,10 +29,12 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	statePods := make(map[k8s.PodID]bool, len(state.ManifestStates))
+	statePods := make(map[k8s.PodID]bool, len(state.ManifestTargets))
 
 	// Find all the port-forwards that need to be created.
-	for _, ms := range state.ManifestStates {
+	for _, mt := range state.Targets() {
+		ms := mt.State
+		manifest := mt.Manifest
 		pod := ms.MostRecentPod()
 		podID := pod.PodID
 		if podID == "" {
@@ -44,7 +46,7 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 			continue
 		}
 
-		forwards := PopulatePortForwards(ms.Manifest, pod)
+		forwards := PopulatePortForwards(manifest, pod)
 		if len(forwards) == 0 {
 			continue
 		}
@@ -59,7 +61,7 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 		ctx, cancel := context.WithCancel(ctx)
 		entry := portForwardEntry{
 			podID:     podID,
-			name:      ms.Manifest.Name,
+			name:      ms.Name,
 			namespace: pod.Namespace,
 			forwards:  forwards,
 			ctx:       ctx,
@@ -115,26 +117,22 @@ func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 var _ store.Subscriber = &PortForwardController{}
 
 type portForwardEntry struct {
-	name               model.ManifestName
-	namespace          k8s.Namespace
-	podID              k8s.PodID
-	firstContainerPort int32
-	forwards           []model.PortForward
-	ctx                context.Context
-	cancel             func()
-}
-
-type portForwardableManifest interface {
-	PortForwards() []model.PortForward
+	name      model.ManifestName
+	namespace k8s.Namespace
+	podID     k8s.PodID
+	forwards  []model.PortForward
+	ctx       context.Context
+	cancel    func()
 }
 
 // Extract the port-forward specs from the manifest. If any of them
 // have ContainerPort = 0, populate them with the default port in the pod spec.
 // Quietly drop forwards that we can't populate.
-func PopulatePortForwards(m portForwardableManifest, pod store.Pod) []model.PortForward {
+func PopulatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 	cPorts := pod.ContainerPorts
-	forwards := make([]model.PortForward, 0, len(m.PortForwards()))
-	for _, forward := range m.PortForwards() {
+	fwds := m.K8sTarget().PortForwards
+	forwards := make([]model.PortForward, 0, len(fwds))
+	for _, forward := range fwds {
 		if forward.ContainerPort == 0 {
 			if len(cPorts) == 0 {
 				continue

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tilt Installation Guide &mdash; Tilt  documentation</title>
+  <title>Install &mdash; Tilt  documentation</title>
   
 
   
@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Running your First Tilt Project" href="first_example.html" />
+    <link rel="next" title="Tutorial: First 15 Minutes" href="tutorial.html" />
     <link rel="prev" title="Tilt User Guide" href="index.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
@@ -94,28 +94,40 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tilt Installation Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Install</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#on-macos">On MacOS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#option-a-installing-tilt-with-homebrew-recommended">Option A) Installing Tilt with Homebrew (recommended)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#option-b-installing-tilt-from-release-binaries">Option B) Installing Tilt from release binaries</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#on-linux">On Linux</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#from-source">From Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verifying">Verifying</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
-</ul>
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
-<ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">About</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -161,7 +173,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Tilt Installation Guide</li>
+      <li>Install</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -182,8 +194,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="tilt-installation-guide">
-<span id="tilt-installation-guide"></span><h1>Tilt Installation Guide<a class="headerlink" href="#tilt-installation-guide" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="install">
+<h1>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h1>
 <p>Tilt is currently available for MacOS and Linux.</p>
 <p>You’ll also need:</p>
 <ul class="simple">
@@ -191,8 +203,9 @@
 <li>Kubectl, to cuddle your cluster</li>
 <li>A local Kubernetes cluster (on MacOS, Docker For Mac works for this!)</li>
 </ul>
+<p>Already use Docker Compose for local dev? You can also use Tilt to <a class="reference external" href="docker_compose.html">run your existing Docker Compose setup</a>, in which case all you need to have installed (besides Tilt) is Docker Compose, and you can ignore Kubernetes-specific instructions on this page.</p>
 <div class="section" id="on-macos">
-<span id="on-macos"></span><h2>On MacOS<a class="headerlink" href="#on-macos" title="Permalink to this headline">¶</a></h2>
+<h2>On MacOS<a class="headerlink" href="#on-macos" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Install <a class="reference external" href="https://docs.docker.com/docker-for-mac/install/">Docker For Mac</a></li>
 <li>In the Docker For Mac preferences, click <a class="reference external" href="https://docs.docker.com/docker-for-mac/#kubernetes">Enable Kubernetes</a></li>
@@ -202,22 +215,23 @@
 $ kubectl config use-context docker-for-desktop
 </pre></div>
 </div>
-<ul class="simple">
-<li>Install the Tilt binary with:</li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.3.1/tilt.0.3.1.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+<div class="section" id="option-a-installing-tilt-with-homebrew-recommended">
+<h3>Option A) Installing Tilt with Homebrew (recommended)<a class="headerlink" href="#option-a-installing-tilt-with-homebrew-recommended" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brew tap windmilleng/tap
+$ brew install windmilleng/tap/tilt
+</pre></div>
+</div>
+</div>
+<div class="section" id="option-b-installing-tilt-from-release-binaries">
+<h3>Option B) Installing Tilt from release binaries<a class="headerlink" href="#option-b-installing-tilt-from-release-binaries" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.2/tilt.0.7.2.mac.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
   sudo mv tilt /usr/local/bin/tilt
 </pre></div>
 </div>
-<ul class="simple">
-<li>Verify that you installed it correctly with:</li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-</pre></div>
 </div>
 </div>
 <div class="section" id="on-linux">
-<span id="on-linux"></span><h2>On Linux<a class="headerlink" href="#on-linux" title="Permalink to this headline">¶</a></h2>
+<h2>On Linux<a class="headerlink" href="#on-linux" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Install <a class="reference external" href="https://docs.docker.com/install/">Docker</a></li>
 <li>Setup Docker as <a class="reference external" href="https://docs.docker.com/install/linux/linux-postinstall/">a non-root user</a>.</li>
@@ -237,19 +251,13 @@ $ kubectl config use-context docker-for-desktop
 <ul class="simple">
 <li>Install the Tilt binary with:</li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.3.1/tilt.0.3.1.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.2/tilt.0.7.2.linux.x86_64.tar.gz | tar -xzv tilt &amp;&amp; \
     sudo mv tilt /usr/local/bin/tilt
-</pre></div>
-</div>
-<ul class="simple">
-<li>Verify that you installed it correctly with:</li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
 </pre></div>
 </div>
 </div>
 <div class="section" id="from-source">
-<span id="from-source"></span><h2>From Source<a class="headerlink" href="#from-source" title="Permalink to this headline">¶</a></h2>
+<h2>From Source<a class="headerlink" href="#from-source" title="Permalink to this headline">¶</a></h2>
 <p>If you’d prefer to install <code class="docutils literal notranslate"><span class="pre">tilt</span></code> from source,</p>
 <ul class="simple">
 <li>Install <a class="reference external" href="https://golang.org/dl/">go 1.11</a>. Make sure the Go install directory
@@ -259,15 +267,23 @@ $ kubectl config use-context docker-for-desktop
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ go get -u github.com/windmilleng/tilt/cmd/tilt
 </pre></div>
 </div>
-<p>Verify that you installed it correctly with:</p>
+</div>
+<div class="section" id="verifying">
+<h2>Verifying<a class="headerlink" href="#verifying" title="Permalink to this headline">¶</a></h2>
+<p>After you install Tilt, verify that you installed it correctly with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tilt version
-v0.0.0-dev, built 2018-11-20
+v0.7.2, built 2019-02-05
 </pre></div>
 </div>
 </div>
+<div class="section" id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<p>If you have any trouble installing Tilt, look for the error message in the
+<a class="reference external" href="faq.html#Troubleshooting">Troubleshooting FAQ</a>.</p>
+</div>
 <div class="section" id="next-steps">
-<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
-<p>You’re ready to start using Tilt! Try it out with <a class="reference external" href="first_example.html">an example project</a>.</p>
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+<p>You’re ready to start using Tilt! Try our <a class="reference external" href="tutorial.html">Tutorial</a> to setup your project in 15 minutes.</p>
 </div>
 </div>
 
@@ -279,7 +295,7 @@ v0.0.0-dev, built 2018-11-20
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="first_example.html" class="btn btn-neutral float-right" title="Running your First Tilt Project" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial: First 15 Minutes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral" title="Tilt User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -316,6 +332,7 @@ v0.0.0-dev, built 2018-11-20
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

@@ -1,5 +1,5 @@
-Tilt Installation Guide
-=======================
+Install
+=======
 
 Tilt is currently available for MacOS and Linux.
 
@@ -8,6 +8,9 @@ You'll also need:
 - Docker, to build containers
 - Kubectl, to cuddle your cluster
 - A local Kubernetes cluster (on MacOS, Docker For Mac works for this!)
+
+
+Already use Docker Compose for local dev? You can also use Tilt to [run your existing Docker Compose setup](docker_compose.html), in which case all you need to have installed (besides Tilt) is Docker Compose, and you can ignore Kubernetes-specific instructions on this page.
 
 On MacOS
 --------
@@ -23,17 +26,18 @@ $ kubectl config get-contexts
 $ kubectl config use-context docker-for-desktop
 ```
 
-- Install the Tilt binary with:
+### Option A) Installing Tilt with Homebrew (recommended)
 
 ```
-$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.3.1/tilt.0.3.1.mac.x86_64.tar.gz | tar -xzv tilt && \
+$ brew tap windmilleng/tap
+$ brew install windmilleng/tap/tilt
+```
+
+### Option B) Installing Tilt from release binaries
+
+```
+$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.2/tilt.0.7.2.mac.x86_64.tar.gz | tar -xzv tilt && \
   sudo mv tilt /usr/local/bin/tilt
-```
-
-- Verify that you installed it correctly with:
-
-```
-$ tilt version
 ```
 
 On Linux
@@ -62,14 +66,8 @@ $ kubectl cluster-info
 - Install the Tilt binary with:
 
 ```
-$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.3.1/tilt.0.3.1.linux.x86_64.tar.gz | tar -xzv tilt && \
+$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.2/tilt.0.7.2.linux.x86_64.tar.gz | tar -xzv tilt && \
     sudo mv tilt /usr/local/bin/tilt
-```
-
-- Verify that you installed it correctly with:
-
-```
-$ tilt version
 ```
 
 From Source
@@ -86,16 +84,24 @@ If you'd prefer to install `tilt` from source,
 $ go get -u github.com/windmilleng/tilt/cmd/tilt
 ```
 
-Verify that you installed it correctly with:
+Verifying
+---------
+
+After you install Tilt, verify that you installed it correctly with:
 
 ```
 $ tilt version
-v0.0.0-dev, built 2018-11-20
+v0.7.2, built 2019-02-05
 ```
+
+Troubleshooting
+---------------
+
+If you have any trouble installing Tilt, look for the error message in the
+[Troubleshooting FAQ](faq.html#Troubleshooting).
+
 
 Next Steps
 ----------
 
-You're ready to start using Tilt! Try it out with [an example project](first_example.html).
-
-
+You're ready to start using Tilt! Try our [Tutorial](tutorial.html) to setup your project in 15 minutes.

@@ -86,7 +86,7 @@ func TestTextScroll(t *testing.T) {
 		ts.Down()
 		ts.Down()
 	}
-	i.Run("textscroll: stop scrolling at bottom", 10, 10, sl)
+	i.Run("textscroll stop scrolling at bottom", 10, 10, sl)
 }
 
 type elementScrollTestFixture struct {

@@ -43,20 +43,20 @@ func TestFilesToPathMappings(t *testing.T) {
 		f.T().Fatal(err)
 	}
 
-	expected := []pathMapping{
-		pathMapping{
+	expected := []PathMapping{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount1/fileA"),
 			ContainerPath: "/dest1/fileA",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount1/child/fileB"),
 			ContainerPath: "/dest1/child/fileB",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount2/fileC"),
 			ContainerPath: "/nested/dest2/fileC",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount2/file_deleted"),
 			ContainerPath: "/nested/dest2/file_deleted",
 		},
@@ -91,8 +91,8 @@ func TestFileToDirectoryPathMapping(t *testing.T) {
 		f.T().Fatal(err)
 	}
 
-	expected := []pathMapping{
-		pathMapping{
+	expected := []PathMapping{
+		PathMapping{
 			LocalPath:     filepath.Join(f.Path(), "mount1/fileA"),
 			ContainerPath: "/dest1/fileA",
 		},

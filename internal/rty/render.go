@@ -96,6 +96,9 @@ type renderFrame struct {
 var _ Writer = renderFrame{}
 
 func (f renderFrame) SetContent(x int, y int, mainc rune, combc []rune) {
+	if mainc == 0 {
+		mainc = ' '
+	}
 	if err := f.canvas.SetContent(x, y, mainc, combc, f.style); err != nil {
 		f.error(err)
 	}

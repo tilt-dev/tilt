@@ -4,16 +4,15 @@ import (
 	"flag"
 	"io"
 
-	"github.com/docker/docker/api/types"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func Options(archive io.Reader, args model.DockerBuildArgs) types.ImageBuildOptions {
-	return types.ImageBuildOptions{
+func Options(archive io.Reader, args model.DockerBuildArgs) docker.BuildOptions {
+	return docker.BuildOptions{
 		Context:    archive,
 		Dockerfile: "Dockerfile",
 		Remove:     shouldRemoveImage(),
-		Version:    types.BuilderBuildKit,
 		BuildArgs:  manifestBuildArgsToDockerBuildArgs(args),
 	}
 }

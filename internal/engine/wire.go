@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cloud/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -30,9 +31,10 @@ var DeployerBaseWireSet = wire.NewSet(
 	// BuildOrder
 	NewImageBuildAndDeployer,
 	build.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
-	build.NewContainerResolver,
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
+	NewDockerComposeBuildAndDeployer,
+	NewImageAndCacheBuilder,
 	DefaultBuildOrder,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
@@ -53,16 +55,18 @@ var DeployerWireSet = wire.NewSet(
 
 func provideBuildAndDeployer(
 	ctx context.Context,
-	docker docker.DockerClient,
+	docker docker.Client,
 	k8s k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
 	updateMode UpdateModeFlag,
-	sCli synclet.SyncletClient) (BuildAndDeployer, error) {
+	sCli synclet.SyncletClient,
+	dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
+		build.ProvideClock,
 	)
 
 	return nil, nil
@@ -70,7 +74,7 @@ func provideBuildAndDeployer(
 
 func provideImageBuildAndDeployer(
 	ctx context.Context,
-	docker docker.DockerClient,
+	docker docker.Client,
 	kClient k8s.Client,
 	dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
 	wire.Build(
@@ -79,6 +83,22 @@ func provideImageBuildAndDeployer(
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		wire.Value(k8s.Env(k8s.EnvDockerDesktop)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		build.ProvideClock,
+	)
+
+	return nil, nil
+}
+
+func provideDockerComposeBuildAndDeployer(
+	ctx context.Context,
+	dcCli dockercompose.DockerComposeClient,
+	dCli docker.Client,
+	dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
+	wire.Build(
+		DeployerWireSetTest,
+		wire.Value(k8s.Env(k8s.EnvUnknown)),
+		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		build.ProvideClock,
 	)
 
 	return nil, nil

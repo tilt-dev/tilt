@@ -2,7 +2,7 @@ package hud
 
 import (
 	"fmt"
-	"strings"
+	"math"
 	"time"
 )
 
@@ -17,9 +17,9 @@ func formatBuildDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", minutes)
 	}
 
-	seconds := int(d.Seconds())
-	if seconds > 10 {
-		return fmt.Sprintf("%ds", seconds)
+	seconds := d.Seconds()
+	if seconds >= 9.95 {
+		return fmt.Sprintf("%ds", int(math.Round(seconds)))
 	}
 
 	fractionalSeconds := float64(d) / float64(time.Second)
@@ -43,20 +43,4 @@ func formatDeployAge(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	}
-}
-
-func formatFileList(files []string) string {
-	const maxFilesToDisplay = 3
-
-	var ret []string
-
-	for i, f := range files {
-		if i > maxFilesToDisplay {
-			ret = append(ret, fmt.Sprintf("(%d more)", len(files)-maxFilesToDisplay))
-			break
-		}
-		ret = append(ret, f)
-	}
-
-	return strings.Join(ret, ", ")
 }

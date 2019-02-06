@@ -6,13 +6,14 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/denisbrodbeck/machineid"
 )
 
 const statsEndpt = "https://events.windmill.build/report"
@@ -25,6 +26,7 @@ const (
 	keyDuration = "duration"
 	keyName     = "name"
 	keyUser     = "user"
+	keyMachine  = "machine"
 )
 
 var cli = &http.Client{Timeout: statsTimeout}
@@ -33,8 +35,22 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func Init(appName string) (Analytics, *cobra.Command, error) {
-	a := NewDefaultRemoteAnalytics(appName)
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+
+type stdLogger struct{}
+
+func (stdLogger) Printf(format string, v ...interface{}) {
+	log.Printf("[analytics] %s", fmt.Sprintf(format, v...))
+}
+
+func Init(appName string, options ...Option) (Analytics, *cobra.Command, error) {
+	a, err := NewRemoteAnalytics(appName, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	c, err := initCLI()
 	if err != nil {
 		return nil, nil, err
@@ -51,12 +67,13 @@ type Analytics interface {
 }
 
 type remoteAnalytics struct {
-	cli     HTTPClient
-	app     string
-	url     string
-	userId  string
-	optedIn bool
-	wg      *sync.WaitGroup
+	cli        HTTPClient
+	app        string
+	url        string
+	enabled    bool
+	logger     Logger
+	globalTags map[string]string
+	wg         *sync.WaitGroup
 }
 
 func hashMD5(in []byte) string {
@@ -81,22 +98,46 @@ func getUserID() string {
 	return hashMD5(out)
 }
 
-// Create a remote analytics object with Windmill-specific defaults
-// for the HTTPClient, report URL, user ID, and opt-in status.
-func NewDefaultRemoteAnalytics(appName string) *remoteAnalytics {
-	optedIn := optedIn()
-	return NewRemoteAnalytics(cli, appName, statsEndpt, getUserID(), optedIn)
+func getMachineID() string {
+	mid, err := machineid.ID()
+	if err != nil {
+		return "anon"
+	}
+	return hashMD5([]byte(mid))
 }
 
-func NewRemoteAnalytics(cli HTTPClient, app, url, userId string, optedIn bool) *remoteAnalytics {
-	return &remoteAnalytics{cli: cli, app: app, url: url, userId: userId, optedIn: optedIn, wg: &sync.WaitGroup{}}
+// Create a remote analytics object with Windmill-specific defaults
+// for the HTTPClient, report URL, user ID, and opt-in status.
+// All of these defaults can be overridden with appropriate options.
+func NewRemoteAnalytics(appName string, options ...Option) (*remoteAnalytics, error) {
+	enabled, err := optedIn()
+	if err != nil {
+		return nil, err
+	}
+	a := &remoteAnalytics{
+		cli:        cli,
+		app:        appName,
+		url:        statsEndpt,
+		enabled:    enabled,
+		logger:     stdLogger{},
+		wg:         &sync.WaitGroup{},
+		globalTags: map[string]string{keyUser: getUserID(), keyMachine: getMachineID()},
+	}
+	for _, o := range options {
+		o(a)
+	}
+	return a, nil
 }
 
 func (a *remoteAnalytics) namespaced(name string) string {
 	return fmt.Sprintf("%s.%s", a.app, name)
 }
+
 func (a *remoteAnalytics) baseReqBody(name string, tags map[string]string) map[string]interface{} {
-	req := map[string]interface{}{keyName: a.namespaced(name), keyUser: a.userId}
+	req := map[string]interface{}{keyName: a.namespaced(name)}
+	for k, v := range a.globalTags {
+		req[k] = v
+	}
 	for k, v := range tags {
 		req[k] = v
 	}
@@ -120,7 +161,7 @@ func (a *remoteAnalytics) makeReq(reqBody map[string]interface{}) (*http.Request
 }
 
 func (a *remoteAnalytics) Count(name string, tags map[string]string, n int) {
-	if !a.optedIn {
+	if !a.enabled {
 		return
 	}
 
@@ -134,17 +175,17 @@ func (a *remoteAnalytics) count(name string, tags map[string]string, n int) {
 	req, err := a.countReq(name, tags, n)
 	if err != nil {
 		// Stat reporter can't return errs, just print it.
-		fmt.Fprintf(os.Stderr, "[analytics] %v\n", err)
+		a.logger.Printf("Error: %v\n", err)
 		return
 	}
 
 	resp, err := a.cli.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[analytics] http.Post: %v\n", err)
+		a.logger.Printf("http.Post: %v\n", err)
 		return
 	}
 	if resp.StatusCode != 200 {
-		fmt.Fprintf(os.Stderr, "[analytics] http.Post returned status: %s\n", resp.Status)
+		a.logger.Printf("http.Post returned status: %s\n", resp.Status)
 	}
 }
 
@@ -154,14 +195,14 @@ func (a *remoteAnalytics) countReq(name string, tags map[string]string, n int) (
 }
 
 func (a *remoteAnalytics) Incr(name string, tags map[string]string) {
-	if !a.optedIn {
+	if !a.enabled {
 		return
 	}
 	a.Count(name, tags, 1)
 }
 
 func (a *remoteAnalytics) Timer(name string, dur time.Duration, tags map[string]string) {
-	if !a.optedIn {
+	if !a.enabled {
 		return
 	}
 
@@ -175,17 +216,17 @@ func (a *remoteAnalytics) timer(name string, dur time.Duration, tags map[string]
 	req, err := a.timerReq(name, dur, tags)
 	if err != nil {
 		// Stat reporter can't return errs, just print it.
-		fmt.Fprintf(os.Stderr, "[analytics] %v\n", err)
+		a.logger.Printf("Error: %v\n", err)
 		return
 	}
 
 	resp, err := a.cli.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[analytics] http.Post: %v\n", err)
+		a.logger.Printf("http.Post: %v\n", err)
 		return
 	}
 	if resp.StatusCode != 200 {
-		fmt.Fprintf(os.Stderr, "[analytics] http.Post returned status: %s\n", resp.Status)
+		a.logger.Printf("http.Post returned status: %s\n", resp.Status)
 	}
 
 }

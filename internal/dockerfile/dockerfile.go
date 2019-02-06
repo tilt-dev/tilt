@@ -3,6 +3,7 @@ package dockerfile
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -120,6 +121,61 @@ func (d Dockerfile) ValidateBaseDockerfile() error {
 		return nil
 	})
 	return err
+}
+
+// DeriveMounts finds ADD statements in a Dockerfile and turns them into Tilt model.Mounts.
+// Relative paths in an ADD statement are relative to the build context (passed as an arg)
+// and will appear in the Mount as an abs path.
+func (d Dockerfile) DeriveMounts(context string) ([]model.Mount, error) {
+	result, err := parser.Parse(bytes.NewBufferString(string(d)))
+	if err != nil {
+		return nil, nil
+	}
+
+	var nodes []*parser.Node
+	err = traverse(result.AST, func(node *parser.Node) error {
+		switch strings.ToUpper(node.Value) {
+		case "ADD", "COPY":
+			nodes = append(nodes, node)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	mounts := make([]model.Mount, len(nodes))
+	for i, n := range nodes {
+		m, err := nodeToMount(n, context)
+		if err != nil {
+			return nil, err
+		}
+		mounts[i] = m
+	}
+	return mounts, nil
+}
+
+func nodeToMount(node *parser.Node, context string) (model.Mount, error) {
+	cmd := strings.ToUpper(node.Value)
+	if !(cmd == "ADD" || cmd == "COPY") {
+		return model.Mount{}, fmt.Errorf("nodeToMounts works on ADD/COPY nodes; got '%s'", cmd)
+	}
+
+	srcNode := node.Next
+	dstNode := srcNode.Next
+
+	src := srcNode.Value
+	if !filepath.IsAbs(src) {
+		src = filepath.Join(context, src)
+	}
+
+	// TODO(maia): do we support relative ContainerPaths in mounts?
+	// If not, need to either a. make absolute or b. error out here.
+
+	return model.Mount{
+		LocalPath:     src,
+		ContainerPath: dstNode.Value,
+	}, nil
 }
 
 func (d Dockerfile) String() string {

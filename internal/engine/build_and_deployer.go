@@ -11,18 +11,13 @@ import (
 )
 
 type BuildAndDeployer interface {
-	// BuildAndDeploy builds and deployed the specified manifest.
+	// BuildAndDeploy builds and deployed the specified target specs.
 	//
-	// Returns a BuildResult that expresses the output of the build.
+	// Returns a BuildResult that expresses the outputs(s) of the build.
 	//
-	// BuildResult can be used to construct a BuildState, which contains
-	// the last successful build and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error)
-
-	// PostProcessBuild gets any info about the build that we'll need for subsequent builds.
-	// In general, we'll store this info ON the BuildAndDeployer that needs it.
-	// Each implementation of PostProcessBuild is responsible for executing long-running steps async.
-	PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult)
+	// BuildResult can be used to construct a set of BuildStates, which contain
+	// the last successful builds of each target and the files changed since that build.
+	BuildAndDeploy(ctx context.Context, spects []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -42,18 +37,16 @@ func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeploye
 	return &CompositeBuildAndDeployer{builders: builders}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, currentState store.BuildState) (store.BuildResult, error) {
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
-		br, err := builder.BuildAndDeploy(ctx, manifest, currentState)
+		br, err := builder.BuildAndDeploy(ctx, specs, currentState)
 		if err == nil {
-			// TODO(maia): this should be reactive (i.e. happen as a response to `BuildCompleteAction`)
-			composite.PostProcessBuild(ctx, br, currentState.LastResult)
 			return br, err
 		}
 
 		if !shouldFallBackForErr(err) {
-			return store.BuildResult{}, err
+			return store.BuildResultSet{}, err
 		}
 
 		if _, ok := err.(RedirectToNextBuilder); ok {
@@ -66,33 +59,28 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 		lastErr = err
 	}
-	return store.BuildResult{}, lastErr
+	return store.BuildResultSet{}, lastErr
 }
 
-func (composite *CompositeBuildAndDeployer) PostProcessBuild(ctx context.Context, result, prevResult store.BuildResult) {
-	for _, builder := range composite.builders {
-		builder.PostProcessBuild(ctx, result, prevResult)
-	}
-}
+func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, updMode UpdateMode) BuildOrder {
 
-func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, env k8s.Env, mode UpdateMode) BuildOrder {
-	if mode == UpdateModeImage || mode == UpdateModeNaive {
-		return BuildOrder{ibad}
+	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
+		return BuildOrder{dcbad, ibad}
 	}
 
-	if mode == UpdateModeContainer {
-		return BuildOrder{cbad, ibad}
+	if updMode == UpdateModeContainer {
+		return BuildOrder{cbad, dcbad, ibad}
 	}
 
-	if mode == UpdateModeSynclet {
+	if updMode == UpdateModeSynclet {
 		ibad.SetInjectSynclet(true)
-		return BuildOrder{sbad, ibad}
+		return BuildOrder{sbad, dcbad, ibad}
 	}
 
 	if env.IsLocalCluster() {
-		return BuildOrder{cbad, ibad}
+		return BuildOrder{cbad, dcbad, ibad}
 	}
 
 	ibad.SetInjectSynclet(true)
-	return BuildOrder{sbad, ibad}
+	return BuildOrder{sbad, dcbad, ibad}
 }

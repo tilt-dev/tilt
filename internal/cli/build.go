@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const devVersion = "0.7.1"
+
 type BuildInfo struct {
 	Version string
 	Date    string
@@ -21,11 +23,16 @@ func SetBuildInfo(info BuildInfo) {
 	globalBuildInfo = info
 }
 
-func buildStamp() string {
+func buildInfo() BuildInfo {
 	info := globalBuildInfo
 	if info.empty() {
-		info = defaultBuildInfo()
+		return defaultBuildInfo()
 	}
+	return info
+}
+
+func buildStamp() string {
+	info := buildInfo()
 	version := info.Version
 	date := info.Date
 	timeIndex := strings.Index(date, "T")
@@ -58,6 +65,6 @@ func defaultBuildDate() string {
 func defaultBuildInfo() BuildInfo {
 	return BuildInfo{
 		Date:    defaultBuildDate(),
-		Version: "0.0.0-dev",
+		Version: fmt.Sprintf("%s-dev", devVersion),
 	}
 }

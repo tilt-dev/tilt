@@ -1,19 +1,16 @@
 package k8s
 
 import (
-	"k8s.io/api/apps/v1beta1"
-	"k8s.io/api/apps/v1beta2"
+	"github.com/windmilleng/tilt/internal/model"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-type LabelPair struct {
-	Key   string
-	Value string
-}
-
-func makeLabelSet(lps []LabelPair) labels.Set {
+func makeLabelSet(lps []model.LabelPair) labels.Set {
 	ls := labels.Set{}
 	for _, lp := range lps {
 		ls[lp.Key] = lp.Value
@@ -21,18 +18,20 @@ func makeLabelSet(lps []LabelPair) labels.Set {
 	return ls
 }
 
-func makeLabelSelector(lps []LabelPair) string {
+func makeLabelSelector(lps []model.LabelPair) string {
 	return labels.SelectorFromSet(makeLabelSet(lps)).String()
 }
 
-func InjectLabels(entity K8sEntity, labels []LabelPair) (K8sEntity, error) {
+func InjectLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
 	switch obj := entity.Obj.(type) {
-	case *v1beta1.Deployment:
-		allowLabelChangesInDeploymentBeta1(obj)
-	case *v1beta2.Deployment:
-		allowLabelChangesInDeploymentBeta2(obj)
+	case *appsv1beta1.Deployment:
+		allowLabelChangesInAppsDeploymentBeta1(obj)
+	case *appsv1beta2.Deployment:
+		allowLabelChangesInAppsDeploymentBeta2(obj)
+	case *extv1beta1.Deployment:
+		allowLabelChangesInExtDeploymentBeta1(obj)
 	}
 
 	metas, err := extractObjectMetas(&entity)
@@ -62,7 +61,7 @@ func InjectLabels(entity K8sEntity, labels []LabelPair) (K8sEntity, error) {
 // The v1 Deployment fixed this problem by making Selector mandatory.
 // But for old versions of Deployment, we need to auto-infer the selector
 // before we add labels to the pod.
-func allowLabelChangesInDeploymentBeta1(dep *v1beta1.Deployment) {
+func allowLabelChangesInAppsDeploymentBeta1(dep *appsv1beta1.Deployment) {
 	selector := dep.Spec.Selector
 	if selector != nil &&
 		(len(selector.MatchLabels) > 0 || len(selector.MatchExpressions) > 0) {
@@ -80,8 +79,26 @@ func allowLabelChangesInDeploymentBeta1(dep *v1beta1.Deployment) {
 	dep.Spec.Selector.MatchLabels = matchLabels
 }
 
-// see notes on allowLabelChangesInDeploymentBeta1
-func allowLabelChangesInDeploymentBeta2(dep *v1beta2.Deployment) {
+// see notes on allowLabelChangesInAppsDeploymentBeta1
+func allowLabelChangesInAppsDeploymentBeta2(dep *appsv1beta2.Deployment) {
+	selector := dep.Spec.Selector
+	if selector != nil &&
+		(len(selector.MatchLabels) > 0 || len(selector.MatchExpressions) > 0) {
+		return
+	}
+
+	podSpecLabels := dep.Spec.Template.Labels
+	matchLabels := make(map[string]string, len(podSpecLabels))
+	for k, v := range podSpecLabels {
+		matchLabels[k] = v
+	}
+	if dep.Spec.Selector == nil {
+		dep.Spec.Selector = &metav1.LabelSelector{}
+	}
+	dep.Spec.Selector.MatchLabels = matchLabels
+}
+
+func allowLabelChangesInExtDeploymentBeta1(dep *extv1beta1.Deployment) {
 	selector := dep.Spec.Selector
 	if selector != nil &&
 		(len(selector.MatchLabels) > 0 || len(selector.MatchExpressions) > 0) {

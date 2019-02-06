@@ -18,12 +18,11 @@ type BuildController struct {
 }
 
 type buildEntry struct {
-	ctx          context.Context
-	manifest     model.Manifest
-	buildState   store.BuildState
-	buildReason  model.BuildReason
-	filesChanged []string
-	firstBuild   bool
+	name          model.ManifestName
+	targets       []model.TargetSpec
+	buildStateSet store.BuildStateSet
+	buildReason   model.BuildReason
+	firstBuild    bool
 }
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
@@ -34,13 +33,12 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 }
 
 // Algorithm to choose a manifest to build next.
-func nextManifestToBuild(state store.EngineState) model.ManifestName {
+func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	// First, go through all the manifests in order.
 	// If any of them haven't started yet, build them now.
-	for _, mn := range state.ManifestDefinitionOrder {
-		ms, ok := state.ManifestStates[mn]
-		if ok && !ms.StartedFirstBuild() {
-			return mn
+	for _, mt := range state.Targets() {
+		if !mt.State.StartedFirstBuild() {
+			return mt
 		}
 	}
 
@@ -48,39 +46,44 @@ func nextManifestToBuild(state store.EngineState) model.ManifestName {
 	// 1) all pending file changes, and
 	// 2) all pending manifest changes
 	// The earliest one is the one we want.
-	choiceName := model.ManifestName("")
+	var choice *store.ManifestTarget
 	earliest := time.Now()
 
 	// always use a stable iteration order
-	for _, mn := range state.ManifestDefinitionOrder {
-		ms, ok := state.ManifestStates[mn]
-		if !ok {
-			continue
-		}
-
+	for _, mt := range state.Targets() {
 		// Always prioritize builds that crashes and have an out-of-sync.
-		if ms.NeedsRebuildFromCrash {
-			return mn
+		if mt.State.NeedsRebuildFromCrash {
+			return mt
 		}
+	}
 
-		t := ms.PendingManifestChange
-		if t.Before(earliest) && ms.IsPendingTime(t) {
-			choiceName = mn
-			earliest = t
+	if state.TriggerMode == model.TriggerManual && len(state.TriggerQueue) > 0 {
+		mn := state.TriggerQueue[0]
+		mt, ok := state.ManifestTargets[mn]
+		if ok {
+			return mt
 		}
+	}
 
-		spurious, _ := onlySpuriousChanges(ms.PendingFileChanges)
-		if !spurious {
-			for _, t := range ms.PendingFileChanges {
-				if t.Before(earliest) && ms.IsPendingTime(t) {
-					choiceName = mn
-					earliest = t
-				}
+	if state.TriggerMode == model.TriggerAuto {
+		for _, mt := range state.Targets() {
+			ok, newTime := mt.State.HasPendingChangesBefore(earliest)
+			if ok {
+				choice = mt
+				earliest = newTime
 			}
 		}
 	}
 
-	return choiceName
+	return choice
+}
+
+func nextManifestNameToBuild(state store.EngineState) model.ManifestName {
+	mt := nextTargetToBuild(state)
+	if mt == nil {
+		return ""
+	}
+	return mt.Manifest.Name
 }
 
 func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
@@ -93,44 +96,26 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		return buildEntry{}, false
 	}
 
-	mn := nextManifestToBuild(state)
-	if mn == "" {
+	mt := nextTargetToBuild(state)
+	if mt == nil {
 		return buildEntry{}, false
 	}
 
 	c.lastActionCount = state.BuildControllerActionCount
-	ms := state.ManifestStates[mn]
-	manifest := ms.Manifest
+	ms := mt.State
+	manifest := mt.Manifest
 	firstBuild := !ms.StartedFirstBuild()
 
-	filesChanged := make([]string, 0, len(ms.PendingFileChanges))
-	for file, _ := range ms.PendingFileChanges {
-		filesChanged = append(filesChanged, file)
-	}
-	sort.Strings(filesChanged)
-
-	buildState := store.NewBuildState(ms.LastSuccessfulResult, filesChanged)
-
-	if !ms.NeedsRebuildFromCrash {
-		buildState = buildState.WithDeployInfo(store.NewDeployInfo(ms.PodSet))
-	}
-
 	buildReason := ms.NextBuildReason()
-
-	// Send the logs to both the EngineState and the normal log stream.
-	actionWriter := BuildLogActionWriter{
-		store:        st,
-		manifestName: mn,
-	}
-	ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
+	targets := buildTargets(manifest)
+	buildStateSet := buildStateSet(manifest, targets, ms)
 
 	return buildEntry{
-		ctx:          ctx,
-		manifest:     manifest,
-		firstBuild:   firstBuild,
-		buildReason:  buildReason,
-		buildState:   buildState,
-		filesChanged: filesChanged,
+		name:          manifest.Name,
+		targets:       targets,
+		firstBuild:    firstBuild,
+		buildReason:   buildReason,
+		buildStateSet: buildStateSet,
 	}, true
 }
 
@@ -148,30 +133,48 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	go func() {
+		// Send the logs to both the EngineState and the normal log stream.
+		actionWriter := BuildLogActionWriter{
+			store:        st,
+			manifestName: entry.name,
+		}
+		ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
+
+		filesChanged := entry.buildStateSet.FilesChanged()
 		st.Dispatch(BuildStartedAction{
-			Manifest:     entry.manifest,
+			ManifestName: entry.name,
 			StartTime:    time.Now(),
-			FilesChanged: entry.filesChanged,
+			FilesChanged: filesChanged,
 			Reason:       entry.buildReason,
 		})
-		c.logBuildEntry(entry.ctx, entry)
-		result, err := c.b.BuildAndDeploy(entry.ctx, entry.manifest, entry.buildState)
+		c.logBuildEntry(ctx, entry, filesChanged)
+
+		result, err := c.buildAndDeploy(ctx, entry)
 		st.Dispatch(NewBuildCompleteAction(result, err))
 	}()
 }
 
-func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
+func (c *BuildController) buildAndDeploy(ctx context.Context, entry buildEntry) (store.BuildResultSet, error) {
+	targets := entry.targets
+	for _, target := range targets {
+		err := target.Validate()
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+	}
+	return c.b.BuildAndDeploy(ctx, targets, entry.buildStateSet)
+}
+
+func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, changedFiles []string) {
 	firstBuild := entry.firstBuild
-	manifest := entry.manifest
-	buildState := entry.buildState
+	name := entry.name
 
 	l := logger.Get(ctx)
 	if firstBuild {
-		p := logger.Blue(l).Sprintf("──┤ Building: ")
+		p := logger.Blue(l).Sprintf("\n──┤ Building: ")
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
-		l.Infof("%s%s%s", p, manifest.Name, s)
+		l.Infof("%s%s%s", p, name, s)
 	} else {
-		changedFiles := buildState.FilesChanged()
 		var changedPathsToPrint []string
 		if len(changedFiles) > maxChangedFilesToPrint {
 			changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
@@ -185,9 +188,9 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 			l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
 		}
 
-		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
+		rp := logger.Blue(l).Sprintf("\n──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
-		l.Infof("%s%s%s", rp, manifest.Name, rs)
+		l.Infof("%s%s%s", rp, name, rs)
 	}
 }
 
@@ -202,6 +205,56 @@ func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
 		Log:          append([]byte{}, p...),
 	})
 	return len(p), nil
+}
+
+// Extract target specs from a manifest for BuildAndDeploy.
+func buildTargets(manifest model.Manifest) []model.TargetSpec {
+	var result []model.TargetSpec
+
+	for _, iTarget := range manifest.ImageTargets {
+		result = append(result, iTarget)
+	}
+
+	if manifest.IsDC() {
+		result = append(result, manifest.DockerComposeTarget())
+	} else if manifest.IsK8s() {
+		result = append(result, manifest.K8sTarget())
+	}
+
+	return result
+}
+
+// Extract a set of build states from a manifest for BuildAndDeploy.
+func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
+	buildStateSet := store.BuildStateSet{}
+
+	for _, spec := range specs {
+		id := spec.ID()
+		if id.Type != model.TargetTypeImage && id.Type != model.TargetTypeDockerCompose {
+			continue
+		}
+
+		status := ms.BuildStatus(id)
+		filesChanged := make([]string, 0, len(status.PendingFileChanges))
+		for file, _ := range status.PendingFileChanges {
+			filesChanged = append(filesChanged, file)
+		}
+		sort.Strings(filesChanged)
+
+		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
+
+		// Kubernetes-based builds can update containers in-place.
+		//
+		// We don't want to pass along the kubernetes data if the pod is crashing,
+		// because we're not confident that this state is accurate (due to how k8s
+		// reschedules pods).
+		if manifest.IsK8s() && !ms.NeedsRebuildFromCrash {
+			buildState = buildState.WithDeployTarget(store.NewDeployInfo(ms.PodSet))
+		}
+		buildStateSet[id] = buildState
+	}
+
+	return buildStateSet
 }
 
 var _ store.Subscriber = &BuildController{}

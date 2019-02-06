@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -45,7 +47,7 @@ func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod
 	return k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
 }
 
-func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair, timeout time.Duration) ([]v1.Pod, error) {
+func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodsWithImage")
 	span.SetTag("img", image.String())
 	defer span.Finish()
@@ -68,7 +70,7 @@ func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.Nam
 
 // PodsWithImage returns the ID of the pod running the given image. If too many matches, throw
 // an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []LabelPair) ([]v1.Pod, error) {
+func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodsWithImage")
 	defer span.Finish()
 
@@ -112,7 +114,7 @@ func NodeIDFromPod(pod *v1.Pod) NodeID {
 
 func (k K8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
 	jsonPath := "-o=jsonpath={.spec.nodeName}"
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"get", "pods", podID.String(), jsonPath})
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, k.kubeContext, []string{"get", "pods", podID.String(), jsonPath})
 
 	if err != nil {
 		return NodeID(""), errors.Wrapf(err, "error finding node for pod '%s':\nstderr: '%s'", podID.String(), stderr)
@@ -162,7 +164,7 @@ func (k K8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName str
 	}
 	args = append(args, jsonPath)
 
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, args)
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, k.kubeContext, args)
 
 	if err != nil {
 		return PodID(""), errors.Wrapf(err, "error finding app with %s:\nstderr: '%s'", filterDesc, stderr)

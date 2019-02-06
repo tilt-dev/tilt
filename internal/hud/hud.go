@@ -69,7 +69,7 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 
 	screenEvents, err := h.r.SetUp()
 	if err != nil {
-		return errors.Wrap(err, "error initializing renderer")
+		return errors.Wrap(err, "setting up screen")
 	}
 
 	defer h.Close()
@@ -110,26 +110,18 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	escape := func() (hudDone bool) {
+	escape := func() {
 		am := h.activeModal()
 		if am != nil {
 			am.Close(&h.currentViewState)
-			return false
 		}
-
-		h.Close()
-		dispatch(NewExitAction(nil))
-		return true
 	}
 
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyEscape:
-			if escape() {
-				return true
-			}
-
+			escape()
 		case tcell.KeyRune:
 			switch r := ev.Rune(); {
 			case r == 'b': // [B]rowser
@@ -161,11 +153,14 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			case r == 'j':
 				h.activeScroller().Down()
 			case r == 'q': // [Q]uit
-				if escape() {
-					return true
-				}
+				escape()
 			case r == 'R': // hidden key for recovering from printf junk during demos
 				h.r.screen.Sync()
+			case r == ' ': // [space] - trigger build for selected resource
+				_, selected := h.selectedResource()
+				dispatch(view.AppendToTriggerQueueAction{
+					Name: selected.Name,
+				})
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()
@@ -182,9 +177,11 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		case tcell.KeyEnter: // toggle log modal for selected resource
 			am := h.activeModal()
 			if am == nil {
+				if len(h.currentView.Resources) == 0 {
+					break
+				}
 				selectedIdx, r := h.selectedResource()
-
-				if r.IsYAMLManifest {
+				if r.IsYAML() {
 					h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
 					break
 				}
@@ -211,6 +208,12 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.Close()
 			dispatch(NewExitAction(nil))
 			return true
+		case tcell.KeyCtrlP:
+			if h.currentView.IsProfiling {
+				dispatch(StopProfilingAction{})
+			} else {
+				dispatch(StartProfilingAction{})
+			}
 		}
 
 	case *tcell.EventResize:

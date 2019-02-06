@@ -2,18 +2,27 @@ version: 2
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:b306b58ec30d14a6a1c5a6abe202d1344274d0a14ca7e40776719aedd9c0026b
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:b1f863c96c97323b51aad312ef278ccafe34d6b9b81a28dd69f57fcbdd1f5262
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: docker pull registry:2
-      - run: make all
+      - run: make check-go
+      - store_test_results:
+          path: test-results
+
+  build-js:
+    docker:
+      - image: circleci/node:8
+    steps:
+      - checkout
+      - run: make test-js
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:d56e4c41d68518ea2b55c8d602553efc18f2a9df160b7a3e8da914ca3cc54b76
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:814e22b3bc7cd6b8fd8ba06246cc59f401886058e6cfe4df4658300cd2d43698
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
@@ -48,13 +57,21 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v5
-      - run: brew install go@1.10 kustomize # bump cache version when changing this
+            - homebrew_cache_v8
+      # Bump cache version when changing this.
+      # We set HOMEBREW_NO_AUTO_UPDATE because it's both
+      # 1) not worth the cost, and
+      # 2) hits github in a way that leads to flakyness
+      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install go@1.11 kustomize docker-compose
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v5
-      - run: echo 'export PATH="/usr/local/opt/go@1.10/bin:$PATH"' >> $BASH_ENV
+          key: homebrew_cache_v8
+      - run: echo 'export PATH="/usr/local/opt/go@1.11/bin:$PATH"' >> $BASH_ENV
+      # NOTE(dmiller): the helm package in Homebrew is too old, and the tests fail. Install from GitHub instead.
+      - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
+             tar -xz -C /tmp -f /tmp/helm.tar.gz &&
+             mv /tmp/darwin-amd64/helm /usr/local/bin/helm
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: go test -tags 'skipcontainertests' ./...
@@ -65,6 +82,9 @@ workflows:
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
+      - build-js:
+          requires:
+            - build-linux
       - build-macos:
           requires:
             - build-linux

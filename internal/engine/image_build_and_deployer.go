@@ -1,20 +1,17 @@
 package engine
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
@@ -22,22 +19,15 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-type deployableImageManifest interface {
-	K8sYAML() string
-	ManifestName() model.ManifestName
-	DockerRef() reference.Named
-}
-
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
-	b             build.ImageBuilder
-	cacheBuilder  build.CacheBuilder
+	icb           *imageAndCacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
 	analytics     analytics.Analytics
-	updateMode    UpdateMode
 	injectSynclet bool
+	clock         build.Clock
 }
 
 func NewImageBuildAndDeployer(
@@ -46,14 +36,14 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics analytics.Analytics,
-	updateMode UpdateMode) *ImageBuildAndDeployer {
+	updMode UpdateMode,
+	c build.Clock) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		b:            b,
-		cacheBuilder: cacheBuilder,
-		k8sClient:    k8sClient,
-		env:          env,
-		analytics:    analytics,
-		updateMode:   updateMode,
+		icb:       NewImageAndCacheBuilder(b, cacheBuilder, updMode),
+		k8sClient: k8sClient,
+		env:       env,
+		analytics: analytics,
+		clock:     c,
 	}
 }
 
@@ -62,194 +52,129 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
 }
 
-func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, manifest model.Manifest, state store.BuildState) (br store.BuildResult, err error) {
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
+	iTargets, kTargets := extractImageAndK8sTargets(specs)
+	if len(kTargets) == 0 || len(iTargets) == 0 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
+	}
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
+	span.SetTag("target", kTargets[0].Name)
 	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {
 		incremental := "0"
-		if state.HasImage() {
-			incremental = "1"
+		for _, state := range stateSet {
+			if state.HasImage() {
+				incremental = "1"
+			}
 		}
 		tags := map[string]string{"incremental": incremental}
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	numStages := 2
-	ps := build.NewPipelineState(ctx, numStages)
+	numStages := len(iTargets)
+	if len(kTargets) > 0 {
+		numStages++
+	}
+
+	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	err = manifest.Validate()
+	results := store.BuildResultSet{}
+
+	var refs []reference.NamedTagged
+	for _, iTarget := range iTargets {
+		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+		results[iTarget.ID()] = store.BuildResult{
+			Image: ref,
+		}
+		refs = append(refs, ref)
+	}
+
+	err = ibd.deploy(ctx, ps, kTargets, refs)
 	if err != nil {
-		return store.BuildResult{}, err
+		return store.BuildResultSet{}, err
 	}
 
-	ref, err := ibd.build(ctx, manifest, state, ps)
-	if err != nil {
-		return store.BuildResult{}, err
-	}
-
-	k8sEntities, namespace, err := ibd.deploy(ctx, ps, manifest, ref)
-	if err != nil {
-		return store.BuildResult{}, err
-	}
-
-	return store.BuildResult{
-		Image:     ref,
-		Namespace: namespace,
-		Entities:  k8sEntities,
-	}, nil
-}
-
-func (ibd *ImageBuildAndDeployer) build(ctx context.Context, manifest model.Manifest, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
-	var n reference.NamedTagged
-
-	name := manifest.DockerRef()
-	if manifest.IsStaticBuild() {
-		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", name)
-		defer ps.EndPipelineStep(ctx)
-
-		cacheRef, err := ibd.fetchCache(ctx, manifest)
-		if err != nil {
-			return nil, err
-		}
-
-		df := ibd.staticDockerfile(manifest, cacheRef)
-		ref, err := ibd.b.BuildDockerfile(ctx, ps, name, df, manifest.StaticBuildPath, ignore.CreateBuildContextFilter(manifest), manifest.StaticBuildArgs)
-
-		if err != nil {
-			return nil, err
-		}
-		n = ref
-
-		go ibd.maybeCreateCacheFrom(ctx, ref, state, manifest, cacheRef)
-
-	} else if !state.HasImage() || ibd.updateMode == UpdateModeNaive {
-		// No existing image to build off of, need to build from scratch
-		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", name)
-		defer ps.EndPipelineStep(ctx)
-
-		cacheRef, err := ibd.fetchCache(ctx, manifest)
-		if err != nil {
-			return nil, err
-		}
-
-		df := ibd.baseDockerfile(manifest, cacheRef)
-		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromScratch(ctx, ps, name, df, manifest.Mounts, ignore.CreateBuildContextFilter(manifest), steps, manifest.Entrypoint)
-
-		if err != nil {
-			return nil, err
-		}
-		n = ref
-		go ibd.maybeCreateCacheFrom(ctx, ref, state, manifest, cacheRef)
-
-	} else {
-		changed, err := state.FilesChangedSinceLastResultImage()
-		if err != nil {
-			return nil, err
-		}
-
-		cf, err := build.FilesToPathMappings(changed, manifest.Mounts)
-		if err != nil {
-			return nil, err
-		}
-
-		ps.StartPipelineStep(ctx, "Building from existing: [%s]", name)
-		defer ps.EndPipelineStep(ctx)
-
-		steps := manifest.Steps
-		ref, err := ibd.b.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(manifest), steps)
-		if err != nil {
-			return nil, err
-		}
-		n = ref
-	}
-
-	if !ibd.canSkipPush() {
-		var err error
-		n, err = ibd.b.PushImage(ctx, n, ps.Writer(ctx))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return n, nil
+	return results, nil
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, manifest deployableImageManifest, ref reference.NamedTagged) ([]k8s.K8sEntity, k8s.Namespace, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged) error {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
 	ps.StartBuildStep(ctx, "Parsing Kubernetes config YAML")
 
-	// TODO(nick): The parsed YAML should probably be a part of the model?
-	// It doesn't make much sense to re-parse it and inject labels on every deploy.
-	entities, err := k8s.ParseYAMLFromString(manifest.K8sYAML())
-	if err != nil {
-		return nil, "", err
-	}
-
-	replacedAny := false
+	injectedRefs := map[string]bool{}
 	newK8sEntities := []k8s.K8sEntity{}
-	namespace := k8s.DefaultNamespace
-	for _, e := range entities {
-		e, err = k8s.InjectLabels(e, []k8s.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: manifest.ManifestName().String()}})
+
+	for _, k8sTarget := range k8sTargets {
+		// TODO(nick): The parsed YAML should probably be a part of the model?
+		// It doesn't make much sense to re-parse it and inject labels on every deploy.
+		entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
 		if err != nil {
-			return nil, "", errors.Wrap(err, "deploy")
+			return err
 		}
 
-		// For development, image pull policy should never be set to "Always",
-		// even if it might make sense to use "Always" in prod. People who
-		// set "Always" for development are shooting their own feet.
-		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
-		if err != nil {
-			return nil, "", err
-		}
-
-		// When working with a local k8s cluster, we set the pull policy to Never,
-		// to ensure that k8s fails hard if the image is missing from docker.
-		policy := v1.PullIfNotPresent
-		if ibd.canSkipPush() {
-			policy = v1.PullNever
-		}
-		if ref != nil {
-			var replaced bool
-			e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
+		for _, e := range entities {
+			e, err = k8s.InjectLabels(e, []model.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: k8sTarget.Name.String()}})
 			if err != nil {
-				return nil, "", err
+				return errors.Wrap(err, "deploy")
 			}
-			if replaced {
-				replacedAny = true
-				namespace = e.Namespace()
 
-				if ibd.injectSynclet {
-					var sidecarInjected bool
-					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
-					if err != nil {
-						return nil, "", err
-					}
-					if !sidecarInjected {
-						return nil, "", fmt.Errorf("Could not inject synclet: %v", e)
+			// For development, image pull policy should never be set to "Always",
+			// even if it might make sense to use "Always" in prod. People who
+			// set "Always" for development are shooting their own feet.
+			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+			if err != nil {
+				return err
+			}
+
+			// When working with a local k8s cluster, we set the pull policy to Never,
+			// to ensure that k8s fails hard if the image is missing from docker.
+			policy := v1.PullIfNotPresent
+			if ibd.canSkipPush() {
+				policy = v1.PullNever
+			}
+
+			for _, ref := range refs {
+				var replaced bool
+				e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
+				if err != nil {
+					return err
+				}
+				if replaced {
+					injectedRefs[ref.String()] = true
+
+					if ibd.injectSynclet {
+						var sidecarInjected bool
+						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
+						if err != nil {
+							return err
+						}
+						if !sidecarInjected {
+							return fmt.Errorf("Could not inject synclet: %v", e)
+						}
 					}
 				}
 			}
+			newK8sEntities = append(newK8sEntities, e)
 		}
-
-		newK8sEntities = append(newK8sEntities, e)
 	}
 
-	if ref != nil && !replacedAny {
-		return nil, "", fmt.Errorf("Docker image missing from yaml: %s", manifest.DockerRef())
+	for _, ref := range refs {
+		if !injectedRefs[ref.String()] {
+			return fmt.Errorf("Docker image missing from yaml: %s", ref)
+		}
 	}
 
-	err = ibd.k8sClient.Upsert(ctx, newK8sEntities)
-	if err != nil {
-		return nil, "", err
-	}
-	return newK8sEntities, namespace, nil
+	return ibd.k8sClient.Upsert(ctx, newK8sEntities)
 }
 
 // If we're using docker-for-desktop as our k8s backend,
@@ -258,76 +183,4 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env.IsLocalCluster()
-}
-
-func (ibd *ImageBuildAndDeployer) PostProcessBuild(ctx context.Context, result, previousResult store.BuildResult) {
-	// No-op: ImageBuildAndDeployer doesn't currently need any extra info for a given build result.
-	return
-}
-
-func (ibd *ImageBuildAndDeployer) fetchCache(ctx context.Context, manifest model.Manifest) (reference.NamedTagged, error) {
-	return ibd.cacheBuilder.FetchCache(ctx, manifest.DockerRef(), manifest.CachePaths())
-}
-
-func (ibd *ImageBuildAndDeployer) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, manifest model.Manifest, oldCacheRef reference.NamedTagged) {
-	// Only create the cache the first time we build the image.
-	if !state.LastResult.IsEmpty() {
-		return
-	}
-
-	// Only create the cache if there is no existing cache
-	if oldCacheRef != nil {
-		return
-	}
-
-	baseDockerfile := dockerfile.Dockerfile(manifest.BaseDockerfile)
-	if manifest.IsStaticBuild() {
-		staticDockerfile := dockerfile.Dockerfile(manifest.StaticDockerfile)
-		ok := true
-		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
-		if !ok {
-			return
-		}
-	}
-
-	err := ibd.cacheBuilder.CreateCacheFrom(ctx, baseDockerfile, sourceRef, manifest.CachePaths(), manifest.StaticBuildArgs)
-	if err != nil {
-		logger.Get(ctx).Debugf("Could not create cache: %v", err)
-	}
-}
-
-func (ibd *ImageBuildAndDeployer) staticDockerfile(manifest model.Manifest, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(manifest.StaticDockerfile)
-	if cacheRef == nil {
-		return df
-	}
-
-	if len(manifest.CachePaths()) == 0 {
-		return df
-	}
-
-	_, restDf, ok := df.SplitIntoBaseDockerfile()
-	if !ok {
-		return df
-	}
-
-	// Replace all the lines before the ADD with a load from the Tilt cache.
-	return dockerfile.FromExisting(cacheRef).
-		WithLabel(build.CacheImage, "0"). // sadly there's no way to unset a label :sob:
-		Append(restDf)
-}
-
-func (ibd *ImageBuildAndDeployer) baseDockerfile(manifest model.Manifest, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(manifest.BaseDockerfile)
-	if cacheRef == nil {
-		return df
-	}
-
-	if len(manifest.CachePaths()) == 0 {
-		return df
-	}
-
-	// Use the cache as the new base dockerfile.
-	return dockerfile.FromExisting(cacheRef).
-		WithLabel(build.CacheImage, "0") // sadly there's no way to unset a label :sob:
 }

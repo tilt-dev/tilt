@@ -15,7 +15,7 @@ func syncletPrivileged() *bool {
 }
 
 // When we deploy Tilt for development, we override this with LDFLAGS
-var SyncletTag = "v20181105"
+var SyncletTag = "v20190117"
 
 const SyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
 const SyncletContainerName = "tilt-synclet"
@@ -45,4 +45,13 @@ var SyncletVolume = v1.Volume{
 			Path: "/var/run/docker.sock",
 		},
 	},
+}
+
+func PodSpecContainsSynclet(spec v1.PodSpec) bool {
+	for _, container := range spec.Containers {
+		if container.Name == SyncletContainerName {
+			return true
+		}
+	}
+	return false
 }

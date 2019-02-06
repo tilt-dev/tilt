@@ -1,4 +1,4 @@
 # -*- mode: Python -*-
 
 docker_build('gcr.io/windmill-test-containers/integration/oneup', '.')
-k8s_resource('oneup', 'oneup.yaml')
+k8s_resource('oneup', 'oneup.yaml', port_forwards=8100)

@@ -11,27 +11,28 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
 var K8sWireSet = wire.NewSet(
-	k8s.DetectEnv,
+	k8s.ProvideEnvOrError,
+	k8s.ProideEnv,
 	k8s.DetectNodeIP,
 
-	k8s.ProvidePortForwarder,
-	k8s.ProvideRESTClient,
-	k8s.ProvideRESTConfig,
-	k8s.NewK8sClient,
-	wire.Bind(new(k8s.Client), k8s.K8sClient{}))
+	k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 
-	docker.DefaultDockerClient,
-	wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
+	docker.DefaultClient,
+	wire.Bind(new(docker.Client), new(docker.Cli)),
+
+	dockercompose.NewDockerComposeClient,
 
 	build.NewImageReaper,
 
@@ -43,6 +44,9 @@ var BaseWireSet = wire.NewSet(
 	engine.NewServiceWatcher,
 	engine.NewImageController,
 	engine.NewConfigsController,
+	engine.NewDockerComposeEventWatcher,
+	engine.NewDockerComposeLogManager,
+	engine.NewProfilerManager,
 
 	provideClock,
 	hud.NewRenderer,
@@ -50,6 +54,7 @@ var BaseWireSet = wire.NewSet(
 
 	provideLogActions,
 	store.NewStore,
+	wire.Bind(new(store.RStore), new(store.Store)),
 
 	engine.NewUpper,
 	provideAnalytics,
@@ -58,26 +63,29 @@ var BaseWireSet = wire.NewSet(
 	engine.ProvideFsWatcherMaker,
 	engine.ProvideTimerMaker,
 
-	provideHudAndUpper,
+	server.ProvideHeadsUpServer,
+
+	provideThreads,
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
-	wire.Build(BaseWireSet, demo.NewScript)
+	wire.Build(BaseWireSet, demo.NewScript, build.ProvideClock)
 	return demo.Script{}, nil
 }
 
-func wireHudAndUpper(ctx context.Context) (HudAndUpper, error) {
-	wire.Build(BaseWireSet)
-	return HudAndUpper{}, nil
+func wireThreads(ctx context.Context) (Threads, error) {
+	wire.Build(BaseWireSet, build.ProvideClock)
+	return Threads{}, nil
 }
 
-type HudAndUpper struct {
-	hud   hud.HeadsUpDisplay
-	upper engine.Upper
+type Threads struct {
+	hud    hud.HeadsUpDisplay
+	upper  engine.Upper
+	server server.HeadsUpServer
 }
 
-func provideHudAndUpper(h hud.HeadsUpDisplay, upper engine.Upper) HudAndUpper {
-	return HudAndUpper{h, upper}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server server.HeadsUpServer) Threads {
+	return Threads{h, upper, server}
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {

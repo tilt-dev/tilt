@@ -1,0 +1,365 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Frequently Asked Questions &mdash; Tilt  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Code of Conduct" href="code_of_conduct.html" />
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
+<script>
+ window.dataLayer = window.dataLayer || [];
+ function gtag(){dataLayer.push(arguments);}
+ gtag('js', new Date());
+
+ gtag('config', 'UA-129150759-2');
+</script>
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast_build.html">Optimizing a Tiltfile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">About</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#q-when-i-run-tilt-version-i-see-template-engine-not-found-for-version-what-do-i-do">Q: When I run <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">version</span></code>, I see “template engine not found for: version”. What do I do?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-what-do-i-do">Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions”. What do I do?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#building-container-images">Building Container Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development">Q: All the Tilt examples store the image at <code class="docutils literal notranslate"><span class="pre">gcr.io</span></code>. Isn’t it really slow to push images up to Google’s remote repository for local development?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-docker-buildkit-is-cool-how-do-i-use-it">Q: Docker Buildkit is cool! How do I use it?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server">Q: How do I tell Tilt to build my images with a remote Docker server?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#deploying-containers">Deploying Containers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#q-how-do-i-change-what-kubernetes-cluster-tilt-uses">Q: How do I change what Kubernetes cluster Tilt uses?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Tilt</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Frequently Asked Questions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/windmilleng/tilt/blob/master/docs/faq.md" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="frequently-asked-questions">
+<h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="q-when-i-run-tilt-version-i-see-template-engine-not-found-for-version-what-do-i-do">
+<h3>Q: When I run <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">version</span></code>, I see “template engine not found for: version”. What do I do?<a class="headerlink" href="#q-when-i-run-tilt-version-i-see-template-engine-not-found-for-version-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<p>There is another project called Tilt for
+<a class="reference external" href="https://github.com/rtomayko/tilt">developing Ruby templates</a>.</p>
+<p>You’re accidentally running that Tilt instead.</p>
+<p>Common fixes include deleting the other Tilt, always using an absolute path, or
+renaming Tilt to avoid the conflict. Tilt is a static binary so it is OK to
+rename it.</p>
+</div>
+<div class="section" id="q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-what-do-i-do">
+<h3>Q: I’m getting push errors like “unauthorized: You don’t have the needed permissions”. What do I do?<a class="headerlink" href="#q-i-m-getting-push-errors-like-unauthorized-you-don-t-have-the-needed-permissions-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<p>If Tilt is trying to do a push, that means it thinks you wanted to deploy to a
+remote cluster. See <a class="reference external" href="faq.html#q-how-do-i-change-what-kubernetes-cluster-tilt-uses">below</a> on how
+to configure for a local cluster.</p>
+</div>
+<div class="section" id="q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do">
+<h3>Q: Tilt fails with “Unable to connect to cluster” errors. What do I do?<a class="headerlink" href="#q-tilt-fails-with-unable-to-connect-to-cluster-errors-what-do-i-do" title="Permalink to this headline">¶</a></h3>
+<p>The Kubernetes server that you’re trying to deploy to is misbehaving.</p>
+<p>Two common things to try are:</p>
+<ol class="simple">
+<li>Turn it off and turn it back on again (really!).</li>
+<li>Reset the cluster state.</li>
+</ol>
+<p>But the specific way to do these depend on your environment.</p>
+<p>If you’re using Docker For Mac, click the Docker icon in the upper-right hand
+corner of your screen. Choose “Preferences…” to open a dialog. The
+“Kubernetes” tab has a button that allows you to enable/disable Kubernetes. The
+“Reset” tab has a button that allows you to reset the cluster state.</p>
+<p>If you’re using Minikube, <code class="docutils literal notranslate"><span class="pre">minikube</span> <span class="pre">stop</span></code> and <code class="docutils literal notranslate"><span class="pre">minikube</span> <span class="pre">start</span></code> will restart the
+environment. <code class="docutils literal notranslate"><span class="pre">minikube</span> <span class="pre">delete</span></code> will reset the cluster state.</p>
+</div>
+</div>
+<div class="section" id="building-container-images">
+<h2>Building Container Images<a class="headerlink" href="#building-container-images" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development">
+<h3>Q: All the Tilt examples store the image at <code class="docutils literal notranslate"><span class="pre">gcr.io</span></code>. Isn’t it really slow to push images up to Google’s remote repository for local development?<a class="headerlink" href="#q-all-the-tilt-examples-store-the-image-at-gcr-io-isn-t-it-really-slow-to-push-images-up-to-google-s-remote-repository-for-local-development" title="Permalink to this headline">¶</a></h3>
+<p>You’re right, that would be slow!</p>
+<p>Most local Kubernetes development solutions let you build images directly inside
+the cluster. There’s no need to push the image to a remote repository.</p>
+<p>When you’re using Docker for Mac or Minikube, Tilt will automatically build the
+images in-cluster. When it detects this case, it will even modify your
+Kubernetes configs to set ImageNeverPull, so that Kubernetes will emit an error
+if it even tries to pull an image from a remote server.</p>
+</div>
+<div class="section" id="q-docker-buildkit-is-cool-how-do-i-use-it">
+<h3>Q: Docker Buildkit is cool! How do I use it?<a class="headerlink" href="#q-docker-buildkit-is-cool-how-do-i-use-it" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://github.com/moby/buildkit">BuildKit</a> is a new build engine in
+Docker for building container images.</p>
+<p>Tilt will automatically enable Buildkit if your local Docker installation
+supports it.</p>
+<p>BuildKit is supported on Docker v18.06 when Experimental mode is enabled, and on
+Docker v18.09+</p>
+</div>
+<div class="section" id="q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server">
+<h3>Q: How do I tell Tilt to build my images with a remote Docker server?<a class="headerlink" href="#q-how-do-i-tell-tilt-to-build-my-images-with-a-remote-docker-server" title="Permalink to this headline">¶</a></h3>
+<p>Tilt reads the same environment variables as the <code class="docutils literal notranslate"><span class="pre">docker</span></code> command for choosing a
+server. Specifically:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">DOCKER_HOST</span></code>: Set the url to the docker server.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DOCKER_API_VERSION</span></code>: Set the version of the API.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DOCKER_CERT_PATH</span></code>: Set the path to load the TLS certificates from.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DOCKER_TLS_VERIFY</span></code>: To enable or disable TLS verification when using <code class="docutils literal notranslate"><span class="pre">DOCKER_CERT_PATH</span></code>, off by default.</li>
+</ul>
+<p>This is helpful if you have a more powerful machine in the cloud that you want
+to build your images.</p>
+<p>If you are using Minikube, Tilt will automatically connect to the Docker server
+inside Minikube.  This helps performance because Tilt doesn’t need to waste time
+copying Docker images around.</p>
+</div>
+</div>
+<div class="section" id="deploying-containers">
+<h2>Deploying Containers<a class="headerlink" href="#deploying-containers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="q-how-do-i-change-what-kubernetes-cluster-tilt-uses">
+<h3>Q: How do I change what Kubernetes cluster Tilt uses?<a class="headerlink" href="#q-how-do-i-change-what-kubernetes-cluster-tilt-uses" title="Permalink to this headline">¶</a></h3>
+<p>Tilt uses the default Kubernetes cluster configured in <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>.</p>
+<p>To see what cluster <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> uses, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config current-context
+</pre></div>
+</div>
+<p>To see what clusters are available, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config get-contexts
+</pre></div>
+</div>
+<p>To change the cluster you’re deploying to, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl config use-context docker-for-desktop
+</pre></div>
+</div>
+<p>The most common options we see in local development are
+<code class="docutils literal notranslate"><span class="pre">minikube</span></code>, <code class="docutils literal notranslate"><span class="pre">docker-for-desktop</span></code> (Docker For Mac stable), and
+<code class="docutils literal notranslate"><span class="pre">docker-desktop</span></code> (Docker for Mac edge).</p>
+<p>There is one exception to this rule:
+<a class="reference external" href="https://github.com/kubernetes-sigs/kind">Kind</a> (Kubernetes in Docker) does not
+use <code class="docutils literal notranslate"><span class="pre">kubectl</span> <span class="pre">config</span></code>. Instead, you run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ KUBECONFIG=&quot;$(kind get kubeconfig-path)&quot; tilt up
+</pre></div>
+</div>
+<p>Tilt reads the same <code class="docutils literal notranslate"><span class="pre">KUBECONFIG</span></code> environment variable that <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> uses. This variable
+sets the path to a Kubernetes config.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="code_of_conduct.html" class="btn btn-neutral" title="Code of Conduct" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Windmill Engineering
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

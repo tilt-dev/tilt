@@ -10,6 +10,10 @@ import (
 //
 // Returns true if successful. If `file` is not under `dir`, returns false.
 func Child(dir string, file string) (string, bool) {
+	if dir == "" {
+		return "", false
+	}
+
 	current := file
 	child := "."
 	for true {
@@ -69,6 +73,15 @@ func Realwd() (string, error) {
 		return "", err
 	}
 	return RealAbs(path)
+}
+
+func IsRegularFile(path string) bool {
+	f, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return f.Mode().IsRegular()
 }
 
 func IsDir(path string) bool {

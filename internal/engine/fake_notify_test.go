@@ -16,7 +16,7 @@ type fakeMultiWatcher struct {
 }
 
 func newFakeMultiWatcher() *fakeMultiWatcher {
-	r := &fakeMultiWatcher{events: make(chan watch.FileEvent), errors: make(chan error)}
+	r := &fakeMultiWatcher{events: make(chan watch.FileEvent, 20), errors: make(chan error, 20)}
 	go r.loop()
 	return r
 }
@@ -83,7 +83,7 @@ type fakeWatcher struct {
 }
 
 func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error) *fakeWatcher {
-	r := &fakeWatcher{inboundCh: inboundCh, outboundCh: make(chan watch.FileEvent), errorCh: errorCh}
+	r := &fakeWatcher{inboundCh: inboundCh, outboundCh: make(chan watch.FileEvent, 20), errorCh: errorCh}
 	go r.loop()
 
 	return r

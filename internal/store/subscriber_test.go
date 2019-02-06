@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSubscriber(t *testing.T) {
@@ -41,6 +43,30 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	}
 }
 
+func TestRemoveSubscriber(t *testing.T) {
+	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	ctx := context.Background()
+	s := newFakeSubscriber()
+
+	st.AddSubscriber(s)
+	st.NotifySubscribers(ctx)
+	s.assertOnChangeCount(t, 1)
+
+	err := st.RemoveSubscriber(s)
+	assert.NoError(t, err)
+	st.NotifySubscribers(ctx)
+	s.assertOnChangeCount(t, 0)
+}
+
+func TestRemoveSubscriberNotFound(t *testing.T) {
+	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	s := newFakeSubscriber()
+	err := st.RemoveSubscriber(s)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Subscriber not found")
+	}
+}
+
 type fakeSubscriber struct {
 	onChange chan onChangeCall
 }
@@ -53,6 +79,34 @@ func newFakeSubscriber() fakeSubscriber {
 
 type onChangeCall struct {
 	done chan bool
+}
+
+func (f fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
+	t.Helper()
+
+	for i := 0; i < count; i++ {
+		f.assertOnChange(t)
+	}
+
+	select {
+	case <-time.After(50 * time.Millisecond):
+		return
+
+	case call := <-f.onChange:
+		close(call.done)
+		t.Fatalf("Expected only %d OnChange calls. Got: %d", count, count+1)
+	}
+}
+
+func (f fakeSubscriber) assertOnChange(t *testing.T) {
+	t.Helper()
+
+	select {
+	case <-time.After(50 * time.Millisecond):
+		t.Fatalf("timed out waiting for subscriber.OnChange")
+	case call := <-f.onChange:
+		close(call.done)
+	}
 }
 
 func (f fakeSubscriber) OnChange(ctx context.Context, st RStore) {

@@ -1,0 +1,13 @@
+server:
+  build: .
+  links:
+    - redis
+  expose:
+    - "3000"
+  environment:
+    - NAME=TheServer
+
+redis:
+  image: redis:alpine
+  expose:
+    - "6379"

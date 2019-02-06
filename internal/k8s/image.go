@@ -6,6 +6,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Iterate through the fields of a k8s entity and
@@ -49,6 +50,36 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 		return K8sEntity{}, false, fmt.Errorf("INTERNAL TILT ERROR: Cannot set PullNever with digest")
 	}
 
+	replaced := false
+
+	entity, r, err := injectImageDigestInContainers(entity, injectRef, policy)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
+	}
+
+	entity, r, err = injectImageDigestInEnvVars(entity, injectRef)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
+	}
+
+	entity, r, err = injectImageDigestInUnstructured(entity, injectRef)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
+	}
+
+	return entity, replaced, nil
+}
+
+func injectImageDigestInContainers(entity K8sEntity, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	containers, err := extractContainers(&entity)
 	if err != nil {
 		return K8sEntity{}, false, err
@@ -67,6 +98,77 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 			replaced = true
 		}
 	}
+
+	return entity, replaced, nil
+}
+
+func injectImageDigestInEnvVars(entity K8sEntity, injectRef reference.Named) (K8sEntity, bool, error) {
+	envVars, err := extractEnvVars(&entity)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+
+	replaced := false
+	for _, envVar := range envVars {
+		existingRef, err := reference.ParseNormalizedNamed(envVar.Value)
+		if err != nil || existingRef == nil {
+			continue
+		}
+
+		if existingRef.Name() == injectRef.Name() {
+			envVar.Value = injectRef.String()
+			replaced = true
+		}
+	}
+
+	return entity, replaced, nil
+}
+
+func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Named) (interface{}, bool) {
+	switch x := ui.(type) {
+	case map[string]interface{}:
+		replaced := false
+		for k, v := range x {
+			newV, r := injectImageInUnstructuredInterface(v, injectRef)
+			x[k] = newV
+			if r {
+				replaced = true
+			}
+		}
+		return x, replaced
+	case []interface{}:
+		replaced := false
+		for i, v := range x {
+			newV, r := injectImageInUnstructuredInterface(v, injectRef)
+			x[i] = newV
+			if r {
+				replaced = true
+			}
+		}
+		return x, replaced
+	case string:
+		ref, err := reference.ParseNormalizedNamed(x)
+		if err == nil && ref.Name() == injectRef.Name() {
+			return injectRef.String(), true
+		} else {
+			return x, false
+		}
+	default:
+		return ui, false
+	}
+}
+
+func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named) (K8sEntity, bool, error) {
+	u, ok := entity.Obj.(runtime.Unstructured)
+	if !ok {
+		return entity, false, nil
+	}
+
+	n, replaced := injectImageInUnstructuredInterface(u.UnstructuredContent(), injectRef)
+
+	u.SetUnstructuredContent(n.(map[string]interface{}))
+
+	entity.Obj = u
 	return entity, replaced, nil
 }
 

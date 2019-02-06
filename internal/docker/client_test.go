@@ -32,3 +32,19 @@ func TestSupportsBuildkit(t *testing.T) {
 		})
 	}
 }
+
+func TestSupported(t *testing.T) {
+	cases := []buildkitTestCase{
+		{types.Version{APIVersion: "1.22"}, false},
+		{types.Version{APIVersion: "1.23"}, true},
+		{types.Version{APIVersion: "1.39"}, true},
+		{types.Version{APIVersion: "1.40"}, true},
+		{types.Version{APIVersion: "garbage"}, false},
+	}
+
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
+			assert.Equal(t, c.expected, SupportedVersion(c.v))
+		})
+	}
+}

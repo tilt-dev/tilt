@@ -88,19 +88,74 @@ func (f *fixture) Curl(url string) (string, error) {
 }
 
 func (f *fixture) CurlUntil(ctx context.Context, url string, expectedContents string) {
+	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
+		return f.Curl(url)
+	}, expectedContents)
+}
+
+func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
 	for {
-		actualContents, err := f.Curl(url)
+		actualContents, err := fun()
 		if err == nil && strings.Contains(actualContents, expectedContents) {
 			return
 		}
 
 		select {
 		case <-ctx.Done():
-			f.t.Fatalf("Timed out waiting for server %q to return contents %s. "+
-				"Current error:\n%v\nCurrent contents:\n%s\n",
-				url, expectedContents, err, actualContents)
+			f.t.Fatalf("Timed out waiting for expected result (%s)\n"+
+				"Expected: %s\n"+
+				"Actual: %s\n"+
+				"Current error: %v\n",
+				msg, expectedContents, actualContents, err)
 		case <-time.After(200 * time.Millisecond):
 		}
+	}
+}
+
+func (f *fixture) dockerCmd(args []string, outWriter io.Writer) *exec.Cmd {
+	outWriter = io.MultiWriter(f.logs, outWriter)
+	cmd := exec.CommandContext(f.ctx, "docker", args...)
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
+	return cmd
+}
+
+func (f *fixture) dockerContainerID(name string) string {
+	out := &bytes.Buffer{}
+	cmd := f.dockerCmd([]string{
+		"ps", "-q", "-f", fmt.Sprintf("name=%s", name),
+	}, out)
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	cID := strings.TrimSpace(out.String())
+	if cID == "" {
+		f.t.Fatalf("No container found for %s", name)
+	}
+	return cID
+}
+
+func (f *fixture) dockerKillAll(name string) {
+	out := &bytes.Buffer{}
+	cmd := f.dockerCmd([]string{
+		"ps", "-q", "-f", fmt.Sprintf("name=%s", name),
+	}, out)
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	cIDs := strings.Split(strings.TrimSpace(out.String()), " ")
+	if len(cIDs) == 0 || (len(cIDs) == 1 && cIDs[0] == "") {
+		return
+	}
+
+	cmd = f.dockerCmd(append([]string{
+		"kill",
+	}, cIDs...), ioutil.Discard)
+	err = cmd.Run()
+	if err != nil {
+		f.t.Fatal(err)
 	}
 }
 
@@ -116,6 +171,7 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	cmd := exec.CommandContext(f.ctx, "go", args...)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
+	cmd.Env = append(os.Environ(), "TILT_DISABLE_ANALYTICS=true")
 	return cmd
 }
 

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/d4l3k/messagediff.v1"
@@ -10,6 +11,9 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
+
+// Allow actions to batch together a bit.
+const actionBatchWindow = time.Millisecond
 
 // Read-only store
 type RStore interface {
@@ -26,7 +30,7 @@ type Store struct {
 	state       *EngineState
 	subscribers *subscriberList
 	actionQueue *actionQueue
-	actionCh    chan Action
+	actionCh    chan []Action
 	mu          sync.Mutex
 	stateMu     sync.RWMutex
 	reduce      Reducer
@@ -41,7 +45,7 @@ func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
 		state:       NewState(),
 		reduce:      reducer,
 		actionQueue: &actionQueue{},
-		actionCh:    make(chan Action),
+		actionCh:    make(chan []Action),
 		subscribers: &subscriberList{},
 		logActions:  bool(logActions),
 	}
@@ -53,6 +57,10 @@ func NewStoreForTesting() *Store {
 
 func (s *Store) AddSubscriber(sub Subscriber) {
 	s.subscribers.Add(sub)
+}
+
+func (s *Store) RemoveSubscriber(sub Subscriber) error {
+	return s.subscribers.Remove(sub)
 }
 
 // Sends messages to all the subscribers asynchronously.
@@ -97,22 +105,28 @@ func (s *Store) Loop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 
-		case action := <-s.actionCh:
+		case actions := <-s.actionCh:
 			s.stateMu.Lock()
-			var oldState EngineState
-			if s.logActions {
-				oldState = s.cheapCopyState()
+
+			for _, action := range actions {
+				var oldState EngineState
+				if s.logActions {
+					oldState = s.cheapCopyState()
+				}
+
+				s.reduce(ctx, s.state, action)
+
+				if s.logActions {
+					newState := s.cheapCopyState()
+					go func() {
+						diff, equal := messagediff.PrettyDiff(oldState, newState)
+						if !equal {
+							logger.Get(ctx).Infof("action %T:\n%s\ncaused state change:\n%s\n", action, spew.Sdump(action), diff)
+						}
+					}()
+				}
 			}
-			s.reduce(ctx, s.state, action)
-			if s.logActions {
-				newState := s.cheapCopyState()
-				go func() {
-					diff, equal := messagediff.PrettyDiff(oldState, newState)
-					if !equal {
-						logger.Get(ctx).Infof("action %T:\n%s\ncaused state change:\n%s\n", action, spew.Sdump(action), diff)
-					}
-				}()
-			}
+
 			s.stateMu.Unlock()
 		}
 
@@ -137,7 +151,7 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, nil
 	}
 
-	if len(state.ManifestStates) == 0 {
+	if len(state.ManifestTargets) == 0 {
 		return false, nil
 	}
 
@@ -147,14 +161,16 @@ func (s *Store) maybeFinished() (bool, error) {
 }
 
 func (s *Store) drainActions() {
+	time.Sleep(actionBatchWindow)
+
 	// The mutex here ensures that the actions appear on the channel in-order.
-	// It will also be necessary once we have reducers.
+	// Otherwise, two drains can interleave badly.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	actions := s.actionQueue.drain()
-	for _, action := range actions {
-		s.actionCh <- action
+	if len(actions) > 0 {
+		s.actionCh <- actions
 	}
 }
 
@@ -189,11 +205,16 @@ type LogActionsFlag bool
 // and thus might reflect changes that happened as part of the current action or any future action
 func (s *Store) cheapCopyState() EngineState {
 	ret := *s.state
-	mStates := ret.ManifestStates
-	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
-	for k, v := range mStates {
-		ms := *v
-		ret.ManifestStates[k] = &ms
+	targets := ret.ManifestTargets
+	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
+	for k, v := range targets {
+		ms := *(v.State)
+		target := &ManifestTarget{
+			Manifest: v.Manifest,
+			State:    &ms,
+		}
+
+		ret.ManifestTargets[k] = target
 	}
 	return ret
 }

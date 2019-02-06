@@ -3,57 +3,155 @@ package view
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-type Resource struct {
-	Name               string
-	DirectoriesWatched []string
-	PathsWatched       []string
-	LastDeployTime     time.Time
-	LastBuildEdits     []string
+type ResourceInfoView interface {
+	resourceInfoView()
+	RuntimeLog() string
+	Status() string
+}
 
-	LastBuildError      string
-	LastBuildStartTime  time.Time
-	LastBuildFinishTime time.Time
-	LastBuildDuration   time.Duration
-	LastBuildLog        string
-	LastBuildReason     model.BuildReason
+type DCResourceInfo struct {
+	ConfigPath  string
+	status      dockercompose.Status
+	ContainerID container.ID
+	log         string
+	StartTime   time.Time
+}
 
-	PendingBuildReason model.BuildReason
-	PendingBuildEdits  []string
-	PendingBuildSince  time.Time
+func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log string, startTime time.Time) DCResourceInfo {
+	return DCResourceInfo{
+		ConfigPath:  configPath,
+		status:      status,
+		ContainerID: cID,
+		log:         log,
+		StartTime:   startTime,
+	}
+}
 
-	// Maybe these fields should be combined into a BuildInfo struct, so that we
-	// just have CurrentBuild, PendingBuild, LastBuild.
-	CurrentBuildReason    model.BuildReason
-	CurrentBuildEdits     []string
-	CurrentBuildStartTime time.Time
-	CurrentBuildLog       string
+var _ ResourceInfoView = DCResourceInfo{}
 
+func (DCResourceInfo) resourceInfoView()         {}
+func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
+func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.status) }
+
+type K8SResourceInfo struct {
 	PodName            string
 	PodCreationTime    time.Time
 	PodUpdateStartTime time.Time
 	PodStatus          string
 	PodRestarts        int
-	Endpoints          []string
 	PodLog             string
+}
+
+var _ ResourceInfoView = K8SResourceInfo{}
+
+func (K8SResourceInfo) resourceInfoView()          {}
+func (k8sInfo K8SResourceInfo) RuntimeLog() string { return k8sInfo.PodLog }
+func (k8sInfo K8SResourceInfo) Status() string     { return k8sInfo.PodStatus }
+
+type YAMLResourceInfo struct {
+	K8sResources []string
+}
+
+var _ ResourceInfoView = YAMLResourceInfo{}
+
+func (YAMLResourceInfo) resourceInfoView()           {}
+func (yamlInfo YAMLResourceInfo) RuntimeLog() string { return "" }
+func (yamlInfo YAMLResourceInfo) Status() string     { return "" }
+
+type Resource struct {
+	Name               model.ManifestName
+	DirectoriesWatched []string
+	PathsWatched       []string
+	LastDeployTime     time.Time
+
+	BuildHistory []model.BuildRecord
+	CurrentBuild model.BuildRecord
+
+	PendingBuildReason model.BuildReason
+	PendingBuildEdits  []string
+	PendingBuildSince  time.Time
+
+	Endpoints []string
+
+	ResourceInfo ResourceInfoView
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
 
-	IsYAMLManifest bool
+	IsTiltfile bool
+}
+
+func (r Resource) DockerComposeTarget() DCResourceInfo {
+	switch info := r.ResourceInfo.(type) {
+	case DCResourceInfo:
+		return info
+	default:
+		return DCResourceInfo{}
+	}
+}
+
+func (r Resource) DCInfo() DCResourceInfo {
+	ret, _ := r.ResourceInfo.(DCResourceInfo)
+	return ret
+}
+
+func (r Resource) IsDC() bool {
+	_, ok := r.ResourceInfo.(DCResourceInfo)
+	return ok
+}
+
+func (r Resource) K8SInfo() K8SResourceInfo {
+	ret, _ := r.ResourceInfo.(K8SResourceInfo)
+	return ret
+}
+
+func (r Resource) IsK8S() bool {
+	_, ok := r.ResourceInfo.(K8SResourceInfo)
+	return ok
+}
+
+func (r Resource) YAMLInfo() YAMLResourceInfo {
+	ret, _ := r.ResourceInfo.(YAMLResourceInfo)
+	return ret
+}
+
+func (r Resource) IsYAML() bool {
+	_, ok := r.ResourceInfo.(YAMLResourceInfo)
+	return ok
+}
+
+func (r Resource) LastBuild() model.BuildRecord {
+	if len(r.BuildHistory) == 0 {
+		return model.BuildRecord{}
+	}
+	return r.BuildHistory[0]
 }
 
 func (r Resource) DefaultCollapse() bool {
-	autoExpand := r.LastBuildError != "" ||
+	autoExpand := false
+	if k8sInfo, ok := r.ResourceInfo.(K8SResourceInfo); ok {
+		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
+	}
+
+	if r.IsYAML() {
+		autoExpand = true
+	}
+
+	if r.IsDC() && r.DockerComposeTarget().Status() == string(dockercompose.StatusCrash) {
+		autoExpand = true
+	}
+
+	autoExpand = autoExpand ||
+		r.LastBuild().Error != nil ||
 		r.CrashLog != "" ||
-		r.PodRestarts > 0 ||
-		r.PodStatus == "CrashLoopBackoff" ||
-		r.PodStatus == "Error" ||
-		r.LastBuildReason.Has(model.BuildReasonFlagCrash) ||
-		r.CurrentBuildReason.Has(model.BuildReasonFlagCrash) ||
+		r.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
+		r.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)
 	return !autoExpand
 }
@@ -73,6 +171,8 @@ type View struct {
 	Log                  string
 	Resources            []Resource
 	TiltfileErrorMessage string
+	TriggerMode          model.TriggerMode
+	IsProfiling          bool
 }
 
 type ViewState struct {

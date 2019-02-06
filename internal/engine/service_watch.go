@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
@@ -27,7 +29,14 @@ func NewServiceWatcher(kCli k8s.Client, nodeIP k8s.NodeIP) *ServiceWatcher {
 func (w *ServiceWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	return state.WatchMounts && !w.watching
+
+	atLeastOneK8S := false
+	for _, m := range state.Manifests() {
+		if m.IsK8s() {
+			atLeastOneK8S = true
+		}
+	}
+	return atLeastOneK8S && state.WatchMounts && !w.watching
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
@@ -36,7 +45,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 	w.watching = true
 
-	ch, err := w.kCli.WatchServices(ctx, []k8s.LabelPair{TiltRunLabel()})
+	ch, err := w.kCli.WatchServices(ctx, []model.LabelPair{TiltRunLabel()})
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))

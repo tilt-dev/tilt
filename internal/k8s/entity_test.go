@@ -30,19 +30,22 @@ func TestNamespace(t *testing.T) {
 }
 
 func TestImmutableFilter(t *testing.T) {
-	yaml := fmt.Sprintf("%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML)
+	yaml := fmt.Sprintf("%s\n---\n%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML, testyaml.PodYAML)
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	jobs := ImmutableEntities(entities)
-	if len(jobs) != 1 {
-		t.Fatalf("Expected 1 entity, actual: %d", len(jobs))
+	immEntities := ImmutableEntities(entities)
+	if len(immEntities) != 2 {
+		t.Fatalf("Expected 2 entities, actual: %d", len(immEntities))
 	}
 
-	if jobs[0].Kind.Kind != "Job" {
-		t.Errorf("Expected Job entity, actual: %+v", jobs)
+	if immEntities[0].Kind.Kind != "Job" {
+		t.Errorf("Expected Job entity, actual: %+v", immEntities)
+	}
+	if immEntities[1].Kind.Kind != "Pod" {
+		t.Errorf("Expected Pod entity, actual: %+v", immEntities)
 	}
 }
 

@@ -2,109 +2,125 @@ package model
 
 import (
 	"fmt"
-	"path/filepath"
-	"reflect"
-	"sort"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/yaml"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+// TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
 type ManifestName string
 
-func (m ManifestName) String() string { return string(m) }
+func (m ManifestName) String() string         { return string(m) }
+func (m ManifestName) TargetName() TargetName { return TargetName(m) }
 
 // NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
 type Manifest struct {
-	// Properties for all builds.
-	Name         ManifestName
-	k8sYaml      string
-	tiltFilename string
-	dockerRef    reference.Named
-	portForwards []PortForward
-	cachePaths   []string
+	// Properties for all manifests.
+	Name ManifestName
 
-	// Properties for fast_build (builds that support
-	// iteration based on past artifacts)
-	BaseDockerfile string
-	Mounts         []Mount
-	Steps          []Step
-	Entrypoint     Cmd
+	// Info needed to Docker build an image. (This struct contains details of StaticBuild, FastBuild... etc.)
+	// (If we ever support multiple build engines, this can become an interface wildcard similar to `deployTarget`).
+	ImageTargets []ImageTarget
 
-	// From static_build. If StaticDockerfile is populated,
-	// we do not expect the iterative build fields to be populated.
-	StaticDockerfile string
-	StaticBuildPath  string // the absolute path to the files
-	StaticBuildArgs  DockerBuildArgs
+	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
+	deployTarget TargetSpec
+}
 
-	Repos []LocalGithubRepo
+func (m Manifest) ID() TargetID {
+	return TargetID{
+		Type: TargetTypeManifest,
+		Name: m.Name.TargetName(),
+	}
+}
+
+func (m Manifest) WithImageTarget(iTarget ImageTarget) Manifest {
+	m.ImageTargets = []ImageTarget{iTarget}
+	return m
+}
+
+func (m Manifest) WithImageTargets(iTargets []ImageTarget) Manifest {
+	m.ImageTargets = append([]ImageTarget{}, iTargets...)
+	return m
+}
+
+func (m Manifest) ImageTargetAt(i int) ImageTarget {
+	if i < len(m.ImageTargets) {
+		return m.ImageTargets[i]
+	}
+	return ImageTarget{}
 }
 
 type DockerBuildArgs map[string]string
 
-func (m Manifest) WithCachePaths(paths []string) Manifest {
-	m.cachePaths = append(append([]string{}, m.cachePaths...), paths...)
-	sort.Strings(m.cachePaths)
+func (m Manifest) DockerComposeTarget() DockerComposeTarget {
+	ret, _ := m.deployTarget.(DockerComposeTarget)
+	return ret
+}
+
+func (m Manifest) IsDC() bool {
+	_, ok := m.deployTarget.(DockerComposeTarget)
+	return ok
+}
+
+func (m Manifest) K8sTarget() K8sTarget {
+	ret, _ := m.deployTarget.(K8sTarget)
+	return ret
+}
+
+func (m Manifest) IsK8s() bool {
+	_, ok := m.deployTarget.(K8sTarget)
+	return ok
+}
+
+func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
+	switch typedTarget := t.(type) {
+	case K8sTarget:
+		typedTarget.Name = m.Name.TargetName()
+		t = typedTarget
+	case DockerComposeTarget:
+		typedTarget.Name = m.Name.TargetName()
+		t = typedTarget
+	}
+	m.deployTarget = t
 	return m
 }
 
-func (m Manifest) CachePaths() []string {
-	return append([]string{}, m.cachePaths...)
-}
-
-func (m Manifest) IsStaticBuild() bool {
-	return m.StaticDockerfile != ""
-}
-
 func (m Manifest) LocalPaths() []string {
-	if m.IsStaticBuild() {
-		return []string{m.StaticBuildPath}
+	// TODO(matt?) DC mounts should probably stored somewhere more consistent with Static/Fast Build
+	switch di := m.deployTarget.(type) {
+	case DockerComposeTarget:
+		return di.LocalPaths()
+	default:
+		paths := []string{}
+		for _, iTarget := range m.ImageTargets {
+			paths = append(paths, iTarget.LocalPaths()...)
+		}
+		return sliceutils.DedupedAndSorted(paths)
 	}
-
-	result := make([]string, len(m.Mounts))
-	for i, mount := range m.Mounts {
-		result[i] = mount.LocalPath
-	}
-	return result
 }
 
 func (m Manifest) Validate() error {
-	err := m.validate()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m Manifest) validate() *ValidateErr {
 	if m.Name == "" {
-		return validateErrf("[validate] manifest missing name: %+v", m)
+		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	if m.dockerRef == nil {
-		return validateErrf("[validate] manifest %q missing image ref", m.Name)
-	}
-
-	if m.K8sYAML() == "" {
-		return validateErrf("[validate] manifest %q missing k8s YAML", m.Name)
-	}
-
-	for _, m := range m.Mounts {
-		if !filepath.IsAbs(m.LocalPath) {
-			return validateErrf(
-				"[validate] mount.LocalPath must be an absolute path (got: %s)", m.LocalPath)
+	for _, iTarget := range m.ImageTargets {
+		err := iTarget.Validate()
+		if err != nil {
+			return err
 		}
 	}
 
-	if m.IsStaticBuild() {
-		if m.StaticBuildPath == "" {
-			return validateErrf("[validate] manifest %q missing build path", m.Name)
-		}
-	} else {
-		if m.BaseDockerfile == "" {
-			return validateErrf("[validate] manifest %q missing base dockerfile", m.Name)
+	if m.deployTarget != nil {
+		err := m.deployTarget.Validate()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -112,182 +128,50 @@ func (m Manifest) validate() *ValidateErr {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name && m1.k8sYaml == m2.k8sYaml && m1.dockerRef == m2.dockerRef && m1.BaseDockerfile == m2.BaseDockerfile && m1.StaticDockerfile == m2.StaticDockerfile && m1.StaticBuildPath == m2.StaticBuildPath && m1.tiltFilename == m2.tiltFilename
-	entrypointMatch := m1.Entrypoint.Equal(m2.Entrypoint)
-	mountsMatch := m1.mountsEqual(m2.Mounts)
-	reposMatch := m1.reposEqual(m2.Repos)
-	stepsMatch := m1.stepsEqual(m2.Steps)
-	portForwardsMatch := m1.portForwardsEqual(m2)
-	buildArgsMatch := reflect.DeepEqual(m1.StaticBuildArgs, m2.StaticBuildArgs)
-	cachePathsMatch := stringSlicesEqual(m1.cachePaths, m2.cachePaths)
+	primitivesMatch := m1.Name == m2.Name
+	dockerEqual := DeepEqual(m1.ImageTargets, m2.ImageTargets)
 
-	return primitivesMatch && entrypointMatch && mountsMatch && reposMatch && portForwardsMatch && stepsMatch && buildArgsMatch && cachePathsMatch
-}
+	dc1 := m1.DockerComposeTarget()
+	dc2 := m2.DockerComposeTarget()
+	dockerComposeEqual := DeepEqual(dc1, dc2)
 
-func stringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
+	k8s1 := m1.K8sTarget()
+	k8s2 := m2.K8sTarget()
+	k8sEqual := DeepEqual(k8s1, k8s2)
 
-	for i := range b {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) mountsEqual(m2 []Mount) bool {
-	if (m1.Mounts == nil) != (m2 == nil) {
-		return false
-	}
-
-	if len(m1.Mounts) != len(m2) {
-		return false
-	}
-
-	for i := range m2 {
-		if m1.Mounts[i] != m2[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) reposEqual(m2 []LocalGithubRepo) bool {
-	if (m1.Repos == nil) != (m2 == nil) {
-		return false
-	}
-
-	if len(m1.Repos) != len(m2) {
-		return false
-	}
-
-	for i := range m2 {
-		if m1.Repos[i] != m2[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) portForwardsEqual(m2 Manifest) bool {
-	if len(m1.portForwards) != len(m2.portForwards) {
-		return false
-	}
-
-	for i := range m2.portForwards {
-		if m1.portForwards[i] != m2.portForwards[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (m1 Manifest) stepsEqual(s2 []Step) bool {
-	if len(m1.Steps) != len(s2) {
-		return false
-	}
-
-	for i := range s2 {
-		if !m1.Steps[i].Equal(s2[i]) {
-			return false
-		}
-	}
-
-	return true
+	return primitivesMatch &&
+		dockerEqual &&
+		dockerComposeEqual &&
+		k8sEqual
 }
 
 func (m Manifest) ManifestName() ManifestName {
 	return m.Name
 }
 
-func (m Manifest) Dependencies() []string {
-	// TODO(dmiller) we can know the length of this slice
-	deps := []string{}
-
-	for _, p := range m.LocalPaths() {
-		deps = append(deps, p)
-	}
-
-	return sliceutils.DedupeStringSlice(deps)
+func (m Manifest) Empty() bool {
+	return m.Equal(Manifest{})
 }
 
-func (m Manifest) WithConfigFiles(confFiles []string) Manifest {
-	return m
-}
-
-func (m Manifest) LocalRepos() []LocalGithubRepo {
-	return m.Repos
-}
-
-func (m Manifest) WithPortForwards(pf []PortForward) Manifest {
-	m.portForwards = pf
-	return m
-}
-
-func (m Manifest) PortForwards() []PortForward {
-	return m.portForwards
-}
-
-func (m Manifest) TiltFilename() string {
-	return m.tiltFilename
-}
-
-func (m Manifest) WithTiltFilename(f string) Manifest {
-	m.tiltFilename = f
-	return m
-}
-
-func (m Manifest) K8sYAML() string {
-	return m.k8sYaml
-}
-
-func (m Manifest) AppendK8sYAML(y string) Manifest {
-	if m.k8sYaml == "" {
-		return m.WithK8sYAML(y)
-	}
-	if y == "" {
-		return m
-	}
-
-	return m.WithK8sYAML(yaml.ConcatYAML(m.k8sYaml, y))
-}
-
-func (m Manifest) WithK8sYAML(y string) Manifest {
-	m.k8sYaml = y
-	return m
-}
-
-func (m Manifest) DockerRef() reference.Named {
-	return m.dockerRef
-}
-
-func (m Manifest) WithDockerRef(ref reference.Named) Manifest {
-	m.dockerRef = ref
-	return m
-}
+var _ TargetSpec = Manifest{}
 
 type Mount struct {
 	LocalPath     string
 	ContainerPath string
 }
 
-type LocalGithubRepo struct {
-	LocalPath            string
-	DockerignoreContents string
-	GitignoreContents    string
+type Dockerignore struct {
+	// The path to evaluate the dockerignore contents relative to
+	LocalPath string
+	Contents  string
 }
 
-func (LocalGithubRepo) IsRepo() {}
-
-func (r1 LocalGithubRepo) Equal(r2 LocalGithubRepo) bool {
-	return r1.DockerignoreContents == r2.DockerignoreContents && r1.GitignoreContents == r2.GitignoreContents && r1.LocalPath == r2.LocalPath
+type LocalGitRepo struct {
+	LocalPath         string
+	GitignoreContents string
 }
+
+func (LocalGitRepo) IsRepo() {}
 
 type Step struct {
 	// Required. The command to run in this step.
@@ -297,28 +181,6 @@ type Step struct {
 	Triggers []string
 	// Directory the Triggers are relative to
 	BaseDirectory string
-}
-
-func (s1 Step) Equal(s2 Step) bool {
-	if s1.BaseDirectory != s2.BaseDirectory {
-		return false
-	}
-
-	if !s1.Cmd.Equal(s2.Cmd) {
-		return false
-	}
-
-	if len(s1.Triggers) != len(s2.Triggers) {
-		return false
-	}
-
-	for i := range s2.Triggers {
-		if s1.Triggers[i] != s2.Triggers[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 type Cmd struct {
@@ -377,24 +239,6 @@ func (c Cmd) String() string {
 	return fmt.Sprintf("%s", strings.Join(quoted, " "))
 }
 
-func (c1 Cmd) Equal(c2 Cmd) bool {
-	if (c1.Argv == nil) != (c2.Argv == nil) {
-		return false
-	}
-
-	if len(c1.Argv) != len(c2.Argv) {
-		return false
-	}
-
-	for i := range c1.Argv {
-		if c1.Argv[i] != c2.Argv[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (c Cmd) Empty() bool {
 	return len(c.Argv) == 0
 }
@@ -430,19 +274,6 @@ func ToShellSteps(cwd string, cmds []string) []Step {
 	return ToSteps(cwd, ToShellCmds(cmds))
 }
 
-// TODO(maia): remove this now that we have a more robust way of checking fallback errors
-type ValidateErr struct {
-	s string
-}
-
-func (e *ValidateErr) Error() string { return e.s }
-
-var _ error = &ValidateErr{}
-
-func validateErrf(format string, a ...interface{}) *ValidateErr {
-	return &ValidateErr{s: fmt.Sprintf(format, a...)}
-}
-
 type PortForward struct {
 	// The port to expose on localhost of the current machine.
 	LocalPort int
@@ -450,4 +281,31 @@ type PortForward struct {
 	// The port to connect to inside the deployed container.
 	// If 0, we will connect to the first containerPort.
 	ContainerPort int
+}
+
+var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
+var dcTargetAllowUnexported = cmp.AllowUnexported(DockerComposeTarget{})
+var labelRequirementAllowUnexported = cmp.AllowUnexported(labels.Requirement{})
+
+var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
+	aNil := a == nil
+	bNil := b == nil
+	if aNil && bNil {
+		return true
+	}
+
+	if aNil != bNil {
+		return false
+	}
+
+	return a.String() == b.String()
+})
+
+func DeepEqual(x, y interface{}) bool {
+	return cmp.Equal(x, y,
+		cmpopts.EquateEmpty(),
+		imageTargetAllowUnexported,
+		dcTargetAllowUnexported,
+		labelRequirementAllowUnexported,
+		dockerRefEqual)
 }
