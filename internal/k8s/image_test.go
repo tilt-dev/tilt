@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 )
 
@@ -259,4 +259,109 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "deployment yaml should not match image %s", img.Name())
+}
+
+func TestInjectDigestEnvVar(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entities) != 1 {
+		t.Fatalf("Unexpected entities: %+v", entities)
+	}
+
+	entity := entities[0]
+	name := "gcr.io/some-project-162817/sancho"
+
+	// add an env var with the image name
+	deployment := entity.Obj.(*appsv1.Deployment)
+	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+		Name:  "IMAGE",
+		Value: name,
+	})
+
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !replaced {
+		t.Errorf("Expected replaced: true. Actual: %v", replaced)
+	}
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(result, fmt.Sprintf("image: %s@%s", name, digest)) {
+		t.Errorf("image name did not appear in serialized yaml: %s", result)
+	}
+
+	if !strings.Contains(result, fmt.Sprintf("value: %s@%s", name, digest)) {
+		t.Errorf("env did not appear in serialized yaml: %s", result)
+	}
+}
+
+func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string) {
+	entities, err := ParseYAMLFromString(yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entities) != 1 {
+		t.Fatalf("Unexpected entities: %+v", entities)
+	}
+
+	entity := entities[0]
+	name := "gcr.io/foo"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !replaced {
+		t.Errorf("Expected replaced: true. Actual: %v", replaced)
+	}
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(result, fmt.Sprintf("%s%s@%s", expectedDigestPrefix, name, digest)) {
+		t.Errorf("image name did not appear in serialized yaml: %s", result)
+	}
+}
+
+func TestInjectDigestCRDMapValue(t *testing.T) {
+	testInjectDigestCRD(t, `
+apiversion: foo/v1
+kind: Foo
+spec:
+    image: gcr.io/foo:stable
+`, "image: ")
+}
+
+func TestInjectDigestCRDListElement(t *testing.T) {
+	testInjectDigestCRD(t, `
+apiversion: foo/v1
+kind: Foo
+spec:
+    images:
+      - gcr.io/foo:stable
+`, "- ")
+}
+
+func TestInjectDigestCRDListOfMaps(t *testing.T) {
+	testInjectDigestCRD(t, `
+apiversion: foo/v1
+kind: Foo
+spec:
+    args:
+        image: gcr.io/foo:stable
+`, "image: ")
 }

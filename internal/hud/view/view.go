@@ -54,7 +54,7 @@ func (k8sInfo K8SResourceInfo) RuntimeLog() string { return k8sInfo.PodLog }
 func (k8sInfo K8SResourceInfo) Status() string     { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
-	K8sResources []model.YAMLManifestResource
+	K8sResources []string
 }
 
 var _ ResourceInfoView = YAMLResourceInfo{}

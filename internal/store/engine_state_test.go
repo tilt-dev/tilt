@@ -63,11 +63,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 }
 
 func TestStateViewYAMLManifestNoYAML(t *testing.T) {
-<<<<<<< HEAD
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), "", []string{}, []model.YAMLManifestResource{})
-=======
 	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "")
->>>>>>> master
 	state := newState([]model.Manifest{}, m)
 	v := StateToView(*state)
 
@@ -75,12 +71,7 @@ func TestStateViewYAMLManifestNoYAML(t *testing.T) {
 }
 
 func TestStateViewYAMLManifestWithYAML(t *testing.T) {
-<<<<<<< HEAD
-	yaml := "yamlyaml"
-	m := model.NewYAMLManifest(model.ManifestName("GlobalYAML"), yaml, []string{"global.yaml"}, []model.YAMLManifestResource{})
-=======
 	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "yamlyaml")
->>>>>>> master
 	state := newState([]model.Manifest{}, m)
 	state.ConfigFiles = []string{"global.yaml"}
 	v := StateToView(*state)

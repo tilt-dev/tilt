@@ -1045,6 +1045,32 @@ fail("or this")
 	f.loadErrString("this is an error")
 }
 
+func TestBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(
+		"Tiltfile",
+		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SanchoSidecarYAML),
+	)
+
+	f.load()
+
+	f.assertYAMLManifest("sancho")
+}
+
+func TestBlobErr(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(
+		"Tiltfile",
+		`k8s_yaml(yaml(42))`,
+	)
+
+	f.loadErrString("for parameter 1: got int, want string")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

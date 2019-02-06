@@ -191,9 +191,97 @@
 </dd></dl>
 
 <dl class="class">
+<dt id="api.FastBuild">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">FastBuild</code><a class="headerlink" href="#api.FastBuild" title="Permalink to this definition">¶</a></dt>
+<dd><p>An image that was created with <code class="docutils literal notranslate"><span class="pre">`fast_build`</span></code></p>
+<dl class="method">
+<dt id="api.FastBuild.add">
+<code class="descname">add</code><span class="sig-paren">(</span><em>dest</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds the content from <code class="docutils literal notranslate"><span class="pre">src</span></code> into the image at path <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.FastBuild" title="api.FastBuild"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.FastBuild.hot_reload">
+<code class="descname">hot_reload</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.hot_reload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setting this on a <code class="docutils literal notranslate"><span class="pre">FastBuild</span></code> image tells Tilt that this container knows how to automatically reload any changes in the container. As a result there is no need to restart it.</p>
+<p>This is useful for containers that run something like nodemon or webpack Hot Module Replacement to update running processes quickly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.FastBuild.run">
+<code class="descname">run</code><span class="sig-paren">(</span><em>trigger=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs <code class="docutils literal notranslate"><span class="pre">cmd</span></code> as a build step in the image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cmd</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – A shell command.</li>
+<li><strong>trigger</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If the <code class="docutils literal notranslate"><span class="pre">trigger</span></code> argument is specified, the build step is only run on changes to the given file(s).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="api.LocalPath">
 <em class="property">class </em><code class="descclassname">api.</code><code class="descname">LocalPath</code><a class="headerlink" href="#api.LocalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>A path on disk</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="api.Repo">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">Repo</code><a class="headerlink" href="#api.Repo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a version control repository</p>
+<dl class="method">
+<dt id="api.Repo.path">
+<code class="descname">path</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="headerlink" href="#api.Repo.path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the absolute path to the file specified at <code class="docutils literal notranslate"><span class="pre">path</span></code> in the repo.
+path must be a relative path.</p>
+<p>Respects <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – relative path in repository</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A LocalPath resource, representing a local path on disk.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="api.Yaml">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">Yaml</code><a class="headerlink" href="#api.Yaml" title="Permalink to this definition">¶</a></dt>
+<dd><p>A string that represents YAML that can be parsed</p>
 </dd></dl>
 
 <dl class="function">
@@ -245,7 +333,7 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.FastBuild" title="api.FastBuild"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></a></td>
 </tr>
 </tbody>
 </table>
@@ -358,7 +446,7 @@ applies to your k8s cluster independently.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Repo</span></code></td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Repo" title="api.Repo"><code class="xref py py-class docutils literal notranslate"><span class="pre">Repo</span></code></a></td>
 </tr>
 </tbody>
 </table>
@@ -375,6 +463,20 @@ applies to your k8s cluster independently.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_path</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>]) – Path to the file locally</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="api.yaml">
+<code class="descclassname">api.</code><code class="descname">yaml</code><span class="sig-paren">(</span><em>contents</em><span class="sig-paren">)</span><a class="headerlink" href="#api.yaml" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a Yaml object that wraps the provided string. Useful for passing strings in to functions that expect YAML like <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.Yaml" title="api.Yaml"><code class="xref py py-class docutils literal notranslate"><span class="pre">Yaml</span></code></a></td>
 </tr>
 </tbody>
 </table>

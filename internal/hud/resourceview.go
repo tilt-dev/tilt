@@ -191,8 +191,6 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 		return rty.EmptyLayout
 	}
 
-	unresourced := unresourcedK8sItems(yi.K8sResources)
-
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
 	rhs := rty.NewConcatLayout(rty.DirVert)
@@ -200,33 +198,6 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
 	l.AddDynamic(rhs)
 	return l
-}
-
-func unresourcedK8sItems(resources []model.YAMLManifestResource) string {
-	var rs []string
-
-	for _, r := range resources {
-		if r.Kind == "Deployment" || r.Kind == "Service" {
-			var kinds []string
-			for _, res := range resources {
-				if r.Name == res.Name {
-					kinds = append(kinds, res.Kind)
-				}
-			}
-			rs = appendIfMissing(rs, fmt.Sprintf("- %s (%s)", r.Name, strings.Join(kinds, ", ")))
-		}
-	}
-
-	return strings.Join(rs, "\n")
-}
-
-func appendIfMissing(slice []string, s string) []string {
-	for _, ele := range slice {
-		if ele == s {
-			return slice
-		}
-	}
-	return append(slice, s)
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {

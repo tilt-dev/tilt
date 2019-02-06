@@ -9,6 +9,9 @@ You'll also need:
 - Kubectl, to cuddle your cluster
 - A local Kubernetes cluster (on MacOS, Docker For Mac works for this!)
 
+
+Already use Docker Compose for local dev? You can also use Tilt to [run your existing Docker Compose setup](docker_compose.html), in which case all you need to have installed (besides Tilt) is Docker Compose, and you can ignore Kubernetes-specific instructions on this page.
+
 On MacOS
 --------
 
@@ -33,7 +36,7 @@ $ brew install windmilleng/tap/tilt
 ### Option B) Installing Tilt from release binaries
 
 ```
-$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.0/tilt.0.7.0.mac.x86_64.tar.gz | tar -xzv tilt && \
+$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.2/tilt.0.7.2.mac.x86_64.tar.gz | tar -xzv tilt && \
   sudo mv tilt /usr/local/bin/tilt
 ```
 
@@ -63,7 +66,7 @@ $ kubectl cluster-info
 - Install the Tilt binary with:
 
 ```
-$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.0/tilt.0.7.0.linux.x86_64.tar.gz | tar -xzv tilt && \
+$ curl -L https://github.com/windmilleng/tilt/releases/download/v0.7.2/tilt.0.7.2.linux.x86_64.tar.gz | tar -xzv tilt && \
     sudo mv tilt /usr/local/bin/tilt
 ```
 
@@ -88,7 +91,7 @@ After you install Tilt, verify that you installed it correctly with:
 
 ```
 $ tilt version
-v0.7.0, built 2019-02-01
+v0.7.2, built 2019-02-05
 ```
 
 Troubleshooting
