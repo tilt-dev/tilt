@@ -29,7 +29,7 @@ require (
 	github.com/docker/go v1.5.1-1
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-events v0.0.0-20170721190031-9461782956ad
-	github.com/docker/go-metrics v0.0.0-20180209012529-399ea8c73916
+	github.com/docker/go-metrics v0.0.0-20181218153428-b84716841b82
 	github.com/docker/go-units v0.3.3
 	github.com/docker/spdystream v0.0.0-20170912183627-bc6354cbbc29
 	github.com/dustin/go-humanize v1.0.0
@@ -86,10 +86,10 @@ require (
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/pkg/errors v0.8.0
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/prometheus/client_golang v0.8.0
+	github.com/prometheus/client_golang v0.9.2
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
-	github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e
-	github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273
+	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
+	github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/sirupsen/logrus v1.0.6
@@ -104,7 +104,7 @@ require (
 	go.opencensus.io v0.18.0
 	go.starlark.net v0.0.0-20181218181455-c0b6b768d91b
 	golang.org/x/crypto v0.0.0-20180820150726-614d502a4dac
-	golang.org/x/net v0.0.0-20181106065722-10aee1819953
+	golang.org/x/net v0.0.0-20181201002055-351d144fa1fc
 	golang.org/x/oauth2 v0.0.0-20181203162652-d668ce993890
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e
