@@ -196,13 +196,20 @@
 <dd><p>An image that was created with <code class="docutils literal notranslate"><span class="pre">`fast_build`</span></code></p>
 <dl class="method">
 <dt id="api.FastBuild.add">
-<code class="descname">add</code><span class="sig-paren">(</span><em>dest</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.add" title="Permalink to this definition">¶</a></dt>
+<code class="descname">add</code><span class="sig-paren">(</span><em>src</em>, <em>dest</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.add" title="Permalink to this definition">¶</a></dt>
 <dd><p>Adds the content from <code class="docutils literal notranslate"><span class="pre">src</span></code> into the image at path <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#api.FastBuild" title="api.FastBuild"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></a></td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<a class="reference internal" href="#api.LocalPath" title="api.LocalPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">LocalPath</span></code></a>, <a class="reference internal" href="#api.Repo" title="api.Repo"><code class="xref py py-class docutils literal notranslate"><span class="pre">Repo</span></code></a>]) – The content to be added to the image.</li>
+<li><strong>dest</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The path in the image where the content should be added.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#api.FastBuild" title="api.FastBuild"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></a></p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -225,7 +232,7 @@
 
 <dl class="method">
 <dt id="api.FastBuild.run">
-<code class="descname">run</code><span class="sig-paren">(</span><em>trigger=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.run" title="Permalink to this definition">¶</a></dt>
+<code class="descname">run</code><span class="sig-paren">(</span><em>cmd</em>, <em>trigger=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#api.FastBuild.run" title="Permalink to this definition">¶</a></dt>
 <dd><p>Runs <code class="docutils literal notranslate"><span class="pre">cmd</span></code> as a build step in the image.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
