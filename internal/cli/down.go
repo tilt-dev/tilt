@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,24 +16,27 @@ import (
 )
 
 type downCmd struct {
+	fileName string
 }
 
-func (c downCmd) register() *cobra.Command {
+func (c *downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "down",
 		Short: "delete kubernetes resources",
 	}
 
+	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+
 	return cmd
 }
 
-func (c downCmd) run(ctx context.Context, args []string) error {
+func (c *downCmd) run(ctx context.Context, args []string) error {
 	analyticsService.Incr("cmd.down", map[string]string{
 		"count": fmt.Sprintf("%d", len(args)),
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, err := tiltfile.Load(ctx, tiltfile.FileName, nil)
+	manifests, globalYaml, _, err := tiltfile.Load(ctx, c.fileName, nil, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -41,7 +45,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sYAML())
+	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sTarget().YAML)
 	if err != nil {
 		return errors.Wrap(err, "Parsing global YAML")
 	}
@@ -62,7 +66,7 @@ func (c downCmd) run(ctx context.Context, args []string) error {
 		if m.IsDC() {
 			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll
 			// need to support down-ing as well. For now, we `down` the first one we find.
-			dcConfigPath = m.DCInfo().ConfigPath
+			dcConfigPath = m.DockerComposeTarget().ConfigPath
 			break
 		}
 	}

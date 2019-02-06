@@ -21,14 +21,14 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
-	assert.Equal(t, []string{}, call.state.FilesChanged())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.state.DeployInfo.PodID.String())
+	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -44,8 +44,8 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
-	assert.Equal(t, []string{}, call.state.FilesChanged())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	podA := f.testPod("pod-a", "fe", "Running", testContainer, time.Now())
 	podB := f.testPod("pod-b", "fe", "Running", testContainer, time.Now())
@@ -57,7 +57,7 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	call = f.nextCall()
-	assert.Equal(t, "", call.state.DeployInfo.PodID.String())
+	assert.Equal(t, "", call.oneState().DeployInfo.PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -73,8 +73,8 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest, call.manifest)
-	assert.Equal(t, []string{}, call.state.FilesChanged())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextBuildContainer = testContainer
@@ -82,9 +82,9 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.state.DeployInfo.PodID.String())
+	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
 	f.waitForCompletedBuildCount(2)
-	f.WithManifest("fe", func(ms store.ManifestState) {
+	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagMountFiles, ms.LastBuild().Reason)
 		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
 	})
@@ -92,10 +92,10 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
-	assert.True(t, call.state.DeployInfo.Empty())
+	assert.True(t, call.oneState().DeployInfo.Empty())
 	f.waitForCompletedBuildCount(3)
 
-	f.WithManifest("fe", func(ms store.ManifestState) {
+	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
 	})
 
@@ -123,7 +123,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.ManifestStates["fe"].PendingFileChanges) > 0
+		return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0
 	})
 
 	// We don't expect a call because the trigger happened before the file event
@@ -132,6 +132,6 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 
 	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "fe"})
 	call := f.nextCall()
-	assert.Equal(t, []string{f.JoinPath("main.go")}, call.state.FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(2)
 }

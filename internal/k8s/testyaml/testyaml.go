@@ -149,6 +149,32 @@ spec:
                 key: token
 `
 
+const SanchoExtBeta1YAML = `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: token
+            valueFrom:
+              secretKeyRef:
+                name: slacktoken
+                key: token
+`
+
 const SanchoTwinYAML = `
 apiVersion: apps/v1
 kind: Deployment
@@ -176,6 +202,68 @@ spec:
               secretKeyRef:
                 name: slacktoken
                 key: token
+`
+
+const SanchoSidecarYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: token
+            valueFrom:
+              secretKeyRef:
+                name: slacktoken
+                key: token
+      - name: sancho-sidecar
+        image: gcr.io/some-project-162817/sancho-sidecar
+`
+
+const SanchoRedisSidecarYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: token
+            valueFrom:
+              secretKeyRef:
+                name: slacktoken
+                key: token
+      - name: redis-sidecar
+        image: redis:latest
 `
 
 const TracerYAML = `
@@ -266,6 +354,19 @@ spec:
         command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
       restartPolicy: Never
   backoffLimit: 4
+`
+
+const PodYAML = `apiVersion: v1
+kind: Pod
+metadata:
+ name: sleep
+ labels:
+   app: sleep
+spec:
+  restartPolicy: OnFailure
+  containers:
+  - name: sleep
+    image: gcr.io/windmill-public-containers/servantes/sleep
 `
 
 const MultipleContainersYAML = `
@@ -967,4 +1068,42 @@ spec:
 
 ---
 # Source: redis/templates/redis-serviceaccount.yaml
+`
+
+// Example CRD YAML from:
+// https://github.com/martin-helmich/kubernetes-crd-example/tree/master/kubernetes
+const CRDYAML = `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: projects.example.martin-helmich.de
+spec:
+  group: example.martin-helmich.de
+  names:
+    kind: Project
+    plural: projects
+    singular: project
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            replicas:
+              minimum: 1
+              type: integer
+          required:
+          - replicas
+      required:
+      - spec
+  version: v1alpha1
+
+---
+apiVersion: example.martin-helmich.de/v1alpha1
+kind: Project
+metadata:
+  name: example-project
+  namespace: default
+spec:
+  replicas: 1
 `

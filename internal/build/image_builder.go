@@ -31,7 +31,7 @@ import (
 )
 
 type dockerImageBuilder struct {
-	dcli    docker.DockerClient
+	dCli    docker.Client
 	console console.Console
 	out     io.Writer
 
@@ -45,7 +45,7 @@ type dockerImageBuilder struct {
 type ImageBuilder interface {
 	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error)
 	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
+	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
@@ -67,9 +67,9 @@ func DefaultOut() io.Writer {
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dcli docker.DockerClient, console console.Console, out io.Writer, extraLabels dockerfile.Labels) *dockerImageBuilder {
+func NewDockerImageBuilder(dCli docker.Client, console console.Console, out io.Writer, extraLabels dockerfile.Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{
-		dcli:        dcli,
+		dCli:        dCli,
 		console:     console,
 		out:         out,
 		extraLabels: extraLabels,
@@ -80,7 +80,7 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildDockerfile")
 	defer span.Finish()
 
-	paths := []pathMapping{
+	paths := []PathMapping{
 		{
 			LocalPath:     buildPath,
 			ContainerPath: "/",
@@ -116,7 +116,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged,
-	paths []pathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error) {
+	paths []PathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
@@ -144,7 +144,7 @@ func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode doc
 
 // If the build starts with conditional steps, add the dependent files first,
 // then add the runs, before we add the majority of the source.
-func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps []model.Step, paths []pathMapping) (dockerfile.Dockerfile, []model.Step, error) {
+func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps []model.Step, paths []PathMapping) (dockerfile.Dockerfile, []model.Step, error) {
 	consumed := 0
 	for _, step := range steps {
 		if step.Triggers == nil {
@@ -191,7 +191,7 @@ func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps
 	return df, remainingSteps, nil
 }
 
-func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping) (dockerfile.Dockerfile, error) {
+func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
 	df = df.AddAll()
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
@@ -226,7 +226,7 @@ func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 		return nil, errors.Wrap(err, "TagImage")
 	}
 
-	err = d.dcli.ImageTag(ctx, dig.String(), namedTagged.String())
+	err = d.dCli.ImageTag(ctx, dig.String(), namedTagged.String())
 	if err != nil {
 		return nil, errors.Wrap(err, "TagImage#ImageTag")
 	}
@@ -277,7 +277,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	}
 
 	l.Infof("%spushing the image", prefix)
-	imagePushResponse, err := d.dcli.ImagePush(
+	imagePushResponse, err := d.dCli.ImagePush(
 		ctx,
 		ref.String(),
 		options)
@@ -300,12 +300,19 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return ref, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
 	// TODO(Han): Extend output to print without newline
 	ps.StartBuildStep(ctx, "Tarring context…")
+
+	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
+	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+		for _, pm := range paths {
+			ps.Printf(ctx, pm.prettyStr())
+		}
+	}
 
 	archive, err := tarContextAndUpdateDf(ctx, df, paths, filter)
 	if err != nil {
@@ -318,7 +325,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 
 	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
-	imageBuildResponse, err := d.dcli.ImageBuild(
+	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
 		archive,
 		Options(archive, buildArgs),
@@ -481,7 +488,7 @@ func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, outp
 	}
 
 	if output.shortDigest != "" {
-		data, _, err := d.dcli.ImageInspectWithRaw(ctx, output.shortDigest)
+		data, _, err := d.dCli.ImageInspectWithRaw(ctx, output.shortDigest)
 		if err != nil {
 			return "", err
 		}

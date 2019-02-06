@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -11,52 +13,60 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
-// TODO(maia): throw an error if you try to name a manifest this in your Tiltfile?
-const ConfigsManifestName = "_ConfigsManifest"
-
-type WatchableManifest interface {
-	Dependencies() []string
-	ManifestName() model.ManifestName
-	LocalRepos() []model.LocalGithubRepo
-	Dockerignores() []model.Dockerignore
+var ConfigsTargetID = model.TargetID{
+	Type: model.TargetTypeConfigs,
+	Name: "singleton",
 }
 
-// configManifest makes a WatchableManifest that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
-type configsManifest struct {
+// If you modify this interface, you might also need to update the watchRulesMatch function below.
+type WatchableTarget interface {
+	ignore.IgnorableTarget
+	Dependencies() []string
+	ID() model.TargetID
+}
+
+// configTarget makes a WatchableTarget that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
+type configsTarget struct {
 	dependencies []string
 }
 
-func (m *configsManifest) Dependencies() []string {
+var _ WatchableTarget = &configsTarget{}
+
+func (m *configsTarget) Dependencies() []string {
 	return m.dependencies
 }
 
-func (m *configsManifest) ManifestName() model.ManifestName {
-	return ConfigsManifestName
+func (m *configsTarget) ID() model.TargetID {
+	return ConfigsTargetID
 }
 
-func (m *configsManifest) LocalRepos() []model.LocalGithubRepo {
+func (m *configsTarget) LocalRepos() []model.LocalGitRepo {
 	return nil
 }
 
-func (m *configsManifest) Dockerignores() []model.Dockerignore {
+func (m *configsTarget) Dockerignores() []model.Dockerignore {
 	return nil
 }
 
-type manifestFilesChangedAction struct {
-	manifestName model.ManifestName
-	files        []string
+func (m *configsTarget) IgnoredLocalDirectories() []string {
+	return nil
 }
 
-func (manifestFilesChangedAction) Action() {}
+type targetFilesChangedAction struct {
+	targetID model.TargetID
+	files    []string
+}
 
-type manifestNotifyCancel struct {
-	manifest WatchableManifest
-	notify   watch.Notify
-	cancel   func()
+func (targetFilesChangedAction) Action() {}
+
+type targetNotifyCancel struct {
+	target WatchableTarget
+	notify watch.Notify
+	cancel func()
 }
 
 type WatchManager struct {
-	manifestWatches    map[model.ManifestName]manifestNotifyCancel
+	targetWatches      map[model.TargetID]targetNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         timerMaker
 	disabledForTesting bool
@@ -64,9 +74,9 @@ type WatchManager struct {
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchManager {
 	return &WatchManager{
-		manifestWatches: make(map[model.ManifestName]manifestNotifyCancel),
-		fsWatcherMaker:  watcherMaker,
-		timerMaker:      timerMaker,
+		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
+		fsWatcherMaker: watcherMaker,
+		timerMaker:     timerMaker,
 	}
 }
 
@@ -74,85 +84,74 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableManifest, teardown []model.ManifestName) {
+func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableTarget, teardown []model.TargetID) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	setup = []WatchableManifest{}
-	teardown = []model.ManifestName{}
+	setup = []WatchableTarget{}
+	teardown = []model.TargetID{}
 
-	manifestsToProcess := make(map[model.ManifestName]WatchableManifest)
-	for name, state := range state.ManifestStates {
-		manifestsToProcess[name] = state.Manifest
+	targetsToProcess := make(map[model.TargetID]WatchableTarget)
+	for _, m := range state.Manifests() {
+		if m.IsDC() {
+			dcTarget := m.DockerComposeTarget()
+			targetsToProcess[dcTarget.ID()] = dcTarget
+		}
+
+		for _, iTarget := range m.ImageTargets {
+			targetsToProcess[iTarget.ID()] = iTarget
+		}
 	}
 
 	if len(state.ConfigFiles) > 0 {
-		manifestsToProcess[ConfigsManifestName] = &configsManifest{dependencies: append([]string(nil), state.ConfigFiles...)}
+		targetsToProcess[ConfigsTargetID] = &configsTarget{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
-	for name, mnc := range w.manifestWatches {
-		m, ok := manifestsToProcess[name]
+	for name, mnc := range w.targetWatches {
+		m, ok := targetsToProcess[name]
 		if !ok {
 			teardown = append(teardown, name)
 			continue
 		}
 
-		if !dependenciesMatch(m.Dependencies(), mnc.manifest.Dependencies()) {
+		if !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
 			break
 		}
 	}
 
-	for name, m := range manifestsToProcess {
-		if _, ok := w.manifestWatches[name]; !ok {
+	for name, m := range targetsToProcess {
+		if _, ok := w.targetWatches[name]; !ok {
 			setup = append(setup, m)
 		}
-		delete(manifestsToProcess, name)
+		delete(targetsToProcess, name)
 	}
 
 	return setup, teardown
 }
 
-func dependenciesMatch(d1 []string, d2 []string) bool {
-	if len(d1) != len(d2) {
-		return false
-	}
-
-	for i, e1 := range d1 {
-		e2 := d2[i]
-		if e1 != e2 {
-			return false
-		}
-	}
-
-	return true
+func watchRulesMatch(w1, w2 WatchableTarget) bool {
+	return cmp.Equal(w1.LocalRepos(), w2.LocalRepos()) &&
+		cmp.Equal(w1.Dockerignores(), w2.Dockerignores()) &&
+		cmp.Equal(w1.Dependencies(), w2.Dependencies()) &&
+		cmp.Equal(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories())
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
-	for _, name := range teardown {
-		p, ok := w.manifestWatches[name]
-		if !ok {
-			continue
-		}
-		err := p.notify.Close()
-		if err != nil {
-			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
-		}
-		p.cancel()
-		delete(w.manifestWatches, name)
-	}
-
-	for _, manifest := range setup {
+	// setup the watch first, to avoid a gap in coverage between setup and
+	// teardown. it's ok if we get a file event twice.
+	newWatches := make(map[model.TargetID]targetNotifyCancel)
+	for _, target := range setup {
 		watcher, err := w.fsWatcherMaker()
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
 			continue
 		}
 
-		for _, d := range manifest.Dependencies() {
+		for _, d := range target.Dependencies() {
 			err = watcher.Add(d)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
@@ -161,14 +160,30 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go w.dispatchFileChangesLoop(ctx, manifest, watcher, st)
+		go w.dispatchFileChangesLoop(ctx, target, watcher, st)
+		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
+	}
 
-		w.manifestWatches[manifest.ManifestName()] = manifestNotifyCancel{manifest, watcher, cancel}
+	for _, name := range teardown {
+		p, ok := w.targetWatches[name]
+		if !ok {
+			continue
+		}
+		err := p.notify.Close()
+		if err != nil {
+			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
+		}
+		p.cancel()
+		delete(w.targetWatches, name)
+	}
+
+	for k, v := range newWatches {
+		w.targetWatches[k] = v
 	}
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest WatchableManifest, watcher watch.Notify, st store.RStore) {
-	filter, err := ignore.CreateFileChangeFilter(manifest)
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, target WatchableTarget, watcher watch.Notify, st store.RStore) {
+	filter, err := ignore.CreateFileChangeFilter(target)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))
 		return
@@ -190,7 +205,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, manifest Wat
 			if !ok {
 				return
 			}
-			watchEvent := manifestFilesChangedAction{manifestName: manifest.ManifestName()}
+			watchEvent := targetFilesChangedAction{targetID: target.ID()}
 
 			for _, e := range fsEvents {
 				path, err := filepath.Abs(e.Path)

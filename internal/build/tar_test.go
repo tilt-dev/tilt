@@ -29,8 +29,9 @@ func TestArchiveDf(t *testing.T) {
 	actual := tar.NewReader(ab.buf)
 
 	f.assertFileInTar(actual, expectedFile{
-		Path:     "Dockerfile",
-		Contents: dfText,
+		Path:                   "Dockerfile",
+		Contents:               dfText,
+		AssertUidAndGidAreZero: true,
 	})
 }
 
@@ -42,12 +43,12 @@ func TestArchivePathsIfExists(t *testing.T) {
 
 	f.WriteFile("a", "a")
 
-	paths := []pathMapping{
-		pathMapping{
+	paths := []PathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("a"),
 			ContainerPath: "/a",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("b"),
 			ContainerPath: "/b",
 		},
@@ -58,8 +59,10 @@ func TestArchivePathsIfExists(t *testing.T) {
 		f.t.Fatal(err)
 	}
 	actual := tar.NewReader(ab.buf)
-	f.assertFileInTar(actual, expectedFile{Path: "a", Contents: "a"})
-	f.assertFileInTar(actual, expectedFile{Path: "b", Missing: true})
+	f.assertFilesInTar(actual, []expectedFile{
+		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true},
+		expectedFile{Path: "b", Missing: true},
+	})
 }
 
 func TestLen(t *testing.T) {
@@ -95,12 +98,12 @@ func TestDontArchiveTiltfile(t *testing.T) {
 	f.WriteFile("a", "a")
 	f.WriteFile("Tiltfile", "Tiltfile")
 
-	paths := []pathMapping{
-		pathMapping{
+	paths := []PathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("a"),
 			ContainerPath: "/a",
 		},
-		pathMapping{
+		PathMapping{
 			LocalPath:     f.JoinPath("Tiltfile"),
 			ContainerPath: "/Tiltfile",
 		},
@@ -128,6 +131,39 @@ func TestDontArchiveTiltfile(t *testing.T) {
 	)
 }
 
+func TestArchiveOverlapping(t *testing.T) {
+	f := newFixture(t)
+	ab := NewArchiveBuilder(model.EmptyMatcher)
+	defer ab.close()
+	defer f.tearDown()
+
+	f.WriteFile("a/a.txt", "a.txt contents")
+	f.WriteFile("b/b.txt", "b.txt contents")
+	f.WriteSymlink("b", "a/b")
+
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("a"),
+			ContainerPath: "/a",
+		},
+		PathMapping{
+			LocalPath:     f.JoinPath("b"),
+			ContainerPath: "/a/b",
+		},
+	}
+
+	err := ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	actual := tar.NewReader(ab.buf)
+	f.assertFilesInTar(actual, []expectedFile{
+		expectedFile{Path: "a/a.txt", Contents: "a.txt contents", AssertUidAndGidAreZero: true},
+		expectedFile{Path: "a/b", IsDir: true},
+		expectedFile{Path: "a/b/b.txt", Contents: "b.txt contents"},
+	})
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	t   *testing.T
@@ -146,6 +182,10 @@ func newFixture(t *testing.T) *fixture {
 
 func (f *fixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
 	testutils.AssertFileInTar(f.t, tr, expected)
+}
+
+func (f *fixture) assertFilesInTar(tr *tar.Reader, expected []expectedFile) {
+	testutils.AssertFilesInTar(f.t, tr, expected)
 }
 
 func (f *fixture) tearDown() {

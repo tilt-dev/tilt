@@ -26,15 +26,14 @@ func TestLogs(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
-	state.ManifestStates["server"] = &store.ManifestState{
-		Manifest: model.Manifest{Name: "server"},
-		PodSet: store.NewPodSet(store.Pod{
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		}),
-	}
+		}))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -52,15 +51,14 @@ func TestLogActions(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
-	state.ManifestStates["server"] = &store.ManifestState{
-		Manifest: model.Manifest{Name: "server"},
-		PodSet: store.NewPodSet(store.Pod{
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		}),
-	}
+		}))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -75,15 +73,14 @@ func TestLogsFailed(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
-	state.ManifestStates["server"] = &store.ManifestState{
-		Manifest: model.Manifest{Name: "server"},
-		PodSet: store.NewPodSet(store.Pod{
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		}),
-	}
+		}))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -102,15 +99,14 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
-	state.ManifestStates["server"] = &store.ManifestState{
-		Manifest: model.Manifest{Name: "server"},
-		PodSet: store.NewPodSet(store.Pod{
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		}),
-	}
+		}))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -136,15 +132,14 @@ func TestLogsTruncatedWhenCanceled(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
-	state.ManifestStates["server"] = &store.ManifestState{
-		Manifest: model.Manifest{Name: "server"},
-		PodSet: store.NewPodSet(store.Pod{
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "cid",
 			Phase:         v1.PodRunning,
-		}),
-	}
+		}))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -155,15 +150,14 @@ func TestLogsTruncatedWhenCanceled(t *testing.T) {
 	}
 
 	state = f.store.LockMutableStateForTesting()
-	state.ManifestStates["server"] = &store.ManifestState{
-		Manifest: model.Manifest{Name: "server"},
-		PodSet: store.NewPodSet(store.Pod{
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
 			PodID:         "pod-id",
 			ContainerName: "cname",
 			ContainerID:   "",
 			Phase:         v1.PodRunning,
-		}),
-	}
+		}))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -236,4 +230,10 @@ func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
 func (f *plmFixture) TearDown() {
 	f.cancel()
 	f.TempDirFixture.TearDown()
+}
+
+func newManifestTargetWithPod(m model.Manifest, pod store.Pod) *store.ManifestTarget {
+	mt := store.NewManifestTarget(m)
+	mt.State.PodSet = store.NewPodSet(pod)
+	return mt
 }

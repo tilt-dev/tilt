@@ -15,14 +15,14 @@ import (
 )
 
 type ContainerUpdater struct {
-	dcli docker.DockerClient
+	dCli docker.Client
 }
 
-func NewContainerUpdater(dcli docker.DockerClient) *ContainerUpdater {
-	return &ContainerUpdater{dcli: dcli}
+func NewContainerUpdater(dCli docker.Client) *ContainerUpdater {
+	return &ContainerUpdater{dCli: dCli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []pathMapping, filter model.PathMatcher, steps []model.Cmd, w io.Writer) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []PathMapping, filter model.PathMatcher, steps []model.Cmd, hotReload bool, w io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
 
@@ -52,32 +52,34 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
-	err = r.dcli.CopyToContainerRoot(ctx, cID.String(), bytes.NewReader(archive.Bytes()))
+	err = r.dCli.CopyToContainerRoot(ctx, cID.String(), bytes.NewReader(archive.Bytes()))
 	if err != nil {
 		return err
 	}
 
 	// Exec steps on container
 	for _, s := range steps {
-		err = r.dcli.ExecInContainer(ctx, cID, s, w)
+		err = r.dCli.ExecInContainer(ctx, cID, s, w)
 		if err != nil {
-			exitErr, isExitErr := err.(docker.ExitError)
-			if isExitErr {
-				return UserBuildFailure{ExitCode: exitErr.ExitCode}
-			}
-			return errors.Wrapf(err, "executing step %v on container %s", s.Argv, cID.ShortStr())
+			return WrapContainerExecError(err, cID, s)
 		}
 	}
 
+	if hotReload {
+		logger.Get(ctx).Debugf("Hot reload on, skipping container restart: %s", cID.ShortStr())
+		return nil
+	}
+
 	// Restart container so that entrypoint restarts with the updated files etc.
-	err = r.dcli.ContainerRestartNoWait(ctx, cID.String())
+	logger.Get(ctx).Debugf("Restarting container: %s", cID.ShortStr())
+	err = r.dCli.ContainerRestartNoWait(ctx, cID.String())
 	if err != nil {
 		return errors.Wrap(err, "ContainerRestart")
 	}
 	return nil
 }
 
-func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []pathMapping) error {
+func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []PathMapping) error {
 	if len(paths) == 0 {
 		return nil
 	}
@@ -85,7 +87,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID contain
 	logger.Get(ctx).Debugf("Deleting %d files from container: %s", len(paths), cID.ShortStr())
 
 	out := bytes.NewBuffer(nil)
-	err := r.dcli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
+	err := r.dCli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
 	if err != nil {
 		if docker.IsExitError(err) {
 			return fmt.Errorf("Error deleting files from container: %s", out.String())
@@ -95,7 +97,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID contain
 	return nil
 }
 
-func makeRmCmd(paths []pathMapping) []string {
+func makeRmCmd(paths []PathMapping) []string {
 	cmd := []string{"rm", "-rf"}
 	for _, p := range paths {
 		cmd = append(cmd, p.ContainerPath)

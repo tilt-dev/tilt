@@ -26,6 +26,7 @@ type pather interface {
 }
 
 var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
+var SanchoSidecarRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho-sidecar")
 
 func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	fbInfo := model.FastBuild{
@@ -43,37 +44,51 @@ func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	}
 	m := model.Manifest{
 		Name: "sancho",
-		DockerInfo: model.DockerInfo{
-			Ref: SanchoRef,
-		}.WithBuildDetails(fbInfo),
-	}
+	}.WithImageTarget(model.ImageTarget{
+		Ref: SanchoRef,
+	}.WithBuildDetails(fbInfo))
 
-	m = m.WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
+	m = m.WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
 
 	return m
 }
 
 func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.Manifest {
 	manifest := NewSanchoFastBuildManifest(fixture)
-	manifest.DockerInfo = manifest.DockerInfo.WithCachePaths(paths)
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
 	return manifest
+}
+
+func NewSanchoStaticImageTarget() model.ImageTarget {
+	return model.ImageTarget{
+		Ref: SanchoRef,
+	}.WithBuildDetails(model.StaticBuild{
+		Dockerfile: SanchoStaticDockerfile,
+		BuildPath:  "/path/to/build",
+	})
+}
+
+func NewSanchoSidecarStaticImageTarget() model.ImageTarget {
+	iTarget := NewSanchoStaticImageTarget()
+	iTarget.Ref = SanchoSidecarRef
+	return iTarget
 }
 
 func NewSanchoStaticManifest() model.Manifest {
 	m := model.Manifest{
 		Name: "sancho",
-		DockerInfo: model.DockerInfo{
-			Ref: SanchoRef,
-		}.WithBuildDetails(model.StaticBuild{
-			Dockerfile: SanchoStaticDockerfile,
-			BuildPath:  "/path/to/build",
-		}),
-	}.WithDeployInfo(model.K8sInfo{YAML: SanchoYAML})
+	}.WithImageTarget(
+		NewSanchoStaticImageTarget().
+			WithBuildDetails(model.StaticBuild{
+				Dockerfile: SanchoStaticDockerfile,
+				BuildPath:  "/path/to/build",
+			})).
+		WithDeployTarget(model.K8sTarget{YAML: SanchoYAML})
 	return m
 }
 
 func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
 	manifest := NewSanchoStaticManifest()
-	manifest.DockerInfo = manifest.DockerInfo.WithCachePaths(paths)
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
 	return manifest
 }

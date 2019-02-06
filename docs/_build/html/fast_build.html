@@ -32,7 +32,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Tiltfile API Reference" href="api.html" />
-    <link rel="prev" title="From Docker Compose" href="upgrade_docker_compose.html" />
+    <link rel="prev" title="Tiltfile Concepts" href="tiltfile_concepts.html" />
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129150759-2"></script>
 <script>
@@ -94,25 +94,28 @@
               
             
             
-              <p class="caption"><span class="caption-text">Getting Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Tilt Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_example.html">Running your First Tilt Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="first_config.html">A Simple Tiltfile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="write_your_tiltfile.html">Write Your Tiltfile</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tilt User Guide</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Configs From Other Tools</span></p>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_skaffold.html">From Skaffold</a></li>
-<li class="toctree-l1"><a class="reference internal" href="upgrade_docker_compose.html">From Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial: First 15 Minutes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skaffold.html">Skaffold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker_compose.html">Docker Compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example_projects.html">Example Projects</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Advanced Configs</span></p>
+<p class="caption"><span class="caption-text">Using Tilt</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Optimizing a Tiltfile</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="tiltfile_concepts.html">Tiltfile Concepts</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Optimizing a Tiltfile</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Tiltfile API Reference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">About</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="code_of_conduct.html">Code of Conduct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -180,10 +183,10 @@
            <div itemprop="articleBody">
             
   <div class="section" id="optimizing-a-tiltfile">
-<span id="optimizing-a-tiltfile"></span><h1>Optimizing a Tiltfile<a class="headerlink" href="#optimizing-a-tiltfile" title="Permalink to this headline">¶</a></h1>
+<h1>Optimizing a Tiltfile<a class="headerlink" href="#optimizing-a-tiltfile" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial looks at a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> with build optimizations.
 We explain what they do, and why you would want to use them.</p>
-<p>In <a class="reference external" href="first_config.md">the previous tutorial</a>, we introduced the <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code> function.
+<p>In the <a class="reference external" href="tutorial.html">Tutorial</a>, we introduced the <code class="docutils literal notranslate"><span class="pre">docker_build()</span></code> function.
 This function builds a Docker image. Tilt will watch the inputs to the
 image, and rebuild it every time they change.</p>
 <p>This works well for interpreted languages like JavaScript and Python
@@ -252,12 +255,9 @@ start the command inside the running container.</p>
 don’t delete all their code and re-clone it from git every time we need to do a new build!
 We re-run the command in the same directory. Modern tools then take advantage of local caches.
 Tilt runs commands with the same approach, but inside a container.</p>
-<div class="section" id="next-steps">
-<span id="next-steps"></span><h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
 <p>In this guide, we explored just a few of the functions we can use in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>
 to keep your build fast. For even more functions and tricks,
 read the complete <a class="reference external" href="api.html">Tiltfile API reference</a>.</p>
-</div>
 </div>
 
 
@@ -271,7 +271,7 @@ read the complete <a class="reference external" href="api.html">Tiltfile API ref
         <a href="api.html" class="btn btn-neutral float-right" title="Tiltfile API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="upgrade_docker_compose.html" class="btn btn-neutral" title="From Docker Compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="tiltfile_concepts.html" class="btn btn-neutral" title="Tiltfile Concepts" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -305,6 +305,7 @@ read the complete <a class="reference external" href="api.html">Tiltfile API ref
         <script type="text/javascript" src="_static/jquery.js"></script>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
 
   

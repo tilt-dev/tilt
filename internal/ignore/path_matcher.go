@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/git"
 	"github.com/windmilleng/tilt/internal/model"
@@ -19,14 +21,14 @@ func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
 	return fcf.ignoreMatchers.Matches(f, isDir)
 }
 
-type repoManifest interface {
-	LocalRepos() []model.LocalGithubRepo
+type repoTarget interface {
+	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
 	TiltFilename() string
 }
 
 // Filter out files that should not be included in the build context.
-func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
+func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 	matchers := []model.PathMatcher{}
 	if m.TiltFilename() != "" {
 		m, err := model.NewSimpleFileMatcher(m.TiltFilename())
@@ -50,13 +52,16 @@ func CreateBuildContextFilter(m repoManifest) model.PathMatcher {
 	return model.NewCompositeMatcher(matchers)
 }
 
-type IgnorableManifest interface {
-	LocalRepos() []model.LocalGithubRepo
+type IgnorableTarget interface {
+	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+
+	// These directories and their children will not trigger file change events
+	IgnoredLocalDirectories() []string
 }
 
 // Filter out files that should not trigger new builds.
-func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
+func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
 	for _, r := range m.LocalRepos() {
 		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
@@ -69,6 +74,13 @@ func CreateFileChangeFilter(m IgnorableManifest) (model.PathMatcher, error) {
 		if err == nil {
 			matchers = append(matchers, dim)
 		}
+	}
+	for _, p := range m.IgnoredLocalDirectories() {
+		dm, err := newDirectoryMatcher(p)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating directory matcher")
+		}
+		matchers = append(matchers, dm)
 	}
 
 	// Filter out spurious changes that we don't want to rebuild on, like IDE
@@ -118,4 +130,23 @@ func (m tempBrokenSymlinkMatcher) Matches(path string, isDir bool) (bool, error)
 	}
 
 	return ospath.IsBrokenSymlink(path)
+}
+
+type directoryMatcher struct {
+	dir string
+}
+
+var _ model.PathMatcher = directoryMatcher{}
+
+func newDirectoryMatcher(dir string) (directoryMatcher, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return directoryMatcher{}, errors.Wrapf(err, "failed to get abs path of '%s'", dir)
+	}
+	return directoryMatcher{dir}, nil
+}
+
+func (d directoryMatcher) Matches(p string, isDir bool) (bool, error) {
+	_, isChild := ospath.Child(d.dir, p)
+	return isChild, nil
 }

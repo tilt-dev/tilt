@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,6 +37,15 @@ func (a *ArchiveBuilder) close() error {
 	return a.tw.Close()
 }
 
+// NOTE(dmiller) sometimes users will have very large UID/GIDs that will cause
+// archive/tar to switch to PAX format, which will trip this Docker bug:
+// https://github.com/docker/cli/issues/1459
+// To prevent this, simply clear these out before adding to tar.
+func clearUIDAndGID(h *tar.Header) {
+	h.Uid = 0
+	h.Gid = 0
+}
+
 func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
@@ -49,6 +57,7 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
 	}
+	clearUIDAndGID(tarHeader)
 	err := a.tw.WriteHeader(tarHeader)
 	if err != nil {
 		return err
@@ -62,13 +71,35 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 }
 
 // ArchivePathsIfExist creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
-func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []pathMapping) error {
+func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMapping) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ArchivePathsIfExist")
 	defer span.Finish()
+
+	// In order to handle overlapping mounts, we
+	// 1) collect all the entries,
+	// 2) de-dupe them, with last-one-wins semantics
+	// 3) write all the entries
+	//
+	// It's not obvious that this is the correct behavor. A better approach
+	// (that's more in-line with how mounts work) might ignore files in earlier
+	// path mappings when we know they're going to be "mounted" over.
+	// There's a bunch of subtle product decisions about how overlapping path
+	// mappings work that we're not sure about.
+	entries := []archiveEntry{}
 	for _, p := range paths {
-		err := a.tarPath(ctx, p.LocalPath, p.ContainerPath)
+		newEntries, err := a.entriesForPath(ctx, p.LocalPath, p.ContainerPath)
 		if err != nil {
 			return errors.Wrapf(err, "tarPath '%s'", p.LocalPath)
+		}
+
+		entries = append(entries, newEntries...)
+	}
+
+	entries = dedupeEntries(entries)
+	for _, entry := range entries {
+		err := a.writeEntry(entry)
+		if err != nil {
+			return errors.Wrapf(err, "tarPath '%s'", entry.path)
 		}
 	}
 	return nil
@@ -83,21 +114,22 @@ func (a *ArchiveBuilder) BytesBuffer() (*bytes.Buffer, error) {
 	return a.buf, nil
 }
 
+type archiveEntry struct {
+	path   string
+	info   os.FileInfo
+	header *tar.Header
+}
+
 // tarPath writes the given source path into tarWriter at the given dest (recursively for directories).
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 // If source path does not exist, quietly skips it and returns no err
-func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, fmt.Sprintf("daemon-tarPath-%s", source))
-	span.SetTag("source", source)
-	span.SetTag("dest", dest)
-	defer span.Finish()
+func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string) ([]archiveEntry, error) {
 	sourceInfo, err := os.Stat(source)
-
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return nil, nil
 		}
-		return errors.Wrapf(err, "%s: stat", source)
+		return nil, errors.Wrapf(err, "%s: stat", source)
 	}
 
 	sourceIsDir := sourceInfo.IsDir()
@@ -110,6 +142,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 
 	dest = strings.TrimPrefix(dest, "/")
 
+	result := make([]archiveEntry, 0)
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return errors.Wrapf(err, "error walking to %s", path)
@@ -123,6 +156,7 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 		}
 
 		header, err := tar.FileInfoHeader(info, path)
+		clearUIDAndGID(header)
 		if err != nil {
 			return errors.Wrapf(err, "%s: making header", path)
 		}
@@ -139,44 +173,59 @@ func (a *ArchiveBuilder) tarPath(ctx context.Context, source, dest string) error
 		}
 
 		header.Name = filepath.Clean(header.Name)
+		result = append(result, archiveEntry{
+			path:   path,
+			info:   info,
+			header: header,
+		})
 
-		err = a.tw.WriteHeader(header)
-		if err != nil {
-			return errors.Wrapf(err, "%s: writing header", path)
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		if header.Typeflag == tar.TypeReg {
-			file, err := os.Open(path)
-			if err != nil {
-				// In case the file has been deleted since we last looked at it.
-				if os.IsNotExist(err) {
-					return nil
-				}
-				return errors.Wrapf(err, "%s: open", path)
-			}
-			defer func() {
-				_ = file.Close()
-			}()
-
-			_, err = io.CopyN(a.tw, file, info.Size())
-			if err != nil && err != io.EOF {
-				return errors.Wrapf(err, "%s: copying Contents", path)
-			}
-		}
 		return nil
 	})
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
+	path := entry.path
+	header := entry.header
+	info := entry.info
+	err := a.tw.WriteHeader(header)
+	if err != nil {
+		return errors.Wrapf(err, "%s: writing header", path)
+	}
+
+	if info.IsDir() {
+		return nil
+	}
+
+	if header.Typeflag == tar.TypeReg {
+		file, err := os.Open(path)
+		if err != nil {
+			// In case the file has been deleted since we last looked at it.
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return errors.Wrapf(err, "%s: open", path)
+		}
+		defer func() {
+			_ = file.Close()
+		}()
+
+		_, err = io.CopyN(a.tw, file, info.Size())
+		if err != nil && err != io.EOF {
+			return errors.Wrapf(err, "%s: copying Contents", path)
+		}
+	}
+	return nil
 }
 
 func (a *ArchiveBuilder) len() int {
 	return a.buf.Len()
 }
 
-func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []pathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
 
@@ -201,4 +250,19 @@ func tarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (*bytes.Buffer, er
 		return nil, errors.Wrap(err, "tarDfOnly")
 	}
 	return ab.BytesBuffer()
+}
+
+// Dedupe the entries with last-entry-wins semantics.
+func dedupeEntries(entries []archiveEntry) []archiveEntry {
+	seenIndex := make(map[string]int, len(entries))
+	result := make([]archiveEntry, 0, len(entries))
+	for i, entry := range entries {
+		seenIndex[entry.header.Name] = i
+	}
+	for i, entry := range entries {
+		if seenIndex[entry.header.Name] == i {
+			result = append(result, entry)
+		}
+	}
+	return result
 }

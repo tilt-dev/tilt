@@ -18,13 +18,15 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/ to get started."
+const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/tutorial.html to get started."
 
 type EngineState struct {
 	// saved so that we can render in order
 	ManifestDefinitionOrder []model.ManifestName
 
-	ManifestStates    map[model.ManifestName]*ManifestState
+	// TODO(nick): This will eventually be a general Target index.
+	ManifestTargets map[model.ManifestName]*ManifestTarget
+
 	CurrentlyBuilding model.ManifestName
 	WatchMounts       bool
 
@@ -51,7 +53,7 @@ type EngineState struct {
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
 	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
-	GlobalYAML      model.YAMLManifest
+	GlobalYAML      model.Manifest
 	GlobalYAMLState *YAMLManifestState
 
 	TiltfilePath             string
@@ -61,10 +63,106 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	LastTiltfileBuild model.BuildStatus
+	LastTiltfileBuild model.BuildRecord
 
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
+
+	IsProfiling bool
+
+	CurrentTiltfileBuild model.BuildRecord
+}
+
+func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestName {
+	for mn, state := range e.ManifestTargets {
+		manifest := state.Manifest
+		for _, iTarget := range manifest.ImageTargets {
+			if iTarget.ID() == id {
+				return mn
+			}
+		}
+		if manifest.K8sTarget().ID() == id {
+			return mn
+		}
+		if manifest.DockerComposeTarget().ID() == id {
+			return mn
+		}
+	}
+	return ""
+}
+
+func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
+	mn := e.ManifestNameForTargetID(id)
+	if mn == "" {
+		return BuildStatus{}
+	}
+
+	ms := e.ManifestTargets[mn].State
+	return ms.BuildStatus(id)
+}
+
+func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
+	mn := mt.Manifest.Name
+	_, ok := e.ManifestTargets[mn]
+	if !ok {
+		e.ManifestDefinitionOrder = append(e.ManifestDefinitionOrder, mn)
+	}
+	e.ManifestTargets[mn] = mt
+}
+
+func (e EngineState) Manifest(mn model.ManifestName) (model.Manifest, bool) {
+	m, ok := e.ManifestTargets[mn]
+	if !ok {
+		return model.Manifest{}, ok
+	}
+	return m.Manifest, ok
+}
+
+func (e EngineState) ManifestState(mn model.ManifestName) (*ManifestState, bool) {
+	m, ok := e.ManifestTargets[mn]
+	if !ok {
+		return nil, ok
+	}
+	return m.State, ok
+}
+
+// Returns Manifests in a stable order
+func (e EngineState) Manifests() []model.Manifest {
+	result := make([]model.Manifest, 0, len(e.ManifestTargets))
+	for _, mn := range e.ManifestDefinitionOrder {
+		mt, ok := e.ManifestTargets[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt.Manifest)
+	}
+	return result
+}
+
+// Returns ManifestStates in a stable order
+func (e EngineState) ManifestStates() []*ManifestState {
+	result := make([]*ManifestState, 0, len(e.ManifestTargets))
+	for _, mn := range e.ManifestDefinitionOrder {
+		mt, ok := e.ManifestTargets[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt.State)
+	}
+	return result
+}
+
+// Returns ManifestTargets in a stable order
+func (e EngineState) Targets() []*ManifestTarget {
+	result := make([]*ManifestTarget, 0, len(e.ManifestTargets))
+	for _, mn := range e.ManifestDefinitionOrder {
+		mt, ok := e.ManifestTargets[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt)
+	}
+	return result
 }
 
 func (e EngineState) RelativeTiltfilePath() (string, error) {
@@ -76,7 +174,7 @@ func (e EngineState) RelativeTiltfilePath() (string, error) {
 }
 
 func (e EngineState) IsEmpty() bool {
-	return len(e.ManifestStates) == 0 && e.GlobalYAML.Empty()
+	return len(e.ManifestTargets) == 0 && e.GlobalYAML.Name == ""
 }
 
 func (e EngineState) LastTiltfileError() error {
@@ -87,30 +185,43 @@ type ResourceState interface {
 	ResourceState()
 }
 
+// TODO(nick): This will eventually implement TargetStatus
+type BuildStatus struct {
+	// Stores the times of all the pending changes,
+	// so we can prioritize the oldest one first.
+	// This map is mutable.
+	PendingFileChanges map[string]time.Time
+
+	LastSuccessfulResult BuildResult
+}
+
+func newBuildStatus() *BuildStatus {
+	return &BuildStatus{
+		PendingFileChanges: make(map[string]time.Time),
+	}
+}
+
 type ManifestState struct {
-	Manifest model.Manifest
+	Name model.ManifestName
 
 	// k8s-specific state
 	PodSet PodSet
 	LBs    map[k8s.ServiceName]*url.URL
 
+	BuildStatuses map[model.TargetID]*BuildStatus
+
 	// State of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
-	// TODO(maia): implement for k8s
 	ResourceState ResourceState
 
-	// Store the times of all the pending changes,
-	// so we can prioritize the oldest one first.
-	PendingFileChanges    map[string]time.Time
 	PendingManifestChange time.Time
 
 	// The current build
-	CurrentBuild model.BuildStatus
+	CurrentBuild model.BuildRecord
 
-	LastSuccessfulResult     BuildResult
 	LastSuccessfulDeployTime time.Time
 
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
-	BuildHistory []model.BuildStatus
+	BuildHistory []model.BuildRecord
 
 	// If the pod isn't running this container then it's possible we're running stale code
 	ExpectedContainerID container.ID
@@ -124,17 +235,41 @@ type ManifestState struct {
 
 func NewState() *EngineState {
 	ret := &EngineState{}
-	ret.ManifestStates = make(map[model.ManifestName]*ManifestState)
+	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]bool)
 	return ret
 }
 
-func NewManifestState(manifest model.Manifest) *ManifestState {
+func newManifestState(mn model.ManifestName) *ManifestState {
 	return &ManifestState{
-		Manifest:           manifest,
-		PendingFileChanges: make(map[string]time.Time),
-		LBs:                make(map[k8s.ServiceName]*url.URL),
+		Name:          mn,
+		BuildStatuses: make(map[model.TargetID]*BuildStatus),
+		LBs:           make(map[k8s.ServiceName]*url.URL),
 	}
+}
+
+func (ms *ManifestState) TargetID() model.TargetID {
+	return model.TargetID{
+		Type: model.TargetTypeManifest,
+		Name: ms.Name.TargetName(),
+	}
+}
+
+func (ms *ManifestState) BuildStatus(id model.TargetID) BuildStatus {
+	result, ok := ms.BuildStatuses[id]
+	if !ok {
+		return BuildStatus{}
+	}
+	return *result
+}
+
+func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
+	result, ok := ms.BuildStatuses[id]
+	if !ok {
+		result = newBuildStatus()
+		ms.BuildStatuses[id] = result
+	}
+	return result
 }
 
 func (ms *ManifestState) DCResourceState() dockercompose.State {
@@ -147,15 +282,19 @@ func (ms *ManifestState) IsDC() bool {
 	return ok
 }
 
-func (ms *ManifestState) LastBuild() model.BuildStatus {
+func (ms *ManifestState) ActiveBuild() model.BuildRecord {
+	return ms.CurrentBuild
+}
+
+func (ms *ManifestState) LastBuild() model.BuildRecord {
 	if len(ms.BuildHistory) == 0 {
-		return model.BuildStatus{}
+		return model.BuildRecord{}
 	}
 	return ms.BuildHistory[0]
 }
 
-func (ms *ManifestState) AddCompletedBuild(bs model.BuildStatus) {
-	ms.BuildHistory = append([]model.BuildStatus{bs}, ms.BuildHistory...)
+func (ms *ManifestState) AddCompletedBuild(bs model.BuildRecord) {
+	ms.BuildHistory = append([]model.BuildRecord{bs}, ms.BuildHistory...)
 	if len(ms.BuildHistory) > model.BuildHistoryLimit {
 		ms.BuildHistory = ms.BuildHistory[:model.BuildHistoryLimit]
 	}
@@ -171,8 +310,10 @@ func (ms *ManifestState) MostRecentPod() Pod {
 
 func (ms *ManifestState) NextBuildReason() model.BuildReason {
 	reason := model.BuildReasonNone
-	if len(ms.PendingFileChanges) > 0 {
-		reason = reason.With(model.BuildReasonFlagMountFiles)
+	for _, status := range ms.BuildStatuses {
+		if len(status.PendingFileChanges) > 0 {
+			reason = reason.With(model.BuildReasonFlagMountFiles)
+		}
 	}
 	if !ms.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
@@ -213,10 +354,12 @@ func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool,
 		earliest = t
 	}
 
-	for _, t := range ms.PendingFileChanges {
-		if t.Before(earliest) && ms.IsPendingTime(t) {
-			ok = true
-			earliest = t
+	for _, status := range ms.BuildStatuses {
+		for _, t := range status.PendingFileChanges {
+			if t.Before(earliest) && ms.IsPendingTime(t) {
+				ok = true
+				earliest = t
+			}
 		}
 	}
 	if !ok {
@@ -224,6 +367,8 @@ func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool,
 	}
 	return ok, earliest
 }
+
+var _ model.TargetStatus = &ManifestState{}
 
 type YAMLManifestState struct {
 	HasBeenDeployed bool
@@ -238,6 +383,29 @@ type YAMLManifestState struct {
 func NewYAMLManifestState() *YAMLManifestState {
 	return &YAMLManifestState{}
 }
+
+func (s *YAMLManifestState) TargetID() model.TargetID {
+	return model.TargetID{
+		Type: model.TargetTypeManifest,
+		Name: model.GlobalYAMLManifestName.TargetName(),
+	}
+}
+
+func (s *YAMLManifestState) ActiveBuild() model.BuildRecord {
+	return model.BuildRecord{
+		StartTime: s.CurrentApplyStartTime,
+	}
+}
+
+func (s *YAMLManifestState) LastBuild() model.BuildRecord {
+	return model.BuildRecord{
+		StartTime:  s.LastApplyStartTime,
+		FinishTime: s.LastApplyFinishTime,
+		Error:      s.LastError,
+	}
+}
+
+var _ model.TargetStatus = &YAMLManifestState{}
 
 type PodSet struct {
 	Pods    map[k8s.PodID]*Pod
@@ -319,6 +487,8 @@ type Pod struct {
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
+
+	HasSynclet bool
 }
 
 func (p Pod) Empty() bool {
@@ -374,24 +544,14 @@ func shortenFileList(baseDirs []string, files []string) []string {
 	return ret
 }
 
-// Returns the manifests in order.
-func (s EngineState) Manifests() []model.Manifest {
-	result := make([]model.Manifest, 0)
-	for _, name := range s.ManifestDefinitionOrder {
-		ms := s.ManifestStates[name]
-		result = append(result, ms.Manifest)
-	}
-	return result
-}
-
-func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
+func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
 		sort.Strings(endpoints)
 	}()
 
 	// If the user specified port-forwards in the Tiltfile, we
 	// assume that's what they want to see in the UI
-	portForwards := ms.Manifest.K8sInfo().PortForwards
+	portForwards := mt.Manifest.K8sTarget().PortForwards
 	if len(portForwards) > 0 {
 		for _, pf := range portForwards {
 			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
@@ -399,7 +559,7 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 		return endpoints
 	}
 
-	for _, u := range ms.LBs {
+	for _, u := range mt.State.LBs {
 		if u != nil {
 			endpoints = append(endpoints, u.String())
 		}
@@ -410,14 +570,20 @@ func ManifestStateEndpoints(ms *ManifestState) (endpoints []string) {
 func StateToView(s EngineState) view.View {
 	ret := view.View{
 		TriggerMode: s.TriggerMode,
+		IsProfiling: s.IsProfiling,
 	}
 
 	for _, name := range s.ManifestDefinitionOrder {
-		ms := s.ManifestStates[name]
+		mt, ok := s.ManifestTargets[name]
+		if !ok {
+			continue
+		}
+
+		ms := mt.State
 
 		var absWatchDirs []string
 		var absWatchPaths []string
-		for _, p := range ms.Manifest.LocalPaths() {
+		for _, p := range mt.Manifest.LocalPaths() {
 			fi, err := os.Stat(p)
 			if err == nil && !fi.IsDir() {
 				absWatchPaths = append(absWatchPaths, p)
@@ -430,13 +596,15 @@ func StateToView(s EngineState) view.View {
 		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
-		for f := range ms.PendingFileChanges {
-			pendingBuildEdits = append(pendingBuildEdits, f)
+		for _, status := range ms.BuildStatuses {
+			for f := range status.PendingFileChanges {
+				pendingBuildEdits = append(pendingBuildEdits, f)
+			}
 		}
 
 		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
 
-		buildHistory := append([]model.BuildStatus{}, ms.BuildHistory...)
+		buildHistory := append([]model.BuildRecord{}, ms.BuildHistory...)
 		for i, build := range buildHistory {
 			build.Edits = shortenFileList(absWatchDirs, build.Edits)
 			buildHistory[i] = build
@@ -448,7 +616,7 @@ func StateToView(s EngineState) view.View {
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
 
-		endpoints := ManifestStateEndpoints(ms)
+		endpoints := ManifestTargetEndpoints(mt)
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
@@ -467,15 +635,15 @@ func StateToView(s EngineState) view.View {
 			CurrentBuild:       currentBuild,
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
-			ResourceInfo:       resourceInfoView(ms),
+			ResourceInfo:       resourceInfoView(mt),
 		}
 
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	if s.GlobalYAML.K8sYAML() != "" {
+	if s.GlobalYAML.K8sTarget().YAML != "" {
 		var absWatches []string
-		for _, p := range s.GlobalYAML.Dependencies() {
+		for _, p := range s.ConfigFiles {
 			absWatches = append(absWatches, p)
 		}
 		relWatches := ospath.TryAsCwdChildren(absWatches)
@@ -483,42 +651,50 @@ func StateToView(s EngineState) view.View {
 		r := view.Resource{
 			Name:               s.GlobalYAML.ManifestName(),
 			DirectoriesWatched: relWatches,
-			CurrentBuild:       model.BuildStatus{StartTime: s.GlobalYAMLState.CurrentApplyStartTime},
-			BuildHistory: []model.BuildStatus{
-				model.BuildStatus{
-					StartTime:  s.GlobalYAMLState.LastApplyStartTime,
-					FinishTime: s.GlobalYAMLState.LastApplyFinishTime,
-					Error:      s.GlobalYAMLState.LastError,
-				},
+			CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
+			BuildHistory: []model.BuildRecord{
+				s.GlobalYAMLState.LastBuild(),
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
 			ResourceInfo: view.YAMLResourceInfo{
-				K8sResources: s.GlobalYAML.Resources(),
+				K8sResources: s.GlobalYAML.K8sTarget().ResourceNames,
 			},
 		}
 
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	ret.Log = string(s.Log)
-
+	tfb := s.LastTiltfileBuild
+	tfb.Log = s.CurrentTiltfileBuild.Log
+	tr := view.Resource{
+		Name:       "(Tiltfile)",
+		IsTiltfile: true,
+		BuildHistory: []model.BuildRecord{
+			tfb,
+		},
+	}
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error
 		if err == nil && s.IsEmpty() {
+			tr.CrashLog = emptyTiltfileMsg
 			ret.TiltfileErrorMessage = emptyTiltfileMsg
 		} else if err != nil {
+			tr.CrashLog = err.Error()
 			ret.TiltfileErrorMessage = err.Error()
 		}
 	}
+	ret.Resources = append(ret.Resources, tr)
+
+	ret.Log = string(s.Log)
 
 	return ret
 }
 
-func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
-	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(ms.Manifest.DCInfo().ConfigPath, dcState.Status, dcState.Log())
+func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
+	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
-		pod := ms.MostRecentPod()
+		pod := mt.State.MostRecentPod()
 		return view.K8SResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
@@ -535,9 +711,9 @@ func resourceInfoView(ms *ManifestState) view.ResourceInfoView {
 // NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
 // path from the first d-c manifest we see.
 func (s EngineState) DockerComposeConfigPath() string {
-	for _, ms := range s.ManifestStates {
-		if ms.Manifest.IsDC() {
-			return ms.Manifest.DCInfo().ConfigPath
+	for _, mt := range s.ManifestTargets {
+		if mt.Manifest.IsDC() {
+			return mt.Manifest.DockerComposeTarget().ConfigPath
 		}
 	}
 	return ""

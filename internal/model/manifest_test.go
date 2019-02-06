@@ -3,6 +3,8 @@ package model
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/container"
 )
@@ -67,311 +69,277 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM node"}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM nope"}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM node"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM nope"})),
 		false,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM node"}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{BaseDockerfile: "FROM node"}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM node"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{BaseDockerfile: "FROM node"})),
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-				}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-				}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			})),
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-				}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{
-					Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
-				}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
+			})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{
+				Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
+			})),
 		false,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount2}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount2}})),
 		false,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1}}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{mount1, mount2}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{mount1, mount2}})),
 		false,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: nil}),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Mounts: []Mount{}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: nil})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Mounts: []Mount{}})),
 		true,
 	},
 	{
-		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
 				},
 			},
-		},
-		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+		}),
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.so",
 				},
 			},
-		},
+		}),
 		false,
 	},
 	{
-		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
 				},
 			},
-		},
-		Manifest{
-			repos: []LocalGithubRepo{
-				LocalGithubRepo{
+		}),
+		Manifest{}.WithImageTarget(ImageTarget{
+			repos: []LocalGitRepo{
+				LocalGitRepo{
 					LocalPath:         "/foo/baz",
 					GitignoreContents: "*.exe",
 				},
 			},
-		},
+		}),
 		true,
 	},
 	{
-		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8000}),
-		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8001}),
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8001}),
 		false,
 	},
 	{
-		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8000}),
-		Manifest{}.WithDeployInfo(K8sInfo{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHi}},
-			),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHi}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHi}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHi}},
+		)),
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHi}},
-			),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayBye}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHi}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayBye}},
+		)),
 		false,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-			),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+		)),
 		true,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-			),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerBar}}),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerBar}})),
 		false,
 	},
 	{
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerDirA}},
-			),
-		},
-		Manifest{
-			DockerInfo: DockerInfo{}.WithBuildDetails(
-				FastBuild{Steps: []Step{stepSayHiTriggerDirB}},
-			),
-		},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerDirA}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Steps: []Step{stepSayHiTriggerDirB}},
+		)),
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM bar"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM bar"})),
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{Dockerfile: "FROM foo"})),
 		true,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar/baz"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar/baz"})),
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildPath: "foo/bar"})),
 		true,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs2})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs2})),
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
-		Manifest{DockerInfo: DockerInfo{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})},
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(StaticBuild{BuildArgs: buildArgs1})),
 		true,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
-		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"bar"}}},
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"bar"}}),
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
-		Manifest{DockerInfo: DockerInfo{cachePaths: []string{"foo"}}},
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
 		true,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{Ref: img1}},
-		Manifest{DockerInfo: DockerInfo{Ref: img2}},
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img2}),
 		false,
 	},
 	{
-		Manifest{DockerInfo: DockerInfo{Ref: img1}},
-		Manifest{DockerInfo: DockerInfo{Ref: img1}},
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
 		true,
 	},
 	{
-		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
-		Manifest{dockerignores: []Dockerignore{{"b", "a"}}},
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}),
 		false,
 	},
 	{
-		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
-		Manifest{dockerignores: []Dockerignore{{"a", "b"}}},
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
 		true,
 	},
 	{
-		Manifest{}.WithDeployInfo(DCInfo{ConfigPath: "/src/docker-compose.yml"}),
-		Manifest{}.WithDeployInfo(DCInfo{ConfigPath: "/src/docker-compose.yml"}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose.yml"}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose.yml"}),
 		true,
 	},
 	{
-		Manifest{}.WithDeployInfo(DCInfo{ConfigPath: "/src/docker-compose1.yml"}),
-		Manifest{}.WithDeployInfo(DCInfo{ConfigPath: "/src/docker-compose2.yml"}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose1.yml"}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose2.yml"}),
 		false,
 	},
 	{
-		Manifest{}.WithDeployInfo(DCInfo{YAMLRaw: []byte("hello world")}),
-		Manifest{}.WithDeployInfo(DCInfo{YAMLRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
 		true,
 	},
 	{
-		Manifest{}.WithDeployInfo(DCInfo{YAMLRaw: []byte("hello world")}),
-		Manifest{}.WithDeployInfo(DCInfo{YAMLRaw: []byte("goodbye world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("goodbye world")}),
 		false,
 	},
 	{
-		Manifest{}.WithDeployInfo(DCInfo{DfRaw: []byte("hello world")}),
-		Manifest{}.WithDeployInfo(DCInfo{DfRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
 		true,
 	},
 	{
-		Manifest{}.WithDeployInfo(DCInfo{DfRaw: []byte("hello world")}),
-		Manifest{}.WithDeployInfo(DCInfo{DfRaw: []byte("goodbye world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("goodbye world")}),
 		false,
 	},
 	{
-		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
-		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
 		true,
 	},
 	{
-		Manifest{}.WithDeployInfo(K8sInfo{YAML: "hello world"}),
-		Manifest{}.WithDeployInfo(K8sInfo{YAML: "goodbye world"}),
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		false,
+	},
+	{
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+		}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+		}),
+		true,
+	},
+	{
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+		}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "baz"}.AsSelector()},
+		}),
 		false,
 	},
 }
@@ -388,6 +356,7 @@ func TestManifestEquality(t *testing.T) {
 
 func TestManifestValidateMountRelativePath(t *testing.T) {
 	fbInfo := FastBuild{
+		BaseDockerfile: `FROM golang`,
 		Mounts: []Mount{
 			Mount{
 				LocalPath:     "./hello",
@@ -397,9 +366,8 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	}
 
 	manifest := Manifest{
-		Name:       "test",
-		DockerInfo: DockerInfo{}.WithBuildDetails(fbInfo),
-	}
+		Name: "test",
+	}.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
 	err := manifest.Validate()
 
 	if assert.NotNil(t, err) {
@@ -407,7 +375,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	}
 
 	fbInfo.Mounts[0].LocalPath = "/abs/path/hello"
-	manifest.DockerInfo = DockerInfo{}.WithBuildDetails(fbInfo)
+	manifest = manifest.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
 	err = manifest.Validate()
 	assert.Nil(t, err)
 

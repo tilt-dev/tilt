@@ -17,15 +17,29 @@ type PipelineState struct {
 	pipelineStepDurations  []time.Duration
 	curPipelineStart       time.Time
 	curPipelineStepStart   time.Time
+	c                      Clock
+}
+
+type Clock interface {
+	Now() time.Time
+}
+
+type realClock struct{}
+
+func (realClock) Now() time.Time { return time.Now() }
+
+func ProvideClock() Clock {
+	return realClock{}
 }
 
 const buildStepOutputPrefix = "    ╎ "
 
-func NewPipelineState(ctx context.Context, totalStepCount int) *PipelineState {
+func NewPipelineState(ctx context.Context, totalStepCount int, c Clock) *PipelineState {
 	return &PipelineState{
 		curPipelineStep:        1,
 		totalPipelineStepCount: totalStepCount,
-		curPipelineStart:       time.Now(),
+		curPipelineStart:       c.Now(),
+		c:                      c,
 	}
 }
 
@@ -38,7 +52,7 @@ func (ps *PipelineState) End(ctx context.Context, err error) {
 	l := logger.Get(ctx)
 	prefix := logger.Blue(l).Sprint("  │ ")
 
-	elapsed := time.Now().Sub(ps.curPipelineStart)
+	elapsed := ps.c.Now().Sub(ps.curPipelineStart)
 
 	if err != nil {
 		prefix := logger.Red(l).Sprint("ERROR:")
@@ -63,11 +77,11 @@ func (ps *PipelineState) StartPipelineStep(ctx context.Context, format string, a
 	l.Infof("%s%s", line, fmt.Sprintf(format, a...))
 	ps.curPipelineStep++
 	ps.curBuildStep = 1
-	ps.curPipelineStepStart = time.Now()
+	ps.curPipelineStepStart = ps.c.Now()
 }
 
 func (ps *PipelineState) EndPipelineStep(ctx context.Context) {
-	elapsed := time.Now().Sub(ps.curPipelineStepStart)
+	elapsed := ps.c.Now().Sub(ps.curPipelineStepStart)
 	logger.Get(ctx).Infof("")
 	ps.pipelineStepDurations = append(ps.pipelineStepDurations, elapsed)
 }

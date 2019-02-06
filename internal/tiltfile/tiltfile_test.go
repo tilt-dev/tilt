@@ -10,7 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/docker"
 
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -27,7 +30,8 @@ func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.loadErrString("no such file")
+	f.loadErrString("No Tiltfile found at")
+	f.assertConfigFiles("Tiltfile")
 }
 
 func TestEmpty(t *testing.T) {
@@ -63,8 +67,29 @@ k8s_resource('foo', 'foo.yaml')
 
 	f.load()
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+// I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
+func TestLocalImageRef(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+docker_build('fooimage', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(imageNormalized("fooimage")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
@@ -82,6 +107,61 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
 }
 
+func TestExplicitDockerfileAsLocalPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+r = local_git_repo('.')
+docker_build('gcr.io/foo', 'foo', dockerfile=r.path('other/Dockerfile'))
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+}
+
+func TestExplicitDockerfileContents(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml")
+	f.assertNextManifest("foo", db(image("gcr.io/foo")))
+}
+
+func TestExplicitDockerfileContentsAsBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+df = read_file('other/Dockerfile')
+docker_build('gcr.io/foo', 'foo', dockerfile_contents=df)
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+	f.assertNextManifest("foo", db(image("gcr.io/foo")))
+}
+
+func TestCantSpecifyDFPathAndContents(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.dockerfile("other/Dockerfile")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine', dockerfile='foo/Dockerfile')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.loadErrString("Cannot specify both dockerfile and dockerfile_contents")
+}
+
 func TestFastBuildSimple(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -95,8 +175,29 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	f.assertManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
+	f.assertNextManifest("foo",
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
+		deployment("foo"),
+	)
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+func TestFastBuildHotReload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi") \
+  .hot_reload()
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	f.assertNextManifest("foo",
+		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
 	)
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
@@ -115,7 +216,7 @@ fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
 k8s_resource('foo', 'foo.yaml', image=fb)
 `)
 	f.load()
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
 		deployment("foo"),
 	)
@@ -169,7 +270,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"),
 			add("foo", "src/"),
 			run("echo hi", "a", "b"),
@@ -201,7 +302,7 @@ k8s_resource('foo', yaml)
 
 	f.load()
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 }
@@ -220,7 +321,7 @@ k8s_resource('foo', yaml)
 
 	f.load()
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
@@ -240,7 +341,7 @@ docker_build("gcr.io/foo", "foo")
 k8s_resource('foo', kustomize("."))
 `)
 	f.load()
-	f.assertManifest("foo", deployment("the-deployment"), numEntities(3))
+	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(3))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
@@ -254,7 +355,7 @@ k8s_yaml('foo.yaml')
 docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 `)
 	f.load()
-	f.assertManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
 }
 
 func TestFastBuildCache(t *testing.T) {
@@ -267,7 +368,7 @@ k8s_yaml('foo.yaml')
 fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
 `)
 	f.load()
-	f.assertManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), cache("/path/to/cache")))
 }
 
 func TestDuplicateResourceNames(t *testing.T) {
@@ -328,13 +429,22 @@ type portForwardCase struct {
 	name     string
 	expr     string
 	expected []model.PortForward
+	errorMsg string
 }
 
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
-		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}},
-		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}},
-		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}},
+		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}, ""},
+		{"value_local_negative", "-1", nil, "not in the range for a port"},
+		{"value_local_large", "8000000", nil, "not in the range for a port"},
+		{"value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}, ""},
+		{"value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}, ""},
+		{"value_string_garbage", "'garbage'", nil, "not in the range for a port"},
+		{"value_string_3x80", "'80:80:80'", nil, "not in the range for a port"},
+		{"value_string_empty", "''", nil, "not in the range for a port"},
+		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
 	}
 
 	for _, c := range portForwardCases {
@@ -348,8 +458,14 @@ k8s_resource('foo', 'foo.yaml', port_forwards=EXPR)
 `
 			s = strings.Replace(s, "EXPR", c.expr, -1)
 			f.file("Tiltfile", s)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
 			f.load()
-			f.assertManifest("foo",
+			f.assertNextManifest("foo",
 				c.expected,
 				db(image("gcr.io/foo")),
 				deployment("foo"))
@@ -369,10 +485,10 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 `)
 	f.load()
-	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"))
-	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
-	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
-	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 	f.assertNoYAMLManifest("")
 	f.assertConfigFiles("Tiltfile", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
 }
@@ -394,7 +510,7 @@ docker_build('gcr.io/a', 'a')
 `)
 
 	f.load()
-	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
 	f.assertYAMLManifest("a-secret")
 }
 
@@ -411,10 +527,10 @@ docker_build('gcr.io/d', 'd')
 k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 `)
 	f.load()
-	f.assertManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
-	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
-	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
-	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
@@ -436,10 +552,10 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 `)
 	f.load()
-	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"), deployment("a2"))
-	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
-	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
-	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"), deployment("a2"))
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 func TestMultipleYamlFiles(t *testing.T) {
@@ -459,10 +575,10 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 `)
 	f.load()
-	f.assertManifest("a", db(image("gcr.io/a")), deployment("a"))
-	f.assertManifest("b", db(image("gcr.io/b")), deployment("b"))
-	f.assertManifest("c", db(image("gcr.io/c")), deployment("c"))
-	f.assertManifest("d", db(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 func TestLoadOneManifest(t *testing.T) {
@@ -480,7 +596,7 @@ k8s_resource('bar', 'bar.yaml')
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
@@ -500,7 +616,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -519,7 +635,7 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters(".git"),
 		fileChangeFilters(".git"),
 		buildFilters("Tiltfile"),
@@ -543,7 +659,7 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters(".#foo.yaml"),
 		fileChangeFilters(".#foo.yaml"),
 	)
@@ -563,7 +679,7 @@ k8s_yaml('foo/foo.yaml')
 `)
 
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("foo/.#foo.yaml"),
 		fileChangeFilters("foo/.#foo.yaml"),
 	)
@@ -583,7 +699,7 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("a.txt"),
 		fileChangeFilters("a.txt"),
 		buildMatches("txt.a"),
@@ -605,7 +721,7 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
 		buildMatches("foo/txt.a"),
@@ -627,7 +743,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
 	)
@@ -647,35 +763,12 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load("foo")
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
 		buildMatches("foo/subdir/a.txt"),
 		fileChangeMatches("foo/subdir/a.txt"),
 	)
-}
-
-func TestDockerComposeResourceCreation(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("docker-compose.yml", `
-version: '3'
-services:
-  foo:
-    build: ./foo
-    command: sleep 100
-    ports:
-      - "12312:12312"`)
-	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
-
-	f.load("foo")
-	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.assertManifest("foo", dcConfigPath(configPath))
-
-	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
-	f.assertConfigFiles(expectedConfFiles...)
 }
 
 func TestK8sYAMLInputBareString(t *testing.T) {
@@ -719,10 +812,237 @@ if True:
 
 	f.load()
 
-	f.assertManifest("foo",
+	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+func TestHelm(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		"helm",
+	)
+}
+
+func TestHelmFromRepoPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit(".")
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+r = local_git_repo('.')
+yml = helm(r.path('helm'))
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		"helm",
+	)
+}
+
+func TestEmptyDockerfileStaticBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("foo/Dockerfile", "")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
+}
+
+func TestEmptyDockerfileFastBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("foo/Dockerfile", "")
+	f.file("Tiltfile", `
+fast_build('gcr.io/foo', 'foo/Dockerfile')
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load()
+	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	assert.False(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.True(t, m.ImageTargetAt(0).IsFastBuild())
+}
+
+func TestSanchoSidecar(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("k8s.yaml", testyaml.SanchoSidecarYAML)
+	f.file("Tiltfile", `
+k8s_yaml('k8s.yaml')
+docker_build('gcr.io/some-project-162817/sancho', '.')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
+`)
+	f.load()
+
+	assert.Equal(t, 1, len(f.manifests))
+	m := f.assertNextManifest("sancho")
+	assert.Equal(t, 2, len(m.ImageTargets))
+	assert.Equal(t, "gcr.io/some-project-162817/sancho",
+		m.ImageTargetAt(0).Ref.String())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
+		m.ImageTargetAt(1).Ref.String())
+}
+
+func TestSanchoRedisSidecar(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("k8s.yaml", testyaml.SanchoRedisSidecarYAML)
+	f.file("Tiltfile", `
+k8s_yaml('k8s.yaml')
+docker_build('gcr.io/some-project-162817/sancho', '.')
+`)
+	f.load()
+
+	assert.Equal(t, 1, len(f.manifests))
+	m := f.assertNextManifest("sancho")
+	assert.Equal(t, 1, len(m.ImageTargets))
+	assert.Equal(t, "gcr.io/some-project-162817/sancho",
+		m.ImageTargetAt(0).Ref.String())
+}
+
+func TestExtraPodSelectors(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("[{'foo': 'bar', 'baz': 'qux'}, {'quux': 'corge'}]")
+	f.load()
+
+	f.assertNextManifest("foo",
+		extraPodSelectors(labels.Set{"foo": "bar", "baz": "qux"}, labels.Set{"quux": "corge"}))
+}
+
+func TestExtraPodSelectorsNotList(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("'hello'")
+	f.loadErrString("got starlark.String", "dict or a list")
+}
+
+func TestExtraPodSelectorsDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("{'foo': 'bar'}")
+	f.load()
+	f.assertNextManifest("foo",
+		extraPodSelectors(labels.Set{"foo": "bar"}))
+}
+
+func TestExtraPodSelectorsElementNotDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("['hello']")
+	f.loadErrString("must be dicts", "starlark.String")
+}
+
+func TestExtraPodSelectorsKeyNotString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("[{54321: 'hello'}]")
+	f.loadErrString("keys must be strings", "54321")
+}
+
+func TestExtraPodSelectorsValueNotString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExtraPodSelectors("[{'hello': 54321}]")
+	f.loadErrString("values must be strings", "54321")
+}
+
+func TestDockerBuildMatchingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		deployment("foo"),
+	)
+}
+
+func TestDockerBuildButK8sMissingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+}
+
+func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:beta")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+}
+
+func TestFail(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+fail("this is an error")
+print("not this")
+fail("or this")
+`)
+
+	f.loadErrString("this is an error")
 }
 
 type fixture struct {
@@ -732,7 +1052,7 @@ type fixture struct {
 
 	// created by load
 	manifests    []model.Manifest
-	yamlManifest model.YAMLManifest
+	yamlManifest model.Manifest
 	configFiles  []string
 }
 
@@ -807,7 +1127,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -817,7 +1137,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
@@ -838,13 +1158,13 @@ func (f *fixture) gitInit(path string) {
 }
 
 func (f *fixture) assertNoYAMLManifest(name string) {
-	assert.Equal(f.t, model.YAMLManifest{}, f.yamlManifest)
+	assert.Equal(f.t, model.Manifest{}, f.yamlManifest)
 }
 
 func (f *fixture) assertYAMLManifest(resNames ...string) {
 	assert.Equal(f.t, unresourcedName, f.yamlManifest.ManifestName().String())
 
-	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sYAML()))
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sTarget().YAML))
 	assert.NoError(f.t, err)
 
 	entityNames := make([]string, len(entities))
@@ -855,19 +1175,23 @@ func (f *fixture) assertYAMLManifest(resNames ...string) {
 }
 
 // assert functions and helpers
-func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifest {
+func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Manifest {
 	if len(f.manifests) == 0 {
-		f.t.Fatalf("no more manifests; trying to find %q", name)
+		f.t.Fatalf("no more manifests; trying to find %q (did you call `f.load`?)", name)
 	}
 
 	m := f.manifests[0]
+	if m.Name != model.ManifestName(name) {
+		f.t.Fatalf("expected next manifest to be '%s' but found '%s'", name, m.Name)
+	}
+
 	f.manifests = f.manifests[1:]
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
-			caches := m.DockerInfo.CachePaths()
-			ref := m.DockerInfo.Ref
+			caches := m.ImageTargetAt(0).CachePaths()
+			ref := m.ImageTargetAt(0).Ref
 			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
@@ -887,15 +1211,16 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 				}
 			}
 		case fbHelper:
-			ref := m.DockerInfo.Ref
+			image := m.ImageTargetAt(0)
+			ref := image.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
 			}
 
-			fbInfo := m.FastBuildInfo()
-			if fbInfo.Empty() {
+			if !image.IsFastBuild() {
 				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
 			}
+			fbInfo := image.FastBuildInfo()
 
 			mounts := fbInfo.Mounts
 			steps := fbInfo.Steps
@@ -912,12 +1237,14 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 					steps = steps[1:]
 					assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
 					assert.Equal(f.t, matcher.triggers, step.Triggers)
+				case hotReloadHelper:
+					assert.Equal(f.t, matcher.on, fbInfo.HotReload)
 				default:
 					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
 				}
 			}
 		case deploymentHelper:
-			yaml := m.K8sInfo().YAML
+			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
 				if e.Kind.Kind == "Deployment" && f.k8sName(e) == opt.name {
@@ -928,8 +1255,10 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case extraPodSelectorsHelper:
+			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
 		case numEntitiesHelper:
-			yaml := m.K8sInfo().YAML
+			yaml := m.K8sTarget().YAML
 			entities := f.entities(yaml)
 			if opt.num != len(f.entities(yaml)) {
 				f.t.Fatalf("manifest %v has %v entities in %v; expected %v", m.Name, len(entities), yaml, opt.num)
@@ -951,11 +1280,18 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 			expectedFilter := opt.missing
-			filter := ignore.CreateBuildContextFilter(m)
+			filter := ignore.CreateBuildContextFilter(m.ImageTargetAt(0))
+			if m.IsDC() {
+				filter = ignore.CreateBuildContextFilter(m.DockerComposeTarget())
+			}
 			filterName := "BuildContextFilter"
 			if opt.fileChange {
 				var err error
-				filter, err = ignore.CreateFileChangeFilter(m)
+				if m.IsDC() {
+					filter, err = ignore.CreateFileChangeFilter(m.DockerComposeTarget())
+				} else {
+					filter, err = ignore.CreateFileChangeFilter(m.ImageTargetAt(0))
+				}
 				if err != nil {
 					f.t.Fatalf("Error creating file change filter: %v", err)
 				}
@@ -975,24 +1311,9 @@ func (f *fixture) assertManifest(name string, opts ...interface{}) model.Manifes
 			}
 
 		case []model.PortForward:
-			assert.Equal(f.t, opt, m.K8sInfo().PortForwards)
-		case dcConfigPathHelper:
-			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
-				dcInfo := m.DCInfo()
-				assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
-			}
-		case dcYAMLRawHelper:
-			dcInfo := m.DCInfo()
-			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
-				assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
-			}
-		case dcDfRawHelper:
-			if assert.True(f.t, m.IsDC(), "expected a docker-compose manifest") {
-				dcInfo := m.DCInfo()
-				assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
-			}
+			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
 		default:
-			f.t.Fatalf("unexpected arg to assertManifest: %T %v", opt, opt)
+			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
 	}
 	return m
@@ -1055,6 +1376,18 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 	return r
 }
 
+type extraPodSelectorsHelper struct {
+	labels []labels.Selector
+}
+
+func extraPodSelectors(labels ...labels.Set) extraPodSelectorsHelper {
+	ret := extraPodSelectorsHelper{}
+	for _, ls := range labels {
+		ret.labels = append(ret.labels, ls.AsSelector())
+	}
+	return ret
+}
+
 type numEntitiesHelper struct {
 	num int
 }
@@ -1105,6 +1438,10 @@ func image(ref string) imageHelper {
 	return imageHelper{ref: ref}
 }
 
+func imageNormalized(ref string) imageHelper {
+	return imageHelper{ref: docker.MustNormalizeRefName(ref)}
+}
+
 // match a docker_build
 type dbHelper struct {
 	image    imageHelper
@@ -1150,6 +1487,14 @@ func run(cmd string, triggers ...string) runHelper {
 	return runHelper{cmd, triggers}
 }
 
+type hotReloadHelper struct {
+	on bool
+}
+
+func hotReload(on bool) hotReloadHelper {
+	return hotReloadHelper{on: on}
+}
+
 // useful scenarios to setup
 
 // foo just has one image and one yaml
@@ -1185,4 +1530,25 @@ func (f *fixture) setupExpand() {
 	)
 
 	f.gitInit("")
+}
+
+func (f *fixture) setupHelm() {
+	f.file("helm/Chart.yaml", chartYAML)
+	f.file("helm/values.yaml", valuesYAML)
+
+	f.file("helm/templates/_helpers.tpl", helpersTPL)
+	f.file("helm/templates/deployment.yaml", deploymentYAML)
+	f.file("helm/templates/ingress.yaml", ingressYAML)
+	f.file("helm/templates/service.yaml", serviceYAML)
+}
+
+func (f *fixture) setupExtraPodSelectors(s string) {
+	f.setupFoo()
+
+	tiltfile := fmt.Sprintf(`
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml', extra_pod_selectors=%s)
+`, s)
+
+	f.file("Tiltfile", tiltfile)
 }

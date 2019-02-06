@@ -22,13 +22,19 @@ def local_git_repo(path: str) -> Repo:
   """Creates a ``repo`` from the git repo at ``path``."""
   pass
 
-def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: str = "Dockerfile") -> None:
+def docker_build(ref: str, context: str, build_args: Dict[str, str] = {}, dockerfile: Union[str, LocalPath] = "Dockerfile", dockerfile_contents: Union[str, Blob] = "") -> None:
   """Builds a docker image.
+
+  Note that you can't set both the `dockerfile` and `dockerfile_contents` arguments (will throw an error).
+
+  Example: ``docker_build('myregistry/myproj/backend', '/path/to/code')`` is roughly equivalent to the call ``docker build /path/to/code -t myregistry/myproj/backend``
+
   Args:
-    ref: e.g. a blorgdev/backend or gcr.io/project-name/bucket-name
-    context: The path to use as the Docker build context.
-    build_args: the build-time variables that are accessed like regular environment variables in the ``RUN`` instruction of the Dockerfile. See `the Docker Build Arg documentation <https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg>`_
-    dockerfile: The path to a Dockerfile
+    ref: name for this image (e.g. 'myproj/backend' or 'myregistry/myproj/backend'). If this image will be used in a k8s resource(s), this ref must match the ``spec.container.image`` param for that resource(s).
+    context: path to use as the Docker build context.
+    build_args: build-time variables that are accessed like regular environment variables in the ``RUN`` instruction of the Dockerfile. See `the Docker Build Arg documentation <https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables---build-arg>`_
+    dockerfile: path to the Dockerfile to build (may be absolute, or relative to cwd)
+    dockerfile_contents: raw contents of the Dockerfile to use for this build
   """
 pass
 
@@ -67,7 +73,8 @@ def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
   """
   pass
 
-def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_forwards: Union[str, int, List[int]] = []) -> None:
+def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "",
+    port_forwards: Union[str, int, List[int]] = [], extra_pod_selectors: Union[Dict[str, str], List[Dict[str, str]]] = []) -> None:
   """Creates a kubernetes resource that tilt can deploy using the specified image.
 
   Args:
@@ -83,6 +90,12 @@ def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "", port_f
       '9000:8000' (connect localhost:9000 to the container port 8000),
       ['9000:8000', '9001:8001'] (connect localhost:9000 and :9001 to the
       container ports 8000 and 8001, respectively).
+    extra_pod_selectors: In addition to relying on Tilt's heuristics to automatically
+      find K8S resources associated with this resource, a user may specify extra
+      labelsets to force entities to be associated with this resource. An entity
+      will be associated with this resource if it has all of the labels in at
+      least one of the entries specified (but still also if it meets any of
+      Tilt's usual mechanisms).
   """
   pass
 
@@ -101,3 +114,9 @@ def read_file(file_path: Union[str, LocalPath]) -> Blob:
 def kustomize(pathToDir: str) -> Blob:
   """Run `kustomize <https://github.com/kubernetes-sigs/kustomize>`_ on a given directory and return the resulting YAML as a Blob"""
   pass
+
+def helm(pathToChartDir: Union[str, LocalPath]) -> Blob:
+  """Run `helm template <https://docs.helm.sh/helm/#helm-template>`_ on a given directory that contains a chart and return the fully rendered YAML as a Blob"""
+
+def fail(msg: str) -> None:
+  """Raises an error that cannot be intercepted. Can be used anywhere in a Tiltfile."""

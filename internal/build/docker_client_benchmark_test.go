@@ -26,7 +26,7 @@ func BenchmarkExecInContainer(b *testing.B) {
 	cID := f.startContainer(f.ctx, containerConfigRunCmd(ref, model.Cmd{Argv: []string{"sleep", "300"}}))
 
 	run := func() {
-		err := f.dcli.ExecInContainer(f.ctx, cID, cmd, ioutil.Discard)
+		err := f.dCli.ExecInContainer(f.ctx, cID, cmd, ioutil.Discard)
 		if err != nil {
 			f.t.Fatal(err)
 		}

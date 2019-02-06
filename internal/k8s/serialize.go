@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -40,8 +41,23 @@ func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 			continue
 		}
 
-		deserializer := scheme.Codecs.UniversalDeserializer()
-		obj, groupVersionKind, err := deserializer.Decode(ext.Raw, nil, nil)
+		obj, groupVersionKind, err :=
+			scheme.Codecs.UniversalDeserializer().Decode(ext.Raw, nil, nil)
+		if err == nil {
+			result = append(result, K8sEntity{
+				Obj:  obj,
+				Kind: groupVersionKind,
+			})
+			continue
+		}
+
+		if !runtime.IsNotRegisteredError(err) {
+			return nil, err
+		}
+
+		// If this is a NotRegisteredError, fallback to unstructured code
+		obj, groupVersionKind, err =
+			unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, nil)
 		if err != nil {
 			return nil, err
 		}

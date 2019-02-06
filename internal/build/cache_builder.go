@@ -26,12 +26,12 @@ const CacheTagPrefix = "tilt-cache-"
 //
 // https://app.clubhouse.io/windmill/story/728/support-package-json-changes-gracefully
 type CacheBuilder struct {
-	dcli docker.DockerClient
+	dCli docker.Client
 }
 
-func NewCacheBuilder(dcli docker.DockerClient) CacheBuilder {
+func NewCacheBuilder(dCli docker.Client) CacheBuilder {
 	return CacheBuilder{
-		dcli: dcli,
+		dCli: dCli,
 	}
 }
 
@@ -73,7 +73,7 @@ func (b CacheBuilder) FetchCache(ctx context.Context, ref reference.Named, cache
 		return nil, err
 	}
 
-	_, _, err = b.dcli.ImageInspectWithRaw(ctx, cacheRef.String())
+	_, _, err = b.dCli.ImageInspectWithRaw(ctx, cacheRef.String())
 	if err == nil {
 		// We found it! yay!
 		return cacheRef, nil
@@ -111,7 +111,7 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Doc
 	// be something that happens in the background without any user-visible output.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	logger.Get(ctx).Debugf("Copying cache directories (%s)", sourceRef.String())
-	res, err := b.dcli.ImageBuild(ctx, dockerCtx, options)
+	res, err := b.dCli.ImageBuild(ctx, dockerCtx, options)
 	if err != nil {
 		return errors.Wrap(err, "ImageBuild")
 	}

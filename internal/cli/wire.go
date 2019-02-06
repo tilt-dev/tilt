@@ -20,20 +20,17 @@ import (
 )
 
 var K8sWireSet = wire.NewSet(
-	k8s.DetectEnv,
+	k8s.ProvideEnvOrError,
+	k8s.ProideEnv,
 	k8s.DetectNodeIP,
 
-	k8s.ProvidePortForwarder,
-	k8s.ProvideRESTClient,
-	k8s.ProvideRESTConfig,
-	k8s.NewK8sClient,
-	wire.Bind(new(k8s.Client), k8s.K8sClient{}))
+	k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 
-	docker.DefaultDockerClient,
-	wire.Bind(new(docker.DockerClient), new(docker.DockerCli)),
+	docker.DefaultClient,
+	wire.Bind(new(docker.Client), new(docker.Cli)),
 
 	dockercompose.NewDockerComposeClient,
 
@@ -49,6 +46,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewConfigsController,
 	engine.NewDockerComposeEventWatcher,
 	engine.NewDockerComposeLogManager,
+	engine.NewProfilerManager,
 
 	provideClock,
 	hud.NewRenderer,
@@ -71,12 +69,12 @@ var BaseWireSet = wire.NewSet(
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
-	wire.Build(BaseWireSet, demo.NewScript)
+	wire.Build(BaseWireSet, demo.NewScript, build.ProvideClock)
 	return demo.Script{}, nil
 }
 
 func wireThreads(ctx context.Context) (Threads, error) {
-	wire.Build(BaseWireSet)
+	wire.Build(BaseWireSet, build.ProvideClock)
 	return Threads{}, nil
 }
 

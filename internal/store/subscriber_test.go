@@ -89,7 +89,7 @@ func (f fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
 	}
 
 	select {
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 		return
 
 	case call := <-f.onChange:
@@ -102,7 +102,7 @@ func (f fakeSubscriber) assertOnChange(t *testing.T) {
 	t.Helper()
 
 	select {
-	case <-time.After(20 * time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 		t.Fatalf("timed out waiting for subscriber.OnChange")
 	case call := <-f.onChange:
 		close(call.done)

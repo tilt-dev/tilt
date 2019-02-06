@@ -3,6 +3,8 @@ package view
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -13,16 +15,20 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
-	ConfigPath string
-	status     string
-	log        string
+	ConfigPath  string
+	status      dockercompose.Status
+	ContainerID container.ID
+	log         string
+	StartTime   time.Time
 }
 
-func NewDCResourceInfo(configPath string, status string, log string) DCResourceInfo {
+func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log string, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
-		ConfigPath: configPath,
-		status:     status,
-		log:        log,
+		ConfigPath:  configPath,
+		status:      status,
+		ContainerID: cID,
+		log:         log,
+		StartTime:   startTime,
 	}
 }
 
@@ -30,7 +36,7 @@ var _ ResourceInfoView = DCResourceInfo{}
 
 func (DCResourceInfo) resourceInfoView()         {}
 func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
-func (dcInfo DCResourceInfo) Status() string     { return dcInfo.status }
+func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.status) }
 
 type K8SResourceInfo struct {
 	PodName            string
@@ -63,8 +69,8 @@ type Resource struct {
 	PathsWatched       []string
 	LastDeployTime     time.Time
 
-	BuildHistory []model.BuildStatus
-	CurrentBuild model.BuildStatus
+	BuildHistory []model.BuildRecord
+	CurrentBuild model.BuildRecord
 
 	PendingBuildReason model.BuildReason
 	PendingBuildEdits  []string
@@ -77,15 +83,22 @@ type Resource struct {
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
 	CrashLog string
+
+	IsTiltfile bool
 }
 
-func (r Resource) DCInfo() DCResourceInfo {
+func (r Resource) DockerComposeTarget() DCResourceInfo {
 	switch info := r.ResourceInfo.(type) {
 	case DCResourceInfo:
 		return info
 	default:
 		return DCResourceInfo{}
 	}
+}
+
+func (r Resource) DCInfo() DCResourceInfo {
+	ret, _ := r.ResourceInfo.(DCResourceInfo)
+	return ret
 }
 
 func (r Resource) IsDC() bool {
@@ -113,9 +126,9 @@ func (r Resource) IsYAML() bool {
 	return ok
 }
 
-func (r Resource) LastBuild() model.BuildStatus {
+func (r Resource) LastBuild() model.BuildRecord {
 	if len(r.BuildHistory) == 0 {
-		return model.BuildStatus{}
+		return model.BuildRecord{}
 	}
 	return r.BuildHistory[0]
 }
@@ -127,6 +140,10 @@ func (r Resource) DefaultCollapse() bool {
 	}
 
 	if r.IsYAML() {
+		autoExpand = true
+	}
+
+	if r.IsDC() && r.DockerComposeTarget().Status() == string(dockercompose.StatusCrash) {
 		autoExpand = true
 	}
 
@@ -155,6 +172,7 @@ type View struct {
 	Resources            []Resource
 	TiltfileErrorMessage string
 	TriggerMode          model.TriggerMode
+	IsProfiling          bool
 }
 
 type ViewState struct {

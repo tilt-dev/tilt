@@ -1,6 +1,7 @@
 package model
 
 // TODO(maia): throw an error if you try to name a manifest this in your Tiltfile?
+<<<<<<< HEAD
 const GlobalYAMLManifestName = ManifestName("GlobalYAML")
 
 type YAMLManifest struct {
@@ -53,3 +54,6 @@ func (y YAMLManifest) K8sYAML() string {
 func (y YAMLManifest) Empty() bool {
 	return y.K8sYAML() == ""
 }
+=======
+const GlobalYAMLManifestName = ManifestName("k8s_yaml")
+>>>>>>> master

@@ -20,23 +20,27 @@ type dockerImage struct {
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
-	tiltfilePath       localPath
 	cachePaths         []string
+	hotReload          bool
 
 	staticDockerfilePath localPath
 	staticDockerfile     dockerfile.Dockerfile
 	staticBuildPath      localPath
 	staticBuildArgs      model.DockerBuildArgs
+
+	// Whether this has been matched up yet to a deploy resource.
+	matched bool
 }
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs, cacheVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, cacheVal, dockerfileContentsVal starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
 		"build_args?", &buildArgs,
 		"dockerfile?", &dockerfilePathVal,
+		"dockerfile_contents?", &dockerfileContentsVal,
 		"cache?", &cacheVal,
 	); err != nil {
 		return nil, err
@@ -55,14 +59,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	dockerfilePath := context.join("Dockerfile")
-	if dockerfilePathVal != nil {
-		dockerfilePath, err = s.localPathFromSkylarkValue(dockerfilePathVal)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	var sba map[string]string
 	if buildArgs != nil {
 		d, ok := buildArgs.(*starlark.Dict)
@@ -76,13 +72,37 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
-	bs, err := s.readFile(dockerfilePath)
-	if err != nil {
-		return nil, err
+	dockerfilePath := context.join("Dockerfile")
+	var dockerfileContents string
+	if dockerfileContentsVal != nil && dockerfilePathVal != nil {
+		return nil, fmt.Errorf("Cannot specify both dockerfile and dockerfile_contents keyword arguments")
 	}
+	if dockerfileContentsVal != nil {
+		switch v := dockerfileContentsVal.(type) {
+		case *blob:
+			dockerfileContents = v.text
+		case starlark.String:
+			dockerfileContents = v.GoString()
+		default:
+			return nil, fmt.Errorf("Argument (dockerfile_contents): must be string or blob.")
+		}
+	} else if dockerfilePathVal != nil {
+		dockerfilePath, err = s.localPathFromSkylarkValue(dockerfilePathVal)
+		if err != nil {
+			return nil, err
+		}
 
-	if s.imagesByName[ref.Name()] != nil {
-		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
+		bs, err := s.readFile(dockerfilePath)
+		if err != nil {
+			return nil, err
+		}
+		dockerfileContents = string(bs)
+	} else {
+		bs, err := s.readFile(dockerfilePath)
+		if err != nil {
+			return nil, err
+		}
+		dockerfileContents = string(bs)
 	}
 
 	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
@@ -92,15 +112,16 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	r := &dockerImage{
 		staticDockerfilePath: dockerfilePath,
-		staticDockerfile:     dockerfile.Dockerfile(bs),
+		staticDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		staticBuildPath:      context,
 		ref:                  ref,
-		tiltfilePath:         s.filename,
 		staticBuildArgs:      sba,
 		cachePaths:           cachePaths,
 	}
-	s.imagesByName[ref.Name()] = r
-	s.images = append(s.images, r)
+	err = s.buildIndex.addImage(r)
+	if err != nil {
+		return nil, err
+	}
 
 	return starlark.None, nil
 }
@@ -130,10 +151,6 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	if s.imagesByName[ref.Name()] != nil {
-		return nil, fmt.Errorf("Image for ref %q has already been defined", ref.Name())
-	}
-
 	bs, err := s.readFile(baseDockerfilePath)
 	if err != nil {
 		return nil, err
@@ -155,10 +172,11 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		ref:                ref,
 		entrypoint:         entrypoint,
 		cachePaths:         cachePaths,
-		tiltfilePath:       s.filename,
 	}
-	s.imagesByName[ref.Name()] = r
-	s.images = append(s.images, r)
+	err = s.buildIndex.addImage(r)
+	if err != nil {
+		return nil, err
+	}
 
 	fb := &fastBuild{s: s, img: r}
 	return fb, nil
@@ -215,8 +233,9 @@ func (b *fastBuild) Hash() (uint32, error) {
 }
 
 const (
-	addN = "add"
-	runN = "run"
+	addN       = "add"
+	runN       = "run"
+	hotReloadN = "hot_reload"
 )
 
 func (b *fastBuild) Attr(name string) (starlark.Value, error) {
@@ -225,6 +244,8 @@ func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 		return starlark.NewBuiltin(name, b.add), nil
 	case runN:
 		return starlark.NewBuiltin(name, b.run), nil
+	case hotReloadN:
+		return starlark.NewBuiltin(name, b.hotReload), nil
 	default:
 		return starlark.None, nil
 	}
@@ -232,6 +253,16 @@ func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 
 func (b *fastBuild) AttrNames() []string {
 	return []string{addN, runN}
+}
+
+func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs); err != nil {
+		return nil, err
+	}
+
+	b.img.hotReload = true
+
+	return b, nil
 }
 
 func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -308,51 +339,57 @@ func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Mount {
 	return result
 }
 
-func (s *tiltfileState) reposToDomain(image *dockerImage) []model.LocalGithubRepo {
-	var result []model.LocalGithubRepo
+func reposForPaths(paths []localPath) []model.LocalGitRepo {
+	var result []model.LocalGitRepo
 	repoSet := map[string]bool{}
 
-	maybeAddRepo := func(path localPath) {
+	for _, path := range paths {
 		repo := path.repo
 		if repo == nil || repoSet[repo.basePath] {
-			return
+			continue
 		}
 
 		repoSet[repo.basePath] = true
-		result = append(result, model.LocalGithubRepo{
+		result = append(result, model.LocalGitRepo{
 			LocalPath:         repo.basePath,
 			GitignoreContents: repo.gitignoreContents,
 		})
 	}
 
-	for _, m := range image.mounts {
-		maybeAddRepo(m.src)
-	}
-	maybeAddRepo(image.baseDockerfilePath)
-	maybeAddRepo(image.staticDockerfilePath)
-	maybeAddRepo(image.staticBuildPath)
-	maybeAddRepo(image.tiltfilePath)
-
 	return result
 }
 
-func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Dockerignore {
+func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
+	var paths []localPath
+	for _, m := range image.mounts {
+		paths = append(paths, m.src)
+	}
+	paths = append(paths,
+		image.baseDockerfilePath,
+		image.staticDockerfilePath,
+		image.staticBuildPath,
+		s.filename)
+
+	return reposForPaths(paths)
+}
+
+func dockerignoresForPaths(paths []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
 
-	maybeAddDockerignore := func(path string) {
+	for _, path := range paths {
 		if path == "" || dupeSet[path] {
-			return
+			continue
 		}
 		dupeSet[path] = true
 
 		if !ospath.IsDir(path) {
-			return
+			continue
 		}
 
 		contents, err := ioutil.ReadFile(filepath.Join(path, ".dockerignore"))
 		if err != nil {
-			return
+			continue
 		}
 
 		result = append(result, model.Dockerignore{
@@ -361,15 +398,21 @@ func (s *tiltfileState) dockerignoresToDomain(image *dockerImage) []model.Docker
 		})
 	}
 
+	return result
+}
+
+func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
+	var paths []string
+
 	for _, m := range image.mounts {
-		maybeAddDockerignore(m.src.path)
+		paths = append(paths, m.src.path)
 
 		repo := m.src.repo
 		if repo != nil {
-			maybeAddDockerignore(repo.basePath)
+			paths = append(paths, repo.basePath)
 		}
 	}
-	maybeAddDockerignore(image.staticBuildPath.path)
+	paths = append(paths, image.staticBuildPath.path)
 
-	return result
+	return dockerignoresForPaths(paths)
 }

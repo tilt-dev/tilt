@@ -60,6 +60,16 @@ func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
 }
 
+func TestGitIgnoreTester_DirectoryContents(t *testing.T) {
+	t.Skip("https://app.clubhouse.io/windmill/story/1397/tilt-gitignore-doesn-t-ignore-directories")
+	tf := newTestFixture(t, "foo/")
+	defer tf.TearDown()
+
+	tf.UseSingleRepoTester()
+
+	tf.AssertResult("foo/bar", true, false)
+}
+
 func TestRepoIgnoreTester_MatchesRelativePath(t *testing.T) {
 	tf := newTestFixture(t, "")
 	defer tf.TearDown()

@@ -535,14 +535,14 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	f.Rm("delete_me") // expect to be deleted from container on update
 	f.WriteFile("foo", "hello world")
 
-	paths := []pathMapping{
-		pathMapping{LocalPath: f.JoinPath("delete_me"), ContainerPath: "/src/delete_me"},
-		pathMapping{LocalPath: f.JoinPath("foo"), ContainerPath: "/src/foo"},
+	paths := []PathMapping{
+		PathMapping{LocalPath: f.JoinPath("delete_me"), ContainerPath: "/src/delete_me"},
+		PathMapping{LocalPath: f.JoinPath("foo"), ContainerPath: "/src/foo"},
 	}
 	touchBar := model.ToShellCmd("touch /src/bar")
 
-	cUpdater := ContainerUpdater{dcli: f.dcli}
-	err = cUpdater.UpdateInContainer(f.ctx, cID, paths, model.EmptyMatcher, []model.Cmd{touchBar}, f.ps.Writer(f.ctx))
+	cUpdater := ContainerUpdater{dCli: f.dCli}
+	err = cUpdater.UpdateInContainer(f.ctx, cID, paths, model.EmptyMatcher, []model.Cmd{touchBar}, false, f.ps.Writer(f.ctx))
 	if err != nil {
 		f.t.Fatal(err)
 	}

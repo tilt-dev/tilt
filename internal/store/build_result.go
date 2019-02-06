@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // The results of a successful build.
@@ -18,12 +19,6 @@ type BuildResult struct {
 
 	// If this build was a container build, containerID we built on top of
 	ContainerID container.ID
-
-	// The namespace where the pod was deployed.
-	Namespace k8s.Namespace
-
-	// The k8s entities deployed alongside the image.
-	Entities []k8s.K8sEntity
 
 	// Some of our build engines replace the files in-place, rather
 	// than building a new image. This captures how much the code
@@ -44,8 +39,6 @@ func (b BuildResult) HasImage() bool {
 func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
 	result := BuildResult{}
 	result.Image = b.Image
-	result.Namespace = b.Namespace
-	result.Entities = append([]k8s.K8sEntity{}, b.Entities...)
 
 	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))
 	for k, v := range b.FilesReplacedSet {
@@ -56,6 +49,17 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 	}
 	result.FilesReplacedSet = newSet
 	return result
+}
+
+type BuildResultSet map[model.TargetID]BuildResult
+
+func (set BuildResultSet) AsOneResult() BuildResult {
+	if len(set) == 1 {
+		for _, result := range set {
+			return result
+		}
+	}
+	return BuildResult{}
 }
 
 // The state of the system since the last successful build.
@@ -83,7 +87,7 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 	}
 }
 
-func (b BuildState) WithDeployInfo(d DeployInfo) BuildState {
+func (b BuildState) WithDeployTarget(d DeployInfo) BuildState {
 	b.DeployInfo = d
 	return b
 }
@@ -144,11 +148,34 @@ func (b BuildState) HasImage() bool {
 	return b.LastResult.HasImage()
 }
 
+type BuildStateSet map[model.TargetID]BuildState
+
+func (set BuildStateSet) Empty() bool {
+	return len(set) == 0
+}
+
+func (set BuildStateSet) FilesChanged() []string {
+	resultMap := map[string]bool{}
+	for _, state := range set {
+		for k := range state.FilesChangedSet {
+			resultMap[k] = true
+		}
+	}
+
+	result := make([]string, 0, len(resultMap))
+	for k := range resultMap {
+		result = append(result, k)
+	}
+	sort.Strings(result)
+	return result
+}
+
 // The information we need to find a ready container.
 type DeployInfo struct {
 	PodID         k8s.PodID
 	ContainerID   container.ID
 	ContainerName container.Name
+	Namespace     k8s.Namespace
 }
 
 func (d DeployInfo) Empty() bool {
@@ -171,6 +198,7 @@ func NewDeployInfo(podSet PodSet) DeployInfo {
 		PodID:         pod.PodID,
 		ContainerID:   pod.ContainerID,
 		ContainerName: pod.ContainerName,
+		Namespace:     pod.Namespace,
 	}
 }
 

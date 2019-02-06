@@ -3,6 +3,15 @@
 check-go: lint errcheck verify_gofmt wire-check test-go
 all: check-go test-js
 
+# There are 2 Go bugs that cause problems on CI:
+# 1) Linker memory usage blew up in Go 1.11
+# 2) Go incorrectly detects the number of CPUs when running in containers,
+#    and sets the number of parallel jobs to the number of CPUs.
+# This makes CI blow up frequently without out-of-memory errors.
+# Manually setting the number of parallel jobs helps fix this.
+# https://github.com/golang/go/issues/26186#issuecomment-435544512
+GO_PARALLEL_JOBS := 8
+
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
@@ -39,19 +48,24 @@ lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
 
 build:
-	./hide_tbd_warning go test -timeout 60s ./... -run nonsenseregex
+	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
-test-go: 
-	./hide_tbd_warning go test -timeout 60s ./...
+test-go:
+	if [[ -z $$CIRCLE_CI ]]; then \
+		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./...; \
+	else \
+		mkdir -p test-results; \
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 60s; \
+	fi
 
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
 shorttest:
-	./hide_tbd_warning go test -tags 'skipcontainertests' -timeout 60s ./...
+	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
 
 integration:
-	./hide_tbd_warning go test -tags 'integration' -timeout 300s ./integration
+	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 300s ./integration
 
 dev-js:
 	cd web && yarn install && yarn run start
@@ -117,4 +131,3 @@ docs:
 	docker run --name tiltdocs tilt/docs
 	docker cp tiltdocs:/src/_build docs/
 	docker rm tiltdocs
-

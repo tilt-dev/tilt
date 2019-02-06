@@ -36,40 +36,41 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		return nil, nil
 	}
 
-	for _, ms := range state.ManifestStates {
-		if !ms.Manifest.IsDC() {
+	for _, mt := range state.ManifestTargets {
+		manifest := mt.Manifest
+		if !manifest.IsDC() {
 			continue
 		}
-		dcInfo := ms.Manifest.DCInfo()
 
-		existing, isActive := m.watches[ms.Manifest.Name]
+		existing, isActive := m.watches[manifest.Name]
 		startWatchTime := time.Unix(0, 0)
 		if isActive {
-			if existing.ctx.Err() == nil {
+			select {
+			case termTime := <-existing.terminationTime:
+				// If we're receiving on this channel, it's because the previous watcher ended or
+				// died somehow; we need to create a new one that picks up where it left off.
+				startWatchTime = termTime
+			default:
 				// Watcher is still active, no action needed.
 				continue
 			}
-
-			// The active log watcher got cancelled somehow, so we need to create
-			// a new one that picks up where it left off.
-			startWatchTime = <-existing.terminationTime
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
 		w := dockerComposeLogWatch{
 			ctx:             ctx,
 			cancel:          cancel,
-			name:            ms.Manifest.Name,
-			dcConfigPath:    dcInfo.ConfigPath,
+			name:            manifest.Name,
+			dc:              manifest.DockerComposeTarget(),
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),
 		}
-		m.watches[ms.Manifest.Name] = w
+		m.watches[manifest.Name] = w
 		setup = append(setup, w)
 	}
 
 	for key, value := range m.watches {
-		_, inState := state.ManifestStates[key]
+		_, inState := state.ManifestTargets[key]
 		if !inState {
 			delete(m.watches, key)
 
@@ -97,9 +98,9 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	}()
 
 	name := watch.name
-	readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.dcConfigPath, watch.name.String())
+	readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.dc.ConfigPath, watch.dc.Name)
 	if err != nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
 		return
 	}
 	defer func() {
@@ -119,7 +120,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 
 	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
 		return
 	}
 }
@@ -128,7 +129,7 @@ type dockerComposeLogWatch struct {
 	ctx             context.Context
 	cancel          func()
 	name            model.ManifestName
-	dcConfigPath    string
+	dc              model.DockerComposeTarget
 	startWatchTime  time.Time
 	terminationTime chan time.Time
 

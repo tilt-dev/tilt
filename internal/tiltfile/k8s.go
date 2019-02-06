@@ -2,20 +2,89 @@ package tiltfile
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/labels"
 
 	"go.starlark.net/starlark"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+type referenceList []reference.Named
+
+func (l referenceList) Len() int           { return len(l) }
+func (l referenceList) Less(i, j int) bool { return l[i].String() < l[j].String() }
+func (l referenceList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+
 type k8sResource struct {
-	name     string
-	k8s      []k8s.K8sEntity
-	imageRef string
+	// The name of this group, for display in the UX.
+	name string
+
+	// All k8s resources to be deployed.
+	entities []k8s.K8sEntity
+
+	// Image refs that the user manually asked to be associated with this resource.
+	providedImageRefNames map[string]bool
+
+	// All image refs, including:
+	// 1) one that the user manually asked to be associated with this resources, and
+	// 2) images that were auto-inferred from the included k8s resources.
+	imageRefNames map[string]bool
+
+	imageRefs referenceList
 
 	portForwards []portForward
+
+	// labels for pods that we should watch and associate with this resource
+	extraPodSelectors []labels.Selector
+}
+
+func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
+	r.providedImageRefNames[ref.Name()] = true
+	r.imageRefNames[ref.Name()] = true
+	r.imageRefs = append(r.imageRefs, ref)
+	sort.Sort(r.imageRefs)
+}
+
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
+	r.entities = append(r.entities, entities...)
+
+	for _, entity := range entities {
+		images, err := entity.FindImages()
+		if err != nil {
+			return err
+		}
+		for _, image := range images {
+			r.imageRefNames[image.Name()] = true
+			r.imageRefs = append(r.imageRefs, image)
+		}
+	}
+	return nil
+}
+
+// Return the provided image refs in a deterministic order.
+func (r k8sResource) providedImageRefNameList() []string {
+	result := make([]string, 0, len(r.providedImageRefNames))
+	for ref := range r.providedImageRefNames {
+		result = append(result, ref)
+	}
+	sort.Strings(result)
+	return result
+}
+
+// Return the image refs in a deterministic order.
+func (r k8sResource) imageRefNameList() []string {
+	result := make([]string, 0, len(r.imageRefNames))
+	for ref := range r.imageRefNames {
+		result = append(result, ref)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -40,12 +109,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	var yamlValue starlark.Value
 	var imageVal starlark.Value
 	var portForwardsVal starlark.Value
+	var extraPodSelectorsVal starlark.Value
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"yaml?", &yamlValue,
 		"image?", &imageVal,
 		"port_forwards?", &portForwardsVal,
+		"extra_pod_selectors?", &extraPodSelectorsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -63,14 +134,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	var imageRef string
+	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
 	case nil:
 		// empty
 	case starlark.String:
-		imageRef = string(imageVal)
+		imageRefAsStr = string(imageVal)
 	case *fastBuild:
-		imageRef = imageVal.img.ref.Name()
+		imageRefAsStr = imageVal.img.ref.String()
 	default:
 		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
 	}
@@ -80,11 +151,89 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	r.k8s = entities
-	r.imageRef = imageRef
+	err = r.addEntities(entities)
+	if err != nil {
+		return nil, err
+	}
+
+	if imageRefAsStr != "" {
+		imageRef, err := reference.ParseNormalizedNamed(imageRefAsStr)
+		if err != nil {
+			return nil, err
+		}
+		r.addProvidedImageRef(imageRef)
+	}
 	r.portForwards = portForwards
 
+	r.extraPodSelectors, err = podLabelsFromStarlarkValue(extraPodSelectorsVal)
+	if err != nil {
+		return nil, err
+	}
+
 	return starlark.None, nil
+}
+
+func selectorFromSkylarkDict(d *starlark.Dict) (labels.Selector, error) {
+	ret := make(labels.Set)
+
+	for _, t := range d.Items() {
+		kVal := t[0]
+		k, ok := kVal.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("pod label keys must be strings; got '%s' of type %T", kVal.String(), kVal)
+		}
+		vVal := t[1]
+		v, ok := vVal.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("pod label values must be strings; got '%s' of type %T", vVal.String(), vVal)
+		}
+		ret[string(k)] = string(v)
+	}
+	if len(ret) > 0 {
+		return ret.AsSelector(), nil
+	} else {
+		return nil, nil
+	}
+}
+
+func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	switch x := v.(type) {
+	case *starlark.Dict:
+		s, err := selectorFromSkylarkDict(x)
+		if err != nil {
+			return nil, err
+		} else if s == nil {
+			return nil, nil
+		} else {
+			return []labels.Selector{s}, nil
+		}
+	case *starlark.List:
+		var ret []labels.Selector
+
+		it := x.Iterate()
+		defer it.Done()
+		var i starlark.Value
+		for it.Next(&i) {
+			d, ok := i.(*starlark.Dict)
+			if !ok {
+				return nil, fmt.Errorf("pod labels elements must be dicts; got %T", i)
+			}
+			s, err := selectorFromSkylarkDict(d)
+			if err != nil {
+				return nil, err
+			} else if s != nil {
+				ret = append(ret, s)
+			}
+		}
+
+		return ret, nil
+	default:
+		return nil, fmt.Errorf("pod labels must be a dict or a list; got %T", v)
+	}
 }
 
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
@@ -92,7 +241,9 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
 	}
 	r := &k8sResource{
-		name: name,
+		name:                  name,
+		providedImageRefNames: make(map[string]bool),
+		imageRefNames:         make(map[string]bool),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
@@ -156,6 +307,14 @@ func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]
 			return nil, err
 		}
 		return []portForward{pf}, nil
+
+	case starlark.String:
+		pf, err := stringToPortForward(val)
+		if err != nil {
+			return nil, err
+		}
+		return []portForward{pf}, nil
+
 	case portForward:
 		return []portForward{val}, nil
 	case starlark.Sequence:
@@ -171,6 +330,14 @@ func (s *tiltfileState) convertPortForwards(name string, val starlark.Value) ([]
 					return nil, err
 				}
 				result = append(result, pf)
+
+			case starlark.String:
+				pf, err := stringToPortForward(i)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, pf)
+
 			case portForward:
 				result = append(result, i)
 			default:
@@ -228,6 +395,23 @@ func intToPortForward(i starlark.Int) (portForward, error) {
 		return portForward{}, fmt.Errorf("portForward value %v is not in the range for a port [0-65535]", n)
 	}
 	return portForward{local: int(n)}, nil
+}
+
+func stringToPortForward(s starlark.String) (portForward, error) {
+	parts := strings.SplitN(string(s), ":", 2)
+	local, err := strconv.Atoi(parts[0])
+	if err != nil || local < 0 || local > 65535 {
+		return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[0])
+	}
+
+	var container int
+	if len(parts) == 2 {
+		container, err = strconv.Atoi(parts[1])
+		if err != nil || container < 0 || container > 65535 {
+			return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[1])
+		}
+	}
+	return portForward{local: local, container: container}, nil
 }
 
 func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward {

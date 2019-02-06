@@ -66,6 +66,11 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
+	if res.IsTiltfile && res.CrashLog == "" {
+		return cGood
+	} else if res.IsTiltfile && res.CrashLog != "" {
+		return cBad
+	}
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
@@ -109,7 +114,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 	sb.Fg(color).Textf(" ● ")
 
 	name := v.res.Name.String()
-	if color == cPending {
+	if color == cPending && !v.res.IsTiltfile {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
 	sb.Fg(tcell.ColorDefault).Text(name)
@@ -141,7 +146,7 @@ func titleTextDC(dcInfo view.DCResourceInfo) rty.Component {
 	if status == "" {
 		status = "Pending"
 	}
-	sb.Textf("DC %s", status)
+	sb.Text(status)
 	return sb.Build()
 }
 
@@ -191,11 +196,8 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
 	rhs := rty.NewConcatLayout(rty.DirVert)
-	if unresourced != "" {
-		rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("The YAML loaded from your Tiltfile includes:").Build())
-		rhs.Add(rty.TextString(unresourced))
-		rhs.Add(rty.NewLine())
-	}
+	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("K8s objects not included in the resources above:").Build())
+	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
 	l.AddDynamic(rhs)
 	return l
 }
@@ -228,25 +230,31 @@ func appendIfMissing(slice []string, s string) []string {
 }
 
 func (v *ResourceView) resourceExpandedDC() rty.Component {
-	if !v.res.IsDC() {
-		return rty.EmptyLayout
-	}
+	dcInfo := v.res.DCInfo()
 
 	l := rty.NewConcatLayout(rty.DirHor)
-	l.Add(v.resourceTextDCContainer())
+	l.Add(v.resourceTextDCContainer(dcInfo))
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
 
 	// TODO(maia): ports
-	// TODO(matt) container age?
+
+	st := v.res.DockerComposeTarget().StartTime
+	if !st.IsZero() {
+		l.Add(resourceTextAge(st))
+	}
 
 	return rty.OneLine(l)
 }
 
-func (v *ResourceView) resourceTextDCContainer() rty.Component {
+func (v *ResourceView) resourceTextDCContainer(dcInfo view.DCResourceInfo) rty.Component {
+	if dcInfo.ContainerID.String() == "" {
+		return rty.EmptyLayout
+	}
+
 	sb := rty.NewStringBuilder()
-	sb.Fg(cLightText).Text("DC container: ")
-	sb.Fg(tcell.ColorDefault).Text("not implemented sry 😅")
+	sb.Fg(cLightText).Text("Container ID: ")
+	sb.Fg(tcell.ColorDefault).Text(dcInfo.ContainerID.ShortStr())
 	return sb.Build()
 }
 
@@ -284,7 +292,7 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 		}
 	}
 
-	l.Add(resourceTextAge(k8sInfo))
+	l.Add(resourceTextAge(k8sInfo.PodCreationTime))
 	return rty.OneLine(l)
 }
 
@@ -306,10 +314,10 @@ func resourceTextPodRestarts(k8sInfo view.K8SResourceInfo) rty.Component {
 		Build()
 }
 
-func resourceTextAge(k8sInfo view.K8SResourceInfo) rty.Component {
+func resourceTextAge(t time.Time) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("AGE ")
-	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(k8sInfo.PodCreationTime)))
+	sb.Fg(tcell.ColorDefault).Text(formatDeployAge(time.Since(t)))
 	return rty.NewMinLengthLayout(DeployCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
 		Add(sb.Build())

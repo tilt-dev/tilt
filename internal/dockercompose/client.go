@@ -10,16 +10,19 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error
+	Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error)
+	StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error)
 	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
 	Config(ctx context.Context, configPath string) (string, error)
 	Services(ctx context.Context, configPath string) (string, error)
+	ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error)
 }
 
 type cmdDCClient struct{}
@@ -30,8 +33,25 @@ func NewDockerComposeClient() DockerComposeClient {
 	return &cmdDCClient{}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, configPath, serviceName string, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "up", "--no-deps", "--build", "--force-recreate", "-d", serviceName)
+func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+	var args []string
+	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+		args = []string{"--verbose"}
+	}
+
+	args = append(args, "-f", configPath, "up", "--no-deps", "-d")
+	if shouldBuild {
+		args = append(args, "--build")
+	} else {
+		// !shouldBuild implies that Tilt will take care of building, which implies that
+		// we should recreate container so that we pull the new image
+		// NOTE(maia): this is maybe the WRONG thing to do if we're deploying a service
+		// but none of the code changed (i.e. it was just a dockercompose.yml change)?
+		args = append(args, "--force-recreate")
+	}
+
+	args = append(args, serviceName.String())
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -39,7 +59,12 @@ func (c *cmdDCClient) Up(ctx context.Context, configPath, serviceName string, st
 }
 
 func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error {
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", configPath, "down")
+	var args []string
+	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+		args = []string{"--verbose"}
+	}
+	args = append(args, "-f", configPath, "down")
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -51,10 +76,10 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath, serviceName string) (io.ReadCloser, error) {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
-	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName}
+	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName.String()}
 	cmd := exec.CommandContext(ctx, "docker-compose", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -122,6 +147,15 @@ func (c *cmdDCClient) Services(ctx context.Context, configPath string) (string, 
 	return dcOutput(ctx, configPath, "config", "--services")
 }
 
+func (c *cmdDCClient) ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error) {
+	id, err := dcOutput(ctx, configPath, "ps", "-q", serviceName.String())
+	if err != nil {
+		return container.ID(""), err
+	}
+
+	return container.ID(id), nil
+}
+
 func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
 	args = append([]string{"-f", configPath}, args...)
 	output, err := exec.CommandContext(ctx, "docker-compose", args...).Output()
@@ -133,4 +167,18 @@ func dcOutput(ctx context.Context, configPath string, args ...string) (string, e
 		err = fmt.Errorf(errorMessage)
 	}
 	return string(output), err
+}
+
+func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
+	if err == nil {
+		return nil
+	}
+	errorMessage := fmt.Sprintf("command '%q %q' failed.\nerror: '%v'\n", cmd.Path, cmd.Args, err)
+	if len(stdout) > 0 {
+		errorMessage += fmt.Sprintf("\nstdout: '%v'", string(stdout))
+	}
+	if err, ok := err.(*exec.ExitError); ok && len(err.Stderr) > 0 {
+		errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
+	}
+	return fmt.Errorf(errorMessage)
 }

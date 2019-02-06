@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -21,11 +21,11 @@ import (
 const Port = 23551
 
 type Synclet struct {
-	dcli docker.DockerClient
+	dCli docker.Client
 }
 
-func NewSynclet(dcli docker.DockerClient) *Synclet {
-	return &Synclet{dcli: dcli}
+func NewSynclet(dCli docker.Client) *Synclet {
+	return &Synclet{dCli: dCli}
 }
 
 func (s Synclet) writeFiles(ctx context.Context, containerId container.ID, tarArchive []byte) error {
@@ -36,7 +36,7 @@ func (s Synclet) writeFiles(ctx context.Context, containerId container.ID, tarAr
 		return nil
 	}
 
-	return s.dcli.CopyToContainerRoot(ctx, containerId.String(), bytes.NewBuffer(tarArchive))
+	return s.dCli.CopyToContainerRoot(ctx, containerId.String(), bytes.NewBuffer(tarArchive))
 }
 
 func (s Synclet) rmFiles(ctx context.Context, containerId container.ID, filesToDelete []string) error {
@@ -50,7 +50,7 @@ func (s Synclet) rmFiles(ctx context.Context, containerId container.ID, filesToD
 	cmd := model.Cmd{Argv: append([]string{"rm", "-rf"}, filesToDelete...)}
 
 	out := bytes.NewBuffer(nil)
-	err := s.dcli.ExecInContainer(ctx, containerId, cmd, out)
+	err := s.dCli.ExecInContainer(ctx, containerId, cmd, out)
 	if err != nil {
 		dockerExitErr, ok := err.(docker.ExitError)
 		if ok {
@@ -70,13 +70,9 @@ func (s Synclet) execCmds(ctx context.Context, containerId container.ID, cmds []
 		log.Printf("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
 		// TODO(matt) - plumb PipelineState through
 		l := logger.Get(ctx)
-		err := s.dcli.ExecInContainer(ctx, containerId, c, l.Writer(logger.InfoLvl))
+		err := s.dCli.ExecInContainer(ctx, containerId, c, l.Writer(logger.InfoLvl))
 		if err != nil {
-			exitError, isExitError := err.(docker.ExitError)
-			if isExitError {
-				return build.UserBuildFailure{ExitCode: exitError.ExitCode}
-			}
-			return err
+			return build.WrapContainerExecError(err, containerId, c)
 		}
 	}
 	return nil
@@ -86,7 +82,7 @@ func (s Synclet) restartContainer(ctx context.Context, containerId container.ID)
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-restartContainer")
 	defer span.Finish()
 
-	return s.dcli.ContainerRestartNoWait(ctx, containerId.String())
+	return s.dCli.ContainerRestartNoWait(ctx, containerId.String())
 }
 
 func (s Synclet) UpdateContainer(

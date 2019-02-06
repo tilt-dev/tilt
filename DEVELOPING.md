@@ -6,6 +6,8 @@ So you want to make a change to `tilt`!
 
 We welcome contributions, either as bug reports, feature requests, or pull requests.
 
+We want everyone to feel at home in this repo and its environs; please see our [**Code of Conduct**](https://docs.tilt.build/code_of_conduct.html) for some rules that govern everyone's participation.
+
 Most of this page describes how to get set up making & testing changes.
 
 Small PRs are better than large ones. If you have an idea for a major feature, please file
@@ -20,6 +22,7 @@ features that we have in mind and might already be in-progress.
   so that you don't need to install extra toolchains locally (e.g., the protobuf compiler).
 - **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)** (for tests)
 - **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize` (for tests)
+- **[helm](https://docs.helm.sh/using_helm/#installing-helm)**: (for tests)
 - **[docker compose](https://docs.docker.com/compose/install/)**: (for tests) NOTE: this doesn't need to be installed separately from Docker on macOS
 
 ## Optional Prereqs
@@ -117,3 +120,5 @@ goreleaser will build binaries for the latest tag (using semantic version to
 determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
+After updating the release notes, update [the docs](docs/install.md)
+and [the default dev version](internal/cli/build.go).

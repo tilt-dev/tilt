@@ -23,12 +23,12 @@ func NewDir(prefix string) (*TempDir, error) {
 func NewDirAtRoot(root, prefix string) (*TempDir, error) {
 	tmpDir, err := ioutil.TempDir(root, prefix)
 	if err != nil {
-		return nil, fmt.Errorf("temp.NewDir: couldn't ioutil.TempDir")
+		return nil, fmt.Errorf("temp.NewDir: ioutil.TempDir: %v", err)
 	}
 
 	realTmpDir, err := filepath.EvalSymlinks(tmpDir)
 	if err != nil {
-		return nil, fmt.Errorf("temp.NewDir: couldn't filepath.EvalSymlinks")
+		return nil, fmt.Errorf("temp.NewDir: filepath.EvalSymlinks: %v", err)
 	}
 
 	return &TempDir{dir: realTmpDir}, nil

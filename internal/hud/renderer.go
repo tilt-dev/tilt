@@ -2,6 +2,7 @@ package hud
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -47,14 +48,15 @@ var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
 
 var statusColors = map[string]tcell.Color{
-	"Running":                  cGood,
-	"ContainerCreating":        cPending,
-	"Pending":                  cPending,
-	"Error":                    cBad,
-	"CrashLoopBackOff":         cBad,
-	dockercompose.StatusInProg: cPending,
-	dockercompose.StatusUp:     cGood,
-	dockercompose.StatusDown:   cBad,
+	"Running":                          cGood,
+	"ContainerCreating":                cPending,
+	"Pending":                          cPending,
+	"Error":                            cBad,
+	"CrashLoopBackOff":                 cBad,
+	string(dockercompose.StatusInProg): cPending,
+	string(dockercompose.StatusUp):     cGood,
+	string(dockercompose.StatusDown):   cBad,
+	"Completed":                        cGood,
 }
 
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
@@ -64,7 +66,6 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 		l.Add(rty.NewLine())
 	}
 
-	l.Add(r.renderTiltfileError(v))
 	l.Add(r.renderResourceHeader(v))
 	l.Add(r.renderResources(v, vs))
 	l.Add(r.renderPaneHeader(vs))
@@ -133,7 +134,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 	sb.Text(" ") // Indent
 	errorCount := 0
 	for _, res := range v.Resources {
-		if isInError(res) {
+		if isInError(res, v.TriggerMode) {
 			errorCount++
 		}
 	}
@@ -175,7 +176,7 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 }
 
 func keyLegend(v view.View, vs view.ViewState) string {
-	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (q)uit  "
+	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
 	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
 		return "Scroll (↓ ↑) ┊ cycle (l)og view "
 	} else if vs.LogModal.ResourceLogNumber != 0 {
@@ -188,25 +189,19 @@ func keyLegend(v view.View, vs view.ViewState) string {
 	return defaultKeys
 }
 
-func isInError(res view.Resource) bool {
-	return res.LastBuild().Error != nil ||
-		(res.ResourceInfo != nil && statusColors[res.ResourceInfo.Status()] == cBad) ||
-		isCrashing(res)
+func isInError(res view.Resource, triggerMode model.TriggerMode) bool {
+	return statusColor(res, triggerMode) == cBad
 }
 
 func isCrashing(res view.Resource) bool {
 	return (res.IsK8S() && res.K8SInfo().PodRestarts > 0) ||
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
-		res.PendingBuildReason.Has(model.BuildReasonFlagCrash)
+		res.PendingBuildReason.Has(model.BuildReasonFlagCrash) ||
+		res.IsDC() && res.DockerComposeTarget().Status() == string(dockercompose.StatusCrash)
 }
 
 func bestLogs(res view.Resource) string {
-	// TODO(matt) figure out what to do with DC logs once we have DC timestamps
-	if res.IsDC() {
-		return res.DCInfo().RuntimeLog()
-	}
-
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {
@@ -241,7 +236,11 @@ func bestLogs(res view.Resource) string {
 		}
 	}
 
-	return res.ResourceInfo.RuntimeLog()
+	if res.IsTiltfile {
+		return string(res.LastBuild().Log)
+	}
+
+	return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
 }
 
 func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {
@@ -290,7 +289,7 @@ func (r *Renderer) renderResourceHeader(v view.View) rty.Component {
 	l.Add(rty.ColoredString("  RESOURCE NAME ", cLightText))
 	l.AddDynamic(rty.NewFillerString(' '))
 
-	k8sCell := rty.ColoredString(" K8S", cLightText)
+	k8sCell := rty.ColoredString(" DEPLOY", cLightText)
 	l.Add(k8sCell)
 	l.Add(middotText())
 
@@ -332,24 +331,22 @@ func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, 
 	return NewResourceView(res, rv, triggerMode, selected, r.clock).Build()
 }
 
-func (r *Renderer) renderTiltfileError(v view.View) rty.Component {
-	if v.TiltfileErrorMessage != "" {
-		c := rty.NewConcatLayout(rty.DirVert)
-		c.Add(rty.TextString("Tiltfile error: "))
-		c.Add(rty.TextString(v.TiltfileErrorMessage))
-		c.Add(rty.NewFillerString('─'))
-		return c
-	}
-
-	return rty.NewLines()
-}
-
 func (r *Renderer) SetUp() (chan tcell.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	screen, err := tcell.NewScreen()
 	if err != nil {
+		if err == tcell.ErrTermNotFound {
+			// The statically-compiled tcell only supports the most common TERM configs.
+			// The dynamically-compiled tcell supports more, but has distribution problems.
+			// See: https://github.com/gdamore/tcell/issues/252
+			term := os.Getenv("TERM")
+			return nil, fmt.Errorf("Tilt does not support TERM=%q. "+
+				"This is not a common Terminal config. "+
+				"If you expect that you're using a common terminal, "+
+				"you might have misconfigured $TERM in your .profile.", term)
+		}
 		return nil, err
 	}
 	if err = screen.Init(); err != nil {

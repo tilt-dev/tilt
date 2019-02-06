@@ -20,7 +20,7 @@ func TestPortForward(t *testing.T) {
 	m := model.Manifest{
 		Name: "fe",
 	}
-	m = m.WithDeployInfo(model.K8sInfo{
+	m = m.WithDeployTarget(model.K8sTarget{
 		PortForwards: []model.PortForward{
 			{
 				LocalPort:     8080,
@@ -28,16 +28,14 @@ func TestPortForward(t *testing.T) {
 			},
 		},
 	})
-	state.ManifestStates["fe"] = &store.ManifestState{
-		Manifest: m,
-	}
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -45,7 +43,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID.String())
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
+	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -53,7 +51,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID.String())
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
+	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -68,24 +66,22 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	m := model.Manifest{
 		Name: "fe",
 	}
-	m = m.WithDeployInfo(model.K8sInfo{
+	m = m.WithDeployTarget(model.K8sTarget{
 		PortForwards: []model.PortForward{
 			{
 				LocalPort: 8080,
 			},
 		},
 	})
-	state.ManifestStates["fe"] = &store.ManifestState{
-		Manifest: m,
-	}
-	state.ManifestStates["fe"].PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestStates["fe"].PodSet.Pods["pod-id"].ContainerPorts = []int32{8000}
+	state.ManifestTargets["fe"].State.PodSet.Pods["pod-id"].ContainerPorts = []int32{8000}
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
