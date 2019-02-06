@@ -284,7 +284,7 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 	case *gitRepo:
 		m.src = p.makeLocalPath("")
 	default:
-		return nil, fmt.Errorf("fast_build(%q).add(): invalid type for src. Got %s want gitRepo OR localPath", fn.Name(), src.Type())
+		return nil, fmt.Errorf("%s.%s(): invalid type for src. Got %s, want gitRepo OR localPath", b.String(), fn.Name(), src.Type())
 	}
 
 	m.mountPoint = mountPoint

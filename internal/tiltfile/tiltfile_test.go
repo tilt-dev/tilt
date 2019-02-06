@@ -412,7 +412,7 @@ docker_build("ceci n'est pas une valid image ref", 'a')
 	f.loadErrString("invalid reference format")
 }
 
-func TestFastBuildAddStringFailes(t *testing.T) {
+func TestFastBuildAddStringFails(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -422,7 +422,8 @@ k8s_yaml('foo.yaml')
 fast_build('gcr.io/foo', 'foo/Dockerfile').add('/foo', '/foo')
 `)
 
-	f.loadErrString("invalid type for src. Got string want gitRepo OR localPath")
+	f.loadErrString("invalid type for src. Got string, want gitRepo OR localPath",
+		"fast_build(\"gcr.io/foo\").add()")
 }
 
 type portForwardCase struct {
