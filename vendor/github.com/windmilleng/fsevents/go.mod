@@ -1,1 +1,1 @@
-module github.com/fsnotify/fsevents
+module github.com/windmilleng/fsevents
