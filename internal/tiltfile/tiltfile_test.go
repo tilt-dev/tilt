@@ -422,7 +422,8 @@ k8s_yaml('foo.yaml')
 fast_build('gcr.io/foo', 'foo/Dockerfile').add('/foo', '/foo')
 `)
 
-	f.loadErrString("invalid type for src. Got string want gitRepo OR localPath")
+	f.loadErrString("invalid type for src. Got string, want gitRepo OR localPath",
+		"fast_build(\"docker.io/library/my_picnic_image\").add()")
 }
 
 type portForwardCase struct {
