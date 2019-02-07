@@ -49,6 +49,7 @@ type Writer interface {
 	Divide(x, y, width, height int) (Writer, error)
 	Foreground(c tcell.Color) Writer
 	Background(c tcell.Color) Writer
+	Invert() Writer
 	Fill() (Writer, error)
 
 	RenderChild(c Component) int

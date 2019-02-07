@@ -391,30 +391,71 @@ func (l *ColorLayout) Render(w Writer, width int, height int) error {
 }
 
 type Box struct {
-	focused bool
-	title   string
-	inner   Component
-	grow    bool
+	title string
+	inner Component
+	grow  bool
+
+	tl, t, tr, l, r, bl, b, br rune
+	invertTitle                bool
 }
 
 var _ Component = &Box{}
 
+func newBox() *Box {
+	return &Box{
+		tl: tview.BoxDrawingsLightDownAndRight,
+		t:  tview.BoxDrawingsLightHorizontal,
+		tr: tview.BoxDrawingsLightDownAndLeft,
+		l:  tview.BoxDrawingsLightVertical,
+		r:  tview.BoxDrawingsLightVertical,
+		bl: tview.BoxDrawingsLightUpAndRight,
+		b:  tview.BoxDrawingsLightHorizontal,
+		br: tview.BoxDrawingsLightUpAndLeft,
+	}
+}
+
 // makes a box that will grow to fill its canvas
 func NewGrowingBox() *Box {
-	return &Box{grow: true}
+	ret := newBox()
+	ret.grow = true
+	return ret
 }
 
 // makes a new box that tightly wraps its inner component
 func NewBox(inner Component) *Box {
-	return &Box{inner: inner}
+	ret := newBox()
+	ret.inner = inner
+	return ret
+}
+
+func newWindow() *Box {
+	return &Box{
+		tl:          '█',
+		t:           '█',
+		tr:          '█',
+		l:           '▏',
+		r:           '▕',
+		bl:          '▔',
+		b:           '▔',
+		br:          '▔',
+		invertTitle: true,
+	}
+}
+
+func NewWindow(inner Component) *Box {
+	ret := newWindow()
+	ret.inner = inner
+	return ret
+}
+
+func NewGrowingWindow() *Box {
+	ret := newWindow()
+	ret.grow = true
+	return ret
 }
 
 func (b *Box) SetInner(c Component) {
 	b.inner = c
-}
-
-func (b *Box) SetFocused(focused bool) {
-	b.focused = focused
 }
 
 func (b *Box) SetTitle(title string) {
@@ -459,24 +500,12 @@ func (b *Box) Render(w Writer, width int, height int) error {
 		height = childHeight + 2
 	}
 
-	hor := tview.BoxDrawingsLightHorizontal
-	vert := tview.BoxDrawingsLightVertical
-	tl := tview.BoxDrawingsLightDownAndRight
-	tr := tview.BoxDrawingsLightDownAndLeft
-	bl := tview.BoxDrawingsLightUpAndRight
-	br := tview.BoxDrawingsLightUpAndLeft
-	if b.focused {
-		hor = tview.BoxDrawingsDoubleHorizontal
-		vert = tview.BoxDrawingsDoubleVertical
-		tl = tview.BoxDrawingsDoubleDownAndRight
-		tr = tview.BoxDrawingsDoubleDownAndLeft
-		bl = tview.BoxDrawingsDoubleUpAndRight
-		br = tview.BoxDrawingsDoubleUpAndLeft
+	for i := 1; i < width-1; i++ {
+		w.SetContent(i, 0, b.t, nil)
 	}
 
 	for i := 1; i < width-1; i++ {
-		w.SetContent(i, 0, hor, nil)
-		w.SetContent(i, height-1, hor, nil)
+		w.SetContent(i, height-1, b.b, nil)
 	}
 
 	if len(b.title) > 0 {
@@ -495,21 +524,26 @@ func (b *Box) Render(w Writer, width int, height int) error {
 			renderedTitle = fmt.Sprintf(" %s ", renderedTitle)
 		}
 
+		titleWriter := w
+		if b.invertTitle {
+			titleWriter = titleWriter.Invert()
+		}
+
 		start := middle - len(renderedTitle)/2
 		for i, c := range renderedTitle {
-			w.SetContent(start+i, 0, c, nil)
+			titleWriter.SetContent(start+i, 0, c, nil)
 		}
 	}
 
 	for i := 1; i < height-1; i++ {
-		w.SetContent(0, i, vert, nil)
-		w.SetContent(width-1, i, vert, nil)
+		w.SetContent(0, i, b.l, nil)
+		w.SetContent(width-1, i, b.r, nil)
 	}
 
-	w.SetContent(0, 0, tl, nil)
-	w.SetContent(width-1, 0, tr, nil)
-	w.SetContent(0, height-1, bl, nil)
-	w.SetContent(width-1, height-1, br, nil)
+	w.SetContent(0, 0, b.tl, nil)
+	w.SetContent(width-1, 0, b.tr, nil)
+	w.SetContent(0, height-1, b.bl, nil)
+	w.SetContent(width-1, height-1, b.br, nil)
 
 	return nil
 }
