@@ -26,25 +26,6 @@ func TestFlexLayoutOverflow(t *testing.T) {
 	i.Run("text overflow", 8, 1, f)
 }
 
-func TestBoxes(t *testing.T) {
-	i := NewInteractiveTester(t, screen)
-
-	i.Run("10x10 box", 10, 10, NewGrowingBox())
-	b := NewGrowingBox()
-	b.SetFocused(true)
-	i.Run("focused box", 10, 10, b)
-	b = NewGrowingBox()
-	b.SetInner(TextString("hello world"))
-	i.Run("text in box", 20, 10, b)
-	i.Run("wrapped text in box", 10, 10, b)
-	b.SetTitle("so very important")
-	i.Run("box with title", 20, 10, b)
-	i.Run("box with short title", 5, 10, b)
-
-	b = NewBox(TextString("hello world"))
-	i.Run("non-growing box", 20, 20, b)
-}
-
 func TestStyles(t *testing.T) {
 	i := NewInteractiveTester(t, screen)
 

@@ -133,6 +133,11 @@ func (f renderFrame) Background(c tcell.Color) Writer {
 	return f
 }
 
+func (f renderFrame) Invert() Writer {
+	f.style = f.style.Reverse(true)
+	return f
+}
+
 func (f renderFrame) RenderChild(c Component) int {
 	width, height := f.canvas.Size()
 	if err := c.Render(f, width, height); err != nil {

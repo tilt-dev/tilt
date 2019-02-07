@@ -93,9 +93,9 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 		l.Add(rty.Fg(rty.TextString(msg), tcell.ColorDefault))
 		l.Add(rty.TextString(""))
 
-		b := rty.NewBox(l)
-		b.SetTitle("! Alert !")
-		layout = r.renderModal(rty.Fg(b, tcell.ColorRed), layout, false)
+		w := rty.NewWindow(l)
+		w.SetTitle("! Alert !")
+		layout = r.renderModal(rty.Fg(w, tcell.ColorRed), layout, false)
 	}
 	return layout
 }
@@ -261,11 +261,11 @@ func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Comp
 
 	l := rty.NewTextScrollLayout(logScrollerName)
 	l.Add(rty.TextString(s))
-	box := rty.NewGrowingBox()
-	box.SetInner(l)
-	box.SetTitle(fmt.Sprintf("LOG: %s", res.Name))
+	w := rty.NewGrowingWindow()
+	w.SetInner(l)
+	w.SetTitle(fmt.Sprintf("LOG: %s", res.Name))
 
-	return rty.NewModalLayout(background, box, 0.9, true)
+	return rty.NewModalLayout(background, w, 0.9, true)
 }
 
 func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {
