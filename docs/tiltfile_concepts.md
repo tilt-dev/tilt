@@ -10,16 +10,16 @@ Functions like `k8s_yaml` and `docker_build` register information. At the end of
 Because your Tiltfile is a program, you can configure it with familiar constructs like loops, functions, arrays, etc. This makes Tilt more extensible than a configuration that requires hard-coding all possible options up-front.
 
 ## Deploy
-The first function in a `Tiltfile` is generally a call to `k8s_yaml`. You can call `k8s_yaml` in a variety of ways, depending on how your project organizes or generates yaml. Let's look at some alternatives:
+The first function in a `Tiltfile` is generally a call to `k8s_yaml`. You can call `k8s_yaml` in a variety of ways, depending on how your project organizes or generates YAML. Let's look at some alternatives:
 
 ```python
-# one static yaml file
+# one static YAML file
 k8s_yaml('app.yaml')
 
-# multiple yaml files in one call
+# multiple YAML files in one call
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 
-# multiple yaml files in multiple calls
+# multiple YAML files in multiple calls
 k8s_yaml('baz.yaml')
 k8s_yaml('quux.yaml')
 
@@ -28,10 +28,10 @@ k8s_yaml(kustomize('config_dir')) # built-in support for popular tools
 k8s_yaml(helm('chart_dir'))
 ```
 
-Tilt has built-in functions to generate kubernetes yaml with `kustomize` or `helm`. (If you think we're overlooking a popular tool, let us know so we can add it.)
+Tilt has built-in functions to generate Kubernetes YAML with `kustomize` or `helm`. (If you think we're overlooking a popular tool, let us know so we can add it.)
 
 ## Custom Commands
-If your project uses a custom tool to generate kubernetes yaml, you can still use Tilt. You don't have to wait for us to add support or fork Tilt and implement it yourself. Run a custom command with the `local` function:
+If your project uses a custom tool to generate Kubernetes YAML, you can still use Tilt. You don't have to wait for us to add support or fork Tilt and implement it yourself. Run a custom command with the `local` function:
 ```python
 text = local('./foo.py') # runs command foo.py
 k8s_yaml(text)
@@ -46,12 +46,12 @@ text = local('./foo.py')
 k8s_yaml(text)
 ```
 
-You can also use python features like list comprehensions. For example, if you have a script that generates yaml for one microservice at a time, you could do:
+You can also use Python features like list comprehensions. For example, if you have a script that generates YAML for one microservice at a time, you could do:
 
 ```python
 # define a function that returns the config for one microservice
 def microservice_config(name):
-  # record file access, using python string substitution to generate filename
+  # record file access, using Python string substitution to generate filename
   read_file('config/%s.yaml' % name)
   # run the script with an argument
   return local('./config/generate.py %s' % name)

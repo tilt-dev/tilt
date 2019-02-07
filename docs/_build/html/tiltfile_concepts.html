@@ -204,14 +204,14 @@
 </div>
 <div class="section" id="deploy">
 <h2>Deploy<a class="headerlink" href="#deploy" title="Permalink to this headline">¶</a></h2>
-<p>The first function in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> is generally a call to <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code>. You can call <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> in a variety of ways, depending on how your project organizes or generates yaml. Let’s look at some alternatives:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># one static yaml file</span>
+<p>The first function in a <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code> is generally a call to <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code>. You can call <code class="docutils literal notranslate"><span class="pre">k8s_yaml</span></code> in a variety of ways, depending on how your project organizes or generates YAML. Let’s look at some alternatives:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># one static YAML file</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;app.yaml&#39;</span><span class="p">)</span>
 
-<span class="c1"># multiple yaml files in one call</span>
+<span class="c1"># multiple YAML files in one call</span>
 <span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span>
 
-<span class="c1"># multiple yaml files in multiple calls</span>
+<span class="c1"># multiple YAML files in multiple calls</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;baz.yaml&#39;</span><span class="p">)</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;quux.yaml&#39;</span><span class="p">)</span>
 
@@ -220,11 +220,11 @@
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;chart_dir&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Tilt has built-in functions to generate kubernetes yaml with <code class="docutils literal notranslate"><span class="pre">kustomize</span></code> or <code class="docutils literal notranslate"><span class="pre">helm</span></code>. (If you think we’re overlooking a popular tool, let us know so we can add it.)</p>
+<p>Tilt has built-in functions to generate Kubernetes YAML with <code class="docutils literal notranslate"><span class="pre">kustomize</span></code> or <code class="docutils literal notranslate"><span class="pre">helm</span></code>. (If you think we’re overlooking a popular tool, let us know so we can add it.)</p>
 </div>
 <div class="section" id="custom-commands">
 <h2>Custom Commands<a class="headerlink" href="#custom-commands" title="Permalink to this headline">¶</a></h2>
-<p>If your project uses a custom tool to generate kubernetes yaml, you can still use Tilt. You don’t have to wait for us to add support or fork Tilt and implement it yourself. Run a custom command with the <code class="docutils literal notranslate"><span class="pre">local</span></code> function:</p>
+<p>If your project uses a custom tool to generate Kubernetes YAML, you can still use Tilt. You don’t have to wait for us to add support or fork Tilt and implement it yourself. Run a custom command with the <code class="docutils literal notranslate"><span class="pre">local</span></code> function:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">text</span> <span class="o">=</span> <span class="n">local</span><span class="p">(</span><span class="s1">&#39;./foo.py&#39;</span><span class="p">)</span> <span class="c1"># runs command foo.py</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 </pre></div>
@@ -236,10 +236,10 @@
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>You can also use python features like list comprehensions. For example, if you have a script that generates yaml for one microservice at a time, you could do:</p>
+<p>You can also use Python features like list comprehensions. For example, if you have a script that generates YAML for one microservice at a time, you could do:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># define a function that returns the config for one microservice</span>
 <span class="k">def</span> <span class="nf">microservice_config</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
-  <span class="c1"># record file access, using python string substitution to generate filename</span>
+  <span class="c1"># record file access, using Python string substitution to generate filename</span>
   <span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;config/</span><span class="si">%s</span><span class="s1">.yaml&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
   <span class="c1"># run the script with an argument</span>
   <span class="k">return</span> <span class="n">local</span><span class="p">(</span><span class="s1">&#39;./config/generate.py </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>

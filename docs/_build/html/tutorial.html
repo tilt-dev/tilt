@@ -200,7 +200,7 @@
 <div class="section" id="example-tiltfile">
 <h2>Example Tiltfile<a class="headerlink" href="#example-tiltfile" title="Permalink to this headline">¶</a></h2>
 <p>At the end of this guide, your Tiltfile will look something like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy: tell Tilt what yaml to deploy</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy: tell Tilt what YAML to deploy</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="s1">&#39;app.yaml&#39;</span><span class="p">)</span>
 
 <span class="c1"># Build: tell Tilt what images to build from which directories</span>
@@ -229,10 +229,10 @@
 </pre></div>
 </div>
 <p>Tilt supports many deployment configuration practices (for more details, check out the <a class="reference external" href="tiltfile_concepts.html#deploy">Deploy</a> section of “Tiltfile Concepts”):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># multiple yaml files; can be either a list or multiple calls</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># multiple YAML files; can be either a list or multiple calls</span>
 <span class="n">k8s_yaml</span><span class="p">([</span><span class="s1">&#39;foo.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.yaml&#39;</span><span class="p">])</span>
 
-<span class="c1"># run a command to generate yaml</span>
+<span class="c1"># run a command to generate YAML</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">local</span><span class="p">(</span><span class="s1">&#39;gen_k8s_yaml.py&#39;</span><span class="p">))</span> <span class="c1"># a custom script</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">kustomize</span><span class="p">(</span><span class="s1">&#39;config_dir&#39;</span><span class="p">))</span> <span class="c1"># built-in support for popular tools</span>
 <span class="n">k8s_yaml</span><span class="p">(</span><span class="n">helm</span><span class="p">(</span><span class="s1">&#39;chart_dir&#39;</span><span class="p">))</span>
