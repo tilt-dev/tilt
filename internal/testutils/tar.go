@@ -21,6 +21,9 @@ type ExpectedFile struct {
 
 	// If true, we will assert that UID and GID are 0
 	AssertUidAndGidAreZero bool
+
+	// If true, we will assert that this is a symlink with a linkname.
+	Linkname string
 }
 
 // Asserts whether or not this file is in the tar.
@@ -66,8 +69,9 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 			continue
 		}
 
-		expectedReg := !expected.IsDir
+		expectedReg := !expected.IsDir && expected.Linkname == ""
 		expectedDir := expected.IsDir
+		expectedSymlink := expected.Linkname != ""
 		if expectedReg && header.Typeflag != tar.TypeReg {
 			t.Errorf("Path %q exists but is not a regular file", expected.Path)
 			continue
@@ -78,12 +82,21 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 			continue
 		}
 
+		if expectedSymlink && header.Typeflag != tar.TypeSymlink {
+			t.Errorf("Path %q exists but is not a directory", expected.Path)
+			continue
+		}
+
 		if expected.AssertUidAndGidAreZero && header.Uid != expectedUidAndGid {
 			t.Errorf("Expected %s to have UID 0, got %d", header.Name, header.Uid)
 		}
 
 		if expected.AssertUidAndGidAreZero && header.Gid != expectedUidAndGid {
 			t.Errorf("Expected %s to have GID 0, got %d", header.Name, header.Gid)
+		}
+
+		if header.Linkname != expected.Linkname {
+			t.Errorf("Expected linkname %q, actual %q", expected.Linkname, header.Linkname)
 		}
 
 		if expectedReg {

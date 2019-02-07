@@ -155,7 +155,16 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 			return nil
 		}
 
-		header, err := tar.FileInfoHeader(info, path)
+		linkname := ""
+		if info.Mode()&os.ModeSymlink != 0 {
+			var err error
+			linkname, err = os.Readlink(path)
+			if err != nil {
+				return err
+			}
+		}
+
+		header, err := tar.FileInfoHeader(info, linkname)
 		clearUIDAndGID(header)
 		if err != nil {
 			return errors.Wrapf(err, "%s: making header", path)
