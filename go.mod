@@ -98,6 +98,7 @@ require (
 	github.com/stretchr/testify v1.2.2
 	github.com/syndtr/gocapability v0.0.0-20180223013746-33e07d32887e
 	github.com/theupdateframework/notary v0.6.1
+	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
 	github.com/windmilleng/wmclient v0.0.0-20190205232421-1ae9d14ff820

@@ -238,6 +238,8 @@ github.com/theupdateframework/notary v0.6.1 h1:7wshjstgS9x9F5LuB1L5mBI2xNMObWqjz
 github.com/theupdateframework/notary v0.6.1/go.mod h1:MOfgIfmox8s7/7fduvB2xyPPMJCrjRLRizA8OFwpnKY=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/ugorji/go/codec v0.0.0-20180831062425-e253f1f20942/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
+github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa h1:rW+Lu6281ed/4XGuVIa4/YebTRNvoUJlfJ44ktEVwZk=
+github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa/go.mod h1:2rx5KE5FLD0HRfkkpyn8JwbVLBdhgeiOb2D2D9LLKM4=
 github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed h1:xt+hAUJdHN2pN5Z9DCSuLuLMTVxjM1CyGJG2dfx4WY8=
 github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed/go.mod h1:feHoQi0H+lyL/mtPHePEI0Pan5Vd4LJmo/PaohCewks=
 github.com/windmilleng/fsnotify v1.4.7/go.mod h1:h3pBNCM04c2q++yj67m77Mof0ZG/mzQMh+OM7J+Umc0=
