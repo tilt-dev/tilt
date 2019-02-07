@@ -17,9 +17,6 @@ type BuildResult struct {
 	// The tag is derived from a content-addressable digest.
 	Image reference.NamedTagged
 
-	// The ID we have assigned to this deployment.
-	DeployID model.DeployID
-
 	// If this build was a container build, containerID we built on top of
 	ContainerID container.ID
 
@@ -71,7 +68,7 @@ func (set BuildResultSet) AsOneResult() BuildResult {
 			return result
 		}
 	}
-	return BuildResult{DeployID: set.DeployID}
+	return BuildResult{}
 }
 
 func (set BuildResultSet) WithDeployID(dID model.DeployID) BuildResultSet {

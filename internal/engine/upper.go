@@ -261,6 +261,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	bs := ms.CurrentBuild
 	bs.Error = err
 	bs.FinishTime = time.Now()
+	bs.DeployID = cb.Result.DeployID
 	ms.AddCompletedBuild(bs)
 
 	ms.CurrentBuild = model.BuildRecord{}
@@ -530,23 +531,8 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	ns := k8s.NamespaceFromPod(pod)
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
-	// There are 4 cases:
-	// 1) This pod has a DeployID we don't recognize because it's an old build
-	// 2) This pod has a DeployID we don't recognize because it's a new build
-	// 3) This pod has a DeployID we recognize, and we need to record it.
-	// 4) This pod has a DeployID we recognize, and we've already recorded it.
-
-	// (1) + (2)
+	// CASE 1: We don't have a set of pods for this DeployID yet
 	if ms.PodSet.DeployID == 0 || ms.PodSet.DeployID != deployID {
-
-		bestPod := ms.MostRecentPod()
-		isOld := !bestPod.Empty() && bestPod.StartedAt.After(startedAt)
-		if isOld {
-			// (1)
-			return nil, nil
-		}
-
-		// (2)
 		ms.PodSet = store.PodSet{
 			DeployID: deployID,
 			Pods:     make(map[k8s.PodID]*store.Pod),
@@ -563,7 +549,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 
 	podInfo, ok := ms.PodSet.Pods[podID]
 	if !ok {
-		// (3)
+		// CASE 2: We have a set of pods for this DeployID, but not this particular pod -- record it
 		podInfo = &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,
@@ -574,7 +560,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 		ms.PodSet.Pods[podID] = podInfo
 	}
 
-	// (4)
+	// CASE 3: This pod is already in the PodSet, nothing to do.
 	return mt, podInfo
 }
 
