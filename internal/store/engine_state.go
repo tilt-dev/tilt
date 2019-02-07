@@ -293,6 +293,10 @@ func (ms *ManifestState) LastBuild() model.BuildRecord {
 	return ms.BuildHistory[0]
 }
 
+func (ms *ManifestState) LastDeployID() model.DeployID {
+	return ms.LastBuild().DeployID
+}
+
 func (ms *ManifestState) AddCompletedBuild(bs model.BuildRecord) {
 	ms.BuildHistory = append([]model.BuildRecord{bs}, ms.BuildHistory...)
 	if len(ms.BuildHistory) > model.BuildHistoryLimit {

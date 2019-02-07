@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/windmilleng/tilt/internal/model"
@@ -17,8 +16,6 @@ const ManifestNameLabel = "tilt-manifest"
 
 const TiltDeployIDLabel = "tilt-deployid"
 
-type DeployID int64 // Unix ns after epoch -- uniquely identify a deploy
-
 func TiltRunLabel() model.LabelPair {
 	return model.LabelPair{
 		Key:   TiltRunIDLabel,
@@ -26,11 +23,7 @@ func TiltRunLabel() model.LabelPair {
 	}
 }
 
-func NewDeployID() DeployID {
-	return DeployID(time.Now().UnixNano())
-}
-
-func TiltDeployLabel(dID DeployID) model.LabelPair {
+func TiltDeployLabel(dID model.DeployID) model.LabelPair {
 	return model.LabelPair{
 		Key:   TiltDeployIDLabel,
 		Value: strconv.Itoa(int(dID)),

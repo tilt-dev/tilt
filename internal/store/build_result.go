@@ -18,7 +18,7 @@ type BuildResult struct {
 	Image reference.NamedTagged
 
 	// The ID we have assigned to this deployment.
-	DeployID k8s.DeployID
+	DeployID model.DeployID
 
 	// If this build was a container build, containerID we built on top of
 	ContainerID container.ID
@@ -56,7 +56,7 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 
 type BuildResultSet struct {
 	Builds   map[model.TargetID]BuildResult
-	DeployID k8s.DeployID
+	DeployID model.DeployID
 }
 
 func NewBuildResultSet() BuildResultSet {
@@ -74,7 +74,7 @@ func (set BuildResultSet) AsOneResult() BuildResult {
 	return BuildResult{DeployID: set.DeployID}
 }
 
-func (set BuildResultSet) WithDeployID(dID k8s.DeployID) BuildResultSet {
+func (set BuildResultSet) WithDeployID(dID model.DeployID) BuildResultSet {
 	set.DeployID = dID
 	return set
 }

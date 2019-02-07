@@ -2,12 +2,19 @@ package model
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/yaml"
 )
+
+type DeployID int64 // Unix ns after epoch -- uniquely identify a deploy
+
+func NewDeployID() DeployID {
+	return DeployID(time.Now().UnixNano())
+}
 
 type DockerComposeTarget struct {
 	Name       TargetName

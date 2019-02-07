@@ -107,7 +107,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged) (k8s.DeployID, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged) (model.DeployID, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -116,7 +116,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 	injectedRefs := map[string]bool{}
 	newK8sEntities := []k8s.K8sEntity{}
 
-	deployID := k8s.NewDeployID()
+	deployID := model.NewDeployID()
 	deployLabel := k8s.TiltDeployLabel(deployID)
 
 	for _, k8sTarget := range k8sTargets {
