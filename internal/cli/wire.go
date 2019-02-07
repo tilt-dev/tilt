@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/wire"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -58,6 +59,7 @@ var BaseWireSet = wire.NewSet(
 
 	engine.NewUpper,
 	provideAnalytics,
+	engine.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
 	engine.NewWatchManager,
 	engine.ProvideFsWatcherMaker,
