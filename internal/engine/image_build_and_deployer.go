@@ -85,6 +85,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 	results := store.BuildResultSet{}
 
 	var refs []reference.NamedTagged
+	var anyFastBuild bool
 	for _, iTarget := range iTargets {
 		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
 		if err != nil {
@@ -94,9 +95,10 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 			Image: ref,
 		}
 		refs = append(refs, ref)
+		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
 	}
 
-	err = ibd.deploy(ctx, ps, kTargets, refs)
+	err = ibd.deploy(ctx, ps, kTargets, refs, anyFastBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -105,7 +107,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged) error {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged, needsSynclet bool) error {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -152,7 +154,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 				if replaced {
 					injectedRefs[ref.String()] = true
 
-					if ibd.injectSynclet {
+					if ibd.injectSynclet && needsSynclet {
 						var sidecarInjected bool
 						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
 						if err != nil {
