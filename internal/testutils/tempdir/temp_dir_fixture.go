@@ -73,14 +73,13 @@ func (f *TempDirFixture) WriteFile(path string, contents string) {
 	}
 }
 
-func (f *TempDirFixture) WriteSymlink(srcPath, destPath string) {
-	fullSrcPath := f.JoinPath(srcPath)
+func (f *TempDirFixture) WriteSymlink(linkContents, destPath string) {
 	fullDestPath := f.JoinPath(destPath)
 	err := os.MkdirAll(filepath.Dir(fullDestPath), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	err = os.Symlink(fullSrcPath, fullDestPath)
+	err = os.Symlink(linkContents, fullDestPath)
 	if err != nil {
 		f.t.Fatal(err)
 	}

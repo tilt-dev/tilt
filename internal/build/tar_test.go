@@ -139,7 +139,7 @@ func TestArchiveOverlapping(t *testing.T) {
 
 	f.WriteFile("a/a.txt", "a.txt contents")
 	f.WriteFile("b/b.txt", "b.txt contents")
-	f.WriteSymlink("b", "a/b")
+	f.WriteSymlink("../b", "a/b")
 
 	paths := []PathMapping{
 		PathMapping{
@@ -161,6 +161,33 @@ func TestArchiveOverlapping(t *testing.T) {
 		expectedFile{Path: "a/a.txt", Contents: "a.txt contents", AssertUidAndGidAreZero: true},
 		expectedFile{Path: "a/b", IsDir: true},
 		expectedFile{Path: "a/b/b.txt", Contents: "b.txt contents"},
+	})
+}
+
+func TestArchiveSymlink(t *testing.T) {
+	f := newFixture(t)
+	ab := NewArchiveBuilder(model.EmptyMatcher)
+	defer ab.close()
+	defer f.tearDown()
+
+	f.WriteFile("src/a.txt", "hello world")
+	f.WriteSymlink("a.txt", "src/b.txt")
+
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("src"),
+			ContainerPath: "/src",
+		},
+	}
+
+	err := ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	actual := tar.NewReader(ab.buf)
+	f.assertFilesInTar(actual, []expectedFile{
+		expectedFile{Path: "src/a.txt", Contents: "hello world"},
+		expectedFile{Path: "src/b.txt", Linkname: "a.txt"},
 	})
 }
 
