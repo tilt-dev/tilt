@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/docker/distribution/reference"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
@@ -509,12 +509,6 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 		}
 	}
 
-	podID := k8s.PodIDFromPod(pod)
-	startedAt := pod.CreationTimestamp.Time
-	status := podStatusToString(*pod)
-	ns := k8s.NamespaceFromPod(pod)
-	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
-
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
@@ -522,36 +516,28 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	}
 
 	ms := mt.State
-	manifest := mt.Manifest
 
-	var imageID reference.NamedTagged
-	for _, iTarget := range manifest.ImageTargets {
-		var err error
-		imageID, err = k8s.FindImageNamedTaggedMatching(pod.Spec, iTarget.Ref)
-		if err != nil {
-			// Ditto, this could happen if we get a pod from an old version of the manifest.
+	deployID := ms.LastDeployID()
+	if podDeployID, ok := pod.ObjectMeta.Labels[k8s.TiltDeployIDLabel]; ok {
+		if pdID, err := strconv.Atoi(podDeployID); err != nil || pdID != int(deployID) {
 			return nil, nil
 		}
-
-		if imageID != nil {
-			break
-		}
 	}
 
-	if imageID == nil {
-		// Ditto, this could happen if we get a pod from an old version of the manifest.
-		return nil, nil
-	}
+	podID := k8s.PodIDFromPod(pod)
+	startedAt := pod.CreationTimestamp.Time
+	status := podStatusToString(*pod)
+	ns := k8s.NamespaceFromPod(pod)
+	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
 	// There are 4 cases:
-	// 1) This pod has an imageID we don't recognize because it's an old build
-	// 2) This pod has an imageID we don't recognize because it's a new build
-	// 3) This pod has an imageID we recognize, and we need to record it.
-	// 4) This pod has an imageID we recognize, and we've already recorded it.
+	// 1) This pod has a DeployID we don't recognize because it's an old build
+	// 2) This pod has a DeployID we don't recognize because it's a new build
+	// 3) This pod has a DeployID we recognize, and we need to record it.
+	// 4) This pod has a DeployID we recognize, and we've already recorded it.
 
 	// (1) + (2)
-	if ms.PodSet.ImageID == nil ||
-		ms.PodSet.ImageID.String() != imageID.String() {
+	if ms.PodSet.DeployID == 0 || ms.PodSet.DeployID != deployID {
 
 		bestPod := ms.MostRecentPod()
 		isOld := !bestPod.Empty() && bestPod.StartedAt.After(startedAt)
@@ -562,8 +548,8 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 
 		// (2)
 		ms.PodSet = store.PodSet{
-			ImageID: imageID,
-			Pods:    make(map[k8s.PodID]*store.Pod),
+			DeployID: deployID,
+			Pods:     make(map[k8s.PodID]*store.Pod),
 		}
 		ms.PodSet.Pods[podID] = &store.Pod{
 			PodID:      podID,

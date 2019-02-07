@@ -8,14 +8,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 )
 
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/tutorial.html to get started."
@@ -412,8 +411,8 @@ func (s *YAMLManifestState) LastBuild() model.BuildRecord {
 var _ model.TargetStatus = &YAMLManifestState{}
 
 type PodSet struct {
-	Pods    map[k8s.PodID]*Pod
-	ImageID reference.NamedTagged
+	Pods     map[k8s.PodID]*Pod
+	DeployID model.DeployID // Deploy that these pods correspond to
 }
 
 func NewPodSet(pods ...Pod) PodSet {

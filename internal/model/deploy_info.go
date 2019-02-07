@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -15,6 +16,8 @@ type DeployID int64 // Unix ns after epoch -- uniquely identify a deploy
 func NewDeployID() DeployID {
 	return DeployID(time.Now().UnixNano())
 }
+
+func (dID DeployID) String() string { return strconv.Itoa(int(dID)) }
 
 type DockerComposeTarget struct {
 	Name       TargetName

@@ -958,6 +958,10 @@ func (f *testFixture) testPod(podID string, manifestName string, phase string, c
 	}
 }
 
+func setDeployIDLabel(pod *v1.Pod, dID model.DeployID) {
+	pod.ObjectMeta.Labels[k8s.TiltDeployIDLabel] = dID.String()
+}
+
 func setImage(pod *v1.Pod, image string) {
 	pod.Spec.Containers[0].Image = image
 	pod.Status.ContainerStatuses[0].Image = image
@@ -996,8 +1000,8 @@ func TestPodEventOrdering(t *testing.T) {
 	defer f.TearDown()
 	past := time.Now().Add(-time.Minute)
 	now := time.Now()
-	imagePast := fmt.Sprintf("%s:%s", f.imageNameForManifest("fe").String(), "past")
-	imageNow := fmt.Sprintf("%s:%s", f.imageNameForManifest("fe").String(), "now")
+	deployIDPast := model.DeployID(111)
+	deployIDNow := model.DeployID(999)
 	podAPast := f.testPod("pod-a", "fe", "Running", testContainer, past)
 	podBPast := f.testPod("pod-b", "fe", "Running", testContainer, past)
 	podANow := f.testPod("pod-a", "fe", "Running", testContainer, now)
@@ -1006,12 +1010,12 @@ func TestPodEventOrdering(t *testing.T) {
 	podCNowDeleting := f.testPod("pod-c", "fe", "Running", testContainer, now)
 	podCNowDeleting.DeletionTimestamp = &metav1.Time{Time: now}
 
-	setImage(podAPast, imagePast)
-	setImage(podBPast, imagePast)
-	setImage(podANow, imageNow)
-	setImage(podBNow, imageNow)
-	setImage(podCNow, imageNow)
-	setImage(podCNowDeleting, imageNow)
+	setDeployIDLabel(podAPast, deployIDPast)
+	setDeployIDLabel(podBPast, deployIDPast)
+	setDeployIDLabel(podANow, deployIDNow)
+	setDeployIDLabel(podBNow, deployIDNow)
+	setDeployIDLabel(podCNow, deployIDNow)
+	setDeployIDLabel(podCNowDeleting, deployIDNow)
 
 	// Test the pod events coming in in different orders,
 	// and the manifest ends up with podANow and podBNow
@@ -1029,10 +1033,21 @@ func TestPodEventOrdering(t *testing.T) {
 			defer f.TearDown()
 			mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 			manifest := f.newManifest("fe", []model.Mount{mount})
+
 			f.Start([]model.Manifest{manifest}, true)
 
 			call := f.nextCall()
 			assert.True(t, call.oneState().IsEmpty())
+
+			// Manipulate build history so we know what DeployID we expect pods to have
+			f.WaitUntilManifestState("have build history to manipulate", "fe", func(ms store.ManifestState) bool {
+				return len(ms.BuildHistory) > 0
+			})
+			f.withManifestState("fe", func(ms store.ManifestState) {
+				if len(ms.BuildHistory) > 0 {
+					ms.BuildHistory[0].DeployID = deployIDNow
+				}
+			})
 
 			for _, pod := range order {
 				f.podEvent(pod)
@@ -1049,10 +1064,11 @@ func TestPodEventOrdering(t *testing.T) {
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
-				assert.Equal(t, 2, ms.PodSet.Len())
-				assert.Equal(t, now, ms.PodSet.Pods["pod-a"].StartedAt)
-				assert.Equal(t, now, ms.PodSet.Pods["pod-b"].StartedAt)
-				assert.Equal(t, imageNow, ms.PodSet.ImageID.String())
+				if assert.Equal(t, 2, ms.PodSet.Len()) {
+					assert.Equal(t, now.String(), ms.PodSet.Pods["pod-a"].StartedAt.String())
+					assert.Equal(t, now.String(), ms.PodSet.Pods["pod-b"].StartedAt.String())
+					assert.Equal(t, deployIDNow, ms.PodSet.DeployID)
+				}
 			})
 
 			assert.NoError(t, f.Stop())
