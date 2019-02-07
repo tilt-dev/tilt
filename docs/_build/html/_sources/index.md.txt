@@ -72,6 +72,11 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
    install
    tutorial
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Guides
+
    skaffold
    helm
    docker_compose
@@ -79,7 +84,7 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
 .. toctree::
    :maxdepth: 1
-   :caption: Using Tilt
+   :caption: Learn More
 
    tiltfile_concepts
    fast_build

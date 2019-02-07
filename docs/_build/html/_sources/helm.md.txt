@@ -1,4 +1,4 @@
-# Helm
+# Helm Integration
 Tilt supports Helm out-of-the-box. The `helm` function runs `helm template` on a chart directory and returns the generated yaml. Use this function in the Deploy step of our [Tutorial](tutorial.html).
 
 ```python
