@@ -118,6 +118,8 @@ type fakeBuildAndDeployer struct {
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 
+	nextDeployID model.DeployID
+
 	buildLogOutput map[model.TargetID]string
 }
 
@@ -177,6 +179,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model
 	}
 
 	result := store.NewBuildResultSet()
+	if b.nextDeployID != 0 {
+		result.DeployID = b.nextDeployID
+		b.nextDeployID = 0
+	}
 	result.Builds[buildID] = b.nextBuildResult(buildImageRef)
 	return result, nil
 }
@@ -1033,21 +1039,11 @@ func TestPodEventOrdering(t *testing.T) {
 			defer f.TearDown()
 			mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 			manifest := f.newManifest("fe", []model.Mount{mount})
-
+			f.b.nextDeployID = deployIDNow
 			f.Start([]model.Manifest{manifest}, true)
 
 			call := f.nextCall()
 			assert.True(t, call.oneState().IsEmpty())
-
-			// Manipulate build history so we know what DeployID we expect pods to have
-			f.WaitUntilManifestState("have build history to manipulate", "fe", func(ms store.ManifestState) bool {
-				return len(ms.BuildHistory) > 0
-			})
-			f.withManifestState("fe", func(ms store.ManifestState) {
-				if len(ms.BuildHistory) > 0 {
-					ms.BuildHistory[0].DeployID = deployIDNow
-				}
-			})
 
 			for _, pod := range order {
 				f.podEvent(pod)
