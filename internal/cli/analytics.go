@@ -2,10 +2,15 @@ package cli
 
 import (
 	"bufio"
+	"crypto/md5"
+	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/whilp/git-urls"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -19,9 +24,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	var err error
 
 	options := []analytics.Option{}
-	options = append(options, analytics.WithGlobalTags(map[string]string{
-		"version": buildInfo().Version,
-	}))
+	options = append(options, analytics.WithGlobalTags(globalTags()))
 	if isAnalyticsDisabledFromEnv() {
 		options = append(options, analytics.WithEnabled(false))
 	}
@@ -73,6 +76,55 @@ func initAnalytics(rootCmd *cobra.Command) error {
 
 	rootCmd.AddCommand(analyticsCmd)
 	return nil
+}
+
+func globalTags() map[string]string {
+	ret := map[string]string{
+		"version": buildInfo().Version,
+	}
+
+	// store a hash of the git remote to help us guess how many users are running it on the same repository
+	origin := normalizeGitRemote(gitOrigin())
+	if origin != "" {
+		h := md5.Sum([]byte(origin))
+		ret["git.origin"] = base64.StdEncoding.EncodeToString(h[:])
+	}
+
+	return ret
+}
+
+func gitOrigin() string {
+	cmd := exec.Command("git", "remote", "get", "origin")
+	b, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	return string(b)
+}
+
+func normalizeGitRemote(s string) string {
+	u, err := giturls.Parse(string(s))
+	if err != nil {
+		return s
+	}
+
+	// treat "http://", "https://", "git://", "ssh://", etc as equiv
+	u.Scheme = ""
+
+	u.User = nil
+
+	// github.com/windmilleng/tilt is the same as github.com/windmilleng/tilt/
+	if strings.HasSuffix(u.Path, "/") {
+		u.Path = u.Path[:len(u.Path)-1]
+	}
+
+	// github.com/windmilleng/tilt is the same as github.com/windmilleng/tilt.git
+	if strings.HasSuffix(u.Path, ".git") {
+		u.Path = u.Path[:len(u.Path)-4]
+	}
+
+	return u.String()
 }
 
 func isAnalyticsDisabledFromEnv() bool {
