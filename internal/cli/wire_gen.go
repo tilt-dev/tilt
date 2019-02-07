@@ -7,7 +7,7 @@ package cli
 
 import (
 	"context"
-	"github.com/google/go-cloud/wire"
+	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"

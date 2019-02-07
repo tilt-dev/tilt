@@ -6,7 +6,7 @@ package synclet
 import (
 	"context"
 
-	"github.com/google/go-cloud/wire"
+	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 )

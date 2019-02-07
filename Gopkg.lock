@@ -545,14 +545,6 @@
   revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
 
 [[projects]]
-  branch = "master"
-  digest = "1:dcc626804fa1b81a7714906f44d4b6b21773f995d044f96030744e557348cbd2"
-  name = "github.com/google/go-cloud"
-  packages = ["wire"]
-  pruneopts = "UT"
-  revision = "1e2867e5b7c01e3766e577e9ac9dae28769512c8"
-
-[[projects]]
   digest = "1:d2754cafcab0d22c13541618a8029a70a8959eb3525ff201fe971637e2274cd0"
   name = "github.com/google/go-cmp"
   packages = [
@@ -581,6 +573,14 @@
   pruneopts = "UT"
   revision = "d460ce9f8df2e77fb1ba55ca87fafed96c607494"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:3c4df6e0ec96b9dec76f15e0bcad888fa268ee6404d1cdcaf90d7567e32a8f73"
+  name = "github.com/google/wire"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9a7ae3ba6b734d831e88c75966fd5e9c0abdeace"
+  version = "v0.2.1"
 
 [[projects]]
   digest = "1:65c4414eeb350c47b8de71110150d0ea8a281835b1f386eacaa3ad7325929c21"
@@ -1555,10 +1555,10 @@
     "github.com/gdamore/tcell",
     "github.com/gobwas/glob",
     "github.com/golang/protobuf/proto",
-    "github.com/google/go-cloud/wire",
     "github.com/google/go-cmp/cmp",
     "github.com/google/go-cmp/cmp/cmpopts",
     "github.com/google/uuid",
+    "github.com/google/wire",
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
     "github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc",
