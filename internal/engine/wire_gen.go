@@ -7,7 +7,7 @@ package engine
 
 import (
 	"context"
-	"github.com/google/go-cloud/wire"
+	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
