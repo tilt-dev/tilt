@@ -54,21 +54,28 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 	return result
 }
 
-type BuildResultSet map[model.TargetID]BuildResult
+type BuildResultSet struct {
+	Builds   map[model.TargetID]BuildResult
+	DeployID k8s.DeployID
+}
+
+func NewBuildResultSet() BuildResultSet {
+	return BuildResultSet{
+		Builds: make(map[model.TargetID]BuildResult),
+	}
+}
 
 func (set BuildResultSet) AsOneResult() BuildResult {
-	if len(set) == 1 {
-		for _, result := range set {
+	if len(set.Builds) == 1 {
+		for _, result := range set.Builds {
 			return result
 		}
 	}
-	return BuildResult{}
+	return BuildResult{DeployID: set.DeployID}
 }
 
 func (set BuildResultSet) WithDeployID(dID k8s.DeployID) BuildResultSet {
-	for _, res := range set {
-		res.DeployID = dID
-	}
+	set.DeployID = dID
 	return set
 }
 

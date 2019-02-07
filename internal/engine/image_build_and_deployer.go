@@ -82,7 +82,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	results := store.BuildResultSet{}
+	results := store.NewBuildResultSet()
 
 	var refs []reference.NamedTagged
 	for _, iTarget := range iTargets {
@@ -90,7 +90,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
-		results[iTarget.ID()] = store.BuildResult{
+		results.Builds[iTarget.ID()] = store.BuildResult{
 			Image: ref,
 		}
 		refs = append(refs, ref)

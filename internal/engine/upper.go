@@ -293,7 +293,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 		ms.LastSuccessfulDeployTime = time.Now()
 
-		for id, result := range cb.Result {
+		for id, result := range cb.Result.Builds {
 			ms.MutableBuildStatus(id).LastSuccessfulResult = result
 		}
 

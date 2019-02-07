@@ -69,7 +69,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
 
-	results := store.BuildResultSet{}
+	results := store.NewBuildResultSet()
 
 	if haveImage {
 		var err error
@@ -93,7 +93,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 			return store.BuildResultSet{}, err
 		}
 
-		results[iTarget.ID()] = store.BuildResult{
+		results.Builds[iTarget.ID()] = store.BuildResult{
 			Image: ref,
 		}
 	}
@@ -112,7 +112,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, spe
 		return store.BuildResultSet{}, err
 	}
 
-	results[dcTarget.ID()] = store.BuildResult{
+	results.Builds[dcTarget.ID()] = store.BuildResult{
 		ContainerID: cid,
 	}
 

@@ -34,7 +34,7 @@ var imageTargetID = model.TargetID{
 }
 
 var alreadyBuilt = store.BuildResult{Image: testImageRef}
-var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
+var alreadyBuiltSet = store.BuildResultSet{Builds: map[model.TargetID]store.BuildResult{imageTargetID: alreadyBuilt}}
 
 type expectedFile = testutils.ExpectedFile
 
@@ -149,7 +149,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	f.assertContainerRestarts(1)
 
 	id := manifest.ImageTargetAt(0).ID()
-	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.Builds[id].ContainerID.String())
 }
 
 func TestContainerBuildSynclet(t *testing.T) {
@@ -175,7 +175,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 	}
 
 	id := manifest.ImageTargetAt(0).ID()
-	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.Builds[id].ContainerID.String())
 }
 
 func TestIncrementalBuildFailure(t *testing.T) {
@@ -297,7 +297,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	}
 
 	id := manifest.ImageTargetAt(0).ID()
-	rSet := firstResult[id].FilesReplacedSet
+	rSet := firstResult.Builds[id].FilesReplacedSet
 	if len(rSet) != 1 || !rSet[aPath] {
 		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
 	}
@@ -308,7 +308,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rSet = secondResult[id].FilesReplacedSet
+	rSet = secondResult.Builds[id].FilesReplacedSet
 	if len(rSet) != 2 || !rSet[aPath] || !rSet[bPath] {
 		t.Errorf("Expected replaced set with a.txt, b.txt, actual: %v", rSet)
 	}
@@ -349,7 +349,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	}
 
 	id := manifest.ImageTargetAt(0).ID()
-	rSet := firstResult[id].FilesReplacedSet
+	rSet := firstResult.Builds[id].FilesReplacedSet
 	if len(rSet) != 1 || !rSet[aPath] {
 		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
 	}
@@ -363,7 +363,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rSet = secondResult[id].FilesReplacedSet
+	rSet = secondResult.Builds[id].FilesReplacedSet
 	if len(rSet) != 0 {
 		t.Errorf("Expected empty replaced set, actual: %v", rSet)
 	}
@@ -507,7 +507,7 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 
 func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy store.DeployInfo) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
-	for id, result := range resultSet {
+	for id, result := range resultSet.Builds {
 		state := store.NewBuildState(result, files).WithDeployTarget(deploy)
 		stateSet[id] = state
 	}

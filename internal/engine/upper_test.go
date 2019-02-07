@@ -176,8 +176,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model
 		return store.BuildResultSet{}, err
 	}
 
-	result := store.BuildResultSet{}
-	result[buildID] = b.nextBuildResult(buildImageRef)
+	result := store.NewBuildResultSet()
+	result.Builds[buildID] = b.nextBuildResult(buildImageRef)
 	return result, nil
 }
 
@@ -2464,8 +2464,8 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 }
 
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
-	resultSet := store.BuildResultSet{}
-	resultSet[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
+	resultSet := store.NewBuildResultSet()
+	resultSet.Builds[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
 		ContainerID: id,
 	}
 	return resultSet
