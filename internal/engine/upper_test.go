@@ -934,7 +934,7 @@ func (f *testFixture) testPod(podID string, manifestName string, phase string, c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              podID,
 			CreationTimestamp: metav1.Time{Time: creationTime},
-			Labels:            map[string]string{ManifestNameLabel: manifestName},
+			Labels:            map[string]string{k8s.ManifestNameLabel: manifestName},
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -1529,7 +1529,7 @@ func testService(serviceName string, manifestName string, ip string, port int) *
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   serviceName,
-			Labels: map[string]string{ManifestNameLabel: manifestName},
+			Labels: map[string]string{k8s.ManifestNameLabel: manifestName},
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{{

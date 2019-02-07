@@ -17,6 +17,9 @@ type BuildResult struct {
 	// The tag is derived from a content-addressable digest.
 	Image reference.NamedTagged
 
+	// The ID we have assigned to this deployment.
+	DeployID k8s.DeployID
+
 	// If this build was a container build, containerID we built on top of
 	ContainerID container.ID
 
@@ -60,6 +63,13 @@ func (set BuildResultSet) AsOneResult() BuildResult {
 		}
 	}
 	return BuildResult{}
+}
+
+func (set BuildResultSet) WithDeployID(dID k8s.DeployID) BuildResultSet {
+	for _, res := range set {
+		res.DeployID = dID
+	}
+	return set
 }
 
 // The state of the system since the last successful build.

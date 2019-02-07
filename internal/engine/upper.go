@@ -494,7 +494,7 @@ func handleConfigsReloaded(
 //
 // Intended as a helper for pod-mutating events.
 func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
-	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
+	manifestName := model.ManifestName(pod.ObjectMeta.Labels[k8s.ManifestNameLabel])
 	if manifestName == "" {
 		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodSelectors
 		for _, m := range state.Manifests() {
@@ -767,7 +767,7 @@ func handleLogAction(state *store.EngineState, action LogAction) {
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
 	service := action.Service
-	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
+	manifestName := model.ManifestName(service.ObjectMeta.Labels[k8s.ManifestNameLabel])
 	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
 	}
