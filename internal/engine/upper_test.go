@@ -1110,8 +1110,9 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
-	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
+		ms, _ := st.ManifestState(manifest.Name)
+		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	f.store.Dispatch(BuildStartedAction{
 		ManifestName: manifest.Name,
@@ -1121,13 +1122,19 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		Result: containerResultSet(manifest, "theOriginalContainer"),
 	})
 
+	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
+		return nextManifestNameToBuild(st) == ""
+	})
+
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
 	})
-	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
-	f.waitForCompletedBuildCount(1)
+
+	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
+		return nextManifestNameToBuild(st) == manifest.Name
+	})
 }
 
 func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
@@ -1141,13 +1148,14 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	// Start a fake build to set manifestState.ExpectedContainerId
+	// Start a fake build
 	f.store.Dispatch(targetFilesChangedAction{
 		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
-	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
+		ms, _ := st.ManifestState(manifest.Name)
+		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	f.store.Dispatch(BuildStartedAction{
 		ManifestName: manifest.Name,
@@ -1156,6 +1164,8 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// Simulate k8s restarting the container due to a crash.
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
+	// ...and finish the build. Even though this action comes in AFTER the pod
+	// event w/ unexpected container,  we should still be able to detect the mismatch.
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "theOriginalContainer"),
 	})
@@ -1163,11 +1173,12 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
 	})
-	// wait for triggered image build (count is 1 because our fake build above doesn't increment this number).
-	f.waitForCompletedBuildCount(1)
+	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
+		return nextManifestNameToBuild(st) == manifest.Name
+	})
 }
 
-func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
+func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.bc.DisableForTesting()
@@ -1178,28 +1189,30 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	// Start a fake build to set manifestState.ExpectedContainerId
+	// Start and end a normal build
 	f.store.Dispatch(targetFilesChangedAction{
 		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
 	})
-	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
+		ms, _ := st.ManifestState(manifest.Name)
+		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 
 	f.store.Dispatch(BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
-
-	// Simulate a normal build completion
 	podStartTime := time.Now()
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "normal-container-id"),
 	})
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
+	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
+		return nextManifestNameToBuild(st) == ""
+	})
 
-	// Start another fake build to set manifestState.ExpectedContainerId
+	// Start another fake build
 	f.store.Dispatch(targetFilesChangedAction{
 		targetID: manifest.ImageTargetAt(0).ID(),
 		files:    []string{"/go/a"},
@@ -1212,7 +1225,7 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 		StartTime:    time.Now(),
 	})
 
-	// Simulate a pod crash, then a build compltion
+	// Simulate a pod crash, then a build completion
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "funny-container-id", podStartTime))
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "normal-container-id"),
@@ -1220,6 +1233,9 @@ func TestPodUnexpectedContainerAfterInPlaceUpdate(t *testing.T) {
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
+	})
+	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
+		return nextManifestNameToBuild(st) == manifest.Name
 	})
 }
 
