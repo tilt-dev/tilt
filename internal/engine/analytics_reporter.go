@@ -11,7 +11,7 @@ import (
 )
 
 // How often to perodically report data for analytics while Tilt is running
-const analyticsReportingInterval = time.Hour * 4
+const analyticsReportingInterval = time.Hour * 1
 
 type AnalyticsReporter struct {
 	a       analytics.Analytics
@@ -28,11 +28,13 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	defer st.RUnlockState()
 
 	// wait until state has been kinda initialized
-	if !state.TiltStartTime.IsZero() {
+	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
 		go func() {
-			ar.report()
-			time.Sleep(analyticsReportingInterval)
+			for {
+				ar.report()
+				time.Sleep(analyticsReportingInterval)
+			}
 		}()
 	}
 }
@@ -62,8 +64,14 @@ func (ar *AnalyticsReporter) report() {
 		}
 	}
 
+	tiltfileIsInError := "false"
+	if st.LastTiltfileError() != nil {
+		tiltfileIsInError = "true"
+	}
+
 	ar.a.Incr("up.running", map[string]string{
 		"up.starttime":                 st.TiltStartTime.Format(time.RFC3339),
+		"tiltfile.error":               tiltfileIsInError,
 		"builds.completed_count":       strconv.Itoa(st.CompletedBuildCount),
 		"resource.count":               strconv.Itoa(len(st.ManifestDefinitionOrder)),
 		"resource.dockercompose.count": strconv.Itoa(dcCount),

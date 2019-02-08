@@ -61,6 +61,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"resource.dockercompose.count": "4",
 		"resource.fastbuild.count":     "1",
 		"resource.k8s.count":           "3",
+		"tiltfile.error":               "false",
 		"up.starttime":                 state.TiltStartTime.Format(time.RFC3339),
 	}
 
