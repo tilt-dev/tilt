@@ -21,18 +21,16 @@ func (l Log) Empty() bool {
 	return len(l.content) == 0
 }
 
-func (l Log) Copy() Log {
-	return Log{append([]byte{}, l.content...)}
-}
-
-func (l *Log) Append(b []byte) {
-	l.content = append(l.content, b...)
-	if len(l.content) > maxLogLengthInBytes {
-		for i := len(l.content) - maxLogLengthInBytes - 1; i < len(l.content); i++ {
-			if l.content[i] == '\n' {
-				l.content = l.content[i+1:]
+func AppendLog(l Log, b []byte) Log {
+	content := append(l.content, b...)
+	if len(content) > maxLogLengthInBytes {
+		for i := len(content) - maxLogLengthInBytes - 1; i < len(content); i++ {
+			if content[i] == '\n' {
+				content = content[i+1:]
 				break
 			}
 		}
 	}
+
+	return Log{content}
 }

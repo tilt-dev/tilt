@@ -9,7 +9,7 @@ import (
 
 func TestLog_AppendUnderLimit(t *testing.T) {
 	l := NewLog("foo")
-	l.Append([]byte("bar"))
+	l = AppendLog(l, []byte("bar"))
 	assert.Equal(t, "foobar", l.String())
 }
 
@@ -25,7 +25,7 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 	s := sb.String()
 
-	l.Append([]byte(s))
+	l = AppendLog(l, []byte(s))
 
 	assert.Equal(t, s, l.String())
 }

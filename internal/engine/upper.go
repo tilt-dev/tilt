@@ -664,7 +664,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	checkForPodCrash(ctx, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
-		podInfo.PreRestartLog = podInfo.CurrentLog.Copy()
+		podInfo.PreRestartLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
@@ -688,9 +688,9 @@ func checkForPodCrash(ctx context.Context, ms *store.ManifestState, podInfo stor
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	b := []byte(msg + "\n")
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log.Append(b)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, b)
 	}
-	ms.CurrentBuild.Log.Append(b)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, b)
 	logger.Get(ctx).Infof("%s", msg)
 }
 
@@ -747,7 +747,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podInfo := ms.PodSet.Pods[podID]
-	podInfo.CurrentLog.Append(action.Log)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action.Log)
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
@@ -759,11 +759,11 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuild.Log.Append(action.Log)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action.Log)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
-	state.Log.Append(action.Log)
+	state.Log = model.AppendLog(state.Log, action.Log)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
@@ -880,5 +880,5 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 }
 
 func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log.Append(action.Log)
+	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log)
 }
