@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	v1 "k8s.io/api/core/v1"
 )
 
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/tutorial.html to get started."
@@ -48,7 +49,7 @@ type EngineState struct {
 	UserExited bool
 
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
-	Log []byte `testdiff:"ignore"`
+	Log model.Log `testdiff:"ignore"`
 
 	// GlobalYAML is a special manifest that has no images, but has dependencies
 	// and a bunch of YAML that is deployed when those dependencies change.
@@ -230,11 +231,12 @@ type ManifestState struct {
 
 	// If a pod had to be killed because it was crashing, we keep the old log
 	// around for a little while so we can show it in the UX.
-	CrashLog string
+	CrashLog model.Log
 }
 
 func NewState() *EngineState {
 	ret := &EngineState{}
+	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]bool)
 	return ret
@@ -473,9 +475,9 @@ type Pod struct {
 	Deleting bool
 
 	// The log for the previously active pod, if any
-	PreRestartLog []byte `testdiff:"ignore"`
+	PreRestartLog model.Log `testdiff:"ignore"`
 	// The log for the currently active pod, if any
-	CurrentLog []byte `testdiff:"ignore"`
+	CurrentLog model.Log `testdiff:"ignore"`
 
 	// Corresponds to the deployed container.
 	ContainerName  container.Name
@@ -513,10 +515,10 @@ func (p Pod) Log() string {
 	var podLog string
 	// if the most recent pod is up, then we want the log from the last run (if any), since it crashed
 	if p.ContainerReady {
-		podLog = string(p.PreRestartLog) + string(p.CurrentLog)
+		podLog = p.PreRestartLog.String() + p.CurrentLog.String()
 	} else {
 		// otherwise, the most recent pod has the crash itself, so just return itself
-		podLog = string(p.CurrentLog)
+		podLog = p.CurrentLog.String()
 	}
 
 	return podLog
@@ -633,7 +635,7 @@ func StateToView(s EngineState) view.View {
 			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: ms.NextBuildReason(),
 			CurrentBuild:       currentBuild,
-			CrashLog:           ms.CrashLog,
+			CrashLog:           ms.CrashLog.String(),
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
 		}
@@ -685,7 +687,7 @@ func StateToView(s EngineState) view.View {
 	}
 	ret.Resources = append(ret.Resources, tr)
 
-	ret.Log = string(s.Log)
+	ret.Log = s.Log.String()
 
 	return ret
 }
