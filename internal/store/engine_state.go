@@ -311,12 +311,19 @@ func (ms *ManifestState) MostRecentPod() Pod {
 	return ms.PodSet.MostRecentPod()
 }
 
-func (ms *ManifestState) NextBuildReason() model.BuildReason {
-	reason := model.BuildReasonNone
+func (ms *ManifestState) HasPendingFileChanges() bool {
 	for _, status := range ms.BuildStatuses {
 		if len(status.PendingFileChanges) > 0 {
-			reason = reason.With(model.BuildReasonFlagMountFiles)
+			return true
 		}
+	}
+	return false
+}
+
+func (ms *ManifestState) NextBuildReason() model.BuildReason {
+	reason := model.BuildReasonNone
+	if ms.HasPendingFileChanges() {
+		reason = reason.With(model.BuildReasonFlagMountFiles)
 	}
 	if !ms.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
