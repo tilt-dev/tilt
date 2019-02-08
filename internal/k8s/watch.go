@@ -2,21 +2,58 @@ package k8s
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/model"
 
 	"k8s.io/api/core/v1"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/watch"
 )
+
+type watcherFactory func(namespace string) watcher
+type watcher interface {
+	Watch(options metav1.ListOptions) (watch.Interface, error)
+}
+
+func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, error) {
+	// passing "" gets us all namespaces
+	watcher, err := f("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
+	if err == nil {
+		return watcher, nil
+	}
+
+	// If the request failed, we might be able to recover.
+	statusErr, isStatusErr := err.(*apiErrors.StatusError)
+	if !isStatusErr {
+		return nil, err
+	}
+
+	status := statusErr.ErrStatus
+	if status.Code == http.StatusForbidden {
+		// If this is a forbidden error, maybe the user just isn't allowed to watch this namespace.
+		// Let's narrow our request to just the config namespace, and see if that helps.
+		watcher, err := f(kCli.configNamespace.String()).Watch(metav1.ListOptions{LabelSelector: ls.String()})
+		if err == nil {
+			return watcher, nil
+		}
+
+		// ugh, it still failed. return the original error.
+	}
+	return nil, fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
+}
 
 func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
 	ch := make(chan *v1.Pod)
-
-	// passing "" gets us all namespaces
-	watcher, err := kCli.core.Pods("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
+	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+		return kCli.core.Pods(ns)
+	}, ls)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Pods.Watch")
 	}
 
 	go func() {
@@ -57,10 +94,11 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 		ls[lp.Key] = lp.Value
 	}
 
-	// passing "" gets us all namespaces
-	watcher, err := kCli.core.Services("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
+	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+		return kCli.core.Services(ns)
+	}, ls.AsSelector())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Services.Watch")
 	}
 
 	go func() {

@@ -2,11 +2,13 @@ package k8s
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -18,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/testutils/output"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	k8stesting "k8s.io/client-go/testing"
 )
@@ -76,12 +79,28 @@ func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 	tf.testServiceLabels(lps, lps)
 }
 
+func TestK8sClient_WatchPodsError(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	tf.watchErr = &errors.StatusError{
+		ErrStatus: metav1.Status{
+			Message: "unknown",
+			Reason:  "Forbidden",
+			Code:    http.StatusForbidden,
+		},
+	}
+	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Forbidden")
+	}
+}
+
 type watchTestFixture struct {
 	t                 *testing.T
 	kCli              Client
 	w                 *watch.FakeWatcher
 	watchRestrictions k8stesting.WatchRestrictions
 	ctx               context.Context
+	watchErr          error
 }
 
 func newWatchTestFixture(t *testing.T) *watchTestFixture {
@@ -96,6 +115,9 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	wr := func(action k8stesting.Action) (handled bool, wi watch.Interface, err error) {
 		wa := action.(k8stesting.WatchAction)
 		ret.watchRestrictions = wa.GetWatchRestrictions()
+		if ret.watchErr != nil {
+			return true, nil, ret.watchErr
+		}
 		return true, ret.w, nil
 	}
 

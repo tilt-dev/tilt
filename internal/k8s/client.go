@@ -96,12 +96,13 @@ type Client interface {
 }
 
 type K8sClient struct {
-	env           Env
-	kubectlRunner kubectlRunner
-	core          apiv1.CoreV1Interface
-	restConfig    *rest.Config
-	portForwarder PortForwarder
-	kubeContext   KubeContext
+	env             Env
+	kubectlRunner   kubectlRunner
+	core            apiv1.CoreV1Interface
+	restConfig      *rest.Config
+	portForwarder   PortForwarder
+	kubeContext     KubeContext
+	configNamespace Namespace
 }
 
 var _ Client = K8sClient{}
@@ -115,7 +116,12 @@ func ProvideK8sClient(ctx context.Context, envOrErr EnvOrError) (Client, error) 
 		return &explodingClient{err: envOrErr.Err}, nil
 	}
 
-	config, err := ProvideRESTConfig()
+	loader := ProvideClientConfig()
+	config, err := ProvideRESTConfig(loader)
+	if err != nil {
+		return K8sClient{}, err
+	}
+	namespace, err := ProvideConfigNamespace(loader)
 	if err != nil {
 		return K8sClient{}, err
 	}
@@ -124,7 +130,7 @@ func ProvideK8sClient(ctx context.Context, envOrErr EnvOrError) (Client, error) 
 		return K8sClient{}, err
 	}
 	portForwarder := ProvidePortForwarder()
-	k8sClient := NewK8sClient(ctx, env, coreV1Interface, config, portForwarder)
+	k8sClient := NewK8sClient(ctx, env, coreV1Interface, config, portForwarder, namespace)
 	return k8sClient, nil
 }
 
@@ -133,7 +139,8 @@ func NewK8sClient(
 	env Env,
 	core apiv1.CoreV1Interface,
 	restConfig *rest.Config,
-	pf PortForwarder) K8sClient {
+	pf PortForwarder,
+	configNamespace Namespace) K8sClient {
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -141,11 +148,12 @@ func NewK8sClient(
 	browser.Stderr = writer
 
 	return K8sClient{
-		env:           env,
-		kubectlRunner: realKubectlRunner{},
-		core:          core,
-		restConfig:    restConfig,
-		portForwarder: pf,
+		env:             env,
+		kubectlRunner:   realKubectlRunner{},
+		core:            core,
+		restConfig:      restConfig,
+		portForwarder:   pf,
+		configNamespace: configNamespace,
 	}
 }
 
@@ -305,21 +313,37 @@ func ProvideRESTClient(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
 	return clientSet.CoreV1(), nil
 }
 
-func ProvideRESTConfig() (*rest.Config, error) {
+func ProvideClientConfig() clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
 	overrides := &clientcmd.ConfigOverrides{}
-
-	clientLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		rules,
 		overrides)
-	config, err := clientLoader.ClientConfig()
+}
+
+// The namespace in the kubeconfig.
+// Used as a default namespace in some (but not all) client commands.
+// https://godoc.org/k8s.io/client-go/tools/clientcmd/api/v1#Context
+func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig) (Namespace, error) {
+	namespace, explicit, err := clientLoader.Namespace()
 	if err != nil {
-		return nil, fmt.Errorf(
-			"could not get config for context (%q): %s", overrides.Context, err)
+		return "", errors.Wrap(err, "could not get namespace")
 	}
 
+	// TODO(nick): Right now, tilt doesn't provide a namespace flag. If we ever did,
+	// we would need to handle explicit namespaces different than implicit ones.
+	_ = explicit
+
+	return Namespace(namespace), nil
+}
+
+func ProvideRESTConfig(clientLoader clientcmd.ClientConfig) (*rest.Config, error) {
+	config, err := clientLoader.ClientConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get config")
+	}
 	return config, nil
 }
 

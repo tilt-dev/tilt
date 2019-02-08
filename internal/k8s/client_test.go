@@ -124,7 +124,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.tracker = tracker
 
 	core := cs.CoreV1()
-	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, KubeContext("unknown")}
+	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, KubeContext("unknown"), ""}
 	return ret
 }
 
