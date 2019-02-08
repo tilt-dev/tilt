@@ -1123,7 +1123,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	})
 
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == ""
+		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
 	})
 
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
@@ -1209,7 +1209,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == ""
+		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
 	})
 
 	// Start another fake build
