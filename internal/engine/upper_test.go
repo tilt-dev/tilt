@@ -179,14 +179,9 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		return store.BuildResultSet{}, err
 	}
 
-	result := store.NewBuildResultSet()
-	if b.nextDeployID != 0 {
-		result.DeployID = b.nextDeployID
-		b.nextDeployID = 0
-	} else {
-		result.DeployID = testDeployID
-	}
-	result.Builds[buildID] = b.nextBuildResult(buildImageRef)
+	result := store.BuildResultSet{}
+	result[buildID] = b.nextBuildResult(buildImageRef)
+
 	return result, nil
 }
 
@@ -1160,7 +1155,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		StartTime:    time.Now(),
 	})
 	f.store.Dispatch(BuildCompleteAction{
-		Result: store.BuildResultSet{DeployID: testDeployID},
+		Result: store.BuildResultSet{},
 	})
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return nextManifestNameToBuild(st) == ""
@@ -2497,9 +2492,8 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 }
 
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
-	resultSet := store.NewBuildResultSet()
-	resultSet.DeployID = testDeployID
-	resultSet.Builds[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
+	resultSet := store.BuildResultSet{}
+	resultSet[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
 		ContainerID: id,
 	}
 	return resultSet

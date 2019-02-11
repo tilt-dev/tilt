@@ -12,7 +12,6 @@ type BuildRecord struct {
 	StartTime  time.Time
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason
-	DeployID   DeployID
 	Log        Log `testdiff:"ignore"`
 }
 

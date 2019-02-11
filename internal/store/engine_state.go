@@ -206,8 +206,9 @@ type ManifestState struct {
 	Name model.ManifestName
 
 	// k8s-specific state
-	PodSet PodSet
-	LBs    map[k8s.ServiceName]*url.URL
+	PodSet   PodSet
+	LBs      map[k8s.ServiceName]*url.URL
+	DeployID model.DeployID // ID we have assigned to the current deploy (helps find expected k8s objects)
 
 	BuildStatuses map[model.TargetID]*BuildStatus
 
@@ -293,10 +294,6 @@ func (ms *ManifestState) LastBuild() model.BuildRecord {
 		return model.BuildRecord{}
 	}
 	return ms.BuildHistory[0]
-}
-
-func (ms *ManifestState) LastDeployID() model.DeployID {
-	return ms.LastBuild().DeployID
 }
 
 func (ms *ManifestState) AddCompletedBuild(bs model.BuildRecord) {

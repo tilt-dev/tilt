@@ -82,7 +82,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	results := store.NewBuildResultSet()
+	results := store.BuildResultSet{}
 
 	var refs []reference.NamedTagged
 	var anyFastBuild bool
@@ -91,25 +91,23 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
-		results.Builds[iTarget.ID()] = store.BuildResult{
+		results[iTarget.ID()] = store.BuildResult{
 			Image: ref,
 		}
 		refs = append(refs, ref)
 		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
 	}
 
-	deployID, err := ibd.deploy(ctx, ps, kTargets, refs, anyFastBuild)
+	err = ibd.deploy(ctx, st, ps, kTargets, refs, anyFastBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
-
-	results = results.WithDeployID(deployID)
 
 	return results, nil
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged, needsSynclet bool) (model.DeployID, error) {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged, needsSynclet bool) error {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -121,18 +119,20 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 	deployID := model.NewDeployID()
 	deployLabel := k8s.TiltDeployLabel(deployID)
 
+	var targetIDs []model.TargetID
+
 	for _, k8sTarget := range k8sTargets {
 		// TODO(nick): The parsed YAML should probably be a part of the model?
 		// It doesn't make much sense to re-parse it and inject labels on every deploy.
 		entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
 		if err != nil {
-			return deployID, err
+			return err
 		}
 
 		for _, e := range entities {
 			e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
 			if err != nil {
-				return deployID, errors.Wrap(err, "deploy")
+				return errors.Wrap(err, "deploy")
 			}
 
 			// For development, image pull policy should never be set to "Always",
@@ -140,7 +140,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 			// set "Always" for development are shooting their own feet.
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
-				return deployID, err
+				return err
 			}
 
 			// When working with a local k8s cluster, we set the pull policy to Never,
@@ -154,7 +154,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 				var replaced bool
 				e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
 				if err != nil {
-					return deployID, err
+					return err
 				}
 				if replaced {
 					injectedRefs[ref.String()] = true
@@ -163,25 +163,31 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 						var sidecarInjected bool
 						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
 						if err != nil {
-							return deployID, err
+							return err
 						}
 						if !sidecarInjected {
-							return deployID, fmt.Errorf("Could not inject synclet: %v", e)
+							return fmt.Errorf("Could not inject synclet: %v", e)
 						}
 					}
 				}
 			}
 			newK8sEntities = append(newK8sEntities, e)
 		}
+		targetIDs = append(targetIDs, k8sTarget.ID())
 	}
 
 	for _, ref := range refs {
 		if !injectedRefs[ref.String()] {
-			return deployID, fmt.Errorf("Docker image missing from yaml: %s", ref)
+			return fmt.Errorf("Docker image missing from yaml: %s", ref)
 		}
 	}
 
-	return deployID, ibd.k8sClient.Upsert(ctx, newK8sEntities)
+	deployIDActions := NewDeployIDActionsForTargets(targetIDs, deployID)
+	for _, a := range deployIDActions {
+		st.Dispatch(a)
+	}
+
+	return ibd.k8sClient.Upsert(ctx, newK8sEntities)
 }
 
 // If we're using docker-for-desktop as our k8s backend,

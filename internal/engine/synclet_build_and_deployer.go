@@ -119,7 +119,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
 
-	resultSet := store.NewBuildResultSet()
-	resultSet.Builds[image.ID()] = res
+	resultSet := store.BuildResultSet{}
+	resultSet[image.ID()] = res
 	return resultSet, nil
 }

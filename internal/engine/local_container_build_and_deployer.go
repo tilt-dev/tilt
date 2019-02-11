@@ -89,7 +89,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
 
-	resultSet := store.NewBuildResultSet()
-	resultSet.Builds[iTarget.ID()] = res
+	resultSet := store.BuildResultSet{}
+	resultSet[iTarget.ID()] = res
 	return resultSet, nil
 }

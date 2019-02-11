@@ -51,29 +51,15 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 	return result
 }
 
-type BuildResultSet struct {
-	Builds   map[model.TargetID]BuildResult
-	DeployID model.DeployID
-}
-
-func NewBuildResultSet() BuildResultSet {
-	return BuildResultSet{
-		Builds: make(map[model.TargetID]BuildResult),
-	}
-}
+type BuildResultSet map[model.TargetID]BuildResult
 
 func (set BuildResultSet) AsOneResult() BuildResult {
-	if len(set.Builds) == 1 {
-		for _, result := range set.Builds {
+	if len(set) == 1 {
+		for _, result := range set {
 			return result
 		}
 	}
 	return BuildResult{}
-}
-
-func (set BuildResultSet) WithDeployID(dID model.DeployID) BuildResultSet {
-	set.DeployID = dID
-	return set
 }
 
 // The state of the system since the last successful build.

@@ -68,7 +68,7 @@ func TestTiltBuildsImage(t *testing.T) {
 		assert.False(t, call.ShouldBuild, "should call `up` without `--build` b/c Tilt is doing the building")
 	}
 
-	assert.Len(t, res.Builds, 2, "expect two results (one for each spec)")
+	assert.Len(t, res, 2, "expect two results (one for each spec)")
 }
 
 func TestTiltBuildsImageWithTag(t *testing.T) {

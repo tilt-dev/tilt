@@ -82,7 +82,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedImage, result.Builds[id].Image.String())
+	assert.Equal(t, expectedImage, result[id].Image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
@@ -104,12 +104,12 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedSanchoRef, result.Builds[iTarget1.ID()].Image.String())
+	assert.Equal(t, expectedSanchoRef, result[iTarget1.ID()].Image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedSidecarRef, result.Builds[iTarget2.ID()].Image.String())
+	assert.Equal(t, expectedSidecarRef, result[iTarget2.ID()].Image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }

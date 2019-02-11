@@ -171,6 +171,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = handleBuildCompleted(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
+	case DeployIDAction:
+		handleDeployIDAction(ctx, state, action)
 	case LogAction:
 		handleLogAction(state, action)
 	case GlobalYAMLApplyStartedAction:
@@ -261,7 +263,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	bs := ms.CurrentBuild
 	bs.Error = err
 	bs.FinishTime = time.Now()
-	bs.DeployID = cb.Result.DeployID
 	ms.AddCompletedBuild(bs)
 
 	ms.CurrentBuild = model.BuildRecord{}
@@ -294,7 +295,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 		ms.LastSuccessfulDeployTime = time.Now()
 
-		for id, result := range cb.Result.Builds {
+		for id, result := range cb.Result {
 			ms.MutableBuildStatus(id).LastSuccessfulResult = result
 		}
 
@@ -339,6 +340,16 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	return nil
+}
+
+func handleDeployIDAction(ctx context.Context, state *store.EngineState, action DeployIDAction) {
+	mn := state.ManifestNameForTargetID(action.TargetID)
+	ms, ok := state.ManifestState(mn)
+	if !ok {
+		return
+	}
+
+	ms.DeployID = action.DeployID
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
@@ -518,7 +529,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 
 	ms := mt.State
 
-	deployID := ms.LastDeployID()
+	deployID := ms.DeployID
 	if podDeployID, ok := pod.ObjectMeta.Labels[k8s.TiltDeployIDLabel]; ok {
 		if pdID, err := strconv.Atoi(podDeployID); err != nil || pdID != int(deployID) {
 			return nil, nil
