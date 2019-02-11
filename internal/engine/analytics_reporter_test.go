@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -14,46 +15,26 @@ import (
 )
 
 func TestAnalyticsReporter_Everything(t *testing.T) {
-	reducer := func(ctx context.Context, engineState *store.EngineState, action store.Action) {}
-	ar := AnalyticsReporter{
-		a:       analytics.NewMemoryAnalytics(),
-		store:   store.NewStore(reducer, store.LogActionsFlag(false)),
-		started: false,
-	}
+	tf := newAnalyticsReporterTestFixture()
 
-	manifestCount := 0
-	nextManifest := func() model.Manifest {
-		manifestCount++
-		return model.Manifest{Name: model.ManifestName(fmt.Sprintf("manifest%d", manifestCount))}
-	}
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
 
-	manifests := []model.Manifest{
-		nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}),
-		nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}}),
-		nextManifest().WithDeployTarget(model.K8sTarget{}),
-		nextManifest().WithDeployTarget(model.K8sTarget{}),
-		nextManifest().WithDeployTarget(model.K8sTarget{}),
-		nextManifest().WithDeployTarget(model.DockerComposeTarget{}),
-		nextManifest().WithDeployTarget(model.DockerComposeTarget{}),
-		nextManifest().WithDeployTarget(model.DockerComposeTarget{}),
-		nextManifest().WithDeployTarget(model.DockerComposeTarget{}),
-	}
-
-	state := ar.store.LockMutableStateForTesting()
-	for _, m := range manifests {
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-	}
+	state := tf.ar.store.LockMutableStateForTesting()
 	state.TiltStartTime = time.Now()
 
 	state.CompletedBuildCount = 3
 
-	ar.store.UnlockMutableState()
+	tf.ar.store.UnlockMutableState()
 
-	ar.report()
-
-	ar.a.Flush(500 * time.Second)
-
-	ma := ar.a.(*analytics.MemoryAnalytics)
+	tf.run()
 
 	expectedTags := map[string]string{
 		"builds.completed_count":       "3",
@@ -65,9 +46,81 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"up.starttime":                 state.TiltStartTime.Format(time.RFC3339),
 	}
 
-	assert.Equal(t, []analytics.CountEvent{{
-		Name: "up.running",
-		Tags: expectedTags,
-		N:    1,
-	}}, ma.Counts)
+	tf.assertStats(t, expectedTags)
+}
+
+func TestAnalyticsReporter_TiltfileError(t *testing.T) {
+	tf := newAnalyticsReporterTestFixture()
+
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+
+	state := tf.ar.store.LockMutableStateForTesting()
+	state.TiltStartTime = time.Now()
+
+	state.CompletedBuildCount = 3
+
+	state.LastTiltfileBuild = model.BuildRecord{Error: errors.New("foo")}
+
+	tf.ar.store.UnlockMutableState()
+
+	tf.run()
+
+	expectedTags := map[string]string{
+		"builds.completed_count": "3",
+		"tiltfile.error":         "true",
+		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
+	}
+
+	tf.assertStats(t, expectedTags)
+}
+
+type analyticsReporterTestFixture struct {
+	manifestCount int
+	ar            AnalyticsReporter
+}
+
+func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
+	reducer := func(ctx context.Context, engineState *store.EngineState, action store.Action) {}
+	ar := AnalyticsReporter{
+		a:       analytics.NewMemoryAnalytics(),
+		store:   store.NewStore(reducer, store.LogActionsFlag(false)),
+		started: false,
+	}
+
+	return &analyticsReporterTestFixture{
+		manifestCount: 0,
+		ar:            ar,
+	}
+}
+
+func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest) {
+	state := artf.ar.store.LockMutableStateForTesting()
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	artf.ar.store.UnlockMutableState()
+}
+
+func (artf *analyticsReporterTestFixture) nextManifest() model.Manifest {
+	artf.manifestCount++
+	return model.Manifest{Name: model.ManifestName(fmt.Sprintf("manifest%d", artf.manifestCount))}
+}
+
+func (artf *analyticsReporterTestFixture) run() {
+	artf.ar.report()
+
+	artf.ar.a.Flush(500 * time.Second)
+}
+
+func (artf *analyticsReporterTestFixture) assertStats(t *testing.T, expectedTags map[string]string) {
+	ma := artf.ar.a.(*analytics.MemoryAnalytics)
+
+	expectedCounts := []analytics.CountEvent{{Name: "up.running", N: 1, Tags: expectedTags}}
+	assert.Equal(t, expectedCounts, ma.Counts)
 }

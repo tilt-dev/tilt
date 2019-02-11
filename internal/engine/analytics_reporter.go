@@ -32,8 +32,12 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 		ar.started = true
 		go func() {
 			for {
-				ar.report()
-				time.Sleep(analyticsReportingInterval)
+				select {
+				case <-time.After(analyticsReportingInterval):
+					ar.report()
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}
@@ -64,18 +68,23 @@ func (ar *AnalyticsReporter) report() {
 		}
 	}
 
+	stats := map[string]string{
+		"up.starttime":           st.TiltStartTime.Format(time.RFC3339),
+		"builds.completed_count": strconv.Itoa(st.CompletedBuildCount),
+	}
+
 	tiltfileIsInError := "false"
 	if st.LastTiltfileError() != nil {
 		tiltfileIsInError = "true"
+	} else {
+		// only report when there's no tiltfile error, to avoid polluting aggregations
+		stats["resource.count"] = strconv.Itoa(len(st.ManifestDefinitionOrder))
+		stats["resource.dockercompose.count"] = strconv.Itoa(dcCount)
+		stats["resource.k8s.count"] = strconv.Itoa(k8sCount)
+		stats["resource.fastbuild.count"] = strconv.Itoa(fastbuildCount)
 	}
 
-	ar.a.Incr("up.running", map[string]string{
-		"up.starttime":                 st.TiltStartTime.Format(time.RFC3339),
-		"tiltfile.error":               tiltfileIsInError,
-		"builds.completed_count":       strconv.Itoa(st.CompletedBuildCount),
-		"resource.count":               strconv.Itoa(len(st.ManifestDefinitionOrder)),
-		"resource.dockercompose.count": strconv.Itoa(dcCount),
-		"resource.k8s.count":           strconv.Itoa(k8sCount),
-		"resource.fastbuild.count":     strconv.Itoa(fastbuildCount),
-	})
+	stats["tiltfile.error"] = tiltfileIsInError
+
+	ar.a.Incr("up.running", stats)
 }
