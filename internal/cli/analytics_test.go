@@ -38,5 +38,8 @@ func TestGitOrigin(t *testing.T) {
 		t.Fatalf("failed to set origin's url: %+v", err)
 	}
 	origin := gitOrigin(tf.Path())
-	assert.Equal(t, "https://github.com/windmilleng/tilt", origin)
+
+	// we can't just compare raw urls because of https://git-scm.com/docs/git-config#git-config-urlltbasegtinsteadOf
+	// e.g., circleci images set `url.ssh://git@github.com.insteadof=https://github.com`
+	assert.Equal(t, "//github.com/windmilleng/tilt", normalizeGitRemote(origin))
 }
