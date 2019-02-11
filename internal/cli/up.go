@@ -11,6 +11,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/klog"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
@@ -95,6 +96,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx = logger.WithLogger(ctx, l)
 
 	log.SetOutput(l.Writer(logger.InfoLvl))
+	klog.SetOutput(l.Writer(logger.InfoLvl))
 
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
 
