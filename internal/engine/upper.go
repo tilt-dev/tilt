@@ -7,23 +7,21 @@ import (
 	"path/filepath"
 	"time"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -72,7 +70,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
 	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager,
-	sm SyncletManager) Upper {
+	sm SyncletManager, ar *AnalyticsReporter) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -88,6 +86,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(dclm)
 	st.AddSubscriber(pm)
 	st.AddSubscriber(sm)
+	st.AddSubscriber(ar)
 
 	return Upper{
 		store: st,
@@ -784,6 +783,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
+	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
