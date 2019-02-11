@@ -45,10 +45,16 @@ func Execute() {
 	addCommand(rootCmd, &downCmd{})
 	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, &versionCmd{})
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
-	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Enable tracing")
+	globalFlags := rootCmd.PersistentFlags()
+	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
+	globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	globalFlags.BoolVar(&trace, "trace", false, "Enable tracing")
+	globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
+	err = globalFlags.MarkHidden("klog")
+	if err != nil {
+		panic(err)
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -63,6 +69,7 @@ type tiltCmd interface {
 
 func preCommand(ctx context.Context) (context.Context, func() error) {
 	cleanup := func() error { return nil }
+	initKlog()
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 
