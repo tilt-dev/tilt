@@ -256,15 +256,15 @@ type MemoryAnalytics struct {
 }
 
 type CountEvent struct {
-	name string
-	tags map[string]string
-	n    int
+	Name string
+	Tags map[string]string
+	N    int
 }
 
 type TimeEvent struct {
-	name string
-	tags map[string]string
-	dur  time.Duration
+	Name string
+	Tags map[string]string
+	Dur  time.Duration
 }
 
 func NewMemoryAnalytics() *MemoryAnalytics {
@@ -272,7 +272,7 @@ func NewMemoryAnalytics() *MemoryAnalytics {
 }
 
 func (a *MemoryAnalytics) Count(name string, tags map[string]string, n int) {
-	a.Counts = append(a.Counts, CountEvent{name: name, tags: tags, n: n})
+	a.Counts = append(a.Counts, CountEvent{Name: name, Tags: tags, N: n})
 }
 
 func (a *MemoryAnalytics) Incr(name string, tags map[string]string) {
@@ -280,7 +280,7 @@ func (a *MemoryAnalytics) Incr(name string, tags map[string]string) {
 }
 
 func (a *MemoryAnalytics) Timer(name string, dur time.Duration, tags map[string]string) {
-	a.Timers = append(a.Timers, TimeEvent{name: name, dur: dur, tags: tags})
+	a.Timers = append(a.Timers, TimeEvent{Name: name, Dur: dur, Tags: tags})
 }
 
 func (a *MemoryAnalytics) Flush(timeout time.Duration) {}

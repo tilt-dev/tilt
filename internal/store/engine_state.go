@@ -21,6 +21,8 @@ import (
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/tutorial.html to get started."
 
 type EngineState struct {
+	TiltStartTime time.Time
+
 	// saved so that we can render in order
 	ManifestDefinitionOrder []model.ManifestName
 
