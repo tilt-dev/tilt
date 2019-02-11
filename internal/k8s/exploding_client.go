@@ -48,14 +48,6 @@ func (ec *explodingClient) ContainerLogs(ctx context.Context, podID PodID, cName
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
-	return NodeID(""), errors.Wrap(ec.err, "could not set up k8s client")
-}
-
-func (ec *explodingClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error) {
-	return PodID(""), errors.Wrap(ec.err, "could not set up k8s client")
-}
-
 func (ec *explodingClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error) {
 	return 0, nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
