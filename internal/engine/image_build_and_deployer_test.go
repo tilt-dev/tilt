@@ -114,13 +114,40 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
 
+func TestDeployIDInjectedAndSent(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticManifest()
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var deployID model.DeployID
+	for _, a := range f.st.Actions {
+		if deployIDAction, ok := a.(DeployIDAction); ok {
+			deployID = deployIDAction.DeployID
+		}
+	}
+	if deployID == 0 {
+		t.Errorf("didn't find DeployIDAction w/ non-zero DeployID in actions: %v", f.st.Actions)
+	}
+
+	assert.True(t, strings.Count(f.k8s.Yaml, k8s.TiltDeployIDLabel) >= 1,
+		"Expected TiltDeployIDLabel to appear at least once in YAML: %s", f.k8s.Yaml)
+	assert.True(t, strings.Count(f.k8s.Yaml, deployID.String()) >= 1,
+		"Expected DeployID %q to appear at least once in YAML: %s", deployID, f.k8s.Yaml)
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
 	ibd    *ImageBuildAndDeployer
-	st     *store.Store
+	st     *store.TestingStore
 }
 
 func newIBDFixture(t *testing.T) *ibdFixture {
@@ -139,6 +166,6 @@ func newIBDFixture(t *testing.T) *ibdFixture {
 		docker:         docker,
 		k8s:            k8s,
 		ibd:            ibd,
-		st:             store.NewStoreForTesting(),
+		st:             store.NewTestingStore(),
 	}
 }
