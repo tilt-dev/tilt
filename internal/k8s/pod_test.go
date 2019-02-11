@@ -1,14 +1,12 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
 
-	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,21 +50,6 @@ var fakePodList = podList(
 	fakePod("cockroachdb-1", "cockroachdb/cockroach:v2.0.5"),
 	fakePod("cockroachdb-2", "cockroachdb/cockroach:v2.0.5"),
 	fakePod(expectedPod, blorgDevImgStr))
-
-func (c clientTestFixture) FindAppByNodeWithOptions(options FindAppByNodeOptions) (PodID, error) {
-	c.setOutput("foo")
-	return c.client.FindAppByNode(context.Background(), NodeID("foo"), "synclet", options)
-}
-
-func (c clientTestFixture) FindAppByNodeWithOutput(output string) (PodID, error) {
-	c.setOutput(output)
-	return c.client.FindAppByNode(context.Background(), NodeID("foo"), "synclet", FindAppByNodeOptions{})
-}
-
-func (c clientTestFixture) FindAppByNodeWithError(err error) (PodID, error) {
-	c.setError(err)
-	return c.client.FindAppByNode(context.Background(), NodeID("foo"), "synclet", FindAppByNodeOptions{})
-}
 
 func (c clientTestFixture) AssertCallExistsWithArg(expectedArg string) {
 	foundMatchingCall := false
@@ -153,97 +136,5 @@ func TestPollForPodsWithImageTimesOut(t *testing.T) {
 	_, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 500*time.Millisecond)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "timed out polling for pod running image")
-	}
-}
-
-func TestFindAppByNode(t *testing.T) {
-	f := newClientTestFixture(t)
-	podId, err := f.FindAppByNodeWithOutput("foobar")
-	if assert.NoError(t, err) {
-		assert.Equal(t, PodID("foobar"), podId)
-	}
-}
-
-func TestFindAppByNodeNotFound(t *testing.T) {
-	f := newClientTestFixture(t)
-	_, err := f.FindAppByNodeWithOutput("")
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "unable to find")
-	}
-}
-
-func TestFindAppByNodeMultipleFound(t *testing.T) {
-	f := newClientTestFixture(t)
-	output := "foobar bazquu"
-	_, err := f.FindAppByNodeWithOutput(output)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "multiple")
-		assert.Contains(t, err.Error(), output)
-	}
-}
-
-func TestFindAppByNodeKubectlError(t *testing.T) {
-	f := newClientTestFixture(t)
-	e := errors.New("asdffdsa")
-	_, err := f.FindAppByNodeWithError(e)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), e.Error())
-	}
-}
-
-func TestFindAppByNodeWithOwner(t *testing.T) {
-	f := newClientTestFixture(t)
-	_, _ = f.FindAppByNodeWithOptions(FindAppByNodeOptions{Owner: "bob"})
-	f.AssertCallExistsWithArg("-lapp=synclet,owner=bob")
-}
-
-func TestFindAppByNodeWithNamespace(t *testing.T) {
-	f := newClientTestFixture(t)
-	_, _ = f.FindAppByNodeWithOptions(FindAppByNodeOptions{Namespace: "kube-system"})
-	f.AssertCallExistsWithArg("--namespace=kube-system")
-}
-
-func (c clientTestFixture) GetNodeForPodWithOutput(output string) (NodeID, error) {
-	c.setOutput(output)
-	return c.client.GetNodeForPod(context.Background(), PodID("foo"))
-}
-
-func (c clientTestFixture) GetNodeForPodWithError(err error) (NodeID, error) {
-	c.setError(err)
-	return c.client.GetNodeForPod(context.Background(), PodID("foo"))
-}
-
-func TestGetNodeForPod(t *testing.T) {
-	f := newClientTestFixture(t)
-	nodeID, err := f.GetNodeForPodWithOutput("foobar")
-	if assert.NoError(t, err) {
-		assert.Equal(t, NodeID("foobar"), nodeID)
-	}
-}
-
-func TestGetNodeForPodNotFound(t *testing.T) {
-	f := newClientTestFixture(t)
-	_, err := f.GetNodeForPodWithOutput("")
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "did not contain")
-	}
-}
-
-func TestGetNodeForPodMultipleFound(t *testing.T) {
-	f := newClientTestFixture(t)
-	output := "foobar\nbazquu\n"
-	_, err := f.GetNodeForPodWithOutput(output)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "multiple")
-		assert.Contains(t, err.Error(), output)
-	}
-}
-
-func TestGetNodeForPodKubectlError(t *testing.T) {
-	f := newClientTestFixture(t)
-	e := errors.New("asdffdsa")
-	_, err := f.GetNodeForPodWithError(e)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), e.Error())
 	}
 }

@@ -253,14 +253,6 @@ func (c *FakeK8sClient) applyWasCalled() bool {
 	return c.Yaml != ""
 }
 
-func (c *FakeK8sClient) FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error) {
-	return PodID("pod2"), nil
-}
-
-func (c *FakeK8sClient) GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error) {
-	return NodeID("node"), nil
-}
-
 func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (int, func(), error) {
 	c.LastForwardPortPodID = podID
 	c.LastForwardPortRemotePort = remotePort

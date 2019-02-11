@@ -79,12 +79,6 @@ type Client interface {
 	// Streams the container logs
 	ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error)
 
-	// Gets the ID for the Node on which the specified Pod is running
-	GetNodeForPod(ctx context.Context, podID PodID) (NodeID, error)
-
-	// Finds the PodID for the instance of appName running on the same node as podID
-	FindAppByNode(ctx context.Context, nodeID NodeID, appName string, options FindAppByNodeOptions) (PodID, error)
-
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error)
 
