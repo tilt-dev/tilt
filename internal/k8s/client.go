@@ -103,38 +103,27 @@ var _ Client = K8sClient{}
 
 type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
-func ProvideK8sClient(ctx context.Context, envOrErr EnvOrError) (Client, error) {
-	env := envOrErr.Env
-	if env == EnvNone {
-		// No k8s, so no need to get any further configs
-		return &explodingClient{err: envOrErr.Err}, nil
-	}
-
-	loader := ProvideClientConfig()
-	config, err := ProvideRESTConfig(loader)
-	if err != nil {
-		return K8sClient{}, err
-	}
-	namespace, err := ProvideConfigNamespace(loader)
-	if err != nil {
-		return K8sClient{}, err
-	}
-	coreV1Interface, err := ProvideRESTClient(config)
-	if err != nil {
-		return K8sClient{}, err
-	}
-	portForwarder := ProvidePortForwarder()
-	k8sClient := NewK8sClient(ctx, env, coreV1Interface, config, portForwarder, namespace)
-	return k8sClient, nil
-}
-
-func NewK8sClient(
+func ProvideK8sClient(
 	ctx context.Context,
 	env Env,
-	core apiv1.CoreV1Interface,
-	restConfig *rest.Config,
 	pf PortForwarder,
-	configNamespace Namespace) K8sClient {
+	configNamespace Namespace,
+	runner kubectlRunner,
+	clientLoader clientcmd.ClientConfig) Client {
+	if env == EnvNone {
+		// No k8s, so no need to get any further configs
+		return &explodingClient{err: fmt.Errorf("Kubernetes context not set")}
+	}
+
+	restConfig, err := ProvideRESTConfig(clientLoader)
+	if err != nil {
+		return &explodingClient{err: err}
+	}
+
+	core, err := ProvideCoreInterface(restConfig)
+	if err != nil {
+		return &explodingClient{err: err}
+	}
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -143,7 +132,7 @@ func NewK8sClient(
 
 	return K8sClient{
 		env:             env,
-		kubectlRunner:   realKubectlRunner{},
+		kubectlRunner:   runner,
 		core:            core,
 		restConfig:      restConfig,
 		portForwarder:   pf,
@@ -240,7 +229,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 }
 
 func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, k.kubeContext, []string{"cluster-info"})
+	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"cluster-info"})
 	if err != nil {
 		return errors.Wrapf(err, "Unable to connect to cluster via `kubectl cluster-info`:\nstdout: %s\nstderr: %s", stdout, stderr)
 	}
@@ -286,19 +275,10 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	}
 	stdin := bytes.NewReader([]byte(rawYAML))
 
-	return k.kubectlRunner.execWithStdin(ctx, k.kubeContext, args, stdin)
+	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
 }
 
 func ProvideCoreInterface(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientSet.CoreV1(), nil
-}
-
-func ProvideRESTClient(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
 	clientSet, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -320,23 +300,25 @@ func ProvideClientConfig() clientcmd.ClientConfig {
 // The namespace in the kubeconfig.
 // Used as a default namespace in some (but not all) client commands.
 // https://godoc.org/k8s.io/client-go/tools/clientcmd/api/v1#Context
-func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig) (Namespace, error) {
+func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig) Namespace {
 	namespace, explicit, err := clientLoader.Namespace()
 	if err != nil {
-		return "", errors.Wrap(err, "could not get namespace")
+		// If we can't get a namespace from the config, just fail gracefully to the default.
+		// If this error indicates a more serious problem, it will get handled downstream.
+		return ""
 	}
 
 	// TODO(nick): Right now, tilt doesn't provide a namespace flag. If we ever did,
 	// we would need to handle explicit namespaces different than implicit ones.
 	_ = explicit
 
-	return Namespace(namespace), nil
+	return Namespace(namespace)
 }
 
 func ProvideRESTConfig(clientLoader clientcmd.ClientConfig) (*rest.Config, error) {
 	config, err := clientLoader.ClientConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get config")
+		return nil, err
 	}
 	return config, nil
 }
