@@ -84,7 +84,7 @@ func globalTags() map[string]string {
 	}
 
 	// store a hash of the git remote to help us guess how many users are running it on the same repository
-	origin := normalizeGitRemote(gitOrigin())
+	origin := normalizeGitRemote(gitOrigin("."))
 	if origin != "" {
 		h := md5.Sum([]byte(origin))
 		ret["git.origin"] = base64.StdEncoding.EncodeToString(h[:])
@@ -93,14 +93,14 @@ func globalTags() map[string]string {
 	return ret
 }
 
-func gitOrigin() string {
-	cmd := exec.Command("git", "remote", "get", "origin")
+func gitOrigin(fromDir string) string {
+	cmd := exec.Command("git", "-C", fromDir, "remote", "get-url", "origin")
 	b, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
 
-	return string(b)
+	return strings.TrimRight(string(b), "\n")
 }
 
 func normalizeGitRemote(s string) string {
