@@ -116,10 +116,10 @@ type fakeBuildAndDeployer struct {
 	// it updated.
 	nextBuildContainer container.ID
 
+	nextDeployID model.DeployID
+
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
-
-	nextDeployID model.DeployID
 
 	buildLogOutput map[model.TargetID]string
 }
@@ -177,6 +177,17 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	if err != nil {
 		b.nextBuildFailure = nil
 		return store.BuildResultSet{}, err
+	}
+
+	dID := testDeployID
+	if b.nextDeployID != 0 {
+		dID = b.nextDeployID
+		b.nextDeployID = 0
+	}
+
+	deployIDActions := NewDeployIDActionsForTargets(ids, dID)
+	for _, a := range deployIDActions {
+		st.Dispatch(a)
 	}
 
 	result := store.BuildResultSet{}
@@ -1034,6 +1045,9 @@ func TestPodEventOrdering(t *testing.T) {
 
 			call := f.nextCall()
 			assert.True(t, call.oneState().IsEmpty())
+			f.WaitUntilManifestState("deployID set", "fe", func(ms store.ManifestState) bool {
+				return ms.DeployID == deployIDNow
+			})
 
 			for _, pod := range order {
 				f.podEvent(pod)
@@ -1122,6 +1136,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "theOriginalContainer"),
 	})
+	f.setDeployIDForManifest(manifest, testDeployID)
 
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
@@ -1149,18 +1164,6 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	f.Start([]model.Manifest{manifest}, true)
 
-	// Do a fake build to set DeployID (so we can actually match pods to this manifest)
-	f.store.Dispatch(BuildStartedAction{
-		ManifestName: manifest.Name,
-		StartTime:    time.Now(),
-	})
-	f.store.Dispatch(BuildCompleteAction{
-		Result: store.BuildResultSet{},
-	})
-	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == ""
-	})
-
 	// Start a fake build
 	f.store.Dispatch(targetFilesChangedAction{
 		targetID: manifest.ImageTargetAt(0).ID(),
@@ -1174,6 +1177,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
+	f.setDeployIDForManifest(manifest, testDeployID)
 
 	// Simulate k8s restarting the container due to a crash.
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
@@ -1220,6 +1224,8 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "normal-container-id"),
 	})
+	f.setDeployIDForManifest(manifest, testDeployID)
+
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
@@ -2190,6 +2196,11 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 	_ = f.store.RLockState()
 	f.b.nextBuildFailure = err
 	f.store.RUnlockState()
+}
+
+func (f *testFixture) setDeployIDForManifest(manifest model.Manifest, dID model.DeployID) {
+	action := NewDeployIDAction(manifest.K8sTarget().ID(), dID)
+	f.store.Dispatch(action)
 }
 
 // Wait until the given view test passes.
