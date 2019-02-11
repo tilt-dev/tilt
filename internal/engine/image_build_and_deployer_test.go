@@ -27,7 +27,7 @@ func TestStaticDockerfileWithCache(t *testing.T) {
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestBaseDockerfileWithCache(t *testing.T) {
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	sancho := NewSanchoFastBuildManifest(f)
 	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
-	result, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
+	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
-	result, err := f.ibd.BuildAndDeploy(f.ctx, targets, store.BuildStateSet{})
+	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,6 +120,7 @@ type ibdFixture struct {
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
 	ibd    *ImageBuildAndDeployer
+	st     *store.Store
 }
 
 func newIBDFixture(t *testing.T) *ibdFixture {
@@ -138,5 +139,6 @@ func newIBDFixture(t *testing.T) *ibdFixture {
 		docker:         docker,
 		k8s:            k8s,
 		ibd:            ibd,
+		st:             store.NewStoreForTesting(),
 	}
 }

@@ -25,7 +25,7 @@ func NewSyncletBuildAndDeployer(sm SyncletManager) *SyncletBuildAndDeployer {
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 || len(iTargets) != 1 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf(

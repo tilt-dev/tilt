@@ -34,7 +34,7 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, []model.TargetSpec{dcTarg}, store.BuildStateSet{})
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{dcTarg}, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestTiltBuildsImage(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, []model.TargetSpec{imgTarg, dcTarg}, store.BuildStateSet{})
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{imgTarg, dcTarg}, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 		BuildDetails: model.StaticBuild{},
 	}
 
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, []model.TargetSpec{iTarget, dcTarg}, store.BuildStateSet{})
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{iTarget, dcTarg}, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,6 +106,7 @@ type dcbdFixture struct {
 	dcCli *dockercompose.FakeDCClient
 	dCli  *docker.FakeClient
 	dcbad *DockerComposeBuildAndDeployer
+	st    *store.Store
 }
 
 func newDCBDFixture(t *testing.T) *dcbdFixture {
@@ -127,5 +128,6 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 		dcCli:          dcCli,
 		dCli:           dCli,
 		dcbad:          dcbad,
+		st:             store.NewStoreForTesting(),
 	}
 }

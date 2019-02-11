@@ -17,7 +17,7 @@ type BuildAndDeployer interface {
 	//
 	// BuildResult can be used to construct a set of BuildStates, which contain
 	// the last successful builds of each target and the files changed since that build.
-	BuildAndDeploy(ctx context.Context, spects []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
+	BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
 }
 
 type BuildOrder []BuildAndDeployer
@@ -37,10 +37,10 @@ func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeploye
 	return &CompositeBuildAndDeployer{builders: builders}
 }
 
-func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
+func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	var lastErr error
 	for _, builder := range composite.builders {
-		br, err := builder.BuildAndDeploy(ctx, specs, currentState)
+		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
 			return br, err
 		}

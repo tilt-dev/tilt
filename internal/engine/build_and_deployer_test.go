@@ -44,7 +44,7 @@ func TestGKEDeploy(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, targets, store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, targets, store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestNamespaceGKE(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	result, err := f.bd.BuildAndDeploy(f.ctx, targets, store.BuildStateSet{})
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestNamespaceGKE(t *testing.T) {
 	deployInfo.Namespace = "sancho-ns"
 
 	bs := resultToStateSet(result, nil, deployInfo)
-	result, err = f.bd.BuildAndDeploy(f.ctx, buildTargets(manifest), bs)
+	result, err = f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
 	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
-	result, err := f.bd.BuildAndDeploy(f.ctx, targets, bs)
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	result, err := f.bd.BuildAndDeploy(f.ctx, targets, bs)
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,14 +182,12 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	ctx := output.CtxForTest()
-
 	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(ctx, targets, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	msg := "Command failed with exit code: 1"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Fatalf("Expected error message %q, actual: %v", msg, err)
@@ -215,14 +213,12 @@ func TestIncrementalBuildKilled(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	ctx := output.CtxForTest()
-
 	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(ctx, targets, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +240,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, targets, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +260,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, targets, bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propogate back up")
 	}
@@ -281,7 +277,6 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 func TestIncrementalBuildTwice(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -291,7 +286,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	f.WriteFile("b.txt", "b")
 
 	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, f.deployInfo())
-	firstResult, err := f.bd.BuildAndDeploy(ctx, targets, firstState)
+	firstResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, firstState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +298,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	}
 
 	secondState := resultToStateSet(firstResult, []string{bPath}, f.deployInfo())
-	secondResult, err := f.bd.BuildAndDeploy(ctx, targets, secondState)
+	secondResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +328,6 @@ func TestIncrementalBuildTwice(t *testing.T) {
 func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -343,7 +337,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	f.WriteFile("b.txt", "b")
 
 	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, f.deployInfo())
-	firstResult, err := f.bd.BuildAndDeploy(ctx, targets, firstState)
+	firstResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, firstState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +352,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
 
 	secondState := resultToStateSet(firstResult, []string{bPath}, f.deployInfo())
-	secondResult, err := f.bd.BuildAndDeploy(ctx, targets, secondState)
+	secondResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,7 +400,6 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 func TestIgnoredFiles(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	ctx := output.CtxForTest()
 
 	manifest := NewSanchoFastBuildManifest(f)
 
@@ -422,7 +415,7 @@ func TestIgnoredFiles(t *testing.T) {
 	f.WriteFile(".git/index", "garbage")
 
 	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(ctx, targets, store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -454,6 +447,7 @@ type bdFixture struct {
 	k8s    *k8s.FakeK8sClient
 	sCli   *synclet.FakeSyncletClient
 	bd     BuildAndDeployer
+	st     *store.Store
 }
 
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
@@ -484,6 +478,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		k8s:            k8s,
 		sCli:           sCli,
 		bd:             bd,
+		st:             store.NewStoreForTesting(),
 	}
 }
 
