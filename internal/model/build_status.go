@@ -13,7 +13,7 @@ type BuildRecord struct {
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason
 	DeployID   DeployID
-	Log        []byte `testdiff:"ignore"`
+	Log        Log `testdiff:"ignore"`
 }
 
 func (bs BuildRecord) Empty() bool {

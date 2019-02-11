@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -44,7 +45,7 @@ func TestRender(t *testing.T) {
 				BuildHistory: []model.BuildRecord{{
 					FinishTime: time.Now(),
 					Error:      fmt.Errorf("oh no the build failed"),
-					Log:        []byte("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
+					Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
 				}},
 				ResourceInfo: view.K8SResourceInfo{},
 			},
@@ -59,7 +60,7 @@ func TestRender(t *testing.T) {
 				BuildHistory: []model.BuildRecord{{
 					FinishTime: time.Now(),
 					Error:      fmt.Errorf("oh no the build failed"),
-					Log: []byte(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+					Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
   │ Tarring context…
   │ Applying via kubectl
     ╎ Created tarball (size: 11 kB)
@@ -84,7 +85,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name: "a-a-a-aaaaabe vigoda",
 				BuildHistory: []model.BuildRecord{{
 					Error: fmt.Errorf("oh no the build failed"),
-					Log:   []byte("1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n"),
+					Log:   model.NewLog("1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n"),
 				}},
 				ResourceInfo: view.K8SResourceInfo{},
 			},
@@ -119,7 +120,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 				Name: "a-a-a-aaaaabe vigoda",
 				BuildHistory: []model.BuildRecord{{
 					Error: fmt.Errorf("broken go code!"),
-					Log:   []byte("mashing keys is not a good way to generate code"),
+					Log:   model.NewLog("mashing keys is not a good way to generate code"),
 				}},
 				ResourceInfo: view.K8SResourceInfo{},
 			},
@@ -308,7 +309,7 @@ func TestRenderLogModal(t *testing.T) {
 				BuildHistory: []model.BuildRecord{{
 					StartTime:  now.Add(-time.Minute),
 					FinishTime: now,
-					Log: []byte(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+					Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
   │ Tarring context…
   │ Applying via kubectl
     ╎ Created tarball (size: 11 kB)
@@ -336,7 +337,7 @@ func TestRenderLogModal(t *testing.T) {
 				}},
 				CurrentBuild: model.BuildRecord{
 					StartTime: now,
-					Log:       []byte("building!"),
+					Log:       model.NewLog("building!"),
 					Reason:    model.BuildReasonFlagCrash,
 				},
 				ResourceInfo: view.K8SResourceInfo{
@@ -361,8 +362,8 @@ func TestRenderLogModal(t *testing.T) {
 					time.Now().Add(time.Second*-12),
 				),
 				BuildHistory: []model.BuildRecord{
-					model.BuildRecord{
-						Log: []byte("Hi hello I'm a docker compose build log"),
+					{
+						Log: model.NewLog("Hi hello I'm a docker compose build log"),
 					},
 				},
 			},
@@ -403,7 +404,7 @@ func TestAutoCollapseModes(t *testing.T) {
 				BuildHistory: []model.BuildRecord{{
 					FinishTime: time.Now(),
 					Error:      fmt.Errorf("oh no the build failed"),
-					Log:        []byte("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
+					Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
 				}},
 				ResourceInfo: view.K8SResourceInfo{},
 			},
@@ -430,7 +431,7 @@ func TestPodPending(t *testing.T) {
 				BuildHistory: []model.BuildRecord{{
 					StartTime:  ts,
 					FinishTime: ts,
-					Log: []byte(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+					Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
   │ Tarring context…
   │ Applying via kubectl
     ╎ Created tarball (size: 11 kB)
@@ -469,7 +470,7 @@ func TestPodLogContainerUpdate(t *testing.T) {
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
 				BuildHistory: []model.BuildRecord{{
-					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
+					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
 				}},
@@ -500,7 +501,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 				Endpoints: []string{"1.2.3.4:8080"},
 				CrashLog:  "Definitely borken",
 				BuildHistory: []model.BuildRecord{{
-					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
+					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
 					Reason:     model.BuildReasonFlagCrash,
@@ -530,7 +531,7 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
 				BuildHistory: []model.BuildRecord{{
-					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
+					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
 					Reason:     model.BuildReasonFlagCrash,
@@ -561,7 +562,7 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 				Endpoints: []string{"1.2.3.4:8080"},
 				CrashLog:  "Definitely borken",
 				BuildHistory: []model.BuildRecord{{
-					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
+					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
 				}},
@@ -590,7 +591,7 @@ func TestCompletedPod(t *testing.T) {
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
 				BuildHistory: []model.BuildRecord{{
-					Log:        []byte("Building (1/2)\nBuilding (2/2)\n"),
+					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
 					FinishTime: ts,
 				}},
@@ -763,7 +764,7 @@ func TestTiltfileResourceWithLog(t *testing.T) {
 						StartTime:  now.Add(-5 * time.Second),
 						FinishTime: now.Add(-4 * time.Second),
 						Reason:     model.BuildReasonFlagConfig,
-						Log:        []byte("hi hello"),
+						Log:        model.NewLog("hi hello"),
 					},
 				},
 			},

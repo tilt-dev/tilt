@@ -8,21 +8,20 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -71,7 +70,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
 	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager,
-	sm SyncletManager) Upper {
+	sm SyncletManager, ar *AnalyticsReporter) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -87,6 +86,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(dclm)
 	st.AddSubscriber(pm)
 	st.AddSubscriber(sm)
+	st.AddSubscriber(ar)
 
 	return Upper{
 		store: st,
@@ -218,7 +218,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms.ExpectedContainerID = ""
 
 	for _, pod := range ms.PodSet.Pods {
-		pod.CurrentLog = []byte{}
+		pod.CurrentLog = model.Log{}
 		pod.UpdateStartTime = action.StartTime
 	}
 
@@ -229,7 +229,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	// Keep the crash log around until we have a rebuild
 	// triggered by a explicit change (i.e., not a crash rebuild)
 	if !action.Reason.IsCrashOnly() {
-		ms.CrashLog = ""
+		ms.CrashLog = model.Log{}
 	}
 
 	state.CurrentlyBuilding = mn
@@ -635,8 +635,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	checkForPodCrash(ctx, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
-		podInfo.PreRestartLog = append([]byte{}, podInfo.CurrentLog...)
-		podInfo.CurrentLog = []byte{}
+		podInfo.PreRestartLog = podInfo.CurrentLog
+		podInfo.CurrentLog = model.Log{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
 }
@@ -653,15 +653,15 @@ func checkForPodCrash(ctx context.Context, ms *store.ManifestState, podInfo stor
 	}
 
 	// The pod isn't what we expect!
-	ms.CrashLog = string(podInfo.CurrentLog)
+	ms.CrashLog = podInfo.CurrentLog
 	ms.NeedsRebuildFromCrash = true
 	ms.ExpectedContainerID = ""
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	b := []byte(msg + "\n")
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log = append(ms.BuildHistory[0].Log, b...)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, b)
 	}
-	ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, b...)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, b)
 	logger.Get(ctx).Infof("%s", msg)
 }
 
@@ -718,7 +718,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podInfo := ms.PodSet.Pods[podID]
-	podInfo.CurrentLog = append(podInfo.CurrentLog, action.Log...)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action.Log)
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
@@ -730,11 +730,11 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuild.Log = append(ms.CurrentBuild.Log, action.Log...)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action.Log)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
-	state.Log = append(state.Log, action.Log...)
+	state.Log = model.AppendLog(state.Log, action.Log)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
@@ -755,6 +755,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchMounts := action.WatchMounts
+	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
@@ -851,5 +852,5 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 }
 
 func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log = append(state.CurrentTiltfileBuild.Log, action.Log...)
+	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log)
 }

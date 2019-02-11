@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
@@ -409,7 +410,7 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 	ok := false
 
 	if v.res.LastBuild().Error != nil {
-		abbrevLog := abbreviateLog(string(v.res.LastBuild().Log))
+		abbrevLog := abbreviateLog(v.res.LastBuild().Log.String())
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true
