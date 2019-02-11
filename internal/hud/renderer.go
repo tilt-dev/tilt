@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell"
+
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
@@ -205,18 +206,18 @@ func bestLogs(res view.Resource) string {
 	// A build is in progress, triggered by an explicit edit.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		!res.CurrentBuild.Reason.IsCrashOnly() {
-		return string(res.CurrentBuild.Log)
+		return res.CurrentBuild.Log.String()
 	}
 
 	// A build is in progress, triggered by a pod crash.
 	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
 		res.CurrentBuild.Reason.IsCrashOnly() {
-		return res.CrashLog + "\n\n" + string(res.CurrentBuild.Log)
+		return res.CrashLog + "\n\n" + res.CurrentBuild.Log.String()
 	}
 
 	// The last build was an error.
 	if res.LastBuild().Error != nil {
-		return string(res.LastBuild().Log)
+		return res.LastBuild().Log.String()
 	}
 
 	if k8sInfo, ok := res.ResourceInfo.(view.K8SResourceInfo); ok {
@@ -226,21 +227,21 @@ func bestLogs(res view.Resource) string {
 		// in either case, prepend them to pod logs.
 		if (res.LastBuild().StartTime.Equal(k8sInfo.PodUpdateStartTime) ||
 			res.LastBuild().StartTime.Before(k8sInfo.PodCreationTime)) &&
-			len(res.LastBuild().Log) > 0 {
-			return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
+			!res.LastBuild().Log.Empty() {
+			return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog()
 		}
 
 		// The last build finished, but the pod hasn't started yet.
 		if res.LastBuild().StartTime.After(k8sInfo.PodCreationTime) {
-			return string(res.LastBuild().Log)
+			return res.LastBuild().Log.String()
 		}
 	}
 
 	if res.IsTiltfile {
-		return string(res.LastBuild().Log)
+		return res.LastBuild().Log.String()
 	}
 
-	return string(res.LastBuild().Log) + "\n" + res.ResourceInfo.RuntimeLog()
+	return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog()
 }
 
 func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {

@@ -209,7 +209,7 @@ func TestUpper_Up(t *testing.T) {
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
-	lines := strings.Split(string(state.ManifestTargets[manifest.Name].Status().LastBuild().Log), "\n")
+	lines := strings.Split(state.ManifestTargets[manifest.Name].Status().LastBuild().Log.String(), "\n")
 	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
 	assert.Equal(t, gYaml, state.GlobalYAML)
 }
@@ -1822,7 +1822,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.Contains(t, string(st.LastBuild().Log), expected)
+		assert.Contains(t, st.LastBuild().Log.String(), expected)
 	})
 }
 
@@ -2326,7 +2326,7 @@ func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {
-		return strings.Contains(string(ms.MostRecentPod().CurrentLog), s)
+		return strings.Contains(ms.MostRecentPod().CurrentLog.String(), s)
 	})
 }
 
