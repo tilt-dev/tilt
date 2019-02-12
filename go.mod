@@ -51,6 +51,7 @@ require (
 	github.com/google/go-cmp v0.2.0
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 	github.com/google/uuid v1.0.0
+	github.com/google/wire v0.2.1
 	github.com/googleapis/gnostic v0.2.0
 	github.com/gophercloud/gophercloud v0.0.0-20190130105114-cc9c99918988
 	github.com/gorilla/context v1.1.1

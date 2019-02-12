@@ -1,4 +1,4 @@
-# Skaffold
+# From Skaffold
 Tilt is a great upgrade to [Skaffold](https://skaffold.dev) for local dev. This doc compares Tilt to Skaffold and describes how to translate your configuration, which makes our 15 Minute [Tutorial](tutorial.html) even easier.
 
 ## Comparison

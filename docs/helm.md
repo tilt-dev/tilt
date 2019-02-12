@@ -1,5 +1,5 @@
-# Helm
-Tilt supports Helm out-of-the-box. The `helm` function runs `helm template` on a chart directory and returns the generated yaml. Use this function in the Deploy step of our [Tutorial](tutorial.html).
+# Helm Integration
+Tilt supports Helm out-of-the-box. The `helm` function runs `helm template` on a chart directory and returns the generated YAML. Use this function in the Deploy step of our [Tutorial](tutorial.html).
 
 ```python
 k8s_yaml(helm('path/to/chart'))
