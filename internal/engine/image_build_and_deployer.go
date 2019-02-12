@@ -52,7 +52,7 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
 }
 
-func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
+func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) == 0 || len(iTargets) == 0 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
@@ -98,7 +98,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
 	}
 
-	err = ibd.deploy(ctx, ps, kTargets, refs, anyFastBuild)
+	err = ibd.deploy(ctx, st, ps, kTargets, refs, anyFastBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -107,7 +107,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []mo
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged, needsSynclet bool) error {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged, needsSynclet bool) error {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -115,6 +115,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 
 	injectedRefs := map[string]bool{}
 	newK8sEntities := []k8s.K8sEntity{}
+
+	deployID := model.NewDeployID()
+	deployLabel := k8s.TiltDeployLabel(deployID)
+
+	var targetIDs []model.TargetID
 
 	for _, k8sTarget := range k8sTargets {
 		// TODO(nick): The parsed YAML should probably be a part of the model?
@@ -125,7 +130,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 		}
 
 		for _, e := range entities {
-			e, err = k8s.InjectLabels(e, []model.LabelPair{TiltRunLabel(), {Key: ManifestNameLabel, Value: k8sTarget.Name.String()}})
+			e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
 			if err != nil {
 				return errors.Wrap(err, "deploy")
 			}
@@ -168,12 +173,18 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, ps *build.Pipeline
 			}
 			newK8sEntities = append(newK8sEntities, e)
 		}
+		targetIDs = append(targetIDs, k8sTarget.ID())
 	}
 
 	for _, ref := range refs {
 		if !injectedRefs[ref.String()] {
 			return fmt.Errorf("Docker image missing from yaml: %s", ref)
 		}
+	}
+
+	deployIDActions := NewDeployIDActionsForTargets(targetIDs, deployID)
+	for _, a := range deployIDActions {
+		st.Dispatch(a)
 	}
 
 	return ibd.k8sClient.Upsert(ctx, newK8sEntities)

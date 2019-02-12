@@ -2,6 +2,8 @@ package store
 
 import "sync"
 
+var _ RStore = &TestingStore{}
+
 type TestingStore struct {
 	state   *EngineState
 	stateMu sync.RWMutex
