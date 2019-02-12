@@ -776,7 +776,7 @@ func TestTiltfileResourceWithLog(t *testing.T) {
 	rtf.run("Tiltfile resource with log", 80, 20, v, vs)
 }
 
-func BenchmarkBigLog(b *testing.B) {
+func BenchmarkBigLogAndBigScreen(b *testing.B) {
 	rtf := newRendererTestFixture(b)
 
 	now := time.Now()
@@ -790,7 +790,7 @@ func BenchmarkBigLog(b *testing.B) {
 					{
 						Edits:      []string{"foo"},
 						StartTime:  now.Add(-5 * time.Second),
-						FinishTime: now.Add(-4 * time.Second),
+						FinishTime: now.Add(-5 * time.Second),
 						Reason:     model.BuildReasonFlagConfig,
 						Log:        log,
 					},
@@ -803,7 +803,7 @@ func BenchmarkBigLog(b *testing.B) {
 	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
 
 	for n := 0; n < b.N; n++ {
-		rtf.run("Tiltfile resource with log benchmark", 80, 20, v, vs)
+		rtf.run("Tiltfile resource with log benchmark", 204, 159, v, vs)
 	}
 }
 
