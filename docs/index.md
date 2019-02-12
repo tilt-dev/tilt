@@ -73,11 +73,6 @@ We expect everyone in our community (users, contributors, and employees alike) t
    install
    tutorial
    skaffold
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Guides
-
    helm
    docker_compose
    example_projects
