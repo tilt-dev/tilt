@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -243,7 +244,7 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 	return svc, nil
 }
 
-func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]string, error) {
+func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]string, error) {
 	servicesText, err := dcc.Services(ctx, configPath)
 	if err != nil {
 		return nil, err
@@ -264,24 +265,12 @@ func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, config
 }
 
 func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]*dcService, error) {
-	configOut, err := dcc.Config(ctx, configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	config := dcConfig{}
-	err = yaml.Unmarshal([]byte(configOut), &config)
-	if err != nil {
-		return nil, err
-	}
-
-	svcNames, err := svcNames(ctx, dcc, configPath)
+	config, svcNames, err := getConfigAndServiceNames(ctx, dcc, configPath)
 	if err != nil {
 		return nil, err
 	}
 
 	var services []*dcService
-
 	for _, name := range svcNames {
 		svc, err := config.GetService(name)
 		if err != nil {
@@ -291,6 +280,56 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 	}
 
 	return services, nil
+}
+
+func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerComposeClient,
+	configPath string) (conf dcConfig, svcNames []string, err error) {
+	// calls to `docker-compose config` take a bit, and we need two,
+	// so do them in parallel to make things faster
+	configGot := make(chan error, 1)
+	servicesGot := make(chan error, 1)
+
+	go func() {
+		configOut, err := dcc.Config(ctx, configPath)
+		if err != nil {
+			configGot <- err
+		}
+
+		err = yaml.Unmarshal([]byte(configOut), &conf)
+		if err != nil {
+			configGot <- err
+		}
+		close(configGot)
+	}()
+
+	go func() {
+		var err error
+		svcNames, err = serviceNames(ctx, dcc, configPath)
+		if err != nil {
+			servicesGot <- err
+		}
+		close(servicesGot)
+	}()
+
+	select {
+	case err := <-configGot:
+		if err != nil {
+			return conf, svcNames, err
+		}
+	case <-time.After(time.Second * 2):
+		return conf, svcNames, fmt.Errorf("timed out waiting for `docker-compose config`")
+	}
+
+	select {
+	case err := <-servicesGot:
+		if err != nil {
+			return conf, svcNames, err
+		}
+	case <-time.After(time.Second * 2):
+		return conf, svcNames, fmt.Errorf("timed out waiting for `docker-compose config --services`")
+	}
+
+	return conf, svcNames, nil
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath string) (manifest model.Manifest,
