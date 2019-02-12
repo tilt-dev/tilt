@@ -32,7 +32,7 @@ A Tiltfile is a program that connects your existing Docker and Kubernetes config
 ```python
 # Example Tiltfile for a k8s app with two microservices
 
-# Deploy: tell Tilt what yaml to apply
+# Deploy: tell Tilt what YAML to apply
 k8s_yaml('app.yaml')
 
 # Build: tell Tilt what images to build from which directories
@@ -79,7 +79,7 @@ We expect everyone in our community (users, contributors, and employees alike) t
 
 .. toctree::
    :maxdepth: 1
-   :caption: Using Tilt
+   :caption: Learn More
 
    tiltfile_concepts
    fast_build
