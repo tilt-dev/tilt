@@ -269,7 +269,16 @@
 <h2>Resources<a class="headerlink" href="#resources" title="Permalink to this headline">¶</a></h2>
 <p>Tilt’s UI makes it easier to find errors by grouping related status and output. E.g., when you edit a file, you want to know what error it caused, whether it’s an error at build-time, deploy-time, or run-time. Tilt calls these groupings “Resources”. Each Resource has a line in the UI that can be expanded and investigated.</p>
 <p>Tilt generates these groups after executing your <code class="docutils literal notranslate"><span class="pre">Tiltfile</span></code>. We’re actively working on how to group in ways that make the most intuitive sense, so the specific algorithm is in-flux. We’ll expand this paragraph when it’s more settled.</p>
-<p>You can configure a resource with a call to <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code>. Today, the only relevant configuration is the argument <code class="docutils literal notranslate"><span class="pre">port_forwards</span></code>. Tilt supports a few alternatives:</p>
+<p>You can configure a resource with a call to <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code>. Today there are two relevant configuration arguments: <code class="docutils literal notranslate"><span class="pre">image</span></code> and <code class="docutils literal notranslate"><span class="pre">port_forwards</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">image</span></code> allows you to specify a custom image to group by. If not specified it will try to group images by the name of the resource itself.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># group pods running images named &quot;Frontend&quot; in to a resource named &quot;frontend&quot;</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;frontend&#39;</span><span class="p">)</span>
+
+<span class="c1"># group pods running images named &quot;custom_frontend&quot; in to a resource named &quot;frontend&quot;</span>
+<span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;frontend&#39;</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="s1">&#39;custom_frontend&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Tilt also supports a few ways to specify <code class="docutils literal notranslate"><span class="pre">port_forwards</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># connect localhost:9000 to the default container port</span>
 <span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;frontend&#39;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span>
 
@@ -281,7 +290,6 @@
 <span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;frontend&#39;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;9000:8000&#39;</span><span class="p">,</span> <span class="s1">&#39;9001:8001&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
-<p>You can also use calls to <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> to control the grouping of resources. This should only be necessary in extreme cases. Because it’s in-flux, please reach out and we’ll help you individually if you think this is necessary.</p>
 </div>
 <div class="section" id="summary">
 <h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>

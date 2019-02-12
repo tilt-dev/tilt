@@ -252,6 +252,7 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">k8s_resource</span><span class="p">(</span><span class="s1">&#39;frontend&#39;</span><span class="p">,</span> <span class="n">port_forwards</span><span class="o">=</span><span class="s1">&#39;9000&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>(Note that the first parameter of <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> must match the name of an image that was built. If you’d like to name it something else you can use the <a class="reference external" href="api.html#api.k8s_resource"><code class="docutils literal notranslate"><span class="pre">image</span></code> parameter</a> to manually specify an image to group by)</p>
 <p>You can also use <code class="docutils literal notranslate"><span class="pre">k8s_resource</span></code> to change the resource grouping, or forward multiple ports. Cf. the <a class="reference external" href="tiltfile_concepts.html#resources">Resources</a> section of <code class="docutils literal notranslate"><span class="pre">Tiltfile</span> <span class="pre">Concepts</span></code>.</p>
 </div>
 <div class="section" id="congrats">
