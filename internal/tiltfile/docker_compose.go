@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 	"go.starlark.net/starlark"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 )
 
@@ -243,7 +244,7 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 	return svc, nil
 }
 
-func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]string, error) {
+func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]string, error) {
 	servicesText, err := dcc.Services(ctx, configPath)
 	if err != nil {
 		return nil, err
@@ -264,24 +265,12 @@ func svcNames(ctx context.Context, dcc dockercompose.DockerComposeClient, config
 }
 
 func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]*dcService, error) {
-	configOut, err := dcc.Config(ctx, configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	config := dcConfig{}
-	err = yaml.Unmarshal([]byte(configOut), &config)
-	if err != nil {
-		return nil, err
-	}
-
-	svcNames, err := svcNames(ctx, dcc, configPath)
+	config, svcNames, err := getConfigAndServiceNames(ctx, dcc, configPath)
 	if err != nil {
 		return nil, err
 	}
 
 	var services []*dcService
-
 	for _, name := range svcNames {
 		svc, err := config.GetService(name)
 		if err != nil {
@@ -291,6 +280,38 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 	}
 
 	return services, nil
+}
+
+func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerComposeClient,
+	configPath string) (conf dcConfig, svcNames []string, err error) {
+	// calls to `docker-compose config` take a bit, and we need two,
+	// so do them in parallel to make things faster
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		configOut, err := dcc.Config(ctx, configPath)
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal([]byte(configOut), &conf)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		svcNames, err = serviceNames(ctx, dcc, configPath)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	err = g.Wait()
+	return conf, svcNames, err
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath string) (manifest model.Manifest,
