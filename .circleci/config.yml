@@ -75,6 +75,7 @@ jobs:
       - run: go get -u gotest.tools/gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
+      - run: mkdir -p test-results
       - run: ~/go/bin/gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -tags 'skipcontainertests' ./...
       - store_test_results:
           path: test-results
