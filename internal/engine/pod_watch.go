@@ -65,7 +65,7 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 		}
 	}
 	if atLeastOneK8S {
-		neededWatches = append(neededWatches, PodWatch{labels: TiltRunSelector()})
+		neededWatches = append(neededWatches, PodWatch{labels: k8s.TiltRunSelector()})
 	}
 
 	return subtract(neededWatches, w.watches), subtract(w.watches, neededWatches)

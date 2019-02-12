@@ -57,6 +57,8 @@ k8s_resource('foobar', yaml='snack.yaml')
 	testContainer = "myTestContainer"
 )
 
+const testDeployID = model.DeployID(1234567890)
+
 // represents a single call to `BuildAndDeploy`
 type buildAndDeployCall struct {
 	count int
@@ -114,6 +116,8 @@ type fakeBuildAndDeployer struct {
 	// it updated.
 	nextBuildContainer container.ID
 
+	nextDeployID model.DeployID
+
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 
@@ -132,7 +136,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildR
 	}
 }
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
 	b.buildCount++
 
 	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
@@ -175,8 +179,20 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model
 		return store.BuildResultSet{}, err
 	}
 
+	dID := testDeployID
+	if b.nextDeployID != 0 {
+		dID = b.nextDeployID
+		b.nextDeployID = 0
+	}
+
+	deployIDActions := NewDeployIDActionsForTargets(ids, dID)
+	for _, a := range deployIDActions {
+		st.Dispatch(a)
+	}
+
 	result := store.BuildResultSet{}
 	result[buildID] = b.nextBuildResult(buildImageRef)
+
 	return result, nil
 }
 
@@ -915,6 +931,10 @@ func TestHudUpdated(t *testing.T) {
 }
 
 func (f *testFixture) testPod(podID string, manifestName string, phase string, cID string, creationTime time.Time) *v1.Pod {
+	return f.testPodWithDeployID(podID, manifestName, phase, cID, creationTime, testDeployID)
+}
+
+func (f *testFixture) testPodWithDeployID(podID string, manifestName string, phase string, cID string, creationTime time.Time, deployID model.DeployID) *v1.Pod {
 	msgs := validation.NameIsDNSSubdomain(podID, false)
 	if len(msgs) != 0 {
 		f.T().Fatalf("pod id %q is invalid: %s", podID, msgs)
@@ -933,7 +953,10 @@ func (f *testFixture) testPod(podID string, manifestName string, phase string, c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              podID,
 			CreationTimestamp: metav1.Time{Time: creationTime},
-			Labels:            map[string]string{ManifestNameLabel: manifestName},
+			Labels: map[string]string{
+				k8s.ManifestNameLabel: manifestName,
+				k8s.TiltDeployIDLabel: deployID.String(),
+			},
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -955,11 +978,6 @@ func (f *testFixture) testPod(podID string, manifestName string, phase string, c
 			},
 		},
 	}
-}
-
-func setImage(pod *v1.Pod, image string) {
-	pod.Spec.Containers[0].Image = image
-	pod.Status.ContainerStatuses[0].Image = image
 }
 
 func setRestartCount(pod *v1.Pod, restartCount int) {
@@ -993,24 +1011,18 @@ func TestPodEvent(t *testing.T) {
 func TestPodEventOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+
 	past := time.Now().Add(-time.Minute)
 	now := time.Now()
-	imagePast := fmt.Sprintf("%s:%s", f.imageNameForManifest("fe").String(), "past")
-	imageNow := fmt.Sprintf("%s:%s", f.imageNameForManifest("fe").String(), "now")
-	podAPast := f.testPod("pod-a", "fe", "Running", testContainer, past)
-	podBPast := f.testPod("pod-b", "fe", "Running", testContainer, past)
-	podANow := f.testPod("pod-a", "fe", "Running", testContainer, now)
-	podBNow := f.testPod("pod-b", "fe", "Running", testContainer, now)
-	podCNow := f.testPod("pod-b", "fe", "Running", testContainer, now)
-	podCNowDeleting := f.testPod("pod-c", "fe", "Running", testContainer, now)
+	deployIDPast := model.DeployID(111)
+	deployIDNow := model.DeployID(999)
+	podAPast := f.testPodWithDeployID("pod-a", "fe", "Running", testContainer, past, deployIDPast)
+	podBPast := f.testPodWithDeployID("pod-b", "fe", "Running", testContainer, past, deployIDPast)
+	podANow := f.testPodWithDeployID("pod-a", "fe", "Running", testContainer, now, deployIDNow)
+	podBNow := f.testPodWithDeployID("pod-b", "fe", "Running", testContainer, now, deployIDNow)
+	podCNow := f.testPodWithDeployID("pod-b", "fe", "Running", testContainer, now, deployIDNow)
+	podCNowDeleting := f.testPodWithDeployID("pod-c", "fe", "Running", testContainer, now, deployIDNow)
 	podCNowDeleting.DeletionTimestamp = &metav1.Time{Time: now}
-
-	setImage(podAPast, imagePast)
-	setImage(podBPast, imagePast)
-	setImage(podANow, imageNow)
-	setImage(podBNow, imageNow)
-	setImage(podCNow, imageNow)
-	setImage(podCNowDeleting, imageNow)
 
 	// Test the pod events coming in in different orders,
 	// and the manifest ends up with podANow and podBNow
@@ -1028,10 +1040,14 @@ func TestPodEventOrdering(t *testing.T) {
 			defer f.TearDown()
 			mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 			manifest := f.newManifest("fe", []model.Mount{mount})
+			f.b.nextDeployID = deployIDNow
 			f.Start([]model.Manifest{manifest}, true)
 
 			call := f.nextCall()
 			assert.True(t, call.oneState().IsEmpty())
+			f.WaitUntilManifestState("deployID set", "fe", func(ms store.ManifestState) bool {
+				return ms.DeployID == deployIDNow
+			})
 
 			for _, pod := range order {
 				f.podEvent(pod)
@@ -1048,10 +1064,11 @@ func TestPodEventOrdering(t *testing.T) {
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
-				assert.Equal(t, 2, ms.PodSet.Len())
-				assert.Equal(t, now, ms.PodSet.Pods["pod-a"].StartedAt)
-				assert.Equal(t, now, ms.PodSet.Pods["pod-b"].StartedAt)
-				assert.Equal(t, imageNow, ms.PodSet.ImageID.String())
+				if assert.Equal(t, 2, ms.PodSet.Len()) {
+					assert.Equal(t, now.String(), ms.PodSet.Pods["pod-a"].StartedAt.String())
+					assert.Equal(t, now.String(), ms.PodSet.Pods["pod-b"].StartedAt.String())
+					assert.Equal(t, deployIDNow, ms.PodSet.DeployID)
+				}
 			})
 
 			assert.NoError(t, f.Stop())
@@ -1101,7 +1118,6 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String(), []model.Mount{mount})
-
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
@@ -1120,6 +1136,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "theOriginalContainer"),
 	})
+	f.setDeployIDForManifest(manifest, testDeployID)
 
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
@@ -1160,6 +1177,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
+	f.setDeployIDForManifest(manifest, testDeployID)
 
 	// Simulate k8s restarting the container due to a crash.
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "myfunnycontainerid", time.Now()))
@@ -1206,6 +1224,8 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.store.Dispatch(BuildCompleteAction{
 		Result: containerResultSet(manifest, "normal-container-id"),
 	})
+	f.setDeployIDForManifest(manifest, testDeployID)
+
 	f.podEvent(f.testPod("mypod", "foobar", "Running", "normal-container-id", podStartTime))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
@@ -1243,7 +1263,6 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	f.SetNextBuildFailure(errors.New("Build failed"))
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1251,12 +1270,12 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
-	f.WaitUntilHUD("hud update", func(v view.View) bool {
+	f.WaitUntilHUD("hud update 1", func(v view.View) bool {
 		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-new-pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
-	f.WaitUntilHUD("hud update", func(v view.View) bool {
+	f.WaitUntilHUD("hud update 2", func(v view.View) bool {
 		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "Running"
 	})
 
@@ -1273,7 +1292,6 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	f.SetNextBuildFailure(errors.New("Build failed"))
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete()
@@ -1311,7 +1329,6 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	defer f.TearDown()
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
-	f.SetNextBuildFailure(errors.New("Build failed"))
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1544,7 +1561,7 @@ func testService(serviceName string, manifestName string, ip string, port int) *
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   serviceName,
-			Labels: map[string]string{ManifestNameLabel: manifestName},
+			Labels: map[string]string{k8s.ManifestNameLabel: manifestName},
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{{
@@ -2179,6 +2196,11 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 	_ = f.store.RLockState()
 	f.b.nextBuildFailure = err
 	f.store.RUnlockState()
+}
+
+func (f *testFixture) setDeployIDForManifest(manifest model.Manifest, dID model.DeployID) {
+	action := NewDeployIDAction(manifest.K8sTarget().ID(), dID)
+	f.store.Dispatch(action)
 }
 
 // Wait until the given view test passes.

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"time"
 
-	"github.com/docker/distribution/reference"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -171,6 +171,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = handleBuildCompleted(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
+	case DeployIDAction:
+		handleDeployIDAction(ctx, state, action)
 	case LogAction:
 		handleLogAction(state, action)
 	case GlobalYAMLApplyStartedAction:
@@ -340,6 +342,16 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	return nil
 }
 
+func handleDeployIDAction(ctx context.Context, state *store.EngineState, action DeployIDAction) {
+	mn := state.ManifestNameForTargetID(action.TargetID)
+	ms, ok := state.ManifestState(mn)
+	if !ok {
+		return
+	}
+
+	ms.DeployID = action.DeployID
+}
+
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 	if state.TriggerMode != model.TriggerManual {
 		return
@@ -494,7 +506,7 @@ func handleConfigsReloaded(
 //
 // Intended as a helper for pod-mutating events.
 func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
-	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
+	manifestName := model.ManifestName(pod.ObjectMeta.Labels[k8s.ManifestNameLabel])
 	if manifestName == "" {
 		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodSelectors
 		for _, m := range state.Manifests() {
@@ -509,12 +521,6 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 		}
 	}
 
-	podID := k8s.PodIDFromPod(pod)
-	startedAt := pod.CreationTimestamp.Time
-	status := podStatusToString(*pod)
-	ns := k8s.NamespaceFromPod(pod)
-	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
-
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
@@ -522,48 +528,25 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	}
 
 	ms := mt.State
-	manifest := mt.Manifest
 
-	var imageID reference.NamedTagged
-	for _, iTarget := range manifest.ImageTargets {
-		var err error
-		imageID, err = k8s.FindImageNamedTaggedMatching(pod.Spec, iTarget.Ref)
-		if err != nil {
-			// Ditto, this could happen if we get a pod from an old version of the manifest.
+	deployID := ms.DeployID
+	if podDeployID, ok := pod.ObjectMeta.Labels[k8s.TiltDeployIDLabel]; ok {
+		if pdID, err := strconv.Atoi(podDeployID); err != nil || pdID != int(deployID) {
 			return nil, nil
-		}
-
-		if imageID != nil {
-			break
 		}
 	}
 
-	if imageID == nil {
-		// Ditto, this could happen if we get a pod from an old version of the manifest.
-		return nil, nil
-	}
+	podID := k8s.PodIDFromPod(pod)
+	startedAt := pod.CreationTimestamp.Time
+	status := podStatusToString(*pod)
+	ns := k8s.NamespaceFromPod(pod)
+	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
-	// There are 4 cases:
-	// 1) This pod has an imageID we don't recognize because it's an old build
-	// 2) This pod has an imageID we don't recognize because it's a new build
-	// 3) This pod has an imageID we recognize, and we need to record it.
-	// 4) This pod has an imageID we recognize, and we've already recorded it.
-
-	// (1) + (2)
-	if ms.PodSet.ImageID == nil ||
-		ms.PodSet.ImageID.String() != imageID.String() {
-
-		bestPod := ms.MostRecentPod()
-		isOld := !bestPod.Empty() && bestPod.StartedAt.After(startedAt)
-		if isOld {
-			// (1)
-			return nil, nil
-		}
-
-		// (2)
+	// CASE 1: We don't have a set of pods for this DeployID yet
+	if ms.PodSet.DeployID == 0 || ms.PodSet.DeployID != deployID {
 		ms.PodSet = store.PodSet{
-			ImageID: imageID,
-			Pods:    make(map[k8s.PodID]*store.Pod),
+			DeployID: deployID,
+			Pods:     make(map[k8s.PodID]*store.Pod),
 		}
 		ms.PodSet.Pods[podID] = &store.Pod{
 			PodID:      podID,
@@ -577,7 +560,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 
 	podInfo, ok := ms.PodSet.Pods[podID]
 	if !ok {
-		// (3)
+		// CASE 2: We have a set of pods for this DeployID, but not this particular pod -- record it
 		podInfo = &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,
@@ -588,7 +571,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 		ms.PodSet.Pods[podID] = podInfo
 	}
 
-	// (4)
+	// CASE 3: This pod is already in the PodSet, nothing to do.
 	return mt, podInfo
 }
 
@@ -767,7 +750,7 @@ func handleLogAction(state *store.EngineState, action LogAction) {
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
 	service := action.Service
-	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
+	manifestName := model.ManifestName(service.ObjectMeta.Labels[k8s.ManifestNameLabel])
 	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
 	}

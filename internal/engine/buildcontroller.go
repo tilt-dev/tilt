@@ -149,12 +149,12 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		})
 		c.logBuildEntry(ctx, entry, filesChanged)
 
-		result, err := c.buildAndDeploy(ctx, entry)
+		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(NewBuildCompleteAction(result, err))
 	}()
 }
 
-func (c *BuildController) buildAndDeploy(ctx context.Context, entry buildEntry) (store.BuildResultSet, error) {
+func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, entry buildEntry) (store.BuildResultSet, error) {
 	targets := entry.targets
 	for _, target := range targets {
 		err := target.Validate()
@@ -162,7 +162,7 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, entry buildEntry) 
 			return store.BuildResultSet{}, err
 		}
 	}
-	return c.b.BuildAndDeploy(ctx, targets, entry.buildStateSet)
+	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
 func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, changedFiles []string) {

@@ -95,14 +95,14 @@ require (
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/sirupsen/logrus v1.0.6
 	github.com/spf13/cobra v0.0.3
-	github.com/spf13/pflag v1.0.2
-	github.com/stretchr/testify v1.2.2
+	github.com/spf13/pflag v1.0.3
+	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/gocapability v0.0.0-20180223013746-33e07d32887e
 	github.com/theupdateframework/notary v0.6.1
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
-	github.com/windmilleng/wmclient v0.0.0-20190205232421-1ae9d14ff820
+	github.com/windmilleng/wmclient v0.0.0-20190212164535-a243b5936767
 	go.opencensus.io v0.18.0
 	go.starlark.net v0.0.0-20181218181455-c0b6b768d91b
 	golang.org/x/crypto v0.0.0-20180820150726-614d502a4dac
