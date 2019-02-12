@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -16,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 	"go.starlark.net/starlark"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 )
 
@@ -286,50 +286,32 @@ func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerCompo
 	configPath string) (conf dcConfig, svcNames []string, err error) {
 	// calls to `docker-compose config` take a bit, and we need two,
 	// so do them in parallel to make things faster
-	configGot := make(chan error, 1)
-	servicesGot := make(chan error, 1)
+	g, ctx := errgroup.WithContext(ctx)
 
-	go func() {
+	g.Go(func() error {
 		configOut, err := dcc.Config(ctx, configPath)
 		if err != nil {
-			configGot <- err
+			return err
 		}
 
 		err = yaml.Unmarshal([]byte(configOut), &conf)
 		if err != nil {
-			configGot <- err
+			return err
 		}
-		close(configGot)
-	}()
+		return nil
+	})
 
-	go func() {
+	g.Go(func() error {
 		var err error
 		svcNames, err = serviceNames(ctx, dcc, configPath)
 		if err != nil {
-			servicesGot <- err
+			return err
 		}
-		close(servicesGot)
-	}()
+		return nil
+	})
 
-	select {
-	case err := <-configGot:
-		if err != nil {
-			return conf, svcNames, err
-		}
-	case <-time.After(time.Second * 2):
-		return conf, svcNames, fmt.Errorf("timed out waiting for `docker-compose config`")
-	}
-
-	select {
-	case err := <-servicesGot:
-		if err != nil {
-			return conf, svcNames, err
-		}
-	case <-time.After(time.Second * 2):
-		return conf, svcNames, fmt.Errorf("timed out waiting for `docker-compose config --services`")
-	}
-
-	return conf, svcNames, nil
+	err = g.Wait()
+	return conf, svcNames, err
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath string) (manifest model.Manifest,
