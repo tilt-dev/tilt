@@ -26,10 +26,15 @@ func TestNormalizedGitRemoteUsername(t *testing.T) {
 }
 
 func TestGitOrigin(t *testing.T) {
+	b, err := exec.Command("uname", "-a").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Contains(t, string(b), "Linux")
 	tf := tempdir.NewTempDirFixture(t)
 	defer tf.TearDown()
 
-	err := exec.Command("git", "init", tf.Path()).Run()
+	err = exec.Command("git", "init", tf.Path()).Run()
 	if err != nil {
 		t.Fatalf("failed to init git repo: %+v", err)
 	}
