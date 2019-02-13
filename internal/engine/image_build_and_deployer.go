@@ -54,7 +54,7 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
-	if len(kTargets) == 0 || len(iTargets) == 0 {
+	if len(kTargets) == 0 && len(iTargets) == 0 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
 	}
 
@@ -85,6 +85,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	results := store.BuildResultSet{}
 
 	var refs []reference.NamedTagged
+
 	var anyFastBuild bool
 	for _, iTarget := range iTargets {
 		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
@@ -98,6 +99,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
 	}
 
+	// (If we pass an empty list of refs here (as we will do if only deploying
+	// yaml), we just don't inject any image refs into the yaml, nbd.
 	err = ibd.deploy(ctx, st, ps, kTargets, refs, anyFastBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err

@@ -627,15 +627,25 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	// Check if the container is ready.
 	var cStatus v1.ContainerStatus
 	var err error
-	for _, iTarget := range manifest.ImageTargets {
-		cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
-		if err != nil {
-			logger.Get(ctx).Debugf("Error matching container: %v", err)
-			return
+	if len(manifest.ImageTargets) > 0 {
+		// Get status of (first) container matching (an) image we built for this manifest.
+		for _, iTarget := range manifest.ImageTargets {
+			cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
+			if err != nil {
+				logger.Get(ctx).Debugf("Error matching container: %v", err)
+				return
+			}
+			if cStatus.Name != "" {
+				break
+			}
 		}
-		if cStatus.Name != "" {
-			break
+	} else {
+		// We didn't build images for this manifest so we have no good way of figuring
+		// out which container(s) we care about; for now, take the first.
+		if len(pod.Status.ContainerStatuses) > 0 {
+			cStatus = pod.Status.ContainerStatuses[0]
 		}
+
 	}
 
 	if cStatus.Name == "" {

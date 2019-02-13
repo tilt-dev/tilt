@@ -150,8 +150,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	} else if !call.image().ID().Empty() {
 		buildID = call.image().ID()
 		buildImageRef = call.image().Ref
-
-	} else {
+	} else if call.k8s().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
 
@@ -191,7 +190,9 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	result := store.BuildResultSet{}
-	result[buildID] = b.nextBuildResult(buildImageRef)
+	if !buildID.Empty() {
+		result[buildID] = b.nextBuildResult(buildImageRef)
+	}
 
 	return result, nil
 }
@@ -1110,6 +1111,64 @@ func TestPodEventContainerStatus(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestPodEventContainerStatusWithoutImage(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	manifest := model.Manifest{
+		Name: model.ManifestName("foobar"),
+	}.WithDeployTarget(model.K8sTarget{
+		YAML: "fake-yaml",
+	})
+	deployID := model.DeployID(123)
+	f.b.nextDeployID = deployID
+	ref := container.MustParseNamedTagged("dockerhub/we-didnt-build-this:foo")
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntilManifestState("first build complete", "foobar", func(ms store.ManifestState) bool {
+		return len(ms.BuildHistory) > 0
+	})
+
+	pod := f.testPodWithDeployID("my-pod", "foobar", "Running", testContainer, time.Now(), deployID)
+	pod.Status = k8s.FakePodStatus(ref, "Running")
+
+	// If we have no image target to match container status by image ref,
+	// we should just take the first one, i.e. this one
+	pod.Status.ContainerStatuses[0].Name = "first-container"
+	pod.Status.ContainerStatuses[0].ContainerID = "docker://great-container-id"
+
+	pod.Spec = v1.PodSpec{
+		Containers: []v1.Container{
+			{
+				Name:  "second-container",
+				Image: "gcr.io/windmill-public-containers/tilt-synclet:latest",
+				Ports: []v1.ContainerPort{{ContainerPort: 9999}},
+			},
+			// we match container spec by NAME, so we'll get this one even tho it comes second.
+			{
+				Name:  "first-container",
+				Image: ref.Name(),
+				Ports: []v1.ContainerPort{{ContainerPort: 8080}},
+			},
+		},
+	}
+
+	f.podEvent(pod)
+
+	podState := store.Pod{}
+	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
+		podState = ms.MostRecentPod()
+		return podState.PodID == "my-pod"
+	})
+
+	// If we have no image target to match container by image ref, we just take the first one
+	assert.Equal(t, "great-container-id", string(podState.ContainerID))
+	assert.Equal(t, "first-container", string(podState.ContainerName))
+	assert.Equal(t, []int32{8080}, podState.ContainerPorts)
+
+	err := f.Stop()
+	assert.Nil(t, err)
+}
+
 func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1737,7 +1796,7 @@ func TestNewMountsAreWatched(t *testing.T) {
 		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Mounts) == 2
 	})
 
-	f.PollUntil("watches setup", func() bool {
+	f.PollUntil("watches set up", func() bool {
 		watches, ok := f.fwm.targetWatches[m2.ImageTargetAt(0).ID()]
 		if !ok {
 			return false
@@ -2162,8 +2221,8 @@ func (f *testFixture) Init(action InitAction) {
 		return len(st.ManifestTargets) == len(manifests) && st.WatchMounts == watchMounts
 	})
 
-	f.PollUntil("watches setup", func() bool {
-		return !watchMounts || len(f.fwm.targetWatches) == len(manifests)
+	f.PollUntil("watches set up", func() bool {
+		return !watchMounts || len(f.fwm.targetWatches) == len(watchableTargetsForManifests(manifests))
 	})
 }
 

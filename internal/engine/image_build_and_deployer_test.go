@@ -3,6 +3,7 @@ package engine
 import (
 	"archive/tar"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -139,6 +140,32 @@ func TestDeployIDInjectedAndSent(t *testing.T) {
 		"Expected TiltDeployIDLabel to appear at least once in YAML: %s", f.k8s.Yaml)
 	assert.True(t, strings.Count(f.k8s.Yaml, deployID.String()) >= 1,
 		"Expected DeployID %q to appear at least once in YAML: %s", deployID, f.k8s.Yaml)
+}
+
+func TestNoImageTargets(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	targName := "some-k8s-manifest"
+	specs := []model.TargetSpec{
+		model.K8sTarget{
+			Name: model.TargetName(targName),
+			YAML: testyaml.LonelyPodYAML,
+		},
+	}
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 0, f.docker.BuildCount, "expect no docker builds")
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, "image: gcr.io/windmill-public-containers/lonely-pod"),
+		"Expected lonely-pod image to appear once in YAML: %s", f.k8s.Yaml)
+
+	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManifestNameLabel, targName)
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedLabelStr),
+		"Expected \"%s\"image to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
 }
 
 type ibdFixture struct {
