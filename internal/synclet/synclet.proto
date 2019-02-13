@@ -23,6 +23,7 @@ message UpdateContainerRequest {
     repeated string files_to_delete = 3;
     repeated Cmd commands = 4;
     LogStyle log_style = 5;
+    bool hot_reload = 6;
 }
 
 enum LogLevel {

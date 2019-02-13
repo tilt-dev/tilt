@@ -176,6 +176,26 @@ func TestContainerBuildSynclet(t *testing.T) {
 
 	id := manifest.ImageTargetAt(0).ID()
 	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
+	assert.False(t, f.sCli.UpdateContainerHotReload)
+}
+
+func TestContainerBuildSyncletHotReload(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	manifest := NewSanchoFastBuildManifest(f)
+	iTarget := manifest.ImageTargetAt(0)
+	fbInfo := iTarget.FastBuildInfo()
+	fbInfo.HotReload = true
+	manifest = manifest.WithImageTarget(iTarget.WithBuildDetails(fbInfo))
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, f.sCli.UpdateContainerHotReload)
 }
 
 func TestIncrementalBuildFailure(t *testing.T) {
