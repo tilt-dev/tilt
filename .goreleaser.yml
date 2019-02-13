@@ -37,9 +37,6 @@ brew:
   url_template: "http://github.com/windmilleng/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   homepage: "https://tilt.build/"
   description: "Local Kubernetes development with no stress"
-  dependencies:
-    - docker
-    - kubernetes-cli
   test: |
     system "#{bin}/tilt version"
 
