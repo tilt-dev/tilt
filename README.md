@@ -1,5 +1,7 @@
 # Tilt
 
+<img src="assets/logo-wordmark.png" width="250">
+
 [![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
 [![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
 
@@ -17,7 +19,7 @@ The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
 or logs right in your terminal.
 
-[![screencast](docs/_static/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
+[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
 
 ## Install Tilt
 
