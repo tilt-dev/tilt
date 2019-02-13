@@ -534,6 +534,17 @@ k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
+func TestK8sResourceWithoutDockerBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
+`)
+	f.load()
+	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
+}
+
 func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
