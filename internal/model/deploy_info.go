@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -115,6 +116,8 @@ type K8sTarget struct {
 	ExtraPodSelectors []labels.Selector
 	ResourceNames     []string
 }
+
+func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }
 
 func (k8s K8sTarget) Validate() error {
 	if k8s.ID().Empty() {

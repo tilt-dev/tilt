@@ -150,7 +150,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	} else if !call.image().ID().Empty() {
 		buildID = call.image().ID()
 		buildImageRef = call.image().Ref
-
+	} else if call.k8s().Empty() {
+		b.t.Fatalf("Invalid call: %+v", call)
 	}
 
 	ids := []model.TargetID{}
