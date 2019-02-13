@@ -1063,12 +1063,12 @@ func TestBlob(t *testing.T) {
 
 	f.file(
 		"Tiltfile",
-		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SanchoSidecarYAML),
+		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SnackYaml),
 	)
 
 	f.load()
 
-	f.assertYAMLManifest("sancho")
+	f.assertNextManifest("snack", deployment("snack"))
 }
 
 func TestBlobErr(t *testing.T) {

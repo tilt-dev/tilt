@@ -1,8 +1,6 @@
 package k8s
 
 import (
-	"fmt"
-
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -20,7 +18,7 @@ func NewTarget(
 
 	var resourceNames []string
 	for _, e := range entities {
-		resourceNames = append(resourceNames, fmt.Sprintf("%s (%s)", e.Name(), e.Kind.Kind))
+		resourceNames = append(resourceNames, e.ResourceName())
 	}
 
 	return model.K8sTarget{
@@ -38,6 +36,20 @@ func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Ma
 		return model.Manifest{}, err
 	}
 	return model.Manifest{Name: name}.WithDeployTarget(kTarget), nil
+}
+
+func NewK8sOnlyManifestsPerEntity(entities []K8sEntity) ([]model.Manifest, error) {
+	manifests := make([]model.Manifest, len(entities))
+	for i, e := range entities {
+		name := model.ManifestName(e.ResourceName())
+
+		m, err := NewK8sOnlyManifest(name, []K8sEntity{e})
+		if err != nil {
+			return nil, err
+		}
+		manifests[i] = m
+	}
+	return manifests, nil
 }
 
 func NewK8sOnlyManifestForTesting(name model.ManifestName, yaml string) model.Manifest {

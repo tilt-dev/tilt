@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"net/url"
 	"reflect"
 
@@ -195,4 +196,18 @@ func FilterByImage(entities []K8sEntity, img reference.Named) (passing, rest []K
 
 func FilterByLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesLabels(labels), nil })
+}
+
+func FilterByHasPodTemplateSpec(entities []K8sEntity) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) {
+		templateSpecs, err := ExtractPodTemplateSpec(&e)
+		if err != nil {
+			return false, err
+		}
+		return len(templateSpecs) > 0, nil
+	})
+}
+
+func (e K8sEntity) ResourceName() string {
+	return fmt.Sprintf("k8s%s-%s", e.Kind.Kind, e.Name())
 }
