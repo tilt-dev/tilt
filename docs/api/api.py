@@ -92,12 +92,12 @@ def k8s_yaml(yaml: Union[str, List[str], LocalPath, Blob]) -> None:
   """
   pass
 
-def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: str = "",
+def k8s_resource(name: str, yaml: Union[str, Blob] = "", image: Union[str, FastBuild] = "",
     port_forwards: Union[str, int, List[int]] = [], extra_pod_selectors: Union[Dict[str, str], List[Dict[str, str]]] = []) -> None:
   """Creates a kubernetes resource that tilt can deploy using the specified image.
 
   Args:
-    name: What call this resource in the UI
+    name: What call this resource in the UI. If ``image`` is not specified ``name`` will be used as the image to group by.
     yaml: Optional YAML. If YAML, as a string or Blob is
       not passed we expect to be able to extract it from an
       existing resource.

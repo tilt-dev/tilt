@@ -369,11 +369,11 @@ path must be a relative path.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – What call this resource in the UI</li>
+<li><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – What call this resource in the UI. If <code class="docutils literal notranslate"><span class="pre">image</span></code> is not specified <code class="docutils literal notranslate"><span class="pre">name</span></code> will be used as the image to group by.</li>
 <li><strong>yaml</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.Blob" title="api.Blob"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blob</span></code></a>]) – Optional YAML. If YAML, as a string or Blob is
 not passed we expect to be able to extract it from an
 existing resource.</li>
-<li><strong>image</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – An optional Image. If the image is not passed,
+<li><strong>image</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#api.FastBuild" title="api.FastBuild"><code class="xref py py-class docutils literal notranslate"><span class="pre">FastBuild</span></code></a>]) – An optional Image. If the image is not passed,
 we expect to be able to extract it from an existing resource.</li>
 <li><strong>port_forwards</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]]) – Local ports to connect to the pod. If no
 target port is specified, will use the first container port.

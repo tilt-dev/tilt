@@ -86,7 +86,19 @@ Tilt's UI makes it easier to find errors by grouping related status and output. 
 
 Tilt generates these groups after executing your `Tiltfile`. We're actively working on how to group in ways that make the most intuitive sense, so the specific algorithm is in-flux. We'll expand this paragraph when it's more settled.
 
-You can configure a resource with a call to `k8s_resource`. Today, the only relevant configuration is the argument `port_forwards`. Tilt supports a few alternatives:
+You can configure a resource with a call to `k8s_resource`. Today there are two relevant configuration arguments: `image` and `port_forwards`.
+
+`image` allows you to specify a custom image to group by. If not specified it will try to group images by the name of the resource itself.
+
+```python
+# group pods running images named "Frontend" in to a resource named "frontend"
+k8s_resource('frontend')
+
+# group pods running images named "custom_frontend" in to a resource named "frontend"
+k8s_resource('frontend', image='custom_frontend')
+```
+
+Tilt also supports a few ways to specify `port_forwards`:
 
 ```python
 # connect localhost:9000 to the default container port
@@ -99,8 +111,6 @@ k8s_resource('frontend', port_forwards='9000:8000')
 # and localhost:9001 to container port 8001
 k8s_resource('frontend', port_forwards=['9000:8000', '9001:8001'])
 ```
-
-You can also use calls to `k8s_resource` to control the grouping of resources. This should only be necessary in extreme cases. Because it's in-flux, please reach out and we'll help you individually if you think this is necessary.
 
 ## Summary
 Tilt's configuration is a program that connects your existing build and deploy configuration. We've made our functions ergonomic for simple cases and general enough to support a wide range of cases. If you're not sure how to accomplish something, we'd love to either help you find the right way, or add support for a case we've overlooked.

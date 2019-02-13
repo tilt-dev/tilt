@@ -64,6 +64,8 @@ Tilt can give you consistent port forwards to running pods (whether they're runn
 k8s_resource('frontend', port_forwards='9000')
 ```
 
+(Note that the first parameter of `k8s_resource` must match the name of an image that was built. If you'd like to name it something else you can use the [`image` parameter](api.html#api.k8s_resource) to manually specify an image to group by)
+
 You can also use `k8s_resource` to change the resource grouping, or forward multiple ports. Cf. the [Resources](tiltfile_concepts.html#resources) section of `Tiltfile Concepts`.
 
 ## Congrats
