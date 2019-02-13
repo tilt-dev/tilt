@@ -80,20 +80,13 @@ separate process.
 
 ## Documentation
 
-The documentation is written in Restructured Text and generated with Sphinx. We install Sphinx inside
-a container so that you don't have to install it locally. To regenerate the HTML, run
+The landing page and documentation lives in
+[the tilt.build repo](https://github.com/windmilleng/tilt.build/).
 
-```
-make docs
-```
+We write our docs in Markdown and generate static HTML with [Jekyll](https://jekyllrb.com/).
 
-and open them [locally](docs/_build/html/index.html).
-
-Netlify will automatically deploy the docs to [the public site](https://docs.tilt.build/) when you merge to master.
-
-If you'd like to send a preview to someone else,
-push with the special branch name `docs` and open a pull request.
-Netlify will annotate the pull request with the URL of a preview.
+Netlify will automatically deploy the docs to [the public site](https://docs.tilt.build/)
+when you merge to master.
 
 ## Releasing
 
@@ -120,7 +113,7 @@ goreleaser will build binaries for the latest tag (using semantic version to
 determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
-After updating the release notes, update [the docs](docs/install.md)
+After updating the release notes, update [the docs](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md)
 and [the default dev version](internal/cli/build.go).
 
 ### Version numbers
