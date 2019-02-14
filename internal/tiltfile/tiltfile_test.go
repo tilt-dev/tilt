@@ -10,10 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -532,6 +531,50 @@ k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
+}
+
+func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("pod_creator.yaml", deployment("pod-creator"), secret("not-pod-creator"))
+
+	f.file("Tiltfile", `
+k8s_yaml('pod_creator.yaml')
+`)
+	f.load()
+
+	f.assertNextManifest("pod-creator", deployment("pod-creator"))
+	f.assertYAMLManifest("not-pod-creator")
+}
+
+func TestUnresourcedYamlGrouping(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	labelsA := map[string]string{"keyA": "valueA"}
+	labelsB := map[string]string{"keyB": "valueB"}
+	labelsC := map[string]string{"keyC": "valueC"}
+	f.yaml("all.yaml",
+		deployment("deployment-a", withLabels(labelsA)),
+
+		deployment("deployment-b", withLabels(labelsB)),
+		service("service-b", withLabels(labelsB)),
+
+		deployment("deployment-c", withLabels(labelsC)),
+		service("service-c1", withLabels(labelsC)),
+		service("service-c2", withLabels(labelsC)),
+
+		secret("someSecret"),
+	)
+
+	f.file("Tiltfile", `k8s_yaml('all.yaml')`)
+	f.load()
+
+	f.assertNextManifest("deployment-a", deployment("deployment-a"))
+	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
+	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
+	f.assertYAMLManifest("someSecret")
 }
 
 func TestK8sResourceWithoutDockerBuild(t *testing.T) {
@@ -1127,6 +1170,13 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 			if e.image != "" {
 				s = strings.Replace(s, testyaml.SnackImage, e.image, -1)
 			}
+			if len(e.templateLabels) > 0 {
+				var newLabels string
+				for k, v := range e.templateLabels {
+					newLabels = fmt.Sprintf("%s        %s: %v\n", newLabels, k, v)
+				}
+				s = strings.Replace(s, testyaml.SnackTemplateLabel, newLabels, -1)
+			}
 			s = strings.Replace(s, testyaml.SnackName, e.name, -1)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
@@ -1134,6 +1184,23 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 			}
 
 			entityObjs = append(entityObjs, objs...)
+		case serviceHelper:
+			s := testyaml.DoggosServiceYaml
+			if len(e.selectorLabels) > 0 {
+				var newLabels string
+				for k, v := range e.selectorLabels {
+					newLabels = fmt.Sprintf("%s    %s: %v\n", newLabels, k, v)
+				}
+				s = strings.Replace(s, testyaml.DoggosSelectorLabel, newLabels, -1)
+			}
+			s = strings.Replace(s, testyaml.DoggosName, e.name, -1)
+			objs, err := k8s.ParseYAMLFromString(s)
+			if err != nil {
+				f.t.Fatal(err)
+			}
+
+			entityObjs = append(entityObjs, objs...)
+
 		case secretHelper:
 			s := testyaml.SecretYaml
 			s = strings.Replace(s, testyaml.SecretName, e.name, -1)
@@ -1152,7 +1219,6 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-
 	f.file(path, s)
 }
 
@@ -1293,6 +1359,18 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case serviceHelper:
+			yaml := m.K8sTarget().YAML
+			found := false
+			for _, e := range f.entities(yaml) {
+				if e.Kind.Kind == "Service" && f.k8sName(e) == opt.name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				f.t.Fatalf("service %v not found in yaml %q", opt.name, yaml)
+			}
 		case extraPodSelectorsHelper:
 			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
 		case numEntitiesHelper:
@@ -1397,8 +1475,9 @@ func secret(name string) secretHelper {
 }
 
 type deploymentHelper struct {
-	name  string
-	image string
+	name           string
+	image          string
+	templateLabels map[string]string
 }
 
 func deployment(name string, opts ...interface{}) deploymentHelper {
@@ -1407,6 +1486,26 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 		switch opt := opt.(type) {
 		case imageHelper:
 			r.image = opt.ref
+		case labelsHelper:
+			r.templateLabels = opt.labels
+		default:
+			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
+		}
+	}
+	return r
+}
+
+type serviceHelper struct {
+	name           string
+	selectorLabels map[string]string
+}
+
+func service(name string, opts ...interface{}) serviceHelper {
+	r := serviceHelper{name: name}
+	for _, opt := range opts {
+		switch opt := opt.(type) {
+		case labelsHelper:
+			r.selectorLabels = opt.labels
 		default:
 			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
 		}
@@ -1478,6 +1577,14 @@ func image(ref string) imageHelper {
 
 func imageNormalized(ref string) imageHelper {
 	return imageHelper{ref: docker.MustNormalizeRefName(ref)}
+}
+
+type labelsHelper struct {
+	labels map[string]string
+}
+
+func withLabels(labels map[string]string) labelsHelper {
+	return labelsHelper{labels: labels}
 }
 
 // match a docker_build

@@ -593,8 +593,11 @@ spec:
       protocol: TCP
   selector:
     app: doggos
-    whosAGoodBoy: imAGoodBoy
 `
+const (
+	DoggosName          = "doggos"
+	DoggosSelectorLabel = "    app: doggos"
+)
 
 const SnackYaml = `
 apiVersion: apps/v1
@@ -611,7 +614,6 @@ spec:
     metadata:
       labels:
         app: snack
-        tier: web
     spec:
       containers:
       - name: snack
@@ -619,8 +621,9 @@ spec:
         command: ["/go/bin/snack"]
 `
 const (
-	SnackName  = "snack"
-	SnackImage = "gcr.io/windmill-public-containers/servantes/snack"
+	SnackName          = "snack"
+	SnackImage         = "gcr.io/windmill-public-containers/servantes/snack"
+	SnackTemplateLabel = "        app: snack"
 )
 
 const SnackYAMLPostConfig = `apiVersion: apps/v1
@@ -640,7 +643,6 @@ spec:
       creationTimestamp: null
       labels:
         app: snack
-        tier: web
     spec:
       containers:
       - command:
