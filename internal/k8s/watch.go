@@ -13,7 +13,6 @@ import (
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
@@ -55,15 +54,14 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	_, err := kCli.makeWatcher(func(ns string) watcher {
+	watcher, err := kCli.makeWatcher(func(ns string) watcher {
 		return kCli.core.Pods(ns)
 	}, ls)
 	if err != nil {
 		return nil, errors.Wrap(err, "pods.Watch")
 	}
+	watcher.Stop()
 
-	// HACK(dmiller): this can log to stderr. To prevent that we remove the error handler.
-	utilruntime.ErrorHandlers = []func(error){}
 	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, informers.WithTweakListOptions(func(o *metav1.ListOptions) {
 		o.LabelSelector = ls.String()
 	}))
