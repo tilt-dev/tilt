@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -1201,33 +1202,38 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 			if e.image != "" {
 				s = strings.Replace(s, testyaml.SnackImage, e.image, -1)
 			}
-			if len(e.templateLabels) > 0 {
-				var newLabels string
-				for k, v := range e.templateLabels {
-					newLabels = fmt.Sprintf("%s        %s: %v\n", newLabels, k, v)
-				}
-				s = strings.Replace(s, testyaml.SnackTemplateLabel, newLabels, -1)
-			}
 			s = strings.Replace(s, testyaml.SnackName, e.name, -1)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)
 			}
 
+			if len(e.templateLabels) > 0 {
+				for i, obj := range objs {
+					withLabels, err := k8s.OverwriteLabels(obj, model.ToLabelPairs(e.templateLabels))
+					if err != nil {
+						f.t.Fatal(err)
+					}
+					objs[i] = withLabels
+				}
+			}
+
 			entityObjs = append(entityObjs, objs...)
 		case serviceHelper:
 			s := testyaml.DoggosServiceYaml
-			if len(e.selectorLabels) > 0 {
-				var newLabels string
-				for k, v := range e.selectorLabels {
-					newLabels = fmt.Sprintf("%s    %s: %v\n", newLabels, k, v)
-				}
-				s = strings.Replace(s, testyaml.DoggosSelectorLabel, newLabels, -1)
-			}
 			s = strings.Replace(s, testyaml.DoggosName, e.name, -1)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)
+			}
+
+			if len(e.selectorLabels) > 0 {
+				for _, obj := range objs {
+					err := overwriteSelectorsForService(&obj, e.selectorLabels)
+					if err != nil {
+						f.t.Fatal(err)
+					}
+				}
 			}
 
 			entityObjs = append(entityObjs, objs...)
@@ -1727,4 +1733,13 @@ k8s_resource('foo', 'foo.yaml', extra_pod_selectors=%s)
 `, s)
 
 	f.file("Tiltfile", tiltfile)
+}
+
+func overwriteSelectorsForService(entity *k8s.K8sEntity, labels map[string]string) error {
+	svc, ok := entity.Obj.(*v1.Service)
+	if !ok {
+		return fmt.Errorf("don't know how to set selectors for %T", entity.Obj)
+	}
+	svc.Spec.Selector = labels
+	return nil
 }

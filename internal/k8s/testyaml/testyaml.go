@@ -595,8 +595,7 @@ spec:
     app: doggos
 `
 const (
-	DoggosName          = "doggos"
-	DoggosSelectorLabel = "    app: doggos"
+	DoggosName = "doggos"
 )
 
 const SnackYaml = `
@@ -621,9 +620,8 @@ spec:
         command: ["/go/bin/snack"]
 `
 const (
-	SnackName          = "snack"
-	SnackImage         = "gcr.io/windmill-public-containers/servantes/snack"
-	SnackTemplateLabel = "        app: snack"
+	SnackName  = "snack"
+	SnackImage = "gcr.io/windmill-public-containers/servantes/snack"
 )
 
 const SnackYAMLPostConfig = `apiVersion: apps/v1
