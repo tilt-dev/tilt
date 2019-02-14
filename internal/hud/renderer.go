@@ -299,7 +299,7 @@ func (r *Renderer) renderResourceHeader(v view.View) rty.Component {
 
 	buildCell := rty.NewMinLengthLayout(BuildDurCellMinWidth+BuildStatusCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
-		Add(rty.ColoredString("BUILD STATUS", cLightText))
+		Add(rty.ColoredString("IMAGE BUILD", cLightText))
 	l.Add(buildCell)
 	l.Add(middotText())
 	deployCell := rty.NewMinLengthLayout(DeployCellMinWidth+1, rty.DirHor).

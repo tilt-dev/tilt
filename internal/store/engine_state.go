@@ -646,6 +646,7 @@ func StateToView(s EngineState) view.View {
 			CrashLog:           ms.CrashLog.String(),
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
+			HasImageBuilds:     len(mt.Manifest.ImageTargets) > 0,
 		}
 
 		ret.Resources = append(ret.Resources, r)

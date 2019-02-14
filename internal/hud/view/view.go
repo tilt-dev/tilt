@@ -84,7 +84,8 @@ type Resource struct {
 	// for a little while.
 	CrashLog string
 
-	IsTiltfile bool
+	IsTiltfile     bool
+	HasImageBuilds bool
 }
 
 func (r Resource) DockerComposeTarget() DCResourceInfo {
