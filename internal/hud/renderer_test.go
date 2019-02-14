@@ -776,14 +776,43 @@ func TestTiltfileResourceWithLog(t *testing.T) {
 	rtf.run("Tiltfile resource with log", 80, 20, v, vs)
 }
 
+func BenchmarkBigLogAndBigScreen(b *testing.B) {
+	rtf := newRendererTestFixture(b)
+
+	now := time.Now()
+	log := model.NewLog(strings.Repeat("hi hello", 10000))
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:       "(Tiltfile)",
+				IsTiltfile: true,
+				BuildHistory: []model.BuildRecord{
+					{
+						Edits:      []string{"foo"},
+						StartTime:  now.Add(-5 * time.Second),
+						FinishTime: now.Add(-5 * time.Second),
+						Reason:     model.BuildReasonFlagConfig,
+						Log:        log,
+					},
+				},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseNo)
+	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
+
+	for n := 0; n < b.N; n++ {
+		rtf.run("Tiltfile resource with log benchmark", 204, 159, v, vs)
+	}
+}
+
 type rendererTestFixture struct {
-	t *testing.T
 	i rty.InteractiveTester
 }
 
-func newRendererTestFixture(t *testing.T) rendererTestFixture {
+func newRendererTestFixture(t rty.ErrorReporter) rendererTestFixture {
 	return rendererTestFixture{
-		t: t,
 		i: rty.NewInteractiveTester(t, screen),
 	}
 }
