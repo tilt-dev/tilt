@@ -13,7 +13,7 @@ import (
 
 func TestInjectLabelPod(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.LonelyPodYAML)
-	newEntity, err := InjectLabelsForDeployment(entity, []model.LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "tier",
 			Value: "test",
@@ -35,7 +35,7 @@ func TestInjectLabelPod(t *testing.T) {
 
 func TestInjectLabelDeployment(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoYAML)
-	newEntity, err := InjectLabelsForDeployment(entity, []model.LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "tier",
 			Value: "test",
@@ -61,7 +61,7 @@ func TestInjectLabelDeployment(t *testing.T) {
 
 func TestInjectLabelDeploymentBeta1(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta1YAML)
-	newEntity, err := InjectLabelsForDeployment(entity, []model.LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
@@ -86,7 +86,7 @@ func TestInjectLabelDeploymentBeta1(t *testing.T) {
 
 func TestInjectLabelDeploymentBeta2(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta2YAML)
-	newEntity, err := InjectLabelsForDeployment(entity, []model.LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
@@ -111,7 +111,7 @@ func TestInjectLabelDeploymentBeta2(t *testing.T) {
 
 func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoExtBeta1YAML)
-	newEntity, err := InjectLabelsForDeployment(entity, []model.LabelPair{
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
