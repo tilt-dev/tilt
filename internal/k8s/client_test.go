@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -122,7 +122,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.tracker = tracker
 
 	core := cs.CoreV1()
-	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, KubeContext("unknown"), ""}
+	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, KubeContext("unknown"), "", nil}
 	return ret
 }
 
