@@ -160,9 +160,29 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	}, s.k8sUnresourced, nil
 }
 
-// assembleK8s matches images we know how to build with any k8s entities that use that image
-// (returning the set of images that we added to resources)
 func (s *tiltfileState) assembleK8s() error {
+	err := s.assembleK8sWithImages()
+	if err != nil {
+		return err
+	}
+
+	err = s.assembleK8sUnresourced()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range s.k8s {
+		if err := s.validateK8s(r); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+// assembleK8sWithImages matches images we know how to build with any k8s entities
+// that use that image, storing the resulting resource(s) on the tiltfileState.
+func (s *tiltfileState) assembleK8sWithImages() error {
 	// find all images mentioned in k8s entities that don't yet belong to k8sResources
 	k8sRefs, err := s.findUnresourcedImages()
 	if err != nil {
@@ -186,12 +206,31 @@ func (s *tiltfileState) assembleK8s() error {
 			return err
 		}
 	}
+	return nil
+}
 
-	for _, r := range s.k8s {
-		if err := s.validateK8s(r); err != nil {
+// assembleK8sUnresourced makes k8sResources for all unresourced k8s entities that will
+// result in pods (smartly grouping pod-creating entities with corresponding entities e.g.
+// services), and stores the resulting resource(s) on the tiltfileState.
+func (s *tiltfileState) assembleK8sUnresourced() error {
+	withPodSpec, allRest, err := k8s.FilterByHasPodTemplateSpec(s.k8sUnresourced)
+	if err != nil {
+		return nil
+	}
+	for _, e := range withPodSpec {
+		target, err := s.k8sResourceForName(e.Name())
+		if err != nil {
 			return err
 		}
+		target.entities = append(target.entities, e)
+
+		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(e, allRest)
+		target.entities = append(target.entities, match...)
+		allRest = rest
 	}
+
+	s.k8sUnresourced = allRest
+
 	return nil
 }
 
@@ -236,6 +275,17 @@ func (s *tiltfileState) k8sResourceForImage(image reference.Named) (*k8sResource
 	return s.makeK8sResource(name)
 }
 
+// k8sResourceForName returns the k8sResource with which this name is associated
+// (either an existing resource or a new one).
+func (s *tiltfileState) k8sResourceForName(name string) (*k8sResource, error) {
+	if r, ok := s.k8sByName[name]; ok {
+		return r, nil
+	}
+
+	// otherwise, create a new resource
+	return s.makeK8sResource(name)
+}
+
 func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	var result []reference.Named
 	seen := make(map[string]bool)
@@ -270,22 +320,18 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef reference.Na
 	s.k8sUnresourced = remaining
 
 	for _, e := range extracted {
-		podTemplates, err := k8s.ExtractPodTemplateSpec(e)
+		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(e, s.k8sUnresourced)
 		if err != nil {
 			return err
 		}
-		for _, template := range podTemplates {
-			extracted, remaining, err := k8s.FilterByLabels(s.k8sUnresourced, template.Labels)
-			if err != nil {
-				return err
-			}
-			err = dest.addEntities(extracted)
-			if err != nil {
-				return err
-			}
-			s.k8sUnresourced = remaining
+
+		err = dest.addEntities(match)
+		if err != nil {
+			return err
 		}
+		s.k8sUnresourced = rest
 	}
+
 	return nil
 }
 

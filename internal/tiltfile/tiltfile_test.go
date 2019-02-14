@@ -577,6 +577,37 @@ func TestUnresourcedYamlGrouping(t *testing.T) {
 	f.assertYAMLManifest("someSecret")
 }
 
+func TestK8sGroupedWhenAddedToResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupExpand()
+
+	labelsA := map[string]string{"keyA": "valueA"}
+	labelsB := map[string]string{"keyB": "valueB"}
+	labelsC := map[string]string{"keyC": "valueC"}
+	f.yaml("all.yaml",
+		deployment("deployment-a", image("gcr.io/a"), withLabels(labelsA)),
+
+		deployment("deployment-b", image("gcr.io/b"), withLabels(labelsB)),
+		service("service-b", withLabels(labelsB)),
+
+		deployment("deployment-c", image("gcr.io/c"), withLabels(labelsC)),
+		service("service-c1", withLabels(labelsC)),
+		service("service-c2", withLabels(labelsC)),
+	)
+
+	f.file("Tiltfile", `k8s_yaml('all.yaml')
+docker_build('gcr.io/a', 'a')
+docker_build('gcr.io/b', 'b')
+docker_build('gcr.io/c', 'c')
+`)
+	f.load()
+
+	f.assertNextManifest("a", deployment("deployment-a"))
+	f.assertNextManifest("b", deployment("deployment-b"), service("service-b"))
+	f.assertNextManifest("c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
+}
+
 func TestK8sResourceWithoutDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

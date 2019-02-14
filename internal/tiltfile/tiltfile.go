@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
@@ -75,66 +74,17 @@ func Load(ctx context.Context, filename string, matching map[string]bool, logs i
 		return nil, model.Manifest{}, nil, err
 	}
 
-	var remainingYamlManifest model.Manifest
+	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
-		var podCreators []model.Manifest
-		podCreators, remainingYamlManifest, err = k8sManifestsForPodCreators(ctx, unresourced)
+		yamlManifest, err = k8s.NewK8sOnlyManifest(unresourcedName, unresourced)
 		if err != nil {
 			return nil, model.Manifest{}, nil, err
 		}
-		manifests = append(manifests, podCreators...)
 	}
 
-	// TODO(maia): `remainingYamlManifest` should be processed just like any
+	// TODO(maia): `yamlManifest` should be processed just like any
 	// other manifest (i.e. get rid of "global yaml" concept)
-	return manifests, remainingYamlManifest, s.configFiles, err
-}
-
-// k8sManifestsForPodCreators groups the given k8s entities into pod creator clusters
-// (e.g. DeploymentA is a pod creator, and ServiceA would belong to its pod creator
-// cluster b/c it applies to pods created by DeploymentA); returns a k8s-only manifest
-// per pod creator cluster, and a single manifest containing the rest of the entities
-// (will be deployed/displayed in HUD as a unit).
-func k8sManifestsForPodCreators(ctx context.Context, entities []k8s.K8sEntity) (podCreators []model.Manifest,
-	remaining model.Manifest, err error) {
-	withPodSpec, allRest, err := k8s.FilterByHasPodTemplateSpec(entities)
-	if err != nil {
-		return nil, model.Manifest{}, err
-	}
-
-	for _, e := range withPodSpec {
-		podTemplates, err := k8s.ExtractPodTemplateSpec(e)
-		if err != nil {
-			return nil, model.Manifest{}, errors.Wrap(err, "extracting pod template spec")
-		}
-		if len(podTemplates) == 0 {
-			return nil, model.Manifest{}, errors.Wrap(err, "expected at least one pod template spec, got none")
-		}
-
-		if len(podTemplates) > 1 {
-			logger.Get(ctx).Infof("Found multiple pod templates on %s, "+
-				"looking for other entities that match the first one", e.ResourceName())
-		}
-		template := podTemplates[0]
-
-		match, rest, err := k8s.FilterByLabels(allRest, template.Labels)
-		if err != nil {
-			return nil, model.Manifest{}, errors.Wrap(err, "filtering entities by label")
-		}
-
-		entityGroup := append([]k8s.K8sEntity{e}, match...)
-		m, err := k8s.NewK8sOnlyManifest(model.ManifestName(e.Name()), entityGroup)
-		if err != nil {
-			return nil, model.Manifest{}, err
-		}
-		podCreators = append(podCreators, m)
-
-		allRest = rest
-	}
-
-	remaining, err = k8s.NewK8sOnlyManifest(unresourcedName, allRest)
-
-	return podCreators, remaining, nil
+	return manifests, yamlManifest, s.configFiles, err
 }
 
 func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {

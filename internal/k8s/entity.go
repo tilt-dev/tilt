@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -206,6 +207,29 @@ func FilterByHasPodTemplateSpec(entities []K8sEntity) (passing, rest []K8sEntity
 		}
 		return len(templateSpecs) > 0, nil
 	})
+}
+
+func FilterByMatchesPodTemplateSpec(withPodSpec K8sEntity, entities []K8sEntity) (passing, rest []K8sEntity, err error) {
+	podTemplates, err := ExtractPodTemplateSpec(withPodSpec)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "extracting pod template spec")
+	}
+
+	if len(podTemplates) == 0 {
+		return nil, entities, nil
+	}
+
+	var allMatches []K8sEntity
+	remaining := append([]K8sEntity{}, entities...)
+	for _, template := range podTemplates {
+		match, rest, err := FilterByLabels(remaining, template.Labels)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "filtering entities by label")
+		}
+		allMatches = append(allMatches, match...)
+		remaining = rest
+	}
+	return allMatches, remaining, nil
 }
 
 func (e K8sEntity) ResourceName() string {
