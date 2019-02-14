@@ -30,7 +30,7 @@ func TestRender(t *testing.T) {
 				Name:               "foo",
 				DirectoriesWatched: []string{"bar"},
 				ResourceInfo:       view.K8SResourceInfo{},
-				HasImageBuilds:     true,
+				ShowBuildStatus:    true,
 			},
 		},
 	}
@@ -48,8 +48,8 @@ func TestRender(t *testing.T) {
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
 				}},
-				ResourceInfo:   view.K8SResourceInfo{},
-				HasImageBuilds: true,
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -75,8 +75,8 @@ src/github.com/windmilleng/servantes/snack/main.go:16:36: syntax error: unexpect
 
 ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code 2`),
 				}},
-				ResourceInfo:   view.K8SResourceInfo{},
-				HasImageBuilds: true,
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -111,7 +111,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodRestarts: 1,
 					PodLog:      "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 				},
-				HasImageBuilds: true,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -126,8 +126,8 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					Error: fmt.Errorf("broken go code!"),
 					Log:   model.NewLog("mashing keys is not a good way to generate code"),
 				}},
-				ResourceInfo:   view.K8SResourceInfo{},
-				HasImageBuilds: true,
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -160,7 +160,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodRestarts:     1,
 					PodLog:          "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
 				},
-				HasImageBuilds: true,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -188,9 +188,9 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodStatus:       "Running",
 					PodRestarts:     0,
 				},
-				Endpoints:      []string{"1.2.3.4:8080"},
-				CrashLog:       "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
-				HasImageBuilds: true,
+				Endpoints:       []string{"1.2.3.4:8080"},
+				CrashLog:        "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -219,8 +219,8 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 				},
-				Endpoints:      []string{"1.2.3.4:8080"},
-				HasImageBuilds: true,
+				Endpoints:       []string{"1.2.3.4:8080"},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -253,8 +253,8 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 					StartTime: ts.Add(-5 * time.Second),
 					Edits:     []string{"main.go"},
 				},
-				ResourceInfo:   view.K8SResourceInfo{},
-				HasImageBuilds: true,
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -267,7 +267,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 				PendingBuildSince: ts.Add(-5 * time.Second),
 				PendingBuildEdits: []string{"main.go"},
 				ResourceInfo:      view.K8SResourceInfo{},
-				HasImageBuilds:    true,
+				ShowBuildStatus:   true,
 			},
 		},
 	}
@@ -281,8 +281,8 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
 				BuildHistory: []model.BuildRecord{{
 					Edits: []string{"abbot.go", "costello.go", "harold.go"},
 				}},
-				ResourceInfo:   view.K8SResourceInfo{},
-				HasImageBuilds: true,
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -377,6 +377,7 @@ func TestRenderLogModal(t *testing.T) {
 						Log: model.NewLog("Hi hello I'm a docker compose build log"),
 					},
 				},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -404,7 +405,7 @@ func TestAutoCollapseModes(t *testing.T) {
 				Name:               "vigoda",
 				DirectoriesWatched: []string{"bar"},
 				ResourceInfo:       view.K8SResourceInfo{},
-				HasImageBuilds:     true,
+				ShowBuildStatus:    true,
 			},
 		},
 	}
@@ -418,8 +419,8 @@ func TestAutoCollapseModes(t *testing.T) {
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
 				}},
-				ResourceInfo:   view.K8SResourceInfo{},
-				HasImageBuilds: true,
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -456,8 +457,8 @@ func TestPodPending(t *testing.T) {
 					PodLog:    "serving on 8080",
 					PodStatus: "",
 				},
-				LastDeployTime: ts,
-				HasImageBuilds: true,
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -527,8 +528,8 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
-				LastDeployTime: ts,
-				HasImageBuilds: true,
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -558,8 +559,8 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
-				LastDeployTime: ts,
-				HasImageBuilds: true,
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -589,8 +590,8 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
-				LastDeployTime: ts,
-				HasImageBuilds: true,
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -618,8 +619,8 @@ func TestCompletedPod(t *testing.T) {
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
-				LastDeployTime: ts,
-				HasImageBuilds: true,
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -638,7 +639,7 @@ func TestPendingBuildInManualTriggerMode(t *testing.T) {
 				PendingBuildSince: ts.Add(-5 * time.Second),
 				PendingBuildEdits: []string{"main.go"},
 				ResourceInfo:      view.K8SResourceInfo{},
-				HasImageBuilds:    true,
+				ShowBuildStatus:   true,
 			},
 		},
 	}
@@ -672,8 +673,8 @@ func TestBuildHistory(t *testing.T) {
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
-				LastDeployTime: ts,
-				HasImageBuilds: true,
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -694,6 +695,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 					StartTime: now.Add(-5 * time.Second),
 					Reason:    model.BuildReasonFlagMountFiles,
 				},
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -709,8 +711,9 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				Name:            "snack",
+				ResourceInfo:    view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -726,8 +729,9 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				Name:            "snack",
+				ResourceInfo:    view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				ShowBuildStatus: true,
 			},
 		},
 	}
@@ -743,8 +747,9 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				Name:            "snack",
+				ResourceInfo:    view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				ShowBuildStatus: true,
 			},
 		},
 	}

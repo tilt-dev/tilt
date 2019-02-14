@@ -32,9 +32,10 @@ func makeBuildStatus(res view.Resource, triggerMode model.TriggerMode) buildStat
 	deployTime := time.Time{}
 	reason := model.BuildReason(0)
 
-	if !res.HasImageBuilds {
+	if !res.ShowBuildStatus {
 		return buildStatus{
 			status: "N/A",
+			muted:  true,
 		}
 	}
 
