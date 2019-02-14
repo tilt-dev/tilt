@@ -121,15 +121,12 @@ func ProvideK8sClient(
 		return &explodingClient{err: err}
 	}
 
-	core, err := ProvideCoreInterface(restConfig)
-	if err != nil {
-		return &explodingClient{err: err}
-	}
-
 	clientset, err := ProvideClientSet(restConfig)
 	if err != nil {
 		return &explodingClient{err: err}
 	}
+
+	core := clientset.CoreV1()
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -292,15 +289,6 @@ func ProvideClientSet(cfg *rest.Config) (*kubernetes.Clientset, error) {
 	}
 
 	return clientSet, nil
-}
-
-func ProvideCoreInterface(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientSet.CoreV1(), nil
 }
 
 func ProvideClientConfig() clientcmd.ClientConfig {
