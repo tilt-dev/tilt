@@ -31,7 +31,8 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	var n reference.NamedTagged
 
 	ref := iTarget.Ref
-	cacheRef, err := icb.cb.FetchCache(ctx, ref, iTarget.CachePaths())
+	cacheInputs := icb.createCacheInputs(iTarget)
+	cacheRef, err := icb.cb.FetchCache(ctx, cacheInputs)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		}
 		n = ref
 
-		go icb.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
+		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 	case model.FastBuild:
 		if !state.HasImage() || icb.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
@@ -64,7 +65,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 				return nil, err
 			}
 			n = ref
-			go icb.maybeCreateCacheFrom(ctx, ref, state, iTarget, cacheRef)
+			go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 
 		} else {
 			// We have an existing image, can do an iterative build
@@ -127,7 +128,7 @@ func (icb *imageAndCacheBuilder) staticDockerfile(image model.ImageTarget, cache
 }
 
 func (icb *imageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
-	cacheRef reference.NamedTagged, cachePaths []string) dockerfile.Dockerfile {
+	cacheRef build.CacheRef, cachePaths []string) dockerfile.Dockerfile {
 	df := dockerfile.Dockerfile(fbInfo.BaseDockerfile)
 	if cacheRef == nil {
 		return df
@@ -142,7 +143,25 @@ func (icb *imageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
 		WithLabel(build.CacheImage, "0") // sadly there's no way to unset a label :sob:
 }
 
-func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
+func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) build.CacheInputs {
+	baseDockerfile := dockerfile.Dockerfile(iTarget.FastBuildInfo().BaseDockerfile)
+	if sbInfo, ok := iTarget.BuildDetails.(model.StaticBuild); ok {
+		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
+		ok := true
+		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
+		if !ok {
+			return build.CacheInputs{}
+		}
+	}
+
+	return build.CacheInputs{
+		Ref:            iTarget.Ref,
+		CachePaths:     iTarget.CachePaths(),
+		BaseDockerfile: baseDockerfile,
+	}
+}
+
+func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, cacheInputs build.CacheInputs, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
 	// Only create the cache the first time we build the image.
 	if !state.LastResult.IsEmpty() {
 		return
@@ -153,22 +172,12 @@ func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, sourc
 		return
 	}
 
-	baseDockerfile := dockerfile.Dockerfile(image.FastBuildInfo().BaseDockerfile)
 	var buildArgs model.DockerBuildArgs
-
 	if sbInfo, ok := image.BuildDetails.(model.StaticBuild); ok {
-		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
-		ok := true
-		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
-		if !ok {
-			return
-		}
-
 		buildArgs = sbInfo.BuildArgs
 	}
 
-	err := icb.cb.CreateCacheFrom(ctx, baseDockerfile, sourceRef,
-		image.CachePaths(), buildArgs)
+	err := icb.cb.CreateCacheFrom(ctx, cacheInputs, sourceRef, buildArgs)
 	if err != nil {
 		logger.Get(ctx).Debugf("Could not create cache: %v", err)
 	}
