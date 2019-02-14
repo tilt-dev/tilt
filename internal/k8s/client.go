@@ -17,7 +17,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
@@ -97,6 +97,7 @@ type K8sClient struct {
 	portForwarder   PortForwarder
 	kubeContext     KubeContext
 	configNamespace Namespace
+	clientSet       kubernetes.Interface
 }
 
 var _ Client = K8sClient{}
@@ -125,6 +126,11 @@ func ProvideK8sClient(
 		return &explodingClient{err: err}
 	}
 
+	clientset, err := ProvideClientSet(restConfig)
+	if err != nil {
+		return &explodingClient{err: err}
+	}
+
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	browser.Stdout = writer
@@ -137,6 +143,7 @@ func ProvideK8sClient(
 		restConfig:      restConfig,
 		portForwarder:   pf,
 		configNamespace: configNamespace,
+		clientSet:       clientset,
 	}
 }
 
@@ -276,6 +283,15 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	stdin := bytes.NewReader([]byte(rawYAML))
 
 	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+}
+
+func ProvideClientSet(cfg *rest.Config) (*kubernetes.Clientset, error) {
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientSet, nil
 }
 
 func ProvideCoreInterface(cfg *rest.Config) (apiv1.CoreV1Interface, error) {
