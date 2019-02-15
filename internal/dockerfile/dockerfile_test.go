@@ -117,3 +117,45 @@ func TestNoAddsToNoMounts(t *testing.T) {
 	}
 	assert.Empty(t, mounts)
 }
+
+func TestFindImages(t *testing.T) {
+	df := Dockerfile(`FROM gcr.io/image-a`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "gcr.io/image-a", images[0].String())
+	}
+}
+
+func TestFindImagesAsBuilder(t *testing.T) {
+	df := Dockerfile(`FROM gcr.io/image-a as builder`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "gcr.io/image-a", images[0].String())
+	}
+}
+
+func TestFindImagesBadImageName(t *testing.T) {
+	// Capital letters aren't allowed in image names
+	df := Dockerfile(`FROM gcr.io/imageA`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(images))
+}
+
+func TestFindImagesMissingImageName(t *testing.T) {
+	df := Dockerfile(`FROM`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(images))
+}
+
+func TestFindImagesWeirdSyntax(t *testing.T) {
+	df := Dockerfile(`FROM a b`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "docker.io/library/a", images[0].String())
+	}
+}

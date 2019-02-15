@@ -119,6 +119,31 @@ func (d Dockerfile) ValidateBaseDockerfile() error {
 	})
 }
 
+// Find all images referenced in this dockerfile.
+func (d Dockerfile) FindImages() ([]reference.Named, error) {
+	// TODO(nick): Right now this only supports FROM statement.
+	// In the future, it should also support COPY --from
+	result := []reference.Named{}
+	err := d.traverse(func(node *parser.Node) error {
+		switch node.Value {
+		case command.From:
+			if node.Next == nil {
+				return nil
+			}
+			ref, err := reference.ParseNormalizedNamed(node.Next.Value)
+			if err != nil {
+				return nil // drop the error, we don't care about malformed images
+			}
+			result = append(result, ref)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // DeriveMounts finds ADD statements in a Dockerfile and turns them into Tilt model.Mounts.
 // Relative paths in an ADD statement are relative to the build context (passed as an arg)
 // and will appear in the Mount as an abs path.

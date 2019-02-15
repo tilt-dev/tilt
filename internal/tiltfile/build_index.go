@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // An index of all the images that we know how to build.
@@ -13,12 +14,14 @@ type buildIndex struct {
 
 	taggedImages   map[string]*dockerImage
 	nameOnlyImages map[string]*dockerImage
+	byTargetID     map[model.TargetID]*dockerImage
 }
 
 func newBuildIndex() *buildIndex {
 	return &buildIndex{
 		taggedImages:   make(map[string]*dockerImage),
 		nameOnlyImages: make(map[string]*dockerImage),
+		byTargetID:     make(map[model.TargetID]*dockerImage),
 	}
 }
 
@@ -42,13 +45,24 @@ func (idx *buildIndex) addImage(img *dockerImage) error {
 
 		idx.nameOnlyImages[key] = img
 	}
+
+	idx.byTargetID[img.ID()] = img
+
 	idx.images = append(idx.images, img)
 	return nil
 }
 
-// Deploy targets (like k8s yaml and docker-compose yaml) have reference to images
-// Check to see if we have a build target for that image.
-func (idx *buildIndex) matchRefInDeployTarget(ref reference.Named) *dockerImage {
+func (idx *buildIndex) findBuilderByID(id model.TargetID) *dockerImage {
+	return idx.byTargetID[id]
+}
+
+// Many things can consume image builds:
+// - k8s yaml
+// - docker-compose yaml
+// - the from command in other images
+// Check to see if we have a build target for that image,
+// and mark that build target as consumed by an larger target.
+func (idx *buildIndex) findBuilderForConsumedImage(ref reference.Named) *dockerImage {
 	refTagged, hasTag := ref.(reference.NamedTagged)
 	if hasTag {
 		key := fmt.Sprintf("%s:%s", ref.Name(), refTagged.Tag())

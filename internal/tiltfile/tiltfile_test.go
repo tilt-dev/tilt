@@ -1169,6 +1169,74 @@ func TestBlobErr(t *testing.T) {
 	f.loadErrString("for parameter 1: got int, want string")
 }
 
+func TestImageDependency(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	m := f.assertNextManifest("image-b", deployment("foo"))
+	assert.Equal(t, []string{"gcr.io/image-a", "gcr.io/image-b"}, f.imageTargetNames(m))
+}
+
+func TestImageDependencyCycle(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM gcr.io/image-b")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("Image dependency cycle: gcr.io/image-b")
+}
+
+func TestImageDependencyDiamond(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.file("imageC.dockerfile", "FROM gcr.io/image-a")
+	f.file("imageD.dockerfile", `
+FROM gcr.io/image-b
+FROM gcr.io/image-c
+`)
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-d")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-c', '.', dockerfile='imageC.dockerfile')
+docker_build('gcr.io/image-d', '.', dockerfile='imageD.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("image-d", deployment("foo"))
+	assert.Equal(t, []string{
+		"gcr.io/image-a",
+		"gcr.io/image-b",
+		"gcr.io/image-c",
+		"gcr.io/image-d",
+	}, f.imageTargetNames(m))
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -1489,14 +1557,28 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 // All manifests currently contain redundant information
 // such that each Deploy target lists its image ID dependencies.
 func (f *fixture) assertManifestConsistency(m model.Manifest) {
-	iTargetIDs := []model.TargetID(nil)
+	iTargetIDs := map[model.TargetID]bool{}
 	for _, iTarget := range m.ImageTargets {
-		iTargetIDs = append(iTargetIDs, iTarget.ID())
+		if iTargetIDs[iTarget.ID()] {
+			f.t.Fatalf("Image Target %s appears twice in manifest: %s", iTarget.ID(), m.Name)
+		}
+		iTargetIDs[iTarget.ID()] = true
 	}
 
 	deployTarget := m.DeployTarget()
-	deployDepIDs := deployTarget.DependencyIDs()
-	assert.Equal(f.t, iTargetIDs, deployDepIDs)
+	for _, depID := range deployTarget.DependencyIDs() {
+		if !iTargetIDs[depID] {
+			f.t.Fatalf("Image Target needed by deploy target is missing: %s", depID)
+		}
+	}
+}
+
+func (f *fixture) imageTargetNames(m model.Manifest) []string {
+	result := []string{}
+	for _, iTarget := range m.ImageTargets {
+		result = append(result, iTarget.ID().Name.String())
+	}
+	return result
 }
 
 func (f *fixture) assertNumManifests(expected int) {

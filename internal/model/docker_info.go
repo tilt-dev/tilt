@@ -43,6 +43,11 @@ func (i ImageTarget) DependencyIDs() []TargetID {
 	return i.dependencyIDs
 }
 
+func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
+	i.dependencyIDs = ids
+	return i
+}
+
 func (i ImageTarget) Validate() error {
 	if i.Ref == nil {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
