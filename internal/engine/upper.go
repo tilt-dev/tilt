@@ -113,20 +113,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	// var tlw io.Writer
-	// if useActionWriter {
-	// 	tlw = NewTiltfileLogWriter(u.store)
-	// } else {
-	// 	tlw = logger.Get(ctx).Writer(logger.InfoLvl)
-	// }
-	// manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
-	// if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-	// 	err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
-	// }
-	// if err != nil {
-	// 	logger.Get(ctx).Infof(err.Error())
-	// }
-
 	return u.Init(ctx, InitAction{
 		WatchMounts:   watchMounts,
 		TiltfilePath:  absTfPath,
@@ -787,8 +773,8 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	engineState.WatchMounts = watchMounts
 
-	// TODO(dmiller) hmm what do I do with this?
-	//engineState.InitialBuildCount = len(manifests)
+	engineState.InitialBuildCount = len(action.InitManifests)
+	// NOTE(dmiller): this kicks off a Tiltfile build
 	engineState.PendingConfigFileChanges[action.TiltfilePath] = true
 	return nil
 }
