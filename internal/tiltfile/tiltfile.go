@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
@@ -82,6 +82,8 @@ func Load(ctx context.Context, filename string, matching map[string]bool, logs i
 		}
 	}
 
+	// TODO(maia): `yamlManifest` should be processed just like any
+	// other manifest (i.e. get rid of "global yaml" concept)
 	return manifests, yamlManifest, s.configFiles, err
 }
 

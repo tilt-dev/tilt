@@ -1,8 +1,6 @@
 package k8s
 
 import (
-	"fmt"
-
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -20,7 +18,7 @@ func NewTarget(
 
 	var resourceNames []string
 	for _, e := range entities {
-		resourceNames = append(resourceNames, fmt.Sprintf("%s (%s)", e.Name(), e.Kind.Kind))
+		resourceNames = append(resourceNames, e.ResourceName())
 	}
 
 	return model.K8sTarget{

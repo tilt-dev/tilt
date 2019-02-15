@@ -593,8 +593,10 @@ spec:
       protocol: TCP
   selector:
     app: doggos
-    whosAGoodBoy: imAGoodBoy
 `
+const (
+	DoggosName = "doggos"
+)
 
 const SnackYaml = `
 apiVersion: apps/v1
@@ -611,7 +613,6 @@ spec:
     metadata:
       labels:
         app: snack
-        tier: web
     spec:
       containers:
       - name: snack
@@ -640,7 +641,6 @@ spec:
       creationTimestamp: null
       labels:
         app: snack
-        tier: web
     spec:
       containers:
       - command:
