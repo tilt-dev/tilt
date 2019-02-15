@@ -3,14 +3,13 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -22,7 +21,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -115,31 +113,28 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	var tlw io.Writer
-	if useActionWriter {
-		tlw = NewTiltfileLogWriter(u.store)
-	} else {
-		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
-	}
-	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
-	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
-	}
-	if err != nil {
-		logger.Get(ctx).Infof(err.Error())
-	}
+	// var tlw io.Writer
+	// if useActionWriter {
+	// 	tlw = NewTiltfileLogWriter(u.store)
+	// } else {
+	// 	tlw = logger.Get(ctx).Writer(logger.InfoLvl)
+	// }
+	// manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
+	// if err == nil && len(manifests) == 0 && globalYAML.Empty() {
+	// 	err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
+	// }
+	// if err != nil {
+	// 	logger.Get(ctx).Infof(err.Error())
+	// }
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:        watchMounts,
-		Manifests:          manifests,
-		GlobalYAMLManifest: globalYAML,
-		TiltfilePath:       absTfPath,
-		ConfigFiles:        configFiles,
-		InitManifests:      manifestNames,
-		TriggerMode:        triggerMode,
-		StartTime:          startTime,
-		FinishTime:         time.Now(),
-		Err:                err,
+		WatchMounts:   watchMounts,
+		TiltfilePath:  absTfPath,
+		ConfigFiles:   []string{absTfPath},
+		InitManifests: manifestNames,
+		TriggerMode:   triggerMode,
+		StartTime:     startTime,
+		FinishTime:    time.Now(),
 	})
 }
 
@@ -781,24 +776,11 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
-	engineState.GlobalYAML = action.GlobalYAMLManifest
-	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
-	status := model.BuildRecord{
-		StartTime:  action.StartTime,
-		FinishTime: action.FinishTime,
-		Error:      action.Err,
-		Reason:     model.BuildReasonFlagInit,
-	}
-	setLastTiltfileBuild(engineState, status)
-
-	manifests := action.Manifests
-	for _, m := range manifests {
-		engineState.UpsertManifestTarget(store.NewManifestTarget(m))
-	}
 	engineState.WatchMounts = watchMounts
 
-	engineState.InitialBuildCount = len(manifests)
+	//engineState.InitialBuildCount = len(manifests)
+	engineState.PendingConfigFileChanges[action.TiltfilePath] = true
 	return nil
 }
 
