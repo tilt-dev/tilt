@@ -158,6 +158,7 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 
 type ConfigsReloadStartedAction struct {
 	FilesChanged map[string]bool
+	StartTime    time.Time
 }
 
 func (ConfigsReloadStartedAction) Action() {}

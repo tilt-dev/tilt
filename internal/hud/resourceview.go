@@ -67,7 +67,9 @@ func (v *ResourceView) resourceTitle() rty.Component {
 }
 
 func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
-	if res.IsTiltfile && res.CrashLog == "" {
+	if res.IsTiltfile && !res.CurrentBuild.Empty() {
+		return cPending
+	} else if res.IsTiltfile && res.CrashLog == "" {
 		return cGood
 	} else if res.IsTiltfile && res.CrashLog != "" {
 		return cBad
@@ -115,7 +117,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 	sb.Fg(color).Textf(" ● ")
 
 	name := v.res.Name.String()
-	if color == cPending && !v.res.IsTiltfile {
+	if color == cPending {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
 	sb.Fg(tcell.ColorDefault).Text(name)

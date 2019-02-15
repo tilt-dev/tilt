@@ -40,7 +40,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
 	go func() {
 		startTime := time.Now()
-		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged})
+		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
 
 		matching := map[string]bool{}
 		for _, m := range initManifests {

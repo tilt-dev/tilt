@@ -449,6 +449,13 @@ func handleConfigsReloadStarted(
 ) {
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	state.PendingConfigFileChanges = make(map[string]bool)
+	status := model.BuildRecord{
+		StartTime: event.StartTime,
+		Reason:    model.BuildReasonFlagConfig,
+		Edits:     []string{state.TiltfilePath},
+	}
+
+	state.CurrentTiltfileBuild = status
 }
 
 func handleConfigsReloaded(
@@ -466,6 +473,7 @@ func handleConfigsReloaded(
 		Edits:      []string{state.TiltfilePath},
 	}
 	setLastTiltfileBuild(state, status)
+	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
 		return
@@ -779,6 +787,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	engineState.WatchMounts = watchMounts
 
+	// TODO(dmiller) hmm what do I do with this?
 	//engineState.InitialBuildCount = len(manifests)
 	engineState.PendingConfigFileChanges[action.TiltfilePath] = true
 	return nil

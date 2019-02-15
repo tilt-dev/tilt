@@ -64,13 +64,12 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	LastTiltfileBuild model.BuildRecord
-
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
 
 	IsProfiling bool
 
+	LastTiltfileBuild    model.BuildRecord
 	CurrentTiltfileBuild model.BuildRecord
 }
 
@@ -675,14 +674,20 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	tfb := s.LastTiltfileBuild
-	tfb.Log = s.CurrentTiltfileBuild.Log
+	ltfb := s.LastTiltfileBuild
+	ltfb.Log = s.CurrentTiltfileBuild.Log
 	tr := view.Resource{
-		Name:       "(Tiltfile)",
-		IsTiltfile: true,
+		Name:         "(Tiltfile)",
+		IsTiltfile:   true,
+		CurrentBuild: s.CurrentTiltfileBuild,
 		BuildHistory: []model.BuildRecord{
-			tfb,
+			ltfb,
 		},
+	}
+	if !s.CurrentTiltfileBuild.Empty() {
+		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
+	} else {
+		tr.LastDeployTime = s.LastTiltfileBuild.FinishTime
 	}
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error
