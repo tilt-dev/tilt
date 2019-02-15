@@ -241,7 +241,7 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 				"image(s) %q; perhaps there's a typo?",
 				r.name, strings.Join(r.providedImageRefNameList(), "; "))
 		}
-		return fmt.Errorf("resource %q: you never associated any image refs with this resource", r.name)
+		return fmt.Errorf("resource %q: could not associate any k8s YAML with this resource", r.name)
 	}
 
 	for _, ref := range r.imageRefs {

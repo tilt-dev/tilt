@@ -620,6 +620,17 @@ k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
 	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
 }
 
+func TestImplicitK8sResourceWithoutDockerBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8000)
+`)
+	f.load()
+	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
+}
+
 func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
