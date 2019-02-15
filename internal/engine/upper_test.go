@@ -2460,16 +2460,14 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
 	ref := f.imageNameForManifest(name)
-	return model.Manifest{
-		Name: model.ManifestName(name),
-	}.WithImageTarget(model.ImageTarget{Ref: ref}.
-		WithBuildDetails(model.FastBuild{
-			BaseDockerfile: `from golang:1.10`,
-			Mounts:         mounts,
-		}),
-	).WithDeployTarget(model.K8sTarget{
-		YAML: "fake-yaml",
-	})
+	return assembleK8sManifest(
+		model.Manifest{Name: model.ManifestName(name)},
+		model.K8sTarget{YAML: "fake-yaml"},
+		model.ImageTarget{Ref: ref}.
+			WithBuildDetails(model.FastBuild{
+				BaseDockerfile: `from golang:1.10`,
+				Mounts:         mounts,
+			}))
 }
 
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {

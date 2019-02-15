@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
@@ -59,7 +60,9 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
 	if len(iTargets) > 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf(
+		// TODO(nick): Now that we support images depending on other images,
+		// we might need to adjust this to support more than one image target.
+		return store.BuildResultSet{}, fmt.Errorf(
 			"DockerComposeBuildAndDeployer supports at most one ImageTarget (got %d)", len(iTargets))
 	}
 	dcTarget := dcTargets[0]

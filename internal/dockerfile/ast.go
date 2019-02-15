@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/pkg/errors"
@@ -24,6 +25,30 @@ func ParseAST(df Dockerfile) (AST, error) {
 	return AST{
 		result: result,
 	}, nil
+}
+
+func (a AST) InjectImageDigest(ref reference.NamedTagged) (bool, error) {
+	modified := false
+	err := a.Traverse(func(node *parser.Node) error {
+		if node.Value != command.From || node.Next == nil {
+			return nil
+		}
+
+		val := node.Next.Value
+		fromRef, err := reference.ParseNormalizedNamed(val)
+		if err != nil {
+			// ignore the error
+			return nil
+		}
+
+		if fromRef.Name() == ref.Name() {
+			node.Next.Value = ref.String()
+			modified = true
+		}
+
+		return nil
+	})
+	return modified, err
 }
 
 // Post-order traversal of the Dockerfile AST.
