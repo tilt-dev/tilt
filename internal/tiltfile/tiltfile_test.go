@@ -1480,7 +1480,23 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
 	}
+
+	f.assertManifestConsistency(m)
+
 	return m
+}
+
+// All manifests currently contain redundant information
+// such that each Deploy target lists its image ID dependencies.
+func (f *fixture) assertManifestConsistency(m model.Manifest) {
+	iTargetIDs := []model.TargetID(nil)
+	for _, iTarget := range m.ImageTargets {
+		iTargetIDs = append(iTargetIDs, iTarget.ID())
+	}
+
+	deployTarget := m.DeployTarget()
+	deployDepIDs := deployTarget.DependencyIDs()
+	assert.Equal(f.t, iTargetIDs, deployDepIDs)
 }
 
 func (f *fixture) assertNumManifests(expected int) {

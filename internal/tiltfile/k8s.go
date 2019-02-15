@@ -42,6 +42,8 @@ type k8sResource struct {
 
 	// labels for pods that we should watch and associate with this resource
 	extraPodSelectors []labels.Selector
+
+	dependencyIDs []model.TargetID
 }
 
 func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
