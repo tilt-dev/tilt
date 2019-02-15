@@ -30,6 +30,8 @@ type dockerImage struct {
 
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
+
+	dependencyIDs []model.TargetID
 }
 
 func (d *dockerImage) ID() model.TargetID {

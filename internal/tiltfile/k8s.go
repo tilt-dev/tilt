@@ -48,9 +48,11 @@ type k8sResource struct {
 
 func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
 	r.providedImageRefNames[ref.Name()] = true
-	r.imageRefNames[ref.Name()] = true
-	r.imageRefs = append(r.imageRefs, ref)
-	sort.Sort(r.imageRefs)
+	if !r.imageRefNames[ref.Name()] {
+		r.imageRefNames[ref.Name()] = true
+		r.imageRefs = append(r.imageRefs, ref)
+		sort.Sort(r.imageRefs)
+	}
 }
 
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
@@ -62,10 +64,13 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
 			return err
 		}
 		for _, image := range images {
-			r.imageRefNames[image.Name()] = true
-			r.imageRefs = append(r.imageRefs, image)
+			if !r.imageRefNames[image.Name()] {
+				r.imageRefNames[image.Name()] = true
+				r.imageRefs = append(r.imageRefs, image)
+			}
 		}
 	}
+
 	return nil
 }
 
