@@ -36,5 +36,5 @@ func (s *GRPCServer) UpdateContainer(req *proto.UpdateContainerRequest, server p
 		return err
 	}
 
-	return s.del.UpdateContainer(ctx, container.ID(req.ContainerId), req.TarArchive, req.FilesToDelete, commands)
+	return s.del.UpdateContainer(ctx, container.ID(req.ContainerId), req.TarArchive, req.FilesToDelete, commands, req.HotReload)
 }

@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -128,6 +128,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 		core:          c.CoreV1(), // TODO set
 		restConfig:    nil,
 		portForwarder: nil,
+		clientSet:     c,
 	}
 
 	return ret
@@ -159,6 +160,10 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 			}
 		case <-timeout:
 			tf.t.Fatal("test timed out")
+		default:
+			if len(observedPods) == len(expectedOutput) {
+				done = true
+			}
 		}
 	}
 
@@ -202,8 +207,6 @@ func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels label
 	if !assert.NoError(tf.t, err) {
 		return
 	}
-
-	assert.Equal(tf.t, fields.Everything(), tf.watchRestrictions.Fields)
 
 	assert.Equal(tf.t, expectedLabels.String(), input.String())
 }

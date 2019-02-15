@@ -265,10 +265,8 @@ func (s *tiltfileState) k8sResourceForImage(image reference.Named) (*k8sResource
 	// next, look thru all the resources that have already been created,
 	// and see if any of them match the basename of the image.
 	name := filepath.Base(image.Name())
-	for _, r := range s.k8s {
-		if r.name == name {
-			return r, nil
-		}
+	if r, ok := s.k8sByName[name]; ok {
+		return r, nil
 	}
 
 	// otherwise, create a new resource

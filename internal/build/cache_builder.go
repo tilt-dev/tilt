@@ -19,6 +19,14 @@ import (
 // contents and at a particular tag.
 const CacheTagPrefix = "tilt-cache-"
 
+type CacheRef reference.NamedTagged
+
+type CacheInputs struct {
+	Ref            reference.Named
+	CachePaths     []string
+	BaseDockerfile dockerfile.Dockerfile
+}
+
 // Reads and writes images that contain cache directories.
 //
 // Used in the directory cache experimental feature, and designed to be deleted
@@ -35,10 +43,10 @@ func NewCacheBuilder(dCli docker.Client) CacheBuilder {
 	}
 }
 
-func (b CacheBuilder) cacheRef(ref reference.Named, cachePaths []string) (reference.NamedTagged, error) {
+func (b CacheBuilder) cacheRef(inputs CacheInputs) (CacheRef, error) {
 	// Make an md5 hash of the cachePaths, so that when they change, the tag also changes.
 	hashBuilder := md5.New()
-	for _, p := range cachePaths {
+	for _, p := range inputs.CachePaths {
 		_, err := hashBuilder.Write([]byte(p))
 		if err != nil {
 			return nil, errors.Wrap(err, "CacheRef")
@@ -46,7 +54,7 @@ func (b CacheBuilder) cacheRef(ref reference.Named, cachePaths []string) (refere
 	}
 
 	hash := hashBuilder.Sum(nil)
-	return reference.WithTag(ref, fmt.Sprintf("%s%x", CacheTagPrefix, hash))
+	return reference.WithTag(inputs.Ref, fmt.Sprintf("%s%x", CacheTagPrefix, hash))
 }
 
 func (b CacheBuilder) makeCacheDockerfile(baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string) dockerfile.Dockerfile {
@@ -62,13 +70,13 @@ func (b CacheBuilder) makeCacheDockerfile(baseDf dockerfile.Dockerfile, sourceRe
 }
 
 // Check if a cache exists for this ref name.
-func (b CacheBuilder) FetchCache(ctx context.Context, ref reference.Named, cachePaths []string) (reference.NamedTagged, error) {
+func (b CacheBuilder) FetchCache(ctx context.Context, inputs CacheInputs) (CacheRef, error) {
 	// Nothing to do if there are no cache paths.
-	if len(cachePaths) == 0 {
+	if len(inputs.CachePaths) == 0 {
 		return nil, nil
 	}
 
-	cacheRef, err := b.cacheRef(ref, cachePaths)
+	cacheRef, err := b.cacheRef(inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -85,20 +93,20 @@ func (b CacheBuilder) FetchCache(ctx context.Context, ref reference.Named, cache
 }
 
 // Creates a cache image.
-func (b CacheBuilder) CreateCacheFrom(ctx context.Context, baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string, buildArgs model.DockerBuildArgs) error {
+func (b CacheBuilder) CreateCacheFrom(ctx context.Context, inputs CacheInputs, sourceRef reference.NamedTagged, buildArgs model.DockerBuildArgs) error {
 	// Nothing to do if there are no cache paths
-	if len(cachePaths) == 0 {
+	if len(inputs.CachePaths) == 0 {
 		return nil
 	}
 
-	cacheRef, err := b.cacheRef(sourceRef, cachePaths)
+	cacheRef, err := b.cacheRef(inputs)
 	if err != nil {
 		return err
 	}
 
 	// Create a Dockerfile that copies directories from the sourceRef
 	// and puts them in a standalone image.
-	df := b.makeCacheDockerfile(baseDf, sourceRef, cachePaths)
+	df := b.makeCacheDockerfile(inputs.BaseDockerfile, sourceRef, inputs.CachePaths)
 	dockerCtx, err := tarDfOnly(ctx, df)
 	if err != nil {
 		return errors.Wrap(err, "CreateCacheFrom")

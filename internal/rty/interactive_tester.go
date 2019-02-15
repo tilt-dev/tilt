@@ -30,10 +30,15 @@ type InteractiveTester struct {
 	dummyScreen       tcell.SimulationScreen
 	interactiveScreen tcell.Screen
 	rty               RTY
-	t                 *testing.T
+	t                 ErrorReporter
 }
 
-func NewInteractiveTester(t *testing.T, screen tcell.Screen) InteractiveTester {
+type ErrorReporter interface {
+	Errorf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
+}
+
+func NewInteractiveTester(t ErrorReporter, screen tcell.Screen) InteractiveTester {
 	dummyScreen := tcell.NewSimulationScreen("")
 	err := dummyScreen.Init()
 	assert.NoError(t, err)
