@@ -5,6 +5,8 @@ k8s_yaml('deployments/test.yaml')
 
 repo = local_git_repo('.')
 
+local('echo hi')
+
 def test_job(name):
   img = fast_build(
     'gcr.io/windmill-test-containers/tilt-%s-test' % name,
