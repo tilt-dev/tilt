@@ -205,6 +205,8 @@ type dcService struct {
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
 	ServiceConfig []byte
 	DfContents    []byte
+
+	DependencyIDs []model.TargetID
 }
 
 func (c dcConfig) GetService(name string) (dcService, error) {
@@ -320,7 +322,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		ConfigPath: dcConfigPath,
 		YAMLRaw:    service.ServiceConfig,
 		DfRaw:      service.DfContents,
-	}
+	}.WithDependencyIDs(service.DependencyIDs)
 
 	m := model.Manifest{
 		Name: model.ManifestName(service.Name),

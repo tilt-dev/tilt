@@ -140,7 +140,10 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 	for _, svc := range s.dc.services {
 		if svc.ImageRef != nil {
-			s.buildIndex.matchRefInDeployTarget(svc.ImageRef)
+			builder := s.buildIndex.matchRefInDeployTarget(svc.ImageRef)
+			if builder != nil {
+				svc.DependencyIDs = append(svc.DependencyIDs, builder.ID())
+			}
 		}
 	}
 
@@ -206,7 +209,10 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 	}
 
 	for _, ref := range r.imageRefs {
-		s.buildIndex.matchRefInDeployTarget(ref)
+		builder := s.buildIndex.matchRefInDeployTarget(ref)
+		if builder != nil {
+			r.dependencyIDs = append(r.dependencyIDs, builder.ID())
+		}
 	}
 
 	return nil
@@ -328,7 +334,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			Name: mn,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
 		if err != nil {
 			return nil, err
 		}

@@ -32,6 +32,10 @@ type dockerImage struct {
 	matched bool
 }
 
+func (d *dockerImage) ID() model.TargetID {
+	return model.ImageID(d.ref)
+}
+
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var contextVal, dockerfilePathVal, buildArgs, cacheVal, dockerfileContentsVal starlark.Value

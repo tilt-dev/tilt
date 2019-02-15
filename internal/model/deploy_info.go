@@ -35,6 +35,8 @@ type DockerComposeTarget struct {
 	repos         []LocalGitRepo
 	// These directories and their children will not trigger file change events
 	ignoredLocalDirectories []string
+
+	dependencyIDs []TargetID
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want
@@ -50,12 +52,21 @@ func (t DockerComposeTarget) ID() TargetID {
 	}
 }
 
+func (t DockerComposeTarget) DependencyIDs() []TargetID {
+	return t.dependencyIDs
+}
+
 func (t DockerComposeTarget) LocalPaths() []string {
 	result := make([]string, len(t.Mounts))
 	for i, mount := range t.Mounts {
 		result[i] = mount.LocalPath
 	}
 	return result
+}
+
+func (t DockerComposeTarget) WithDependencyIDs(ids []TargetID) DockerComposeTarget {
+	t.dependencyIDs = ids
+	return t
 }
 
 func (t DockerComposeTarget) WithRepos(repos []LocalGitRepo) DockerComposeTarget {
@@ -115,9 +126,15 @@ type K8sTarget struct {
 	// labels for pods that we should watch and associate with this resource
 	ExtraPodSelectors []labels.Selector
 	ResourceNames     []string
+
+	dependencyIDs []TargetID
 }
 
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }
+
+func (k8s K8sTarget) DependencyIDs() []TargetID {
+	return k8s.dependencyIDs
+}
 
 func (k8s K8sTarget) Validate() error {
 	if k8s.ID().Empty() {
@@ -136,6 +153,11 @@ func (k8s K8sTarget) ID() TargetID {
 		Type: TargetTypeK8s,
 		Name: k8s.Name,
 	}
+}
+
+func (k8s K8sTarget) WithDependencyIDs(ids []TargetID) K8sTarget {
+	k8s.dependencyIDs = ids
+	return k8s
 }
 
 func (k8s K8sTarget) AppendYAML(y string) K8sTarget {

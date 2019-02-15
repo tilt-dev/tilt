@@ -56,7 +56,7 @@ type TargetSpec interface {
 	// All TargetSpecs should throw an error in the case where the ID is empty.
 	Validate() error
 
-	// TODO(nick): Add dependency IDs
+	DependencyIDs() []TargetID
 }
 
 type TargetStatus interface {
