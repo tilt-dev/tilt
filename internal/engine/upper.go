@@ -197,7 +197,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
 	case TiltfileLogAction:
-		handleTiltfileLogAction(ctx, state, action)
+		handleTiltfileLogAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -825,7 +825,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
 		log := []byte(fmt.Sprintf("%v\n", status.Error))
-		handleTiltfileLogAction(context.TODO(), state, TiltfileLogAction{log})
+		handleTiltfileLogAction(state, TiltfileLogAction{log})
 	}
 	state.LastTiltfileBuild = status
 }
@@ -892,6 +892,6 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 }
 
-func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
+func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log)
 }
