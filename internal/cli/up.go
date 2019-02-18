@@ -150,7 +150,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName, c.hud)
+		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName, c.hud, true)
 	})
 
 	err = g.Wait()

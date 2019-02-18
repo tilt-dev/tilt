@@ -95,7 +95,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool) error {
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, interactive bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -121,6 +121,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		TriggerMode:   triggerMode,
 		StartTime:     startTime,
 		FinishTime:    time.Now(),
+		Interactive: interactive,
 	})
 }
 
@@ -771,11 +772,31 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
 
-	engineState.WatchMounts = watchMounts
+	if !action.Interactive {
+		engineState.GlobalYAML = action.GlobalYAMLManifest
+		engineState.GlobalYAMLState = store.NewYAMLManifestState()
 
-	engineState.InitialBuildCount = len(action.InitManifests)
-	// NOTE(dmiller): this kicks off a Tiltfile build
-	engineState.PendingConfigFileChanges[action.TiltfilePath] = true
+		status := model.BuildRecord{
+			StartTime:  action.StartTime,
+			FinishTime: action.FinishTime,
+			Error:      action.Err,
+			Reason:     model.BuildReasonFlagInit,
+		}
+		setLastTiltfileBuild(engineState, status)
+
+		manifests := action.Manifests
+		for _, m := range manifests {
+			engineState.UpsertManifestTarget(store.NewManifestTarget(m))
+		}
+
+		engineState.InitialBuildCount = len(manifests)
+	} else {
+		// NOTE(dmiller): this kicks off a Tiltfile build
+		engineState.PendingConfigFileChanges[action.TiltfilePath] = true
+		engineState.InitialBuildCount = len(action.InitManifests)
+	}
+
+	engineState.WatchMounts = watchMounts
 	return nil
 }
 

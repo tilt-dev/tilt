@@ -115,6 +115,8 @@ type InitAction struct {
 	StartTime  time.Time
 	FinishTime time.Time
 	Err        error
+
+	Interactive bool
 }
 
 func (InitAction) Action() {}

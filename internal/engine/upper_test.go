@@ -2036,7 +2036,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, "Tiltfile", true)
+	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, "Tiltfile", true, true)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
