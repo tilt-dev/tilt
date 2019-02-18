@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -113,15 +115,34 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
+	configFiles := []string{absTfPath}
+	if !interactive {
+		var tlw io.Writer
+		if useActionWriter {
+			tlw = NewTiltfileLogWriter(u.store)
+		} else {
+			tlw = logger.Get(ctx).Writer(logger.InfoLvl)
+		}
+		manifests, globalYAML, cf, err := tiltfile.Load(ctx, fileName, matching, tlw)
+		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
+			err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
+		}
+		if err != nil {
+			logger.Get(ctx).Infof(err.Error())
+		}
+
+		configFiles = append(configFiles, cf...)
+	}
+
 	return u.Init(ctx, InitAction{
 		WatchMounts:   watchMounts,
 		TiltfilePath:  absTfPath,
-		ConfigFiles:   []string{absTfPath},
+		ConfigFiles:   configFiles,
 		InitManifests: manifestNames,
 		TriggerMode:   triggerMode,
 		StartTime:     startTime,
 		FinishTime:    time.Now(),
-		Interactive: interactive,
+		Interactive:   interactive,
 	})
 }
 
@@ -176,7 +197,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
 	case TiltfileLogAction:
-		handleTiltfileLogAction(state, action)
+		handleTiltfileLogAction(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -434,7 +455,6 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
-	state.CurrentTiltfileBuild = model.BuildRecord{}
 	state.PendingConfigFileChanges = make(map[string]bool)
 	status := model.BuildRecord{
 		StartTime: event.StartTime,
@@ -458,6 +478,7 @@ func handleConfigsReloaded(
 		Error:      event.Err,
 		Reason:     model.BuildReasonFlagConfig,
 		Edits:      []string{state.TiltfilePath},
+		Log:        state.CurrentTiltfileBuild.Log,
 	}
 	setLastTiltfileBuild(state, status)
 	state.CurrentTiltfileBuild = model.BuildRecord{}
@@ -796,6 +817,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 		engineState.InitialBuildCount = len(action.InitManifests)
 	}
 
+	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 	engineState.WatchMounts = watchMounts
 	return nil
 }
@@ -803,7 +825,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
 		log := []byte(fmt.Sprintf("%v\n", status.Error))
-		handleTiltfileLogAction(state, TiltfileLogAction{log})
+		handleTiltfileLogAction(context.TODO(), state, TiltfileLogAction{log})
 	}
 	state.LastTiltfileBuild = status
 }
@@ -870,6 +892,6 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 }
 
-func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
+func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log)
 }

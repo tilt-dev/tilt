@@ -675,7 +675,9 @@ func StateToView(s EngineState) view.View {
 	}
 
 	ltfb := s.LastTiltfileBuild
-	ltfb.Log = s.CurrentTiltfileBuild.Log
+	if !s.CurrentTiltfileBuild.Empty() {
+		ltfb.Log = s.CurrentTiltfileBuild.Log
+	}
 	tr := view.Resource{
 		Name:         "(Tiltfile)",
 		IsTiltfile:   true,
