@@ -116,14 +116,14 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:   watchMounts,
-		TiltfilePath:  absTfPath,
-		ConfigFiles:   configFiles,
-		InitManifests: manifestNames,
-		TriggerMode:   triggerMode,
-		StartTime:     startTime,
-		FinishTime:    time.Now(),
-		Interactive:   true,
+		WatchMounts:            watchMounts,
+		TiltfilePath:           absTfPath,
+		ConfigFiles:            configFiles,
+		InitManifests:          manifestNames,
+		TriggerMode:            triggerMode,
+		StartTime:              startTime,
+		FinishTime:             time.Now(),
+		ExecuteTiltfile: false,
 	})
 }
 
@@ -774,7 +774,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
 
-	if !action.Interactive {
+	if action.ExecuteTiltfile {
 		engineState.GlobalYAML = action.GlobalYAMLManifest
 		engineState.GlobalYAMLState = store.NewYAMLManifestState()
 

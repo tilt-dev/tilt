@@ -116,7 +116,7 @@ type InitAction struct {
 	FinishTime time.Time
 	Err        error
 
-	Interactive bool
+	ExecuteTiltfile bool
 }
 
 func (InitAction) Action() {}

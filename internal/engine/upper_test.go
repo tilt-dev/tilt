@@ -18,7 +18,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -215,6 +215,7 @@ func TestUpper_Up(t *testing.T) {
 	err := f.upper.Init(f.ctx, InitAction{
 		Manifests:          []model.Manifest{manifest},
 		GlobalYAMLManifest: gYaml,
+		ExecuteTiltfile:    true,
 	})
 	close(f.b.calls)
 	assert.Nil(t, err)
@@ -405,7 +406,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
-	err := f.upper.Init(f.ctx, InitAction{Manifests: []model.Manifest{manifest}})
+	err := f.upper.Init(f.ctx, InitAction{Manifests: []model.Manifest{manifest}, ExecuteTiltfile: true})
 	expectedErrStr := fmt.Sprintf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expectedErrStr, err.Error())
 }
@@ -1732,6 +1733,7 @@ func TestInitWithGlobalYAML(t *testing.T) {
 	f.store.Dispatch(InitAction{
 		Manifests:          []model.Manifest{},
 		GlobalYAMLManifest: ym,
+		ExecuteTiltfile:    true,
 	})
 	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
 		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgBackendYAML
@@ -2036,7 +2038,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, "Tiltfile", true, true)
+	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, "Tiltfile", true)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
