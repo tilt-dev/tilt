@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/pkg/errors"
 
-	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -82,41 +82,51 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	results := store.BuildResultSet{}
-
-	var refs []reference.NamedTagged
-
 	var anyFastBuild bool
-	for _, iTarget := range iTargets {
-		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
-		if err != nil {
-			return store.BuildResultSet{}, err
-		}
-		results[iTarget.ID()] = store.BuildResult{
-			Image: ref,
-		}
-		refs = append(refs, ref)
-		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
-	}
-
-	// (If we pass an empty list of refs here (as we will do if only deploying
-	// yaml), we just don't inject any image refs into the yaml, nbd.
-	err = ibd.deploy(ctx, st, ps, kTargets, refs, anyFastBuild)
+	q := NewImageTargetQueue(iTargets)
+	target, ok, err := q.Next()
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	return results, nil
+	for ok {
+		iTarget, err := injectImageDependencies(target.(model.ImageTarget), q.DependencyResults(target))
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
+		// TODO(nick): We can also skip the push of the image if it isn't used
+		// in any k8s resources! (e.g., it's consumed by another image).
+		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
+		q.SetResult(iTarget.ID(), store.BuildResult{Image: ref})
+		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
+		target, ok, err = q.Next()
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+	}
+
+	// (If we pass an empty list of refs here (as we will do if only deploying
+	// yaml), we just don't inject any image refs into the yaml, nbd.
+	err = ibd.deploy(ctx, st, ps, kTargets, q.results, anyFastBuild)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+
+	return q.results, nil
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState, k8sTargets []model.K8sTarget, refs []reference.NamedTagged, needsSynclet bool) error {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState, k8sTargets []model.K8sTarget, results store.BuildResultSet, needsSynclet bool) error {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
 	ps.StartBuildStep(ctx, "Parsing Kubernetes config YAML")
 
-	injectedRefs := map[string]bool{}
 	newK8sEntities := []k8s.K8sEntity{}
 
 	deployID := model.NewDeployID()
@@ -132,6 +142,8 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 			return err
 		}
 
+		depIDs := k8sTarget.DependencyIDs()
+		injectedDepIDs := map[model.TargetID]bool{}
 		for _, e := range entities {
 			e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
 			if err != nil {
@@ -153,14 +165,19 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 				policy = v1.PullNever
 			}
 
-			for _, ref := range refs {
+			for _, depID := range depIDs {
+				ref := results[depID].Image
+				if ref == nil {
+					return fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
+				}
+
 				var replaced bool
 				e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
 				if err != nil {
 					return err
 				}
 				if replaced {
-					injectedRefs[ref.String()] = true
+					injectedDepIDs[depID] = true
 
 					if ibd.injectSynclet && needsSynclet {
 						var sidecarInjected bool
@@ -177,11 +194,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 			newK8sEntities = append(newK8sEntities, e)
 		}
 		targetIDs = append(targetIDs, k8sTarget.ID())
-	}
 
-	for _, ref := range refs {
-		if !injectedRefs[ref.String()] {
-			return fmt.Errorf("Docker image missing from yaml: %s", ref)
+		for _, depID := range depIDs {
+			if !injectedDepIDs[depID] {
+				return fmt.Errorf("Docker image missing from yaml: %s", depID)
+			}
 		}
 	}
 
@@ -199,4 +216,52 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
 	return ibd.env.IsLocalCluster()
+}
+
+// Create a new ImageTarget with the dockerfiles rewritten
+// with the injected images.
+func injectImageDependencies(iTarget model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
+	if len(deps) == 0 {
+		return iTarget, nil
+	}
+
+	df := dockerfile.Dockerfile("")
+	switch bd := iTarget.BuildDetails.(type) {
+	case model.StaticBuild:
+		df = dockerfile.Dockerfile(bd.Dockerfile)
+	case model.FastBuild:
+		df = dockerfile.Dockerfile(bd.BaseDockerfile)
+	default:
+		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.Ref)
+	}
+
+	ast, err := dockerfile.ParseAST(df)
+	if err != nil {
+		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
+	}
+
+	for _, dep := range deps {
+		modified, err := ast.InjectImageDigest(dep.Image)
+		if err != nil {
+			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
+		} else if !modified {
+			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", dep.Image, iTarget.Ref)
+		}
+	}
+
+	newDf, err := ast.Print()
+	if err != nil {
+		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
+	}
+
+	switch bd := iTarget.BuildDetails.(type) {
+	case model.StaticBuild:
+		bd.Dockerfile = newDf.String()
+		iTarget = iTarget.WithBuildDetails(bd)
+	case model.FastBuild:
+		bd.BaseDockerfile = newDf.String()
+		iTarget = iTarget.WithBuildDetails(bd)
+	}
+
+	return iTarget, nil
 }

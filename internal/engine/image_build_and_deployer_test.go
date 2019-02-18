@@ -94,7 +94,8 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 
 	iTarget1 := NewSanchoStaticImageTarget()
 	iTarget2 := NewSanchoSidecarStaticImageTarget()
-	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}
+	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
@@ -166,6 +167,50 @@ func TestNoImageTargets(t *testing.T) {
 	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManifestNameLabel, targName)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedLabelStr),
 		"Expected \"%s\"image to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
+}
+
+func TestMultiStageStaticBuild(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticMultiStageManifest()
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
+func TestMultiStageFastBuild(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastMultiStageManifest(f)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+
+ADD . /
+RUN ["go", "install", "github.com/windmilleng/sancho"]
+ENTRYPOINT ["/go/bin/sancho"]
+LABEL "tilt.buildMode"="scratch"`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
 type ibdFixture struct {
