@@ -831,6 +831,28 @@ func BenchmarkBigLogAndBigScreen(b *testing.B) {
 		rtf.run("Tiltfile resource with log benchmark", 204, 159, v, vs)
 	}
 }
+func TestTiltfileResourcePending(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:       "(Tiltfile)",
+				IsTiltfile: true,
+				CurrentBuild: model.BuildRecord{
+					Edits:     []string{"Tiltfile"},
+					StartTime: now.Add(-5 * time.Second),
+					Reason:    model.BuildReasonFlagConfig,
+					Log:       model.NewLog("Building..."),
+				},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseNo)
+	rtf.run("Tiltfile resource pending", 80, 20, v, vs)
+}
 
 type rendererTestFixture struct {
 	i rty.InteractiveTester
