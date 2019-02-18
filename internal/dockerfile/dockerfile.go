@@ -121,21 +121,14 @@ func (d Dockerfile) ValidateBaseDockerfile() error {
 
 // Find all images referenced in this dockerfile.
 func (d Dockerfile) FindImages() ([]reference.Named, error) {
-	// TODO(nick): Right now this only supports FROM statement.
-	// In the future, it should also support COPY --from
 	result := []reference.Named{}
-	err := d.traverse(func(node *parser.Node) error {
-		switch node.Value {
-		case command.From:
-			if node.Next == nil {
-				return nil
-			}
-			ref, err := reference.ParseNormalizedNamed(node.Next.Value)
-			if err != nil {
-				return nil // drop the error, we don't care about malformed images
-			}
-			result = append(result, ref)
-		}
+	ast, err := ParseAST(d)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ast.traverseImageRefs(func(node *parser.Node, ref reference.Named) reference.Named {
+		result = append(result, ref)
 		return nil
 	})
 	if err != nil {
