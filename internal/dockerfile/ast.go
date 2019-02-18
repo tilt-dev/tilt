@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
+	_ "github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/pkg/errors"
 )
