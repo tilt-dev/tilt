@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -22,7 +21,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -97,7 +95,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, interactive bool) error {
+func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -116,23 +114,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	}
 
 	configFiles := []string{absTfPath}
-	if !interactive {
-		var tlw io.Writer
-		if useActionWriter {
-			tlw = NewTiltfileLogWriter(u.store)
-		} else {
-			tlw = logger.Get(ctx).Writer(logger.InfoLvl)
-		}
-		manifests, globalYAML, cf, err := tiltfile.Load(ctx, fileName, matching, tlw)
-		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-			err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
-		}
-		if err != nil {
-			logger.Get(ctx).Infof(err.Error())
-		}
-
-		configFiles = append(configFiles, cf...)
-	}
 
 	return u.Init(ctx, InitAction{
 		WatchMounts:   watchMounts,
@@ -142,7 +123,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		TriggerMode:   triggerMode,
 		StartTime:     startTime,
 		FinishTime:    time.Now(),
-		Interactive:   interactive,
+		Interactive:   true,
 	})
 }
 
