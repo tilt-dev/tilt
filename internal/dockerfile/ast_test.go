@@ -64,6 +64,22 @@ LABEL description="This text illustrates that label-values can span multiple lin
 `)
 }
 
+func TestPrintCopyFlags(t *testing.T) {
+	assertPrintSame(t, `
+FROM golang:10
+COPY --from=gcr.io/windmill/image-a /src /src
+RUN echo bye
+`)
+}
+
+func TestPrintCopyFlagsLabel(t *testing.T) {
+	assertPrintSame(t, `
+FROM golang:10
+COPY --from=gcr.io/windmill/image-a:latest /src /src
+RUN echo bye
+`)
+}
+
 // Convert the dockerfile into an AST, print it, and then
 // assert that the result is the same as the original.
 func assertPrintSame(t *testing.T, original string) {
