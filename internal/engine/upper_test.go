@@ -2194,9 +2194,10 @@ func (f *testFixture) StartOnly(manifests []model.Manifest, watchMounts bool) {
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchMounts bool) {
 	f.Init(InitAction{
-		Manifests:    manifests,
-		WatchMounts:  watchMounts,
-		TiltfilePath: f.JoinPath("Tiltfile"),
+		Manifests:       manifests,
+		WatchMounts:     watchMounts,
+		TiltfilePath:    f.JoinPath("Tiltfile"),
+		ExecuteTiltfile: true,
 	})
 }
 
