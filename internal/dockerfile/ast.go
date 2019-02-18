@@ -95,30 +95,21 @@ func (a AST) Print() (Dockerfile, error) {
 // Loosely adapted from
 // https://github.com/jessfraz/dockfmt/blob/master/format.go
 func (a AST) printNode(node *parser.Node, writer io.Writer) error {
-	cmd := node.Value
-
-	var err error
 	var v string
-	if node.Next != nil {
-		v = node.Next.Value
-	}
 
 	// format per directive
 	switch node.Value {
 	// all the commands that use parseMaybeJSON
 	// https://github.com/moby/buildkit/blob/2ec7d53b00f24624cda0adfbdceed982623a93b3/frontend/dockerfile/parser/parser.go#L152
 	case command.Cmd, command.Entrypoint, command.Run, command.Shell:
-		v, err = fmtCmd(node.Next, node)
-		if err != nil {
-			return err
-		}
+		v = fmtCmd(node)
 	case command.Label:
-		v = fmtLabel(node.Next)
+		v = fmtLabel(node)
 	default:
-		v = fmtDefault(node.Next)
+		v = fmtDefault(node)
 	}
 
-	_, err = fmt.Fprintf(writer, "%s %s\n", strings.ToUpper(cmd), v)
+	_, err := fmt.Fprintln(writer, v)
 	if err != nil {
 		return err
 	}
@@ -129,11 +120,21 @@ func getCmd(n *parser.Node) []string {
 	if n == nil {
 		return nil
 	}
-	cmd := []string{n.Value}
+
+	cmd := []string{strings.ToUpper(n.Value)}
 	if len(n.Flags) > 0 {
 		cmd = append(cmd, n.Flags...)
 	}
 
+	return append(cmd, getCmdArgs(n)...)
+}
+
+func getCmdArgs(n *parser.Node) []string {
+	if n == nil {
+		return nil
+	}
+
+	cmd := []string{}
 	for node := n.Next; node != nil; node = node.Next {
 		cmd = append(cmd, node.Value)
 		if len(node.Flags) > 0 {
@@ -144,18 +145,22 @@ func getCmd(n *parser.Node) []string {
 	return cmd
 }
 
-func fmtCmd(node *parser.Node, prevSibling *parser.Node) (string, error) {
-	cmd := getCmd(node)
+func fmtCmd(node *parser.Node) string {
+	if node.Attributes["json"] {
+		cmd := []string{strings.ToUpper(node.Value)}
+		if len(node.Flags) > 0 {
+			cmd = append(cmd, node.Flags...)
+		}
 
-	if prevSibling.Attributes["json"] {
 		encoded := []string{}
-		for _, c := range cmd {
+		for _, c := range getCmdArgs(node) {
 			encoded = append(encoded, fmt.Sprintf("%q", c))
 		}
-		return fmt.Sprintf("[%s]", strings.Join(encoded, ", ")), nil
+		return fmt.Sprintf("%s [%s]", strings.Join(cmd, " "), strings.Join(encoded, ", "))
 	}
 
-	return strings.Join(cmd, " "), nil
+	cmd := getCmd(node)
+	return strings.Join(cmd, " ")
 }
 
 func fmtDefault(node *parser.Node) string {
@@ -165,8 +170,8 @@ func fmtDefault(node *parser.Node) string {
 
 func fmtLabel(node *parser.Node) string {
 	cmd := getCmd(node)
-	assignments := []string{}
-	for i := 0; i < len(cmd); i += 2 {
+	assignments := []string{cmd[0]}
+	for i := 1; i < len(cmd); i += 2 {
 		if i+1 < len(cmd) {
 			assignments = append(assignments, fmt.Sprintf("%s=%s", cmd[i], cmd[i+1]))
 		} else {
