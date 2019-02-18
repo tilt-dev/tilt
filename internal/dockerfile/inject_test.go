@@ -51,3 +51,39 @@ ADD . .
 		assert.Equal(t, df, newDf)
 	}
 }
+
+func TestInjectCopyFrom(t *testing.T) {
+	df := Dockerfile(`
+FROM golang:1.10
+COPY --from=gcr.io/windmill/foo /src/package.json /src/package.json
+ADD . .
+`)
+	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
+	newDf, modified, err := InjectImageDigest(df, ref)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+		assert.Equal(t, `
+FROM golang:1.10
+COPY --from="gcr.io/windmill/foo:deadbeef" /src/package.json /src/package.json
+ADD . .
+`, string(newDf))
+	}
+}
+
+func TestInjectCopyFromWithLabel(t *testing.T) {
+	df := Dockerfile(`
+FROM golang:1.10
+COPY --from="gcr.io/windmill/foo:bar" /src/package.json /src/package.json
+ADD . .
+`)
+	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
+	newDf, modified, err := InjectImageDigest(df, ref)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+		assert.Equal(t, `
+FROM golang:1.10
+COPY --from="gcr.io/windmill/foo:deadbeef" /src/package.json /src/package.json
+ADD . .
+`, string(newDf))
+	}
+}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
-	_ "github.com/moby/buildkit/frontend/dockerfile/instructions"
+	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/pkg/errors"
 )
@@ -28,25 +28,65 @@ func ParseAST(df Dockerfile) (AST, error) {
 	}, nil
 }
 
+// Find all images referenced in this dockerfile and call the visitor function.
+// If the visitor function returns a new image, subsitute that image into the dockerfile.
+func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named) error {
+	return a.Traverse(func(node *parser.Node) error {
+		switch node.Value {
+		case command.From:
+			if node.Next == nil {
+				return nil
+			}
+			ref, err := reference.ParseNormalizedNamed(node.Next.Value)
+			if err != nil {
+				return nil // drop the error, we don't care about malformed images
+			}
+			newRef := visitor(node, ref)
+			if newRef != nil {
+				node.Next.Value = newRef.String()
+			}
+
+		case command.Copy:
+			if len(node.Flags) == 0 {
+				return nil
+			}
+
+			inst, err := instructions.ParseInstruction(node)
+			if err != nil {
+				return nil // ignore parsing error
+			}
+
+			copyCmd, ok := inst.(*instructions.CopyCommand)
+			if !ok {
+				return nil
+			}
+
+			ref, err := reference.ParseNormalizedNamed(copyCmd.From)
+			if err != nil {
+				return nil // drop the error, we don't care about malformed images
+			}
+
+			newRef := visitor(node, ref)
+			if newRef != nil {
+				for i, flag := range node.Flags {
+					if strings.HasPrefix(flag, "--from=") {
+						node.Flags[i] = fmt.Sprintf("--from=%q", newRef.String())
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
 func (a AST) InjectImageDigest(ref reference.NamedTagged) (bool, error) {
 	modified := false
-	err := a.Traverse(func(node *parser.Node) error {
-		if node.Value != command.From || node.Next == nil {
-			return nil
-		}
-
-		val := node.Next.Value
-		fromRef, err := reference.ParseNormalizedNamed(val)
-		if err != nil {
-			// ignore the error
-			return nil
-		}
-
-		if fromRef.Name() == ref.Name() {
-			node.Next.Value = ref.String()
+	err := a.traverseImageRefs(func(node *parser.Node, toReplace reference.Named) reference.Named {
+		if toReplace.Name() == ref.Name() {
 			modified = true
+			return ref
 		}
-
 		return nil
 	})
 	return modified, err

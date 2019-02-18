@@ -159,3 +159,12 @@ func TestFindImagesWeirdSyntax(t *testing.T) {
 		assert.Equal(t, "docker.io/library/a", images[0].String())
 	}
 }
+
+func TestFindImagesCopyFrom(t *testing.T) {
+	df := Dockerfile(`COPY --from=gcr.io/image-a /srcA/package.json /srcB/package.json`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "gcr.io/image-a", images[0].String())
+	}
+}
