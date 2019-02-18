@@ -116,13 +116,13 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:            watchMounts,
-		TiltfilePath:           absTfPath,
-		ConfigFiles:            configFiles,
-		InitManifests:          manifestNames,
-		TriggerMode:            triggerMode,
-		StartTime:              startTime,
-		FinishTime:             time.Now(),
+		WatchMounts:     watchMounts,
+		TiltfilePath:    absTfPath,
+		ConfigFiles:     configFiles,
+		InitManifests:   manifestNames,
+		TriggerMode:     triggerMode,
+		StartTime:       startTime,
+		FinishTime:      time.Now(),
 		ExecuteTiltfile: false,
 	})
 }
