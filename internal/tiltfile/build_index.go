@@ -101,12 +101,12 @@ func (idx *buildIndex) assertAllMatched() error {
 			matchLines := []string{}
 			for i, match := range cm.ClosestN(image.ref.Name(), 3) {
 				if i == 0 {
-					matchLines = append(matchLines, "Did you mean:")
+					matchLines = append(matchLines, "Did you mean…")
 				}
-				matchLines = append(matchLines, fmt.Sprintf(" - %s", match))
+				matchLines = append(matchLines, fmt.Sprintf("    - %s", match))
 			}
 
-			return fmt.Errorf("image %v is not used in any resource. %s",
+			return fmt.Errorf("Image not used in any resource:\n    ✕ %v\n%s",
 				image.ref.String(), strings.Join(matchLines, "\n"))
 		}
 	}
