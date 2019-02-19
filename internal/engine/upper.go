@@ -10,7 +10,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -121,9 +121,9 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	} else {
 		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
 	}
-	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
+	manifests, globalYAML, configFiles, warnings, err := tiltfile.Load(ctx, fileName, matching, tlw)
 	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
+		err = fmt.Errorf("No resources found. Get started here → https://docs.tilt.build/tutorial.html")
 	}
 	if err != nil {
 		logger.Get(ctx).Infof(err.Error())
@@ -140,6 +140,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		StartTime:          startTime,
 		FinishTime:         time.Now(),
 		Err:                err,
+		Warnings:           warnings,
 	})
 }
 
@@ -455,6 +456,7 @@ func handleConfigsReloaded(
 		StartTime:  event.StartTime,
 		FinishTime: event.FinishTime,
 		Error:      event.Err,
+		Warnings:   event.Warnings,
 		Reason:     model.BuildReasonFlagConfig,
 		Edits:      []string{state.TiltfilePath},
 	}
@@ -795,6 +797,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 		StartTime:  action.StartTime,
 		FinishTime: action.FinishTime,
 		Error:      action.Err,
+		Warnings:   action.Warnings,
 		Reason:     model.BuildReasonFlagInit,
 	}
 	setLastTiltfileBuild(engineState, status)
