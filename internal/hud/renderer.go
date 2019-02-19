@@ -54,6 +54,8 @@ var statusColors = map[string]tcell.Color{
 	"Pending":                          cPending,
 	"Error":                            cBad,
 	"CrashLoopBackOff":                 cBad,
+	"ErrImagePull":                     cBad,
+	"ImagePullBackOff":                 cBad,
 	string(dockercompose.StatusInProg): cPending,
 	string(dockercompose.StatusUp):     cGood,
 	string(dockercompose.StatusDown):   cBad,
