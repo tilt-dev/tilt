@@ -20,8 +20,8 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
-	syncletManager := NewSyncletManagerForTests(k8s2, sCli)
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
+	syncletManager := NewSyncletManagerForTests(kClient, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
@@ -32,15 +32,16 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, k8s2 k8
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env)
+	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
+	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
 	if err != nil {
 		return nil, err
 	}
 	clock := build.ProvideClock()
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, k8s2, env, memoryAnalytics, engineUpdateMode, clock)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, kClient, env, memoryAnalytics, engineUpdateMode, clock, runtime)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, engineUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
-	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode)
+	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode, runtime)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }
@@ -59,12 +60,13 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	env := _wireEnvValue
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	updateModeFlag := _wireUpdateModeFlagValue
-	updateMode, err := ProvideUpdateMode(updateModeFlag, env)
+	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
+	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {
 		return nil, err
 	}
 	clock := build.ProvideClock()
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, kClient, env, memoryAnalytics, updateMode, clock)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, kClient, env, memoryAnalytics, updateMode, clock, runtime)
 	return imageBuildAndDeployer, nil
 }
 
@@ -82,7 +84,17 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	cacheBuilder := build.NewCacheBuilder(dCli)
 	updateModeFlag := _wireEngineUpdateModeFlagValue
 	env := _wireK8sEnvValue
-	updateMode, err := ProvideUpdateMode(updateModeFlag, env)
+	portForwarder := k8s.ProvidePortForwarder()
+	clientConfig := k8s.ProvideClientConfig()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +106,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 
 var (
 	_wireEngineUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
-	_wireK8sEnvValue               = k8s.Env(k8s.EnvUnknown)
+	_wireK8sEnvValue               = k8s.Env(k8s.EnvNone)
 )
 
 // wire.go:

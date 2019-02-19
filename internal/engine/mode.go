@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 
+	"github.com/windmilleng/tilt/internal/container"
 	k8s "github.com/windmilleng/tilt/internal/k8s"
 )
 
@@ -37,7 +38,7 @@ var AllUpdateModes = []UpdateMode{
 	UpdateModeContainer,
 }
 
-func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env) (UpdateMode, error) {
+func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runtime) (UpdateMode, error) {
 	valid := false
 	for _, mode := range AllUpdateModes {
 		if mode == UpdateMode(flag) {
@@ -50,8 +51,10 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env) (UpdateMode, error) {
 	}
 
 	mode := UpdateMode(flag)
-	if mode == UpdateModeContainer && !env.IsLocalCluster() {
-		return "", fmt.Errorf("Update mode %q is only valid with local clusters like Docker For Mac, Minikube, and MicroK8s", flag)
+	if mode == UpdateModeContainer {
+		if !env.IsLocalCluster() || runtime != container.RuntimeDocker {
+			return "", fmt.Errorf("Update mode %q is only valid with local Docker clusters like Docker For Mac, Minikube, and MicroK8s", flag)
+		}
 	}
 
 	return mode, nil

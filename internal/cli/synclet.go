@@ -9,6 +9,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/options"
@@ -73,7 +74,8 @@ func (sc *SyncletCmd) run() {
 
 	// TODO(Matt) fix this so either we don't need an k8s env to instantiate a synclet, or
 	// so that we can still detect env inside of containers w/o kubectl
-	s, err := synclet.WireSynclet(ctx, k8s.EnvUnknown)
+	// TODO(nick): Also fix this to detect the container runtime inside k8s.
+	s, err := synclet.WireSynclet(ctx, k8s.EnvNone, container.RuntimeDocker)
 	if err != nil {
 		log.Fatalf("failed to wire synclet: %v", err)
 	}

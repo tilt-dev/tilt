@@ -63,3 +63,7 @@ func (ec *explodingClient) WatchServices(ctx context.Context, lps []model.LabelP
 func (ec *explodingClient) ConnectedToCluster(ctx context.Context) error {
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
+
+func (ec *explodingClient) ContainerRuntime(ctx context.Context) container.Runtime {
+	return container.RuntimeUnknown
+}

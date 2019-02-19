@@ -96,22 +96,24 @@ type Cli struct {
 	initDone  chan bool
 }
 
-func DefaultClient(ctx context.Context, env k8s.Env) (*Cli, error) {
+func DefaultClient(ctx context.Context, env k8s.Env, runtime container.Runtime) (*Cli, error) {
 	envFunc := os.Getenv
-	if env == k8s.EnvMinikube {
-		envMap, err := minikube.DockerEnv(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "defaultDockerClient")
-		}
-
-		envFunc = func(key string) string { return envMap[key] }
-	} else if env == k8s.EnvMicroK8s {
-		envFunc = func(key string) string {
-			val := os.Getenv(key)
-			if val == "" && key == "DOCKER_HOST" {
-				return microK8sDockerHost
+	if runtime == container.RuntimeDocker {
+		if env == k8s.EnvMinikube {
+			envMap, err := minikube.DockerEnv(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "defaultDockerClient")
 			}
-			return val
+
+			envFunc = func(key string) string { return envMap[key] }
+		} else if env == k8s.EnvMicroK8s {
+			envFunc = func(key string) string {
+				val := os.Getenv(key)
+				if val == "" && key == "DOCKER_HOST" {
+					return microK8sDockerHost
+				}
+				return val
+			}
 		}
 	}
 
