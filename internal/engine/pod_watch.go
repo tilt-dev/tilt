@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"k8s.io/api/core/v1"
 )
 
 type PodWatcher struct {
@@ -75,7 +75,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
 	for _, pw := range setup {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithTimeout(ctx, watchTimeout)
 		pw = PodWatch{labels: pw.labels, cancel: cancel}
 		w.watches = append(w.watches, pw)
 		ch, err := w.kCli.WatchPods(ctx, pw.labels)

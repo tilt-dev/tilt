@@ -14,6 +14,8 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
+var watchTimeout = 5 * time.Second
+
 type ServiceWatcher struct {
 	kCli     k8s.Client
 	watching bool
@@ -46,7 +48,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 	w.watching = true
 
-	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx2, cancel := context.WithTimeout(ctx, watchTimeout)
 	defer cancel()
 	ch, err := w.kCli.WatchServices(ctx2, []model.LabelPair{k8s.TiltRunLabel()})
 	if err != nil {
