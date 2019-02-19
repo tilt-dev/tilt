@@ -366,3 +366,24 @@ func (y *yamlValue) Truth() starlark.Bool {
 func (y *yamlValue) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: yaml")
 }
+
+func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var dir starlark.String
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "dir", &dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []starlark.Value
+	files, err := ioutil.ReadDir(dir.GoString())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range files {
+		fp := filepath.Join(dir.GoString(), f.Name())
+		ret = append(ret, starlark.String(fp))
+	}
+
+	return starlark.NewList(ret), nil
+}
