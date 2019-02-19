@@ -6,7 +6,7 @@ So you want to make a change to `tilt`!
 
 We welcome contributions, either as bug reports, feature requests, or pull requests.
 
-We want everyone to feel at home in this repo and its environs; please see our [**Code of Conduct**](https://docs.tilt.build/code_of_conduct.html) for some rules that govern everyone's participation.
+We want everyone to feel at home in this repo and its environs; please see our [**Code of Conduct**](https://docs.tilt.dev/code_of_conduct.html) for some rules that govern everyone's participation.
 
 Most of this page describes how to get set up making & testing changes.
 
@@ -85,7 +85,7 @@ The landing page and documentation lives in
 
 We write our docs in Markdown and generate static HTML with [Jekyll](https://jekyllrb.com/).
 
-Netlify will automatically deploy the docs to [the public site](https://docs.tilt.build/)
+Netlify will automatically deploy the docs to [the public site](https://docs.tilt.dev/)
 when you merge to master.
 
 ## Releasing

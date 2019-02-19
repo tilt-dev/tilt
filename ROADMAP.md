@@ -17,7 +17,7 @@ Ideas are categorized by
 sets of microservices for running locally. Kubernetes YAML is nice, but much more verbose.
 Tilt should support docker-compose.yml for configuring services.
 
-We currently have [alpha support for Docker-Compose](https://docs.tilt.build/docker_compose_alpha.html) in recent releases. Give it a spin and [let us know](https://github.com/windmilleng/tilt#community) what you think!
+We currently have [alpha support for Docker-Compose](https://docs.tilt.dev/docker_compose_alpha.html) in recent releases. Give it a spin and [let us know](https://github.com/windmilleng/tilt#community) what you think!
 
 Open questions:
 - docker-compose support would make it easier to try Tilt with
