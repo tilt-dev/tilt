@@ -238,7 +238,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	s.logger.Printf("Running `%s`\n", command)
+	s.logger.Printf("Running `%q`\n", command)
 	out, err := s.execLocalCmd(command)
 	if err != nil {
 		return nil, err
