@@ -984,6 +984,14 @@
   revision = "bc39bf8d245d184b5d8a9ee082ed0ece558e24fe"
 
 [[projects]]
+  digest = "1:2b97fd8c3ebafa161b3cf34948a0dd7d1ec27ab3fed686eb3639ead64344e9e6"
+  name = "github.com/schollz/closestmatch"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "56fb6b15a5e88fbcbc21b196488e749fc176514c"
+  version = "v2.1.0"
+
+[[projects]]
   digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -1672,6 +1680,7 @@
     "github.com/pkg/browser",
     "github.com/pkg/errors",
     "github.com/rivo/tview",
+    "github.com/schollz/closestmatch",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/assert",
     "github.com/whilp/git-urls",

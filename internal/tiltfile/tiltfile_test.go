@@ -1237,6 +1237,19 @@ k8s_yaml('foo.yaml')
 	}, f.imageTargetNames(m))
 }
 
+func TestImageRefSuggestion(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.typo.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.loadErrString("Did you mean:\n - gcr.io/foo")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
