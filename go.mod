@@ -94,6 +94,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
+	github.com/schollz/closestmatch v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.0.6
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3
