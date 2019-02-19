@@ -124,7 +124,6 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		StartTime:       startTime,
 		FinishTime:      time.Now(),
 		ExecuteTiltfile: false,
-		Warnings:        warnings,
 	})
 }
 
