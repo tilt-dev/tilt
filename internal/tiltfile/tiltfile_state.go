@@ -95,6 +95,7 @@ const (
 	kustomizeN    = "kustomize"
 	helmN         = "helm"
 	yamlN         = "yaml"
+	listdirN      = "listdir"
 
 	// other functions
 	failN = "fail"
@@ -126,6 +127,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, helmN, s.helm)
 	addBuiltin(r, failN, s.fail)
 	addBuiltin(r, yamlN, s.yaml)
+	addBuiltin(r, listdirN, s.listdir)
 
 	s.builtinsMap = r
 

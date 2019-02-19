@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -1248,6 +1248,31 @@ k8s_resource('foo', 'foo.yaml')
 `)
 
 	f.loadErrString("Did you mean:\n - gcr.io/foo")
+}
+
+func TestDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		os.Chdir(wd)
+	}()
+	err = os.Chdir(f.TempDirFixture.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.gitInit("")
+	f.yaml("config/foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.yaml("config/bar.yaml", deployment("bar", image("gcr.io/bar")))
+	f.file("Tiltfile", `k8s_yaml(listdir('config'))`)
+
+	f.load("foo", "bar")
+	f.assertNumManifests(2)
+	f.assertConfigFiles("Tiltfile", "config/foo.yaml", "config/bar.yaml")
 }
 
 type fixture struct {
