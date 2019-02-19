@@ -71,7 +71,7 @@ func (idx *buildIndex) matchRefInDeployTarget(ref reference.Named) *dockerImage 
 func (idx *buildIndex) assertAllMatched() error {
 	for _, image := range idx.images {
 		if !image.matched {
-			return fmt.Errorf("image %v is not used in any resource", image.ref.String())
+			return fmt.Errorf("Image not used in any resource: %v", image.ref.String())
 		}
 	}
 	return nil
