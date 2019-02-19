@@ -387,4 +387,3 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 
 	return starlark.NewList(ret), nil
 }
-
