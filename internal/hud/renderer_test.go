@@ -815,32 +815,6 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 						StartTime:  now.Add(-5 * time.Second),
 						FinishTime: now.Add(-4 * time.Second),
 						Reason:     model.BuildReasonFlagConfig,
-						Log:        model.NewLog("hi hello"),
-					},
-				},
-			},
-		},
-	}
-
-	vs := fakeViewState(1, view.CollapseNo)
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
-	rtf.run("Tiltfile resource with log", 80, 20, v, vs)
-}
-
-func TestTiltfileResourceWithWarning(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-	now := time.Now()
-	v := view.View{
-		Resources: []view.Resource{
-			{
-				Name:       "(Tiltfile)",
-				IsTiltfile: true,
-				BuildHistory: []model.BuildRecord{
-					{
-						Edits:      []string{"foo"},
-						StartTime:  now.Add(-5 * time.Second),
-						FinishTime: now.Add(-4 * time.Second),
-						Reason:     model.BuildReasonFlagConfig,
 						Warnings:   []string{"I am warning you", "Something is alarming here"},
 					},
 				},
