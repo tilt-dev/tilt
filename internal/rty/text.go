@@ -37,39 +37,9 @@ type stringBuilder struct {
 }
 
 func (b *stringBuilder) Text(t string) StringBuilder {
-	t = TranslateANSI(t)
-	colorIndices, colors, _, _, _ := decomposeString(t)
-	var colorPos int
-	var foregroundColor, backgroundColor, attributes string
-
-	var chs []rune
-
-	flush := func() {
-		if len(chs) == 0 {
-			return
-		}
-		b.directives = append(b.directives, textDirective(string(chs)))
-		chs = nil
-	}
-
-	for pos, ch := range t {
-		// Handle color tags.
-		if colorPos < len(colorIndices) && pos >= colorIndices[colorPos][0] && pos < colorIndices[colorPos][1] {
-			if pos == colorIndices[colorPos][1]-1 {
-				flush()
-				foregroundColor, backgroundColor, attributes = styleFromTag(foregroundColor, backgroundColor, attributes, colors[colorPos])
-				colorPos++
-				b.directives = append(b.directives, fgDirective(tcell.GetColor(foregroundColor)))
-				b.directives = append(b.directives, bgDirective(tcell.GetColor(backgroundColor)))
-			}
-			continue
-		}
-
-		chs = append(chs, ch)
-	}
-
-	flush()
-
+	writer := ANSIWriter()
+	_, _ = writer.Write([]byte(t))
+	b.directives = append(b.directives, writer.directives...)
 	return b
 }
 
