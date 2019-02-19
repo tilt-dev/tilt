@@ -109,6 +109,8 @@ func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	height := 7
 	if vs.LogModal.TiltLog == view.TiltLogMinimized {
 		height = 1
+	} else if vs.LogModal.TiltLog == view.TiltLogHalfScreen {
+		height = rty.GROW
 	}
 	return rty.NewFixedSize(l, rty.GROW, height)
 }
@@ -118,8 +120,10 @@ func (r *Renderer) renderPaneHeader(vs view.ViewState) rty.Component {
 	switch vs.LogModal.TiltLog {
 	case view.TiltLogFullScreen:
 		s = "(l) minimize log ↓"
-	case view.TiltLogPane:
+	case view.TiltLogHalfScreen:
 		s = "(l) maximize log ↑"
+	case view.TiltLogPane:
+		s = "(l) expand log ↑"
 	case view.TiltLogMinimized:
 		s = "(l) expand log ↑"
 	}

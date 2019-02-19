@@ -124,12 +124,14 @@ func (l *TextScrollLayout) RenderStateful(w Writer, prevState interface{}, width
 		y += numLines
 	}
 
-	if next.lineIdx > 0 || next.canvasIdx > 0 {
-		scrollbarWriter.SetContent(0, 0, '↑', nil)
-	}
+	if height >= 2 {
+		if next.lineIdx > 0 || next.canvasIdx > 0 {
+			scrollbarWriter.SetContent(0, 0, '↑', nil)
+		}
 
-	if y >= height && !next.following {
-		scrollbarWriter.SetContent(0, height-1, '↓', nil)
+		if y >= height && !next.following {
+			scrollbarWriter.SetContent(0, height-1, '↓', nil)
+		}
 	}
 
 	return next, nil
