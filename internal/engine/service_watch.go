@@ -2,15 +2,16 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"k8s.io/api/core/v1"
 )
 
 type ServiceWatcher struct {
@@ -45,7 +46,9 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 	w.watching = true
 
-	ch, err := w.kCli.WatchServices(ctx, []model.LabelPair{k8s.TiltRunLabel()})
+	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ch, err := w.kCli.WatchServices(ctx2, []model.LabelPair{k8s.TiltRunLabel()})
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))
