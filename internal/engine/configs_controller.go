@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -40,7 +41,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
 	go func() {
 		startTime := time.Now()
-		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged})
+		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
 
 		matching := map[string]bool{}
 		for _, m := range initManifests {
@@ -55,6 +56,9 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		tlw := NewTiltfileLogWriter(st)
 
 		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfilePath, matching, tlw)
+		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
+			err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
+		}
 		if err != nil {
 			logger.Get(ctx).Infof(err.Error())
 		}

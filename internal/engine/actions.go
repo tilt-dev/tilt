@@ -115,6 +115,8 @@ type InitAction struct {
 	StartTime  time.Time
 	FinishTime time.Time
 	Err        error
+
+	ExecuteTiltfile bool
 }
 
 func (InitAction) Action() {}
@@ -158,6 +160,7 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 
 type ConfigsReloadStartedAction struct {
 	FilesChanged map[string]bool
+	StartTime    time.Time
 }
 
 func (ConfigsReloadStartedAction) Action() {}

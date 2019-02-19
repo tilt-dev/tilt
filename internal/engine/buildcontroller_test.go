@@ -112,9 +112,10 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Init(InitAction{
-		Manifests:   []model.Manifest{manifest},
-		WatchMounts: true,
-		TriggerMode: model.TriggerManual,
+		Manifests:       []model.Manifest{manifest},
+		WatchMounts:     true,
+		TriggerMode:     model.TriggerManual,
+		ExecuteTiltfile: true,
 	})
 
 	f.nextCall()

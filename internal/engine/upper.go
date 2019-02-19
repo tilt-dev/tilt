@@ -3,14 +3,13 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -22,7 +21,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -115,31 +113,17 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	var tlw io.Writer
-	if useActionWriter {
-		tlw = NewTiltfileLogWriter(u.store)
-	} else {
-		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
-	}
-	manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, fileName, matching, tlw)
-	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-		err = fmt.Errorf("No resources found. Check out https://docs.tilt.build/tutorial.html to get started!")
-	}
-	if err != nil {
-		logger.Get(ctx).Infof(err.Error())
-	}
+	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:        watchMounts,
-		Manifests:          manifests,
-		GlobalYAMLManifest: globalYAML,
-		TiltfilePath:       absTfPath,
-		ConfigFiles:        configFiles,
-		InitManifests:      manifestNames,
-		TriggerMode:        triggerMode,
-		StartTime:          startTime,
-		FinishTime:         time.Now(),
-		Err:                err,
+		WatchMounts:     watchMounts,
+		TiltfilePath:    absTfPath,
+		ConfigFiles:     configFiles,
+		InitManifests:   manifestNames,
+		TriggerMode:     triggerMode,
+		StartTime:       startTime,
+		FinishTime:      time.Now(),
+		ExecuteTiltfile: false,
 	})
 }
 
@@ -452,8 +436,14 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
-	state.CurrentTiltfileBuild = model.BuildRecord{}
 	state.PendingConfigFileChanges = make(map[string]bool)
+	status := model.BuildRecord{
+		StartTime: event.StartTime,
+		Reason:    model.BuildReasonFlagConfig,
+		Edits:     []string{state.TiltfilePath},
+	}
+
+	state.CurrentTiltfileBuild = status
 }
 
 func handleConfigsReloaded(
@@ -469,8 +459,10 @@ func handleConfigsReloaded(
 		Error:      event.Err,
 		Reason:     model.BuildReasonFlagConfig,
 		Edits:      []string{state.TiltfilePath},
+		Log:        state.CurrentTiltfileBuild.Log,
 	}
 	setLastTiltfileBuild(state, status)
+	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
 		return
@@ -781,31 +773,40 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
-	engineState.GlobalYAML = action.GlobalYAMLManifest
+
+	if action.ExecuteTiltfile {
+		engineState.GlobalYAML = action.GlobalYAMLManifest
+		engineState.GlobalYAMLState = store.NewYAMLManifestState()
+
+		status := model.BuildRecord{
+			StartTime:  action.StartTime,
+			FinishTime: action.FinishTime,
+			Error:      action.Err,
+			Reason:     model.BuildReasonFlagInit,
+		}
+		setLastTiltfileBuild(engineState, status)
+
+		manifests := action.Manifests
+		for _, m := range manifests {
+			engineState.UpsertManifestTarget(store.NewManifestTarget(m))
+		}
+
+		engineState.InitialBuildCount = len(manifests)
+	} else {
+		// NOTE(dmiller): this kicks off a Tiltfile build
+		engineState.PendingConfigFileChanges[action.TiltfilePath] = true
+		engineState.InitialBuildCount = len(action.InitManifests)
+	}
+
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
-
-	status := model.BuildRecord{
-		StartTime:  action.StartTime,
-		FinishTime: action.FinishTime,
-		Error:      action.Err,
-		Reason:     model.BuildReasonFlagInit,
-	}
-	setLastTiltfileBuild(engineState, status)
-
-	manifests := action.Manifests
-	for _, m := range manifests {
-		engineState.UpsertManifestTarget(store.NewManifestTarget(m))
-	}
 	engineState.WatchMounts = watchMounts
-
-	engineState.InitialBuildCount = len(manifests)
 	return nil
 }
 
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
 		log := []byte(fmt.Sprintf("%v\n", status.Error))
-		handleTiltfileLogAction(state, TiltfileLogAction{log})
+		status.Log = model.AppendLog(status.Log, log)
 	}
 	state.LastTiltfileBuild = status
 }
