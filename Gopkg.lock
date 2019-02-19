@@ -662,6 +662,17 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:8ec8d88c248041a6df5f6574b87bc00e7e0b493881dad2e7ef47b11dc69093b5"
+  name = "github.com/hashicorp/golang-lru"
+  packages = [
+    ".",
+    "simplelru",
+  ]
+  pruneopts = "UT"
+  revision = "20f1fb78b0740ba8c3cb143a61e86ba5c8669768"
+  version = "v0.5.0"
+
+[[projects]]
   digest = "1:8eb1de8112c9924d59bf1d3e5c26f5eaa2bfc2a5fcbb92dc1c2e4546d695f277"
   name = "github.com/imdario/mergo"
   packages = ["."]
@@ -743,12 +754,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:29c9f57493afb1d9b048ee2a3b1bd1532f62e295de7ec648d88cc04b28356b6d"
+  digest = "1:c23d4a239d83dd4a5aa80d3aa4c318440c0e5b8889c413af8af47b40115b04cf"
   name = "github.com/moby/buildkit"
   packages = [
     "api/services/control",
     "api/types",
     "frontend/dockerfile/command",
+    "frontend/dockerfile/instructions",
     "frontend/dockerfile/parser",
     "identity",
     "session",
@@ -970,6 +982,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "bc39bf8d245d184b5d8a9ee082ed0ece558e24fe"
+
+[[projects]]
+  digest = "1:2b97fd8c3ebafa161b3cf34948a0dd7d1ec27ab3fed686eb3639ead64344e9e6"
+  name = "github.com/schollz/closestmatch"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "56fb6b15a5e88fbcbc21b196488e749fc176514c"
+  version = "v2.1.0"
 
 [[projects]]
   digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
@@ -1346,7 +1366,7 @@
   version = "kubernetes-1.13.2"
 
 [[projects]]
-  digest = "1:2bc8932ace86ef10a34070dd0e053353195d64924d5b1a7711b088de3d5a4ef0"
+  digest = "1:c45d1164037e61f6808d08cb39f63e8d93814ca3eaa50b27ea04e6c7f77ea939"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1354,6 +1374,7 @@
     "pkg/api/meta",
     "pkg/api/resource",
     "pkg/api/validation",
+    "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
     "pkg/apis/meta/v1/validation",
@@ -1372,7 +1393,9 @@
     "pkg/runtime/serializer/versioning",
     "pkg/selection",
     "pkg/types",
+    "pkg/util/cache",
     "pkg/util/clock",
+    "pkg/util/diff",
     "pkg/util/errors",
     "pkg/util/framer",
     "pkg/util/httpstream",
@@ -1387,6 +1410,7 @@
     "pkg/util/strategicpatch",
     "pkg/util/validation",
     "pkg/util/validation/field",
+    "pkg/util/wait",
     "pkg/util/yaml",
     "pkg/version",
     "pkg/watch",
@@ -1399,11 +1423,57 @@
   version = "kubernetes-1.13.2"
 
 [[projects]]
-  digest = "1:57652a0bb38b405700774548fec5e770eb83d78e5d3674eb79adf8fa0d71798e"
+  digest = "1:a42592af7273bd3e3c14be889aba802364f1b81612cf174ff8635e2e4a4ae501"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
     "discovery/fake",
+    "informers",
+    "informers/admissionregistration",
+    "informers/admissionregistration/v1alpha1",
+    "informers/admissionregistration/v1beta1",
+    "informers/apps",
+    "informers/apps/v1",
+    "informers/apps/v1beta1",
+    "informers/apps/v1beta2",
+    "informers/auditregistration",
+    "informers/auditregistration/v1alpha1",
+    "informers/autoscaling",
+    "informers/autoscaling/v1",
+    "informers/autoscaling/v2beta1",
+    "informers/autoscaling/v2beta2",
+    "informers/batch",
+    "informers/batch/v1",
+    "informers/batch/v1beta1",
+    "informers/batch/v2alpha1",
+    "informers/certificates",
+    "informers/certificates/v1beta1",
+    "informers/coordination",
+    "informers/coordination/v1beta1",
+    "informers/core",
+    "informers/core/v1",
+    "informers/events",
+    "informers/events/v1beta1",
+    "informers/extensions",
+    "informers/extensions/v1beta1",
+    "informers/internalinterfaces",
+    "informers/networking",
+    "informers/networking/v1",
+    "informers/policy",
+    "informers/policy/v1beta1",
+    "informers/rbac",
+    "informers/rbac/v1",
+    "informers/rbac/v1alpha1",
+    "informers/rbac/v1beta1",
+    "informers/scheduling",
+    "informers/scheduling/v1alpha1",
+    "informers/scheduling/v1beta1",
+    "informers/settings",
+    "informers/settings/v1alpha1",
+    "informers/storage",
+    "informers/storage/v1",
+    "informers/storage/v1alpha1",
+    "informers/storage/v1beta1",
     "kubernetes",
     "kubernetes/fake",
     "kubernetes/scheme",
@@ -1471,6 +1541,34 @@
     "kubernetes/typed/storage/v1alpha1/fake",
     "kubernetes/typed/storage/v1beta1",
     "kubernetes/typed/storage/v1beta1/fake",
+    "listers/admissionregistration/v1alpha1",
+    "listers/admissionregistration/v1beta1",
+    "listers/apps/v1",
+    "listers/apps/v1beta1",
+    "listers/apps/v1beta2",
+    "listers/auditregistration/v1alpha1",
+    "listers/autoscaling/v1",
+    "listers/autoscaling/v2beta1",
+    "listers/autoscaling/v2beta2",
+    "listers/batch/v1",
+    "listers/batch/v1beta1",
+    "listers/batch/v2alpha1",
+    "listers/certificates/v1beta1",
+    "listers/coordination/v1beta1",
+    "listers/core/v1",
+    "listers/events/v1beta1",
+    "listers/extensions/v1beta1",
+    "listers/networking/v1",
+    "listers/policy/v1beta1",
+    "listers/rbac/v1",
+    "listers/rbac/v1alpha1",
+    "listers/rbac/v1beta1",
+    "listers/scheduling/v1alpha1",
+    "listers/scheduling/v1beta1",
+    "listers/settings/v1alpha1",
+    "listers/storage/v1",
+    "listers/storage/v1alpha1",
+    "listers/storage/v1beta1",
     "pkg/apis/clientauthentication",
     "pkg/apis/clientauthentication/v1alpha1",
     "pkg/apis/clientauthentication/v1beta1",
@@ -1486,21 +1584,25 @@
     "testing",
     "third_party/forked/golang/template",
     "tools/auth",
+    "tools/cache",
     "tools/clientcmd",
     "tools/clientcmd/api",
     "tools/clientcmd/api/latest",
     "tools/clientcmd/api/v1",
     "tools/metrics",
+    "tools/pager",
     "tools/portforward",
     "tools/reference",
     "transport",
     "transport/spdy",
+    "util/buffer",
     "util/cert",
     "util/connrotation",
     "util/flowcontrol",
     "util/homedir",
     "util/integer",
     "util/jsonpath",
+    "util/retry",
   ]
   pruneopts = "UT"
   revision = "6bf63545bd0257ed9e701ad95307ffa51b4407c0"
@@ -1565,6 +1667,8 @@
     "github.com/mattn/go-isatty",
     "github.com/mattn/go-runewidth",
     "github.com/moby/buildkit/api/services/control",
+    "github.com/moby/buildkit/frontend/dockerfile/command",
+    "github.com/moby/buildkit/frontend/dockerfile/instructions",
     "github.com/moby/buildkit/frontend/dockerfile/parser",
     "github.com/moby/buildkit/identity",
     "github.com/moby/buildkit/session",
@@ -1576,6 +1680,7 @@
     "github.com/pkg/browser",
     "github.com/pkg/errors",
     "github.com/rivo/tview",
+    "github.com/schollz/closestmatch",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/assert",
     "github.com/whilp/git-urls",
@@ -1598,6 +1703,7 @@
     "k8s.io/api/apps/v1beta2",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
+    "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/api/validation",
@@ -1611,6 +1717,7 @@
     "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/apimachinery/pkg/watch",
+    "k8s.io/client-go/informers",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",
@@ -1619,6 +1726,7 @@
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
+    "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/portforward",
     "k8s.io/client-go/transport/spdy",

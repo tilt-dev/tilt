@@ -64,6 +64,31 @@ type LogAction struct {
 
 func (LogAction) Action() {}
 
+type DeployIDAction struct {
+	TargetID model.TargetID
+	DeployID model.DeployID
+}
+
+func (DeployIDAction) Action() {}
+
+func NewDeployIDAction(id model.TargetID, dID model.DeployID) DeployIDAction {
+	return DeployIDAction{
+		TargetID: id,
+		DeployID: dID,
+	}
+
+}
+func NewDeployIDActionsForTargets(ids []model.TargetID, dID model.DeployID) []DeployIDAction {
+	actions := make([]DeployIDAction, len(ids))
+	for i, id := range ids {
+		actions[i] = DeployIDAction{
+			TargetID: id,
+			DeployID: dID,
+		}
+	}
+	return actions
+}
+
 type BuildCompleteAction struct {
 	Result store.BuildResultSet
 	Error  error
@@ -91,6 +116,8 @@ type InitAction struct {
 	FinishTime time.Time
 	Err        error
 	Warnings   []string
+
+	ExecuteTiltfile bool
 }
 
 func (InitAction) Action() {}
@@ -134,6 +161,7 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 
 type ConfigsReloadStartedAction struct {
 	FilesChanged map[string]bool
+	StartTime    time.Time
 }
 
 func (ConfigsReloadStartedAction) Action() {}

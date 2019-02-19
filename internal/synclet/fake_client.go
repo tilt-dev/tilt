@@ -13,6 +13,7 @@ import (
 // with a fake docker client inside it. But ¯\_(ツ)_/¯
 type FakeSyncletClient struct {
 	UpdateContainerCount         int
+	UpdateContainerHotReload     bool
 	ClosedCount                  int
 	UpdateContainerErrorToReturn error
 	PodID                        k8s.PodID
@@ -26,13 +27,14 @@ func NewFakeSyncletClient() *FakeSyncletClient {
 }
 
 func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID container.ID,
-	tarArchive []byte, filesToDelete []string, commands []model.Cmd) error {
+	tarArchive []byte, filesToDelete []string, commands []model.Cmd, hotReload bool) error {
 	if c.UpdateContainerErrorToReturn != nil {
 		ret := c.UpdateContainerErrorToReturn
 		c.UpdateContainerErrorToReturn = nil
 		return ret
 	}
 	c.UpdateContainerCount += 1
+	c.UpdateContainerHotReload = hotReload
 	return nil
 }
 

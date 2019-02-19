@@ -21,17 +21,31 @@ type ImageTarget struct {
 	tiltFilename  string
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
+	dependencyIDs []TargetID
 }
 
-func (i ImageTarget) ID() TargetID {
+func ImageID(ref reference.Named) TargetID {
 	name := TargetName("")
-	if i.Ref != nil {
-		name = TargetName(i.Ref.String())
+	if ref != nil {
+		name = TargetName(ref.Name())
 	}
 	return TargetID{
 		Type: TargetTypeImage,
 		Name: name,
 	}
+}
+
+func (i ImageTarget) ID() TargetID {
+	return ImageID(i.Ref)
+}
+
+func (i ImageTarget) DependencyIDs() []TargetID {
+	return i.dependencyIDs
+}
+
+func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
+	i.dependencyIDs = ids
+	return i
 }
 
 func (i ImageTarget) Validate() error {

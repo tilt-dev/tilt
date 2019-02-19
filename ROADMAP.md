@@ -132,3 +132,13 @@ problems. We should also run unit tests on Windows in CI.
 
 Open questions:
 - How many Windows users are interested in using Tilt?
+
+## Unit Tests (P2, C3)
+
+Tilt already has the ability to run Kubernetes jobs. How hard would it be to provide a wrapper around jobs for running unit and integration tests? Like regular services they could be built on run when the code included in the image that runs the unit test(s) changes.
+
+You can see a proof-of-concept implementation of this in [Tilt's Tiltfile](https://github.com/windmilleng/tilt/blob/master/Tiltfile).
+
+Open questions:
+- Could we parse output in some way to display a better view of which tests failed?
+- Could we make it easy to break down one monolithic test run in to many parallel test runs?

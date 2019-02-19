@@ -17,7 +17,7 @@ import (
 
 type SyncletClient interface {
 	UpdateContainer(ctx context.Context, containerID container.ID, tarArchive []byte,
-		filesToDelete []string, commands []model.Cmd) error
+		filesToDelete []string, commands []model.Cmd, hotReload bool) error
 
 	Close() error
 }
@@ -38,7 +38,8 @@ func (s *SyncletCli) UpdateContainer(
 	containerId container.ID,
 	tarArchive []byte,
 	filesToDelete []string,
-	commands []model.Cmd) error {
+	commands []model.Cmd,
+	hotReload bool) error {
 
 	var protoCmds []*proto.Cmd
 
@@ -57,6 +58,7 @@ func (s *SyncletCli) UpdateContainer(
 		TarArchive:    tarArchive,
 		FilesToDelete: filesToDelete,
 		Commands:      protoCmds,
+		HotReload:     hotReload,
 	})
 
 	if err != nil {

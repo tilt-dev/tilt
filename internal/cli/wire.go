@@ -21,9 +21,14 @@ import (
 )
 
 var K8sWireSet = wire.NewSet(
-	k8s.ProvideEnvOrError,
-	k8s.ProideEnv,
+	k8s.ProvideEnv,
 	k8s.DetectNodeIP,
+	k8s.ProvideKubeContext,
+	k8s.ProvideClientConfig,
+	k8s.ProvideRESTConfig,
+	k8s.ProvidePortForwarder,
+	k8s.ProvideConfigNamespace,
+	k8s.ProvideKubectlRunner,
 
 	k8s.ProvideK8sClient)
 

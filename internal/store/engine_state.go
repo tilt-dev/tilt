@@ -8,15 +8,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/docker/distribution/reference"
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	v1 "k8s.io/api/core/v1"
 )
 
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.build/tutorial.html to get started."
@@ -66,13 +64,12 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	LastTiltfileBuild model.BuildRecord
-
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
 
 	IsProfiling bool
 
+	LastTiltfileBuild    model.BuildRecord
 	CurrentTiltfileBuild model.BuildRecord
 }
 
@@ -208,8 +205,9 @@ type ManifestState struct {
 	Name model.ManifestName
 
 	// k8s-specific state
-	PodSet PodSet
-	LBs    map[k8s.ServiceName]*url.URL
+	PodSet   PodSet
+	LBs      map[k8s.ServiceName]*url.URL
+	DeployID model.DeployID // ID we have assigned to the current deploy (helps find expected k8s objects)
 
 	BuildStatuses map[model.TargetID]*BuildStatus
 
@@ -419,8 +417,8 @@ func (s *YAMLManifestState) LastBuild() model.BuildRecord {
 var _ model.TargetStatus = &YAMLManifestState{}
 
 type PodSet struct {
-	Pods    map[k8s.PodID]*Pod
-	ImageID reference.NamedTagged
+	Pods     map[k8s.PodID]*Pod
+	DeployID model.DeployID // Deploy that these pods correspond to
 }
 
 func NewPodSet(pods ...Pod) PodSet {
@@ -647,6 +645,7 @@ func StateToView(s EngineState) view.View {
 			CrashLog:           ms.CrashLog.String(),
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
+			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -675,14 +674,22 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	tfb := s.LastTiltfileBuild
-	tfb.Log = s.CurrentTiltfileBuild.Log
+	ltfb := s.LastTiltfileBuild
+	if !s.CurrentTiltfileBuild.Empty() {
+		ltfb.Log = s.CurrentTiltfileBuild.Log
+	}
 	tr := view.Resource{
-		Name:       "(Tiltfile)",
-		IsTiltfile: true,
+		Name:         "(Tiltfile)",
+		IsTiltfile:   true,
+		CurrentBuild: s.CurrentTiltfileBuild,
 		BuildHistory: []model.BuildRecord{
-			tfb,
+			ltfb,
 		},
+	}
+	if !s.CurrentTiltfileBuild.Empty() {
+		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
+	} else {
+		tr.LastDeployTime = s.LastTiltfileBuild.FinishTime
 	}
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error

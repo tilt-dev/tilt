@@ -90,7 +90,8 @@ func (s Synclet) UpdateContainer(
 	containerId container.ID,
 	tarArchive []byte,
 	filesToDelete []string,
-	commands []model.Cmd) error {
+	commands []model.Cmd,
+	hotReload bool) error {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Synclet-UpdateContainer")
 	defer span.Finish()
@@ -113,10 +114,12 @@ func (s Synclet) UpdateContainer(
 			containerId.ShortStr(), err)
 	}
 
-	err = s.restartContainer(ctx, containerId)
-	if err != nil {
-		return fmt.Errorf("error restarting container %s: %v",
-			containerId.ShortStr(), err)
+	if !hotReload {
+		err = s.restartContainer(ctx, containerId)
+		if err != nil {
+			return fmt.Errorf("error restarting container %s: %v",
+				containerId.ShortStr(), err)
+		}
 	}
 
 	return nil

@@ -30,13 +30,17 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	envOrError := k8s.ProvideEnvOrError(ctx)
-	client, err := k8s.ProvideK8sClient(ctx, envOrError)
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return demo.Script{}, err
 	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	podWatcher := engine.NewPodWatcher(client)
-	env := k8s.ProideEnv(envOrError)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
 		return demo.Script{}, err
@@ -106,13 +110,17 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	envOrError := k8s.ProvideEnvOrError(ctx)
-	client, err := k8s.ProvideK8sClient(ctx, envOrError)
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return Threads{}, err
 	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	podWatcher := engine.NewPodWatcher(client)
-	env := k8s.ProideEnv(envOrError)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
 		return Threads{}, err
@@ -172,17 +180,22 @@ func wireThreads(ctx context.Context) (Threads, error) {
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	envOrError := k8s.ProvideEnvOrError(ctx)
-	client, err := k8s.ProvideK8sClient(ctx, envOrError)
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return nil, err
 	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	return client, nil
 }
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnvOrError, k8s.ProideEnv, k8s.DetectNodeIP, k8s.ProvideK8sClient)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideClientConfig, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, server.ProvideHeadsUpServer, provideThreads,

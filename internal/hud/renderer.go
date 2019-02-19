@@ -232,7 +232,10 @@ func bestLogs(res view.Resource) string {
 		}
 
 		// The last build finished, but the pod hasn't started yet.
-		if res.LastBuild().StartTime.After(k8sInfo.PodCreationTime) {
+		// NOTE(maia): we truncate build state time down to the second b/c
+		// pod creation time is only precise to the second.
+		// TODO(maia): can compare expected/actual DeployID for more accuracy.
+		if res.LastBuild().StartTime.Truncate(time.Second).After(k8sInfo.PodCreationTime) {
 			return res.LastBuild().Log.String()
 		}
 	}

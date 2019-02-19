@@ -1,14 +1,13 @@
 package engine
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
-	store "github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -35,7 +34,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestBuildControllerTwoPods(t *testing.T) {
+func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -47,15 +46,17 @@ func TestBuildControllerTwoPods(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
+	// Associate the pods with the manifest state
 	podA := f.testPod("pod-a", "fe", "Running", testContainer, time.Now())
 	podB := f.testPod("pod-b", "fe", "Running", testContainer, time.Now())
-	image := fmt.Sprintf("%s:%s", f.imageNameForManifest("fe").String(), "now")
-	setImage(podA, image)
-	setImage(podB, image)
 	f.podEvent(podA)
 	f.podEvent(podB)
+
 	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
 
+	// We expect two pods associated with this manifest. We don't want to container-build
+	// if there are multiple pods, so make sure we're not sending deploy info (i.e. that
+	// we're doing an image build)
 	call = f.nextCall()
 	assert.Equal(t, "", call.oneState().DeployInfo.PodID.String())
 
@@ -111,9 +112,10 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Init(InitAction{
-		Manifests:   []model.Manifest{manifest},
-		WatchMounts: true,
-		TriggerMode: model.TriggerManual,
+		Manifests:       []model.Manifest{manifest},
+		WatchMounts:     true,
+		TriggerMode:     model.TriggerManual,
+		ExecuteTiltfile: true,
 	})
 
 	f.nextCall()

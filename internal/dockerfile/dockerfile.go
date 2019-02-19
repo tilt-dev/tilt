@@ -1,14 +1,13 @@
 package dockerfile
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
+	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
-	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -62,17 +61,20 @@ func (d Dockerfile) RmPaths(pathsToRm []string) Dockerfile {
 	return d.Join(fmt.Sprintf("RUN %s", rmCmd.String()))
 }
 
+func (d Dockerfile) traverse(visit func(node *parser.Node) error) error {
+	ast, err := ParseAST(d)
+	if err != nil {
+		return err
+	}
+
+	return ast.Traverse(visit)
+}
+
 // If possible, split this dockerfile into two parts:
 // a base dockerfile (without any adds/copys) and a "iterative" dockerfile.
 // Useful for constructing the directory cache.
 // Returns false if we can't split it.
 func (d Dockerfile) SplitIntoBaseDockerfile() (Dockerfile, Dockerfile, bool) {
-	asString := string(d)
-	result, err := parser.Parse(bytes.NewBufferString(asString))
-	if err != nil {
-		return "", "", false
-	}
-
 	// TODO(nick): Right now, we just check for the first ADD/COPY
 	// and split after than. This is Good Enough (tm) for cache dirs.
 	// In the future, we would need to understand multi-stage builds.
@@ -81,9 +83,9 @@ func (d Dockerfile) SplitIntoBaseDockerfile() (Dockerfile, Dockerfile, bool) {
 	// back into strings, but I haven't found an easy off-the-shelf
 	// library for doing that.
 	startLine := -1
-	err = traverse(result.AST, func(node *parser.Node) error {
-		switch strings.ToUpper(node.Value) {
-		case "ADD", "COPY":
+	err := d.traverse(func(node *parser.Node) error {
+		switch node.Value {
+		case command.Add, command.Copy:
 			if startLine == -1 {
 				startLine = node.StartLine
 			}
@@ -99,7 +101,7 @@ func (d Dockerfile) SplitIntoBaseDockerfile() (Dockerfile, Dockerfile, bool) {
 		return "", "", false
 	}
 
-	lines := strings.Split(asString, "\n")
+	lines := strings.Split(string(d), "\n")
 
 	// line numbers in dockerfile nodes are 1-based instead of 0-based
 	baseDf := strings.Join(lines[:startLine-1], "\n")
@@ -108,34 +110,41 @@ func (d Dockerfile) SplitIntoBaseDockerfile() (Dockerfile, Dockerfile, bool) {
 }
 
 func (d Dockerfile) ValidateBaseDockerfile() error {
-	result, err := parser.Parse(bytes.NewBufferString(string(d)))
-	if err != nil {
-		return errors.Wrap(err, "ValidateBaseDockerfile")
-	}
-
-	err = traverse(result.AST, func(node *parser.Node) error {
-		switch strings.ToUpper(node.Value) {
-		case "ADD", "COPY":
+	return d.traverse(func(node *parser.Node) error {
+		switch node.Value {
+		case command.Add, command.Copy:
 			return ErrAddInDockerfile
 		}
 		return nil
 	})
-	return err
+}
+
+// Find all images referenced in this dockerfile.
+func (d Dockerfile) FindImages() ([]reference.Named, error) {
+	result := []reference.Named{}
+	ast, err := ParseAST(d)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ast.traverseImageRefs(func(node *parser.Node, ref reference.Named) reference.Named {
+		result = append(result, ref)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // DeriveMounts finds ADD statements in a Dockerfile and turns them into Tilt model.Mounts.
 // Relative paths in an ADD statement are relative to the build context (passed as an arg)
 // and will appear in the Mount as an abs path.
 func (d Dockerfile) DeriveMounts(context string) ([]model.Mount, error) {
-	result, err := parser.Parse(bytes.NewBufferString(string(d)))
-	if err != nil {
-		return nil, nil
-	}
-
 	var nodes []*parser.Node
-	err = traverse(result.AST, func(node *parser.Node) error {
-		switch strings.ToUpper(node.Value) {
-		case "ADD", "COPY":
+	err := d.traverse(func(node *parser.Node) error {
+		switch node.Value {
+		case command.Add, command.Copy:
 			nodes = append(nodes, node)
 		}
 		return nil
@@ -156,8 +165,8 @@ func (d Dockerfile) DeriveMounts(context string) ([]model.Mount, error) {
 }
 
 func nodeToMount(node *parser.Node, context string) (model.Mount, error) {
-	cmd := strings.ToUpper(node.Value)
-	if !(cmd == "ADD" || cmd == "COPY") {
+	cmd := node.Value
+	if !(cmd == command.Add || cmd == command.Copy) {
 		return model.Mount{}, fmt.Errorf("nodeToMounts works on ADD/COPY nodes; got '%s'", cmd)
 	}
 
@@ -180,16 +189,4 @@ func nodeToMount(node *parser.Node, context string) (model.Mount, error) {
 
 func (d Dockerfile) String() string {
 	return string(d)
-}
-
-// Post-order traversal of the Dockerfile AST.
-// Halts immediately on error.
-func traverse(node *parser.Node, visit func(*parser.Node) error) error {
-	for _, c := range node.Children {
-		err := traverse(c, visit)
-		if err != nil {
-			return err
-		}
-	}
-	return visit(node)
 }

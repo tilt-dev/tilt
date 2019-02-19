@@ -39,6 +39,17 @@ func (m Manifest) ID() TargetID {
 	}
 }
 
+func (m Manifest) DependencyIDs() []TargetID {
+	result := []TargetID{}
+	for _, iTarget := range m.ImageTargets {
+		result = append(result, iTarget.ID())
+	}
+	if !m.deployTarget.ID().Empty() {
+		result = append(result, m.deployTarget.ID())
+	}
+	return result
+}
+
 func (m Manifest) WithImageTarget(iTarget ImageTarget) Manifest {
 	m.ImageTargets = []ImageTarget{iTarget}
 	return m
@@ -76,6 +87,10 @@ func (m Manifest) K8sTarget() K8sTarget {
 func (m Manifest) IsK8s() bool {
 	_, ok := m.deployTarget.(K8sTarget)
 	return ok
+}
+
+func (m Manifest) DeployTarget() TargetSpec {
+	return m.deployTarget
 }
 
 func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
@@ -286,6 +301,7 @@ type PortForward struct {
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
 var dcTargetAllowUnexported = cmp.AllowUnexported(DockerComposeTarget{})
 var labelRequirementAllowUnexported = cmp.AllowUnexported(labels.Requirement{})
+var k8sTargetAllowUnexported = cmp.AllowUnexported(K8sTarget{})
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -307,5 +323,6 @@ func DeepEqual(x, y interface{}) bool {
 		imageTargetAllowUnexported,
 		dcTargetAllowUnexported,
 		labelRequirementAllowUnexported,
+		k8sTargetAllowUnexported,
 		dockerRefEqual)
 }

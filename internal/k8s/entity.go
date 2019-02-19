@@ -1,10 +1,12 @@
 package k8s
 
 import (
+	"fmt"
 	"net/url"
 	"reflect"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -195,4 +197,41 @@ func FilterByImage(entities []K8sEntity, img reference.Named) (passing, rest []K
 
 func FilterByLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesLabels(labels), nil })
+}
+
+func FilterByHasPodTemplateSpec(entities []K8sEntity) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) {
+		templateSpecs, err := ExtractPodTemplateSpec(&e)
+		if err != nil {
+			return false, err
+		}
+		return len(templateSpecs) > 0, nil
+	})
+}
+
+func FilterByMatchesPodTemplateSpec(withPodSpec K8sEntity, entities []K8sEntity) (passing, rest []K8sEntity, err error) {
+	podTemplates, err := ExtractPodTemplateSpec(withPodSpec)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "extracting pod template spec")
+	}
+
+	if len(podTemplates) == 0 {
+		return nil, entities, nil
+	}
+
+	var allMatches []K8sEntity
+	remaining := append([]K8sEntity{}, entities...)
+	for _, template := range podTemplates {
+		match, rest, err := FilterByLabels(remaining, template.Labels)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "filtering entities by label")
+		}
+		allMatches = append(allMatches, match...)
+		remaining = rest
+	}
+	return allMatches, remaining, nil
+}
+
+func (e K8sEntity) ResourceName() string {
+	return fmt.Sprintf("k8s%s-%s", e.Kind.Kind, e.Name())
 }

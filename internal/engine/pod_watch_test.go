@@ -26,7 +26,7 @@ func TestPodWatch(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := TiltRunSelector()
+	ls := k8s.TiltRunSelector()
 	p := podNamed("hello")
 	f.kClient.EmitPod(ls, p)
 
@@ -39,7 +39,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls := TiltRunSelector()
+	ls := k8s.TiltRunSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	ls2 := labels.Set{"baz": "quu"}.AsSelector()
 	f.addManifestWithSelectors("server", ls1, ls2)
@@ -58,7 +58,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls := TiltRunSelector()
+	ls := k8s.TiltRunSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	f.addManifestWithSelectors("server1", ls1)
 
@@ -169,7 +169,7 @@ func (f *pwFixture) TearDown() {
 }
 
 func newManifestTargetWithSelectors(m model.Manifest, selectors []labels.Selector) (*store.ManifestTarget, error) {
-	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors)
+	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors, nil)
 	if err != nil {
 		return nil, err
 	}

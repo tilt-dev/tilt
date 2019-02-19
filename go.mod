@@ -51,6 +51,7 @@ require (
 	github.com/google/go-cmp v0.2.0
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 	github.com/google/uuid v1.0.0
+	github.com/google/wire v0.2.1
 	github.com/googleapis/gnostic v0.2.0
 	github.com/gophercloud/gophercloud v0.0.0-20190130105114-cc9c99918988
 	github.com/gorilla/context v1.1.1
@@ -59,6 +60,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-version v1.0.0
+	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/imdario/mergo v0.3.6
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/json-iterator/go v1.1.5
@@ -92,16 +94,17 @@ require (
 	github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
+	github.com/schollz/closestmatch v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.0.6
 	github.com/spf13/cobra v0.0.3
-	github.com/spf13/pflag v1.0.2
-	github.com/stretchr/testify v1.2.2
+	github.com/spf13/pflag v1.0.3
+	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/gocapability v0.0.0-20180223013746-33e07d32887e
 	github.com/theupdateframework/notary v0.6.1
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
-	github.com/windmilleng/wmclient v0.0.0-20190205232421-1ae9d14ff820
+	github.com/windmilleng/wmclient v0.0.0-20190212164535-a243b5936767
 	go.opencensus.io v0.18.0
 	go.starlark.net v0.0.0-20181218181455-c0b6b768d91b
 	golang.org/x/crypto v0.0.0-20180820150726-614d502a4dac
@@ -111,6 +114,7 @@ require (
 	golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e
 	golang.org/x/text v0.3.0
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
+	golang.org/x/tools v0.0.0-20190214163553-c161412db0d0 // indirect
 	google.golang.org/api v0.1.0
 	google.golang.org/appengine v1.3.0
 	google.golang.org/genproto v0.0.0-20181202183823-bd91e49a0898
@@ -120,7 +124,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20190111032252-67edc246be36
 	k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
-	k8s.io/client-go v0.0.0-20190111032708-6bf63545bd02
+	k8s.io/client-go v10.0.0+incompatible
 	k8s.io/klog v0.1.0
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c
 	sigs.k8s.io/yaml v1.1.0

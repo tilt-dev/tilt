@@ -25,7 +25,7 @@ func NewSyncletBuildAndDeployer(sm SyncletManager) *SyncletBuildAndDeployer {
 	}
 }
 
-func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 || len(iTargets) != 1 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf(
@@ -68,8 +68,9 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	image model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
+	fbInfo := image.FastBuildInfo()
 	paths, err := build.FilesToPathMappings(
-		state.FilesChanged(), image.FastBuildInfo().Mounts)
+		state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -98,7 +99,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResultSet{}, fmt.Errorf("no deploy info")
 	}
 
-	cmds, err := build.BoilSteps(image.FastBuildInfo().Steps, paths)
+	cmds, err := build.BoilSteps(fbInfo.Steps, paths)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -108,7 +109,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResultSet{}, err
 	}
 
-	err = sCli.UpdateContainer(ctx, deployInfo.ContainerID, archive.Bytes(), containerPathsToRm, cmds)
+	err = sCli.UpdateContainer(ctx, deployInfo.ContainerID, archive.Bytes(), containerPathsToRm, cmds, fbInfo.HotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return store.BuildResultSet{}, WrapDontFallBackError(err)

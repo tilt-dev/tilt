@@ -1,5 +1,7 @@
 # Tilt
 
+<img src="assets/logo-wordmark.png" width="250">
+
 [![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
 [![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
 
@@ -17,7 +19,7 @@ The screencast below demonstrates what a typical Tilt session looks like:
 starting multiple microservices, making changes to them, and seeing any new errors
 or logs right in your terminal.
 
-[![screencast](docs/_static/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
+[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
 
 ## Install Tilt
 
@@ -35,12 +37,10 @@ to help you `tilt up` quickly.
 
 ## Configure Your Workflow to Share With Your Team
 
-Down with YAML!
-
 Configure Tilt with a `Tiltfile`, written in a small subset of Python called
 [Starlark](https://github.com/bazelbuild/starlark#tour).
 
-To get started, check out some [examples](https://docs.tilt.build/first_example.html) or dive into the
+To get started, check out the [tutorial](https://docs.tilt.build/tutorial.html) or dive into the
 [API reference](https://docs.tilt.build/api.html).
 
 ## Community

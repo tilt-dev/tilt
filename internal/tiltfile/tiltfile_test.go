@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -534,6 +534,103 @@ k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
+func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("pod_creator.yaml", deployment("pod-creator"), secret("not-pod-creator"))
+
+	f.file("Tiltfile", `
+k8s_yaml('pod_creator.yaml')
+`)
+	f.load()
+
+	f.assertNextManifest("pod-creator", deployment("pod-creator"))
+	f.assertYAMLManifest("not-pod-creator")
+}
+
+func TestUnresourcedYamlGrouping(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	labelsA := map[string]string{"keyA": "valueA"}
+	labelsB := map[string]string{"keyB": "valueB"}
+	labelsC := map[string]string{"keyC": "valueC"}
+	f.yaml("all.yaml",
+		deployment("deployment-a", withLabels(labelsA)),
+
+		deployment("deployment-b", withLabels(labelsB)),
+		service("service-b", withLabels(labelsB)),
+
+		deployment("deployment-c", withLabels(labelsC)),
+		service("service-c1", withLabels(labelsC)),
+		service("service-c2", withLabels(labelsC)),
+
+		secret("someSecret"),
+	)
+
+	f.file("Tiltfile", `k8s_yaml('all.yaml')`)
+	f.load()
+
+	f.assertNextManifest("deployment-a", deployment("deployment-a"))
+	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
+	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
+	f.assertYAMLManifest("someSecret")
+}
+
+func TestK8sGroupedWhenAddedToResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupExpand()
+
+	labelsA := map[string]string{"keyA": "valueA"}
+	labelsB := map[string]string{"keyB": "valueB"}
+	labelsC := map[string]string{"keyC": "valueC"}
+	f.yaml("all.yaml",
+		deployment("deployment-a", image("gcr.io/a"), withLabels(labelsA)),
+
+		deployment("deployment-b", image("gcr.io/b"), withLabels(labelsB)),
+		service("service-b", withLabels(labelsB)),
+
+		deployment("deployment-c", image("gcr.io/c"), withLabels(labelsC)),
+		service("service-c1", withLabels(labelsC)),
+		service("service-c2", withLabels(labelsC)),
+	)
+
+	f.file("Tiltfile", `k8s_yaml('all.yaml')
+docker_build('gcr.io/a', 'a')
+docker_build('gcr.io/b', 'b')
+docker_build('gcr.io/c', 'c')
+`)
+	f.load()
+
+	f.assertNextManifest("a", deployment("deployment-a"))
+	f.assertNextManifest("b", deployment("deployment-b"), service("service-b"))
+	f.assertNextManifest("c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
+}
+
+func TestK8sResourceWithoutDockerBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
+`)
+	f.load()
+	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
+}
+
+func TestImplicitK8sResourceWithoutDockerBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8000)
+`)
+	f.load()
+	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
+}
+
 func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1052,12 +1149,12 @@ func TestBlob(t *testing.T) {
 
 	f.file(
 		"Tiltfile",
-		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SanchoSidecarYAML),
+		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SnackYaml),
 	)
 
 	f.load()
 
-	f.assertYAMLManifest("sancho")
+	f.assertNextManifest("snack", deployment("snack"))
 }
 
 func TestBlobErr(t *testing.T) {
@@ -1070,6 +1167,87 @@ func TestBlobErr(t *testing.T) {
 	)
 
 	f.loadErrString("for parameter 1: got int, want string")
+}
+
+func TestImageDependency(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	m := f.assertNextManifest("image-b", deployment("foo"))
+	assert.Equal(t, []string{"gcr.io/image-a", "gcr.io/image-b"}, f.imageTargetNames(m))
+}
+
+func TestImageDependencyCycle(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM gcr.io/image-b")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("Image dependency cycle: gcr.io/image-b")
+}
+
+func TestImageDependencyDiamond(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.file("imageC.dockerfile", "FROM gcr.io/image-a")
+	f.file("imageD.dockerfile", `
+FROM gcr.io/image-b
+FROM gcr.io/image-c
+`)
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-d")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-c', '.', dockerfile='imageC.dockerfile')
+docker_build('gcr.io/image-d', '.', dockerfile='imageD.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("image-d", deployment("foo"))
+	assert.Equal(t, []string{
+		"gcr.io/image-a",
+		"gcr.io/image-b",
+		"gcr.io/image-c",
+		"gcr.io/image-d",
+	}, f.imageTargetNames(m))
+}
+
+func TestImageRefSuggestion(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.typo.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.loadErrString("Did you mean:\n - gcr.io/foo")
 }
 
 type fixture struct {
@@ -1122,7 +1300,36 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 				f.t.Fatal(err)
 			}
 
+			if len(e.templateLabels) > 0 {
+				for i, obj := range objs {
+					withLabels, err := k8s.OverwriteLabels(obj, model.ToLabelPairs(e.templateLabels))
+					if err != nil {
+						f.t.Fatal(err)
+					}
+					objs[i] = withLabels
+				}
+			}
+
 			entityObjs = append(entityObjs, objs...)
+		case serviceHelper:
+			s := testyaml.DoggosServiceYaml
+			s = strings.Replace(s, testyaml.DoggosName, e.name, -1)
+			objs, err := k8s.ParseYAMLFromString(s)
+			if err != nil {
+				f.t.Fatal(err)
+			}
+
+			if len(e.selectorLabels) > 0 {
+				for _, obj := range objs {
+					err := overwriteSelectorsForService(&obj, e.selectorLabels)
+					if err != nil {
+						f.t.Fatal(err)
+					}
+				}
+			}
+
+			entityObjs = append(entityObjs, objs...)
+
 		case secretHelper:
 			s := testyaml.SecretYaml
 			s = strings.Replace(s, testyaml.SecretName, e.name, -1)
@@ -1141,7 +1348,6 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-
 	f.file(path, s)
 }
 
@@ -1282,6 +1488,18 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case serviceHelper:
+			yaml := m.K8sTarget().YAML
+			found := false
+			for _, e := range f.entities(yaml) {
+				if e.Kind.Kind == "Service" && f.k8sName(e) == opt.name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				f.t.Fatalf("service %v not found in yaml %q", opt.name, yaml)
+			}
 		case extraPodSelectorsHelper:
 			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
 		case numEntitiesHelper:
@@ -1343,7 +1561,37 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
 	}
+
+	f.assertManifestConsistency(m)
+
 	return m
+}
+
+// All manifests currently contain redundant information
+// such that each Deploy target lists its image ID dependencies.
+func (f *fixture) assertManifestConsistency(m model.Manifest) {
+	iTargetIDs := map[model.TargetID]bool{}
+	for _, iTarget := range m.ImageTargets {
+		if iTargetIDs[iTarget.ID()] {
+			f.t.Fatalf("Image Target %s appears twice in manifest: %s", iTarget.ID(), m.Name)
+		}
+		iTargetIDs[iTarget.ID()] = true
+	}
+
+	deployTarget := m.DeployTarget()
+	for _, depID := range deployTarget.DependencyIDs() {
+		if !iTargetIDs[depID] {
+			f.t.Fatalf("Image Target needed by deploy target is missing: %s", depID)
+		}
+	}
+}
+
+func (f *fixture) imageTargetNames(m model.Manifest) []string {
+	result := []string{}
+	for _, iTarget := range m.ImageTargets {
+		result = append(result, iTarget.ID().Name.String())
+	}
+	return result
 }
 
 func (f *fixture) assertNumManifests(expected int) {
@@ -1386,8 +1634,9 @@ func secret(name string) secretHelper {
 }
 
 type deploymentHelper struct {
-	name  string
-	image string
+	name           string
+	image          string
+	templateLabels map[string]string
 }
 
 func deployment(name string, opts ...interface{}) deploymentHelper {
@@ -1396,6 +1645,26 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 		switch opt := opt.(type) {
 		case imageHelper:
 			r.image = opt.ref
+		case labelsHelper:
+			r.templateLabels = opt.labels
+		default:
+			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
+		}
+	}
+	return r
+}
+
+type serviceHelper struct {
+	name           string
+	selectorLabels map[string]string
+}
+
+func service(name string, opts ...interface{}) serviceHelper {
+	r := serviceHelper{name: name}
+	for _, opt := range opts {
+		switch opt := opt.(type) {
+		case labelsHelper:
+			r.selectorLabels = opt.labels
 		default:
 			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
 		}
@@ -1467,6 +1736,14 @@ func image(ref string) imageHelper {
 
 func imageNormalized(ref string) imageHelper {
 	return imageHelper{ref: docker.MustNormalizeRefName(ref)}
+}
+
+type labelsHelper struct {
+	labels map[string]string
+}
+
+func withLabels(labels map[string]string) labelsHelper {
+	return labelsHelper{labels: labels}
 }
 
 // match a docker_build
@@ -1578,4 +1855,13 @@ k8s_resource('foo', 'foo.yaml', extra_pod_selectors=%s)
 `, s)
 
 	f.file("Tiltfile", tiltfile)
+}
+
+func overwriteSelectorsForService(entity *k8s.K8sEntity, labels map[string]string) error {
+	svc, ok := entity.Obj.(*v1.Service)
+	if !ok {
+		return fmt.Errorf("don't know how to set selectors for %T", entity.Obj)
+	}
+	svc.Spec.Selector = labels
+	return nil
 }

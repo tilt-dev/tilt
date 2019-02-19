@@ -23,6 +23,16 @@ func makeLabelSelector(lps []model.LabelPair) string {
 }
 
 func InjectLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, error) {
+	return injectLabels(entity, labels, false)
+}
+
+func OverwriteLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, error) {
+	return injectLabels(entity, labels, true)
+}
+
+// injectLabels injects the given labels into the given k8sEntity
+// (if `overwrite`, replacing existing labels)
+func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
 	switch obj := entity.Obj.(type) {
@@ -40,6 +50,9 @@ func InjectLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, error)
 	}
 
 	for _, meta := range metas {
+		if overwrite {
+			meta.Labels = nil
+		}
 		for _, label := range labels {
 			if meta.Labels == nil {
 				meta.Labels = make(map[string]string, 1)

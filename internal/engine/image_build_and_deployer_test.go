@@ -3,6 +3,7 @@ package engine
 import (
 	"archive/tar"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -27,7 +28,7 @@ func TestStaticDockerfileWithCache(t *testing.T) {
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestBaseDockerfileWithCache(t *testing.T) {
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	sancho := NewSanchoFastBuildManifest(f)
 	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
-	result, err := f.ibd.BuildAndDeploy(f.ctx, buildTargets(manifest), store.BuildStateSet{})
+	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,10 +94,11 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 
 	iTarget1 := NewSanchoStaticImageTarget()
 	iTarget2 := NewSanchoSidecarStaticImageTarget()
-	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}
+	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
-	result, err := f.ibd.BuildAndDeploy(f.ctx, targets, store.BuildStateSet{})
+	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,12 +116,110 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
 
+func TestDeployIDInjectedAndSent(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticManifest()
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var deployID model.DeployID
+	for _, a := range f.st.Actions {
+		if deployIDAction, ok := a.(DeployIDAction); ok {
+			deployID = deployIDAction.DeployID
+		}
+	}
+	if deployID == 0 {
+		t.Errorf("didn't find DeployIDAction w/ non-zero DeployID in actions: %v", f.st.Actions)
+	}
+
+	assert.True(t, strings.Count(f.k8s.Yaml, k8s.TiltDeployIDLabel) >= 1,
+		"Expected TiltDeployIDLabel to appear at least once in YAML: %s", f.k8s.Yaml)
+	assert.True(t, strings.Count(f.k8s.Yaml, deployID.String()) >= 1,
+		"Expected DeployID %q to appear at least once in YAML: %s", deployID, f.k8s.Yaml)
+}
+
+func TestNoImageTargets(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	targName := "some-k8s-manifest"
+	specs := []model.TargetSpec{
+		model.K8sTarget{
+			Name: model.TargetName(targName),
+			YAML: testyaml.LonelyPodYAML,
+		},
+	}
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 0, f.docker.BuildCount, "expect no docker builds")
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, "image: gcr.io/windmill-public-containers/lonely-pod"),
+		"Expected lonely-pod image to appear once in YAML: %s", f.k8s.Yaml)
+
+	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManifestNameLabel, targName)
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedLabelStr),
+		"Expected \"%s\"image to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
+}
+
+func TestMultiStageStaticBuild(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticMultiStageManifest()
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
+func TestMultiStageFastBuild(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastMultiStageManifest(f)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+
+ADD . /
+RUN ["go", "install", "github.com/windmilleng/sancho"]
+ENTRYPOINT ["/go/bin/sancho"]
+LABEL "tilt.buildMode"="scratch"`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
 	ibd    *ImageBuildAndDeployer
+	st     *store.TestingStore
 }
 
 func newIBDFixture(t *testing.T) *ibdFixture {
@@ -138,5 +238,6 @@ func newIBDFixture(t *testing.T) *ibdFixture {
 		docker:         docker,
 		k8s:            k8s,
 		ibd:            ibd,
+		st:             store.NewTestingStore(),
 	}
 }

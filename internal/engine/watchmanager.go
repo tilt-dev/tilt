@@ -25,6 +25,21 @@ type WatchableTarget interface {
 	ID() model.TargetID
 }
 
+func watchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
+	var watchable []WatchableTarget
+	for _, m := range manifests {
+		if m.IsDC() {
+			dcTarget := m.DockerComposeTarget()
+			watchable = append(watchable, dcTarget)
+		}
+
+		for _, iTarget := range m.ImageTargets {
+			watchable = append(watchable, iTarget)
+		}
+	}
+	return watchable
+}
+
 // configTarget makes a WatchableTarget that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
 type configsTarget struct {
 	dependencies []string
@@ -91,16 +106,10 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	setup = []WatchableTarget{}
 	teardown = []model.TargetID{}
 
+	watchable := watchableTargetsForManifests(state.Manifests())
 	targetsToProcess := make(map[model.TargetID]WatchableTarget)
-	for _, m := range state.Manifests() {
-		if m.IsDC() {
-			dcTarget := m.DockerComposeTarget()
-			targetsToProcess[dcTarget.ID()] = dcTarget
-		}
-
-		for _, iTarget := range m.ImageTargets {
-			targetsToProcess[iTarget.ID()] = iTarget
-		}
+	for _, w := range watchable {
+		targetsToProcess[w.ID()] = w
 	}
 
 	if len(state.ConfigFiles) > 0 {

@@ -134,15 +134,19 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 }
 
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
-	err := s.assembleK8s()
+	err := s.assembleImages()
 	if err != nil {
 		return resourceSet{}, nil, err
 	}
 
-	for _, svc := range s.dc.services {
-		if svc.ImageRef != nil {
-			s.buildIndex.matchRefInDeployTarget(svc.ImageRef)
-		}
+	err = s.assembleK8s()
+	if err != nil {
+		return resourceSet{}, nil, err
+	}
+
+	err = s.assembleDC()
+	if err != nil {
+		return resourceSet{}, nil, err
 	}
 
 	if !s.dc.Empty() && (len(s.k8s) > 0 || len(s.k8sUnresourced) > 0) {
@@ -162,16 +166,72 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	}, s.k8sUnresourced, nil
 }
 
-// assembleK8s matches images we know how to build with any k8s entities that use that image
-// (returning the set of images that we added to resources)
+func (s *tiltfileState) assembleImages() error {
+	for _, imageBuilder := range s.buildIndex.images {
+		var depImages []reference.Named
+		var err error
+		if imageBuilder.baseDockerfile != "" {
+			depImages, err = imageBuilder.baseDockerfile.FindImages()
+		} else {
+			depImages, err = imageBuilder.staticDockerfile.FindImages()
+		}
+
+		if err != nil {
+			return err
+		}
+
+		for _, depImage := range depImages {
+			depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
+			if depBuilder != nil {
+				imageBuilder.dependencyIDs = append(imageBuilder.dependencyIDs, depBuilder.ID())
+			}
+		}
+	}
+	return nil
+}
+
+func (s *tiltfileState) assembleDC() error {
+	for _, svc := range s.dc.services {
+		if svc.ImageRef != nil {
+			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef)
+			if builder != nil {
+				svc.DependencyIDs = append(svc.DependencyIDs, builder.ID())
+			}
+		}
+	}
+	return nil
+}
+
 func (s *tiltfileState) assembleK8s() error {
+	err := s.assembleK8sWithImages()
+	if err != nil {
+		return err
+	}
+
+	err = s.assembleK8sUnresourced()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range s.k8s {
+		if err := s.validateK8s(r); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+// assembleK8sWithImages matches images we know how to build with any k8s entities
+// that use that image, storing the resulting resource(s) on the tiltfileState.
+func (s *tiltfileState) assembleK8sWithImages() error {
 	// find all images mentioned in k8s entities that don't yet belong to k8sResources
 	k8sRefs, err := s.findUnresourcedImages()
 	if err != nil {
 		return err
 	}
 	for _, k8sRef := range k8sRefs {
-		image := s.buildIndex.matchRefInDeployTarget(k8sRef)
+		image := s.buildIndex.findBuilderForConsumedImage(k8sRef)
 		if image == nil {
 			// only expand for images we know how to build
 			continue
@@ -188,12 +248,31 @@ func (s *tiltfileState) assembleK8s() error {
 			return err
 		}
 	}
+	return nil
+}
 
-	for _, r := range s.k8s {
-		if err := s.validateK8s(r); err != nil {
+// assembleK8sUnresourced makes k8sResources for all unresourced k8s entities that will
+// result in pods (smartly grouping pod-creating entities with corresponding entities e.g.
+// services), and stores the resulting resource(s) on the tiltfileState.
+func (s *tiltfileState) assembleK8sUnresourced() error {
+	withPodSpec, allRest, err := k8s.FilterByHasPodTemplateSpec(s.k8sUnresourced)
+	if err != nil {
+		return nil
+	}
+	for _, e := range withPodSpec {
+		target, err := s.k8sResourceForName(e.Name())
+		if err != nil {
 			return err
 		}
+		target.entities = append(target.entities, e)
+
+		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(e, allRest)
+		target.entities = append(target.entities, match...)
+		allRest = rest
 	}
+
+	s.k8sUnresourced = allRest
+
 	return nil
 }
 
@@ -204,11 +283,14 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 				"image(s) %q; perhaps there's a typo?",
 				r.name, strings.Join(r.providedImageRefNameList(), "; "))
 		}
-		return fmt.Errorf("resource %q: you never associated any image refs with this resource", r.name)
+		return fmt.Errorf("resource %q: could not associate any k8s YAML with this resource", r.name)
 	}
 
 	for _, ref := range r.imageRefs {
-		s.buildIndex.matchRefInDeployTarget(ref)
+		builder := s.buildIndex.findBuilderForConsumedImage(ref)
+		if builder != nil {
+			r.dependencyIDs = append(r.dependencyIDs, builder.ID())
+		}
 	}
 
 	return nil
@@ -228,10 +310,19 @@ func (s *tiltfileState) k8sResourceForImage(image reference.Named) (*k8sResource
 	// next, look thru all the resources that have already been created,
 	// and see if any of them match the basename of the image.
 	name := filepath.Base(image.Name())
-	for _, r := range s.k8s {
-		if r.name == name {
-			return r, nil
-		}
+	if r, ok := s.k8sByName[name]; ok {
+		return r, nil
+	}
+
+	// otherwise, create a new resource
+	return s.makeK8sResource(name)
+}
+
+// k8sResourceForName returns the k8sResource with which this name is associated
+// (either an existing resource or a new one).
+func (s *tiltfileState) k8sResourceForName(name string) (*k8sResource, error) {
+	if r, ok := s.k8sByName[name]; ok {
+		return r, nil
 	}
 
 	// otherwise, create a new resource
@@ -272,22 +363,18 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef reference.Na
 	s.k8sUnresourced = remaining
 
 	for _, e := range extracted {
-		podTemplates, err := k8s.ExtractPodTemplateSpec(e)
+		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(e, s.k8sUnresourced)
 		if err != nil {
 			return err
 		}
-		for _, template := range podTemplates {
-			extracted, remaining, err := k8s.FilterByLabels(s.k8sUnresourced, template.Labels)
-			if err != nil {
-				return err
-			}
-			err = dest.addEntities(extracted)
-			if err != nil {
-				return err
-			}
-			s.k8sUnresourced = remaining
+
+		err = dest.addEntities(match)
+		if err != nil {
+			return err
 		}
+		s.k8sUnresourced = rest
 	}
+
 	return nil
 }
 
@@ -332,14 +419,14 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			Name: mn,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
 		if err != nil {
 			return nil, err
 		}
 
 		m = m.WithDeployTarget(k8sTarget)
 
-		iTargets, err := s.imgTargetsForRefs(r.imageRefs)
+		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
@@ -352,13 +439,29 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	return result, nil
 }
 
-func (s *tiltfileState) imgTargetsForRefs(refs []reference.Named) ([]model.ImageTarget, error) {
-	iTargets := make([]model.ImageTarget, 0, len(refs))
-	for _, imageRef := range refs {
-		image := s.buildIndex.matchRefInDeployTarget(imageRef)
+// Grabs all image targets for the given references,
+// as well as any of their transitive dependencies.
+func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID) ([]model.ImageTarget, error) {
+	claimStatus := make(map[model.TargetID]claim, len(ids))
+	return s.imgTargetsForDependencyIDsHelper(ids, claimStatus)
+}
+
+func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
+	iTargets := make([]model.ImageTarget, 0, len(ids))
+	for _, id := range ids {
+		image := s.buildIndex.findBuilderByID(id)
 		if image == nil {
-			continue
+			return nil, fmt.Errorf("Internal error: no image builder found for id %s", id)
 		}
+
+		claim := claimStatus[id]
+		if claim == claimFinished {
+			// Skip this target, an earlier call has already built it
+			continue
+		} else if claim == claimPending {
+			return nil, fmt.Errorf("Image dependency cycle: %s", image.ref)
+		}
+		claimStatus[id] = claimPending
 
 		isStaticBuild := !image.staticBuildPath.Empty()
 		isFastBuild := !image.baseDockerfilePath.Empty()
@@ -390,8 +493,18 @@ func (s *tiltfileState) imgTargetsForRefs(refs []reference.Named) ([]model.Image
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(s.dockerignoresForImage(image)).
-			WithTiltFilename(s.filename.path)
+			WithTiltFilename(s.filename.path).
+			WithDependencyIDs(image.dependencyIDs)
+
+		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)
+		if err != nil {
+			return nil, err
+		}
+
+		iTargets = append(iTargets, depTargets...)
 		iTargets = append(iTargets, iTarget)
+
+		claimStatus[id] = claimFinished
 	}
 	return iTargets, nil
 }
@@ -404,13 +517,11 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			return nil, err
 		}
 
-		if svc.ImageRef != nil {
-			iTargets, err := s.imgTargetsForRefs([]reference.Named{svc.ImageRef})
-			if err != nil {
-				return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
-			}
-			m = m.WithImageTargets(iTargets)
+		iTargets, err := s.imgTargetsForDependencyIDs(svc.DependencyIDs)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}
+		m = m.WithImageTargets(iTargets)
 
 		result = append(result, m)
 
@@ -427,3 +538,11 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 func badTypeErr(b *starlark.Builtin, ex interface{}, v starlark.Value) error {
 	return fmt.Errorf("%v expects a %T; got %T (%v)", b.Name(), ex, v, v)
 }
+
+type claim int
+
+const (
+	claimNone claim = iota
+	claimPending
+	claimFinished
+)

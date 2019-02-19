@@ -3,12 +3,11 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
+	"strconv"
 	"time"
 
-	"github.com/docker/distribution/reference"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,7 +21,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -115,32 +113,18 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 		matching[arg] = true
 	}
 
-	var tlw io.Writer
-	if useActionWriter {
-		tlw = NewTiltfileLogWriter(u.store)
-	} else {
-		tlw = logger.Get(ctx).Writer(logger.InfoLvl)
-	}
-	manifests, globalYAML, configFiles, warnings, err := tiltfile.Load(ctx, fileName, matching, tlw)
-	if err == nil && len(manifests) == 0 && globalYAML.Empty() {
-		err = fmt.Errorf("No resources found. Get started here → https://docs.tilt.build/tutorial.html")
-	}
-	if err != nil {
-		logger.Get(ctx).Infof(err.Error())
-	}
+	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:        watchMounts,
-		Manifests:          manifests,
-		GlobalYAMLManifest: globalYAML,
-		TiltfilePath:       absTfPath,
-		ConfigFiles:        configFiles,
-		InitManifests:      manifestNames,
-		TriggerMode:        triggerMode,
-		StartTime:          startTime,
-		FinishTime:         time.Now(),
-		Err:                err,
-		Warnings:           warnings,
+		WatchMounts:     watchMounts,
+		TiltfilePath:    absTfPath,
+		ConfigFiles:     configFiles,
+		InitManifests:   manifestNames,
+		TriggerMode:     triggerMode,
+		StartTime:       startTime,
+		FinishTime:      time.Now(),
+		ExecuteTiltfile: false,
+		Warnings:        warnings,
 	})
 }
 
@@ -172,6 +156,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		err = handleBuildCompleted(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
+	case DeployIDAction:
+		handleDeployIDAction(ctx, state, action)
 	case LogAction:
 		handleLogAction(state, action)
 	case GlobalYAMLApplyStartedAction:
@@ -341,6 +327,16 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	return nil
 }
 
+func handleDeployIDAction(ctx context.Context, state *store.EngineState, action DeployIDAction) {
+	mn := state.ManifestNameForTargetID(action.TargetID)
+	ms, ok := state.ManifestState(mn)
+	if !ok {
+		return
+	}
+
+	ms.DeployID = action.DeployID
+}
+
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 	if state.TriggerMode != model.TriggerManual {
 		return
@@ -441,8 +437,14 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
-	state.CurrentTiltfileBuild = model.BuildRecord{}
 	state.PendingConfigFileChanges = make(map[string]bool)
+	status := model.BuildRecord{
+		StartTime: event.StartTime,
+		Reason:    model.BuildReasonFlagConfig,
+		Edits:     []string{state.TiltfilePath},
+	}
+
+	state.CurrentTiltfileBuild = status
 }
 
 func handleConfigsReloaded(
@@ -459,8 +461,10 @@ func handleConfigsReloaded(
 		Warnings:   event.Warnings,
 		Reason:     model.BuildReasonFlagConfig,
 		Edits:      []string{state.TiltfilePath},
+		Log:        state.CurrentTiltfileBuild.Log,
 	}
 	setLastTiltfileBuild(state, status)
+	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
 		return
@@ -496,7 +500,7 @@ func handleConfigsReloaded(
 //
 // Intended as a helper for pod-mutating events.
 func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
-	manifestName := model.ManifestName(pod.ObjectMeta.Labels[ManifestNameLabel])
+	manifestName := model.ManifestName(pod.ObjectMeta.Labels[k8s.ManifestNameLabel])
 	if manifestName == "" {
 		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodSelectors
 		for _, m := range state.Manifests() {
@@ -511,12 +515,6 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 		}
 	}
 
-	podID := k8s.PodIDFromPod(pod)
-	startedAt := pod.CreationTimestamp.Time
-	status := podStatusToString(*pod)
-	ns := k8s.NamespaceFromPod(pod)
-	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
-
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
@@ -524,48 +522,25 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	}
 
 	ms := mt.State
-	manifest := mt.Manifest
 
-	var imageID reference.NamedTagged
-	for _, iTarget := range manifest.ImageTargets {
-		var err error
-		imageID, err = k8s.FindImageNamedTaggedMatching(pod.Spec, iTarget.Ref)
-		if err != nil {
-			// Ditto, this could happen if we get a pod from an old version of the manifest.
+	deployID := ms.DeployID
+	if podDeployID, ok := pod.ObjectMeta.Labels[k8s.TiltDeployIDLabel]; ok {
+		if pdID, err := strconv.Atoi(podDeployID); err != nil || pdID != int(deployID) {
 			return nil, nil
-		}
-
-		if imageID != nil {
-			break
 		}
 	}
 
-	if imageID == nil {
-		// Ditto, this could happen if we get a pod from an old version of the manifest.
-		return nil, nil
-	}
+	podID := k8s.PodIDFromPod(pod)
+	startedAt := pod.CreationTimestamp.Time
+	status := podStatusToString(*pod)
+	ns := k8s.NamespaceFromPod(pod)
+	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
-	// There are 4 cases:
-	// 1) This pod has an imageID we don't recognize because it's an old build
-	// 2) This pod has an imageID we don't recognize because it's a new build
-	// 3) This pod has an imageID we recognize, and we need to record it.
-	// 4) This pod has an imageID we recognize, and we've already recorded it.
-
-	// (1) + (2)
-	if ms.PodSet.ImageID == nil ||
-		ms.PodSet.ImageID.String() != imageID.String() {
-
-		bestPod := ms.MostRecentPod()
-		isOld := !bestPod.Empty() && bestPod.StartedAt.After(startedAt)
-		if isOld {
-			// (1)
-			return nil, nil
-		}
-
-		// (2)
+	// CASE 1: We don't have a set of pods for this DeployID yet
+	if ms.PodSet.DeployID == 0 || ms.PodSet.DeployID != deployID {
 		ms.PodSet = store.PodSet{
-			ImageID: imageID,
-			Pods:    make(map[k8s.PodID]*store.Pod),
+			DeployID: deployID,
+			Pods:     make(map[k8s.PodID]*store.Pod),
 		}
 		ms.PodSet.Pods[podID] = &store.Pod{
 			PodID:      podID,
@@ -579,7 +554,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 
 	podInfo, ok := ms.PodSet.Pods[podID]
 	if !ok {
-		// (3)
+		// CASE 2: We have a set of pods for this DeployID, but not this particular pod -- record it
 		podInfo = &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,
@@ -590,7 +565,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 		ms.PodSet.Pods[podID] = podInfo
 	}
 
-	// (4)
+	// CASE 3: This pod is already in the PodSet, nothing to do.
 	return mt, podInfo
 }
 
@@ -646,15 +621,25 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	// Check if the container is ready.
 	var cStatus v1.ContainerStatus
 	var err error
-	for _, iTarget := range manifest.ImageTargets {
-		cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
-		if err != nil {
-			logger.Get(ctx).Debugf("Error matching container: %v", err)
-			return
+	if len(manifest.ImageTargets) > 0 {
+		// Get status of (first) container matching (an) image we built for this manifest.
+		for _, iTarget := range manifest.ImageTargets {
+			cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
+			if err != nil {
+				logger.Get(ctx).Debugf("Error matching container: %v", err)
+				return
+			}
+			if cStatus.Name != "" {
+				break
+			}
 		}
-		if cStatus.Name != "" {
-			break
+	} else {
+		// We didn't build images for this manifest so we have no good way of figuring
+		// out which container(s) we care about; for now, take the first.
+		if len(pod.Status.ContainerStatuses) > 0 {
+			cStatus = pod.Status.ContainerStatuses[0]
 		}
+
 	}
 
 	if cStatus.Name == "" {
@@ -769,7 +754,7 @@ func handleLogAction(state *store.EngineState, action LogAction) {
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
 	service := action.Service
-	manifestName := model.ManifestName(service.ObjectMeta.Labels[ManifestNameLabel])
+	manifestName := model.ManifestName(service.ObjectMeta.Labels[k8s.ManifestNameLabel])
 	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
 		return
 	}
@@ -790,32 +775,41 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
-	engineState.GlobalYAML = action.GlobalYAMLManifest
+
+	if action.ExecuteTiltfile {
+		engineState.GlobalYAML = action.GlobalYAMLManifest
+		engineState.GlobalYAMLState = store.NewYAMLManifestState()
+
+		status := model.BuildRecord{
+			StartTime:  action.StartTime,
+			FinishTime: action.FinishTime,
+			Error:      action.Err,
+			Warnings:   action.Warnings,
+			Reason:     model.BuildReasonFlagInit,
+		}
+		setLastTiltfileBuild(engineState, status)
+
+		manifests := action.Manifests
+		for _, m := range manifests {
+			engineState.UpsertManifestTarget(store.NewManifestTarget(m))
+		}
+
+		engineState.InitialBuildCount = len(manifests)
+	} else {
+		// NOTE(dmiller): this kicks off a Tiltfile build
+		engineState.PendingConfigFileChanges[action.TiltfilePath] = true
+		engineState.InitialBuildCount = len(action.InitManifests)
+	}
+
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
-
-	status := model.BuildRecord{
-		StartTime:  action.StartTime,
-		FinishTime: action.FinishTime,
-		Error:      action.Err,
-		Warnings:   action.Warnings,
-		Reason:     model.BuildReasonFlagInit,
-	}
-	setLastTiltfileBuild(engineState, status)
-
-	manifests := action.Manifests
-	for _, m := range manifests {
-		engineState.UpsertManifestTarget(store.NewManifestTarget(m))
-	}
 	engineState.WatchMounts = watchMounts
-
-	engineState.InitialBuildCount = len(manifests)
 	return nil
 }
 
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
 		log := []byte(fmt.Sprintf("%v\n", status.Error))
-		handleTiltfileLogAction(state, TiltfileLogAction{log})
+		status.Log = model.AppendLog(status.Log, log)
 	}
 	state.LastTiltfileBuild = status
 }
