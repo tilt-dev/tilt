@@ -146,6 +146,7 @@ type Commit struct {
 // GET "/info"
 type Info struct {
 	ID                 string
+	Builder            BuilderVersion
 	Containers         int
 	ContainersRunning  int
 	ContainersPaused   int
@@ -158,6 +159,7 @@ type Info struct {
 	MemoryLimit        bool
 	SwapLimit          bool
 	KernelMemory       bool
+	KernelMemoryTCP    bool
 	CPUCfsPeriod       bool `json:"CpuCfsPeriod"`
 	CPUCfsQuota        bool `json:"CpuCfsQuota"`
 	CPUShares          bool
@@ -543,6 +545,7 @@ type ImagesPruneReport struct {
 // BuildCachePruneReport contains the response for Engine API:
 // POST "/build/prune"
 type BuildCachePruneReport struct {
+	CachesDeleted  []string
 	SpaceReclaimed uint64
 }
 
@@ -592,14 +595,21 @@ type BuildResult struct {
 
 // BuildCache contains information about a build cache record
 type BuildCache struct {
-	ID      string
-	Mutable bool
-	InUse   bool
-	Size    int64
-
+	ID          string
+	Parent      string
+	Type        string
+	Description string
+	InUse       bool
+	Shared      bool
+	Size        int64
 	CreatedAt   time.Time
 	LastUsedAt  *time.Time
 	UsageCount  int
-	Parent      string
-	Description string
+}
+
+// BuildCachePruneOptions hold parameters to prune the build cache
+type BuildCachePruneOptions struct {
+	All         bool
+	KeepStorage int64
+	Filters     filters.Args
 }
