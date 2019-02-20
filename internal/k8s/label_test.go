@@ -134,7 +134,7 @@ func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
 }
 
-func TestEntityMatchesLabels(t *testing.T) {
+func TestSelectorMatchesLabels(t *testing.T) {
 	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
 	if err != nil {
 		t.Fatal(err)
@@ -159,17 +159,60 @@ func TestEntityMatchesLabels(t *testing.T) {
 		"tier":        "backend",
 		"foo":         "bar", // an extra label on the pod shouldn't affect the match
 	}
-	assert.True(t, svc.MatchesLabels(labels))
+	assert.True(t, svc.SelectorMatchesLabels(labels))
 
-	assert.False(t, dep.MatchesLabels(labels), "kind Deployment does not support MatchesLabels")
+	assert.False(t, dep.SelectorMatchesLabels(labels), "kind Deployment does not support SelectorMatchesLabels")
 
 	labels["app"] = "not-blorg"
-	assert.False(t, svc.MatchesLabels(labels), "wrong value for an expected key")
+	assert.False(t, svc.SelectorMatchesLabels(labels), "wrong value for an expected key")
 
 	delete(labels, "app")
-	assert.False(t, svc.MatchesLabels(labels), "expected key missing")
+	assert.False(t, svc.SelectorMatchesLabels(labels), "expected key missing")
 }
 
+func TestMatchesMetadataLabels(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.DoggosServiceYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entities) != 1 {
+		t.Fatal("expected exactly two entities")
+	}
+	e := entities[0]
+
+	exactMatch := map[string]string{
+		"app":          "doggos",
+		"whosAGoodBoy": "imAGoodBoy",
+	}
+	assertMatchesMetadataLabels(t, e, exactMatch, true, "same set of labels should match")
+
+	subset := map[string]string{
+		"app": "doggos",
+	}
+	assertMatchesMetadataLabels(t, e, subset, true, "subset of labels should match")
+
+	labelsWithExtra := map[string]string{
+		"app":           "doggos",
+		"whosAGoodBoy":  "imAGoodBoy",
+		"tooManyLabels": "yep",
+	}
+	assertMatchesMetadataLabels(t, e, labelsWithExtra, false, "extra key not in metadata")
+
+	wrongValForKey := map[string]string{
+		"app":          "doggos",
+		"whosAGoodBoy": "notMeWhoops",
+	}
+	assertMatchesMetadataLabels(t, e, wrongValForKey, false, "label with wrong val for key")
+}
+
+func assertMatchesMetadataLabels(t *testing.T, e K8sEntity, labels map[string]string, expected bool, msg string) {
+	match, err := e.MatchesMetadataLabels(labels)
+	if err != nil {
+		t.Errorf("error checking if entity %s matches labels %v: %v", e.Name(), labels, err)
+	}
+	assert.Equal(t, expected, match, "expected entity %s matches metadata labels %v --> %t (%s)",
+		e.Name(), labels, expected, msg)
+}
 func parseOneEntity(t *testing.T, yaml string) K8sEntity {
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
