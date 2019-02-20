@@ -36,7 +36,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, err := tiltfile.Load(ctx, c.fileName, nil, os.Stdout)
+	manifests, globalYaml, _, _, err := tiltfile.Load(ctx, c.fileName, nil, os.Stdout)
 	if err != nil {
 		return err
 	}

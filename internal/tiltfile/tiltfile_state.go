@@ -41,7 +41,8 @@ type tiltfileState struct {
 
 	builtinsMap starlark.StringDict
 
-	logger *log.Logger
+	logger   *log.Logger
+	warnings []string
 }
 
 func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
@@ -157,7 +158,8 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 	err = s.buildIndex.assertAllMatched()
 	if err != nil {
-		return resourceSet{}, nil, err
+		s.logger.Printf("WARNING: %s\n", err)
+		s.warnings = append(s.warnings, err.Error())
 	}
 
 	return resourceSet{

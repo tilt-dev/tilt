@@ -182,7 +182,7 @@ func (s Script) Run(ctx context.Context) error {
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
 		// TODO(dmiller): not this?
-		manifests, _, _, err := tiltfile.Load(ctx, tfPath, nil, os.Stdout)
+		manifests, _, _, warnings, err := tiltfile.Load(ctx, tfPath, nil, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -193,6 +193,7 @@ func (s Script) Run(ctx context.Context) error {
 			WatchMounts:  true,
 			Manifests:    manifests,
 			TiltfilePath: tfPath,
+			Warnings:     warnings,
 		}
 		return s.upper.Init(ctx, initAction)
 	})

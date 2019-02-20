@@ -55,7 +55,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 		tlw := NewTiltfileLogWriter(st)
 
-		manifests, globalYAML, configFiles, err := tiltfile.Load(ctx, tiltfilePath, matching, tlw)
+		manifests, globalYAML, configFiles, warnings, err := tiltfile.Load(ctx, tiltfilePath, matching, tlw)
 		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
@@ -69,6 +69,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			StartTime:   startTime,
 			FinishTime:  time.Now(),
 			Err:         err,
+			Warnings:    warnings,
 		})
 	}()
 }

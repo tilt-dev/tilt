@@ -9,6 +9,7 @@ const BuildHistoryLimit = 2
 type BuildRecord struct {
 	Edits      []string
 	Error      error
+	Warnings   []string
 	StartTime  time.Time
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason

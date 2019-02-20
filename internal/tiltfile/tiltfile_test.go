@@ -714,7 +714,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
+	_, _, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -1112,7 +1112,8 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+	f.load()
+	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
@@ -1127,7 +1128,8 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadErrString("foo", "image gcr.io/foo:stable is not used in any resource")
+	f.load()
+	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestFail(t *testing.T) {
@@ -1246,8 +1248,8 @@ func TestImageRefSuggestion(t *testing.T) {
 docker_build('gcr.typo.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
-
-	f.loadErrString("Did you mean:\n - gcr.io/foo")
+	f.load()
+	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestDir(t *testing.T) {
@@ -1284,6 +1286,7 @@ type fixture struct {
 	manifests    []model.Manifest
 	yamlManifest model.Manifest
 	configFiles  []string
+	warnings     []string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -1385,17 +1388,18 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
+	manifests, yamlManifest, configFiles, warnings, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
 	f.manifests = manifests
 	f.yamlManifest = yamlManifest
 	f.configFiles = configFiles
+	f.warnings = warnings
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
@@ -1631,6 +1635,16 @@ func (f *fixture) assertConfigFiles(filenames ...string) {
 	sort.Strings(expected)
 	sort.Strings(f.configFiles)
 	assert.Equal(f.t, expected, f.configFiles)
+}
+
+func (f *fixture) assertWarnings(warnings ...string) {
+	var expected []string
+	for _, warning := range warnings {
+		expected = append(expected, warning)
+	}
+	sort.Strings(expected)
+	sort.Strings(f.warnings)
+	assert.Equal(f.t, expected, f.warnings)
 }
 
 func (f *fixture) entities(y string) []k8s.K8sEntity {

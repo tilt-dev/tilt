@@ -123,6 +123,9 @@ func (v *ResourceView) titleTextName() rty.Component {
 	if color == cPending {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
+	if len(v.res.LastBuild().Warnings) > 0 {
+		name = fmt.Sprintf("%s %s", v.res.Name, "— Warning ⚠️")
+	}
 	sb.Fg(tcell.ColorDefault).Text(name)
 	return sb.Build()
 }

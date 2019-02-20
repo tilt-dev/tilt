@@ -115,6 +115,7 @@ type InitAction struct {
 	StartTime  time.Time
 	FinishTime time.Time
 	Err        error
+	Warnings   []string
 
 	ExecuteTiltfile bool
 }
@@ -173,6 +174,7 @@ type ConfigsReloadedAction struct {
 	StartTime  time.Time
 	FinishTime time.Time
 	Err        error
+	Warnings   []string
 }
 
 func (ConfigsReloadedAction) Action() {}

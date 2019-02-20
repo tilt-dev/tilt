@@ -457,6 +457,7 @@ func handleConfigsReloaded(
 		StartTime:  event.StartTime,
 		FinishTime: event.FinishTime,
 		Error:      event.Err,
+		Warnings:   event.Warnings,
 		Reason:     model.BuildReasonFlagConfig,
 		Edits:      []string{state.TiltfilePath},
 		Log:        state.CurrentTiltfileBuild.Log,
@@ -782,6 +783,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 			StartTime:  action.StartTime,
 			FinishTime: action.FinishTime,
 			Error:      action.Err,
+			Warnings:   action.Warnings,
 			Reason:     model.BuildReasonFlagInit,
 		}
 		setLastTiltfileBuild(engineState, status)
