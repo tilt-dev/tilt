@@ -29,7 +29,7 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvidePortForwarder,
 	k8s.ProvideConfigNamespace,
 	k8s.ProvideKubectlRunner,
-
+	k8s.ProvideContainerRuntime,
 	k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(

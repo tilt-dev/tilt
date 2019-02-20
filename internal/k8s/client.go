@@ -87,6 +87,8 @@ type Client interface {
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
 	ConnectedToCluster(ctx context.Context) error
+
+	ContainerRuntime(ctx context.Context) container.Runtime
 }
 
 type K8sClient struct {
@@ -98,6 +100,7 @@ type K8sClient struct {
 	kubeContext     KubeContext
 	configNamespace Namespace
 	clientSet       kubernetes.Interface
+	runtimeAsync    *runtimeAsync
 }
 
 var _ Client = K8sClient{}
@@ -127,6 +130,7 @@ func ProvideK8sClient(
 	}
 
 	core := clientset.CoreV1()
+	runtimeAsync := newRuntimeAsync(core)
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -141,6 +145,7 @@ func ProvideK8sClient(
 		portForwarder:   pf,
 		configNamespace: configNamespace,
 		clientSet:       clientset,
+		runtimeAsync:    runtimeAsync,
 	}
 }
 

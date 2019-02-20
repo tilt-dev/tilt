@@ -7,11 +7,12 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
-func WireSynclet(ctx context.Context, env k8s.Env) (*Synclet, error) {
+func WireSynclet(ctx context.Context, env k8s.Env, runtime container.Runtime) (*Synclet, error) {
 	wire.Build(
 		docker.DefaultClient,
 		wire.Bind(new(docker.Client), new(docker.Cli)),

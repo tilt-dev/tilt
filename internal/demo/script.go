@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -33,13 +34,14 @@ type Script struct {
 	env     k8s.Env
 	kClient k8s.Client
 	branch  RepoBranch
+	runtime container.Runtime
 
 	readTiltfileCh chan string
 	podMonitor     *podMonitor
 }
 
 func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
-	env k8s.Env, st *store.Store, branch RepoBranch) Script {
+	env k8s.Env, st *store.Store, branch RepoBranch, runtime container.Runtime) Script {
 	s := Script{
 		upper:          upper,
 		hud:            hud,
@@ -49,6 +51,7 @@ func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
 		readTiltfileCh: make(chan string),
 		podMonitor:     &podMonitor{},
 		store:          st,
+		runtime:        runtime,
 	}
 	st.AddSubscriber(s.podMonitor)
 	return s
@@ -145,6 +148,10 @@ func (s Script) Run(ctx context.Context) error {
 		_, _ = fmt.Fprintf(os.Stderr, "tilt demo mode only supports Docker For Mac, Minikube, and MicroK8s\n")
 		_, _ = fmt.Fprintf(os.Stderr, "check your current cluster with:\n")
 		_, _ = fmt.Fprintf(os.Stderr, "\nkubectl config get-contexts\n\n")
+		return nil
+	} else if s.runtime != container.RuntimeDocker {
+		_, _ = fmt.Fprintf(os.Stderr, "tilt demo mode only supports clusters configured with docker\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Current container runtime: %s\n", s.runtime)
 		return nil
 	}
 

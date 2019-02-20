@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/store"
 
@@ -25,6 +26,7 @@ type ImageBuildAndDeployer struct {
 	icb           *imageAndCacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
+	runtime       container.Runtime
 	analytics     analytics.Analytics
 	injectSynclet bool
 	clock         build.Clock
@@ -37,13 +39,15 @@ func NewImageBuildAndDeployer(
 	env k8s.Env,
 	analytics analytics.Analytics,
 	updMode UpdateMode,
-	c build.Clock) *ImageBuildAndDeployer {
+	c build.Clock,
+	runtime container.Runtime) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		icb:       NewImageAndCacheBuilder(b, cacheBuilder, updMode),
 		k8sClient: k8sClient,
 		env:       env,
 		analytics: analytics,
 		clock:     c,
+		runtime:   runtime,
 	}
 }
 
@@ -215,7 +219,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 // The k8s will use the image already available
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
-	return ibd.env.IsLocalCluster()
+	return ibd.env.IsLocalCluster() && ibd.runtime == container.RuntimeDocker
 }
 
 // Create a new ImageTarget with the dockerfiles rewritten

@@ -56,7 +56,7 @@ var DeployerWireSet = wire.NewSet(
 func provideBuildAndDeployer(
 	ctx context.Context,
 	docker docker.Client,
-	k8s k8s.Client,
+	kClient k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
 	updateMode UpdateModeFlag,
@@ -67,6 +67,7 @@ func provideBuildAndDeployer(
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		build.ProvideClock,
+		k8s.ProvideContainerRuntime,
 	)
 
 	return nil, nil
@@ -84,6 +85,7 @@ func provideImageBuildAndDeployer(
 		wire.Value(k8s.Env(k8s.EnvDockerDesktop)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
+		k8s.ProvideContainerRuntime,
 	)
 
 	return nil, nil
@@ -96,9 +98,18 @@ func provideDockerComposeBuildAndDeployer(
 	dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		wire.Value(k8s.Env(k8s.EnvUnknown)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
+
+		// EnvNone ensures that we get an exploding k8s client.
+		wire.Value(k8s.Env(k8s.EnvNone)),
+		k8s.ProvideClientConfig,
+		k8s.ProvideConfigNamespace,
+		k8s.ProvideKubeContext,
+		k8s.ProvideKubectlRunner,
+		k8s.ProvideK8sClient,
+		k8s.ProvidePortForwarder,
+		k8s.ProvideContainerRuntime,
 	)
 
 	return nil, nil

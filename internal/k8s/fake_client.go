@@ -48,6 +48,7 @@ type FakeK8sClient struct {
 	watches   []fakePodWatch
 
 	UpsertError error
+	Runtime     container.Runtime
 }
 
 type fakePodWatch struct {
@@ -257,6 +258,13 @@ func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, po
 	c.LastForwardPortPodID = podID
 	c.LastForwardPortRemotePort = remotePort
 	return optionalLocalPort, func() {}, nil
+}
+
+func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime {
+	if c.Runtime != "" {
+		return c.Runtime
+	}
+	return container.RuntimeDocker
 }
 
 type BufferCloser struct {
