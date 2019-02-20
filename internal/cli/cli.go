@@ -42,6 +42,7 @@ func Execute() {
 	}
 
 	addCommand(rootCmd, &upCmd{})
+	addCommand(rootCmd, &doctorCmd{})
 	addCommand(rootCmd, &downCmd{})
 	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, &versionCmd{})

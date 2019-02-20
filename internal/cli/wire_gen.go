@@ -7,8 +7,10 @@ package cli
 
 import (
 	"context"
+	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -18,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
+	"k8s.io/apimachinery/pkg/version"
 	"time"
 )
 
@@ -57,7 +60,19 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	syncletManager := engine.NewSyncletManager(client)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	cli, err := docker.DefaultClient(ctx, env, runtime)
+	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	clientClient, err := docker.ProvideDockerClient(ctx, dockerEnv)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	version, err := docker.ProvideDockerVersion(ctx, clientClient)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	cli, err := docker.DefaultClient(ctx, clientClient, version)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -138,7 +153,19 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	syncletManager := engine.NewSyncletManager(client)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	cli, err := docker.DefaultClient(ctx, env, runtime)
+	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
+	if err != nil {
+		return Threads{}, err
+	}
+	clientClient, err := docker.ProvideDockerClient(ctx, dockerEnv)
+	if err != nil {
+		return Threads{}, err
+	}
+	version, err := docker.ProvideDockerVersion(ctx, clientClient)
+	if err != nil {
+		return Threads{}, err
+	}
+	cli, err := docker.DefaultClient(ctx, clientClient, version)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -195,12 +222,115 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	return client, nil
 }
 
+func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return "", err
+	}
+	return kubeContext, nil
+}
+
+func wireEnv(ctx context.Context) (k8s.Env, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return "", err
+	}
+	env := k8s.ProvideEnv(kubeContext)
+	return env, nil
+}
+
+func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	return namespace, nil
+}
+
+func wireRuntime(ctx context.Context) (container.Runtime, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return "", err
+	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	return runtime, nil
+}
+
+func wireK8sVersion(ctx context.Context) (*version.Info, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideRESTConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := k8s.ProvideClientSet(config)
+	if err != nil {
+		return nil, err
+	}
+	info, err := k8s.ProvideServerVersion(clientset)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func wireDockerVersion(ctx context.Context) (types.Version, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return types.Version{}, err
+	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
+	if err != nil {
+		return types.Version{}, err
+	}
+	clientClient, err := docker.ProvideDockerClient(ctx, dockerEnv)
+	if err != nil {
+		return types.Version{}, err
+	}
+	typesVersion, err := docker.ProvideDockerVersion(ctx, clientClient)
+	if err != nil {
+		return types.Version{}, err
+	}
+	return typesVersion, nil
+}
+
+func wireDockerEnv(ctx context.Context) (docker.DockerEnv, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	return dockerEnv, nil
+}
+
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideClientConfig, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideK8sClient)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, server.ProvideHeadsUpServer, provideThreads,
+	K8sWireSet, docker.ProvideDockerEnv, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, server.ProvideHeadsUpServer, provideThreads,
 )
 
 type Threads struct {
