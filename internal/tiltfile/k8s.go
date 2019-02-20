@@ -111,6 +111,53 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 	return starlark.None, nil
 }
 
+func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var yamlValue starlark.Value
+	var labelsValue starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"yaml", &yamlValue,
+		"labels?", &labelsValue)
+	if err != nil {
+		return nil, err
+	}
+
+	var metaLabels map[string]string
+	if labelsValue != nil {
+		d, ok := labelsValue.(*starlark.Dict)
+		if !ok {
+			return nil, fmt.Errorf("kwarg `labels`: expected dict, got %T", labelsValue)
+		}
+
+		metaLabels, err = skylarkStringDictToGoMap(d)
+		if err != nil {
+			return nil, fmt.Errorf("kwarg `labels`: %v", err)
+		}
+	}
+
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
+	if err != nil {
+		return nil, err
+	}
+
+	match, rest, err := k8s.FilterByMetadataLabels(entities, metaLabels)
+	if err != nil {
+		return nil, err
+	}
+
+	matchingStr, err := k8s.SerializeYAML(match)
+	if err != nil {
+		return nil, err
+	}
+	restStr, err := k8s.SerializeYAML(rest)
+	if err != nil {
+		return nil, err
+	}
+
+	return starlark.Tuple{
+		newYAMLValue(matchingStr), newYAMLValue(restStr),
+	}, nil
+}
+
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var yamlValue starlark.Value

@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/yaml"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -894,6 +895,21 @@ docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 `)
 
 	f.loadErrString("no such file or directory")
+}
+
+func TestFilterYaml(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("k8s.yaml", yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml, testyaml.SanchoYAML))
+	f.file("Tiltfile", `labels = {'app': 'doggos'}
+doggos, rest = filter_yaml('k8s.yaml', labels=labels)
+k8s_resource('doggos', yaml=doggos)
+k8s_resource('rest', yaml=rest)
+`)
+	f.load()
+
+	f.assertNextManifest("doggos", deployment("doggos"))
+	f.assertNextManifest("rest", deployment("snack"), deployment("sancho"))
 }
 
 func TestTopLevelIfStatement(t *testing.T) {
