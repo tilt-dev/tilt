@@ -7,7 +7,7 @@
 
 Local Kubernetes development with no stress.
 
-[Tilt](https://tilt.build) helps you develop your microservices locally.
+[Tilt](https://tilt.dev) helps you develop your microservices locally.
 Run `tilt up` to start working on your services in a complete dev environment
 configured for your team.
 
@@ -25,14 +25,14 @@ or logs right in your terminal.
 
 If you don't know where to start, start here:
 
-[Complete Tilt User Guide](https://docs.tilt.build/)
+[Complete Tilt User Guide](https://docs.tilt.dev/)
 
 Download the Tilt binary on
 [the github releases page](https://github.com/windmilleng/tilt/releases).
 
 Tilt expects that you already have Docker and `kubectl` installed. Alternately, you can
 skip Kubernetes altogether and run Tilt with your pre-existing `docker-compose.yml`.
-Read the more detailed [Installation Guide](https://docs.tilt.build/install.html)
+Read the more detailed [Installation Guide](https://docs.tilt.dev/install.html)
 to help you `tilt up` quickly.
 
 ## Configure Your Workflow to Share With Your Team
@@ -40,8 +40,8 @@ to help you `tilt up` quickly.
 Configure Tilt with a `Tiltfile`, written in a small subset of Python called
 [Starlark](https://github.com/bazelbuild/starlark#tour).
 
-To get started, check out the [tutorial](https://docs.tilt.build/tutorial.html) or dive into the
-[API reference](https://docs.tilt.build/api.html).
+To get started, check out the [tutorial](https://docs.tilt.dev/tutorial.html) or dive into the
+[API reference](https://docs.tilt.dev/api.html).
 
 ## Community
 
@@ -53,7 +53,7 @@ us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
 We tweet [@windmill_eng](https://twitter.com/windmill_eng) and
 blog about building Tilt at [medium.com/windmill-engineering](https://medium.com/windmill-engineering).
 
-We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](https://docs.tilt.build/code_of_conduct.html).
+We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](https://docs.tilt.dev/code_of_conduct.html).
 
 ## Development
 

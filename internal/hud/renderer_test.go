@@ -628,6 +628,37 @@ func TestCompletedPod(t *testing.T) {
 	rtf.run("Completed is a good status", 70, 20, v, vs)
 }
 
+func TestBrackets(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	ts := time.Now().Add(-30 * time.Second)
+
+	v := view.View{
+		Log: `[build] This line should be prefixed with 'build'
+[hello world] This line should be prefixed with [hello world]
+[hello world] this line too
+`,
+		Resources: []view.Resource{
+			{
+				Name: "[vigoda]",
+				BuildHistory: []model.BuildRecord{{
+					StartTime:  ts,
+					FinishTime: ts,
+				}},
+				ResourceInfo: view.K8SResourceInfo{
+					PodName:         "vigoda-pod",
+					PodStatus:       "Running",
+					PodCreationTime: ts,
+				},
+				LastDeployTime:  ts,
+				ShowBuildStatus: true,
+			},
+		},
+	}
+	vs := fakeViewState(1, view.CollapseNo)
+
+	rtf.run("text in brackets", 80, 20, v, vs)
+}
+
 func TestPendingBuildInManualTriggerMode(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 	ts := time.Now().Add(-30 * time.Second)

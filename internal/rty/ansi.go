@@ -3,101 +3,13 @@ package rty
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/gdamore/tcell"
 )
 
-// this is all copied from tview.
-
-var (
-	colorPattern  = regexp.MustCompile(`\[([a-zA-Z]+|#[0-9a-zA-Z]{6}|\-)?(:([a-zA-Z]+|#[0-9a-zA-Z]{6}|\-)?(:([lbdru]+|\-)?)?)?\]`)
-	escapePattern = regexp.MustCompile(`\[([a-zA-Z0-9_,;: \-\."#]+)\[(\[*)\]`)
-)
-
-// decomposeString returns information about a string which may contain color
-// tags. It returns the indices of the color tags (as returned by
-// re.FindAllStringIndex()), the color tags themselves (as returned by
-// re.FindAllStringSubmatch()), the indices of an escaped tags, the string
-// stripped by any color tags and escaped, and the screen width of the stripped
-// string.
-func decomposeString(text string) (colorIndices [][]int, colors [][]string, escapeIndices [][]int, stripped string, width int) {
-	// Get positions of color and escape tags.
-	colorIndices = colorPattern.FindAllStringIndex(text, -1)
-	colors = colorPattern.FindAllStringSubmatch(text, -1)
-	escapeIndices = escapePattern.FindAllStringIndex(text, -1)
-
-	// Because the color pattern detects empty tags, we need to filter them out.
-	for i := len(colorIndices) - 1; i >= 0; i-- {
-		if colorIndices[i][1]-colorIndices[i][0] == 2 {
-			colorIndices = append(colorIndices[:i], colorIndices[i+1:]...)
-			colors = append(colors[:i], colors[i+1:]...)
-		}
-	}
-
-	// Remove the color tags from the original string.
-	var from int
-	buf := make([]byte, 0, len(text))
-	for _, indices := range colorIndices {
-		buf = append(buf, []byte(text[from:indices[0]])...)
-		from = indices[1]
-	}
-	buf = append(buf, text[from:]...)
-
-	// Escape string.
-	stripped = string(escapePattern.ReplaceAll(buf, []byte("[$1$2]")))
-
-	// Get the width of the stripped string.
-	width = runewidth.StringWidth(stripped)
-
-	return
-}
-
-// Positions of substrings in regular expressions.
-const (
-	colorForegroundPos = 1
-	colorBackgroundPos = 3
-	colorFlagPos       = 5
-)
-
-// styleFromTag takes the given style, defined by a foreground color (fgColor),
-// a background color (bgColor), and style attributes, and modifies it based on
-// the substrings (tagSubstrings) extracted by the regular expression for color
-// tags. The new colors and attributes are returned where empty strings mean
-// "don't modify" and a dash ("-") means "reset to default".
-func styleFromTag(fgColor, bgColor, attributes string, tagSubstrings []string) (newFgColor, newBgColor, newAttributes string) {
-	if tagSubstrings[colorForegroundPos] != "" {
-		color := tagSubstrings[colorForegroundPos]
-		if color == "-" {
-			fgColor = "-"
-		} else if color != "" {
-			fgColor = color
-		}
-	}
-
-	if tagSubstrings[colorBackgroundPos-1] != "" {
-		color := tagSubstrings[colorBackgroundPos]
-		if color == "-" {
-			bgColor = "-"
-		} else if color != "" {
-			bgColor = color
-		}
-	}
-
-	if tagSubstrings[colorFlagPos-1] != "" {
-		flags := tagSubstrings[colorFlagPos]
-		if flags == "-" {
-			attributes = "-"
-		} else if flags != "" {
-			attributes = flags
-		}
-	}
-
-	return fgColor, bgColor, attributes
-}
+// this is adapted from tview.
 
 // The states of the ANSI escape code parser.
 const (
@@ -110,10 +22,10 @@ const (
 // ansi is a io.Writer which translates ANSI escape codes into tview color
 // tags.
 type ansi struct {
-	io.Writer
+	buffer     []rune
+	directives []directive
 
 	// Reusable buffers.
-	buffer                        *bytes.Buffer // The entire output text of one Write().
 	csiParameter, csiIntermediate *bytes.Buffer // Partial CSI strings.
 
 	// The current state of the parser. One of the ansi constants.
@@ -124,21 +36,33 @@ type ansi struct {
 // written to it into tview color tags. Other escape codes don't have an effect
 // and are simply removed. The translated text is written to the provided
 // writer.
-func ANSIWriter(writer io.Writer) io.Writer {
+func ANSIWriter() *ansi {
 	return &ansi{
-		Writer:          writer,
-		buffer:          new(bytes.Buffer),
 		csiParameter:    new(bytes.Buffer),
 		csiIntermediate: new(bytes.Buffer),
 		state:           ansiText,
 	}
 }
 
+func (a *ansi) setColors(fg, bg string) {
+	a.Flush()
+	a.directives = append(a.directives, fgDirective(tcell.GetColor(fg)))
+	a.directives = append(a.directives, bgDirective(tcell.GetColor(bg)))
+}
+
+func (a *ansi) Flush() {
+	if len(a.buffer) == 0 {
+		return
+	}
+	a.directives = append(a.directives, textDirective(string(a.buffer)))
+	a.buffer = nil
+}
+
 // Write parses the given text as a string of runes, translates ANSI escape
 // codes to color tags and writes them to the output writer.
 func (a *ansi) Write(text []byte) (int, error) {
 	defer func() {
-		a.buffer.Reset()
+		a.Flush()
 	}()
 
 	for _, r := range string(text) {
@@ -152,10 +76,7 @@ func (a *ansi) Write(text []byte) (int, error) {
 				a.csiIntermediate.Reset()
 				a.state = ansiControlSequence
 			case 'c': // Reset.
-				_, err := fmt.Fprint(a.buffer, "[-:-:-]")
-				if err != nil {
-					return 0, err
-				}
+				a.setColors("-", "-")
 				a.state = ansiText
 			case 'P', ']', 'X', '^', '_': // Substrings and commands.
 				a.state = ansiSubstring
@@ -181,10 +102,7 @@ func (a *ansi) Write(text []byte) (int, error) {
 					if count == 0 {
 						count = 1
 					}
-					_, err := fmt.Fprint(a.buffer, strings.Repeat("\n", count))
-					if err != nil {
-						return 0, err
-					}
+					a.buffer = append(a.buffer, []rune(strings.Repeat("\n", count))...)
 				case 'm': // Select Graphic Rendition.
 					var (
 						background, foreground, attributes string
@@ -193,9 +111,7 @@ func (a *ansi) Write(text []byte) (int, error) {
 					fields := strings.Split(a.csiParameter.String(), ";")
 					if len(fields) == 0 || len(fields) == 1 && fields[0] == "0" {
 						// Reset.
-						if _, err := a.buffer.WriteString("[-:-:-]"); err != nil {
-							return 0, err
-						}
+						a.setColors("-", "-")
 						break
 					}
 					lookupColor := func(colorNumber int, bright bool) string {
@@ -288,10 +204,7 @@ func (a *ansi) Write(text []byte) (int, error) {
 						attributes = ":" + attributes
 					}
 					if len(foreground) > 0 || len(background) > 0 || len(attributes) > 0 {
-						_, err := fmt.Fprintf(a.buffer, "[%s:%s%s]", foreground, background, attributes)
-						if err != nil {
-							return 0, err
-						}
+						a.setColors(foreground, background)
 					}
 				}
 				a.state = ansiText
@@ -312,26 +225,10 @@ func (a *ansi) Write(text []byte) (int, error) {
 				a.state = ansiEscape
 			} else {
 				// Just a regular rune. Send to buffer.
-				if _, err := a.buffer.WriteRune(r); err != nil {
-					return 0, err
-				}
+				a.buffer = append(a.buffer, r)
 			}
 		}
 	}
 
-	// Write buffer to target writer.
-	n, err := a.buffer.WriteTo(a.Writer)
-	if err != nil {
-		return int(n), err
-	}
 	return len(text), nil
-}
-
-// TranslateANSI replaces ANSI escape sequences found in the provided string
-// with tview's color tags and returns the resulting string.
-func TranslateANSI(text string) string {
-	var buffer bytes.Buffer
-	writer := ANSIWriter(&buffer)
-	_, _ = writer.Write([]byte(text))
-	return buffer.String()
 }
