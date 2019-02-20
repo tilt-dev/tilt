@@ -158,7 +158,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 	err = s.buildIndex.assertAllMatched()
 	if err != nil {
-		s.logger.Printf("WARNING: %s", err)
+		s.logger.Printf("WARNING: %s\n", err)
 		s.warnings = append(s.warnings, err.Error())
 	}
 
