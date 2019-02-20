@@ -142,3 +142,11 @@ You can see a proof-of-concept implementation of this in [Tilt's Tiltfile](https
 Open questions:
 - Could we parse output in some way to display a better view of which tests failed?
 - Could we make it easy to break down one monolithic test run in to many parallel test runs?
+
+## Service Dependencies (P1, C2)
+
+There are situations where services need to start in a specific order: redis needs to start before service A, or service B opens a persistent connection to service C. Users should be able to express these dependencies in Tilt to ensure that they are started in the correct order.
+
+Open questions:
+- Is it sufficient to only worry about this on start, or are there scenarios where, if service A depends on service B, that we need to restart service A if service B changes?
+- Is it more ergonomic to just make Tilt start the services in the order you define them, or is it better to make an explicit dependency graph with some new syntax feature?
