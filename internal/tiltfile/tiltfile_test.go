@@ -929,7 +929,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertYAMLManifest("RELEASE-NAME-helloworld-chart")
+	f.assertYAMLManifest("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		"helm",
@@ -951,7 +951,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertYAMLManifest("RELEASE-NAME-helloworld-chart")
+	f.assertYAMLManifest("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		"helm",
