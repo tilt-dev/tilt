@@ -87,3 +87,21 @@ ADD . .
 `, string(newDf))
 	}
 }
+
+func TestInjectCopyNormalizedNames(t *testing.T) {
+	df := Dockerfile(`
+FROM golang:1.10
+COPY --from=vandelay/common /usr/src/common/package.json /usr/src/common/yarn.lock /usr/src/common/
+ADD . .
+`)
+	ref := container.MustParseNamedTagged("vandelay/common:deadbeef")
+	newDf, modified, err := InjectImageDigest(df, ref)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+		assert.Equal(t, `
+FROM golang:1.10
+COPY --from="docker.io/vandelay/common:deadbeef" /usr/src/common/package.json /usr/src/common/yarn.lock /usr/src/common/
+ADD . .
+`, string(newDf))
+	}
+}
