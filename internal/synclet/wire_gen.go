@@ -15,7 +15,19 @@ import (
 // Injectors from wire.go:
 
 func WireSynclet(ctx context.Context, env k8s.Env, runtime container.Runtime) (*Synclet, error) {
-	cli, err := docker.DefaultClient(ctx, env, runtime)
+	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	client, err := docker.ProvideDockerClient(ctx, dockerEnv)
+	if err != nil {
+		return nil, err
+	}
+	version, err := docker.ProvideDockerVersion(ctx, client)
+	if err != nil {
+		return nil, err
+	}
+	cli, err := docker.DefaultClient(ctx, client, version)
 	if err != nil {
 		return nil, err
 	}

@@ -28,6 +28,8 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+type DockerEnv func(string) string
+
 // Version info
 // https://docs.docker.com/develop/sdk/#api-version-matrix
 //
@@ -96,41 +98,49 @@ type Cli struct {
 	initDone  chan bool
 }
 
-func DefaultClient(ctx context.Context, env k8s.Env, runtime container.Runtime) (*Cli, error) {
-	envFunc := os.Getenv
+func ProvideDockerEnv(ctx context.Context, env k8s.Env, runtime container.Runtime) (DockerEnv, error) {
 	if runtime == container.RuntimeDocker {
 		if env == k8s.EnvMinikube {
 			envMap, err := minikube.DockerEnv(ctx)
 			if err != nil {
-				return nil, errors.Wrap(err, "defaultDockerClient")
+				return nil, errors.Wrap(err, "ProvideDockerEnv")
 			}
 
-			envFunc = func(key string) string { return envMap[key] }
+			return func(key string) string { return envMap[key] }, nil
 		} else if env == k8s.EnvMicroK8s {
-			envFunc = func(key string) string {
+			return func(key string) string {
 				val := os.Getenv(key)
 				if val == "" && key == "DOCKER_HOST" {
 					return microK8sDockerHost
 				}
 				return val
-			}
+			}, nil
 		}
 	}
+	return DockerEnv(os.Getenv), nil
+}
 
+func ProvideDockerClient(ctx context.Context, envFunc DockerEnv) (*client.Client, error) {
 	opts, err := CreateClientOpts(ctx, envFunc)
 	if err != nil {
-		return nil, errors.Wrap(err, "defaultDockerClient")
+		return nil, errors.Wrap(err, "ProvideDockerClient")
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "defaultDockerClient")
+		return nil, errors.Wrap(err, "ProvideDockerClient")
 	}
+	return d, nil
+}
 
-	serverVersion, err := d.ServerVersion(ctx)
+func ProvideDockerVersion(ctx context.Context, client *client.Client) (types.Version, error) {
+	v, err := client.ServerVersion(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "defaultDockerClient")
+		return types.Version{}, errors.Wrap(err, "ProvideDockerVersion")
 	}
+	return v, err
+}
 
+func DefaultClient(ctx context.Context, d *client.Client, serverVersion types.Version) (*Cli, error) {
 	if !SupportedVersion(serverVersion) {
 		return nil, fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
 			minDockerVersion, serverVersion.APIVersion)

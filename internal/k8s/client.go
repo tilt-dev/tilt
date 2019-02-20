@@ -20,6 +20,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -285,6 +286,10 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	stdin := bytes.NewReader([]byte(rawYAML))
 
 	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+}
+
+func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {
+	return clientSet.Discovery().ServerVersion()
 }
 
 func ProvideClientSet(cfg *rest.Config) (*kubernetes.Clientset, error) {

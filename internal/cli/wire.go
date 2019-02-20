@@ -7,9 +7,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"k8s.io/apimachinery/pkg/version"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -25,16 +28,21 @@ var K8sWireSet = wire.NewSet(
 	k8s.DetectNodeIP,
 	k8s.ProvideKubeContext,
 	k8s.ProvideClientConfig,
+	k8s.ProvideClientSet,
 	k8s.ProvideRESTConfig,
 	k8s.ProvidePortForwarder,
 	k8s.ProvideConfigNamespace,
 	k8s.ProvideKubectlRunner,
 	k8s.ProvideContainerRuntime,
+	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 
+	docker.ProvideDockerEnv,
+	docker.ProvideDockerClient,
+	docker.ProvideDockerVersion,
 	docker.DefaultClient,
 	wire.Bind(new(docker.Client), new(docker.Cli)),
 
@@ -97,6 +105,41 @@ func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server server.Head
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	wire.Build(K8sWireSet)
+	return nil, nil
+}
+
+func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
+	wire.Build(K8sWireSet)
+	return "", nil
+}
+
+func wireEnv(ctx context.Context) (k8s.Env, error) {
+	wire.Build(K8sWireSet)
+	return "", nil
+}
+
+func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
+	wire.Build(K8sWireSet)
+	return "", nil
+}
+
+func wireRuntime(ctx context.Context) (container.Runtime, error) {
+	wire.Build(K8sWireSet)
+	return "", nil
+}
+
+func wireK8sVersion(ctx context.Context) (*version.Info, error) {
+	wire.Build(K8sWireSet)
+	return nil, nil
+}
+
+func wireDockerVersion(ctx context.Context) (types.Version, error) {
+	wire.Build(BaseWireSet)
+	return types.Version{}, nil
+}
+
+func wireDockerEnv(ctx context.Context) (docker.DockerEnv, error) {
+	wire.Build(BaseWireSet)
 	return nil, nil
 }
 

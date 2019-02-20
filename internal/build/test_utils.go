@@ -46,7 +46,23 @@ func (fakeClock) Now() time.Time { return time.Unix(0, 0) }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
-	dCli, err := docker.DefaultClient(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
+
+	dEnv, err := docker.ProvideDockerEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cli, err := docker.ProvideDockerClient(ctx, dEnv)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	version, err := docker.ProvideDockerVersion(ctx, cli)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dCli, err := docker.DefaultClient(ctx, cli, version)
 	if err != nil {
 		t.Fatal(err)
 	}
