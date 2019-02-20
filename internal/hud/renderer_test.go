@@ -306,6 +306,23 @@ func TestRenderTiltLog(t *testing.T) {
 	rtf.run("tilt log", 70, 20, v, vs)
 }
 
+func TestRenderTiltLogHalfScreen(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := view.View{
+		Log:       strings.Repeat("abcdefg ", 30),
+		Resources: nil,
+	}
+	vs := fakeViewState(0, view.CollapseNo)
+	vs.LogModal = view.LogModal{
+		TiltLog: view.TiltLogHalfScreen,
+	}
+
+	rtf.run("tilt log half screen", 70, 40, v, vs)
+	rtf.run("tilt log half screen height 1", 70, 2, v, vs)
+	rtf.run("tilt log half screen height 10", 70, 10, v, vs)
+}
+
 func TestRenderLogModal(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 

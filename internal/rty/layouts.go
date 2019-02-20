@@ -317,6 +317,9 @@ func (l *Line) Size(width int, height int) (int, int, error) {
 }
 
 func (l *Line) Render(w Writer, width int, height int) error {
+	if height == 0 {
+		return nil
+	}
 	w.SetContent(0, 0, 0, nil) // set at least one to take up our line
 	w, err := w.Divide(0, 0, width, height)
 	if err != nil {
