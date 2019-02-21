@@ -70,6 +70,9 @@ func (s *tiltfileState) exec() error {
 
 	s.logger.Printf("Beginning Tiltfile execution")
 	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
+	if err == nil {
+		s.logger.Printf("Successfully executed Tiltfile")
+	}
 	return err
 }
 
