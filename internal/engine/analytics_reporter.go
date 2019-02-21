@@ -52,10 +52,13 @@ func ProvideAnalyticsReporter(a analytics.Analytics, st *store.Store) *Analytics
 func (ar *AnalyticsReporter) report() {
 	st := ar.store.RLockState()
 	defer ar.store.RUnlockState()
-	var dcCount, k8sCount, fastbuildCount int
+	var dcCount, k8sCount, fastbuildCount, unbuiltCount int
 	for _, m := range st.Manifests() {
 		if m.IsK8s() {
 			k8sCount++
+			if len(m.ImageTargets) == 0 {
+				unbuiltCount++
+			}
 		}
 		if m.IsDC() {
 			dcCount++
@@ -82,6 +85,7 @@ func (ar *AnalyticsReporter) report() {
 		stats["resource.dockercompose.count"] = strconv.Itoa(dcCount)
 		stats["resource.k8s.count"] = strconv.Itoa(k8sCount)
 		stats["resource.fastbuild.count"] = strconv.Itoa(fastbuildCount)
+		stats["resource.unbuiltresources.count"] = strconv.Itoa(unbuiltCount)
 	}
 
 	stats["tiltfile.error"] = tiltfileIsInError
