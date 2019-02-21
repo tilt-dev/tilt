@@ -92,7 +92,15 @@ func podMap(podList *v1.PodList) map[string][]v1.Pod {
 	ip := make(map[string][]v1.Pod, 0)
 	for _, p := range podList.Items {
 		for _, c := range p.Spec.Containers {
-			ip[c.Image] = append(ip[c.Image], p)
+			imgRef := c.Image
+
+			// normalize the image name
+			ref, err := reference.ParseNormalizedNamed(imgRef)
+			if err == nil {
+				imgRef = ref.String()
+			}
+
+			ip[imgRef] = append(ip[imgRef], p)
 		}
 	}
 	return ip

@@ -1254,6 +1254,29 @@ k8s_yaml('foo.yaml')
 	}, f.imageTargetNames(m))
 }
 
+func TestImageDependencyNormalization(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("common.dockerfile", "FROM golang:1.10")
+	f.file("auth.dockerfile", "FROM vandelay/common")
+	f.yaml("auth.yaml", deployment("auth", image("vandelay/auth")))
+	f.file("Tiltfile", `
+docker_build('vandelay/common', '.', dockerfile='common.dockerfile')
+docker_build('vandelay/auth', '.', dockerfile='auth.dockerfile')
+k8s_yaml('auth.yaml')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("auth", deployment("auth"))
+	assert.Equal(t, []string{
+		"docker.io/vandelay/common",
+		"docker.io/vandelay/auth",
+	}, f.imageTargetNames(m))
+}
+
 func TestImageRefSuggestion(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
