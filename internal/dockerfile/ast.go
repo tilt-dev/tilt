@@ -70,7 +70,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 			if newRef != nil {
 				for i, flag := range node.Flags {
 					if strings.HasPrefix(flag, "--from=") {
-						node.Flags[i] = fmt.Sprintf("--from=%q", newRef.String())
+						node.Flags[i] = fmt.Sprintf("--from=%s", newRef.String())
 					}
 				}
 			}

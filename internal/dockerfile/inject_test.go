@@ -64,7 +64,7 @@ ADD . .
 		assert.True(t, modified)
 		assert.Equal(t, `
 FROM golang:1.10
-COPY --from="gcr.io/windmill/foo:deadbeef" /src/package.json /src/package.json
+COPY --from=gcr.io/windmill/foo:deadbeef /src/package.json /src/package.json
 ADD . .
 `, string(newDf))
 	}
@@ -73,7 +73,7 @@ ADD . .
 func TestInjectCopyFromWithLabel(t *testing.T) {
 	df := Dockerfile(`
 FROM golang:1.10
-COPY --from="gcr.io/windmill/foo:bar" /src/package.json /src/package.json
+COPY --from=gcr.io/windmill/foo:bar /src/package.json /src/package.json
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
@@ -82,7 +82,7 @@ ADD . .
 		assert.True(t, modified)
 		assert.Equal(t, `
 FROM golang:1.10
-COPY --from="gcr.io/windmill/foo:deadbeef" /src/package.json /src/package.json
+COPY --from=gcr.io/windmill/foo:deadbeef /src/package.json /src/package.json
 ADD . .
 `, string(newDf))
 	}
@@ -100,7 +100,50 @@ ADD . .
 		assert.True(t, modified)
 		assert.Equal(t, `
 FROM golang:1.10
-COPY --from="docker.io/vandelay/common:deadbeef" /usr/src/common/package.json /usr/src/common/yarn.lock /usr/src/common/
+COPY --from=docker.io/vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock /usr/src/common/
+ADD . .
+`, string(newDf))
+	}
+}
+
+func TestInjectTwice(t *testing.T) {
+	df := Dockerfile(`
+FROM golang:1.10
+COPY --from="vandelay/common" /usr/src/common/package.json /usr/src/common/yarn.lock
+ADD . .
+`)
+	ref := container.MustParseNamedTagged("vandelay/common:deadbeef")
+	ast, err := ParseAST(df)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	modified, err := ast.InjectImageDigest(ref)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+
+		newDf, err := ast.Print()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, `
+FROM golang:1.10
+COPY --from=docker.io/vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock
+ADD . .
+`, string(newDf))
+	}
+
+	modified, err = ast.InjectImageDigest(ref)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+
+		newDf, err := ast.Print()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, `
+FROM golang:1.10
+COPY --from=docker.io/vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock
 ADD . .
 `, string(newDf))
 	}
