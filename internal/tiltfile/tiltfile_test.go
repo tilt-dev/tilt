@@ -1270,6 +1270,63 @@ k8s_yaml('foo.yaml')
 	}, f.imageTargetNames(m))
 }
 
+func TestImageDependencyTwice(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", `FROM golang:1.10
+COPY --from=gcr.io/image-a /src/package.json /src/package.json
+COPY --from=gcr.io/image-a /src/package.lock /src/package.lock
+`)
+	f.file("snack.yaml", `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snack
+  labels:
+    app: snack
+spec:
+  selector:
+    matchLabels:
+      app: snack
+  template:
+    metadata:
+      labels:
+        app: snack
+    spec:
+      containers:
+      - name: snack1
+        image: gcr.io/image-b
+        command: ["/go/bin/snack"]
+      - name: snack2
+        image: gcr.io/image-b
+        command: ["/go/bin/snack"]
+`)
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+k8s_yaml('snack.yaml')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("image-b")
+	assert.Equal(t, []string{
+		"gcr.io/image-a",
+		"gcr.io/image-b",
+	}, f.imageTargetNames(m))
+	assert.Equal(t, []string{
+		"gcr.io/image-a",
+		"gcr.io/image-b",
+		"image-b", // the deploy name
+	}, f.idNames(m.DependencyIDs()))
+	assert.Equal(t, []string{}, f.idNames(m.ImageTargets[0].DependencyIDs()))
+	assert.Equal(t, []string{"gcr.io/image-a"}, f.idNames(m.ImageTargets[1].DependencyIDs()))
+	assert.Equal(t, []string{"gcr.io/image-b"}, f.idNames(m.DeployTarget().DependencyIDs()))
+}
+
 func TestImageDependencyNormalization(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1673,6 +1730,14 @@ func (f *fixture) imageTargetNames(m model.Manifest) []string {
 	result := []string{}
 	for _, iTarget := range m.ImageTargets {
 		result = append(result, iTarget.ID().Name.String())
+	}
+	return result
+}
+
+func (f *fixture) idNames(ids []model.TargetID) []string {
+	result := []string{}
+	for _, id := range ids {
+		result = append(result, id.Name.String())
 	}
 	return result
 }

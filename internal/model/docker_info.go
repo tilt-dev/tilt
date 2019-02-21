@@ -44,7 +44,7 @@ func (i ImageTarget) DependencyIDs() []TargetID {
 }
 
 func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
-	i.dependencyIDs = ids
+	i.dependencyIDs = DedupeTargetIDs(ids)
 	return i
 }
 

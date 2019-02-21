@@ -69,3 +69,16 @@ type Target interface {
 	Spec() TargetSpec
 	Status() TargetStatus
 }
+
+// De-duplicate target ids, maintaining the same order.
+func DedupeTargetIDs(ids []TargetID) []TargetID {
+	result := make([]TargetID, 0, len(ids))
+	dupes := make(map[TargetID]bool, len(ids))
+	for _, id := range ids {
+		if !dupes[id] {
+			dupes[id] = true
+			result = append(result, id)
+		}
+	}
+	return result
+}
