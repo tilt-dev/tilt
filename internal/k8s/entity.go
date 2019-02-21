@@ -195,8 +195,12 @@ func FilterByImage(entities []K8sEntity, img reference.Named) (passing, rest []K
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img) })
 }
 
-func FilterByLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesLabels(labels), nil })
+func FilterBySelectorMatchesLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.SelectorMatchesLabels(labels), nil })
+}
+
+func FilterByMetadataLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesMetadataLabels(labels) })
 }
 
 func FilterByHasPodTemplateSpec(entities []K8sEntity) (passing, rest []K8sEntity, err error) {
@@ -222,7 +226,7 @@ func FilterByMatchesPodTemplateSpec(withPodSpec K8sEntity, entities []K8sEntity)
 	var allMatches []K8sEntity
 	remaining := append([]K8sEntity{}, entities...)
 	for _, template := range podTemplates {
-		match, rest, err := FilterByLabels(remaining, template.Labels)
+		match, rest, err := FilterBySelectorMatchesLabels(remaining, template.Labels)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "filtering entities by label")
 		}

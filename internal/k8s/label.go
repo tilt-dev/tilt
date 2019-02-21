@@ -129,10 +129,10 @@ func allowLabelChangesInExtDeploymentBeta1(dep *extv1beta1.Deployment) {
 	dep.Spec.Selector.MatchLabels = matchLabels
 }
 
-// MatchesLevel indicates whether the selector of the given entity matches the given label(s).
+// SelectorMatchesLabels indicates whether the pod selector of the given entity matches the given label(s).
 // Currently only supports Services, but may be expanded to support other types that
 // match pods via selectors.
-func (e K8sEntity) MatchesLabels(labels map[string]string) bool {
+func (e K8sEntity) SelectorMatchesLabels(labels map[string]string) bool {
 	svc, ok := e.Obj.(*v1.Service)
 	if !ok {
 		return false
@@ -145,5 +145,26 @@ func (e K8sEntity) MatchesLabels(labels map[string]string) bool {
 		}
 	}
 	return true
+
+}
+
+// MatchesMetadataLabels indicates whether the given label(s) are a subset
+// of metadata labels for the given entity.
+func (e K8sEntity) MatchesMetadataLabels(labels map[string]string) (bool, error) {
+	metas, err := extractObjectMetas(&e)
+	if err != nil {
+		return false, err
+	}
+
+	for _, meta := range metas {
+		for k, v := range labels {
+			realVal, ok := meta.Labels[k]
+			if !ok || realVal != v {
+				return false, nil
+			}
+		}
+	}
+
+	return true, nil
 
 }
