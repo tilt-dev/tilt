@@ -17,15 +17,15 @@ import (
 func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture()
 
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))   // k8s, fastbuild
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}})) // k8s
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
+	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
 
 	state := tf.ar.store.LockMutableStateForTesting()
 	state.TiltStartTime = time.Now()
@@ -37,13 +37,14 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf.run()
 
 	expectedTags := map[string]string{
-		"builds.completed_count":       "3",
-		"resource.count":               "9",
-		"resource.dockercompose.count": "4",
-		"resource.fastbuild.count":     "1",
-		"resource.k8s.count":           "3",
-		"tiltfile.error":               "false",
-		"up.starttime":                 state.TiltStartTime.Format(time.RFC3339),
+		"builds.completed_count":          "3",
+		"resource.count":                  "9",
+		"resource.dockercompose.count":    "4",
+		"resource.unbuiltresources.count": "3",
+		"resource.fastbuild.count":        "1",
+		"resource.k8s.count":              "3",
+		"tiltfile.error":                  "false",
+		"up.starttime":                    state.TiltStartTime.Format(time.RFC3339),
 	}
 
 	tf.assertStats(t, expectedTags)
