@@ -994,6 +994,20 @@ if True:
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
 }
 
+func TestTopLevelForLoop(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+for i in range(1, 3):
+	print(i)
+`)
+
+	f.load()
+}
+
 func TestHelm(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
