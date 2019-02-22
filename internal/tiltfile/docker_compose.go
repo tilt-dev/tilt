@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
@@ -87,7 +88,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	normalized, err := reference.ParseNormalizedNamed(imageRefAsStr)
+	normalized, err := container.ParseNamed(imageRefAsStr)
 	if err != nil {
 		return nil, err
 	}

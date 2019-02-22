@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -86,15 +87,15 @@ func injectImageDigestInContainers(entity K8sEntity, injectRef reference.Named, 
 	}
 
 	replaced := false
-	for _, container := range containers {
-		existingRef, err := reference.ParseNormalizedNamed(container.Image)
+	for _, c := range containers {
+		existingRef, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return K8sEntity{}, false, err
 		}
 
 		if existingRef.Name() == injectRef.Name() {
-			container.Image = injectRef.String()
-			container.ImagePullPolicy = policy
+			c.Image = injectRef.String()
+			c.ImagePullPolicy = policy
 			replaced = true
 		}
 	}
@@ -110,7 +111,7 @@ func injectImageDigestInEnvVars(entity K8sEntity, injectRef reference.Named) (K8
 
 	replaced := false
 	for _, envVar := range envVars {
-		existingRef, err := reference.ParseNormalizedNamed(envVar.Value)
+		existingRef, err := container.ParseNamed(envVar.Value)
 		if err != nil || existingRef == nil {
 			continue
 		}
@@ -147,7 +148,7 @@ func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Name
 		}
 		return x, replaced
 	case string:
-		ref, err := reference.ParseNormalizedNamed(x)
+		ref, err := container.ParseNamed(x)
 		if err == nil && ref.Name() == injectRef.Name() {
 			return injectRef.String(), true
 		} else {
@@ -179,8 +180,8 @@ func (e K8sEntity) HasImage(image reference.Named) (bool, error) {
 		return false, err
 	}
 
-	for _, container := range containers {
-		existingRef, err := reference.ParseNormalizedNamed(container.Image)
+	for _, c := range containers {
+		existingRef, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return false, err
 		}
@@ -199,8 +200,8 @@ func (e K8sEntity) FindImages() ([]reference.Named, error) {
 		return nil, err
 	}
 
-	for _, container := range containers {
-		ref, err := reference.ParseNormalizedNamed(container.Image)
+	for _, c := range containers {
+		ref, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return nil, err
 		}
@@ -221,8 +222,8 @@ func PodContainsRef(pod v1.PodSpec, ref reference.Named) (bool, error) {
 }
 
 func FindImageRefMatching(pod v1.PodSpec, ref reference.Named) (reference.Named, error) {
-	for _, container := range pod.Containers {
-		cRef, err := reference.ParseNormalizedNamed(container.Image)
+	for _, c := range pod.Containers {
+		cRef, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return nil, errors.Wrap(err, "FindImageRefMatching")
 		}

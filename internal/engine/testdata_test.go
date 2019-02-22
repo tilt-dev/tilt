@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -25,9 +25,9 @@ type pather interface {
 	Path() string
 }
 
-var SanchoRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho")
-var SanchoBaseRef, _ = reference.ParseNormalizedNamed("sancho-base")
-var SanchoSidecarRef, _ = reference.ParseNormalizedNamed("gcr.io/some-project-162817/sancho-sidecar")
+var SanchoRef = container.MustParseNamed("gcr.io/some-project-162817/sancho")
+var SanchoBaseRef = container.MustParseNamed("sancho-base")
+var SanchoSidecarRef = container.MustParseNamed("gcr.io/some-project-162817/sancho-sidecar")
 
 func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	return model.FastBuild{

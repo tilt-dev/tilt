@@ -19,19 +19,3 @@ func ToImgNameAndTag(nt reference.NamedTagged) ImgNameAndTag {
 		Tag:  nt.Tag(),
 	}
 }
-
-func NormalizeRefName(ref string) (string, error) {
-	named, err := reference.ParseNormalizedNamed(ref)
-	if err != nil {
-		return "", err
-	}
-	return named.String(), nil
-}
-
-func MustNormalizeRefName(ref string) string {
-	normalized, err := NormalizeRefName(ref)
-	if err != nil {
-		panic(err)
-	}
-	return normalized
-}

@@ -11,6 +11,7 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 type AST struct {
@@ -37,7 +38,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 			if node.Next == nil {
 				return nil
 			}
-			ref, err := reference.ParseNormalizedNamed(node.Next.Value)
+			ref, err := container.ParseNamed(node.Next.Value)
 			if err != nil {
 				return nil // drop the error, we don't care about malformed images
 			}
@@ -61,7 +62,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 				return nil
 			}
 
-			ref, err := reference.ParseNormalizedNamed(copyCmd.From)
+			ref, err := container.ParseNamed(copyCmd.From)
 			if err != nil {
 				return nil // drop the error, we don't care about malformed images
 			}

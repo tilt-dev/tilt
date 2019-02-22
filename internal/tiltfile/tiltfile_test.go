@@ -14,7 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/yaml"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -1814,7 +1814,7 @@ func image(ref string) imageHelper {
 }
 
 func imageNormalized(ref string) imageHelper {
-	return imageHelper{ref: docker.MustNormalizeRefName(ref)}
+	return imageHelper{ref: container.MustNormalizeRef(ref)}
 }
 
 type labelsHelper struct {
