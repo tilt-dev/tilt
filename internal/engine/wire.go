@@ -25,9 +25,12 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
+	docker.ProvideEnv,
 	build.DefaultImageBuilder,
 	build.NewCacheBuilder,
 	build.NewDockerImageBuilder,
+	build.NewExecCustomBuilder,
+	wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)),
 
 	// BuildOrder
 	NewImageBuildAndDeployer,

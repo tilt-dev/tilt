@@ -61,7 +61,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	if !image.IsFastBuild() {
+	if image.MaybeFastBuildInfo() == nil {
 		return fmt.Errorf("container build only supports FastBuilds")
 	}
 
@@ -75,7 +75,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 
 func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	image model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
-	fbInfo := image.FastBuildInfo()
+	fbInfo := image.MaybeFastBuildInfo()
 	paths, err := build.FilesToPathMappings(
 		state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {

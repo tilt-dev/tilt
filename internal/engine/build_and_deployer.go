@@ -74,7 +74,9 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 	}
 
 	if updMode == UpdateModeSynclet {
-		ibad.SetInjectSynclet(true)
+		if runtime == container.RuntimeDocker {
+			ibad.SetInjectSynclet(true)
+		}
 		return BuildOrder{sbad, dcbad, ibad}
 	}
 
@@ -82,6 +84,8 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 		return BuildOrder{cbad, dcbad, ibad}
 	}
 
-	ibad.SetInjectSynclet(true)
+	if runtime == container.RuntimeDocker {
+		ibad.SetInjectSynclet(true)
+	}
 	return BuildOrder{sbad, dcbad, ibad}
 }

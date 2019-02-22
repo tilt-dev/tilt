@@ -47,7 +47,7 @@ func (fakeClock) Now() time.Time { return time.Unix(0, 0) }
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
 
-	dEnv, err := docker.ProvideDockerEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
+	dEnv, err := docker.ProvideEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
 	if err != nil {
 		t.Fatal(err)
 	}

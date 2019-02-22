@@ -42,7 +42,6 @@ var K8sWireSet = wire.NewSet(
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 
-	docker.ProvideDockerEnv,
 	docker.ProvideDockerClient,
 	docker.ProvideDockerVersion,
 	docker.DefaultClient,
@@ -142,9 +141,9 @@ func wireDockerVersion(ctx context.Context) (types.Version, error) {
 	return types.Version{}, nil
 }
 
-func wireDockerEnv(ctx context.Context) (docker.DockerEnv, error) {
+func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	wire.Build(BaseWireSet)
-	return nil, nil
+	return docker.Env{}, nil
 }
 
 func provideClock() func() time.Time {

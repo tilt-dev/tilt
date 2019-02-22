@@ -34,13 +34,18 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
 	if err != nil {
 		return nil, err
 	}
 	clock := build.ProvideClock()
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, kClient, env, memoryAnalytics, engineUpdateMode, clock, runtime)
-	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, engineUpdateMode)
+	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
+	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, memoryAnalytics, engineUpdateMode, clock, runtime)
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, engineUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
 	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode, runtime)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
@@ -59,15 +64,20 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	env := _wireEnvValue
-	memoryAnalytics := analytics.NewMemoryAnalytics()
-	updateModeFlag := _wireUpdateModeFlagValue
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
 	if err != nil {
 		return nil, err
 	}
 	clock := build.ProvideClock()
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, kClient, env, memoryAnalytics, updateMode, clock, runtime)
+	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
+	memoryAnalytics := analytics.NewMemoryAnalytics()
+	updateModeFlag := _wireUpdateModeFlagValue
+	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, memoryAnalytics, updateMode, clock, runtime)
 	return imageBuildAndDeployer, nil
 }
 
@@ -83,7 +93,6 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	dockerImageBuilder := build.NewDockerImageBuilder(dCli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(dCli)
-	updateModeFlag := _wireEngineUpdateModeFlagValue
 	env := _wireK8sEnvValue
 	portForwarder := k8s.ProvidePortForwarder()
 	clientConfig := k8s.ProvideClientConfig()
@@ -95,24 +104,30 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	clock := build.ProvideClock()
+	execCustomBuilder := build.NewExecCustomBuilder(dCli, dockerEnv, clock)
+	updateModeFlag := _wireEngineUpdateModeFlagValue
 	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {
 		return nil, err
 	}
-	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, updateMode)
-	clock := build.ProvideClock()
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, engineImageAndCacheBuilder, clock)
 	return dockerComposeBuildAndDeployer, nil
 }
 
 var (
-	_wireEngineUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
 	_wireK8sEnvValue               = k8s.Env(k8s.EnvNone)
+	_wireEngineUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
 )
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, output.CaptureAll, wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(build.DefaultConsole, output.CaptureAll, wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), docker.ProvideEnv, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
