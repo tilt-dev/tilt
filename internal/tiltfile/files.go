@@ -304,7 +304,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		s.recordConfigFile(d)
 	}
 
-	return newYAMLValue(yaml), nil
+	return newBlob(yaml), nil
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -326,54 +326,17 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	s.recordConfigFile(localPath.path)
 
-	return newYAMLValue(yaml), nil
+	return newBlob(string(yaml)), nil
 }
 
-func (s *tiltfileState) yaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var inputValue starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "input", &inputValue)
+func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var input starlark.String
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "input", &input)
 	if err != nil {
 		return nil, err
 	}
-	var input string
-	switch v := inputValue.(type) {
-	case *blob:
-		input = v.text
-	case starlark.String:
-		input = v.GoString()
-	default:
-		return nil, fmt.Errorf("invalid type: got %s, want string or Blob", inputValue.Type())
-	}
 
-	return newYAMLValue(input), nil
-}
-
-type yamlValue struct {
-	contents string
-}
-
-var _ starlark.Value = &yamlValue{}
-
-func newYAMLValue(contents string) *yamlValue {
-	return &yamlValue{contents: contents}
-}
-
-func (y *yamlValue) String() string {
-	return y.contents
-}
-
-func (y *yamlValue) Type() string {
-	return "yaml"
-}
-
-func (y *yamlValue) Freeze() {}
-
-func (y *yamlValue) Truth() starlark.Bool {
-	return len(y.contents) > 0
-}
-
-func (y *yamlValue) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: yaml")
+	return newBlob(input.GoString()), nil
 }
 
 func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

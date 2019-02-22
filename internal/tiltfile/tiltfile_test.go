@@ -297,7 +297,7 @@ func TestLocal(t *testing.T) {
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
-yaml = yaml(local('cat foo.yaml'))
+yaml = local('cat foo.yaml')
 k8s_resource('foo', yaml)
 `)
 
@@ -308,21 +308,6 @@ k8s_resource('foo', yaml)
 		deployment("foo"))
 }
 
-func TestBlobAsYamlErr(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-yaml = local('cat foo.yaml')
-k8s_resource('foo', yaml)
-`)
-
-	f.loadErrString("no longer a valid YAML format")
-}
-
 func TestReadFile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -331,7 +316,7 @@ func TestReadFile(t *testing.T) {
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
-yaml = yaml(read_file('foo.yaml'))
+yaml = read_file('foo.yaml')
 k8s_resource('foo', yaml)
 `)
 
@@ -1182,7 +1167,7 @@ func TestBlob(t *testing.T) {
 
 	f.file(
 		"Tiltfile",
-		fmt.Sprintf(`k8s_yaml(yaml('''%s'''))`, testyaml.SnackYaml),
+		fmt.Sprintf(`k8s_yaml(blob('''%s'''))`, testyaml.SnackYaml),
 	)
 
 	f.load()
@@ -1196,10 +1181,10 @@ func TestBlobErr(t *testing.T) {
 
 	f.file(
 		"Tiltfile",
-		`k8s_yaml(yaml(42))`,
+		`blob(42)`,
 	)
 
-	f.loadErrString("got int, want string or Blob")
+	f.loadErrString("for parameter 1: got int, want string")
 }
 
 func TestImageDependency(t *testing.T) {
