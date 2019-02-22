@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -81,6 +82,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 func globalTags() map[string]string {
 	ret := map[string]string{
 		"version": buildInfo().Version,
+		"os":      runtime.GOOS,
 	}
 
 	// store a hash of the git remote to help us guess how many users are running it on the same repository
