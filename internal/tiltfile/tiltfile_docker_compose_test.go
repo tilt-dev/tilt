@@ -271,7 +271,6 @@ RUN echo hi`
 	f.load("foo")
 
 	f.assertNextManifest("foo",
-		buildFilters("foo/tmp"),
 		fileChangeFilters("foo/tmp"),
 	)
 }

@@ -774,7 +774,6 @@ k8s_yaml('foo.yaml')
 
 	f.load("foo")
 	f.assertNextManifest("foo",
-		buildFilters(".#foo.yaml"),
 		fileChangeFilters(".#foo.yaml"),
 	)
 }
@@ -794,7 +793,6 @@ k8s_yaml('foo/foo.yaml')
 
 	f.load("foo")
 	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
 		fileChangeFilters("foo/.#foo.yaml"),
 	)
 }

@@ -37,7 +37,11 @@ func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 		}
 	}
 	for _, r := range m.LocalRepos() {
-		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
+		// We actually don't want to filter out the contents of .gitignore in a build. There are lots of situation where
+		// a directory is .gitignored (vendor) but does need to be included in the build context.
+		// As a result leave the contents as the empty string here so we ignore the gitiginore contents but
+		// do ignore the `.git` directory.
+		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, "")
 		if err == nil {
 			matchers = append(matchers, gim)
 		}
@@ -101,7 +105,6 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 
 	ignoreMatcher := model.NewCompositeMatcher(matchers)
 
-	// TODO(maia): this doesn't have to be a composite matcher anymore since removing `configMatcher`?
 	return fileChangeFilter{
 		ignoreMatchers: ignoreMatcher,
 	}, nil
