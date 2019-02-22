@@ -41,18 +41,17 @@ func TestConfigsController(t *testing.T) {
 
 func (f *ccFixture) run() ConfigsReloadedAction {
 	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
-	origDir, err := os.Getwd()
-	if err != nil {
-		f.T().Fatalf("error getting wd: %v", err)
-	}
-	err = os.Chdir(f.Path())
+	// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
+	// but not changed out of), and if it was already invalid, then let's not worry about it.
+	origDir, _ := os.Getwd()
+	err := os.Chdir(f.Path())
 	if err != nil {
 		f.T().Fatalf("error changing dir: %v", err)
 	}
 	defer func() {
-		// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
-		// but not changed out of), so changing back to the original directory will fail, and we probably don't care.
-		_ = os.Chdir(origDir)
+		if origDir != "" {
+			_ = os.Chdir(origDir)
+		}
 	}()
 
 	f.tfl.Manifests = []model.Manifest{{Name: "bar"}}
