@@ -39,10 +39,10 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/gdamore/encoding v0.0.0-20151215212835-b23993cbb635
 	github.com/gdamore/tcell v1.1.0
-	github.com/go-logfmt/logfmt v0.3.0
+	github.com/go-logfmt/logfmt v0.4.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogo/googleapis v1.1.0
-	github.com/gogo/protobuf v1.1.1
+	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.2.0
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
@@ -62,6 +62,7 @@ require (
 	github.com/imdario/mergo v0.3.6
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/json-iterator/go v1.1.5
+	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/lucasb-eyer/go-colorful v0.0.0-20180526135729-345fbb3dbcdb
 	github.com/mattn/go-colorable v0.0.9
@@ -85,16 +86,16 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible
 	github.com/pierrec/lz4 v0.0.0-20180906185208-bb6bfd13c6a2
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.8.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/prometheus/client_golang v0.0.0-20180828130045-1216062c28a0
-	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
-	github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e
-	github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273
+	github.com/prometheus/client_golang v0.9.2
+	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
+	github.com/prometheus/common v0.2.0
+	github.com/prometheus/procfs v0.0.0-20190219184716-e4d4a2206da0
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
-	github.com/sirupsen/logrus v1.0.6
+	github.com/sirupsen/logrus v1.3.0
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.2
 	github.com/stretchr/testify v1.3.0
@@ -106,20 +107,22 @@ require (
 	github.com/windmilleng/wmclient v0.0.0-20190207221841-7ee652d5293f
 	go.opencensus.io v0.18.0
 	go.starlark.net v0.0.0-20181218181455-c0b6b768d91b
-	golang.org/x/crypto v0.0.0-20180820150726-614d502a4dac
-	golang.org/x/net v0.0.0-20180826012351-8a410e7b638d
-	golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be
-	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
-	golang.org/x/sys v0.0.0-20180828065106-d99a578cf41b
+	golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2
+	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
+	golang.org/x/oauth2 v0.0.0-20181203162652-d668ce993890
+	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4
+	golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223
 	golang.org/x/text v0.3.0
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
+	golang.org/x/tools v0.0.0-20190221204921-83362c3779f5 // indirect
 	google.golang.org/api v0.1.0
-	google.golang.org/appengine v1.1.0
-	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
-	google.golang.org/grpc v1.14.0
+	google.golang.org/appengine v1.4.0
+	google.golang.org/genproto v0.0.0-20181202183823-bd91e49a0898
+	google.golang.org/grpc v1.17.0
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/inf.v0 v0.9.1
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0-20190111032252-67edc246be36
 	k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
 	k8s.io/client-go v0.0.0-20190111032708-6bf63545bd02
