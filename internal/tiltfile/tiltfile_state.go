@@ -82,7 +82,7 @@ const (
 	// build functions
 	dockerBuildN = "docker_build"
 	fastBuildN   = "fast_build"
-	customBuildN = "customBuild"
+	customBuildN = "custom_build"
 
 	// docker compose functions
 	dockerComposeN = "docker_compose"
