@@ -154,7 +154,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 	}
 
 	return starlark.Tuple{
-		newYAMLValue(matchingStr), newYAMLValue(restStr),
+		newBlob(matchingStr), newBlob(restStr),
 	}, nil
 }
 
@@ -328,9 +328,6 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8
 	case nil:
 		return nil, nil
 	case *blob:
-		// NOTE(Maia): return a specific err b/c this is a recent compatibility change (Feb. 20th 2019)
-		return nil, fmt.Errorf("`Blob` is no longer a valid YAML format: please wrap with `yaml(my_blob)`")
-	case *yamlValue:
 		return k8s.ParseYAMLFromString(v.String())
 	default:
 		yamlPath, err := s.localPathFromSkylarkValue(v)
