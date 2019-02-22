@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -59,7 +60,7 @@ func newSMFixture(t *testing.T) *smFixture {
 	kCli := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(kCli, sCli)
-	st := store.NewStoreForTesting()
+	st, _ := store.NewStoreForTesting()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)

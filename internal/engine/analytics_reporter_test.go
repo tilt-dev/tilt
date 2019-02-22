@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -89,10 +88,10 @@ type analyticsReporterTestFixture struct {
 }
 
 func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
-	reducer := func(ctx context.Context, engineState *store.EngineState, action store.Action) {}
+	st, _ := store.NewStoreForTesting()
 	ar := AnalyticsReporter{
 		a:       analytics.NewMemoryAnalytics(),
-		store:   store.NewStore(reducer, store.LogActionsFlag(false)),
+		store:   st,
 		started: false,
 	}
 

@@ -16,6 +16,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -24,7 +26,6 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 var testImageRef = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
@@ -491,6 +492,8 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		t.Fatal(err)
 	}
 
+	st, _ := store.NewStoreForTesting()
+
 	return &bdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
@@ -498,7 +501,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		k8s:            k8s,
 		sCli:           sCli,
 		bd:             bd,
-		st:             store.NewStoreForTesting(),
+		st:             st,
 	}
 }
 

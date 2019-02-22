@@ -7,6 +7,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/tiltfile"
+
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"k8s.io/apimachinery/pkg/version"
@@ -49,6 +51,8 @@ var BaseWireSet = wire.NewSet(
 	dockercompose.NewDockerComposeClient,
 
 	build.NewImageReaper,
+
+	tiltfile.NewTiltfileLoader,
 
 	engine.DeployerWireSet,
 	engine.NewPodLogManager,

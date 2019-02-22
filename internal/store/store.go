@@ -51,8 +51,16 @@ func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
 	}
 }
 
-func NewStoreForTesting() *Store {
-	return NewStore(EmptyReducer, false)
+func NewStoreForTesting() (*Store, <-chan Action) {
+	actions := make(chan Action, 100)
+	reducer := Reducer(func(ctx context.Context, s *EngineState, action Action) {
+		select {
+		case actions <- action:
+		case <-time.After(100 * time.Millisecond):
+			panic("would block when writing to action chan. perhaps too many actions or too small a buffer")
+		}
+	})
+	return NewStore(reducer, false), actions
 }
 
 func (s *Store) AddSubscriber(sub Subscriber) {
