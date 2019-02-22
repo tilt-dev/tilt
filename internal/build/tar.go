@@ -21,6 +21,7 @@ type ArchiveBuilder struct {
 	tw     *tar.Writer
 	buf    *bytes.Buffer
 	filter model.PathMatcher
+	paths  []string // local paths archived
 }
 
 func NewArchiveBuilder(filter model.PathMatcher) *ArchiveBuilder {
@@ -71,6 +72,7 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 }
 
 // ArchivePathsIfExist creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
+// Returns local paths that were archived
 func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMapping) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ArchivePathsIfExist")
 	defer span.Finish()
@@ -101,6 +103,7 @@ func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMa
 		if err != nil {
 			return errors.Wrapf(err, "tarPath '%s'", entry.path)
 		}
+		a.paths = append(a.paths, entry.path)
 	}
 	return nil
 }
@@ -112,6 +115,10 @@ func (a *ArchiveBuilder) BytesBuffer() (*bytes.Buffer, error) {
 	}
 
 	return a.buf, nil
+}
+
+func (a *ArchiveBuilder) Paths() []string {
+	return a.paths
 }
 
 type archiveEntry struct {

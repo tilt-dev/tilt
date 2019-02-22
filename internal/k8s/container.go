@@ -120,10 +120,11 @@ func ContainerIDFromContainerStatus(status v1.ContainerStatus) (container.ID, er
 		return "", nil
 	}
 
-	if !strings.HasPrefix(id, ContainerIDPrefix) {
+	components := strings.SplitN(id, "://", 2)
+	if len(components) != 2 {
 		return "", fmt.Errorf("Malformed container ID: %s", id)
 	}
-	return container.ID(id[len(ContainerIDPrefix):]), nil
+	return container.ID(components[1]), nil
 }
 
 func ContainerNameFromContainerStatus(status v1.ContainerStatus) container.Name {

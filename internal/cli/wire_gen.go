@@ -60,7 +60,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	syncletManager := engine.NewSyncletManager(client)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
 	if err != nil {
@@ -154,7 +154,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	syncletManager := engine.NewSyncletManager(client)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager)
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	dockerEnv, err := docker.ProvideDockerEnv(ctx, env, runtime)
 	if err != nil {

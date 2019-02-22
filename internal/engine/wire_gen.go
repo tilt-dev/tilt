@@ -23,7 +23,7 @@ import (
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
 	syncletManager := NewSyncletManagerForTests(kClient, sCli)
-	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager)
+	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics)
