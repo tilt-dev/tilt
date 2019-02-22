@@ -113,11 +113,12 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue, labelsValue starlark.Value
-	var name, kind string
+	var name, namespace, kind string
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
 		"labels?", &labelsValue,
 		"name?", &name,
+		"namespace?", &namespace,
 		"kind?", &kind,
 	)
 	if err != nil {
@@ -154,6 +155,18 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 	if name != "" {
 		var rest []k8s.K8sEntity
 		match, rest, err = k8s.FilterByName(match, name)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(rest) > 0 {
+			allRest = append(allRest, rest...)
+		}
+	}
+
+	if namespace != "" {
+		var rest []k8s.K8sEntity
+		match, rest, err = k8s.FilterByNamespace(match, namespace)
 		if err != nil {
 			return nil, err
 		}
