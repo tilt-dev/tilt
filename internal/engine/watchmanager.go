@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"path/filepath"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -27,14 +28,21 @@ type WatchableTarget interface {
 
 func watchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
 	var watchable []WatchableTarget
+	seen := map[model.TargetID]bool{}
 	for _, m := range manifests {
 		if m.IsDC() {
 			dcTarget := m.DockerComposeTarget()
-			watchable = append(watchable, dcTarget)
+			if !seen[dcTarget.ID()] {
+				watchable = append(watchable, dcTarget)
+				seen[dcTarget.ID()] = true
+			}
 		}
 
 		for _, iTarget := range m.ImageTargets {
-			watchable = append(watchable, iTarget)
+			if !seen[iTarget.ID()] {
+				watchable = append(watchable, iTarget)
+				seen[iTarget.ID()] = true
+			}
 		}
 	}
 	return watchable
@@ -70,9 +78,18 @@ func (m *configsTarget) IgnoredLocalDirectories() []string {
 type targetFilesChangedAction struct {
 	targetID model.TargetID
 	files    []string
+	time     time.Time
 }
 
 func (targetFilesChangedAction) Action() {}
+
+func newTargetFilesChangedAction(targetID model.TargetID, files ...string) targetFilesChangedAction {
+	return targetFilesChangedAction{
+		targetID: targetID,
+		files:    files,
+		time:     time.Now(),
+	}
+}
 
 type targetNotifyCancel struct {
 	target WatchableTarget
@@ -214,8 +231,7 @@ func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, target Watch
 			if !ok {
 				return
 			}
-			watchEvent := targetFilesChangedAction{targetID: target.ID()}
-
+			watchEvent := newTargetFilesChangedAction(target.ID())
 			for _, e := range fsEvents {
 				path, err := filepath.Abs(e.Path)
 				if err != nil {
