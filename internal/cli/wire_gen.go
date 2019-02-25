@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"k8s.io/apimachinery/pkg/version"
@@ -84,7 +85,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics)
 	console := build.DefaultConsole()
-	writer := build.DefaultOut()
+	writer := output.CaptureAll()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -178,7 +179,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics)
 	console := build.DefaultConsole()
-	writer := build.DefaultOut()
+	writer := output.CaptureAll()
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
