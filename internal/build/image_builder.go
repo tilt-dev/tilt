@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 
 	"github.com/containerd/console"
 	"github.com/docker/cli/cli/command"
@@ -55,14 +55,14 @@ func DefaultImageBuilder(b *dockerImageBuilder) ImageBuilder {
 }
 
 func DefaultConsole() console.Console {
-	out := output.File()
+	out := os.Stdout
 	c, _ := console.ConsoleFromFile(out)
 
 	return c
 }
 
 func DefaultOut() io.Writer {
-	return output.File()
+	return os.Stdout
 }
 
 var _ ImageBuilder = &dockerImageBuilder{}
