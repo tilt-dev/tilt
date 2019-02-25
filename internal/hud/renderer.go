@@ -52,6 +52,7 @@ var statusColors = map[string]tcell.Color{
 	"Running":                          cGood,
 	"ContainerCreating":                cPending,
 	"Pending":                          cPending,
+	"PodInitializing":                  cPending,
 	"Error":                            cBad,
 	"CrashLoopBackOff":                 cBad,
 	"ErrImagePull":                     cBad,
