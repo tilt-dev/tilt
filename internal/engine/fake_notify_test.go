@@ -3,6 +3,7 @@ package engine
 import (
 	"sync"
 
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -11,6 +12,7 @@ type fakeMultiWatcher struct {
 	errors chan error
 
 	mu         sync.Mutex
+	watchers   []*fakeWatcher
 	subs       []chan watch.FileEvent
 	subsErrors []chan error
 }
@@ -26,9 +28,11 @@ func (w *fakeMultiWatcher) newSub() (watch.Notify, error) {
 	errorCh := make(chan error)
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	watcher := newFakeWatcher(subCh, errorCh)
+	w.watchers = append(w.watchers, watcher)
 	w.subs = append(w.subs, subCh)
 	w.subsErrors = append(w.subsErrors, errorCh)
-	return newFakeWatcher(subCh, errorCh), nil
+	return watcher, nil
 }
 
 func (w *fakeMultiWatcher) getSubs() []chan watch.FileEvent {
@@ -62,8 +66,10 @@ func (w *fakeMultiWatcher) loop() {
 			if !ok {
 				return
 			}
-			for _, sub := range w.getSubs() {
-				sub <- e
+			for _, watcher := range w.watchers {
+				if watcher.matches(e.Path) {
+					watcher.inboundCh <- e
+				}
 			}
 		case e, ok := <-w.errors:
 			if !ok {
@@ -80,6 +86,8 @@ type fakeWatcher struct {
 	inboundCh  chan watch.FileEvent
 	outboundCh chan watch.FileEvent
 	errorCh    chan error
+
+	paths []string
 }
 
 func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error) *fakeWatcher {
@@ -89,7 +97,18 @@ func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error) *fakeWat
 	return r
 }
 
+func (w *fakeWatcher) matches(path string) bool {
+	for _, watched := range w.paths {
+		_, isChild := ospath.Child(watched, path)
+		if isChild {
+			return true
+		}
+	}
+	return false
+}
+
 func (w *fakeWatcher) Add(name string) error {
+	w.paths = append(w.paths, name)
 	return nil
 }
 

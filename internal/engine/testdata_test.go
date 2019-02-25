@@ -23,6 +23,8 @@ ENTRYPOINT /go/bin/sancho
 
 type pather interface {
 	Path() string
+	JoinPath(ps ...string) string
+	MkdirAll(p string)
 }
 
 var SanchoRef = container.MustParseNamed("gcr.io/some-project-162817/sancho")
@@ -144,6 +146,39 @@ func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
 	return model.Manifest{Name: "sancho"}.
 		WithImageTargets([]model.ImageTarget{baseImage, srcImage}).
 		WithDeployTarget(kTarget)
+}
+
+func NewManifestsWithCommonAncestor(fixture pather) (model.Manifest, model.Manifest) {
+	refCommon := container.MustParseNamed("gcr.io/common")
+	ref1 := container.MustParseNamed("gcr.io/image-1")
+	ref2 := container.MustParseNamed("gcr.io/image-2")
+
+	fixture.MkdirAll("common")
+	fixture.MkdirAll("image-1")
+	fixture.MkdirAll("image-2")
+
+	targetCommon := model.ImageTarget{Ref: refCommon}.WithBuildDetails(model.StaticBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  fixture.JoinPath("common"),
+	})
+	target1 := model.ImageTarget{Ref: ref1}.WithBuildDetails(model.StaticBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-1"),
+	})
+	target2 := model.ImageTarget{Ref: ref2}.WithBuildDetails(model.StaticBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-2"),
+	})
+
+	m1 := assembleK8sManifest(
+		model.Manifest{Name: "image-1"},
+		model.K8sTarget{YAML: testyaml.Deployment("image-1", ref1.String())},
+		targetCommon, target1)
+	m2 := assembleK8sManifest(
+		model.Manifest{Name: "image-2"},
+		model.K8sTarget{YAML: testyaml.Deployment("image-2", ref2.String())},
+		targetCommon, target2)
+	return m1, m2
 }
 
 // Assemble these targets into a manifest, that deploys to k8s,

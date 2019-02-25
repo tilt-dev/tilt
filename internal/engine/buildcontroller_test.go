@@ -15,7 +15,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -24,7 +24,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
-	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
 
 	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
@@ -38,7 +38,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -52,7 +52,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f.podEvent(podA)
 	f.podEvent(podB)
 
-	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
 
 	// We expect two pods associated with this manifest. We don't want to container-build
 	// if there are multiple pods, so make sure we're not sending deploy info (i.e. that
@@ -69,7 +69,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -80,7 +80,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 
 	f.b.nextBuildContainer = testContainer
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
-	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
 
 	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
@@ -109,7 +109,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Init(InitAction{
 		Manifests:       []model.Manifest{manifest},
@@ -122,7 +122,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "fe"})
-	f.fsWatcher.events <- watch.FileEvent{Path: "main.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
 
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0

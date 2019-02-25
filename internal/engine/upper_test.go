@@ -50,7 +50,9 @@ func init() {
 
 const (
 	simpleTiltfile = `
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
+repo = local_git_repo('.')
+img = fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
+img.add(repo, '/src')
 k8s_resource('foobar', yaml='snack.yaml')
 `
 	simpleYAML    = testyaml.SnackYaml
@@ -250,7 +252,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -260,7 +262,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	fileRelPath := "fdas"
-	f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath(fileRelPath)}
 
 	call = f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
@@ -283,7 +285,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -295,7 +297,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f.timerMaker.restTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
 	for _, fileRelPath := range fileRelPaths {
-		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath(fileRelPath)}
 	}
 	time.Sleep(time.Millisecond)
 	f.timerMaker.restTimerLock.Unlock()
@@ -322,7 +324,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -334,7 +336,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.timerMaker.restTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
 	for _, fileRelPath := range fileRelPaths {
-		f.fsWatcher.events <- watch.FileEvent{Path: fileRelPath}
+		f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath(fileRelPath)}
 	}
 	time.Sleep(time.Millisecond)
 	f.timerMaker.maxTimerLock.Unlock()
@@ -361,7 +363,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.SetNextBuildFailure(errors.New("Build failed"))
 
@@ -370,11 +372,11 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	call := f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
 
-	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("a.go")}
 
 	call = f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
-	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -414,7 +416,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -423,19 +425,19 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 	// Simulate a change to a.go that makes the build fail.
 	f.SetNextBuildFailure(errors.New("build failed"))
-	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("a.go")}
 
 	call = f.nextCallComplete("failed build from a.go change")
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
-	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
-	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("b.go")}
 
 	// The next build should treat both a.go and b.go as changed, and build
 	// on the last successful result, from before a.go changed.
 	call = f.nextCallComplete("build on last successful result")
-	assert.Equal(t, []string{"/a.go", "/b.go"}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("a.go"), f.JoinPath("b.go")}, call.oneState().FilesChanged())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
 
 	err := f.Stop()
@@ -447,28 +449,28 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 func TestThreeBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("fe", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneState().IsEmpty())
 
-	f.fsWatcher.events <- watch.FileEvent{Path: "/a.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("a.go")}
 
 	call = f.nextCallComplete("second build")
-	assert.Equal(t, []string{"/a.go"}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
-	f.fsWatcher.events <- watch.FileEvent{Path: "/b.go"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("b.go")}
 
 	call = f.nextCallComplete("third build")
-	assert.Equal(t, []string{"/b.go"}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneState().FilesChanged())
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, 2, len(ms.BuildHistory))
-		assert.Equal(t, []string{"/b.go"}, ms.BuildHistory[0].Edits)
-		assert.Equal(t, []string{"/a.go"}, ms.BuildHistory[1].Edits)
+		assert.Equal(t, []string{f.JoinPath("b.go")}, ms.BuildHistory[0].Edits)
+		assert.Equal(t, []string{f.JoinPath("a.go")}, ms.BuildHistory[1].Edits)
 	})
 
 	err := f.Stop()
@@ -478,7 +480,7 @@ func TestThreeBuilds(t *testing.T) {
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -667,10 +669,7 @@ k8s_resource('foobar', 'snack.yaml')`)
 	// The dockerfile hasn't changed, so there shouldn't be any builds.
 	f.assertNoCall()
 
-	f.store.Dispatch(targetFilesChangedAction{
-		files:    []string{f.JoinPath("random_file.go")},
-		targetID: call.image().ID(),
-	})
+	f.store.Dispatch(newTargetFilesChangedAction(call.image().ID(), f.JoinPath("random_file.go")))
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
@@ -1181,10 +1180,8 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
-	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTargetAt(0).ID(),
-		files:    []string{"/go/a"},
-	})
+	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
+
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1225,10 +1222,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start a fake build
-	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTargetAt(0).ID(),
-		files:    []string{"/go/a"},
-	})
+	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1267,10 +1261,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start and end a normal build
-	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTargetAt(0).ID(),
-		files:    []string{"/go/a"},
-	})
+	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1292,10 +1283,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	// Start another fake build
-	f.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTargetAt(0).ID(),
-		files:    []string{"/go/a"},
-	})
+	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return nextManifestNameToBuild(st) == manifest.Name
 	})
@@ -1514,10 +1502,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.startPod(name)
 	f.podLog(name, "first string")
 
-	f.upper.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTargetAt(0).ID(),
-		files:    []string{"/go/a.go"},
-	})
+	f.upper.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a.go"))
 
 	f.waitForCompletedBuildCount(2)
 	f.podLog(name, "second string")
@@ -1548,10 +1533,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 		assert.Equal(t, "first string\n", ms.MostRecentPod().Log())
 	})
 
-	f.upper.store.Dispatch(targetFilesChangedAction{
-		targetID: manifest.ImageTargetAt(0).ID(),
-		files:    []string{"/go/a.go"},
-	})
+	f.upper.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a.go"))
 
 	f.waitForCompletedBuildCount(2)
 
@@ -1833,7 +1815,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	assert.True(t, call.oneState().IsEmpty())
 
 	// Change a file -- should trigger build
-	f.fsWatcher.events <- watch.FileEvent{Path: "package.json"}
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("package.json")}
 	call = f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("package.json")}, call.oneState().FilesChanged())
 }
@@ -2045,6 +2027,34 @@ func TestEmptyTiltfile(t *testing.T) {
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.LastTiltfileBuild.Error.Error(), "No resources found. Check out ")
 	})
+}
+
+func TestWatchManifestsWithCommonAncestor(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := NewManifestsWithCommonAncestor(f)
+	f.Start([]model.Manifest{m1, m2}, true)
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("m1 build1")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build1")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	f.WriteFile("common/a.txt", "hello world")
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("common/a.txt")}
+
+	f.waitForCompletedBuildCount(4)
+
+	// Make sure that both builds are triggered, and that they
+	// are triggered in a particular order.
+	call = f.nextCall("m1 build2")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build2")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
 }
 
 type fakeTimerMaker struct {
@@ -2506,7 +2516,7 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 		f.WriteFile(args[i], args[i+1])
 		filenames = append(filenames, args[i])
 	}
-	f.store.Dispatch(targetFilesChangedAction{targetID: ConfigsTargetID, files: filenames})
+	f.store.Dispatch(newTargetFilesChangedAction(ConfigsTargetID, filenames...))
 }
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {

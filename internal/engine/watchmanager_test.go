@@ -202,7 +202,7 @@ func (f *wmFixture) ReadActionsUntil(lastFile string) ([]targetFilesChangedActio
 				if relPath, ok := ospath.Child(wd, absPath); ok {
 					p = relPath
 				}
-				actions = append(actions, targetFilesChangedAction{tfca.targetID, []string{p}})
+				actions = append(actions, newTargetFilesChangedAction(tfca.targetID, p))
 				if p == lastFile {
 					return actions, nil
 				}

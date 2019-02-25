@@ -73,32 +73,35 @@ type EngineState struct {
 	CurrentTiltfileBuild model.BuildRecord
 }
 
-func (e *EngineState) ManifestNameForTargetID(id model.TargetID) model.ManifestName {
+func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
+	result := make([]model.ManifestName, 0)
 	for mn, state := range e.ManifestTargets {
 		manifest := state.Manifest
 		for _, iTarget := range manifest.ImageTargets {
 			if iTarget.ID() == id {
-				return mn
+				result = append(result, mn)
 			}
 		}
 		if manifest.K8sTarget().ID() == id {
-			return mn
+			result = append(result, mn)
 		}
 		if manifest.DockerComposeTarget().ID() == id {
-			return mn
+			result = append(result, mn)
 		}
 	}
-	return ""
+	return result
 }
 
 func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
-	mn := e.ManifestNameForTargetID(id)
-	if mn == "" {
-		return BuildStatus{}
+	mns := e.ManifestNamesForTargetID(id)
+	for _, mn := range mns {
+		ms := e.ManifestTargets[mn].State
+		bs := ms.BuildStatus(id)
+		if !bs.IsEmpty() {
+			return bs
+		}
 	}
-
-	ms := e.ManifestTargets[mn].State
-	return ms.BuildStatus(id)
+	return BuildStatus{}
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -199,6 +202,10 @@ func newBuildStatus() *BuildStatus {
 	return &BuildStatus{
 		PendingFileChanges: make(map[string]time.Time),
 	}
+}
+
+func (s BuildStatus) IsEmpty() bool {
+	return len(s.PendingFileChanges) == 0 && s.LastSuccessfulResult.IsEmpty()
 }
 
 type ManifestState struct {

@@ -327,13 +327,15 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 }
 
 func handleDeployIDAction(ctx context.Context, state *store.EngineState, action DeployIDAction) {
-	mn := state.ManifestNameForTargetID(action.TargetID)
-	ms, ok := state.ManifestState(mn)
-	if !ok {
-		return
-	}
+	mns := state.ManifestNamesForTargetID(action.TargetID)
+	for _, mn := range mns {
+		ms, ok := state.ManifestState(mn)
+		if !ok {
+			continue
+		}
 
-	ms.DeployID = action.DeployID
+		ms.DeployID = action.DeployID
+	}
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
@@ -388,19 +390,17 @@ func handleFSEvent(
 		return
 	}
 
-	mn := state.ManifestNameForTargetID(event.targetID)
-	if mn == "" {
-		return
-	}
+	mns := state.ManifestNamesForTargetID(event.targetID)
+	for _, mn := range mns {
+		ms, ok := state.ManifestState(mn)
+		if !ok {
+			return
+		}
 
-	ms, ok := state.ManifestState(mn)
-	if !ok {
-		return
-	}
-
-	status := ms.MutableBuildStatus(event.targetID)
-	for _, f := range event.files {
-		status.PendingFileChanges[f] = time.Now()
+		status := ms.MutableBuildStatus(event.targetID)
+		for _, f := range event.files {
+			status.PendingFileChanges[f] = event.time
+		}
 	}
 }
 

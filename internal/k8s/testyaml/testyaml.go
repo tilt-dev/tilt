@@ -1,5 +1,7 @@
 package testyaml
 
+import "strings"
+
 const BlorgBackendYAML = `
 apiVersion: v1
 kind: Service
@@ -1109,3 +1111,30 @@ metadata:
 spec:
   replicas: 1
 `
+
+func Deployment(name string, imageName string) string {
+	result := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: NAME
+  labels:
+    app: NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: NAME
+  template:
+    metadata:
+      labels:
+        app: NAME
+    spec:
+      containers:
+      - name: NAME
+        image: IMAGE
+`
+	result = strings.Replace(result, "NAME", name, -1)
+	result = strings.Replace(result, "IMAGE", imageName, -1)
+	return result
+}
