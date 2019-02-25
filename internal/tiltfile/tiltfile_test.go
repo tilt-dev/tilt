@@ -974,6 +974,8 @@ k8s_resource('rest', yaml=rest)
 	f.loadErrString("could not associate any k8s YAML with this resource")
 }
 
+// These tests are for behavior that we specifically enabled in Starlark
+// in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
