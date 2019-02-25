@@ -131,17 +131,11 @@ func TestHasName(t *testing.T) {
 		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
 	}
 
-	// Doggos
-	hasName, err := entities[0].HasName(testyaml.DoggosName)
-	if assert.NoError(t, err) {
-		assert.True(t, hasName)
-	}
+	doggos := entities[0]
+	assert.True(t, doggos.HasName(testyaml.DoggosName))
 
-	// Snack
-	hasName, err = entities[1].HasName(testyaml.DoggosName)
-	if assert.NoError(t, err) {
-		assert.False(t, hasName)
-	}
+	snack := entities[1]
+	assert.False(t, snack.HasName(testyaml.DoggosName))
 }
 
 func TestHasNamespace(t *testing.T) {
@@ -156,8 +150,8 @@ func TestHasNamespace(t *testing.T) {
 	doggos := entities[0]
 	assert.True(t, doggos.HasNamespace(testyaml.DoggosNamespace))
 
-	snack := entities[0]
-	assert.True(t, snack.HasNamespace(testyaml.DoggosNamespace))
+	snack := entities[1]
+	assert.False(t, snack.HasNamespace(testyaml.DoggosNamespace))
 }
 
 func TestHasKind(t *testing.T) {

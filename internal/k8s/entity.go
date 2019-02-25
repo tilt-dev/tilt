@@ -205,7 +205,7 @@ func FilterByMetadataLabels(entities []K8sEntity, labels map[string]string) (pas
 }
 
 func FilterByName(entities []K8sEntity, name string) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasName(name) })
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasName(name), nil })
 }
 
 func FilterByNamespace(entities []K8sEntity, ns string) (passing, rest []K8sEntity, err error) {
@@ -253,17 +253,8 @@ func (e K8sEntity) ResourceName() string {
 	return fmt.Sprintf("k8s%s-%s", e.Kind.Kind, e.Name())
 }
 
-func (e K8sEntity) HasName(name string) (bool, error) {
-	metas, err := extractObjectMetas(&e)
-	if err != nil {
-		return false, err
-	}
-	for _, m := range metas {
-		if m.Name == name {
-			return true, nil
-		}
-	}
-	return false, nil
+func (e K8sEntity) HasName(name string) bool {
+	return e.Name() == name
 }
 
 func (e K8sEntity) HasNamespace(ns string) bool {

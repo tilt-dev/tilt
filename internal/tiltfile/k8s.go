@@ -143,8 +143,8 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	var match, allRest []k8s.K8sEntity
-	match = append(match, entities...)
+	var allRest []k8s.K8sEntity
+	match := entities
 	if len(metaLabels) > 0 {
 		match, allRest, err = k8s.FilterByMetadataLabels(match, metaLabels)
 		if err != nil {
@@ -158,10 +158,8 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		if err != nil {
 			return nil, err
 		}
+		allRest = append(allRest, rest...)
 
-		if len(rest) > 0 {
-			allRest = append(allRest, rest...)
-		}
 	}
 
 	if namespace != "" {
@@ -170,10 +168,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		if err != nil {
 			return nil, err
 		}
-
-		if len(rest) > 0 {
-			allRest = append(allRest, rest...)
-		}
+		allRest = append(allRest, rest...)
 	}
 
 	if kind != "" {
@@ -182,10 +177,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		if err != nil {
 			return nil, err
 		}
-
-		if len(rest) > 0 {
-			allRest = append(allRest, rest...)
-		}
+		allRest = append(allRest, rest...)
 	}
 
 	matchingStr, err := k8s.SerializeYAML(match)
