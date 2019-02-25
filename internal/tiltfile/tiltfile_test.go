@@ -974,6 +974,8 @@ k8s_resource('rest', yaml=rest)
 	f.loadErrString("could not associate any k8s YAML with this resource")
 }
 
+// These tests are for behavior that we specifically enabled in Starlark
+// in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -992,6 +994,20 @@ if True:
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+}
+
+func TestTopLevelForLoop(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+for i in range(1, 3):
+	print(i)
+`)
+
+	f.load()
 }
 
 func TestHelm(t *testing.T) {
