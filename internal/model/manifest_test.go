@@ -378,5 +378,25 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	manifest = manifest.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
 	err = manifest.Validate()
 	assert.Nil(t, err)
+}
 
+func TestDCTargetValidate(t *testing.T) {
+	targ := DockerComposeTarget{
+		Name:       "blah",
+		ConfigPath: "docker-compose.yml",
+	}
+	err := targ.Validate()
+	assert.NoError(t, err)
+
+	noConfPath := DockerComposeTarget{Name: "blah"}
+	err = noConfPath.Validate()
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "missing config path")
+	}
+
+	noName := DockerComposeTarget{ConfigPath: "docker-compose.yml"}
+	err = noName.Validate()
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "missing name")
+	}
 }

@@ -113,7 +113,11 @@ func (t DockerComposeTarget) Dependencies() []string {
 
 func (dc DockerComposeTarget) Validate() error {
 	if dc.ID().Empty() {
-		return fmt.Errorf("[Validate] DockerCompose resources missing name:\n%s", dc.YAMLRaw)
+		return fmt.Errorf("[Validate] DockerCompose resource missing name:\n%s", dc.YAMLRaw)
+	}
+
+	if dc.ConfigPath == "" {
+		return fmt.Errorf("[Validate] DockerCompose resource %s missing config path", dc.Name)
 	}
 
 	return nil
