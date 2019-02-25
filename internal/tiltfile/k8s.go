@@ -112,11 +112,15 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 }
 
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var yamlValue starlark.Value
-	var labelsValue starlark.Value
+	var yamlValue, labelsValue starlark.Value
+	var name, namespace, kind string
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
-		"labels?", &labelsValue)
+		"labels?", &labelsValue,
+		"name?", &name,
+		"namespace?", &namespace,
+		"kind?", &kind,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +143,48 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	match, rest, err := k8s.FilterByMetadataLabels(entities, metaLabels)
-	if err != nil {
-		return nil, err
+	var allRest []k8s.K8sEntity
+	match := entities
+	if len(metaLabels) > 0 {
+		match, allRest, err = k8s.FilterByMetadataLabels(match, metaLabels)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if name != "" {
+		var rest []k8s.K8sEntity
+		match, rest, err = k8s.FilterByName(match, name)
+		if err != nil {
+			return nil, err
+		}
+		allRest = append(allRest, rest...)
+
+	}
+
+	if namespace != "" {
+		var rest []k8s.K8sEntity
+		match, rest, err = k8s.FilterByNamespace(match, namespace)
+		if err != nil {
+			return nil, err
+		}
+		allRest = append(allRest, rest...)
+	}
+
+	if kind != "" {
+		var rest []k8s.K8sEntity
+		match, rest, err = k8s.FilterByKind(match, kind)
+		if err != nil {
+			return nil, err
+		}
+		allRest = append(allRest, rest...)
 	}
 
 	matchingStr, err := k8s.SerializeYAML(match)
 	if err != nil {
 		return nil, err
 	}
-	restStr, err := k8s.SerializeYAML(rest)
+	restStr, err := k8s.SerializeYAML(allRest)
 	if err != nil {
 		return nil, err
 	}

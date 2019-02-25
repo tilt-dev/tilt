@@ -558,6 +558,7 @@ metadata:
     app: doggos
     breed: corgi
     whosAGoodBoy: imAGoodBoy
+  namespace: the-dog-zone
 spec:
   selector:
     matchLabels:
@@ -595,7 +596,8 @@ spec:
     app: doggos
 `
 const (
-	DoggosName = "doggos"
+	DoggosName      = "doggos"
+	DoggosNamespace = "the-dog-zone"
 )
 
 const SnackYaml = `

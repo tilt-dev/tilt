@@ -122,6 +122,56 @@ func TestFilter(t *testing.T) {
 	}
 }
 
+func TestHasName(t *testing.T) {
+	entities, err := parseYAMLFromStrings(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entities) != 2 {
+		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
+	}
+
+	doggos := entities[0]
+	assert.True(t, doggos.HasName(testyaml.DoggosName))
+
+	snack := entities[1]
+	assert.False(t, snack.HasName(testyaml.DoggosName))
+}
+
+func TestHasNamespace(t *testing.T) {
+	entities, err := parseYAMLFromStrings(testyaml.DoggosDeploymentYaml, testyaml.SnackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entities) != 2 {
+		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
+	}
+
+	doggos := entities[0]
+	assert.True(t, doggos.HasNamespace(testyaml.DoggosNamespace))
+
+	snack := entities[1]
+	assert.False(t, snack.HasNamespace(testyaml.DoggosNamespace))
+}
+
+func TestHasKind(t *testing.T) {
+	entities, err := parseYAMLFromStrings(testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entities) != 2 {
+		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
+	}
+
+	depl := entities[0]
+	assert.True(t, depl.HasKind("deployment"))
+	assert.False(t, depl.HasKind("service"))
+
+	svc := entities[1]
+	assert.False(t, svc.HasKind("deployment"))
+	assert.True(t, svc.HasKind("service"))
+}
+
 func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {
 	var res []K8sEntity
 	for _, s := range yaml {

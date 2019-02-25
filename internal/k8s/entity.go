@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -203,6 +204,18 @@ func FilterByMetadataLabels(entities []K8sEntity, labels map[string]string) (pas
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesMetadataLabels(labels) })
 }
 
+func FilterByName(entities []K8sEntity, name string) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasName(name), nil })
+}
+
+func FilterByNamespace(entities []K8sEntity, ns string) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasNamespace(ns), nil })
+}
+
+func FilterByKind(entities []K8sEntity, kind string) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasKind(kind), nil })
+}
+
 func FilterByHasPodTemplateSpec(entities []K8sEntity) (passing, rest []K8sEntity, err error) {
 	return Filter(entities, func(e K8sEntity) (bool, error) {
 		templateSpecs, err := ExtractPodTemplateSpec(&e)
@@ -238,4 +251,21 @@ func FilterByMatchesPodTemplateSpec(withPodSpec K8sEntity, entities []K8sEntity)
 
 func (e K8sEntity) ResourceName() string {
 	return fmt.Sprintf("k8s%s-%s", e.Kind.Kind, e.Name())
+}
+
+func (e K8sEntity) HasName(name string) bool {
+	return e.Name() == name
+}
+
+func (e K8sEntity) HasNamespace(ns string) bool {
+	realNs := e.Namespace()
+	if ns == "" {
+		return realNs == DefaultNamespace
+	}
+	return realNs.String() == ns
+}
+
+func (e K8sEntity) HasKind(kind string) bool {
+	// TODO(maia): support kind aliases (e.g. "po" for "pod")
+	return strings.ToLower(e.Kind.Kind) == strings.ToLower(kind)
 }
