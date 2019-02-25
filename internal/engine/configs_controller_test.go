@@ -58,7 +58,7 @@ func (f *ccFixture) run() ConfigsReloadedAction {
 
 	f.st.NotifySubscribers(f.ctx)
 
-	a := waitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.actions)
+	a := waitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.getActions)
 	cra, ok := a.(ConfigsReloadedAction)
 	if !ok {
 		f.T().Fatalf("didn't get an action of type %T", ConfigsReloadedAction{})
@@ -69,17 +69,17 @@ func (f *ccFixture) run() ConfigsReloadedAction {
 
 type ccFixture struct {
 	*tempdir.TempDirFixture
-	ctx     context.Context
-	cc      *ConfigsController
-	st      *store.Store
-	actions <-chan store.Action
-	tfl     *tiltfile.FakeTiltfileLoader
-	fc      *testutils.FakeClock
+	ctx        context.Context
+	cc         *ConfigsController
+	st         *store.Store
+	getActions func() []store.Action
+	tfl        *tiltfile.FakeTiltfileLoader
+	fc         *testutils.FakeClock
 }
 
 func newCCFixture(t *testing.T) *ccFixture {
 	f := tempdir.NewTempDirFixture(t)
-	st, actions := store.NewStoreForTesting()
+	st, getActions := store.NewStoreForTesting()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := NewConfigsController(tfl)
 	fc := testutils.NewRandomFakeClock()
@@ -92,7 +92,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 		ctx:            ctx,
 		cc:             cc,
 		st:             st,
-		actions:        actions,
+		getActions:     getActions,
 		tfl:            tfl,
 		fc:             fc,
 	}

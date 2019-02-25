@@ -132,7 +132,7 @@ func TestWatchManager_WatchesReappliedOnGitIgnoreChange(t *testing.T) {
 type wmFixture struct {
 	ctx              context.Context
 	cancel           func()
-	actions          <-chan store.Action
+	getActions       func() []store.Action
 	store            *store.Store
 	wm               *WatchManager
 	fakeMultiWatcher *fakeMultiWatcher
@@ -140,7 +140,7 @@ type wmFixture struct {
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
-	st, actions := store.NewStoreForTesting()
+	st, getActions := store.NewStoreForTesting()
 	timerMaker := makeFakeTimerMaker(t)
 	fakeMultiWatcher := newFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.newSub, timerMaker.maker())
@@ -156,7 +156,7 @@ func newWMFixture(t *testing.T) *wmFixture {
 	return &wmFixture{
 		ctx:              ctx,
 		cancel:           cancel,
-		actions:          actions,
+		getActions:       getActions,
 		store:            st,
 		wm:               wm,
 		fakeMultiWatcher: fakeMultiWatcher,
@@ -185,15 +185,16 @@ func (f *wmFixture) ReadActionsUntil(lastFile string) ([]targetFilesChangedActio
 		lastFile = relPath
 	}
 
+	startTime := time.Now()
+	timeout := time.Second
 	var actions []targetFilesChangedAction
-	for {
-		select {
-		case a := <-f.actions:
+	for time.Since(startTime) < timeout {
+		actions = nil
+		for _, a := range f.getActions() {
 			tfca, ok := a.(targetFilesChangedAction)
 			if !ok {
 				return nil, fmt.Errorf("expected action of type %T, got action of type %T: %v", targetFilesChangedAction{}, a, a)
 			}
-
 			// 1. unpack to one file per action, for deterministic inspection
 			// 2. make paths relative to cwd
 			for _, absPath := range tfca.files {
@@ -206,10 +207,10 @@ func (f *wmFixture) ReadActionsUntil(lastFile string) ([]targetFilesChangedActio
 					return actions, nil
 				}
 			}
-		case <-time.After(1 * time.Second):
-			return nil, fmt.Errorf("timed out waiting for actions. received so far: %v", actions)
 		}
+
 	}
+	return nil, fmt.Errorf("timed out waiting for actions. received so far: %v", actions)
 }
 
 func (f *wmFixture) Stop(t *testing.T) []targetFilesChangedAction {
