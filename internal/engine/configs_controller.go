@@ -12,10 +12,15 @@ import (
 
 type ConfigsController struct {
 	disabledForTesting bool
+	tfl                tiltfile.TiltfileLoader
+	clock              func() time.Time
 }
 
-func NewConfigsController() *ConfigsController {
-	return &ConfigsController{}
+func NewConfigsController(tfl tiltfile.TiltfileLoader) *ConfigsController {
+	return &ConfigsController{
+		tfl:   tfl,
+		clock: time.Now,
+	}
 }
 
 func (cc *ConfigsController) DisableForTesting(disabled bool) {
@@ -40,7 +45,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	}
 	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
 	go func() {
-		startTime := time.Now()
+		startTime := cc.clock()
 		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
 
 		matching := map[string]bool{}
@@ -55,7 +60,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 		tlw := NewTiltfileLogWriter(st)
 
-		manifests, globalYAML, configFiles, warnings, err := tiltfile.Load(ctx, tiltfilePath, matching, tlw)
+		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(ctx, tiltfilePath, matching, tlw)
 		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
@@ -67,7 +72,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			GlobalYAML:  globalYAML,
 			ConfigFiles: configFiles,
 			StartTime:   startTime,
-			FinishTime:  time.Now(),
+			FinishTime:  cc.clock(),
 			Err:         err,
 			Warnings:    warnings,
 		})

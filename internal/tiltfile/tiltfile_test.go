@@ -11,10 +11,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/yaml"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/yaml"
 
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -715,7 +716,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
+	_, _, _, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -1427,7 +1428,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, warnings, err := Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
+	manifests, yamlManifest, configFiles, warnings, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -1438,7 +1439,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, _, err := Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

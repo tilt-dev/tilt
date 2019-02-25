@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -20,8 +23,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	"golang.org/x/sync/errgroup"
-	v1 "k8s.io/api/core/v1"
 )
 
 type RepoBranch string
@@ -182,7 +183,7 @@ func (s Script) Run(ctx context.Context) error {
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
 		// TODO(dmiller): not this?
-		manifests, _, _, warnings, err := tiltfile.Load(ctx, tfPath, nil, os.Stdout)
+		manifests, _, _, warnings, err := tiltfile.NewTiltfileLoader().Load(ctx, tfPath, nil, os.Stdout)
 		if err != nil {
 			return err
 		}

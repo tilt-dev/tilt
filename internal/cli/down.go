@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -36,7 +37,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, _, err := tiltfile.Load(ctx, c.fileName, nil, os.Stdout)
+	manifests, globalYaml, _, _, err := tiltfile.NewTiltfileLoader().Load(ctx, c.fileName, nil, os.Stdout)
 	if err != nil {
 		return err
 	}

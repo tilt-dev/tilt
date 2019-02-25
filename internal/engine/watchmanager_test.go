@@ -7,14 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/testutils/output"
-
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/ospath"
-
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -133,7 +132,7 @@ func TestWatchManager_WatchesReappliedOnGitIgnoreChange(t *testing.T) {
 type wmFixture struct {
 	ctx              context.Context
 	cancel           func()
-	actions          chan store.Action
+	actions          <-chan store.Action
 	store            *store.Store
 	wm               *WatchManager
 	fakeMultiWatcher *fakeMultiWatcher
@@ -141,15 +140,7 @@ type wmFixture struct {
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
-	actions := make(chan store.Action, 20)
-	reducer := store.Reducer(func(ctx context.Context, s *store.EngineState, action store.Action) {
-		select {
-		case actions <- action:
-		case <-time.After(100 * time.Millisecond):
-			panic("would block when writing to action chan. perhaps too many actions or too small a buffer")
-		}
-	})
-	st := store.NewStore(reducer, false)
+	st, actions := store.NewStoreForTesting()
 	timerMaker := makeFakeTimerMaker(t)
 	fakeMultiWatcher := newFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.newSub, timerMaker.maker())

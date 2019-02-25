@@ -9,7 +9,7 @@ import (
 )
 
 func TestSubscriber(t *testing.T) {
-	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(s)
@@ -20,7 +20,7 @@ func TestSubscriber(t *testing.T) {
 }
 
 func TestSubscriberInterleavedCalls(t *testing.T) {
-	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(s)
@@ -44,7 +44,7 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 }
 
 func TestRemoveSubscriber(t *testing.T) {
-	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 
@@ -59,7 +59,7 @@ func TestRemoveSubscriber(t *testing.T) {
 }
 
 func TestRemoveSubscriberNotFound(t *testing.T) {
-	st := NewStore(EmptyReducer, LogActionsFlag(false))
+	st, _ := NewStoreForTesting()
 	s := newFakeSubscriber()
 	err := st.RemoveSubscriber(s)
 	if assert.Error(t, err) {

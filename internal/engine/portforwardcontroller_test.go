@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"k8s.io/api/core/v1"
 )
 
 func TestPortForward(t *testing.T) {
@@ -99,7 +100,7 @@ type plcFixture struct {
 
 func newPLCFixture(t *testing.T) *plcFixture {
 	f := tempdir.NewTempDirFixture(t)
-	st := store.NewStoreForTesting()
+	st, _ := store.NewStoreForTesting()
 	kCli := k8s.NewFakeK8sClient()
 	plc := NewPortForwardController(kCli)
 	return &plcFixture{

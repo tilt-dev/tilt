@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -13,7 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 var expectedContainer = container.ID("dc-cont")
@@ -122,12 +123,13 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	st, _ := store.NewStoreForTesting()
 	return &dcbdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		dcCli:          dcCli,
 		dCli:           dCli,
 		dcbad:          dcbad,
-		st:             store.NewStoreForTesting(),
+		st:             st,
 	}
 }

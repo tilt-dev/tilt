@@ -9,9 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+
+	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -26,8 +27,34 @@ func init() {
 	resolve.AllowGlobalReassign = true
 }
 
+type TiltfileLoader interface {
+	Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error)
+}
+
+type FakeTiltfileLoader struct {
+	Manifests   []model.Manifest
+	Global      model.Manifest
+	ConfigFiles []string
+	Warnings    []string
+	Err         error
+}
+
+func NewFakeTiltfileLoader() *FakeTiltfileLoader {
+	return &FakeTiltfileLoader{}
+}
+
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
+	return tfl.Manifests, tfl.Global, tfl.ConfigFiles, tfl.Warnings, tfl.Err
+}
+
+func NewTiltfileLoader() TiltfileLoader {
+	return tiltfileLoader{}
+}
+
+type tiltfileLoader struct{}
+
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
 	l := log.New(logs, "", log.LstdFlags)
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
