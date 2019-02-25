@@ -716,7 +716,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
+	_, _, _, _, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -1317,16 +1317,39 @@ func TestDir(t *testing.T) {
 	f.assertConfigFiles("Tiltfile", "config/foo.yaml", "config/bar.yaml")
 }
 
+func TestCallCounts(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/bar")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+docker_build('gcr.io/bar:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	expected := map[string]int{
+		"docker_build": 2,
+		"k8s_yaml":     1,
+	}
+	assert.Equal(t, expected, f.builtinCallCounts)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
 
 	// created by load
-	manifests    []model.Manifest
-	yamlManifest model.Manifest
-	configFiles  []string
-	warnings     []string
+	manifests         []model.Manifest
+	yamlManifest      model.Manifest
+	configFiles       []string
+	warnings          []string
+	builtinCallCounts map[string]int
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -1428,7 +1451,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, warnings, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
+	manifests, yamlManifest, configFiles, warnings, builtinCallCounts, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -1436,10 +1459,11 @@ func (f *fixture) load(names ...string) {
 	f.yamlManifest = yamlManifest
 	f.configFiles = configFiles
 	f.warnings = warnings
+	f.builtinCallCounts = builtinCallCounts
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, _, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

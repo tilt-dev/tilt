@@ -7,8 +7,12 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"k8s.io/apimachinery/pkg/version"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
@@ -21,8 +25,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	"k8s.io/apimachinery/pkg/version"
-	"time"
 )
 
 // Injectors from wire.go:
@@ -106,7 +108,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(client)
 	tiltfileLoader := tiltfile.NewTiltfileLoader()
-	configsController := engine.NewConfigsController(tiltfileLoader)
+	configsController := engine.NewConfigsController(tiltfileLoader, analytics)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
@@ -200,7 +202,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(client)
 	tiltfileLoader := tiltfile.NewTiltfileLoader()
-	configsController := engine.NewConfigsController(tiltfileLoader)
+	configsController := engine.NewConfigsController(tiltfileLoader, analytics)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()

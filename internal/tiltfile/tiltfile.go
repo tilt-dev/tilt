@@ -28,23 +28,26 @@ func init() {
 }
 
 type TiltfileLoader interface {
-	Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error)
+	Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, builtinCallCounts map[string]int, err error)
 }
 
 type FakeTiltfileLoader struct {
-	Manifests   []model.Manifest
-	Global      model.Manifest
-	ConfigFiles []string
-	Warnings    []string
-	Err         error
+	Manifests         []model.Manifest
+	Global            model.Manifest
+	ConfigFiles       []string
+	Warnings          []string
+	BuiltinCallCounts map[string]int
+	Err               error
 }
 
 func NewFakeTiltfileLoader() *FakeTiltfileLoader {
-	return &FakeTiltfileLoader{}
+	return &FakeTiltfileLoader{
+		BuiltinCallCounts: make(map[string]int),
+	}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
-	return tfl.Manifests, tfl.Global, tfl.ConfigFiles, tfl.Warnings, tfl.Err
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, builtinCallCounts map[string]int, err error) {
+	return tfl.Manifests, tfl.Global, tfl.ConfigFiles, tfl.Warnings, tfl.BuiltinCallCounts, tfl.Err
 }
 
 func NewTiltfileLoader() TiltfileLoader {
@@ -54,15 +57,15 @@ func NewTiltfileLoader() TiltfileLoader {
 type tiltfileLoader struct{}
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, builtinCallCounts map[string]int, err error) {
 	l := log.New(logs, "", log.LstdFlags)
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, model.Manifest{}, []string{filename}, nil, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
+			return nil, model.Manifest{}, []string{filename}, nil, nil, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
 		}
 		absFilename, _ = filepath.Abs(filename)
-		return nil, model.Manifest{}, []string{absFilename}, nil, err
+		return nil, model.Manifest{}, []string{absFilename}, nil, nil, err
 	}
 
 	tfRoot, _ := filepath.Split(absFilename)
@@ -74,44 +77,44 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
-			return nil, model.Manifest{}, nil, s.warnings, errors.New(err.Backtrace())
+			return nil, model.Manifest{}, nil, s.warnings, nil, errors.New(err.Backtrace())
 		}
-		return nil, model.Manifest{}, nil, s.warnings, err
+		return nil, model.Manifest{}, nil, s.warnings, nil, err
 	}
 
 	resources, unresourced, err := s.assemble()
 	if err != nil {
-		return nil, model.Manifest{}, nil, s.warnings, err
+		return nil, model.Manifest{}, nil, s.warnings, nil, err
 	}
 
 	if len(resources.k8s) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
 		if err != nil {
-			return nil, model.Manifest{}, nil, s.warnings, err
+			return nil, model.Manifest{}, nil, s.warnings, nil, err
 		}
 	} else {
 		manifests, err = s.translateDC(resources.dc)
 		if err != nil {
-			return nil, model.Manifest{}, nil, s.warnings, err
+			return nil, model.Manifest{}, nil, s.warnings, nil, err
 		}
 	}
 
 	manifests, err = match(manifests, matching)
 	if err != nil {
-		return nil, model.Manifest{}, nil, s.warnings, err
+		return nil, model.Manifest{}, nil, s.warnings, nil, err
 	}
 
 	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
 		yamlManifest, err = k8s.NewK8sOnlyManifest(unresourcedName, unresourced)
 		if err != nil {
-			return nil, model.Manifest{}, nil, s.warnings, err
+			return nil, model.Manifest{}, nil, s.warnings, nil, err
 		}
 	}
 
 	// TODO(maia): `yamlManifest` should be processed just like any
 	// other manifest (i.e. get rid of "global yaml" concept)
-	return manifests, yamlManifest, s.configFiles, s.warnings, err
+	return manifests, yamlManifest, s.configFiles, s.warnings, s.builtinCallCounts, err
 }
 
 func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {

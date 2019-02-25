@@ -3,7 +3,10 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
+
+	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
@@ -14,12 +17,14 @@ type ConfigsController struct {
 	disabledForTesting bool
 	tfl                tiltfile.TiltfileLoader
 	clock              func() time.Time
+	analytics          analytics.Analytics
 }
 
-func NewConfigsController(tfl tiltfile.TiltfileLoader) *ConfigsController {
+func NewConfigsController(tfl tiltfile.TiltfileLoader, analytics analytics.Analytics) *ConfigsController {
 	return &ConfigsController{
-		tfl:   tfl,
-		clock: time.Now,
+		tfl:       tfl,
+		clock:     time.Now,
+		analytics: analytics,
 	}
 }
 
@@ -60,13 +65,15 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 		tlw := NewTiltfileLogWriter(st)
 
-		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(ctx, tiltfilePath, matching, tlw)
+		manifests, globalYAML, configFiles, warnings, builtinCallCounts, err := cc.tfl.Load(ctx, tiltfilePath, matching, tlw)
 		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
 		if err != nil {
 			logger.Get(ctx).Infof(err.Error())
 		}
+
+		cc.reportTiltfileLoaded(builtinCallCounts)
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:   manifests,
 			GlobalYAML:  globalYAML,
@@ -77,4 +84,12 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			Warnings:    warnings,
 		})
 	}()
+}
+
+func (cc *ConfigsController) reportTiltfileLoaded(counts map[string]int) {
+	tags := make(map[string]string)
+	for builtinName, count := range counts {
+		tags[fmt.Sprintf("tiltfile.invoked.%s", builtinName)] = strconv.Itoa(count)
+	}
+	cc.analytics.Incr("tiltfile.loaded", tags)
 }

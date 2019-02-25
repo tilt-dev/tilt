@@ -2141,15 +2141,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
-	cc := NewConfigsController(tiltfile.NewTiltfileLoader())
+	an := analytics.NewMemoryAnalytics()
+	ar := ProvideAnalyticsReporter(an, st)
+	cc := NewConfigsController(tiltfile.NewTiltfileLoader(), an)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dcw := NewDockerComposeEventWatcher(dcc)
 	dclm := NewDockerComposeLogManager(dcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	an := analytics.NewMemoryAnalytics()
-	ar := ProvideAnalyticsReporter(an, st)
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar)
 
 	go func() {
@@ -2493,7 +2493,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, _, err := tiltfile.NewTiltfileLoader().Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, os.Stdout)
+	manifests, _, _, _, _, err := tiltfile.NewTiltfileLoader().Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2530,7 +2530,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	manifests, _, _, _, err := tiltfile.NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, _, _, _, err := tiltfile.NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}
