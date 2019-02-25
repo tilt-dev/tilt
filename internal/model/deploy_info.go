@@ -65,7 +65,7 @@ func (t DockerComposeTarget) LocalPaths() []string {
 }
 
 func (t DockerComposeTarget) WithDependencyIDs(ids []TargetID) DockerComposeTarget {
-	t.dependencyIDs = ids
+	t.dependencyIDs = DedupeTargetIDs(ids)
 	return t
 }
 
@@ -156,7 +156,7 @@ func (k8s K8sTarget) ID() TargetID {
 }
 
 func (k8s K8sTarget) WithDependencyIDs(ids []TargetID) K8sTarget {
-	k8s.dependencyIDs = ids
+	k8s.dependencyIDs = DedupeTargetIDs(ids)
 	return k8s
 }
 
