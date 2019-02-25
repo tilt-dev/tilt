@@ -21,6 +21,10 @@ func (id ID) ShortStr() string {
 
 func (n Name) String() string { return string(n) }
 
+func ParseNamed(s string) (reference.Named, error) {
+	return reference.ParseNormalizedNamed(s)
+}
+
 func ParseNamedTagged(s string) (reference.NamedTagged, error) {
 	ref, err := reference.ParseNormalizedNamed(s)
 	if err != nil {
@@ -48,4 +52,20 @@ func MustParseNamed(s string) reference.Named {
 		panic(err)
 	}
 	return n
+}
+
+func NormalizeRef(ref string) (string, error) {
+	named, err := ParseNamed(ref)
+	if err != nil {
+		return "", err
+	}
+	return named.String(), nil
+}
+
+func MustNormalizeRef(ref string) string {
+	normalized, err := NormalizeRef(ref)
+	if err != nil {
+		panic(err)
+	}
+	return normalized
 }

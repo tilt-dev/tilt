@@ -2454,11 +2454,7 @@ func (f *testFixture) podEvent(pod *v1.Pod) {
 }
 
 func (f *testFixture) imageNameForManifest(manifestName string) reference.Named {
-	ref, err := reference.ParseNormalizedNamed(manifestName)
-	if err != nil {
-		f.T().Fatal(err)
-	}
-	return ref
+	return container.MustParseNamed(manifestName)
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {

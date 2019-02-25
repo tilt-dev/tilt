@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -52,7 +53,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	ref, err := reference.ParseNormalizedNamed(dockerRef)
+	ref, err := container.ParseNamed(dockerRef)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
 	}
@@ -152,7 +153,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Argument 2 (base_dockerfile): %v", err)
 	}
 
-	ref, err := reference.ParseNormalizedNamed(dockerRef)
+	ref, err := container.ParseNamed(dockerRef)
 	if err != nil {
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
