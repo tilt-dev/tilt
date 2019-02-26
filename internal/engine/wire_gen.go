@@ -21,7 +21,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock) (BuildAndDeployer, error) {
 	syncletManager := NewSyncletManagerForTests(kClient, sCli)
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient)
 	containerUpdater := build.NewContainerUpdater(docker2)
@@ -38,7 +38,6 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	if err != nil {
 		return nil, err
 	}
-	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
 	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
 	if err != nil {

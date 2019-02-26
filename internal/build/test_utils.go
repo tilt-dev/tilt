@@ -40,7 +40,7 @@ type dockerBuildFixture struct {
 	ps           *PipelineState
 }
 
-type fakeClock struct{
+type fakeClock struct {
 	now time.Time
 }
 

@@ -65,12 +65,12 @@ func provideBuildAndDeployer(
 	env k8s.Env,
 	updateMode UpdateModeFlag,
 	sCli synclet.SyncletClient,
-	dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
+	dcc dockercompose.DockerComposeClient,
+	clock build.Clock) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
-		build.ProvideClock,
 		k8s.ProvideContainerRuntime,
 	)
 
