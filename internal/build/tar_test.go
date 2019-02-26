@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
@@ -63,6 +65,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true},
 		expectedFile{Path: "b", Missing: true},
 	})
+	assert.Equal(t, ab.Paths(), []string{f.JoinPath("a")})
 }
 
 func TestLen(t *testing.T) {
