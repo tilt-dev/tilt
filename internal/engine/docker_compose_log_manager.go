@@ -42,6 +42,19 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 			continue
 		}
 
+		// If the build hasn't started yet, don't start watching.
+		//
+		// TODO(nick): This points to a larger synchronization bug between DC
+		// LogManager and BuildController. Starting a build will delete all the logs
+		// that have been recorded so far. This creates race conditions: if the logs
+		// come in before the StartBuild event is recorded, those logs will get
+		// deleted. This affects tests and fast builds more than normal builds.
+		// But we should have a better way to associate logs with a particular build.
+		ms := mt.State
+		if ms.CurrentBuild.StartTime.IsZero() && ms.LastBuild().StartTime.IsZero() {
+			continue
+		}
+
 		existing, isActive := m.watches[manifest.Name]
 		startWatchTime := time.Unix(0, 0)
 		if isActive {
