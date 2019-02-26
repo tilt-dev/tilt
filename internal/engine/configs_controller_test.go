@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -29,31 +28,15 @@ func TestConfigsController(t *testing.T) {
 	state.TiltfilePath = f.JoinPath("Tiltfile")
 	f.st.UnlockMutableState()
 
-	f.tfl.BuiltinCallCounts = map[string]int{
-		"docker_build": 10,
-		"custom_build": 2,
-	}
-
 	a := f.run()
 
-	expectedAction := ConfigsReloadedAction{
+	expected := ConfigsReloadedAction{
 		Manifests:  []model.Manifest{{Name: "bar"}},
 		StartTime:  f.fc.Times[0],
 		FinishTime: f.fc.Times[1],
 	}
 
-	assert.Equal(t, expectedAction, a)
-
-	expectedCounts := []analytics.CountEvent{{
-		Name: "tiltfile.loaded",
-		Tags: map[string]string{
-			"tiltfile.invoked.docker_build": "10",
-			"tiltfile.invoked.custom_build": "2",
-		},
-		N: 1,
-	}}
-
-	assert.Equal(t, expectedCounts, f.an.Counts)
+	assert.Equal(t, expected, a)
 }
 
 func (f *ccFixture) run() ConfigsReloadedAction {
@@ -92,15 +75,13 @@ type ccFixture struct {
 	getActions func() []store.Action
 	tfl        *tiltfile.FakeTiltfileLoader
 	fc         *testutils.FakeClock
-	an         *analytics.MemoryAnalytics
 }
 
 func newCCFixture(t *testing.T) *ccFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st, getActions := store.NewStoreForTesting()
 	tfl := tiltfile.NewFakeTiltfileLoader()
-	an := analytics.NewMemoryAnalytics()
-	cc := NewConfigsController(tfl, an)
+	cc := NewConfigsController(tfl)
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx := output.CtxForTest()
@@ -114,6 +95,5 @@ func newCCFixture(t *testing.T) *ccFixture {
 		getActions:     getActions,
 		tfl:            tfl,
 		fc:             fc,
-		an:             an,
 	}
 }
