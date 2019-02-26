@@ -72,12 +72,13 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",
 	})
+	out := DefaultOut()
 	return &dockerBuildFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
 		dCli:           dCli,
-		b:              NewDockerImageBuilder(dCli, DefaultConsole(), DefaultOut(), labels),
+		b:              NewDockerImageBuilder(dCli, DefaultConsole(out), out, labels),
 		cb:             NewCacheBuilder(dCli),
 		reaper:         NewImageReaper(dCli),
 		ps:             ps,
@@ -93,12 +94,13 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 
 	ps := NewPipelineState(ctx, 3, realClock{})
 
+	out := DefaultOut()
 	return &dockerBuildFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
 		fakeDocker:     dCli,
-		b:              NewDockerImageBuilder(dCli, DefaultConsole(), DefaultOut(), labels),
+		b:              NewDockerImageBuilder(dCli, DefaultConsole(out), out, labels),
 		cb:             NewCacheBuilder(dCli),
 		reaper:         NewImageReaper(dCli),
 		ps:             ps,

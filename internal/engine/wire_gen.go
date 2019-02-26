@@ -27,10 +27,10 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	containerUpdater := build.NewContainerUpdater(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics)
-	console := build.DefaultConsole()
-	writer := output.CaptureAll()
+	stdout := output.CaptureAll()
+	console := build.DefaultConsole(stdout)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, stdout, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
@@ -52,10 +52,10 @@ var (
 )
 
 func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
-	console := build.DefaultConsole()
-	writer := output.CaptureAll()
+	stdout := output.CaptureAll()
+	console := build.DefaultConsole(stdout)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, writer, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(docker2, console, stdout, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	env := _wireEnvValue
@@ -77,10 +77,10 @@ var (
 )
 
 func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
-	console := build.DefaultConsole()
-	writer := output.CaptureAll()
+	stdout := output.CaptureAll()
+	console := build.DefaultConsole(stdout)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(dCli, console, writer, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(dCli, console, stdout, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(dCli)
 	updateModeFlag := _wireEngineUpdateModeFlagValue
