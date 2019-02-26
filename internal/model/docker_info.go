@@ -112,6 +112,16 @@ func (i ImageTarget) IsFastBuild() bool {
 	return ok
 }
 
+func (i ImageTarget) CustomBuildInfo() CustomBuild {
+	ret, _ := i.BuildDetails.(CustomBuild)
+	return ret
+}
+
+func (i ImageTarget) IsCustomBuild() bool {
+	_, ok := i.BuildDetails.(CustomBuild)
+	return ok
+}
+
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	i.BuildDetails = details
 	return i

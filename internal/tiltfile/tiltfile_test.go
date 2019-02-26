@@ -1451,6 +1451,41 @@ func TestDir(t *testing.T) {
 	f.assertConfigFiles("Tiltfile", "config/foo.yaml", "config/bar.yaml")
 }
 
+func TestCustomBuild(t *testing.T) {
+	f := newFixture(t)
+	fmt.Println(f.TempDirFixture.Path())
+
+	tiltfile := `repo = local_git_repo('.')
+k8s_yaml('foo.yaml')
+hfb = custom_build(
+  'gcr.io/foo',
+  'docker build -t $TAG foo',
+  ['foo']
+).add_fast_build()
+hfb.add(repo.path('foo'), '/app')
+hfb.run('cd /app && pip install -r requirements.txt')
+hfb.hot_reload()`
+
+	f.setupFoo()
+	f.file("Tiltfile", tiltfile)
+
+	f.load("foo")
+	f.assertNumManifests(1)
+	f.assertConfigFiles("Tiltfile", "foo.yaml")
+	f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+			deps(f.JoinPath("foo")),
+			cmd("docker build -t $TAG foo"),
+			fb(
+				image("gcr.io/foo"),
+				add("foo", "/app"),
+				run("cd /app && pip install -r requirements.txt"),
+			),
+		),
+		deployment("foo"))
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -1679,6 +1714,54 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
 				}
 			}
+		case cbHelper:
+			image := m.ImageTargetAt(0)
+			ref := image.Ref
+			if ref.Name() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
+			}
+
+			if !image.IsCustomBuild() {
+				f.t.Fatalf("Expected custom build but manifest %v has no custom build info", m.Name)
+			}
+			cbInfo := image.CustomBuildInfo()
+
+			for _, matcher := range opt.matchers {
+				switch matcher := matcher.(type) {
+				case depsHelper:
+					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
+				case cmdHelper:
+					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
+				case fbHelper:
+					if cbInfo.Fast == nil {
+						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
+					}
+
+					mounts := cbInfo.Fast.Mounts
+					steps := cbInfo.Fast.Steps
+
+					for _, m2 := range matcher.matchers {
+						switch matcher := m2.(type) {
+						case addHelper:
+							mount := mounts[0]
+							mounts = mounts[1:]
+							if mount.LocalPath != f.JoinPath(matcher.src) {
+								f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
+							}
+						case runHelper:
+							step := steps[0]
+							steps = steps[1:]
+							assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
+							assert.Equal(f.t, matcher.triggers, step.Triggers)
+						case hotReloadHelper:
+							assert.Equal(f.t, matcher.on, cbInfo.Fast.HotReload)
+						default:
+							f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
+						}
+					}
+				}
+			}
+
 		case deploymentHelper:
 			yaml := m.K8sTarget().YAML
 			found := false
@@ -1994,6 +2077,15 @@ func fb(img imageHelper, opts ...interface{}) fbHelper {
 	return fbHelper{img, opts}
 }
 
+type cbHelper struct {
+	image    imageHelper
+	matchers []interface{}
+}
+
+func cb(img imageHelper, opts ...interface{}) cbHelper {
+	return cbHelper{img, opts}
+}
+
 type addHelper struct {
 	src  string
 	dest string
@@ -2018,6 +2110,22 @@ type hotReloadHelper struct {
 
 func hotReload(on bool) hotReloadHelper {
 	return hotReloadHelper{on: on}
+}
+
+type cmdHelper struct {
+	cmd string
+}
+
+func cmd(cmd string) cmdHelper {
+	return cmdHelper{cmd}
+}
+
+type depsHelper struct {
+	deps []string
+}
+
+func deps(deps ...string) depsHelper {
+	return depsHelper{deps}
 }
 
 // useful scenarios to setup
