@@ -10,14 +10,12 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-const devServerOrigin = "http://localhost:3000"
-
 type HeadsUpServer struct {
 	store  *store.Store
 	router *mux.Router
 }
 
-func ProvideHeadsUpServer(store *store.Store) HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer AssetServer) HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := HeadsUpServer{
 		store:  store,
@@ -26,6 +24,7 @@ func ProvideHeadsUpServer(store *store.Store) HeadsUpServer {
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
+	r.PathPrefix("/").Handler(assetServer)
 
 	return s
 }
@@ -40,7 +39,6 @@ func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	s.store.RUnlockState()
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", devServerOrigin) // dev server
 	err := json.NewEncoder(w).Encode(view)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)

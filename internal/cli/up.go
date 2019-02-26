@@ -24,6 +24,7 @@ import (
 )
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
+var webModeFlag model.WebMode = model.ProdWebMode
 var logActionsFlag bool = false
 
 type upCmd struct {
@@ -44,6 +45,7 @@ func (c *upCmd) register() *cobra.Command {
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&c.browserMode, "browser", "", "deprecated. TODO(nick): remove this flag")
+	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
@@ -123,6 +125,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	if c.port != 0 {
+		g.Go(func() error {
+			defer cancel()
+			return threads.assetServer.Serve(ctx)
+		})
+
 		http.Handle("/", server.Router())
 		httpServer := &http.Server{
 			Addr:    fmt.Sprintf(":%d", c.port),
@@ -172,4 +179,8 @@ func provideUpdateModeFlag() engine.UpdateModeFlag {
 
 func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
+}
+
+func provideWebMode() model.WebMode {
+	return webModeFlag
 }

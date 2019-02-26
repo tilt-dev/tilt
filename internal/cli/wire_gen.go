@@ -204,8 +204,13 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics, storeStore)
 	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter)
-	headsUpServer := server.ProvideHeadsUpServer(storeStore)
-	threads := provideThreads(headsUpDisplay, upper, headsUpServer)
+	webMode := provideWebMode()
+	assetServer, err := server.ProvideAssetServer(ctx, webMode)
+	if err != nil {
+		return Threads{}, err
+	}
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer)
+	threads := provideThreads(headsUpDisplay, upper, headsUpServer, assetServer)
 	return threads, nil
 }
 
@@ -331,17 +336,18 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.NewTiltfileLoaderWithAnalytics, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, server.ProvideHeadsUpServer, provideThreads,
+	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.NewTiltfileLoaderWithAnalytics, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebMode, server.ProvideHeadsUpServer, server.ProvideAssetServer, provideThreads,
 )
 
 type Threads struct {
-	hud    hud.HeadsUpDisplay
-	upper  engine.Upper
-	server server.HeadsUpServer
+	hud         hud.HeadsUpDisplay
+	upper       engine.Upper
+	server      server.HeadsUpServer
+	assetServer server.AssetServer
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server2 server.HeadsUpServer) Threads {
-	return Threads{h, upper, server2}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server2 server.HeadsUpServer, assetServer server.AssetServer) Threads {
+	return Threads{h, upper, server2, assetServer}
 }
 
 func provideClock() func() time.Time {

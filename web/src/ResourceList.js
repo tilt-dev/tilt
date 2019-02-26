@@ -64,7 +64,7 @@ function getK8sStatus(res) {
   if (res.IsYAMLManifest) {
     return "-"
   }
-  return res.PodStatus || "Pending"
+  return (res.ResourceInfo && res.ResourceInfo.PodStatus) || "Pending"
 }
 
 function getBuildStatus(res) {

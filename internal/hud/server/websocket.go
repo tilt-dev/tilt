@@ -10,15 +10,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = newUpgrader()
-
-func newUpgrader() websocket.Upgrader {
-	result := websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-	result.CheckOrigin = checkWebsocketOrigin
-	return result
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 }
 
 type WebsocketSubscriber struct {

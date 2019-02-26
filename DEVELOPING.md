@@ -62,21 +62,26 @@ make install
 
 ## Web UI
 
-The web interface for `tilt` currently only works in development mode. To run it, start `tilt` on port 8001:
+`tilt` has an experimental web interface! We currently use it to run experiments.
+
+By default, the web interface is off. To run it on port 8001:
 
 ```
 tilt up --port=8001
 ```
 
-Then, in a separate terminal, run:
+This will server HTML, CSS, and JS from our
+[production bucket](https://console.cloud.google.com/storage/browser/tilt-static-assets).
+
+To develop on the interface locally, run:
+
 
 ```
-make dev-js
+tilt up --port=8001 --web-mode=local
 ```
 
-Eventually, production builds of Tilt will serve the JS directly from the Tilt
-binary. But development is easier with the React dev server running as a
-separate process.
+This will run a webpack dev server as a separate process,
+and reverse proxy all asset requests to the dev server.
 
 ## Documentation
 
