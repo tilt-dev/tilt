@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -21,7 +20,7 @@ import (
 var DeployerBaseWireSet = wire.NewSet(
 	// dockerImageBuilder ( = ImageBuilder)
 	build.DefaultConsole,
-	output.CaptureAll,
+	build.DefaultOut,
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 

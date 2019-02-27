@@ -16,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/output"
 
 	"github.com/containerd/console"
 	"github.com/docker/cli/cli/command"
@@ -55,22 +54,24 @@ func DefaultImageBuilder(b *dockerImageBuilder) ImageBuilder {
 	return b
 }
 
-func DefaultConsole(out output.Stdout) console.Console {
+func DefaultConsole() console.Console {
+	out := os.Stdout
 	c, _ := console.ConsoleFromFile(out)
+
 	return c
 }
 
-func DefaultOut() output.Stdout {
+func DefaultOut() io.Writer {
 	return os.Stdout
 }
 
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dCli docker.Client, console console.Console, out output.Stdout, extraLabels dockerfile.Labels) *dockerImageBuilder {
+func NewDockerImageBuilder(dCli docker.Client, console console.Console, out io.Writer, extraLabels dockerfile.Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{
 		dCli:        dCli,
 		console:     console,
-		out:         (*os.File)(out),
+		out:         out,
 		extraLabels: extraLabels,
 	}
 }
