@@ -69,7 +69,12 @@ func (i ImageTarget) Validate() error {
 					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.Ref, mnt.LocalPath)
 			}
 		}
-
+	case CustomBuild:
+		if bd.Command == "" {
+			return fmt.Errorf(
+				"[Validate] CustomBuild command must not be empty",
+			)
+		}
 	default:
 		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.Ref)
 	}
@@ -91,6 +96,16 @@ func (i ImageTarget) IsStaticBuild() bool {
 	return ok
 }
 
+func (i ImageTarget) MaybeFastBuildInfo() *FastBuild {
+	switch details := i.BuildDetails.(type) {
+	case FastBuild:
+		return &details
+	case CustomBuild:
+		return details.Fast
+	}
+	return nil
+}
+
 func (i ImageTarget) FastBuildInfo() FastBuild {
 	ret, _ := i.BuildDetails.(FastBuild)
 	return ret
@@ -98,6 +113,16 @@ func (i ImageTarget) FastBuildInfo() FastBuild {
 
 func (i ImageTarget) IsFastBuild() bool {
 	_, ok := i.BuildDetails.(FastBuild)
+	return ok
+}
+
+func (i ImageTarget) CustomBuildInfo() CustomBuild {
+	ret, _ := i.BuildDetails.(CustomBuild)
+	return ret
+}
+
+func (i ImageTarget) IsCustomBuild() bool {
+	_, ok := i.BuildDetails.(CustomBuild)
 	return ok
 }
 
@@ -140,6 +165,8 @@ func (i ImageTarget) LocalPaths() []string {
 			result[i] = mount.LocalPath
 		}
 		return result
+	case CustomBuild:
+		return append([]string(nil), bd.Deps...)
 	}
 	return nil
 }
@@ -187,5 +214,15 @@ type FastBuild struct {
 }
 
 func (FastBuild) buildDetails() {}
+
+type CustomBuild struct {
+	Command string
+	// Deps is a list of file paths that are dependencies of this command.
+	Deps []string
+
+	Fast *FastBuild
+}
+
+func (CustomBuild) buildDetails() {}
 
 var _ TargetSpec = ImageTarget{}
