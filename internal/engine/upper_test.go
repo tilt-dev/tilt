@@ -2151,6 +2151,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	gybc := NewGlobalYAMLBuildController(k8s)
+	an := analytics.NewMemoryAnalytics()
+	ar := ProvideAnalyticsReporter(an, st)
 	cc := NewConfigsController(tiltfile.NewTiltfileLoader())
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dcw := NewDockerComposeEventWatcher(dcc)
@@ -2158,8 +2160,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	an := analytics.NewMemoryAnalytics()
-	ar := ProvideAnalyticsReporter(an, st)
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar)
 
 	go func() {

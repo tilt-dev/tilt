@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1465,10 +1467,39 @@ func TestDir(t *testing.T) {
 	f.assertConfigFiles("Tiltfile", "config/foo.yaml", "config/bar.yaml")
 }
 
+func TestCallCounts(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/bar")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+docker_build('gcr.io/bar:stable', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	expected := []analytics.CountEvent{{
+		Name: "tiltfile.loaded",
+		Tags: map[string]string{
+			"tiltfile.invoked.docker_build": "2",
+			"tiltfile.invoked.k8s_yaml":     "1",
+		},
+		N: 1,
+	}}
+	assert.Equal(t, expected, f.an.Counts)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
+
+	tfl TiltfileLoader
+	an  *analytics.MemoryAnalytics
 
 	// created by load
 	manifests    []model.Manifest
@@ -1481,11 +1512,15 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := output.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
+	an := analytics.NewMemoryAnalytics()
+	tfl := NewTiltfileLoaderWithAnalytics(an)
 
 	r := &fixture{
 		ctx:            ctx,
 		t:              t,
 		TempDirFixture: f,
+		an:             an,
+		tfl:            tfl,
 	}
 	return r
 }
@@ -1576,7 +1611,7 @@ func matchMap(names ...string) map[string]bool {
 }
 
 func (f *fixture) load(names ...string) {
-	manifests, yamlManifest, configFiles, warnings, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
+	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -1587,7 +1622,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

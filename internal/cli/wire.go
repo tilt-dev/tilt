@@ -52,7 +52,7 @@ var BaseWireSet = wire.NewSet(
 
 	build.NewImageReaper,
 
-	tiltfile.NewTiltfileLoader,
+	tiltfile.NewTiltfileLoaderWithAnalytics,
 
 	engine.DeployerWireSet,
 	engine.NewPodLogManager,

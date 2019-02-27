@@ -9,9 +9,10 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"go.starlark.net/starlark"
+
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/sliceutils"
-	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -40,6 +41,8 @@ type tiltfileState struct {
 	usedImages map[string]bool
 
 	builtinsMap starlark.StringDict
+	// count how many times each builtin is called, for analytics
+	builtinCallCounts map[string]int
 
 	logger   *log.Logger
 	warnings []string
@@ -48,14 +51,15 @@ type tiltfileState struct {
 func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
-		ctx:         ctx,
-		filename:    localPath{path: filename},
-		dcCli:       dockercompose.NewDockerComposeClient(),
-		buildIndex:  newBuildIndex(),
-		k8sByName:   make(map[string]*k8sResource),
-		configFiles: []string{filename},
-		usedImages:  make(map[string]bool),
-		logger:      l,
+		ctx:               ctx,
+		filename:          localPath{path: filename},
+		dcCli:             dockercompose.NewDockerComposeClient(),
+		buildIndex:        newBuildIndex(),
+		k8sByName:         make(map[string]*k8sResource),
+		configFiles:       []string{filename},
+		usedImages:        make(map[string]bool),
+		logger:            l,
+		builtinCallCounts: make(map[string]int),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -106,13 +110,21 @@ const (
 	blobN = "blob"
 )
 
+// count how many times each builtin is called, for analytics
+func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		s.builtinCallCounts[name]++
+		return f(thread, fn, args, kwargs)
+	}
+}
+
 func (s *tiltfileState) builtins() starlark.StringDict {
 	if s.builtinsMap != nil {
 		return s.builtinsMap
 	}
 
 	addBuiltin := func(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
-		r[name] = starlark.NewBuiltin(name, fn)
+		r[name] = starlark.NewBuiltin(name, s.makeBuiltinReporting(name, fn))
 	}
 
 	r := make(starlark.StringDict)

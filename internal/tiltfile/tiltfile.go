@@ -7,13 +7,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
@@ -48,10 +50,16 @@ func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matchi
 }
 
 func NewTiltfileLoader() TiltfileLoader {
-	return tiltfileLoader{}
+	return tiltfileLoader{analytics: analytics.NewMemoryAnalytics()}
 }
 
-type tiltfileLoader struct{}
+func NewTiltfileLoaderWithAnalytics(analytics analytics.Analytics) TiltfileLoader {
+	return tiltfileLoader{analytics: analytics}
+}
+
+type tiltfileLoader struct {
+	analytics analytics.Analytics
+}
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
@@ -109,6 +117,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		}
 	}
 
+	tfl.reportTiltfileLoaded(s.builtinCallCounts)
+
 	// TODO(maia): `yamlManifest` should be processed just like any
 	// other manifest (i.e. get rid of "global yaml" concept)
 	return manifests, yamlManifest, s.configFiles, s.warnings, err
@@ -136,4 +146,12 @@ func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
 	}
 
 	return r, nil
+}
+
+func (tfl *tiltfileLoader) reportTiltfileLoaded(counts map[string]int) {
+	tags := make(map[string]string)
+	for builtinName, count := range counts {
+		tags[fmt.Sprintf("tiltfile.invoked.%s", builtinName)] = strconv.Itoa(count)
+	}
+	tfl.analytics.Incr("tiltfile.loaded", tags)
 }
