@@ -128,5 +128,6 @@ require (
 	k8s.io/client-go v0.0.0-20190111032708-6bf63545bd02
 	k8s.io/klog v0.1.0
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c
+	k8s.io/kubernetes v1.13.3
 	sigs.k8s.io/yaml v1.1.0
 )
