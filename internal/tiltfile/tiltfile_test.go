@@ -1508,7 +1508,7 @@ func TestYamlErrorFromReadFile(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml(read_file('foo.yaml'))
 `)
-	f.loadErrString("file: \"foo.yaml\"")
+	f.loadErrString(fmt.Sprintf("file: %s", f.JoinPath("foo.yaml")))
 }
 
 func TestYamlErrorFromHelm(t *testing.T) {
