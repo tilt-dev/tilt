@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
-	"github.com/containerd/console"
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
@@ -31,9 +29,7 @@ import (
 )
 
 type dockerImageBuilder struct {
-	dCli    docker.Client
-	console console.Console
-	out     io.Writer
+	dCli docker.Client
 
 	// A set of extra labels to attach to all builds
 	// created by this image builder.
@@ -54,24 +50,11 @@ func DefaultImageBuilder(b *dockerImageBuilder) ImageBuilder {
 	return b
 }
 
-func DefaultConsole() console.Console {
-	out := os.Stdout
-	c, _ := console.ConsoleFromFile(out)
-
-	return c
-}
-
-func DefaultOut() io.Writer {
-	return os.Stdout
-}
-
 var _ ImageBuilder = &dockerImageBuilder{}
 
-func NewDockerImageBuilder(dCli docker.Client, console console.Console, out io.Writer, extraLabels dockerfile.Labels) *dockerImageBuilder {
+func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{
 		dCli:        dCli,
-		console:     console,
-		out:         out,
 		extraLabels: extraLabels,
 	}
 }

@@ -19,8 +19,6 @@ import (
 
 var DeployerBaseWireSet = wire.NewSet(
 	// dockerImageBuilder ( = ImageBuilder)
-	build.DefaultConsole,
-	build.DefaultOut,
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
