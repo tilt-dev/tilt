@@ -200,7 +200,7 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	return newBlob(string(bs), fmt.Sprintf("file: %s", path)), nil
+	return newBlob(string(bs), fmt.Sprintf("file: %s", p.path)), nil
 }
 
 type blob struct {

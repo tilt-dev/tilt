@@ -6,13 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-
-	"k8s.io/apimachinery/pkg/labels"
-
-	"go.starlark.net/starlark"
-
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
+	"go.starlark.net/starlark"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
