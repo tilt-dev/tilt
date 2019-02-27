@@ -28,7 +28,10 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-type DockerEnv func(string) string
+type Env struct {
+	ClientEnv       func(string) string
+	BuildInjections []string
+}
 
 // Version info
 // https://docs.docker.com/develop/sdk/#api-version-matrix
@@ -93,35 +96,44 @@ type Cli struct {
 	*client.Client
 	supportsBuildkit bool
 
+	env []string
+
 	creds     dockerCreds
 	initError error
 	initDone  chan bool
 }
 
-func ProvideDockerEnv(ctx context.Context, env k8s.Env, runtime container.Runtime) (DockerEnv, error) {
-	if runtime == container.RuntimeDocker {
-		if env == k8s.EnvMinikube {
-			envMap, err := minikube.DockerEnv(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "ProvideDockerEnv")
-			}
+func ProvideEnv(ctx context.Context, env k8s.Env, runtime container.Runtime) (Env, error) {
+	// TODO(dbentley): why do we allow DOCKER_HOST to be shadowed for microK8s but not for minikube?	if runtime == container.RuntimeDocker {
+	if env == k8s.EnvMinikube {
+		envMap, err := minikube.DockerEnv(ctx)
+		if err != nil {
+			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
+		}
 
-			return func(key string) string { return envMap[key] }, nil
-		} else if env == k8s.EnvMicroK8s {
-			return func(key string) string {
+		var envList []string
+		for k, v := range envMap {
+			envList = append(envList, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		return Env{func(key string) string { return envMap[key] }, envList}, nil
+	} else if env == k8s.EnvMicroK8s {
+		return Env{
+			func(key string) string {
 				val := os.Getenv(key)
 				if val == "" && key == "DOCKER_HOST" {
 					return microK8sDockerHost
 				}
 				return val
-			}, nil
-		}
+			},
+			[]string{"DOCKER_HOST=" + microK8sDockerHost},
+		}, nil
 	}
-	return DockerEnv(os.Getenv), nil
+	return Env{os.Getenv, nil}, nil
 }
 
-func ProvideDockerClient(ctx context.Context, envFunc DockerEnv) (*client.Client, error) {
-	opts, err := CreateClientOpts(ctx, envFunc)
+func ProvideDockerClient(ctx context.Context, env Env) (*client.Client, error) {
+	opts, err := CreateClientOpts(ctx, env.ClientEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, "ProvideDockerClient")
 	}

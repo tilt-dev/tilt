@@ -21,6 +21,7 @@ type ArchiveBuilder struct {
 	tw     *tar.Writer
 	buf    *bytes.Buffer
 	filter model.PathMatcher
+	paths  []string // local paths archived
 }
 
 func NewArchiveBuilder(filter model.PathMatcher) *ArchiveBuilder {
@@ -101,6 +102,7 @@ func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMa
 		if err != nil {
 			return errors.Wrapf(err, "tarPath '%s'", entry.path)
 		}
+		a.paths = append(a.paths, entry.path)
 	}
 	return nil
 }
@@ -112,6 +114,11 @@ func (a *ArchiveBuilder) BytesBuffer() (*bytes.Buffer, error) {
 	}
 
 	return a.buf, nil
+}
+
+// Local paths that were archived
+func (a *ArchiveBuilder) Paths() []string {
+	return a.paths
 }
 
 type archiveEntry struct {

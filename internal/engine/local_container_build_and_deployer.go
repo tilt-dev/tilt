@@ -53,8 +53,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	fbInfo, ok := iTarget.BuildDetails.(model.FastBuild)
-	if !ok {
+	fbInfo := iTarget.MaybeFastBuildInfo()
+	if fbInfo == nil {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("container build only supports FastBuilds")
 	}
 

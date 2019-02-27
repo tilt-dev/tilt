@@ -16,13 +16,15 @@ import (
 type imageAndCacheBuilder struct {
 	ib         build.ImageBuilder
 	cb         build.CacheBuilder
+	custb      build.CustomBuilder
 	updateMode UpdateMode
 }
 
-func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, updateMode UpdateMode) *imageAndCacheBuilder {
+func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb build.CustomBuilder, updateMode UpdateMode) *imageAndCacheBuilder {
 	return &imageAndCacheBuilder{
 		ib:         ib,
 		cb:         cb,
+		custb:      custb,
 		updateMode: updateMode,
 	}
 }
@@ -89,6 +91,14 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			}
 			n = ref
 		}
+	case model.CustomBuild:
+		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", ref)
+		defer ps.EndPipelineStep(ctx)
+		ref, err := icb.custb.Build(ctx, ref, bd.Command)
+		if err != nil {
+			return nil, err
+		}
+		n = ref
 	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.

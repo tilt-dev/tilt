@@ -22,9 +22,12 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
+	docker.ProvideEnv,
 	build.DefaultImageBuilder,
 	build.NewCacheBuilder,
 	build.NewDockerImageBuilder,
+	build.NewExecCustomBuilder,
+	wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)),
 
 	// BuildOrder
 	NewImageBuildAndDeployer,
@@ -59,12 +62,12 @@ func provideBuildAndDeployer(
 	env k8s.Env,
 	updateMode UpdateModeFlag,
 	sCli synclet.SyncletClient,
-	dcc dockercompose.DockerComposeClient) (BuildAndDeployer, error) {
+	dcc dockercompose.DockerComposeClient,
+	clock build.Clock) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
-		build.ProvideClock,
 		k8s.ProvideContainerRuntime,
 	)
 

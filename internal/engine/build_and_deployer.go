@@ -54,7 +54,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			logger.Get(ctx).Debugf("(expected error) falling back to next build and deploy method "+
 				"after error: %v", err)
 		} else {
-			logger.Get(ctx).Verbosef("falling back to next build and deploy method "+
+			logger.Get(ctx).Infof("falling back to next build and deploy method "+
 				"after unexpected error: %v", err)
 		}
 
@@ -74,7 +74,9 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 	}
 
 	if updMode == UpdateModeSynclet {
-		ibad.SetInjectSynclet(true)
+		if runtime == container.RuntimeDocker {
+			ibad.SetInjectSynclet(true)
+		}
 		return BuildOrder{sbad, dcbad, ibad}
 	}
 
@@ -82,6 +84,8 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 		return BuildOrder{cbad, dcbad, ibad}
 	}
 
-	ibad.SetInjectSynclet(true)
+	if runtime == container.RuntimeDocker {
+		ibad.SetInjectSynclet(true)
+	}
 	return BuildOrder{sbad, dcbad, ibad}
 }
