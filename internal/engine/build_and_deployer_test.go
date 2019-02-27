@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -15,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/docker/docker/api/types"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
@@ -458,6 +460,33 @@ func TestIgnoredFiles(t *testing.T) {
 	})
 }
 
+func TestCustomBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+
+	manifest := NewSanchoCustomBuildManifest(f)
+	targets := buildTargets(manifest)
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected 0 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 1 {
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+
+	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
+	}
+}
+
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake Client and K8sClient
@@ -487,7 +516,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc)
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -531,3 +560,9 @@ func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy sto
 	}
 	return stateSet
 }
+
+type fakeClock struct {
+	now time.Time
+}
+
+func (c fakeClock) Now() time.Time { return c.now }

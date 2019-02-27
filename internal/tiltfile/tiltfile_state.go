@@ -86,6 +86,7 @@ const (
 	// build functions
 	dockerBuildN = "docker_build"
 	fastBuildN   = "fast_build"
+	customBuildN = "custom_build"
 
 	// docker compose functions
 	dockerComposeN = "docker_compose"
@@ -134,6 +135,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
 	addBuiltin(r, fastBuildN, s.fastBuild)
+	addBuiltin(r, customBuildN, s.customBuild)
 	addBuiltin(r, dockerComposeN, s.dockerCompose)
 	addBuiltin(r, dcResourceN, s.dcResource)
 	addBuiltin(r, k8sYamlN, s.k8sYaml)
@@ -482,22 +484,18 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		}
 		claimStatus[id] = claimPending
 
-		isStaticBuild := !image.staticBuildPath.Empty()
-		isFastBuild := !image.baseDockerfilePath.Empty()
-
 		iTarget := model.ImageTarget{
 			Ref: image.ref,
 		}.WithCachePaths(image.cachePaths)
 
-		if isStaticBuild && isFastBuild {
-			return nil, fmt.Errorf("cannot populate both staticBuild and fastBuild properties")
-		} else if isStaticBuild {
+		switch {
+		case !image.staticBuildPath.Empty():
 			iTarget = iTarget.WithBuildDetails(model.StaticBuild{
 				Dockerfile: image.staticDockerfile.String(),
 				BuildPath:  string(image.staticBuildPath.path),
 				BuildArgs:  image.staticBuildArgs,
 			})
-		} else if isFastBuild {
+		case !image.baseDockerfilePath.Empty():
 			iTarget = iTarget.WithBuildDetails(model.FastBuild{
 				BaseDockerfile: image.baseDockerfile.String(),
 				Mounts:         s.mountsToDomain(image),
@@ -505,7 +503,21 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Entrypoint:     model.ToShellCmd(image.entrypoint),
 				HotReload:      image.hotReload,
 			})
-		} else {
+		case image.customCommand != "":
+			r := model.CustomBuild{
+				Command: image.customCommand,
+				Deps:    image.customDeps,
+			}
+			if len(image.mounts) > 0 || len(image.steps) > 0 {
+				r.Fast = &model.FastBuild{
+					Mounts:    s.mountsToDomain(image),
+					Steps:     image.steps,
+					HotReload: image.hotReload,
+				}
+			}
+			iTarget = iTarget.WithBuildDetails(r)
+			// TODO(dbentley): validate that mounts is a subset of deps
+		default:
 			return nil, fmt.Errorf("no build info for image %s", image.ref)
 		}
 
