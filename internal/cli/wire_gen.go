@@ -84,10 +84,10 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 		return demo.Script{}, err
 	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics)
-	stdout := output.CaptureAll()
-	console := build.DefaultConsole(stdout)
+	console := build.DefaultConsole()
+	writer := output.CaptureAll()
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, stdout, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(cli)
 	engineUpdateModeFlag := provideUpdateModeFlag()
@@ -178,10 +178,10 @@ func wireThreads(ctx context.Context) (Threads, error) {
 		return Threads{}, err
 	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics)
-	stdout := output.CaptureAll()
-	console := build.DefaultConsole(stdout)
+	console := build.DefaultConsole()
+	writer := output.CaptureAll()
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, stdout, labels)
+	dockerImageBuilder := build.NewDockerImageBuilder(cli, console, writer, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(cli)
 	engineUpdateModeFlag := provideUpdateModeFlag()

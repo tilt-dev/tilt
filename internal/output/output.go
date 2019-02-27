@@ -1,14 +1,13 @@
 package output
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 )
 
-type Stdout *os.File
-
-func CaptureAll() Stdout {
+func CaptureAll() io.Writer {
 	tmpfile, err := ioutil.TempFile("", "tilt.output.*")
 	if err != nil {
 		log.Fatal(err)
