@@ -48,9 +48,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 	w.watching = true
 
-	ctx2, cancel := context.WithTimeout(ctx, watchTimeout)
-	defer cancel()
-	ch, err := w.kCli.WatchServices(ctx2, []model.LabelPair{k8s.TiltRunLabel()})
+	ch, err := w.kCli.WatchServices(ctx, []model.LabelPair{k8s.TiltRunLabel()})
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))
