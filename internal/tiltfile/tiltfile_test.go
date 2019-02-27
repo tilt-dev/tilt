@@ -1493,6 +1493,42 @@ k8s_yaml('foo.yaml')
 	assert.Equal(t, expected, f.an.Counts)
 }
 
+func TestYamlErrorFromLocal(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `
+yaml = local('echo hi')
+k8s_yaml(yaml)
+`)
+	f.loadErrString("cmd: 'echo hi'")
+}
+
+func TestYamlErrorFromReadFile(t *testing.T) {
+	f := newFixture(t)
+	f.file("foo.yaml", "hi")
+	f.file("Tiltfile", `
+k8s_yaml(read_file('foo.yaml'))
+`)
+	f.loadErrString(fmt.Sprintf("file: %s", f.JoinPath("foo.yaml")))
+}
+
+func TestYamlErrorFromHelm(t *testing.T) {
+	f := newFixture(t)
+	f.setupHelm()
+	f.file("helm/templates/foo.yaml", "hi")
+	f.file("Tiltfile", `
+k8s_yaml(helm('helm'))
+`)
+	f.loadErrString("from helm")
+}
+
+func TestYamlErrorFromBlob(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `
+k8s_yaml(blob('hi'))
+`)
+	f.loadErrString("from Tiltfile blob() call")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
