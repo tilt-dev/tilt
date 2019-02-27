@@ -1010,6 +1010,20 @@ for i in range(1, 3):
 	f.load()
 }
 
+func TestTopLevelVariableRename(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+x = 1
+x = 2
+`)
+
+	f.load()
+}
+
 func TestHelm(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
