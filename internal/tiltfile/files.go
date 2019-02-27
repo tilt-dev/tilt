@@ -200,17 +200,18 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	return newBlob(string(bs)), nil
+	return newBlob(string(bs), fmt.Sprintf("file: %s", path)), nil
 }
 
 type blob struct {
-	text string
+	text   string
+	source string
 }
 
 var _ starlark.Value = &blob{}
 
-func newBlob(text string) *blob {
-	return &blob{text: text}
+func newBlob(text string, source string) *blob {
+	return &blob{text: text, source: source}
 }
 
 func (b *blob) String() string {
@@ -244,7 +245,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	return newBlob(out), nil
+	return newBlob(out, fmt.Sprintf("cmd: '%s'", command)), nil
 }
 
 func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
@@ -304,7 +305,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		s.recordConfigFile(d)
 	}
 
-	return newBlob(yaml), nil
+	return newBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath.String())), nil
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -326,7 +327,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	s.recordConfigFile(localPath.path)
 
-	return newBlob(string(yaml)), nil
+	return newBlob(string(yaml), fmt.Sprintf("helm: %s", localPath.path)), nil
 }
 
 func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -336,7 +337,7 @@ func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	return newBlob(input.GoString()), nil
+	return newBlob(input.GoString(), "Tiltfile blob() call"), nil
 }
 
 func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

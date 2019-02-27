@@ -6,11 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"k8s.io/apimachinery/pkg/labels"
 
 	"go.starlark.net/starlark"
 
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -189,8 +192,16 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
+	var source string
+	switch y := yamlValue.(type) {
+	case *blob:
+		source = y.source
+	default:
+		source = "filter_yaml"
+	}
+
 	return starlark.Tuple{
-		newBlob(matchingStr), newBlob(restStr),
+		newBlob(matchingStr, source), newBlob(restStr, source),
 	}, nil
 }
 
@@ -359,12 +370,20 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v starlark.Value) ([]
 	return s.yamlEntitiesFromSkylarkValue(v)
 }
 
+func parseYAMLFromBlob(blob blob) ([]k8s.K8sEntity, error) {
+	ret, err := k8s.ParseYAMLFromString(blob.String())
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error reading yaml from %s", blob.source)
+	}
+	return ret, nil
+}
+
 func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8sEntity, error) {
 	switch v := v.(type) {
 	case nil:
 		return nil, nil
 	case *blob:
-		return k8s.ParseYAMLFromString(v.String())
+		return parseYAMLFromBlob(*v)
 	default:
 		yamlPath, err := s.localPathFromSkylarkValue(v)
 		if err != nil {
