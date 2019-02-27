@@ -1467,6 +1467,34 @@ func TestDir(t *testing.T) {
 	f.assertConfigFiles("Tiltfile", "config/foo.yaml", "config/bar.yaml")
 }
 
+func TestDirRecursive(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		os.Chdir(wd)
+	}()
+	err = os.Chdir(f.TempDirFixture.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.gitInit("")
+	f.file("foo/bar", "bar")
+	f.file("foo/baz/qux", "qux")
+	f.file("Tiltfile", `files = listdir('foo', recursive=True)
+
+for f in files:
+  read_file(f)
+`)
+
+	f.load()
+	f.assertConfigFiles("Tiltfile", "foo/bar", "foo/baz/qux")
+}
+
 func TestCallCounts(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
