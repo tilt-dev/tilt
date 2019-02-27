@@ -217,7 +217,8 @@ func (FastBuild) buildDetails() {}
 
 type CustomBuild struct {
 	Command string
-	Deps    []string
+	// Deps is a list of file paths that are dependencies of this command.
+	Deps []string
 
 	Fast *FastBuild
 }
