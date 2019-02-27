@@ -1,14 +1,19 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/ignore"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -16,12 +21,14 @@ import (
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	sm SyncletManager
+	sm   SyncletManager
+	kCli k8s.Client
 }
 
-func NewSyncletBuildAndDeployer(sm SyncletManager) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(sm SyncletManager, kCli k8s.Client) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		sm: sm,
+		sm:   sm,
+		kCli: kCli,
 	}
 }
 
@@ -42,7 +49,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 		return store.BuildResultSet{}, WrapRedirectToNextBuilder(err)
 	}
 
-	return sbd.updateViaSynclet(ctx, iTarget, state)
+	return sbd.updateInCluster(ctx, iTarget, state)
 }
 
 // canSyncletBuild returns an error if we CAN'T build this manifest via the synclet
@@ -54,7 +61,7 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
 	}
 
-	if !image.IsFastBuild() {
+	if image.MaybeFastBuildInfo() == nil {
 		return fmt.Errorf("container build only supports FastBuilds")
 	}
 
@@ -66,9 +73,9 @@ func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
 	return nil
 }
 
-func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
+func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	image model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
-	fbInfo := image.FastBuildInfo()
+	fbInfo := image.MaybeFastBuildInfo()
 	paths, err := build.FilesToPathMappings(
 		state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {
@@ -85,6 +92,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
+	archivePaths := ab.Paths()
 
 	// get files to rm
 	toRemove, err := build.MissingLocalPaths(ctx, paths)
@@ -104,17 +112,19 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return store.BuildResultSet{}, err
 	}
 
-	sCli, err := sbd.sm.ClientForPod(ctx, deployInfo.PodID, deployInfo.Namespace)
-	if err != nil {
-		return store.BuildResultSet{}, err
-	}
-
-	err = sCli.UpdateContainer(ctx, deployInfo.ContainerID, archive.Bytes(), containerPathsToRm, cmds, fbInfo.HotReload)
-	if err != nil {
-		if build.IsUserBuildFailure(err) {
-			return store.BuildResultSet{}, WrapDontFallBackError(err)
+	if sbd.kCli.ContainerRuntime(ctx) == container.RuntimeDocker {
+		// TODO(dbentley): it would be even better to check if the pod has the sidecar
+		if err := sbd.updateViaSynclet(ctx,
+			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
+			archive, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
+			return store.BuildResultSet{}, err
 		}
-		return store.BuildResultSet{}, err
+	} else {
+		if err := sbd.updateViaExec(ctx,
+			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
+			archive, archivePaths, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
+			return store.BuildResultSet{}, err
+		}
 	}
 
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
@@ -123,4 +133,64 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	resultSet := store.BuildResultSet{}
 	resultSet[image.ID()] = res
 	return resultSet, nil
+}
+
+func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
+	podID k8s.PodID, namespace k8s.Namespace, containerID container.ID,
+	archive *bytes.Buffer, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	sCli, err := sbd.sm.ClientForPod(ctx, podID, namespace)
+	if err != nil {
+		return err
+	}
+
+	err = sCli.UpdateContainer(ctx, containerID, archive.Bytes(), filesToDelete, cmds, hotReload)
+	if err != nil && build.IsUserBuildFailure(err) {
+		return WrapDontFallBackError(err)
+	}
+	return err
+}
+
+func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
+	podID k8s.PodID, namespace k8s.Namespace, container container.Name,
+	archive *bytes.Buffer, archivePaths []string, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	l := logger.Get(ctx)
+	w := l.Writer(logger.InfoLvl)
+
+	if len(filesToDelete) > 0 {
+		filesToShow := filesToDelete
+		if len(filesToShow) > 5 {
+			filesToShow = append([]string(nil), filesToDelete[0:5]...)
+			filesToShow = append(filesToShow, "...")
+		}
+
+		l.Infof("removing %v files %v", len(filesToDelete), filesToShow)
+		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
+			append([]string{"rm", "-rf"}, filesToDelete...), nil, w, w); err != nil {
+			return err
+		}
+	}
+
+	if len(archivePaths) > 0 {
+		filesToShow := archivePaths
+		if len(filesToShow) > 5 {
+			filesToShow = append([]string(nil), archivePaths[0:5]...)
+			filesToShow = append(filesToShow, "...")
+		}
+		l.Infof("updating %v files %v", len(archivePaths), filesToShow)
+		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
+			[]string{"tar", "-x", "-f", "/dev/stdin"}, archive, w, w); err != nil {
+			return err
+		}
+	}
+
+	for i, c := range cmds {
+		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
+		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
+			c.Argv, nil, w, w); err != nil {
+			return WrapDontFallBackError(err)
+		}
+
+	}
+
+	return nil
 }

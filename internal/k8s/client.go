@@ -90,6 +90,8 @@ type Client interface {
 	ConnectedToCluster(ctx context.Context) error
 
 	ContainerRuntime(ctx context.Context) container.Runtime
+
+	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
 }
 
 type K8sClient struct {

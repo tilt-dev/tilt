@@ -267,6 +267,10 @@ func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime 
 	return container.RuntimeDocker
 }
 
+func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	return nil
+}
+
 type BufferCloser struct {
 	*bytes.Buffer
 }
