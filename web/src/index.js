@@ -2,12 +2,23 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
-import { BrowserRouter as Router, Route } from 'react-router-dom';
+import LogApp from './LogApp';
+import LoadingScreen from './LoadingScreen';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+
+let NoMatch = ({location}) => {
+  let message = (<div>No match for <code>{location.pathname}</code></div>)
+  return <LoadingScreen message={message} />
+};
 
 let Main = () => {
   return (<Router>
     <div>
-      <Route exact path="/" component={App} />
+      <Switch>
+        <Route exact path="/" component={App} />
+        <Route exact path="/log" component={LogApp} />
+        <Route component={NoMatch} />
+      </Switch>
     </div>
   </Router>)
 }
