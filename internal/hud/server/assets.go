@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/pkg/errors"
@@ -113,7 +114,8 @@ func (s prodAssetServer) Serve(ctx context.Context) error {
 func (s prodAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	outurl := *s.url
 	origPath := req.URL.Path
-	if origPath == "" || origPath == "/" {
+	if !strings.HasPrefix(origPath, "/static/") {
+		// redirect everything to the main entry point.
 		origPath = "index.html"
 	}
 

@@ -1,14 +1,30 @@
 import React, { Component } from 'react';
 import ResourceList from './ResourceList';
+import AppController from './AppController'
+import { Link } from 'react-router-dom';
 import './App.css';
 
 class App extends Component {
   constructor(props) {
     super(props)
+
+    this.controller = new AppController(`ws://${window.location.host}/ws/view`, this)
     this.state = {
       Message: '',
       View: {Resources: []},
     }
+  }
+
+  componentDidMount() {
+    this.controller.createNewSocket()
+  }
+
+  componentWillUnmount() {
+    this.controller.dispose()
+  }
+
+  setAppState(state) {
+    this.setState(state)
   }
 
   render() {

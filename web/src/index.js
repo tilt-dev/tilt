@@ -2,17 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
-import AppController from './AppController'
+import { BrowserRouter as Router, Route } from 'react-router-dom';
 
-let url = `ws://${window.location.host}/ws/view`
-let renderAsync = new Promise((resolve, reject) => {
-  let app = (<App />)
-  let root = document.getElementById('root')
-  ReactDOM.render(app, root, function() {
-    resolve(this)
-  })
-})
+let Main = () => {
+  return (<Router>
+    <div>
+      <Route exact path="/" component={App} />
+    </div>
+  </Router>)
+}
 
-renderAsync.then((component) => {
-  new AppController(url, component)
-})
+let app = (<Main />)
+let root = document.getElementById('root')
+ReactDOM.render(app, root)
