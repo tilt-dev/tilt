@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
-var watchTimeout = 5 * time.Second
+var watchTimeout = 10 * time.Second
 
 type ServiceWatcher struct {
 	kCli     k8s.Client
