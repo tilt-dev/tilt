@@ -202,7 +202,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:              t,
-		calls:          make(chan buildAndDeployCall, 5),
+		calls:          make(chan buildAndDeployCall, 20),
 		buildLogOutput: make(map[model.TargetID]string),
 	}
 }

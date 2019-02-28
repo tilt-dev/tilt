@@ -1,10 +1,12 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -136,4 +138,46 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	call := f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(2)
+}
+
+// any manifests with no built images should be deployed before any manifests that have built images
+func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifests := make([]model.Manifest, 10)
+	for i := 0; i < 10; i++ {
+		mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
+		manifests[i] = f.newManifest(fmt.Sprintf("built%d", i+1), []model.Mount{mount})
+	}
+
+	for _, i := range []int{3, 7, 8} {
+		manifests[i] = assembleK8sManifest(
+			model.Manifest{
+				Name: model.ManifestName(fmt.Sprintf("unbuilt%d", i+1))},
+			model.K8sTarget{YAML: "fake-yaml"})
+	}
+	f.Start(manifests, true)
+
+	var observedBuildOrder []string
+	for i := 0; i < len(manifests); i++ {
+		call := f.nextCall()
+		observedBuildOrder = append(observedBuildOrder, call.k8s().Name.String())
+	}
+
+	// throwing a bunch of elements at it to increase confidence we maintain order between built and unbuilt
+	// this might miss bugs since we might just get these elements back in the right order via luck
+	expectedBuildOrder := []string{
+		"unbuilt4",
+		"unbuilt8",
+		"unbuilt9",
+		"built1",
+		"built2",
+		"built3",
+		"built5",
+		"built6",
+		"built7",
+		"built10",
+	}
+	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
 }
