@@ -436,6 +436,38 @@ fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
 	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
 }
 
+func TestFastBuildAddLocalPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+k8s_yaml('foo.yaml')
+fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.path('foo'), '/foo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
+}
+
+func TestFastBuildAddGitRepo(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+k8s_yaml('foo.yaml')
+
+# add the whole repo
+fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo, '/whole_repo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add(".", "/whole_repo")))
+}
+
 type portForwardCase struct {
 	name     string
 	expr     string
