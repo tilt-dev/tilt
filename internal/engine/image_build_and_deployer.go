@@ -100,9 +100,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.BuildResultSet{}, err
 		}
 
-		// TODO(nick): We can also skip the push of the image if it isn't used
-		// in any k8s resources! (e.g., it's consumed by another image).
-		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, ibd.canSkipPush())
+		canSkipPush := ibd.canSkipPushOfTarget(iTarget, kTargets)
+		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, canSkipPush)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -213,6 +212,24 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	}
 
 	return ibd.k8sClient.Upsert(ctx, newK8sEntities)
+}
+
+// We can also skip the push of the image if it isn't used
+// in any k8s resources! (e.g., it's consumed by another image).
+func (ibd *ImageBuildAndDeployer) canSkipPushOfTarget(iTarget model.ImageTarget, kTargets []model.K8sTarget) bool {
+	if ibd.canSkipPush() {
+		return true
+	}
+
+	id := iTarget.ID()
+	for _, kTarget := range kTargets {
+		for _, depID := range kTarget.DependencyIDs() {
+			if depID == id {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // If we're using docker-for-desktop as our k8s backend,
