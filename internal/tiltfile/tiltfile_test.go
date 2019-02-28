@@ -172,9 +172,8 @@ func TestFastBuildSimple(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml')
 `)
@@ -192,9 +191,8 @@ func TestFastBuildHotReload(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi") \
   .hot_reload()
 k8s_resource('foo', 'foo.yaml')
@@ -213,9 +211,8 @@ func TestFastBuildPassedToResource(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml', image=fb)
 `)
@@ -236,9 +233,8 @@ func TestFastBuildValidates(t *testing.T) {
 from golang:1.10
 ADD . .`)
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml')
 `)
@@ -251,10 +247,9 @@ func TestFastBuildRunBeforeAdd(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi") \
-  .add(repo.path('foo'), 'src/')
+  .add('foo', 'src/')
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
@@ -266,9 +261,8 @@ func TestFastBuildTriggers(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi", trigger=['a', 'b']) \
   .run("echo again", trigger='c')
 k8s_resource('foo', 'foo.yaml')
@@ -975,9 +969,8 @@ func TestFastBuildDockerignoreSubdir(t *testing.T) {
 	f.setupFoo()
 	f.file("foo/.dockerignore", "*.txt")
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml')
 `)
@@ -1678,14 +1671,13 @@ func TestCustomBuild(t *testing.T) {
 	f := newFixture(t)
 	fmt.Println(f.TempDirFixture.Path())
 
-	tiltfile := `repo = local_git_repo('.')
-k8s_yaml('foo.yaml')
+	tiltfile := `k8s_yaml('foo.yaml')
 hfb = custom_build(
   'gcr.io/foo',
   'docker build -t $TAG foo',
   ['foo']
 ).add_fast_build()
-hfb.add(repo.path('foo'), '/app')
+hfb.add('foo', '/app')
 hfb.run('cd /app && pip install -r requirements.txt')
 hfb.hot_reload()`
 
