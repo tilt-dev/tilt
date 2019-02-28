@@ -118,10 +118,8 @@ func (nbmf noBuildManifestsFirst) Less(i, j int) bool {
 
 	if nba == nbb {
 		return nbmf.origIndexByName[a.Manifest.Name.String()] < nbmf.origIndexByName[b.Manifest.Name.String()]
-	} else if nba {
-		return true
 	} else {
-		return false
+		return nba
 	}
 }
 
