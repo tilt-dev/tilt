@@ -192,13 +192,18 @@ func (d DeployInfo) Empty() bool {
 
 // Check to see if there's a single, unambiguous Ready container
 // in the given PodSet. If so, create a DeployInfo for that container.
-func NewDeployInfo(podSet PodSet) DeployInfo {
+func NewDeployInfo(iTarget model.ImageTarget, podSet PodSet) DeployInfo {
 	if podSet.Len() != 1 {
 		return DeployInfo{}
 	}
 
 	pod := podSet.MostRecentPod()
 	if pod.PodID == "" || pod.ContainerID == "" || pod.ContainerName == "" || !pod.ContainerReady {
+		return DeployInfo{}
+	}
+
+	// Only return the pod if it matches our image.
+	if pod.ContainerImageRef == nil || pod.ContainerImageRef.Name() != iTarget.Ref.Name() {
 		return DeployInfo{}
 	}
 

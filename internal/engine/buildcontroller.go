@@ -297,8 +297,16 @@ func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.
 		// We don't want to pass along the kubernetes data if the pod is crashing,
 		// because we're not confident that this state is accurate (due to how k8s
 		// reschedules pods).
+		//
+		// This will probably need to change as the mapping between containers and
+		// manifests becomes many-to-one.
+		//
+		// TODO(nick): Attach deploy info for docker compose
 		if manifest.IsK8s() && !ms.NeedsRebuildFromCrash {
-			buildState = buildState.WithDeployTarget(store.NewDeployInfo(ms.PodSet))
+			iTarget, ok := spec.(model.ImageTarget)
+			if ok {
+				buildState = buildState.WithDeployTarget(store.NewDeployInfo(iTarget, ms.PodSet))
+			}
 		}
 		buildStateSet[id] = buildState
 	}
