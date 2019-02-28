@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/store"
@@ -100,10 +101,17 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.BuildResultSet{}, err
 		}
 
-		canSkipPush := ibd.canSkipPushOfTarget(iTarget, kTargets)
-		ref, err := ibd.icb.Build(ctx, iTarget, stateSet[iTarget.ID()], ps, canSkipPush)
-		if err != nil {
-			return store.BuildResultSet{}, err
+		var ref reference.NamedTagged
+		state := stateSet[iTarget.ID()]
+
+		if state.NeedsImageBuild() {
+			canSkipPush := ibd.canSkipPushOfTarget(iTarget, kTargets)
+			ref, err = ibd.icb.Build(ctx, iTarget, state, ps, canSkipPush)
+			if err != nil {
+				return store.BuildResultSet{}, err
+			}
+		} else {
+			ref = state.LastResult.Image
 		}
 
 		q.SetResult(iTarget.ID(), store.BuildResult{Image: ref})

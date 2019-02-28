@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -186,6 +187,34 @@ func TestMultiStageStaticBuild(t *testing.T) {
 		Path: "Dockerfile",
 		Contents: `
 FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
+func TestMultiStageStaticBuildWithOnlyOneDirtyImage(t *testing.T) {
+	f := newIBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticMultiStageManifest()
+	result := store.BuildResult{Image: container.MustParseNamedTagged("sancho-base:tilt-prebuilt")}
+	state := store.NewBuildState(result, nil)
+	iTargetID := manifest.ImageTargets[0].ID()
+	stateSet := store.BuildStateSet{iTargetID: state}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.docker.BuildCount)
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM docker.io/library/sancho-base:tilt-prebuilt
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho

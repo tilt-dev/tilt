@@ -148,6 +148,14 @@ func (b BuildState) HasImage() bool {
 	return b.LastResult.HasImage()
 }
 
+// Whether the image represented by this state needs to be built.
+// If the image has already been built, and no files have been
+// changed since then, then we can re-use the previous result.
+func (b BuildState) NeedsImageBuild() bool {
+	alreadyBuilt := b.LastResult.HasImage()
+	return !alreadyBuilt || len(b.FilesChangedSet) > 0
+}
+
 type BuildStateSet map[model.TargetID]BuildState
 
 func (set BuildStateSet) Empty() bool {
