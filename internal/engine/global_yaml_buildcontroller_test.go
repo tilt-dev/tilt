@@ -3,8 +3,11 @@ package engine
 import (
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/yaml"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
@@ -89,6 +92,26 @@ func TestGlobalYamlFailUpsert(t *testing.T) {
 	if assert.Error(t, gYAMLErr.Error) {
 		assert.Contains(t, gYAMLErr.Error.Error(), bc.k8sClient.UpsertError.Error())
 	}
+}
+
+func TestGlobalYamlNamespacesFirst(t *testing.T) {
+	y := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.MyNamespaceYAML)
+	st := newTestingStoreWithGlobalYAML(y)
+	bc := newGlobalYamlBuildControllerForTest(testyaml.SecretYaml)
+
+	bc.OnChange(output.CtxForTest(), st)
+
+	entities, err := k8s.ParseYAMLFromString(bc.k8sClient.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var observedNames []string
+	for _, e := range entities {
+		observedNames = append(observedNames, e.Name())
+	}
+	expectedNames := []string{"mynamespace", "doggos"}
+	assert.Equal(t, expectedNames, observedNames)
 }
 
 func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {

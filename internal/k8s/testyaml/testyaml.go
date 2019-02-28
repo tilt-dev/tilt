@@ -1,6 +1,8 @@
 package testyaml
 
-import "strings"
+import (
+	"strings"
+)
 
 const BlorgBackendYAML = `
 apiVersion: v1
@@ -1110,6 +1112,12 @@ metadata:
   namespace: default
 spec:
   replicas: 1
+`
+
+const MyNamespaceYAML = `apiVersion: v1
+kind: Namespace
+metadata:
+  name: mynamespace
 `
 
 func Deployment(name string, imageName string) string {
