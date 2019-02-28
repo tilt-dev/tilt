@@ -37,7 +37,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		printField("Host", nil, err)
 	} else {
-		host := dockerEnv("DOCKER_HOST")
+		host := dockerEnv.ClientEnv("DOCKER_HOST")
 		if host == "" {
 			host = "[default]"
 		}

@@ -65,6 +65,22 @@ func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.M
 	return manifest
 }
 
+func NewSanchoCustomBuildManifest(fixture pather) model.Manifest {
+	fb := NewSanchoFastBuild(fixture)
+	cb := model.CustomBuild{
+		Command: "true",
+		Deps:    []string{fixture.JoinPath("app")},
+		Fast:    &fb,
+	}
+
+	m := model.Manifest{Name: "sancho"}
+
+	return assembleK8sManifest(
+		m,
+		model.K8sTarget{YAML: SanchoYAML},
+		model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(cb))
+}
+
 func NewSanchoStaticImageTarget() model.ImageTarget {
 	return model.ImageTarget{
 		Ref: SanchoRef,

@@ -40,14 +40,16 @@ type dockerBuildFixture struct {
 	ps           *PipelineState
 }
 
-type fakeClock struct{}
+type fakeClock struct {
+	now time.Time
+}
 
-func (fakeClock) Now() time.Time { return time.Unix(0, 0) }
+func (c fakeClock) Now() time.Time { return c.now }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
 
-	dEnv, err := docker.ProvideDockerEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
+	dEnv, err := docker.ProvideEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
 	if err != nil {
 		t.Fatal(err)
 	}
