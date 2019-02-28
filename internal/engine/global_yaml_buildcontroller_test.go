@@ -3,6 +3,8 @@ package engine
 import (
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/yaml"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -93,8 +95,8 @@ func TestGlobalYamlFailUpsert(t *testing.T) {
 }
 
 func TestGlobalYamlNamespacesFirst(t *testing.T) {
-	yaml := testyaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.MyNamespaceYAML)
-	st := newTestingStoreWithGlobalYAML(yaml)
+	y := yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.MyNamespaceYAML)
+	st := newTestingStoreWithGlobalYAML(y)
 	bc := newGlobalYamlBuildControllerForTest(testyaml.SecretYaml)
 
 	bc.OnChange(output.CtxForTest(), st)
@@ -103,8 +105,13 @@ func TestGlobalYamlNamespacesFirst(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, "mynamespace", entities[0].Name())
-	assert.Equal(t, "doggos", entities[1].Name())
+
+	var observedNames []string
+	for _, e := range entities {
+		observedNames = append(observedNames, e.Name())
+	}
+	expectedNames := []string{"mynamespace", "doggos"}
+	assert.Equal(t, expectedNames, observedNames)
 }
 
 func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {

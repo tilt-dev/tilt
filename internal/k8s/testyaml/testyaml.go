@@ -1,7 +1,6 @@
 package testyaml
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -1120,10 +1119,6 @@ kind: Namespace
 metadata:
   name: mynamespace
 `
-
-func ConcatYAML(y1, y2 string) string {
-	return fmt.Sprintf("%s\n---\n%s", y1, y2)
-}
 
 func Deployment(name string, imageName string) string {
 	result := `
