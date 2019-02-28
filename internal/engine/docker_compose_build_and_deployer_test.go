@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"archive/tar"
 	"context"
 	"fmt"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
@@ -99,6 +101,63 @@ func TestDCBADRejectsAllSpecsIfOneUnsupported(t *testing.T) {
 	iTarg, dcTarg := f.dcbad.extract(specs)
 	assert.Empty(t, iTarg)
 	assert.Empty(t, dcTarg)
+}
+
+func TestMultiStageDockerCompose(t *testing.T) {
+	f := newDCBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticMultiStageManifest().
+		WithDeployTarget(dcTarg)
+	stateSet := store.BuildStateSet{}
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, f.dCli.BuildCount)
+	assert.Equal(t, 0, f.dCli.PushCount)
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM docker.io/library/sancho-base:latest
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildOptions.Context), expected)
+}
+
+func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
+	f := newDCBDFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticMultiStageManifest().
+		WithDeployTarget(dcTarg)
+	result := store.BuildResult{Image: container.MustParseNamedTagged("sancho-base:tilt-prebuilt")}
+	state := store.NewBuildState(result, nil)
+	iTargetID := manifest.ImageTargets[0].ID()
+	stateSet := store.BuildStateSet{iTargetID: state}
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.dCli.BuildCount)
+	assert.Equal(t, 0, f.dCli.PushCount)
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM docker.io/library/sancho-base:tilt-prebuilt
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildOptions.Context), expected)
 }
 
 type dcbdFixture struct {
