@@ -29,7 +29,9 @@ import (
 )
 
 type Env struct {
+	// ClientEnv takes an environment variable name and turns it in to its value
 	ClientEnv       func(string) string
+	// BuildInjections are environment variables that get injected in to the build environment
 	BuildInjections []string
 }
 
