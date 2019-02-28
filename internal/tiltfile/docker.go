@@ -29,6 +29,9 @@ type dockerImage struct {
 	staticBuildPath      localPath
 	staticBuildArgs      model.DockerBuildArgs
 
+	customCommand string
+	customDeps    []string
+
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
 
@@ -131,6 +134,105 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	return starlark.None, nil
+}
+
+func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var dockerRef string
+	var command string
+	var deps *starlark.List
+
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"ref", &dockerRef,
+		"command", &command,
+		"deps", &deps,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ref, err := reference.ParseNormalizedNamed(dockerRef)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
+	}
+
+	if command == "" {
+		return nil, fmt.Errorf("Argument 2 (command) can't be empty")
+	}
+
+	if deps == nil || deps.Len() == 0 {
+		return nil, fmt.Errorf("Argument 3 (deps) can't be empty")
+	}
+
+	var localDeps []string
+	iter := deps.Iterate()
+	defer iter.Done()
+	var v starlark.Value
+	for iter.Next(&v) {
+		p, err := s.localPathFromSkylarkValue(v)
+		if err != nil {
+			return nil, fmt.Errorf("Argument 3 (deps): %v", err)
+		}
+		localDeps = append(localDeps, p.path)
+	}
+
+	img := &dockerImage{
+		ref:           ref,
+		customCommand: command,
+		customDeps:    localDeps,
+	}
+
+	err = s.buildIndex.addImage(img)
+	if err != nil {
+		return nil, err
+	}
+
+	return &customBuild{s: s, img: img}, nil
+}
+
+type customBuild struct {
+	s   *tiltfileState
+	img *dockerImage
+}
+
+var _ starlark.Value = &customBuild{}
+
+func (b *customBuild) String() string {
+	return fmt.Sprintf("custom_build(%q)", b.img.ref.Name())
+}
+
+func (b *customBuild) Type() string {
+	return "custom_build"
+}
+
+func (b *customBuild) Freeze() {}
+
+func (b *customBuild) Truth() starlark.Bool {
+	return true
+}
+
+func (b *customBuild) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable type: custom_build")
+}
+
+const (
+	addFastBuildN = "add_fast_build"
+)
+
+func (b *customBuild) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case addFastBuildN:
+		return starlark.NewBuiltin(name, b.addFastBuild), nil
+	default:
+		return starlark.None, nil
+	}
+}
+
+func (b *customBuild) AttrNames() []string {
+	return []string{addFastBuildN}
+}
+
+func (b *customBuild) addFastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return &fastBuild{s: b.s, img: b.img}, nil
 }
 
 func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
