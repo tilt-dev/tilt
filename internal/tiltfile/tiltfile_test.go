@@ -416,18 +416,24 @@ docker_build("ceci n'est pas une valid image ref", 'a')
 	f.loadErrString("invalid reference format")
 }
 
-func TestFastBuildAddStringFails(t *testing.T) {
+func TestFastBuildAddString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupFoo()
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile').add('/foo', '/foo')
-`)
+	f.setupFooAndBar()
+	f.file("Tiltfile", fmt.Sprintf(`
+k8s_yaml(['foo.yaml', 'bar.yaml'])
 
-	f.loadErrString("invalid type for src. Got string, want gitRepo OR localPath",
-		"fast_build(\"gcr.io/foo\").add()")
+# fb.add() on string of relative path
+fast_build('gcr.io/foo', 'foo/Dockerfile').add('./foo', '/foo')
+
+# fb.add() on string of absolute path
+fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
+`, f.JoinPath("./bar")))
+
+	f.load()
+	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
+	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
 }
 
 type portForwardCase struct {
@@ -1815,6 +1821,9 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					mounts = mounts[1:]
 					if mount.LocalPath != f.JoinPath(matcher.src) {
 						f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
+					}
+					if mount.ContainerPath != matcher.dest {
+						f.t.Fatalf("manifest %v mount %+v dest: %q; expected %q", m.Name, mount, mount.ContainerPath, matcher.dest)
 					}
 				case runHelper:
 					step := steps[0]

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -387,14 +388,11 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 	}
 
 	m := mount{}
-	switch p := src.(type) {
-	case localPath:
-		m.src = p
-	case *gitRepo:
-		m.src = p.makeLocalPath("")
-	default:
-		return nil, fmt.Errorf("%s.%s(): invalid type for src. Got %s, want gitRepo OR localPath", b.String(), fn.Name(), src.Type())
+	lp, err := b.s.localPathFromSkylarkValue(src)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s.%s(): invalid type for src (arg 1)", b.String(), fn.Name())
 	}
+	m.src = lp
 
 	m.mountPoint = mountPoint
 	b.img.mounts = append(b.img.mounts, m)

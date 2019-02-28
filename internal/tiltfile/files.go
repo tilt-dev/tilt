@@ -128,7 +128,7 @@ func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (localPath, 
 	case starlark.String:
 		return s.localPathFromString(string(v)), nil
 	default:
-		return localPath{}, fmt.Errorf("Expected local path. Actual type: %T", v)
+		return localPath{}, fmt.Errorf("expected localPath | gitRepo | string. Actual type: %T", v)
 	}
 }
 
