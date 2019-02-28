@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
@@ -89,6 +90,21 @@ func TestGlobalYamlFailUpsert(t *testing.T) {
 	if assert.Error(t, gYAMLErr.Error) {
 		assert.Contains(t, gYAMLErr.Error.Error(), bc.k8sClient.UpsertError.Error())
 	}
+}
+
+func TestGlobalYamlNamespacesFirst(t *testing.T) {
+	yaml := testyaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.MyNamespaceYAML)
+	st := newTestingStoreWithGlobalYAML(yaml)
+	bc := newGlobalYamlBuildControllerForTest(testyaml.SecretYaml)
+
+	bc.OnChange(output.CtxForTest(), st)
+
+	entities, err := k8s.ParseYAMLFromString(bc.k8sClient.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "mynamespace", entities[0].Name())
+	assert.Equal(t, "doggos", entities[1].Name())
 }
 
 func newTestingStoreWithGlobalYAML(yaml string) *store.TestingStore {

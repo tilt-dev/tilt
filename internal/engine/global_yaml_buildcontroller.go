@@ -2,13 +2,15 @@ package engine
 
 import (
 	"context"
+	"sort"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	v1 "k8s.io/api/core/v1"
 )
 
 type GlobalYAMLBuildController struct {
@@ -46,6 +48,28 @@ func (c *GlobalYAMLBuildController) OnChange(ctx context.Context, st store.RStor
 	}
 }
 
+type namespacesFirst []k8s.K8sEntity
+
+var _ sort.Interface = namespacesFirst{}
+
+func (nf namespacesFirst) Len() int {
+	return len(nf)
+}
+
+func (nf namespacesFirst) Less(i, j int) bool {
+	if nf[i].Kind.Kind == "Namespace" {
+		return true
+	} else if nf[j].Kind.Kind == "Namespace" {
+		return false
+	} else {
+		return i < j
+	}
+}
+
+func (nf namespacesFirst) Swap(i, j int) {
+	nf[i], nf[j] = nf[j], nf[i]
+}
+
 func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Client) error {
 	entities, err := k8s.ParseYAMLFromString(m.K8sTarget().YAML)
 	if err != nil {
@@ -70,6 +94,9 @@ func handleGlobalYamlChange(ctx context.Context, m model.Manifest, kCli k8s.Clie
 
 		newK8sEntities = append(newK8sEntities, e)
 	}
+
+	// namespaces need to be created before the entities that go in them
+	sort.Sort(namespacesFirst(newK8sEntities))
 
 	err = kCli.Upsert(ctx, newK8sEntities)
 	if err != nil {
