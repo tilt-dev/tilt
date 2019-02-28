@@ -35,7 +35,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 		return nil, err
 	}
 
-	return &gitRepo{absPath, string(gitignoreContents)}, nil
+	return &gitRepo{basePath: absPath, gitignoreContents: string(gitignoreContents)}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

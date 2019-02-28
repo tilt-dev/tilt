@@ -513,11 +513,6 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 
 	for _, m := range image.mounts {
 		paths = append(paths, m.src.path)
-
-		repo := m.src.repo
-		if repo != nil {
-			paths = append(paths, repo.basePath)
-		}
 	}
 	paths = append(paths, image.staticBuildPath.path)
 
