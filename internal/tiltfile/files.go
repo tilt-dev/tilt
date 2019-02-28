@@ -342,20 +342,31 @@ func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args
 
 func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dir starlark.String
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "dir", &dir)
+	var recursive bool
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "dir", &dir, "recursive?", &recursive)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []string
+	err = filepath.Walk(dir.GoString(), func(path string, info os.FileInfo, err error) error {
+		if path == dir.GoString() {
+			return nil
+		}
+		if !info.IsDir() {
+			files = append(files, path)
+		} else if info.IsDir() && !recursive {
+			return filepath.SkipDir
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	var ret []starlark.Value
-	files, err := ioutil.ReadDir(dir.GoString())
-	if err != nil {
-		return nil, err
-	}
-
 	for _, f := range files {
-		fp := filepath.Join(dir.GoString(), f.Name())
-		ret = append(ret, starlark.String(fp))
+		ret = append(ret, starlark.String(f))
 	}
 
 	return starlark.NewList(ret), nil
