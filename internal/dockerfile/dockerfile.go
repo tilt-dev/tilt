@@ -112,7 +112,14 @@ func (d Dockerfile) SplitIntoBaseDockerfile() (Dockerfile, Dockerfile, bool) {
 func (d Dockerfile) ValidateBaseDockerfile() error {
 	return d.traverse(func(node *parser.Node) error {
 		switch node.Value {
-		case command.Add, command.Copy:
+		case command.Add:
+			return ErrAddInDockerfile
+		case command.Copy:
+			for _, flag := range node.Flags {
+				if strings.HasPrefix(flag, "--from=") {
+					return nil
+				}
+			}
 			return ErrAddInDockerfile
 		}
 		return nil
