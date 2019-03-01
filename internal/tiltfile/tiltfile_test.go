@@ -172,9 +172,8 @@ func TestFastBuildSimple(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml')
 `)
@@ -192,9 +191,8 @@ func TestFastBuildHotReload(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi") \
   .hot_reload()
 k8s_resource('foo', 'foo.yaml')
@@ -213,9 +211,8 @@ func TestFastBuildPassedToResource(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml', image=fb)
 `)
@@ -236,9 +233,8 @@ func TestFastBuildValidates(t *testing.T) {
 from golang:1.10
 ADD . .`)
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml')
 `)
@@ -251,10 +247,9 @@ func TestFastBuildRunBeforeAdd(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi") \
-  .add(repo.path('foo'), 'src/')
+  .add('foo', 'src/')
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
@@ -266,9 +261,8 @@ func TestFastBuildTriggers(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi", trigger=['a', 'b']) \
   .run("echo again", trigger='c')
 k8s_resource('foo', 'foo.yaml')
@@ -434,6 +428,38 @@ fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
 	f.load()
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
 	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
+}
+
+func TestFastBuildAddLocalPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+k8s_yaml('foo.yaml')
+fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.path('foo'), '/foo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
+}
+
+func TestFastBuildAddGitRepo(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+k8s_yaml('foo.yaml')
+
+# add the whole repo
+fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo, '/whole_repo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add(".", "/whole_repo")))
 }
 
 type portForwardCase struct {
@@ -777,13 +803,92 @@ func TestAncestorGitignorePathFilter(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.gitInit("")
+	f.setupFoo()
 	f.file(".gitignore", ".#*")
-	f.file("foo/Dockerfile", "FROM golang:1.10")
-	f.yaml("foo/foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo/foo.yaml')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("foo/.#foo.yaml"),
+		fileChangeFilters("foo/.#foo.yaml"),
+	)
+}
+
+func TestGitignorePathFilterTiltfileAboveRoot(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("foo")
+	f.file("foo/.gitignore", ".#*")
+	f.file("foo/Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("foo/.#foo.yaml"),
+		fileChangeFilters("foo/.#foo.yaml"),
+	)
+}
+
+func TestFastBuildGitignorePathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file(".gitignore", ".#*")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+fast_build('gcr.io/foo', 'Dockerfile') \
+  .add('.', 'src/')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters(".#foo.yaml"),
+		fileChangeFilters(".#foo.yaml"),
+	)
+}
+
+func TestFastBuildAncestorGitignorePathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file(".gitignore", ".#*")
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add('foo', 'src/')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("foo/.#foo.yaml"),
+		fileChangeFilters("foo/.#foo.yaml"),
+	)
+}
+
+func TestFastBuildGitignorePathFilterTiltfileAboveRoot(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("foo")
+	f.file("foo/.gitignore", ".#*")
+	f.file("foo/Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add('foo', 'src/')
 `)
 
 	f.load("foo")
@@ -864,9 +969,8 @@ func TestFastBuildDockerignoreSubdir(t *testing.T) {
 	f.setupFoo()
 	f.file("foo/.dockerignore", "*.txt")
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 k8s_resource('foo', 'foo.yaml')
 `)
@@ -1567,14 +1671,13 @@ func TestCustomBuild(t *testing.T) {
 	f := newFixture(t)
 	fmt.Println(f.TempDirFixture.Path())
 
-	tiltfile := `repo = local_git_repo('.')
-k8s_yaml('foo.yaml')
+	tiltfile := `k8s_yaml('foo.yaml')
 hfb = custom_build(
   'gcr.io/foo',
   'docker build -t $TAG foo',
   ['foo']
 ).add_fast_build()
-hfb.add(repo.path('foo'), '/app')
+hfb.add('foo', '/app')
 hfb.run('cd /app && pip install -r requirements.txt')
 hfb.hot_reload()`
 
@@ -1742,7 +1845,7 @@ func (f *fixture) loadErrString(msgs ...string) {
 }
 
 func (f *fixture) gitInit(path string) {
-	if err := os.Mkdir(f.JoinPath(path, ".git"), os.FileMode(0777)); err != nil {
+	if err := os.MkdirAll(f.JoinPath(path, ".git"), os.FileMode(0777)); err != nil {
 		f.t.Fatal(err)
 	}
 }
