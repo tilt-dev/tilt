@@ -25,6 +25,24 @@ ADD . /go/src`)
 	}
 }
 
+func TestForbidCopy(t *testing.T) {
+	df := Dockerfile(`RUN echo 'hi'
+COPY . /go/src`)
+	err := df.ValidateBaseDockerfile()
+	if err != ErrAddInDockerfile {
+		t.Errorf("Expected error %s, actual: %v", ErrAddInDockerfile, err)
+	}
+}
+
+func TestAllowCopyFrom(t *testing.T) {
+	df := Dockerfile(`RUN echo 'hi'
+COPY --from=some/other/image . /go/src`)
+	err := df.ValidateBaseDockerfile()
+	if err != nil {
+		t.Errorf("Expected no error, actual: %v", err)
+	}
+}
+
 func TestForbidAddWithSpaces(t *testing.T) {
 	df := Dockerfile(`RUN echo 'hi'
  add . /go/src`)
