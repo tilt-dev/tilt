@@ -16,5 +16,5 @@ fi
 
 set -ex
 cd web
-npm run build
+yarn run build
 gsutil cp -r build "gs://tilt-static-assets/v$VERSION"

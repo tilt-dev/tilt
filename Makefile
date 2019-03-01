@@ -73,7 +73,9 @@ dev-js:
 	cd web && yarn install && yarn run start
 
 test-js:
-	cd web && yarn install && CI=true yarn test
+	cd web && yarn install
+	cd web && yarn run lint
+	cd web && CI=true yarn test
 
 ensure:
 	dep ensure
