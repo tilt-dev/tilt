@@ -178,7 +178,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
 	case TiltfileLogAction:
-		handleTiltfileLogAction(state, action)
+		handleTiltfileLogAction(ctx, state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -875,6 +875,7 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
 }
 
-func handleTiltfileLogAction(state *store.EngineState, action TiltfileLogAction) {
+func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log)
+	logger.Get(ctx).Infof("[TILTFILE] " + string(action.Log))
 }
