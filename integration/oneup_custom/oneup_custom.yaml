@@ -11,7 +11,7 @@ metadata:
   name: oneup-custom
   namespace: tilt-integration
   labels:
-    app: oneup
+    app: oneup-custom
 spec:
   selector:
     matchLabels:
@@ -22,7 +22,7 @@ spec:
         app: oneup-custom
     spec:
       containers:
-      - name: oneup
+      - name: oneup-custom
         image: gcr.io/windmill-test-containers/integration/oneup-custom
         command: ["/go/bin/oneup_custom"]
         ports:

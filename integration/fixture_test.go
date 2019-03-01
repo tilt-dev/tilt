@@ -7,6 +7,7 @@ import (
 	"go/build"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -220,7 +221,10 @@ func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, stri
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",
 		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
-	out, err := cmd.Output()
+	log.Printf("CMD: %+v", cmd.Args)
+	out, err := cmd.CombinedOutput()
+	log.Printf("OUT: %s", out)
+	log.Printf("ERR: %v", err)
 	if err != nil {
 		f.t.Fatal(err)
 	}
