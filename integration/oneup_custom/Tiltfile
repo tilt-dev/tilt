@@ -1,0 +1,9 @@
+# -*- mode: Python -*-
+
+custom_build(
+  'gcr.io/windmill-test-containers/integration/oneup-custom',
+  'docker build -t $TAG .',
+  ["Dockerfile", "main.go"],
+ )
+k8s_resource('oneup-custom', 'oneup_custom.yaml', port_forwards=8100)
+

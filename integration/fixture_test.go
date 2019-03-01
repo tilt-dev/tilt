@@ -223,7 +223,7 @@ func (f *fixture) AllPodsReady(ctx context.Context, selector string) (bool, stri
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",
 		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		f.t.Fatal(err)
 	}

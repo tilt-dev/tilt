@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tilt-integration
+  labels:
+    name: tilt-integration
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oneup-custom
+  namespace: tilt-integration
+  labels:
+    app: oneup-custom
+spec:
+  selector:
+    matchLabels:
+      app: oneup-custom
+  template:
+    metadata:
+      labels:
+        app: oneup-custom
+    spec:
+      containers:
+      - name: oneup-custom
+        image: gcr.io/windmill-test-containers/integration/oneup-custom
+        command: ["/go/bin/oneup_custom"]
+        ports:
+        - containerPort: 8000
