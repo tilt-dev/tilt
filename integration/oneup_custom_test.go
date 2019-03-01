@@ -18,7 +18,7 @@ func TestOneUpCustom(t *testing.T) {
 	//
 	// We can't use the normal Tilt-managed forwards here because
 	// Tilt doesn't setup forwards when --watch=false.
-	ctx, cancel := context.WithTimeout(f.ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=oneup-custom")
 
