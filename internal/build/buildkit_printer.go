@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	digest "github.com/opencontainers/go-digest"
+
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
@@ -30,7 +31,7 @@ type vertex struct {
 const cmdPrefix = "/bin/sh -c "
 const buildPrefix = "    ╎ "
 
-var stepPattern = regexp.MustCompile("^\\[[0-9]+/[0-9]+\\]")
+var stepPattern = regexp.MustCompile(`^\[[0-9]+/[0-9]+\]`)
 
 func (v *vertex) isRun() bool {
 	return strings.HasPrefix(v.name, cmdPrefix)

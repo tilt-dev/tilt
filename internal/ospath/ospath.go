@@ -16,7 +16,7 @@ func Child(dir string, file string) (string, bool) {
 
 	current := file
 	child := "."
-	for true {
+	for {
 		if dir == current {
 			return child, true
 		}
@@ -30,8 +30,6 @@ func Child(dir string, file string) (string, bool) {
 		child = filepath.Join(cBase, child)
 		current = cDir
 	}
-
-	return "", false
 }
 
 func RealChild(dir string, file string) (string, bool, error) {

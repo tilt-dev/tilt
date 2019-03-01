@@ -3,6 +3,7 @@ package dockercompose
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 
@@ -80,8 +81,8 @@ func (c *FakeDCClient) StreamEvents(ctx context.Context, pathToConfig string) (<
 				select {
 				case events <- event: // send event to channel (unless it's full)
 				default:
-					c.t.Fatalf("no room on events channel to send event: '%s'. Something "+
-						"is wrong (or you need to increase the buffer).", event)
+					panic(fmt.Sprintf("no room on events channel to send event: '%s'. Something "+
+						"is wrong (or you need to increase the buffer).", event))
 				}
 			case <-ctx.Done():
 				return

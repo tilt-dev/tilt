@@ -18,10 +18,7 @@ func Options(archive io.Reader, args model.DockerBuildArgs) docker.BuildOptions 
 }
 
 func shouldRemoveImage() bool {
-	if flag.Lookup("test.v") == nil {
-		return false
-	}
-	return true
+	return flag.Lookup("test.v") != nil
 }
 
 func manifestBuildArgsToDockerBuildArgs(args model.DockerBuildArgs) map[string]*string {

@@ -11,10 +11,11 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 func (k K8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
@@ -89,7 +90,7 @@ func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagge
 }
 
 func podMap(podList *v1.PodList) map[string][]v1.Pod {
-	ip := make(map[string][]v1.Pod, 0)
+	ip := make(map[string][]v1.Pod)
 	for _, p := range podList.Items {
 		for _, c := range p.Spec.Containers {
 			imgRef := c.Image

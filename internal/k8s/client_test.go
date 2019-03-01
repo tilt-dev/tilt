@@ -19,6 +19,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
@@ -123,7 +124,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 
 	core := cs.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
-	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, KubeContext("unknown"), "", nil, runtimeAsync}
+	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, "", nil, runtimeAsync}
 	return ret
 }
 

@@ -100,7 +100,6 @@ type K8sClient struct {
 	core            apiv1.CoreV1Interface
 	restConfig      *rest.Config
 	portForwarder   PortForwarder
-	kubeContext     KubeContext
 	configNamespace Namespace
 	clientSet       kubernetes.Interface
 	runtimeAsync    *runtimeAsync

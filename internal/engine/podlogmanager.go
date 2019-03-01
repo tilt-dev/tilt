@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"k8s.io/api/core/v1"
 )
 
 // Collects logs from deployed containers.
@@ -43,7 +44,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		return nil, nil
 	}
 
-	stateWatches := make(map[podLogKey]bool, 0)
+	stateWatches := make(map[podLogKey]bool)
 	for _, ms := range state.ManifestStates() {
 		for _, pod := range ms.PodSet.PodList() {
 			if pod.PodID == "" {

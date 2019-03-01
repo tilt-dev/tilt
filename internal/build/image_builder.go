@@ -482,7 +482,7 @@ func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, outp
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
-	digestMap := make(map[string]string, 0)
+	digestMap := make(map[string]string)
 	err := json.Unmarshal(aux, &digestMap)
 	if err != nil {
 		return "", errors.Wrap(err, "getDigestFromAux")
@@ -514,7 +514,7 @@ func digestMatchesRef(ref reference.NamedTagged, digest digest.Digest) bool {
 	return strings.HasPrefix(digestHash, tagHash)
 }
 
-var oldDigestRegexp = regexp.MustCompile("^Successfully built ([0-9a-f]+)\\s*$")
+var oldDigestRegexp = regexp.MustCompile(`^Successfully built ([0-9a-f]+)\s*$`)
 
 type dockerOutput struct {
 	aux         *json.RawMessage
