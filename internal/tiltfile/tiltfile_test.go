@@ -837,6 +837,26 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestFastBuildDockerignoreRoot(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file(".dockerignore", "foo/*.txt")
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+fast_build('gcr.io/foo', 'foo/Dockerfile') \
+  .add(repo.path('foo'), 'src/') \
+  .run("echo hi")
+k8s_resource('foo', 'foo.yaml')
+`)
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+	)
+}
+
 func TestFastBuildDockerignoreSubdir(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

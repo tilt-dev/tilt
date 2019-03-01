@@ -513,6 +513,16 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 
 	for _, m := range image.mounts {
 		paths = append(paths, m.src.path)
+
+		// NOTE(maia): this doesn't reflect the behavior of Docker, which only
+		// looks in the build context for the .dockerignore file. Leaving it
+		// for now, though, for fastbuild cases where .dockerignore doesn't
+		// live in the user's mount(s) (e.g. user only mounts several specific
+		// files, not a directory containing the .dockerignore).
+		repo := m.src.repo
+		if repo != nil {
+			paths = append(paths, repo.basePath)
+		}
 	}
 	paths = append(paths, image.staticBuildPath.path)
 
