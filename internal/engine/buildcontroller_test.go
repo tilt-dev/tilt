@@ -140,7 +140,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 }
 
-// any manifests with no built images should be deployed before any manifests that have built images
+// any manifests without image targets should be deployed before any manifests WITH image targets
 func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
