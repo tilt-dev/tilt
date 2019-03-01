@@ -162,7 +162,10 @@ func (f *fixture) dockerKillAll(name string) {
 func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	outWriter = io.MultiWriter(f.logs, outWriter)
 
-	gopath := os.Getenv("GOPATH")
+	gopath, ok := os.LookupEnv("GOPATH")
+	if !ok {
+		gopath = build.Default.GOPATH
+	}
 	args := []string{
 		"run",
 		filepath.Join(gopath, "src/github.com/windmilleng/tilt/cmd/tilt/main.go"),
