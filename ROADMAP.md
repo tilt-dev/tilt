@@ -11,20 +11,10 @@ Ideas are categorized by
 - how much value we think they would add (P1 highest value, P3 lowest value)
 - how much work they would take to implement (C1 highest cost/effort, C3 lowest cost/effort)
 
-## Docker-Compose Support (P1, C1-2) (In progress)
+## Support Multi-Container Pods (P1, C1-2)
+Tilt already lets you spin up pods that run multiple containers, but it's not yet good at giving you visibility into what's going on -- i.e. we can't pull logs for more than one container at a time.
 
-`docker-compose.yml` is, by far, the most popular format for describing
-sets of microservices for running locally. Kubernetes YAML is nice, but much more verbose.
-Tilt should support docker-compose.yml for configuring services.
-
-We currently have [alpha support for Docker-Compose](https://docs.tilt.dev/docker_compose_alpha.html) in recent releases. Give it a spin and [let us know](https://github.com/windmilleng/tilt#community) what you think!
-
-Open questions:
-- docker-compose support would make it easier to try Tilt with
-your existing docker-compose.yml. What percentage of users would first try Tilt
-this way?
-- Would users stay with their docker-compose file,
-or eventually convert to Kubernetes YAML?
+Visibility is one of Tilt's core value propositions, and since multi-container pods are part of many people's workflows, you can bet we're going to make them highly transparent.
 
 ## Tilt Init (P1, C2)
 
