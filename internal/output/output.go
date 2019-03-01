@@ -5,6 +5,12 @@ import (
 	"os"
 )
 
+var OriginalStderr *os.File
+
+func init() {
+	OriginalStderr = os.Stderr
+}
+
 func CaptureAllOutput(to io.Writer) error {
 	piper, pipew, err := os.Pipe()
 	if err != nil {

@@ -123,7 +123,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 			logger.Get(ctx).Infof("Error capturing stdout and stderr: %v", err)
 		}
 		g.Go(func() error {
-			return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+			err := h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+			return err
 		})
 	}
 

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tracer"
 
 	"github.com/spf13/cobra"
@@ -121,7 +122,7 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 
 		if err != nil {
 			// TODO(maia): this shouldn't print if we've already pretty-printed it
-			_, printErr := fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			_, printErr := fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)
 			if printErr != nil {
 				panic(printErr)
 			}
