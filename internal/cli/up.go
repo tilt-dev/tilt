@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
@@ -119,8 +120,13 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	defer cancel()
 
 	if c.hud {
+		err := output.CaptureAllOutput(logger.Get(ctx).Writer(logger.InfoLvl))
+		if err != nil {
+			logger.Get(ctx).Infof("Error capturing stdout and stderr: %v", err)
+		}
 		g.Go(func() error {
-			return h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+			err := h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+			return err
 		})
 	}
 
