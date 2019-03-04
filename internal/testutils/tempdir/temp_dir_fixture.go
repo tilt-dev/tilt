@@ -60,7 +60,8 @@ func (f *TempDirFixture) JoinPaths(paths []string) []string {
 	return joined
 }
 
-func (f *TempDirFixture) WriteFile(path string, contents string) {
+// Returns the full path to the file written.
+func (f *TempDirFixture) WriteFile(path string, contents string) string {
 	fullPath := f.JoinPath(path)
 	base := filepath.Dir(fullPath)
 	err := os.MkdirAll(base, os.FileMode(0777))
@@ -71,6 +72,7 @@ func (f *TempDirFixture) WriteFile(path string, contents string) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	return fullPath
 }
 
 func (f *TempDirFixture) WriteSymlink(linkContents, destPath string) {

@@ -236,7 +236,9 @@ func TestIncrementalBuildKilled(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	changed := f.WriteFile("a.txt", "a")
+
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -259,7 +261,8 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -303,10 +306,8 @@ func TestIncrementalBuildTwice(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	aPath := filepath.Join(f.Path(), "a.txt")
-	bPath := filepath.Join(f.Path(), "b.txt")
-	f.WriteFile("a.txt", "a")
-	f.WriteFile("b.txt", "b")
+	aPath := f.WriteFile("a.txt", "a")
+	bPath := f.WriteFile("b.txt", "b")
 
 	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, f.deployInfo())
 	firstResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, firstState)
@@ -354,10 +355,8 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	aPath := filepath.Join(f.Path(), "a.txt")
-	bPath := filepath.Join(f.Path(), "b.txt")
-	f.WriteFile("a.txt", "a")
-	f.WriteFile("b.txt", "b")
+	aPath := f.WriteFile("a.txt", "a")
+	bPath := f.WriteFile("b.txt", "b")
 
 	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, f.deployInfo())
 	firstResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, firstState)
