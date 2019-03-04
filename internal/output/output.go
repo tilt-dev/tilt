@@ -21,10 +21,8 @@ func CaptureAllOutput(to io.Writer) error {
 	os.Stderr = piper
 
 	go func() {
-		_, err := io.Copy(to, pipew)
-		if err != nil {
-			// this space intentionally left blank
-		}
+		// NOTE(dmiller): If this errors there's nothing we can do
+		_, _ = io.Copy(to, pipew)
 	}()
 	return nil
 }
