@@ -179,6 +179,9 @@ func TestMultiStageStaticBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 1, f.docker.PushCount)
+
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
@@ -227,8 +230,8 @@ func newIBDFixture(t *testing.T) *ibdFixture {
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := docker.NewFakeClient()
 	ctx := output.CtxForTest()
-	k8s := k8s.NewFakeK8sClient()
-	ibd, err := provideImageBuildAndDeployer(ctx, docker, k8s, dir)
+	kClient := k8s.NewFakeK8sClient()
+	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, k8s.EnvGKE, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +239,7 @@ func newIBDFixture(t *testing.T) *ibdFixture {
 		TempDirFixture: f,
 		ctx:            ctx,
 		docker:         docker,
-		k8s:            k8s,
+		k8s:            kClient,
 		ibd:            ibd,
 		st:             store.NewTestingStore(),
 	}

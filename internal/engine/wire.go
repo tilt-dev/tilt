@@ -78,12 +78,12 @@ func provideImageBuildAndDeployer(
 	ctx context.Context,
 	docker docker.Client,
 	kClient k8s.Client,
+	env k8s.Env,
 	dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
-		wire.Value(k8s.Env(k8s.EnvDockerDesktop)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
 		k8s.ProvideContainerRuntime,

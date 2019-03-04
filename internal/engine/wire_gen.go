@@ -52,12 +52,11 @@ var (
 	_wireLabelsValue = dockerfile.Labels{}
 )
 
-func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
+func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
-	env := _wireEnvValue
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
 	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
 	if err != nil {
@@ -76,7 +75,6 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 }
 
 var (
-	_wireEnvValue            = k8s.Env(k8s.EnvDockerDesktop)
 	_wireUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
 )
 
@@ -85,7 +83,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	dockerImageBuilder := build.NewDockerImageBuilder(dCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(dCli)
-	env := _wireK8sEnvValue
+	env := _wireEnvValue
 	portForwarder := k8s.ProvidePortForwarder()
 	clientConfig := k8s.ProvideClientConfig()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
@@ -113,7 +111,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 }
 
 var (
-	_wireK8sEnvValue               = k8s.Env(k8s.EnvNone)
+	_wireEnvValue                  = k8s.Env(k8s.EnvNone)
 	_wireEngineUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
 )
 
