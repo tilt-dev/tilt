@@ -9,6 +9,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -877,5 +878,5 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log)
-	logger.Get(ctx).Infof("[TILTFILE] " + string(action.Log))
+	logger.Get(ctx).Infof("[%s] %s", tiltfile.FileName, string(action.Log))
 }
