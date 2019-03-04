@@ -27,7 +27,8 @@ func shouldRemoveImage() bool {
 func manifestBuildArgsToDockerBuildArgs(args model.DockerBuildArgs) map[string]*string {
 	r := make(map[string]*string, len(args))
 	for k, a := range args {
-		r[k] = &a
+		tmp := a
+		r[k] = &tmp
 	}
 
 	return r
