@@ -32,7 +32,7 @@ func DockerEnv(ctx context.Context) (map[string]string, error) {
 }
 
 func dockerEnvFromOutput(output []byte) (map[string]string, error) {
-	result := make(map[string]string, 0)
+	result := make(map[string]string)
 	scanner := bufio.NewScanner(bytes.NewBuffer(output))
 	for scanner.Scan() {
 		line := scanner.Text()

@@ -11,11 +11,11 @@ type Env string
 
 const (
 	EnvUnknown       Env = "unknown"
-	EnvGKE               = "gke"
-	EnvMinikube          = "minikube"
-	EnvDockerDesktop     = "docker-for-desktop"
-	EnvMicroK8s          = "microk8s"
-	EnvNone              = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
+	EnvGKE           Env = "gke"
+	EnvMinikube      Env = "minikube"
+	EnvDockerDesktop Env = "docker-for-desktop"
+	EnvMicroK8s      Env = "microk8s"
+	EnvNone          Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
 func (e Env) IsLocalCluster() bool {
@@ -36,15 +36,15 @@ func ProvideKubeContext(clientLoader clientcmd.ClientConfig) (KubeContext, error
 }
 
 func EnvFromString(s string) Env {
-	if s == EnvMinikube {
+	if Env(s) == EnvMinikube {
 		return EnvMinikube
-	} else if s == EnvDockerDesktop || s == "docker-desktop" {
+	} else if Env(s) == EnvDockerDesktop || s == "docker-desktop" {
 		return EnvDockerDesktop
-	} else if s == EnvMicroK8s {
+	} else if Env(s) == EnvMicroK8s {
 		return EnvMicroK8s
-	} else if s == EnvNone {
+	} else if Env(s) == EnvNone {
 		return EnvNone
-	} else if strings.HasPrefix(s, EnvGKE) {
+	} else if strings.HasPrefix(s, string(EnvGKE)) {
 		// GKE context strings look like:
 		// gke_blorg-dev_us-central1-b_blorg
 		return EnvGKE

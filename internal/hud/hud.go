@@ -276,9 +276,7 @@ func (h *Hud) refresh(ctx context.Context) error {
 	}
 
 	vs := h.currentViewState
-	for _, r := range h.currentViewState.Resources {
-		vs.Resources = append(vs.Resources, r)
-	}
+	vs.Resources = append(vs.Resources, h.currentViewState.Resources...)
 
 	return h.Update(h.currentView, h.currentViewState)
 }

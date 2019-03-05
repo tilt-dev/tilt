@@ -84,16 +84,6 @@ func (r k8sResource) providedImageRefNameList() []string {
 	return result
 }
 
-// Return the image refs in a deterministic order.
-func (r k8sResource) imageRefNameList() []string {
-	result := make([]string, 0, len(r.imageRefNames))
-	for ref := range r.imageRefNames {
-		result = append(result, ref)
-	}
-	sort.Strings(result)
-	return result
-}
-
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,

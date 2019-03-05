@@ -43,10 +43,7 @@ var _ error = DontFallBackError{}
 // It will never recover, even on subsequent rebuilds.
 func isPermanentError(err error) bool {
 	cause := errors.Cause(err)
-	if cause == context.Canceled {
-		return true
-	}
-	return false
+	return cause == context.Canceled
 }
 
 func shouldFallBackForErr(err error) bool {

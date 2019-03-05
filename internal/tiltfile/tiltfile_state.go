@@ -293,6 +293,9 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 		target.entities = append(target.entities, e)
 
 		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(e, allRest)
+		if err != nil {
+			return err
+		}
 		target.entities = append(target.entities, match...)
 		allRest = rest
 	}

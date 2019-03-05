@@ -176,7 +176,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 func logOutput(s string) {
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
-	log.Printf(color.GreenString(s))
+	log.Print(color.GreenString(s))
 }
 
 func provideUpdateModeFlag() engine.UpdateModeFlag {

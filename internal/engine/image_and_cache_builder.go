@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -157,7 +158,7 @@ func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) bu
 	baseDockerfile := dockerfile.Dockerfile(iTarget.FastBuildInfo().BaseDockerfile)
 	if sbInfo, ok := iTarget.BuildDetails.(model.StaticBuild); ok {
 		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
-		ok := true
+		var ok bool
 		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
 		if !ok {
 			return build.CacheInputs{}

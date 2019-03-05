@@ -6,15 +6,17 @@ import (
 	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
+
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/options"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/synclet"
-	"google.golang.org/grpc"
 )
 
 type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error)
@@ -89,7 +91,7 @@ func (sm SyncletManager) diff(ctx context.Context, st store.RStore) (setup []syn
 		return
 	}
 
-	activePodIDs := make(map[k8s.PodID]bool, 0)
+	activePodIDs := make(map[k8s.PodID]bool)
 
 	// Look for all the pods that have synclets, and
 	// start warming the connection.

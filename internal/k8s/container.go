@@ -7,9 +7,10 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
-	"k8s.io/api/core/v1"
 )
 
 const ContainerIDPrefix = "docker://"
@@ -28,7 +29,7 @@ func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref 
 	}
 	defer watch.Stop()
 
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return v1.ContainerStatus{}, errors.Wrap(ctx.Err(), "WaitForContainerReady")
@@ -52,7 +53,6 @@ func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref 
 			}
 		}
 	}
-	panic("WaitForContainerReady") // should never reach this state
 }
 
 func waitForContainerReadyHelper(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {

@@ -170,11 +170,7 @@ func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 var _ store.Subscriber = &DockerComposeLogManager{}
 
 func shouldFilterDCLog(p []byte) bool {
-	if bytes.HasPrefix(p, []byte("Attaching to ")) {
-		return true
-	}
-
-	return false
+	return bytes.HasPrefix(p, []byte("Attaching to "))
 }
 
 type DockerComposeGlobalLogWriter struct {
