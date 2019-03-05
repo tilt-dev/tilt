@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -13,7 +12,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -1701,6 +1700,92 @@ hfb.hot_reload()`
 		deployment("foo"))
 }
 
+func TestExtraImageLocationOneImage(t *testing.T) {
+	f := newFixture(t)
+	f.setupCRD()
+	f.dockerfile("env/Dockerfile")
+	f.dockerfile("builder/Dockerfile")
+	f.file("Tiltfile", `k8s_yaml('crd.yaml')
+k8s_extra_image_location('Environment', '{.spec.runtime.image}')
+docker_build('test/mycrd-env', 'env')
+`)
+
+	f.load("mycrd-env")
+	f.assertNextManifest("mycrd-env",
+		db(
+			image("docker.io/test/mycrd-env"),
+		),
+		k8sObject("mycrd", "Environment"),
+	)
+}
+
+func TestExtraImageLocationTwoImages(t *testing.T) {
+	f := newFixture(t)
+	f.setupCRD()
+	f.dockerfile("env/Dockerfile")
+	f.dockerfile("builder/Dockerfile")
+	f.file("Tiltfile", `k8s_yaml('crd.yaml')
+k8s_extra_image_location('Environment', ['{.spec.runtime.image}', '{.spec.builder.image}'])
+docker_build('test/mycrd-builder', 'builder')
+docker_build('test/mycrd-env', 'env')
+`)
+
+	f.load("mycrd-env")
+	f.assertNextManifest("mycrd-env",
+		db(
+			image("docker.io/test/mycrd-env"),
+		),
+		db(
+			image("docker.io/test/mycrd-builder"),
+		),
+		k8sObject("mycrd", "Environment"),
+	)
+}
+
+func TestExtraImageLocationNoMatch(t *testing.T) {
+	f := newFixture(t)
+	f.setupCRD()
+	f.dockerfile("env/Dockerfile")
+	f.dockerfile("builder/Dockerfile")
+	f.file("Tiltfile", `k8s_yaml('crd.yaml')
+k8s_extra_image_location('Environment', '{.foobar}')
+docker_build('test/mycrd-env', 'env')
+`)
+
+	f.loadErrString("{.foobar}", "foobar is not found")
+}
+
+func TestExtraImageLocationInvalidJsonPath(t *testing.T) {
+	f := newFixture(t)
+	f.setupCRD()
+	f.dockerfile("env/Dockerfile")
+	f.dockerfile("builder/Dockerfile")
+	f.file("Tiltfile", `k8s_yaml('crd.yaml')
+k8s_extra_image_location('Environment', '{foobar()}')
+docker_build('test/mycrd-env', 'env')
+`)
+
+	f.loadErrString("{foobar()}", "unrecognized identifier foobar()")
+}
+
+func TestExtraImageLocationNoPaths(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `k8s_extra_image_location('MyType')`)
+	f.loadErrString("missing argument for json_path")
+}
+
+func TestExtraImageLocationNotListOrString(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `k8s_extra_image_location('MyType', 8)`)
+	f.loadErrString("json_path must be a string or list of strings", "Int")
+}
+
+func TestExtraImageLocationListContainsNonString(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `k8s_extra_image_location('MyType', ["foo", 8])`)
+	f.loadErrString("json_path must be a string or list of strings", "8", "Int")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -1880,11 +1965,19 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 	f.manifests = f.manifests[1:]
 
+	imageIndex := 0
+	nextImageTarget := func() model.ImageTarget {
+		ret := m.ImageTargetAt(imageIndex)
+		imageIndex++
+		return ret
+	}
+
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dbHelper:
-			caches := m.ImageTargetAt(0).CachePaths()
-			ref := m.ImageTargetAt(0).Ref
+			image := nextImageTarget()
+			caches := image.CachePaths()
+			ref := image.Ref
 			if ref == nil {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
@@ -1904,7 +1997,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				}
 			}
 		case fbHelper:
-			image := m.ImageTargetAt(0)
+			image := nextImageTarget()
 			ref := image.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
@@ -1940,7 +2033,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				}
 			}
 		case cbHelper:
-			image := m.ImageTargetAt(0)
+			image := nextImageTarget()
 			ref := image.Ref
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
@@ -1991,7 +2084,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == "Deployment" && f.k8sName(e) == opt.name {
+				if e.Kind.Kind == "Deployment" && e.Name() == opt.name {
 					found = true
 					break
 				}
@@ -2003,13 +2096,25 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == "Service" && f.k8sName(e) == opt.name {
+				if e.Kind.Kind == "Service" && e.Name() == opt.name {
 					found = true
 					break
 				}
 			}
 			if !found {
 				f.t.Fatalf("service %v not found in yaml %q", opt.name, yaml)
+			}
+		case k8sObjectHelper:
+			yaml := m.K8sTarget().YAML
+			found := false
+			for _, e := range f.entities(yaml) {
+				if e.Kind.Kind == opt.kind && e.Name() == opt.name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				f.t.Fatalf("entity of kind %s with name %s not found in yaml %q", opt.kind, opt.name, yaml)
 			}
 		case extraPodSelectorsHelper:
 			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
@@ -2145,15 +2250,6 @@ func (f *fixture) entities(y string) []k8s.K8sEntity {
 	return es
 }
 
-func (f *fixture) k8sName(e k8s.K8sEntity) string {
-	// Every k8s object we care about has is a pointer to a struct with a field ObjectMeta that has a field "Name" that's a string.
-	name := reflect.ValueOf(e.Obj).Elem().FieldByName("ObjectMeta").FieldByName("Name")
-	if !name.IsValid() {
-		return ""
-	}
-	return name.String()
-}
-
 type secretHelper struct {
 	name string
 }
@@ -2199,6 +2295,15 @@ func service(name string, opts ...interface{}) serviceHelper {
 		}
 	}
 	return r
+}
+
+type k8sObjectHelper struct {
+	name string
+	kind string
+}
+
+func k8sObject(name string, kind string) k8sObjectHelper {
+	return k8sObjectHelper{name: name, kind: kind}
 }
 
 type extraPodSelectorsHelper struct {
@@ -2409,6 +2514,20 @@ k8s_resource('foo', 'foo.yaml', extra_pod_selectors=%s)
 `, s)
 
 	f.file("Tiltfile", tiltfile)
+}
+
+func (f *fixture) setupCRD() {
+	f.file("crd.yaml", `apiVersion: fission.io/v1
+kind: Environment
+metadata:
+  name: mycrd
+spec:
+  builder:
+    command: build
+    image: test/mycrd-builder
+  poolsize: 1
+  runtime:
+    image: test/mycrd-env`)
 }
 
 func overwriteSelectorsForService(entity *k8s.K8sEntity, labels map[string]string) error {

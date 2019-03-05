@@ -1,13 +1,18 @@
 package k8s
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
+
+	"k8s.io/client-go/util/jsonpath"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 // Iterate through the fields of a k8s entity and
@@ -174,26 +179,23 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
-func (e K8sEntity) HasImage(image reference.Named) (bool, error) {
-	containers, err := extractContainers(&e)
+func (e K8sEntity) HasImage(image reference.Named, k8sImageJsonPathsByKind map[string][]string) (bool, error) {
+	images, err := e.FindImages(k8sImageJsonPathsByKind)
 	if err != nil {
+		fmt.Printf("error in FindImages: %+v\n", err)
 		return false, err
 	}
 
-	for _, c := range containers {
-		existingRef, err := container.ParseNamed(c.Image)
-		if err != nil {
-			return false, err
-		}
-
+	for _, existingRef := range images {
 		if existingRef.Name() == image.Name() {
 			return true, nil
 		}
 	}
+
 	return false, nil
 }
 
-func (e K8sEntity) FindImages() ([]reference.Named, error) {
+func (e K8sEntity) FindImages(k8sImageJsonPathsByKind map[string][]string) ([]reference.Named, error) {
 	var result []reference.Named
 	containers, err := extractContainers(&e)
 	if err != nil {
@@ -207,6 +209,30 @@ func (e K8sEntity) FindImages() ([]reference.Named, error) {
 		}
 
 		result = append(result, ref)
+	}
+
+	if u, ok := e.Obj.(runtime.Unstructured); ok {
+		if imageJsonPaths, ok := k8sImageJsonPathsByKind[e.Kind.Kind]; ok {
+			for _, path := range imageJsonPaths {
+				p := jsonpath.New("jp")
+				err := p.Parse(path)
+				if err != nil {
+					return nil, errors.Wrapf(err, "error parsing json path '%s'", path)
+				}
+				out := &bytes.Buffer{}
+				err = p.Execute(out, u.UnstructuredContent())
+				if err != nil {
+					return nil, errors.Wrapf(err, "error finding image at json path '%s'", path)
+				}
+				image := out.String()
+				image = strings.Trim(image, `"`)
+				ref, err := container.ParseNamed(image)
+				if err != nil {
+					return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
+				}
+				result = append(result, ref)
+			}
+		}
 	}
 
 	return result, nil

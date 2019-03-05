@@ -30,12 +30,13 @@ type tiltfileState struct {
 	dcCli    dockercompose.DockerComposeClient
 
 	// added to during execution
-	configFiles    []string
-	buildIndex     *buildIndex
-	k8s            []*k8sResource
-	k8sByName      map[string]*k8sResource
-	k8sUnresourced []k8s.K8sEntity
-	dc             dcResourceSet // currently only support one d-c.yml
+	configFiles             []string
+	buildIndex              *buildIndex
+	k8s                     []*k8sResource
+	k8sByName               map[string]*k8sResource
+	k8sUnresourced          []k8s.K8sEntity
+	dc                      dcResourceSet // currently only support one d-c.yml
+	k8sImageJsonPathsByKind map[string][]string
 
 	// for assembly
 	usedImages map[string]bool
@@ -51,15 +52,16 @@ type tiltfileState struct {
 func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
-		ctx:               ctx,
-		filename:          localPath{path: filename},
-		dcCli:             dockercompose.NewDockerComposeClient(),
-		buildIndex:        newBuildIndex(),
-		k8sByName:         make(map[string]*k8sResource),
-		configFiles:       []string{filename},
-		usedImages:        make(map[string]bool),
-		logger:            l,
-		builtinCallCounts: make(map[string]int),
+		ctx:                     ctx,
+		filename:                localPath{path: filename},
+		dcCli:                   dockercompose.NewDockerComposeClient(),
+		buildIndex:              newBuildIndex(),
+		k8sByName:               make(map[string]*k8sResource),
+		k8sImageJsonPathsByKind: make(map[string][]string),
+		configFiles:             []string{filename},
+		usedImages:              make(map[string]bool),
+		logger:                  l,
+		builtinCallCounts:       make(map[string]int),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -93,10 +95,11 @@ const (
 	dcResourceN    = "dc_resource"
 
 	// k8s functions
-	k8sYamlN     = "k8s_yaml"
-	filterYamlN  = "filter_yaml"
-	k8sResourceN = "k8s_resource"
-	portForwardN = "port_forward"
+	k8sYamlN              = "k8s_yaml"
+	filterYamlN           = "filter_yaml"
+	k8sResourceN          = "k8s_resource"
+	portForwardN          = "port_forward"
+	k8sExtraImageLocation = "k8s_extra_image_location"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -142,6 +145,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, filterYamlN, s.filterYaml)
 	addBuiltin(r, k8sResourceN, s.k8sResource)
 	addBuiltin(r, portForwardN, s.portForward)
+	addBuiltin(r, k8sExtraImageLocation, s.k8sExtraImageLocation)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
@@ -251,6 +255,7 @@ func (s *tiltfileState) assembleK8sWithImages() error {
 	if err != nil {
 		return err
 	}
+
 	for _, k8sRef := range k8sRefs {
 		image := s.buildIndex.findBuilderForConsumedImage(k8sRef)
 		if image == nil {
@@ -355,7 +360,7 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	seen := make(map[string]bool)
 
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages()
+		images, err := e.FindImages(s.k8sImageJsonPathsByKind)
 		if err != nil {
 			return nil, err
 		}
@@ -371,12 +376,12 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef reference.Named) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef)
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.k8sImageJsonPathsByKind)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted)
+	err = dest.addEntities(extracted, s.k8sImageJsonPathsByKind)
 	if err != nil {
 		return err
 	}
@@ -389,7 +394,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef reference.Na
 			return err
 		}
 
-		err = dest.addEntities(match)
+		err = dest.addEntities(match, s.k8sImageJsonPathsByKind)
 		if err != nil {
 			return err
 		}

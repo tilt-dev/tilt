@@ -8,10 +8,11 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
+
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
 
 func TestInjectDigestSanchoYAML(t *testing.T) {
@@ -242,23 +243,35 @@ func TestEntityHasImage(t *testing.T) {
 	img := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	wrongImg := container.MustParseNamed("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
 
-	match, err := entities[0].HasImage(img)
+	match, err := entities[0].HasImage(img, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "service yaml should not match (does not contain image)")
 
-	match, err = entities[1].HasImage(img)
+	match, err = entities[1].HasImage(img, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, match, "deployment yaml should match image %s", img.Name())
 
-	match, err = entities[1].HasImage(wrongImg)
+	match, err = entities[1].HasImage(wrongImg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "deployment yaml should not match image %s", img.Name())
+
+	entities, err = ParseYAMLFromString(testyaml.CRDYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	img = container.MustParseNamed("docker.io/bitnami/minideb:latest")
+	match, err = entities[0].HasImage(img, map[string][]string{"CustomResourceDefinition": {"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "CRD yaml should match image %s", img.Name())
 }
 
 func TestInjectDigestEnvVar(t *testing.T) {

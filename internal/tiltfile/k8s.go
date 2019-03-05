@@ -55,11 +55,11 @@ func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
 	}
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity, k8sImageJsonPathsByKind map[string][]string) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages()
+		images, err := entity.FindImages(k8sImageJsonPathsByKind)
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	err = r.addEntities(entities)
+	err = r.addEntities(entities, s.k8sImageJsonPathsByKind)
 	if err != nil {
 		return nil, err
 	}
@@ -332,6 +332,39 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	default:
 		return nil, fmt.Errorf("pod labels must be a dict or a list; got %T", v)
 	}
+}
+
+func (s *tiltfileState) k8sExtraImageLocation(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var kind string
+	var jsonPath starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"kind", &kind,
+		"json_path", &jsonPath,
+	); err != nil {
+		return nil, err
+	}
+
+	switch x := jsonPath.(type) {
+	case starlark.String:
+		s.k8sImageJsonPathsByKind[kind] = []string{jsonPath.String()}
+	case *starlark.List:
+		var paths []string
+		it := x.Iterate()
+		defer it.Done()
+		var i starlark.Value
+		for it.Next(&i) {
+			s, ok := i.(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("json_path must be a string or list of strings, found a list containing value '%+v' of type '%T'", i, i)
+			}
+			paths = append(paths, s.String())
+		}
+		s.k8sImageJsonPathsByKind[kind] = paths
+	default:
+		return nil, fmt.Errorf("json_path must be a string or list of strings. Found a %T", jsonPath)
+	}
+
+	return starlark.None, nil
 }
 
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {

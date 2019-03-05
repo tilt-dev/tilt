@@ -1095,6 +1095,7 @@ spec:
       properties:
         spec:
           properties:
+            image: docker.io/bitnami/minideb:latest
             replicas:
               minimum: 1
               type: integer

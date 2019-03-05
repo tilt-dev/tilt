@@ -192,8 +192,8 @@ func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing
 	return passing, rest, nil
 }
 
-func FilterByImage(entities []K8sEntity, img reference.Named) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img) })
+func FilterByImage(entities []K8sEntity, img reference.Named, k8sImageJsonPathsByKind map[string][]string) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img, k8sImageJsonPathsByKind) })
 }
 
 func FilterBySelectorMatchesLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
