@@ -595,6 +595,25 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			manifest.Name, podInfo.PodID)
 	}
+
+	// HACK(maia): Go through ALL containers (except tilt-synclet), grab minimum info we need
+	// to stream logs from them.
+	var cInfos []store.ContainerInfo
+	for _, cStat := range pod.Status.ContainerStatuses {
+		cID, err := k8s.ContainerIDFromContainerStatus(cStat)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
+			return
+		}
+		if err != nil {
+			return
+		}
+		cInfos = append(cInfos, store.ContainerInfo{
+			Name: k8s.ContainerNameFromContainerStatus(cStat),
+			ID:   cID,
+		})
+	}
+	podInfo.ContainerInfos = cInfos
 }
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {

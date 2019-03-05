@@ -488,6 +488,8 @@ type Pod struct {
 	// until it actually gets removed.
 	Deleting bool
 
+	HasSynclet bool
+
 	// The log for the previously active pod, if any
 	PreRestartLog model.Log `testdiff:"ignore"`
 	// The log for the currently active pod, if any
@@ -504,7 +506,17 @@ type Pod struct {
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
 
-	HasSynclet bool
+	// HACK(maia): eventually we'll want our model of the world to handle pods with
+	// multiple containers (for logs, restart counts, port forwards, etc.). For now,
+	// we need to ship log visibility into multiple containers. Here's the minimum
+	// of info we need for that.
+	ContainerInfos []ContainerInfo
+}
+
+// The minimum info we need to retrieve logs for a container.
+type ContainerInfo struct {
+	container.Name
+	ID container.ID
 }
 
 func (p Pod) Empty() bool {

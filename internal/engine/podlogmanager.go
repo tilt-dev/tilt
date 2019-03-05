@@ -20,14 +20,20 @@ type PodLogManager struct {
 	kClient k8s.Client
 
 	watches      map[podLogKey]PodLogWatch
-	watchesByPod map[k8s.PodID]PodLogWatch
+	watchesByPod map[k8s.PodID][]PodLogWatch
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	return &PodLogManager{
 		kClient:      kClient,
 		watches:      make(map[podLogKey]PodLogWatch),
-		watchesByPod: make(map[k8s.PodID]PodLogWatch),
+		watchesByPod: make(map[k8s.PodID][]PodLogWatch),
+	}
+}
+
+func cancelAll(watches []PodLogWatch) {
+	for _, w := range watches {
+		w.cancel()
 	}
 }
 
@@ -50,9 +56,18 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			watchByPod, ok := m.watchesByPod[pod.PodID]
-			if ok && watchByPod.cID != pod.ContainerID {
-				watchByPod.cancel()
+			// ASDFG what?!
+			// maybe check for main container id and shut down all if main cID doesn't match?
+			// OR if none of the watches match pod.ContainerID, shut down
+			var foundCID bool
+			for _, w := range m.watchesByPod[pod.PodID] {
+				if w.cID == pod.ContainerID {
+					foundCID = true
+					break
+				}
+			}
+			if !foundCID {
+				cancelAll(m.watchesByPod[pod.PodID])
 				delete(m.watchesByPod, pod.PodID)
 			}
 
@@ -66,44 +81,58 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			// Key the log watcher by the container id, so we auto-restart the
-			// watching if the container crashes.
-			key := podLogKey{
-				podID: pod.PodID,
-				cID:   pod.ContainerID,
+			// NOTE(maia): setting up logWatchers using both containerInfos and pod.ContainerName etc.
+			// is a temporary hack. Put this in for backwards compatibility.
+			containerInfos := pod.ContainerInfos
+			if len(containerInfos) == 0 {
+				containerInfos = []store.ContainerInfo{
+					store.ContainerInfo{Name: pod.ContainerName, ID: pod.ContainerID},
+				}
 			}
-			stateWatches[key] = true
 
-			existing, isActive := m.watches[key]
-			startWatchTime := time.Unix(0, 0)
-			if isActive {
-				if existing.ctx.Err() == nil {
-					// The active pod watcher is still tailing the logs,
-					// so just skip it.
-					continue
+			var watchesForPod []PodLogWatch
+			for _, cInfo := range containerInfos {
+				// Key the log watcher by the container id, so we auto-restart the
+				// watching if the container crashes.
+				key := podLogKey{
+					podID: pod.PodID,
+					cID:   cInfo.ID,
+				}
+				stateWatches[key] = true
+
+				existing, isActive := m.watches[key]
+				startWatchTime := time.Unix(0, 0)
+				if isActive {
+					if existing.ctx.Err() == nil {
+						// The active pod watcher is still tailing the logs,
+						// nothing to do but note that the watcher is here.
+						watchesForPod = append(watchesForPod, existing)
+						continue
+					}
+
+					// The active pod watcher got cancelled somehow,
+					// so we need to create a new one that picks up
+					// where it left off.
+					startWatchTime = <-existing.terminationTime
 				}
 
-				// The active pod watcher got cancelled somehow,
-				// so we need to create a new one that picks up
-				// where it left off.
-				startWatchTime = <-existing.terminationTime
+				ctx, cancel := context.WithCancel(ctx)
+				w := PodLogWatch{
+					ctx:             ctx,
+					cancel:          cancel,
+					name:            ms.Name,
+					podID:           pod.PodID,
+					cID:             cInfo.ID,
+					cName:           cInfo.Name,
+					namespace:       pod.Namespace,
+					startWatchTime:  startWatchTime,
+					terminationTime: make(chan time.Time, 1),
+				}
+				m.watches[key] = w
+				watchesForPod = append(watchesForPod, w)
+				setup = append(setup, w)
 			}
-
-			ctx, cancel := context.WithCancel(ctx)
-			w := PodLogWatch{
-				ctx:             ctx,
-				cancel:          cancel,
-				name:            ms.Name,
-				podID:           pod.PodID,
-				cID:             pod.ContainerID,
-				cName:           pod.ContainerName,
-				namespace:       pod.Namespace,
-				startWatchTime:  startWatchTime,
-				terminationTime: make(chan time.Time, 1),
-			}
-			m.watches[key] = w
-			m.watchesByPod[pod.PodID] = w
-			setup = append(setup, w)
+			m.watchesByPod[pod.PodID] = watchesForPod
 		}
 	}
 
@@ -112,11 +141,18 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		if !inState {
 			delete(m.watches, key)
 
-			byPod, ok := m.watchesByPod[key.podID]
-			if ok && byPod.cID != key.cID {
-				delete(m.watchesByPod, key.podID)
+			var watchesForPod []PodLogWatch
+			for _, w := range m.watchesByPod[key.podID] {
+				// filter out watches for this pod+cID combination
+				if w.cID != key.cID {
+					watchesForPod = append(watchesForPod, w)
+				}
+				if len(watchesForPod) == 0 {
+					delete(m.watchesByPod, key.podID)
+				} else {
+					m.watchesByPod[key.podID] = watchesForPod
+				}
 			}
-
 			teardown = append(teardown, value)
 		}
 	}
