@@ -86,7 +86,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 			containerInfos := pod.ContainerInfos
 			if len(containerInfos) == 0 {
 				containerInfos = []store.ContainerInfo{
-					store.ContainerInfo{Name: pod.ContainerName, ID: pod.ContainerID},
+					store.ContainerInfo{ID: pod.ContainerID, Name: pod.ContainerName},
 				}
 			}
 

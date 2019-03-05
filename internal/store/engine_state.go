@@ -515,8 +515,8 @@ type Pod struct {
 
 // The minimum info we need to retrieve logs for a container.
 type ContainerInfo struct {
-	container.Name
 	ID container.ID
+	container.Name
 }
 
 func (p Pod) Empty() bool {

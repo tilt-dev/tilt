@@ -168,6 +168,41 @@ func TestLogsTruncatedWhenCanceled(t *testing.T) {
 	assert.NotContains(t, f.out.String(), "goodbye")
 }
 
+func TestMultiContainerLogs(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	pID := k8s.PodID("the-pod")
+	f.kClient.SetLogsForPodContainer(pID, "cont1", "hello world!")
+	f.kClient.SetLogsForPodContainer(pID, "cont2", "goodbye world!")
+
+	state := f.store.LockMutableStateForTesting()
+	state.WatchMounts = true
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
+			PodID:         pID,
+			ContainerName: "cont1",
+			ContainerID:   "cid1",
+			Phase:         v1.PodRunning,
+			ContainerInfos: []store.ContainerInfo{
+				store.ContainerInfo{ID: "cid1", Name: "cont1"},
+				store.ContainerInfo{ID: "cid2", Name: "cont2"},
+			},
+		}))
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
+	err := f.out.WaitUntilContains("hello world!", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.out.WaitUntilContains("goodbye world!", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context

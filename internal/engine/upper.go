@@ -609,8 +609,8 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 			return
 		}
 		cInfos = append(cInfos, store.ContainerInfo{
-			Name: k8s.ContainerNameFromContainerStatus(cStat),
 			ID:   cID,
+			Name: k8s.ContainerNameFromContainerStatus(cStat),
 		})
 	}
 	podInfo.ContainerInfos = cInfos
