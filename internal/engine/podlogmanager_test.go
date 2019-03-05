@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -115,57 +114,14 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Previous log stream has finished, so the first pod watch has been canceled,
+	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogs("goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
 	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestLogsTruncatedWhenCanceled(t *testing.T) {
-	f := newPLMFixture(t)
-	defer f.TearDown()
-
-	logs := bytes.NewBuffer(nil)
-	f.kClient.PodLogs = k8s.BufferCloser{Buffer: logs}
-
-	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
-		model.Manifest{Name: "server"},
-		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
-			Phase:         v1.PodRunning,
-		}))
-	f.store.UnlockMutableState()
-
-	f.plm.OnChange(f.ctx, f.store)
-	logs.Write([]byte("hello world!\n"))
-	err := f.out.WaitUntilContains("hello world!\n", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	state = f.store.LockMutableStateForTesting()
-	state.UpsertManifestTarget(newManifestTargetWithPod(
-		model.Manifest{Name: "server"},
-		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "",
-			Phase:         v1.PodRunning,
-		}))
-	f.store.UnlockMutableState()
-
-	f.plm.OnChange(f.ctx, f.store)
-
-	logs.Write([]byte("goodbye world!\n"))
-	time.Sleep(10 * time.Millisecond)
-
-	assert.NotContains(t, f.out.String(), "goodbye")
 }
 
 type plmFixture struct {
