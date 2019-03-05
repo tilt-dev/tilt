@@ -148,6 +148,23 @@ func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
 	return r, nil
 }
 
+// If `v` is a `starlark.Sequence`, return a slice of its elements
+// Otherwise, return it as a single-element slice
+// For functions that take `Union[List[T], T]`
+func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
+	if v, ok := v.(starlark.Sequence); ok {
+		var ret []starlark.Value
+		it := v.Iterate()
+		defer it.Done()
+		var i starlark.Value
+		for it.Next(&i) {
+			ret = append(ret, i)
+		}
+		return ret
+	}
+	return []starlark.Value{v}
+}
+
 func (tfl *tiltfileLoader) reportTiltfileLoaded(counts map[string]int) {
 	tags := make(map[string]string)
 	for builtinName, count := range counts {

@@ -296,25 +296,17 @@ func (s *tiltfileState) cachePathsFromSkylarkValue(val starlark.Value) ([]string
 	if val == nil {
 		return nil, nil
 	}
-	if val, ok := val.(starlark.Sequence); ok {
-		var result []string
-		it := val.Iterate()
-		defer it.Done()
-		var i starlark.Value
-		for it.Next(&i) {
-			str, ok := i.(starlark.String)
-			if !ok {
-				return nil, fmt.Errorf("cache param %v is a %T; must be a string", i, i)
-			}
-			result = append(result, string(str))
+	cachePaths := starlarkValueOrSequenceToSlice(val)
+
+	var ret []string
+	for _, v := range cachePaths {
+		str, ok := v.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("cache param %v is a %T; must be a string", v, v)
 		}
-		return result, nil
+		ret = append(ret, string(str))
 	}
-	str, ok := val.(starlark.String)
-	if !ok {
-		return nil, fmt.Errorf("cache param %v is a %T; must be a string or a sequence of strings", val, val)
-	}
-	return []string{string(str)}, nil
+	return ret, nil
 }
 
 type fastBuild struct {
