@@ -1706,7 +1706,7 @@ func TestExtraImageLocationOneImage(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_extra_image_location('Environment', '{.spec.runtime.image}')
+k8s_kind('Environment', image_json_path='{.spec.runtime.image}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1725,7 +1725,7 @@ func TestExtraImageLocationTwoImages(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_extra_image_location('Environment', ['{.spec.runtime.image}', '{.spec.builder.image}'])
+k8s_kind('Environment', image_json_path=['{.spec.runtime.image}', '{.spec.builder.image}'])
 docker_build('test/mycrd-builder', 'builder')
 docker_build('test/mycrd-env', 'env')
 `)
@@ -1748,7 +1748,7 @@ func TestExtraImageLocationNoMatch(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_extra_image_location('Environment', '{.foobar}')
+k8s_kind('Environment', image_json_path='{.foobar}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1761,7 +1761,7 @@ func TestExtraImageLocationInvalidJsonPath(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_extra_image_location('Environment', '{foobar()}')
+k8s_kind('Environment', image_json_path='{foobar()}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1770,19 +1770,19 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationNoPaths(t *testing.T) {
 	f := newFixture(t)
-	f.file("Tiltfile", `k8s_extra_image_location('MyType')`)
-	f.loadErrString("missing argument for json_path")
+	f.file("Tiltfile", `k8s_kind('MyType')`)
+	f.loadErrString("missing argument for image_json_path")
 }
 
 func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
-	f.file("Tiltfile", `k8s_extra_image_location('MyType', 8)`)
+	f.file("Tiltfile", `k8s_kind('MyType', image_json_path=8)`)
 	f.loadErrString("json_path must be a string or list of strings", "Int")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
-	f.file("Tiltfile", `k8s_extra_image_location('MyType', ["foo", 8])`)
+	f.file("Tiltfile", `k8s_kind('MyType', image_json_path=["foo", 8])`)
 	f.loadErrString("json_path must be a string or list of strings", "8", "Int")
 }
 

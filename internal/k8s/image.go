@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/client-go/util/jsonpath"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/jsonpath"
 
 	"github.com/windmilleng/tilt/internal/container"
 )
@@ -197,11 +196,12 @@ func (e K8sEntity) HasImage(image reference.Named, k8sImageJsonPathsByKind map[s
 
 func (e K8sEntity) FindImages(k8sImageJsonPathsByKind map[string][]string) ([]reference.Named, error) {
 	var result []reference.Named
+
+	// Look for images in instances of Container
 	containers, err := extractContainers(&e)
 	if err != nil {
 		return nil, err
 	}
-
 	for _, c := range containers {
 		ref, err := container.ParseNamed(c.Image)
 		if err != nil {
@@ -211,10 +211,11 @@ func (e K8sEntity) FindImages(k8sImageJsonPathsByKind map[string][]string) ([]re
 		result = append(result, ref)
 	}
 
+	// If it's a CRD, also look for images in any json paths that were specified for this Kind
 	if u, ok := e.Obj.(runtime.Unstructured); ok {
 		if imageJsonPaths, ok := k8sImageJsonPathsByKind[e.Kind.Kind]; ok {
 			for _, path := range imageJsonPaths {
-				p := jsonpath.New("jp")
+				p := jsonpath.New(fmt.Sprintf("%s_image_json_path", e.Kind.Kind))
 				err := p.Parse(path)
 				if err != nil {
 					return nil, errors.Wrapf(err, "error parsing json path '%s'", path)

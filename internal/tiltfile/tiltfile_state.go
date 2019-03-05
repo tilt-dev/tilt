@@ -95,11 +95,11 @@ const (
 	dcResourceN    = "dc_resource"
 
 	// k8s functions
-	k8sYamlN              = "k8s_yaml"
-	filterYamlN           = "filter_yaml"
-	k8sResourceN          = "k8s_resource"
-	portForwardN          = "port_forward"
-	k8sExtraImageLocation = "k8s_extra_image_location"
+	k8sYamlN     = "k8s_yaml"
+	filterYamlN  = "filter_yaml"
+	k8sResourceN = "k8s_resource"
+	portForwardN = "port_forward"
+	k8sKindN     = "k8s_kind"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -145,7 +145,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, filterYamlN, s.filterYaml)
 	addBuiltin(r, k8sResourceN, s.k8sResource)
 	addBuiltin(r, portForwardN, s.portForward)
-	addBuiltin(r, k8sExtraImageLocation, s.k8sExtraImageLocation)
+	addBuiltin(r, k8sKindN, s.k8sKind)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
