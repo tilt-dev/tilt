@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -18,20 +19,24 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+var podID = k8s.PodID("pod-id")
+var cName = container.Name("cname")
+var cID = container.ID("cid")
+
 func TestLogs(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.SetLogs("hello world!")
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -47,16 +52,16 @@ func TestLogActions(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.SetLogs("hello world!\ngoodbye world!\n")
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -76,9 +81,9 @@ func TestLogsFailed(t *testing.T) {
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -95,16 +100,16 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.SetLogs("hello world!\n")
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\n")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -115,7 +120,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.kClient.SetLogs("goodbye world!\n")
+	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
 	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
 	if err != nil {
@@ -128,16 +133,16 @@ func TestLogsTruncatedWhenCanceled(t *testing.T) {
 	defer f.TearDown()
 
 	logs := bytes.NewBuffer(nil)
-	f.kClient.PodLogs = k8s.BufferCloser{Buffer: logs}
+	f.kClient.PodLogsByPodAndContainer[k8s.PodAndCName{PID: podID, CName: cName}] = k8s.BufferCloser{Buffer: logs}
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -153,8 +158,8 @@ func TestLogsTruncatedWhenCanceled(t *testing.T) {
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
+			PodID:         podID,
+			ContainerName: cName,
 			ContainerID:   "",
 			Phase:         v1.PodRunning,
 		}))
