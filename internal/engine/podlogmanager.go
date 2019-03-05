@@ -88,7 +88,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				cancel:          cancel,
 				name:            ms.Name,
 				podID:           pod.PodID,
-				cID:             pod.ContainerID,
 				cName:           pod.ContainerName,
 				namespace:       pod.Namespace,
 				startWatchTime:  startWatchTime,
@@ -176,7 +175,6 @@ type PodLogWatch struct {
 	name            model.ManifestName
 	podID           k8s.PodID
 	namespace       k8s.Namespace
-	cID             container.ID
 	cName           container.Name
 	startWatchTime  time.Time
 	terminationTime chan time.Time
