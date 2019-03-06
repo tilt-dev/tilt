@@ -102,7 +102,7 @@ func IsUnschedulable(pod v1.PodStatus) (bool, string) {
 
 func ContainerMatching(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
 	for _, c := range pod.Status.ContainerStatuses {
-		cRef, err := reference.ParseNormalizedNamed(c.Image)
+		cRef, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return v1.ContainerStatus{}, errors.Wrap(err, "ContainerMatching")
 		}

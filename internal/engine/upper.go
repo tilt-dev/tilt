@@ -582,6 +582,13 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	}
 	podInfo.ContainerID = cID
 
+	cRef, err := container.ParseNamed(cStatus.Image)
+	if err != nil {
+		logger.Get(ctx).Debugf("Error parsing container image ID: %v", err)
+		return
+	}
+	podInfo.ContainerImageRef = cRef
+
 	ports := make([]int32, 0)
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
 	for _, cPort := range cSpec.Ports {

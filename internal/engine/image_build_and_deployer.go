@@ -173,7 +173,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 			// When working with a local k8s cluster, we set the pull policy to Never,
 			// to ensure that k8s fails hard if the image is missing from docker.
 			policy := v1.PullIfNotPresent
-			if ibd.canSkipPush() {
+			if ibd.canAlwaysSkipPush() {
 				policy = v1.PullNever
 			}
 
@@ -222,29 +222,21 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	return ibd.k8sClient.Upsert(ctx, newK8sEntities)
 }
 
-// We can also skip the push of the image if it isn't used
-// in any k8s resources! (e.g., it's consumed by another image).
 func (ibd *ImageBuildAndDeployer) canSkipPushOfTarget(iTarget model.ImageTarget, kTargets []model.K8sTarget) bool {
-	if ibd.canSkipPush() {
+	if ibd.canAlwaysSkipPush() {
 		return true
 	}
 
-	id := iTarget.ID()
-	for _, kTarget := range kTargets {
-		for _, depID := range kTarget.DependencyIDs() {
-			if depID == id {
-				return false
-			}
-		}
-	}
-	return true
+	// We can also skip the push of the image if it isn't used
+	// in any k8s resources! (e.g., it's consumed by another image).
+	return !isImageDeployedToK8s(iTarget, kTargets)
 }
 
 // If we're using docker-for-desktop as our k8s backend,
 // we don't need to push to the central registry.
 // The k8s will use the image already available
 // in the local docker daemon.
-func (ibd *ImageBuildAndDeployer) canSkipPush() bool {
+func (ibd *ImageBuildAndDeployer) canAlwaysSkipPush() bool {
 	return ibd.env.IsLocalCluster() && ibd.runtime == container.RuntimeDocker
 }
 

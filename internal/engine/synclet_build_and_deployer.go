@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
@@ -33,44 +32,26 @@ func NewSyncletBuildAndDeployer(sm SyncletManager, kCli k8s.Client) *SyncletBuil
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
-	iTargets, kTargets := extractImageAndK8sTargets(specs)
-	if len(kTargets) != 1 || len(iTargets) != 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf(
-			"SyncletBuildAndDeployer requires exactly one image spec and one k8s deploy spec")
+	iTargets, err := extractImageTargetsForLiveUpdates(specs, stateSet)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+
+	if len(iTargets) != 1 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("Synclet container builder needs exactly one image target")
+	}
+
+	iTarget := iTargets[0]
+	if !isImageDeployedToK8s(iTarget, extractK8sTargets(specs)) {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("Synclet container builder can only deploy to k8s")
 	}
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", kTargets[0].Name)
+	span.SetTag("target", iTarget.Ref.String())
 	defer span.Finish()
 
-	iTarget := iTargets[0]
 	state := stateSet[iTarget.ID()]
-	if err := sbd.canSyncletBuild(ctx, iTarget, state); err != nil {
-		return store.BuildResultSet{}, WrapRedirectToNextBuilder(err)
-	}
-
 	return sbd.updateInCluster(ctx, iTarget, state)
-}
-
-// canSyncletBuild returns an error if we CAN'T build this manifest via the synclet
-func (sbd *SyncletBuildAndDeployer) canSyncletBuild(ctx context.Context,
-	image model.ImageTarget, state store.BuildState) error {
-
-	// SyncletBuildAndDeployer doesn't support initial build
-	if state.IsEmpty() {
-		return fmt.Errorf("prev. build state is empty; synclet build does not support initial deploy")
-	}
-
-	if image.MaybeFastBuildInfo() == nil {
-		return fmt.Errorf("container build only supports FastBuilds")
-	}
-
-	// Can't do container update if we don't know what container manifest is running in.
-	if state.DeployInfo.Empty() {
-		return fmt.Errorf("no deploy info")
-	}
-
-	return nil
 }
 
 func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
@@ -103,10 +84,6 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	deployInfo := state.DeployInfo
-	if deployInfo.Empty() {
-		return store.BuildResultSet{}, fmt.Errorf("no deploy info")
-	}
-
 	cmds, err := build.BoilSteps(fbInfo.Steps, paths)
 	if err != nil {
 		return store.BuildResultSet{}, err

@@ -10,6 +10,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -497,10 +498,11 @@ type Pod struct {
 	CurrentLog model.Log `testdiff:"ignore"`
 
 	// Corresponds to the deployed container.
-	ContainerName  container.Name
-	ContainerID    container.ID
-	ContainerPorts []int32
-	ContainerReady bool
+	ContainerName     container.Name
+	ContainerID       container.ID
+	ContainerPorts    []int32
+	ContainerReady    bool
+	ContainerImageRef reference.Named
 
 	// We want to show the user # of restarts since pod has been running current code,
 	// i.e. OldRestarts - Total Restarts
