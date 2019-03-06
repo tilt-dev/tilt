@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -600,6 +600,11 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	// to stream logs from them.
 	var cInfos []store.ContainerInfo
 	for _, cStat := range pod.Status.ContainerStatuses {
+		if cStat.Name == sidecar.SyncletContainerName {
+			// We don't want logs for the Tilt synclet.
+			continue
+		}
+
 		cID, err := k8s.ContainerIDFromContainerStatus(cStat)
 		if err != nil {
 			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
