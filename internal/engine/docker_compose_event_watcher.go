@@ -30,7 +30,6 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 	if !w.needsWatch(st) {
 		return
 	}
-	w.watching = true
 
 	state := st.RLockState()
 	configPath := state.DockerComposeConfigPath()
@@ -41,6 +40,7 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 		return
 	}
 
+	w.watching = true
 	ch, err := w.startWatch(ctx, configPath)
 	if err != nil {
 		err = errors.Wrap(err, "Subscribing to docker-compose events")
