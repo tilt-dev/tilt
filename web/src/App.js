@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import ResourceList from './ResourceList';
-import AppController from './AppController'
-import { Link } from 'react-router-dom';
+import AppController from './AppController';
+import LoadingScreen from './LoadingScreen';
 import './App.css';
 
 class App extends Component {
@@ -43,15 +43,6 @@ class App extends Component {
       </div>
     );
   }
-}
-
-function LoadingScreen(props) {
-  let message = props.message || 'Loading…'
-  return (
-    <header className="LoadingScreen">
-      {message}
-    </header>
-  )
 }
 
 export default App;
