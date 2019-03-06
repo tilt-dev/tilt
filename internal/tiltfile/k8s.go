@@ -55,11 +55,11 @@ func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
 	}
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity, k8sImageJsonPathsByKind map[string][]string) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages()
+		images, err := entity.FindImages(k8sImageJsonPathsByKind)
 		if err != nil {
 			return err
 		}
@@ -78,16 +78,6 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
 func (r k8sResource) providedImageRefNameList() []string {
 	result := make([]string, 0, len(r.providedImageRefNames))
 	for ref := range r.providedImageRefNames {
-		result = append(result, ref)
-	}
-	sort.Strings(result)
-	return result
-}
-
-// Return the image refs in a deterministic order.
-func (r k8sResource) imageRefNameList() []string {
-	result := make([]string, 0, len(r.imageRefNames))
-	for ref := range r.imageRefNames {
 		result = append(result, ref)
 	}
 	sort.Strings(result)
@@ -249,7 +239,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	err = r.addEntities(entities)
+	err = r.addEntities(entities, s.k8sImageJsonPathsByKind)
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +324,36 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	}
 }
 
+func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var kind string
+	if err := starlark.UnpackArgs(fn.Name(), args, nil,
+		"kind", &kind,
+	); err != nil {
+		return nil, err
+	}
+
+	// unpacked separately so that this is a keyword-only arg
+	var imageJSONPath starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), nil, kwargs,
+		"image_json_path", &imageJSONPath,
+	); err != nil {
+		return nil, err
+	}
+
+	values := starlarkValueOrSequenceToSlice(imageJSONPath)
+	var paths []string
+	for _, v := range values {
+		s, ok := v.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("image_json_path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
+		}
+		paths = append(paths, s.String())
+	}
+	s.k8sImageJsonPathsByKind[kind] = paths
+
+	return starlark.None, nil
+}
+
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	if s.k8sByName[name] != nil {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
@@ -350,21 +370,17 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 }
 
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v starlark.Value) ([]k8s.K8sEntity, error) {
-	if v, ok := v.(starlark.Sequence); ok {
-		var result []k8s.K8sEntity
-		it := v.Iterate()
-		defer it.Done()
-		var i starlark.Value
-		for it.Next(&i) {
-			entities, err := s.yamlEntitiesFromSkylarkValue(i)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, entities...)
+	values := starlarkValueOrSequenceToSlice(v)
+	var ret []k8s.K8sEntity
+	for _, value := range values {
+		entities, err := s.yamlEntitiesFromSkylarkValue(value)
+		if err != nil {
+			return nil, err
 		}
-		return result, nil
+		ret = append(ret, entities...)
 	}
-	return s.yamlEntitiesFromSkylarkValue(v)
+
+	return ret, nil
 }
 
 func parseYAMLFromBlob(blob blob) ([]k8s.K8sEntity, error) {

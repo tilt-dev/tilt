@@ -21,6 +21,7 @@ import (
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -98,8 +99,6 @@ var _ Client = &Cli{}
 type Cli struct {
 	*client.Client
 	supportsBuildkit bool
-
-	env []string
 
 	creds     dockerCreds
 	initError error
@@ -411,7 +410,7 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		return errors.Wrap(err, "ExecInContainer#copy")
 	}
 
-	for true {
+	for {
 		inspected, err := c.ContainerExecInspect(ctx, execId.ID)
 		if err != nil {
 			return errors.Wrap(err, "ExecInContainer#inspect")
@@ -427,6 +426,4 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		}
 		return nil
 	}
-
-	return nil
 }

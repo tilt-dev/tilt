@@ -7,27 +7,26 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"k8s.io/api/core/v1"
 )
 
 // Collects logs from deployed containers.
 type PodLogManager struct {
 	kClient k8s.Client
 
-	watches      map[podLogKey]PodLogWatch
-	watchesByPod map[k8s.PodID][]PodLogWatch
+	watches map[podLogKey]PodLogWatch
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	return &PodLogManager{
-		kClient:      kClient,
-		watches:      make(map[podLogKey]PodLogWatch),
-		watchesByPod: make(map[k8s.PodID][]PodLogWatch),
+		kClient: kClient,
+		watches: make(map[podLogKey]PodLogWatch),
 	}
 }
 
@@ -49,26 +48,11 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		return nil, nil
 	}
 
-	stateWatches := make(map[podLogKey]bool, 0)
+	stateWatches := make(map[podLogKey]bool)
 	for _, ms := range state.ManifestStates() {
 		for _, pod := range ms.PodSet.PodList() {
 			if pod.PodID == "" {
 				continue
-			}
-
-			// ASDFG what?!
-			// maybe check for main container id and shut down all if main cID doesn't match?
-			// OR if none of the watches match pod.ContainerID, shut down
-			var foundCID bool
-			for _, w := range m.watchesByPod[pod.PodID] {
-				if w.cID == pod.ContainerID {
-					foundCID = true
-					break
-				}
-			}
-			if !foundCID {
-				cancelAll(m.watchesByPod[pod.PodID])
-				delete(m.watchesByPod, pod.PodID)
 			}
 
 			if pod.ContainerName == "" || pod.ContainerID == "" {
@@ -90,7 +74,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				}
 			}
 
-			var watchesForPod []PodLogWatch
 			for _, cInfo := range containerInfos {
 				// Key the log watcher by the container id, so we auto-restart the
 				// watching if the container crashes.
@@ -105,8 +88,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				if isActive {
 					if existing.ctx.Err() == nil {
 						// The active pod watcher is still tailing the logs,
-						// nothing to do but note that the watcher is here.
-						watchesForPod = append(watchesForPod, existing)
+						// nothing to do.
 						continue
 					}
 
@@ -122,17 +104,14 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 					cancel:          cancel,
 					name:            ms.Name,
 					podID:           pod.PodID,
-					cID:             cInfo.ID,
 					cName:           cInfo.Name,
 					namespace:       pod.Namespace,
 					startWatchTime:  startWatchTime,
 					terminationTime: make(chan time.Time, 1),
 				}
 				m.watches[key] = w
-				watchesForPod = append(watchesForPod, w)
 				setup = append(setup, w)
 			}
-			m.watchesByPod[pod.PodID] = watchesForPod
 		}
 	}
 
@@ -140,19 +119,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		_, inState := stateWatches[key]
 		if !inState {
 			delete(m.watches, key)
-
-			var watchesForPod []PodLogWatch
-			for _, w := range m.watchesByPod[key.podID] {
-				// filter out watches for this pod+cID combination
-				if w.cID != key.cID {
-					watchesForPod = append(watchesForPod, w)
-				}
-				if len(watchesForPod) == 0 {
-					delete(m.watchesByPod, key.podID)
-				} else {
-					m.watchesByPod[key.podID] = watchesForPod
-				}
-			}
 			teardown = append(teardown, value)
 		}
 	}
@@ -226,7 +192,6 @@ type PodLogWatch struct {
 	name            model.ManifestName
 	podID           k8s.PodID
 	namespace       k8s.Namespace
-	cID             container.ID
 	cName           container.Name
 	startWatchTime  time.Time
 	terminationTime chan time.Time

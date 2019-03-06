@@ -8,13 +8,14 @@ import (
 	"sort"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	v1 "k8s.io/api/core/v1"
 )
 
 const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.dev/tutorial.html to get started."
@@ -671,10 +672,7 @@ func StateToView(s EngineState) view.View {
 	}
 
 	if s.GlobalYAML.K8sTarget().YAML != "" {
-		var absWatches []string
-		for _, p := range s.ConfigFiles {
-			absWatches = append(absWatches, p)
-		}
+		absWatches := append([]string{}, s.ConfigFiles...)
 		relWatches := ospath.TryAsCwdChildren(absWatches)
 
 		r := view.Resource{

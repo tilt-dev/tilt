@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -120,57 +119,14 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Previous log stream has finished, so the first pod watch has been canceled,
+	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
 	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestLogsTruncatedWhenCanceled(t *testing.T) {
-	f := newPLMFixture(t)
-	defer f.TearDown()
-
-	logs := bytes.NewBuffer(nil)
-	f.kClient.PodLogsByPodAndContainer[k8s.PodAndCName{PID: podID, CName: cName}] = k8s.BufferCloser{Buffer: logs}
-
-	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
-		model.Manifest{Name: "server"},
-		store.Pod{
-			PodID:         podID,
-			ContainerName: cName,
-			ContainerID:   cID,
-			Phase:         v1.PodRunning,
-		}))
-	f.store.UnlockMutableState()
-
-	f.plm.OnChange(f.ctx, f.store)
-	logs.Write([]byte("hello world!\n"))
-	err := f.out.WaitUntilContains("hello world!\n", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	state = f.store.LockMutableStateForTesting()
-	state.UpsertManifestTarget(newManifestTargetWithPod(
-		model.Manifest{Name: "server"},
-		store.Pod{
-			PodID:         podID,
-			ContainerName: cName,
-			ContainerID:   "",
-			Phase:         v1.PodRunning,
-		}))
-	f.store.UnlockMutableState()
-
-	f.plm.OnChange(f.ctx, f.store)
-
-	logs.Write([]byte("goodbye world!\n"))
-	time.Sleep(10 * time.Millisecond)
-
-	assert.NotContains(t, f.out.String(), "goodbye")
 }
 
 func TestMultiContainerLogs(t *testing.T) {

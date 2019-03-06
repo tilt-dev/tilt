@@ -10,13 +10,13 @@ const (
 	BuildMode dockerfile.Label = "tilt.buildMode"
 
 	// Label when an image is created by a test.
-	TestImage = "tilt.test"
+	TestImage dockerfile.Label = "tilt.test"
 
 	// Label when an image is for path caching.
-	CacheImage = "tilt.cache"
+	CacheImage dockerfile.Label = "tilt.cache"
 )
 
 const (
 	BuildModeScratch  dockerfile.LabelValue = "scratch"
-	BuildModeExisting                       = "existing"
+	BuildModeExisting dockerfile.LabelValue = "existing"
 )

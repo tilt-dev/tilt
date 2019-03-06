@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tracer"
 
 	"github.com/spf13/cobra"
+
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
@@ -88,7 +89,7 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		_ = <-sigs
+		<-sigs
 
 		cancel()
 

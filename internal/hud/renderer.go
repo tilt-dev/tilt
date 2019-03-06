@@ -161,10 +161,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 		}
 
 		if v.TiltfileErrorMessage != "" {
-			_, err := tiltfileError.WriteString(" • Tiltfile error")
-			if err != nil {
-				// This space intentionally left blank
-			}
+			_, _ = tiltfileError.WriteString(" • Tiltfile error")
 		}
 		sb.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
 	}
