@@ -20,15 +20,13 @@ import (
 type PodLogManager struct {
 	kClient k8s.Client
 
-	watches      map[podLogKey]PodLogWatch
-	watchesByPod map[k8s.PodID]PodLogWatch
+	watches map[podLogKey]PodLogWatch
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	return &PodLogManager{
-		kClient:      kClient,
-		watches:      make(map[podLogKey]PodLogWatch),
-		watchesByPod: make(map[k8s.PodID]PodLogWatch),
+		kClient: kClient,
+		watches: make(map[podLogKey]PodLogWatch),
 	}
 }
 
@@ -49,12 +47,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		for _, pod := range ms.PodSet.PodList() {
 			if pod.PodID == "" {
 				continue
-			}
-
-			watchByPod, ok := m.watchesByPod[pod.PodID]
-			if ok && watchByPod.cID != pod.ContainerID {
-				watchByPod.cancel()
-				delete(m.watchesByPod, pod.PodID)
 			}
 
 			if pod.ContainerName == "" || pod.ContainerID == "" {
@@ -96,14 +88,12 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				cancel:          cancel,
 				name:            ms.Name,
 				podID:           pod.PodID,
-				cID:             pod.ContainerID,
 				cName:           pod.ContainerName,
 				namespace:       pod.Namespace,
 				startWatchTime:  startWatchTime,
 				terminationTime: make(chan time.Time, 1),
 			}
 			m.watches[key] = w
-			m.watchesByPod[pod.PodID] = w
 			setup = append(setup, w)
 		}
 	}
@@ -112,12 +102,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		_, inState := stateWatches[key]
 		if !inState {
 			delete(m.watches, key)
-
-			byPod, ok := m.watchesByPod[key.podID]
-			if ok && byPod.cID != key.cID {
-				delete(m.watchesByPod, key.podID)
-			}
-
 			teardown = append(teardown, value)
 		}
 	}
@@ -191,7 +175,6 @@ type PodLogWatch struct {
 	name            model.ManifestName
 	podID           k8s.PodID
 	namespace       k8s.Namespace
-	cID             container.ID
 	cName           container.Name
 	startWatchTime  time.Time
 	terminationTime chan time.Time
