@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -17,20 +18,24 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+var podID = k8s.PodID("pod-id")
+var cName = container.Name("cname")
+var cID = container.ID("cid")
+
 func TestLogs(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.SetLogs("hello world!")
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -46,16 +51,16 @@ func TestLogActions(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.SetLogs("hello world!\ngoodbye world!\n")
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -75,9 +80,9 @@ func TestLogsFailed(t *testing.T) {
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -94,16 +99,16 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	f.kClient.SetLogs("hello world!\n")
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\n")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         "pod-id",
-			ContainerName: "cname",
-			ContainerID:   "cid",
+			PodID:         podID,
+			ContainerName: cName,
+			ContainerID:   cID,
 			Phase:         v1.PodRunning,
 		}))
 	f.store.UnlockMutableState()
@@ -116,9 +121,44 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	// Previous log stream has finished, so the first pod watch has been canceled,
 	// but not cleaned up; check that we start a new watch .OnChange
-	f.kClient.SetLogs("goodbye world!\n")
+	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
 	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMultiContainerLogs(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	pID := k8s.PodID("the-pod")
+	f.kClient.SetLogsForPodContainer(pID, "cont1", "hello world!")
+	f.kClient.SetLogsForPodContainer(pID, "cont2", "goodbye world!")
+
+	state := f.store.LockMutableStateForTesting()
+	state.WatchMounts = true
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "server"},
+		store.Pod{
+			PodID:         pID,
+			ContainerName: "cont1",
+			ContainerID:   "cid1",
+			Phase:         v1.PodRunning,
+			ContainerInfos: []store.ContainerInfo{
+				store.ContainerInfo{ID: "cid1", Name: "cont1"},
+				store.ContainerInfo{ID: "cid2", Name: "cont2"},
+			},
+		}))
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
+	err := f.out.WaitUntilContains("hello world!", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.out.WaitUntilContains("goodbye world!", time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,6 +30,12 @@ func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	}
 }
 
+func cancelAll(watches []PodLogWatch) {
+	for _, w := range watches {
+		w.cancel()
+	}
+}
+
 // Diff the current watches against the state store of what
 // we're supposed to be watching, returning the changes
 // we need to make.
@@ -59,42 +65,53 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			// Key the log watcher by the container id, so we auto-restart the
-			// watching if the container crashes.
-			key := podLogKey{
-				podID: pod.PodID,
-				cID:   pod.ContainerID,
+			// NOTE(maia): setting up logWatchers using both containerInfos and pod.ContainerName etc.
+			// is a temporary hack. Put this in for backwards compatibility.
+			containerInfos := pod.ContainerInfos
+			if len(containerInfos) == 0 {
+				containerInfos = []store.ContainerInfo{
+					store.ContainerInfo{ID: pod.ContainerID, Name: pod.ContainerName},
+				}
 			}
-			stateWatches[key] = true
 
-			existing, isActive := m.watches[key]
-			startWatchTime := time.Unix(0, 0)
-			if isActive {
-				if existing.ctx.Err() == nil {
-					// The active pod watcher is still tailing the logs,
-					// so just skip it.
-					continue
+			for _, cInfo := range containerInfos {
+				// Key the log watcher by the container id, so we auto-restart the
+				// watching if the container crashes.
+				key := podLogKey{
+					podID: pod.PodID,
+					cID:   cInfo.ID,
+				}
+				stateWatches[key] = true
+
+				existing, isActive := m.watches[key]
+				startWatchTime := time.Unix(0, 0)
+				if isActive {
+					if existing.ctx.Err() == nil {
+						// The active pod watcher is still tailing the logs,
+						// nothing to do.
+						continue
+					}
+
+					// The active pod watcher got cancelled somehow,
+					// so we need to create a new one that picks up
+					// where it left off.
+					startWatchTime = <-existing.terminationTime
 				}
 
-				// The active pod watcher got cancelled somehow,
-				// so we need to create a new one that picks up
-				// where it left off.
-				startWatchTime = <-existing.terminationTime
+				ctx, cancel := context.WithCancel(ctx)
+				w := PodLogWatch{
+					ctx:             ctx,
+					cancel:          cancel,
+					name:            ms.Name,
+					podID:           pod.PodID,
+					cName:           cInfo.Name,
+					namespace:       pod.Namespace,
+					startWatchTime:  startWatchTime,
+					terminationTime: make(chan time.Time, 1),
+				}
+				m.watches[key] = w
+				setup = append(setup, w)
 			}
-
-			ctx, cancel := context.WithCancel(ctx)
-			w := PodLogWatch{
-				ctx:             ctx,
-				cancel:          cancel,
-				name:            ms.Name,
-				podID:           pod.PodID,
-				cName:           pod.ContainerName,
-				namespace:       pod.Namespace,
-				startWatchTime:  startWatchTime,
-				terminationTime: make(chan time.Time, 1),
-			}
-			m.watches[key] = w
-			setup = append(setup, w)
 		}
 	}
 

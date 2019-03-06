@@ -26,6 +26,12 @@ const MagicTestContainerID = "tilt-testcontainer"
 
 var _ Client = &FakeK8sClient{}
 
+// For keying PodLogsByPodAndContainer
+type PodAndCName struct {
+	PID   PodID
+	CName container.Name
+}
+
 type FakeK8sClient struct {
 	Yaml        string
 	DeletedYaml string
@@ -38,8 +44,8 @@ type FakeK8sClient struct {
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
 
-	PodLogs            BufferCloser
-	ContainerLogsError error
+	PodLogsByPodAndContainer map[PodAndCName]BufferCloser
+	ContainerLogsError       error
 
 	LastForwardPortPodID      PodID
 	LastForwardPortRemotePort int
@@ -104,7 +110,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-ch
 
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
-		PodLogs: BufferCloser{Buffer: bytes.NewBuffer(nil)},
+		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
 	}
 }
 
@@ -141,15 +147,21 @@ func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interf
 	return watch.NewEmptyWatch(), nil
 }
 
-func (c *FakeK8sClient) SetLogs(logs string) {
-	c.PodLogs = BufferCloser{Buffer: bytes.NewBufferString(logs)}
+func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
+	c.PodLogsByPodAndContainer[PodAndCName{pID, cName}] = BufferCloser{Buffer: bytes.NewBufferString(logs)}
 }
 
 func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}
-	return c.PodLogs, nil
+
+	// If we have specific logs for this pod/container combo, return those
+	if buf, ok := c.PodLogsByPodAndContainer[PodAndCName{pID, cName}]; ok {
+		return buf, nil
+	}
+
+	return BufferCloser{Buffer: bytes.NewBuffer(nil)}, nil
 }
 
 func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
