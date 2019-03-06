@@ -6,32 +6,44 @@ package devlog
 import (
 	"fmt"
 	"os"
-	"time"
+	"sync"
 )
 
-var logfileBaseName = "/tmp/tilt-log-%s"
-var theLogfile *os.File // THERE CAN ONLY BE ONE!
+var filename = "/tmp/tilt-log"
+var theLogfile = logFile{mu: new(sync.Mutex)}
 
-func logFileName() string {
-	now := time.Now()
-	tStr := now.Format("2006-01-02T15.04.05")
-	return fmt.Sprintf(logfileBaseName, tStr)
+type logFile struct {
+	f  *os.File
+	mu *sync.Mutex
 }
 
-func LogToFilef(msg string, a ...interface{}) {
-	var err error
+func (lf *logFile) write(s string) {
+	lf.maybeLoad()
 
-	if theLogfile == nil {
-		logfile := logFileName()
-		theLogfile, err = os.Create(logfile)
-		if err != nil {
-			panic(fmt.Sprintf("creating logfile %s: %v", logfile, err))
-		}
-	}
-
-	s := fmt.Sprintf(msg, a...)
-	_, err = theLogfile.WriteString(s)
+	_, err := lf.f.WriteString(s)
 	if err != nil {
-		panic(fmt.Sprintf("writing to logfile %s: %v", theLogfile.Name(), err))
+		panic(fmt.Sprintf("writing to logfile %s: %v", lf.f.Name(), err))
 	}
+}
+
+func (lf *logFile) maybeLoad() {
+	if lf.f != nil {
+		return
+	}
+
+	lf.mu.Lock()
+	defer lf.mu.Unlock()
+
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		panic(fmt.Sprintf("creating logfile: %v", err))
+	}
+
+	lf.f = f
+}
+
+func Logf(msg string, a ...interface{}) {
+	s := fmt.Sprintf(msg, a...)
+	theLogfile.write(s + "\n")
+
 }
