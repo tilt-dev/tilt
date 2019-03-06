@@ -27,9 +27,9 @@ type pather interface {
 	MkdirAll(p string)
 }
 
-var SanchoRef = container.MustParseNamed("gcr.io/some-project-162817/sancho")
-var SanchoBaseRef = container.MustParseNamed("sancho-base")
-var SanchoSidecarRef = container.MustParseNamed("gcr.io/some-project-162817/sancho-sidecar")
+var SanchoRef = container.MustParseSelector("gcr.io/some-project-162817/sancho")
+var SanchoBaseRef = container.MustParseSelector("sancho-base")
+var SanchoSidecarRef = container.MustParseSelector("gcr.io/some-project-162817/sancho-sidecar")
 
 func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	return model.FastBuild{
@@ -165,9 +165,9 @@ func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
 }
 
 func NewManifestsWithCommonAncestor(fixture pather) (model.Manifest, model.Manifest) {
-	refCommon := container.MustParseNamed("gcr.io/common")
-	ref1 := container.MustParseNamed("gcr.io/image-1")
-	ref2 := container.MustParseNamed("gcr.io/image-2")
+	refCommon := container.MustParseSelector("gcr.io/common")
+	ref1 := container.MustParseSelector("gcr.io/image-1")
+	ref2 := container.MustParseSelector("gcr.io/image-2")
 
 	fixture.MkdirAll("common")
 	fixture.MkdirAll("image-1")

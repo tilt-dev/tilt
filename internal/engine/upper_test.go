@@ -2468,7 +2468,7 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
-	ref := f.imageNameForManifest(name)
+	ref := container.NewRefSelector(f.imageNameForManifest(name))
 	return assembleK8sManifest(
 		model.Manifest{Name: model.ManifestName(name)},
 		model.K8sTarget{YAML: "fake-yaml"},

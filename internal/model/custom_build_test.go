@@ -42,7 +42,7 @@ func TestValidate(t *testing.T) {
 		Deps:    []string{"foo", "bar"},
 	}
 	it := ImageTarget{
-		Ref:          container.MustParseNamed("gcr.io/foo/bar"),
+		Ref:          container.MustParseSelector("gcr.io/foo/bar"),
 		BuildDetails: cb,
 	}
 
@@ -55,7 +55,7 @@ func TestDoesNotValidate(t *testing.T) {
 		Deps:    []string{"foo", "bar"},
 	}
 	it := ImageTarget{
-		Ref:          container.MustParseNamed("gcr.io/foo/bar"),
+		Ref:          container.MustParseSelector("gcr.io/foo/bar"),
 		BuildDetails: cb,
 	}
 

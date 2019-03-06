@@ -178,7 +178,7 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
-func (e K8sEntity) HasImage(image reference.Named, k8sImageJsonPathsByKind map[string][]string) (bool, error) {
+func (e K8sEntity) HasImage(image container.RefSelector, k8sImageJsonPathsByKind map[string][]string) (bool, error) {
 	images, err := e.FindImages(k8sImageJsonPathsByKind)
 	if err != nil {
 		fmt.Printf("error in FindImages: %+v\n", err)
@@ -186,7 +186,7 @@ func (e K8sEntity) HasImage(image reference.Named, k8sImageJsonPathsByKind map[s
 	}
 
 	for _, existingRef := range images {
-		if existingRef.Name() == image.Name() {
+		if image.Matches(existingRef) {
 			return true, nil
 		}
 	}

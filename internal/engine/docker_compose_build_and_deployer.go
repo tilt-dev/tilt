@@ -123,7 +123,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 }
 
 func (bd *DockerComposeBuildAndDeployer) tagWithExpected(ctx context.Context, ref reference.NamedTagged,
-	expected reference.Named) (reference.NamedTagged, error) {
+	expected container.RefSelector) (reference.NamedTagged, error) {
 	var tagAs reference.NamedTagged
 	expectedNt, err := container.ParseNamedTagged(expected.String())
 	if err == nil {

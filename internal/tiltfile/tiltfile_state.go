@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
@@ -323,18 +324,19 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 
 // k8sResourceForImage returns the k8sResource with which this image is associated
 // (either an existing resource or a new one).
-func (s *tiltfileState) k8sResourceForImage(image reference.Named) (*k8sResource, error) {
+func (s *tiltfileState) k8sResourceForImage(image container.RefSelector) (*k8sResource, error) {
 	// first, look thru all the resources that have already been created,
 	// and see if any of them already have a reference to this image.
+	refName := image.Name()
 	for _, r := range s.k8s {
-		if _, ok := r.imageRefNames[image.Name()]; ok {
+		if _, ok := r.imageRefNames[refName]; ok {
 			return r, nil
 		}
 	}
 
 	// next, look thru all the resources that have already been created,
 	// and see if any of them match the basename of the image.
-	name := filepath.Base(image.Name())
+	name := filepath.Base(refName)
 	if r, ok := s.k8sByName[name]; ok {
 		return r, nil
 	}
@@ -374,7 +376,7 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 }
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
-func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef reference.Named) error {
+func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
 	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.k8sImageJsonPathsByKind)
 	if err != nil {
 		return err
