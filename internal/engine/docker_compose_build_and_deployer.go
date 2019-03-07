@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
@@ -59,51 +58,61 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, RedirectToNextBuilderf(
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
-	if len(iTargets) > 1 {
-		// TODO(nick): Now that we support images depending on other images,
-		// we might need to adjust this to support more than one image target.
-		return store.BuildResultSet{}, fmt.Errorf(
-			"DockerComposeBuildAndDeployer supports at most one ImageTarget (got %d)", len(iTargets))
-	}
 	dcTarget := dcTargets[0]
-	haveImage := len(iTargets) == 1
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
 
-	results := store.BuildResultSet{}
+	numStages := len(iTargets)
+	haveImage := len(iTargets) > 0
 
-	if haveImage {
-		var err error
-		var ref reference.NamedTagged
-		iTarget := iTargets[0]
+	var err error
+	ps := build.NewPipelineState(ctx, numStages, bd.clock)
+	defer func() { ps.End(ctx, err) }()
+
+	q := NewImageTargetQueue(iTargets)
+	target, ok, err := q.Next()
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+
+	for ok {
+		iTarget, err := injectImageDependencies(target.(model.ImageTarget), q.DependencyResults(target))
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
 		expectedRef := iTarget.Ref
+		var ref reference.NamedTagged
+		state := currentState[iTarget.ID()]
+		if state.NeedsImageBuild() {
+			// NOTE(maia): we assume that this func takes one DC target and up to one image target
+			// corresponding to that service. If this func ever supports specs for more than one
+			// service at once, we'll have to match up image build results to DC target by ref.
+			ref, err = bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps, true)
+			if err != nil {
+				return store.BuildResultSet{}, err
+			}
 
-		ps := build.NewPipelineState(ctx, 1, bd.clock)
-		defer func() { ps.End(ctx, err) }()
-
-		// NOTE(maia): we assume that this func takes one DC target and up to one image target
-		// corresponding to that service. If this func ever supports specs for more than one
-		// service at once, we'll have to match up image build results to DC target by ref.
-		ref, err = bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps, true)
-		if err != nil {
-			return store.BuildResultSet{}, err
+			ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
+			if err != nil {
+				return store.BuildResultSet{}, err
+			}
+		} else {
+			ref = state.LastResult.Image
 		}
 
-		ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
+		q.SetResult(iTarget.ID(), store.BuildResult{Image: ref})
+		target, ok, err = q.Next()
 		if err != nil {
 			return store.BuildResultSet{}, err
-		}
-
-		results[iTarget.ID()] = store.BuildResult{
-			Image: ref,
 		}
 	}
 
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
-	err := bd.dcc.Up(ctx, dcTarget.ConfigPath, dcTarget.Name, !haveImage, stdout, stderr)
+	err = bd.dcc.Up(ctx, dcTarget.ConfigPath, dcTarget.Name, !haveImage, stdout, stderr)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -115,10 +124,10 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
+	results := q.results
 	results[dcTarget.ID()] = store.BuildResult{
 		ContainerID: cid,
 	}
-
 	return results, nil
 }
 
