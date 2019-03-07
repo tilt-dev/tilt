@@ -1868,6 +1868,29 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	})
 }
 
+func TestDockerComposeStartsEventWatcher(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	// Actual behavior is that we init with zero manifests, and add in manifests
+	// after Tiltfile loads. Mimic that here.
+	f.Start([]model.Manifest{}, true)
+	time.Sleep(10 * time.Millisecond)
+
+	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{m}})
+	f.waitForCompletedBuildCount(1)
+
+	// Is DockerComposeEventWatcher watching for events??
+	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusInProg
+	})
+}
+
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
