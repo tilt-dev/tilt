@@ -11,7 +11,7 @@ import (
 )
 
 func TestOneWatch(t *testing.T) {
-	f := newFixture(t, "onewatch")
+	f := newK8sFixture(t, "onewatch")
 	defer f.TearDown()
 
 	f.TiltWatch("onewatch")
