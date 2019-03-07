@@ -41,10 +41,7 @@ func TestLogs(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("hello world!", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("hello world!")
 }
 
 func TestLogActions(t *testing.T) {
@@ -88,10 +85,7 @@ func TestLogsFailed(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("Error streaming server logs", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("Error streaming server logs")
 	assert.Contains(t, f.out.String(), "my-error")
 }
 
@@ -114,35 +108,28 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("hello world!\n", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("hello world!\n")
 
 	// Previous log stream has finished, so the first pod watch has been canceled,
 	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
-	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("goodbye world!\n")
 }
 
 func TestMultiContainerLogs(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
 
-	pID := k8s.PodID("the-pod")
-	f.kClient.SetLogsForPodContainer(pID, "cont1", "hello world!")
-	f.kClient.SetLogsForPodContainer(pID, "cont2", "goodbye world!")
+	f.kClient.SetLogsForPodContainer(podID, "cont1", "hello world!")
+	f.kClient.SetLogsForPodContainer(podID, "cont2", "goodbye world!")
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchMounts = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         pID,
+			PodID:         podID,
 			ContainerName: "cont1",
 			ContainerID:   "cid1",
 			Phase:         v1.PodRunning,
@@ -154,14 +141,61 @@ func TestMultiContainerLogs(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("hello world!", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = f.out.WaitUntilContains("goodbye world!", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("hello world!")
+	f.AssertOutputContains("goodbye world!")
+}
+
+func TestContainerPrefixes(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	pID1 := k8s.PodID("pod1")
+	cNamePrefix1 := container.Name("yes-prefix-1")
+	cNamePrefix2 := container.Name("yes-prefix-2")
+	f.kClient.SetLogsForPodContainer(pID1, cNamePrefix1, "hello world!")
+	f.kClient.SetLogsForPodContainer(pID1, cNamePrefix2, "goodbye world!")
+
+	pID2 := k8s.PodID("pod2")
+	cNameNoPrefix := container.Name("no-prefix")
+	f.kClient.SetLogsForPodContainer(pID2, cNameNoPrefix, "hello jupiter!")
+
+	state := f.store.LockMutableStateForTesting()
+	state.WatchMounts = true
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "multiContainer"},
+		// Pod with multiple containers -- logs should be prefixed with container name
+		store.Pod{
+			PodID:         pID1,
+			ContainerName: cNamePrefix1,
+			ContainerID:   "cid1",
+			Phase:         v1.PodRunning,
+			ContainerInfos: []store.ContainerInfo{
+				store.ContainerInfo{ID: "cid1", Name: cNamePrefix1},
+				store.ContainerInfo{ID: "cid2", Name: cNamePrefix2},
+			},
+		}))
+	state.UpsertManifestTarget(newManifestTargetWithPod(
+		model.Manifest{Name: "singleContainer"},
+		// Pod with just one container -- logs should NOT be prefixed with container name
+		store.Pod{
+			PodID:         pID2,
+			ContainerName: cNameNoPrefix,
+			ContainerID:   "cid3",
+			Phase:         v1.PodRunning,
+		}))
+	f.store.UnlockMutableState()
+
+	f.plm.OnChange(f.ctx, f.store)
+
+	// Make sure we have expected logs
+	f.AssertOutputContains("hello world!")
+	f.AssertOutputContains("goodbye world!")
+	f.AssertOutputContains("hello jupiter!")
+
+	// Check for un/expected prefixes
+	f.AssertOutputContains(cNamePrefix1.String())
+	f.AssertOutputContains(cNamePrefix2.String())
+	f.AssertOutputDoesNotContain(cNameNoPrefix.String())
 }
 
 type plmFixture struct {
@@ -226,6 +260,17 @@ func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
 func (f *plmFixture) TearDown() {
 	f.cancel()
 	f.TempDirFixture.TearDown()
+}
+
+func (f *plmFixture) AssertOutputContains(s string) {
+	err := f.out.WaitUntilContains(s, time.Second)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+}
+
+func (f *plmFixture) AssertOutputDoesNotContain(s string) {
+	assert.NotContains(f.T(), f.out.String(), s)
 }
 
 func newManifestTargetWithPod(m model.Manifest, pod store.Pod) *store.ManifestTarget {

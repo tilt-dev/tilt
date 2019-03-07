@@ -73,6 +73,8 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 					store.ContainerInfo{ID: pod.ContainerID, Name: pod.ContainerName},
 				}
 			}
+			// if pod has more than one container, we should prefix logs with the container name
+			shouldPrefix := len(containerInfos) > 1
 
 			for _, cInfo := range containerInfos {
 				// Key the log watcher by the container id, so we auto-restart the
@@ -108,6 +110,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 					namespace:       pod.Namespace,
 					startWatchTime:  startWatchTime,
 					terminationTime: make(chan time.Time, 1),
+					shouldPrefix:    shouldPrefix,
 				}
 				m.watches[key] = w
 				setup = append(setup, w)
@@ -166,6 +169,10 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		podID:        pID,
 	}
 	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
+	if watch.shouldPrefix {
+		prefix = fmt.Sprintf("[%s] ", watch.cName)
+		multiWriter = logger.NewPrefixedWriter(prefix, multiWriter)
+	}
 
 	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
@@ -195,6 +202,8 @@ type PodLogWatch struct {
 	cName           container.Name
 	startWatchTime  time.Time
 	terminationTime chan time.Time
+
+	shouldPrefix bool // if true, we'll prefix logs with the container name
 }
 
 type podLogKey struct {
