@@ -15,28 +15,28 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
-	ConfigPath  string
-	status      dockercompose.Status
-	ContainerID container.ID
-	log         string
-	StartTime   time.Time
+	ConfigPath      string
+	ContainerStatus dockercompose.Status
+	ContainerID     container.ID
+	Log             string
+	StartTime       time.Time
 }
 
 func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log string, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
-		ConfigPath:  configPath,
-		status:      status,
-		ContainerID: cID,
-		log:         log,
-		StartTime:   startTime,
+		ConfigPath:      configPath,
+		ContainerStatus: status,
+		ContainerID:     cID,
+		Log:             log,
+		StartTime:       startTime,
 	}
 }
 
 var _ ResourceInfoView = DCResourceInfo{}
 
 func (DCResourceInfo) resourceInfoView()         {}
-func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.log }
-func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.status) }
+func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.Log }
+func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.ContainerStatus) }
 
 type K8SResourceInfo struct {
 	PodName            string
