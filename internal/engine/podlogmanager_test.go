@@ -41,10 +41,7 @@ func TestLogs(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("hello world!", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("hello world!")
 }
 
 func TestLogActions(t *testing.T) {
@@ -88,10 +85,7 @@ func TestLogsFailed(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("Error streaming server logs", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("Error streaming server logs")
 	assert.Contains(t, f.out.String(), "my-error")
 }
 
@@ -114,19 +108,13 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("hello world!\n", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("hello world!\n")
 
 	// Previous log stream has finished, so the first pod watch has been canceled,
 	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.plm.OnChange(f.ctx, f.store)
-	err = f.out.WaitUntilContains("goodbye world!\n", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("goodbye world!\n")
 }
 
 func TestMultiContainerLogs(t *testing.T) {
@@ -153,14 +141,8 @@ func TestMultiContainerLogs(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
-	err := f.out.WaitUntilContains("hello world!", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = f.out.WaitUntilContains("goodbye world!", time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.AssertOutputContains("hello world!")
+	f.AssertOutputContains("goodbye world!")
 }
 
 func TestContainerPrefixes(t *testing.T) {
