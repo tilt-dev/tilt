@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/api/core/v1"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Collects logs from deployed containers.
@@ -146,38 +145,43 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		watch.cancel()
 	}()
 
-	name := watch.name
-	pID := watch.podID
-	containerName := watch.cName
-	ns := watch.namespace
-	startTime := watch.startWatchTime
-	readCloser, err := m.kClient.ContainerLogs(watch.ctx, pID, containerName, ns, startTime)
-	if err != nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
-		return
-	}
-	defer func() {
-		_ = readCloser.Close()
-	}()
+	for {
+		select {
+		case <-watch.ctx.Done():
+			return
+		default:
+			name := watch.name
+			pID := watch.podID
+			containerName := watch.cName
+			ns := watch.namespace
+			startTime := watch.startWatchTime
+			readCloser, err := m.kClient.ContainerLogs(watch.ctx, pID, containerName, ns, startTime)
+			if err != nil {
+				logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+				break
+			}
+			defer func() {
+				_ = readCloser.Close()
+			}()
 
-	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	prefix := logPrefix(name.String())
-	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
-	actionWriter := PodLogActionWriter{
-		store:        st,
-		manifestName: name,
-		podID:        pID,
-	}
-	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
-	if watch.shouldPrefix {
-		prefix = fmt.Sprintf("[%s] ", watch.cName)
-		multiWriter = logger.NewPrefixedWriter(prefix, multiWriter)
-	}
-
-	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
-	if err != nil && watch.ctx.Err() == nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
-		return
+			logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
+			prefix := logPrefix(name.String())
+			prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
+			actionWriter := PodLogActionWriter{
+				store:        st,
+				manifestName: name,
+				podID:        pID,
+			}
+			multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
+			if watch.shouldPrefix {
+				prefix = fmt.Sprintf("[%s] ", watch.cName)
+				multiWriter = logger.NewPrefixedWriter(prefix, multiWriter)
+			}
+			_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
+			if err != nil && watch.ctx.Err() == nil {
+				logger.Get(watch.ctx).Infof("Error copying %s logs: %v", name, err)
+			}
+		}
 	}
 }
 
