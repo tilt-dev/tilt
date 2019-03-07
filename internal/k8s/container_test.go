@@ -15,7 +15,7 @@ import (
 func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	f := newClientTestFixture(t)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseSelector(blorgDevImgStr)
 	podData := fakePod(expectedPod, blorgDevImgStr)
 	podData.Status = v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
@@ -53,7 +53,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseTaggedSelector(blorgDevImgStr)
 	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
@@ -91,7 +91,7 @@ func TestWaitForContainerFailure(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseTaggedSelector(blorgDevImgStr)
 	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
@@ -132,7 +132,7 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseTaggedSelector(blorgDevImgStr)
 	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)

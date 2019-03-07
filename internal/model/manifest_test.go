@@ -12,8 +12,8 @@ import (
 var portFwd8000 = []PortForward{{LocalPort: 8080}}
 var portFwd8001 = []PortForward{{LocalPort: 8081}}
 
-var img1 = container.MustParseNamed("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
-var img2 = container.MustParseNamed("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
+var img1 = container.MustParseSelector("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
+var img2 = container.MustParseSelector("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
 
 var buildArgs1 = DockerBuildArgs{
 	"foo": "bar",

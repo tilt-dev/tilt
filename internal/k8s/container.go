@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 
@@ -15,7 +14,7 @@ import (
 
 const ContainerIDPrefix = "docker://"
 
-func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
+func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
 	cStatus, err := waitForContainerReadyHelper(pod, ref)
 	if err != nil {
 		return v1.ContainerStatus{}, err
@@ -55,7 +54,7 @@ func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref 
 	}
 }
 
-func waitForContainerReadyHelper(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
+func waitForContainerReadyHelper(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
 	cStatus, err := ContainerMatching(pod, ref)
 	if err != nil {
 		return v1.ContainerStatus{}, errors.Wrap(err, "WaitForContainerReadyHelper")
@@ -100,14 +99,14 @@ func IsUnschedulable(pod v1.PodStatus) (bool, string) {
 	return false, ""
 }
 
-func ContainerMatching(pod *v1.Pod, ref reference.Named) (v1.ContainerStatus, error) {
+func ContainerMatching(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
 	for _, c := range pod.Status.ContainerStatuses {
 		cRef, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return v1.ContainerStatus{}, errors.Wrap(err, "ContainerMatching")
 		}
 
-		if cRef.Name() == ref.Name() {
+		if ref.Matches(cRef) {
 			return c, nil
 		}
 	}

@@ -24,7 +24,7 @@ var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPath: confPath}
 
 var imgRef = "gcr.io/some/image"
 var imgTarg = model.ImageTarget{
-	Ref: container.MustParseNamed(imgRef),
+	Ref: container.MustParseSelector(imgRef),
 	BuildDetails: model.StaticBuild{
 		Dockerfile: "Dockerfile.whales",
 		BuildPath:  "/whales/are/big",
@@ -78,7 +78,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 
 	refWithTag := "gcr.io/foo:bar"
 	iTarget := model.ImageTarget{
-		Ref:          container.MustParseNamed(refWithTag),
+		Ref:          container.MustParseSelector(refWithTag),
 		BuildDetails: model.StaticBuild{},
 	}
 

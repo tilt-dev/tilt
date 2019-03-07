@@ -240,8 +240,8 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	img := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
-	wrongImg := container.MustParseNamed("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
+	img := container.MustParseSelector("gcr.io/blorg-dev/blorg-backend:devel-nick")
+	wrongImg := container.MustParseSelector("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
 
 	match, err := entities[0].HasImage(img, nil)
 	if err != nil {
@@ -253,25 +253,25 @@ func TestEntityHasImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.True(t, match, "deployment yaml should match image %s", img.Name())
+	assert.True(t, match, "deployment yaml should match image %s", img.String())
 
 	match, err = entities[1].HasImage(wrongImg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.False(t, match, "deployment yaml should not match image %s", img.Name())
+	assert.False(t, match, "deployment yaml should not match image %s", img.String())
 
 	entities, err = ParseYAMLFromString(testyaml.CRDYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	img = container.MustParseNamed("docker.io/bitnami/minideb:latest")
+	img = container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
 	match, err = entities[0].HasImage(img, map[string][]string{"CustomResourceDefinition": {"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.True(t, match, "CRD yaml should match image %s", img.Name())
+	assert.True(t, match, "CRD yaml should match image %s", img.String())
 }
 
 func TestInjectDigestEnvVar(t *testing.T) {

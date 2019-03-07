@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -192,7 +192,7 @@ func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing
 	return passing, rest, nil
 }
 
-func FilterByImage(entities []K8sEntity, img reference.Named, k8sImageJsonPathsByKind map[string][]string) (passing, rest []K8sEntity, err error) {
+func FilterByImage(entities []K8sEntity, img container.RefSelector, k8sImageJsonPathsByKind map[string][]string) (passing, rest []K8sEntity, err error) {
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img, k8sImageJsonPathsByKind) })
 }
 
