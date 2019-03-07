@@ -34,7 +34,7 @@ func (lf *logFile) maybeLoad() {
 	lf.mu.Lock()
 	defer lf.mu.Unlock()
 
-	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		panic(fmt.Sprintf("creating logfile: %v", err))
 	}
@@ -42,6 +42,9 @@ func (lf *logFile) maybeLoad() {
 	lf.f = f
 }
 
+// THIS SHOULD NEVER END UP IN IN PRODUCTION CODE. This func is for debugging
+// when it's awkward to Printf/use the real logger. Calls to this func should
+// never end up on `master.`
 func Logf(msg string, a ...interface{}) {
 	s := fmt.Sprintf(msg, a...)
 	theLogfile.write(s + "\n")
