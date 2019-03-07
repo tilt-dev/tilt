@@ -15,7 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 var podID = k8s.PodID("pod-id")
@@ -87,6 +87,12 @@ func TestLogsFailed(t *testing.T) {
 	f.plm.OnChange(f.ctx, f.store)
 	f.AssertOutputContains("Error streaming server logs")
 	assert.Contains(t, f.out.String(), "my-error")
+
+	// Even though there was an error, we start streaming logs again
+	f.kClient.ContainerLogsError = nil
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+	f.plm.OnChange(f.ctx, f.store)
+	f.ConsumeLogActionsUntil("hello world!")
 }
 
 func TestLogsCanceledUnexpectedly(t *testing.T) {
