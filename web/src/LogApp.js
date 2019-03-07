@@ -1,7 +1,12 @@
 import React, { Component } from 'react';
 import AppController from './AppController';
 import LoadingScreen from './LoadingScreen';
+import Ansi from "ansi-to-react";
 import './LogApp.css';
+
+let AnsiLine = React.memo(function(props) {
+  return <div><Ansi>{props.line}</Ansi></div>
+})
 
 class LogApp extends Component {
   constructor(props) {
@@ -38,10 +43,8 @@ class LogApp extends Component {
       els.push(<LoadingScreen message={message} />)
     } else {
       let lines = log.split('\n')
-      els = lines.map((line) => {
-        // TODO(nick): Add a LogLine component that properly handles
-        // ANSI color sequences.
-        return <div>{line}</div>
+      els = lines.map((line, i) => {
+        return <AnsiLine key={i} line={line} />
       })
     }
 
