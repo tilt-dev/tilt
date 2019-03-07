@@ -14,7 +14,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
@@ -38,6 +38,7 @@ type FakeK8sClient struct {
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
 
+	logsMu                   sync.Mutex
 	PodLogsByPodAndContainer map[PodAndCName]BufferCloser
 	ContainerLogsError       error
 
@@ -138,10 +139,15 @@ func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interf
 }
 
 func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
+	c.logsMu.Lock()
+	defer c.logsMu.Unlock()
 	c.PodLogsByPodAndContainer[PodAndCName{pID, cName}] = BufferCloser{Buffer: bytes.NewBufferString(logs)}
 }
 
 func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
+	c.logsMu.Lock()
+	defer c.logsMu.Unlock()
+
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}
