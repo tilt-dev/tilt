@@ -17,6 +17,7 @@ let Main = () => {
       <Switch>
         <Route exact path="/" component={App} />
         <Route exact path="/log" component={LogApp} />
+        <Route exact path="/r/:name/log" component={LogApp} />
         <Route component={NoMatch} />
       </Switch>
     </div>
