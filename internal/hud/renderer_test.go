@@ -1,6 +1,7 @@
 package hud
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -929,6 +930,26 @@ func TestTiltfileResourcePending(t *testing.T) {
 	rtf.run("Tiltfile resource pending", 80, 20, v, vs)
 }
 
+func TestRenderEscapedNbsp(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	plainVs := fakeViewState(1, view.CollapseNo)
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "vigoda",
+				BuildHistory: []model.BuildRecord{{
+					FinishTime: time.Now(),
+					Error:      fmt.Errorf("oh no the build failed"),
+					Log:        model.NewLog("\xa0 NBSP!"),
+				}},
+				ResourceInfo:    view.K8SResourceInfo{},
+				ShowBuildStatus: true,
+			},
+		},
+	}
+	rtf.run("escaped nbsp", 70, 20, v, plainVs)
+}
+
 type rendererTestFixture struct {
 	i rty.InteractiveTester
 }
@@ -940,6 +961,18 @@ func newRendererTestFixture(t rty.ErrorReporter) rendererTestFixture {
 }
 
 func (rtf rendererTestFixture) run(name string, w int, h int, v view.View, vs view.ViewState) {
+	// Assert that the view is serializable
+	serialized, err := json.Marshal(v)
+	if err != nil {
+		rtf.i.T().Errorf("Malformed view: not serializable: %v\nView: %+q\n", err, v)
+	}
+
+	// Then, assert that the view can be marshaled back.
+	if !json.Valid(serialized) {
+		rtf.i.T().Errorf("Malformed view: bad serialization: %s", string(serialized))
+
+	}
+
 	r := NewRenderer(clockForTest)
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
 	c := r.layout(v, vs)

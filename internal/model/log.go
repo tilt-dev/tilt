@@ -1,8 +1,6 @@
 package model
 
-import (
-	"fmt"
-)
+import "encoding/json"
 
 // At this limit, with one resource having a 120k log, render time was ~20ms and CPU usage was ~70% on an MBP.
 // 70% still isn't great when tilt doesn't really have any necessary work to do, but at least it's usable.
@@ -18,7 +16,7 @@ func NewLog(s string) Log {
 }
 
 func (l Log) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%q", l.content)), nil
+	return json.Marshal(string(l.content))
 }
 
 func (l Log) String() string {
