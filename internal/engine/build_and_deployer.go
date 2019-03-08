@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/store"
@@ -22,6 +24,20 @@ type BuildAndDeployer interface {
 }
 
 type BuildOrder []BuildAndDeployer
+
+func (bo BuildOrder) String() string {
+	var output strings.Builder
+	output.WriteString("BuildOrder{")
+
+	for _, b := range bo {
+		output.WriteString(fmt.Sprintf(" %T", b))
+	}
+
+	output.WriteString(" }")
+
+	return output.String()
+}
+
 type FallbackTester func(error) bool
 
 // CompositeBuildAndDeployer tries to run each builder in order.  If a builder
@@ -40,7 +56,9 @@ func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeploye
 
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	var lastErr error
+	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for _, builder := range composite.builders {
+		logger.Get(ctx).Debugf("Trying to build and deploy with %T", builder)
 		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
 			return br, err
