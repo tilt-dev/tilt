@@ -118,6 +118,7 @@ type dcConfig struct {
 type dcServiceConfig struct {
 	RawYAML []byte        // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
 	Build   dcBuildConfig `yaml:"build"`
+	Image   string        `yaml:"image"`
 	Volumes Volumes
 }
 
@@ -199,8 +200,9 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
-	// Ref of an image described via docker_build || fast_build call
-	// (explicitly linked to this service via dc_service call)
+	// Ref of an image described via docker_build || fast_build call.
+	// Can be explicitly linked to this service via dc_service call,
+	// or implicitly via an image name in the docker-compose.yml
 	ImageRef reference.Named
 
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
@@ -235,6 +237,17 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 		MountedLocalDirs: mountedLocalDirs,
 
 		ServiceConfig: svcConfig.RawYAML,
+	}
+
+	if svcConfig.Image != "" {
+		ref, err := container.ParseNamed(svcConfig.Image)
+		if err != nil {
+			// TODO(nick): This doesn't seem like the right place to report this
+			// error, but we don't really have a better way right now.
+			return dcService{}, fmt.Errorf("Error parsing image name %q: %v", ref, err)
+		} else {
+			svc.ImageRef = ref
+		}
 	}
 
 	if dfPath != "" {
