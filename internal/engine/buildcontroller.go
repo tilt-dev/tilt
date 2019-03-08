@@ -220,9 +220,9 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, c
 
 	l := logger.Get(ctx)
 	if firstBuild {
-		p := logger.Blue(l).Sprintf("\n──┤ Building: ")
+		p := logger.Blue(l).Sprintf("──┤ Building: ")
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
-		l.Infof("%s%s%s", p, name, s)
+		l.Infof("\n%s%s%s", p, name, s)
 	} else {
 		var changedPathsToPrint []string
 		if len(changedFiles) > maxChangedFilesToPrint {
@@ -233,13 +233,13 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, c
 		}
 
 		if len(changedFiles) > 0 {
-			p := logger.Green(l).Sprintf("\n%d changed: ", len(changedFiles))
-			l.Infof("%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
+			l.Infof("\n%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
 		}
 
-		rp := logger.Blue(l).Sprintf("\n──┤ Rebuilding: ")
+		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
 		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
-		l.Infof("%s%s%s", rp, name, rs)
+		l.Infof("\n%s%s%s", rp, name, rs)
 	}
 }
 

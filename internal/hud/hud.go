@@ -214,6 +214,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			} else {
 				dispatch(StartProfilingAction{})
 			}
+		case tcell.KeyCtrlT:
+			dispatch(SetLogTimestampsAction{!h.currentView.LogTimestamps})
 		}
 
 	case *tcell.EventResize:

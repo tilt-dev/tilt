@@ -19,3 +19,9 @@ type StopProfilingAction struct {
 }
 
 func (StopProfilingAction) Action() {}
+
+type SetLogTimestampsAction struct {
+	Value bool
+}
+
+func (SetLogTimestampsAction) Action() {}
