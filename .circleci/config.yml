@@ -57,7 +57,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v9
+            - homebrew_cache_v10
       # Bump cache version when changing this.
       - run: echo 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
@@ -68,7 +68,7 @@ jobs:
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v9
+          key: homebrew_cache_v10
       - run: echo 'export PATH="/usr/local/opt/go@1.12/bin:$PATH"' >> $BASH_ENV
       # NOTE(dmiller): the helm package in Homebrew is too old, and the tests fail. Install from GitHub instead.
       - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
