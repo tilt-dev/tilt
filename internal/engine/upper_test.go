@@ -166,13 +166,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		}
 	}
 
-	select {
-	case b.calls <- call:
-	default:
-		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
-	}
+	defer func() {
+		// don't update b.calls until the end, to ensure appropriate actions have been dispatched first
+		select {
+		case b.calls <- call:
+		default:
+			b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
+		}
 
-	logger.Get(ctx).Infof("fake building %s", ids)
+		logger.Get(ctx).Infof("fake building %s", ids)
+	}()
 
 	err := b.nextBuildFailure
 	if err != nil {
