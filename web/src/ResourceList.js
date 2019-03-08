@@ -8,18 +8,17 @@ function ResourceList(props) {
   })
 
   return (
-    <div className="ResourceList">
-      <div className="ResourceList-header">
-        <div className="Resource-lhsCell u-muted">Resource Name</div>
-        <div className="Resource-spacerCell">&nbsp;</div>
-        <div className="Resource-rhsCell u-muted">K8S</div>
-        <div className="u-muted">&nbsp;•&nbsp;</div>
-        <div className="Resource-rhsCell u-muted">Build Status</div>
-        <div className="u-muted">&nbsp;•&nbsp;</div>
-        <div className="Resource-rhsCell u-muted">Updated</div>
-      </div>
-      {children}
-    </div>
+    <section className="ResourceList">
+      <header className="ResourceList-header">
+        <p className="Resource-lhsCell u-muted">Resource Name</p>
+        <p className="Resource-rhsCell u-muted">K8S</p>
+        <p className="Resource-rhsCell u-muted">Build Status</p>
+        <p className="Resource-rhsCell u-muted">Updated</p>
+      </header>
+      <ul>
+        {children}
+      </ul>
+    </section>
   )
 }
 
@@ -30,15 +29,12 @@ class ResourceSummary extends Component {
     let buildStatus = getBuildStatus(resource)
     let updateTime = getUpdateTime(resource)
     return (
-      <div className="ResourceSummary">
-        <div className="Resource-lhsCell Resource-name">{resource.Name}</div>
-        <div className="Resource-spacerCell">&nbsp;</div>
-        <div className="Resource-rhsCell">{k8sStatus}</div>
-        <div>&nbsp;•&nbsp;</div>
-        <div className="Resource-rhsCell">{buildStatus}</div>
-        <div>&nbsp;•&nbsp;</div>
-        <div className="Resource-rhsCell">{updateTime}</div>
-      </div>
+      <li className="ResourceSummary">
+        <p className="Resource-lhsCell Resource-name">{resource.Name}</p>
+        <p className="Resource-rhsCell">{k8sStatus}</p>
+        <p className="Resource-rhsCell">{buildStatus}</p>
+        <p className="Resource-rhsCell">{updateTime}</p>
+      </li>
     )
   }
 }

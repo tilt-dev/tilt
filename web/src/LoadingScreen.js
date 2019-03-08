@@ -4,9 +4,9 @@ import './LoadingScreen.css';
 function LoadingScreen(props) {
   let message = props.message || 'Loading…'
   return (
-    <header className="LoadingScreen">
+    <div className="LoadingScreen">
       {message}
-    </header>
+    </div>
   )
 }
 

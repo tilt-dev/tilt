@@ -1,14 +1,20 @@
 .ResourceList {
-  margin: 1em 1.5em;
-  font-size: 1.4em;
+  margin: 1em;
+  font-size: 1.2em;
+  line-height: 1.5;
+  font-family: 'Courier New', Courier, monospace;
 }
 
 .ResourceList-header {
+  text-transform: uppercase;
   display: flex;
-  width: 100%;
   flex-wrap: nowrap;
-  justify-content: flex-start;
-  margin-bottom: 0.4em;
+  justify-content: space-between;
+}
+
+.ResourceList ul {
+  margin: 0;
+  padding: 0;
 }
 
 .Resource-lhsCell {
@@ -28,8 +34,6 @@
 
 .ResourceSummary {
   display: flex;
-  width: 100%;
   flex-wrap: nowrap;
-  margin-bottom: 0.2em;
+  justify-content: space-between;
 }
-
