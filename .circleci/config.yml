@@ -59,7 +59,7 @@ jobs:
           keys:
             - homebrew_cache_v9
       # Bump cache version when changing this.
-      - run: 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose" >> $BASH_ENV'
+      - run: echo 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
