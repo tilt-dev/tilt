@@ -54,7 +54,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			logger.Get(ctx).Debugf("(expected error) falling back to next build and deploy method "+
 				"after error: %v", err)
 		} else {
-			logger.Get(ctx).Verbosef("falling back to next build and deploy method "+
+			logger.Get(ctx).Infof("falling back to next build and deploy method "+
 				"after unexpected error: %v", err)
 		}
 
