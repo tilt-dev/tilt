@@ -53,13 +53,22 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 
 type BuildResultSet map[model.TargetID]BuildResult
 
-func (set BuildResultSet) AsOneResult() BuildResult {
-	if len(set) == 1 {
-		for _, result := range set {
-			return result
+// Returns a container ID iff it's the only container ID in the result set.
+// If there are multiple container IDs, we have to give up.
+func (set BuildResultSet) OneAndOnlyContainerID() container.ID {
+	var id container.ID
+	for _, result := range set {
+		if result.ContainerID == "" {
+			continue
 		}
+
+		if id != "" && result.ContainerID != id {
+			return ""
+		}
+
+		id = result.ContainerID
 	}
-	return BuildResult{}
+	return id
 }
 
 // The state of the system since the last successful build.

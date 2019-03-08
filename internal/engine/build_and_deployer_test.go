@@ -156,7 +156,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	id := manifest.ImageTargetAt(0).ID()
 	_, hasResult := result[id]
 	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.AsOneResult().ContainerID.String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 }
 
 func TestContainerBuildSynclet(t *testing.T) {
@@ -182,7 +182,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
 	}
 
-	assert.Equal(t, k8s.MagicTestContainerID, result.AsOneResult().ContainerID.String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 	assert.False(t, f.sCli.UpdateContainerHotReload)
 }
 
@@ -522,7 +522,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	assert.False(t, hasResult0)
 	_, hasResult1 := result[manifest.ImageTargetAt(1).ID()]
 	assert.True(t, hasResult1)
-	assert.Equal(t, k8s.MagicTestContainerID, result.AsOneResult().ContainerID.String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and

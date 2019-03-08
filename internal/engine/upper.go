@@ -293,7 +293,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if mt.Manifest.IsDC() {
 		state, _ := ms.ResourceState.(dockercompose.State)
 
-		cid := cb.Result.AsOneResult().ContainerID
+		cid := cb.Result.OneAndOnlyContainerID()
 		if cid != "" {
 			state = state.WithContainerID(cid)
 		}
@@ -312,9 +312,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-		result := cb.Result.AsOneResult()
-		if result.ContainerID != "" {
-			ms.ExpectedContainerID = result.ContainerID
+		cID := cb.Result.OneAndOnlyContainerID()
+		if cID != "" {
+			ms.ExpectedContainerID = cID
 
 			bestPod := ms.MostRecentPod()
 			if bestPod.StartedAt.After(bs.StartTime) ||
