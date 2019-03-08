@@ -77,8 +77,9 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
+	iTargetMap := model.ImageTargetsByID(iTargets)
 	for ok {
-		iTarget, err := injectImageDependencies(target.(model.ImageTarget), q.DependencyResults(target))
+		iTarget, err := injectImageDependencies(target.(model.ImageTarget), iTargetMap, q.DependencyResults(target))
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -103,7 +104,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			ref = state.LastResult.Image
 		}
 
-		q.SetResult(iTarget.ID(), store.BuildResult{Image: ref})
+		q.SetResult(iTarget.ID(), store.NewImageBuildResult(iTarget.ID(), ref))
 		target, ok, err = q.Next()
 		if err != nil {
 			return store.BuildResultSet{}, err
@@ -125,9 +126,14 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	results := q.results
-	results[dcTarget.ID()] = store.BuildResult{
-		ContainerID: cid,
+	for _, iTarget := range iTargets {
+		if isImageDeployedToDC(iTarget, dcTarget) {
+			result := results[iTarget.ID()]
+			result.ContainerID = cid
+			results[iTarget.ID()] = result
+		}
 	}
+	results[dcTarget.ID()] = store.NewContainerBuildResult(dcTarget.ID(), cid)
 	return results, nil
 }
 

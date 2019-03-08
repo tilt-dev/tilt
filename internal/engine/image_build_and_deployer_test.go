@@ -200,9 +200,9 @@ func TestMultiStageStaticBuildWithOnlyOneDirtyImage(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoStaticMultiStageManifest()
-	result := store.BuildResult{Image: container.MustParseNamedTagged("sancho-base:tilt-prebuilt")}
-	state := store.NewBuildState(result, nil)
 	iTargetID := manifest.ImageTargets[0].ID()
+	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
+	state := store.NewBuildState(result, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {

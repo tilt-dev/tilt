@@ -2,15 +2,16 @@ package dockerfile
 
 import (
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 )
 
-func InjectImageDigest(df Dockerfile, ref reference.NamedTagged) (Dockerfile, bool, error) {
+func InjectImageDigest(df Dockerfile, selector container.RefSelector, ref reference.NamedTagged) (Dockerfile, bool, error) {
 	ast, err := ParseAST(df)
 	if err != nil {
 		return "", false, err
 	}
 
-	modified, err := ast.InjectImageDigest(ref)
+	modified, err := ast.InjectImageDigest(selector, ref)
 	if err != nil {
 		return "", false, err
 	}

@@ -136,9 +136,9 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 
 	manifest := NewSanchoStaticMultiStageManifest().
 		WithDeployTarget(dcTarg)
-	result := store.BuildResult{Image: container.MustParseNamedTagged("sancho-base:tilt-prebuilt")}
-	state := store.NewBuildState(result, nil)
 	iTargetID := manifest.ImageTargets[0].ID()
+	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
+	state := store.NewBuildState(result, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
