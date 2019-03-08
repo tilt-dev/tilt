@@ -59,13 +59,12 @@ jobs:
           keys:
             - homebrew_cache_v9
       # Bump cache version when changing this.
-      # XXX remove before merge
-      # - run: 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose"' >> $BASH_ENV
-      # - run: brew info "${HOMEBREW_PACKAGES}" || brew update "${HOMEBREW_PACKAGES}" || true
-      # We set HOMEBREW_NO_AUTO_UPDATE because it's both
+      - run: 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose"' >> $BASH_ENV
+      # Only update when brew doesn't know about some of the packages because:
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
-      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install go1.12 kustomize docker-compose
+      - run: brew info ${HOMEBREW_PACKAGES} || brew update || true
+      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install ${HOMEBREW_PACKAGES}
       - save_cache:
           paths:
             - /usr/local/Homebrew
