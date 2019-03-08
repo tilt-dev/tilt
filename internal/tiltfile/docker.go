@@ -46,10 +46,10 @@ func (d *dockerImage) ID() model.TargetID {
 type dockerImageBuildType int
 
 const (
-	StaticBuild = iota
+	UnknownBuild = iota
+	StaticBuild
 	FastBuild
 	CustomBuild
-	UnknownBuild
 )
 
 func (d *dockerImage) Type() dockerImageBuildType {

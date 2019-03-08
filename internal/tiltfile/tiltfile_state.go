@@ -494,7 +494,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			Ref: image.ref,
 		}.WithCachePaths(image.cachePaths)
 
-		switch imageType := image.Type(); imageType {
+		switch image.Type() {
 		case StaticBuild:
 			iTarget = iTarget.WithBuildDetails(model.StaticBuild{
 				Dockerfile: image.staticDockerfile.String(),
