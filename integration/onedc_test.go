@@ -5,13 +5,12 @@ package integration
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 )
 
 func TestOneDockerCompose(t *testing.T) {
-	f := newFixture(t, "onedc")
+	f := newDCFixture(t, "onedc")
 	defer f.TearDown()
 
 	f.dockerKillAll("onedc_web")
@@ -29,21 +28,11 @@ func TestOneDockerCompose(t *testing.T) {
 		return out.String(), err
 	}, "onedc_web")
 
-	cID := f.dockerContainerID("onedc_web")
+	f.CurlUntil(ctx, "onedc_web", "localhost:8000", "🍄 One-Up! 🍄")
 
-	f.WaitUntil(ctx, fmt.Sprintf("onedc_web curl(%s)", cID), func() (string, error) {
-		out := &bytes.Buffer{}
-		cmd := f.dockerCmd([]string{
-			"exec", cID, "curl", "-s", "localhost:8000",
-		}, out)
-		err := cmd.Run()
-		return out.String(), err
-	}, "🍄 One-Up! 🍄")
+	f.ReplaceContents("main.go", "One-Up", "Two-Up")
 
-	// TODO(nick): uncomment when file-watching works
-	// f.ReplaceContents("main.go", "One-Up", "Two-Up")
-
-	// ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
-	// defer cancel()
-	// f.CurlUntil(ctx, "http://localhost:31235", "🍄 Two-Up! 🍄")
+	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+	f.CurlUntil(ctx, "onedc_web", "localhost:8000", "🍄 Two-Up! 🍄")
 }
