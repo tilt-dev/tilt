@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -37,7 +36,12 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	})
 	defer analyticsService.Flush(time.Second)
 
-	manifests, globalYaml, _, _, err := tiltfile.NewTiltfileLoader().Load(ctx, c.fileName, nil, os.Stdout)
+	downDeps, err := wireDownDeps(ctx)
+	if err != nil {
+		return err
+	}
+
+	manifests, globalYaml, _, _, err := downDeps.tfl.Load(ctx, c.fileName, nil, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -52,12 +56,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	}
 	entities = append(entities, gyamlEntities...)
 
-	kClient, err := wireK8sClient(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = kClient.Delete(ctx, entities)
+	err = downDeps.kClient.Delete(ctx, entities)
 	if err != nil {
 		logger.Get(ctx).Infof("error deleting k8s entities: %v", err)
 	}
@@ -76,7 +75,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		// TODO(maia): when we support up-ing from multiple docker-compose files, we'll need to support down-ing as well
 		// TODO(maia): a way to `down` specific services?
 
-		dcc := dockercompose.NewDockerComposeClient()
+		dcc := downDeps.dcClient
 		err = dcc.Down(ctx, dcConfigPath, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
 		if err != nil {
 			logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)

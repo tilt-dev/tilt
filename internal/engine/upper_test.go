@@ -2152,6 +2152,7 @@ type testFixture struct {
 	cc                    *ConfigsController
 	originalWD            string
 	dcc                   *dockercompose.FakeDCClient
+	tfl                   tiltfile.TiltfileLoader
 
 	onchangeCh chan bool
 }
@@ -2163,8 +2164,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	timerMaker := makeFakeTimerMaker(t)
 
-	docker := docker.NewFakeClient()
-	reaper := build.NewImageReaper(docker)
+	dockerClient := docker.NewFakeClient()
+	reaper := build.NewImageReaper(dockerClient)
 
 	k8s := k8s.NewFakeK8sClient()
 	pw := NewPodWatcher(k8s)
@@ -2191,10 +2192,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	gybc := NewGlobalYAMLBuildController(k8s)
 	an := analytics.NewMemoryAnalytics()
 	ar := ProvideAnalyticsReporter(an, st)
-	cc := NewConfigsController(tiltfile.NewTiltfileLoader())
-	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	dcw := NewDockerComposeEventWatcher(dcc)
-	dclm := NewDockerComposeLogManager(dcc)
+
+	// TODO(nick): Why does this test use two different docker compose clients???
+	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
+	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
+
+	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
+	cc := NewConfigsController(tfl)
+	dcw := NewDockerComposeEventWatcher(fakeDcc)
+	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
@@ -2212,7 +2218,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		b:              b,
 		fsWatcher:      watcher,
 		timerMaker:     &timerMaker,
-		docker:         docker,
+		docker:         dockerClient,
 		hud:            fakeHud,
 		log:            log,
 		store:          st,
@@ -2221,7 +2227,8 @@ func newTestFixture(t *testing.T) *testFixture {
 		fwm:            fwm,
 		cc:             cc,
 		originalWD:     originalWD,
-		dcc:            dcc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
 	}
 }
 
@@ -2537,7 +2544,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, _, err := tiltfile.NewTiltfileLoader().Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, os.Stdout)
+	manifests, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2574,9 +2581,13 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	manifests, _, _, _, err := tiltfile.NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err != nil {
 		f.T().Fatal(err)
+	}
+
+	if len(manifests) != 2 {
+		f.T().Fatalf("Expected two manifests. Actual: %v", manifests)
 	}
 
 	return manifests[0], manifests[1]

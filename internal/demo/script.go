@@ -36,13 +36,15 @@ type Script struct {
 	kClient k8s.Client
 	branch  RepoBranch
 	runtime container.Runtime
+	tfl     tiltfile.TiltfileLoader
 
 	readTiltfileCh chan string
 	podMonitor     *podMonitor
 }
 
 func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
-	env k8s.Env, st *store.Store, branch RepoBranch, runtime container.Runtime) Script {
+	env k8s.Env, st *store.Store, branch RepoBranch, runtime container.Runtime,
+	tfl tiltfile.TiltfileLoader) Script {
 	s := Script{
 		upper:          upper,
 		hud:            hud,
@@ -53,6 +55,7 @@ func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
 		podMonitor:     &podMonitor{},
 		store:          st,
 		runtime:        runtime,
+		tfl:            tfl,
 	}
 	st.AddSubscriber(s.podMonitor)
 	return s
@@ -183,7 +186,7 @@ func (s Script) Run(ctx context.Context) error {
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
 		// TODO(dmiller): not this?
-		manifests, _, _, warnings, err := tiltfile.NewTiltfileLoader().Load(ctx, tfPath, nil, os.Stdout)
+		manifests, _, _, warnings, err := s.tfl.Load(ctx, tfPath, nil, os.Stdout)
 		if err != nil {
 			return err
 		}

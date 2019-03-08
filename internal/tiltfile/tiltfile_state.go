@@ -52,12 +52,12 @@ type tiltfileState struct {
 	warnings []string
 }
 
-func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *log.Logger) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, tfRoot string, l *log.Logger) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:               ctx,
 		filename:          localPath{path: filename},
-		dcCli:             dockercompose.NewDockerComposeClient(),
+		dcCli:             dcCli,
 		buildIndex:        newBuildIndex(),
 		k8sByName:         make(map[string]*k8sResource),
 		k8sImageJSONPaths: make(map[k8sObjectSelector][]k8s.JSONPath),

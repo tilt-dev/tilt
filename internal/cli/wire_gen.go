@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"k8s.io/apimachinery/pkg/version"
@@ -61,7 +62,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	syncletManager := engine.NewSyncletManager(client)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -95,7 +97,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 		return demo.Script{}, err
 	}
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics, updateMode, clock, runtime)
-	dockerComposeClient := dockercompose.NewDockerComposeClient()
+	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, cli, imageAndCacheBuilder, clock)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode, runtime)
@@ -104,14 +106,14 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(client)
-	tiltfileLoader := tiltfile.NewTiltfileLoaderWithAnalytics(analytics)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient)
 	configsController := engine.NewConfigsController(tiltfileLoader)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics, storeStore)
 	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter)
-	script := demo.NewScript(upper, headsUpDisplay, client, env, storeStore, branch, runtime)
+	script := demo.NewScript(upper, headsUpDisplay, client, env, storeStore, branch, runtime, tiltfileLoader)
 	return script, nil
 }
 
@@ -154,7 +156,8 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	syncletManager := engine.NewSyncletManager(client)
 	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -188,7 +191,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 		return Threads{}, err
 	}
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics, updateMode, clock, runtime)
-	dockerComposeClient := dockercompose.NewDockerComposeClient()
+	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, cli, imageAndCacheBuilder, clock)
 	buildOrder := engine.DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, updateMode, runtime)
@@ -197,7 +200,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
 	globalYAMLBuildController := engine.NewGlobalYAMLBuildController(client)
-	tiltfileLoader := tiltfile.NewTiltfileLoaderWithAnalytics(analytics)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient)
 	configsController := engine.NewConfigsController(tiltfileLoader)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -298,7 +301,8 @@ func wireDockerVersion(ctx context.Context) (types.Version, error) {
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
 		return types.Version{}, err
 	}
@@ -325,11 +329,39 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
 		return docker.Env{}, err
 	}
 	return dockerEnv, nil
+}
+
+func wireDownDeps(ctx context.Context) (DownDeps, error) {
+	analytics, err := provideAnalytics()
+	if err != nil {
+		return DownDeps{}, err
+	}
+	clientConfig := k8s.ProvideClientConfig()
+	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	if err != nil {
+		return DownDeps{}, err
+	}
+	env := k8s.ProvideEnv(kubeContext)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
+	if err != nil {
+		return DownDeps{}, err
+	}
+	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient)
+	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, client)
+	return downDeps, nil
 }
 
 // wire.go:
@@ -337,7 +369,7 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.NewTiltfileLoaderWithAnalytics, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode, server.ProvideHeadsUpServer, server.ProvideAssetServer, provideThreads,
 )
 
@@ -350,6 +382,23 @@ type Threads struct {
 
 func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server2 server.HeadsUpServer, assetServer server.AssetServer) Threads {
 	return Threads{h, upper, server2, assetServer}
+}
+
+type DownDeps struct {
+	tfl      tiltfile.TiltfileLoader
+	dcClient dockercompose.DockerComposeClient
+	kClient  k8s.Client
+}
+
+func ProvideDownDeps(
+	tfl tiltfile.TiltfileLoader,
+	dcClient dockercompose.DockerComposeClient,
+	kClient k8s.Client) DownDeps {
+	return DownDeps{
+		tfl:      tfl,
+		dcClient: dcClient,
+		kClient:  kClient,
+	}
 }
 
 func provideClock() func() time.Time {

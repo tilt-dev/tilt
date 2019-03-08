@@ -17,6 +17,7 @@ func DetectNodeIP(ctx context.Context, env Env) (NodeIP, error) {
 		return "", nil
 	}
 
+	// TODO(nick): Should this be part of MinikubeClient?
 	cmd := exec.CommandContext(ctx, "minikube", "ip")
 	out, err := cmd.Output()
 	if err != nil {

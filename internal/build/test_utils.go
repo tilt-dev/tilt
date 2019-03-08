@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -49,7 +50,7 @@ func (c fakeClock) Now() time.Time { return c.now }
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
 
-	dEnv, err := docker.ProvideEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker)
+	dEnv, err := docker.ProvideEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker, minikube.FakeClient{})
 	if err != nil {
 		t.Fatal(err)
 	}

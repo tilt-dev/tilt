@@ -249,6 +249,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 }
 
 func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
+	// TODO(nick): Should this also inject any docker.Env overrides?
 	c := exec.Command("sh", "-c", cmd)
 	c.Dir = filepath.Dir(s.filename.path)
 	out, err := c.Output()

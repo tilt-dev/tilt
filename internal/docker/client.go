@@ -29,12 +29,30 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+// See notes on CreateClientOpts. These environment variables are standard docker env configs.
 type Env struct {
-	// ClientEnv takes an environment variable name and turns it in to its value
-	ClientEnv func(string) string
-	// BuildInjections are environment variables that get injected in to the build environment,
-	// in addition to the current environment variables
-	BuildInjections []string
+	Host       string
+	APIVersion string
+	TLSVerify  string
+	CertPath   string
+}
+
+// Serializes this back to environment variables for os.Environ
+func (e Env) AsEnviron() []string {
+	vars := []string{}
+	if e.Host != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_HOST=%s", e.Host))
+	}
+	if e.APIVersion != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_API_VERSION=%s", e.APIVersion))
+	}
+	if e.CertPath != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_CERT_PATH=%s", e.CertPath))
+	}
+	if e.TLSVerify != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_TLS_VERIFY=%s", e.TLSVerify))
+	}
+	return vars
 }
 
 // Version info
@@ -105,37 +123,69 @@ type Cli struct {
 	initDone  chan bool
 }
 
-func ProvideEnv(ctx context.Context, env k8s.Env, runtime container.Runtime) (Env, error) {
-	// TODO(dbentley): why do we allow DOCKER_HOST to be shadowed for microK8s but not for minikube?	if runtime == container.RuntimeDocker {
-	if env == k8s.EnvMinikube {
-		envMap, err := minikube.DockerEnv(ctx)
-		if err != nil {
-			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
-		}
+func ProvideEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient minikube.Client) (Env, error) {
+	result := Env{}
 
-		var envList []string
-		for k, v := range envMap {
-			envList = append(envList, fmt.Sprintf("%s=%s", k, v))
-		}
+	if runtime == container.RuntimeDocker {
+		if env == k8s.EnvMinikube {
+			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
+			envMap, err := minikubeClient.DockerEnv(ctx)
+			if err != nil {
+				return Env{}, errors.Wrap(err, "ProvideDockerEnv")
+			}
 
-		return Env{func(key string) string { return envMap[key] }, envList}, nil
-	} else if env == k8s.EnvMicroK8s {
-		return Env{
-			func(key string) string {
-				val := os.Getenv(key)
-				if val == "" && key == "DOCKER_HOST" {
-					return microK8sDockerHost
-				}
-				return val
-			},
-			[]string{"DOCKER_HOST=" + microK8sDockerHost},
-		}, nil
+			host := envMap["DOCKER_HOST"]
+			if host != "" {
+				result.Host = host
+			}
+
+			apiVersion := envMap["DOCKER_API_VERSION"]
+			if apiVersion != "" {
+				result.APIVersion = apiVersion
+			}
+
+			certPath := envMap["DOCKER_CERT_PATH"]
+			if certPath != "" {
+				result.CertPath = certPath
+			}
+
+			tlsVerify := envMap["DOCKER_TLS_VERIFY"]
+			if tlsVerify != "" {
+				result.TLSVerify = tlsVerify
+			}
+		} else if env == k8s.EnvMicroK8s {
+			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
+			result.Host = microK8sDockerHost
+		}
 	}
-	return Env{os.Getenv, nil}, nil
+
+	host := os.Getenv("DOCKER_HOST")
+	if host != "" {
+		// If the docker host is set from the env, ignore all the variables
+		// from minikube/microk8s
+		result = Env{Host: host}
+	}
+
+	apiVersion := os.Getenv("DOCKER_API_VERSION")
+	if apiVersion != "" {
+		result.APIVersion = apiVersion
+	}
+
+	certPath := os.Getenv("DOCKER_CERT_PATH")
+	if certPath != "" {
+		result.CertPath = certPath
+	}
+
+	tlsVerify := os.Getenv("DOCKER_TLS_VERIFY")
+	if tlsVerify != "" {
+		result.TLSVerify = tlsVerify
+	}
+
+	return result, nil
 }
 
 func ProvideDockerClient(ctx context.Context, env Env) (*client.Client, error) {
-	opts, err := CreateClientOpts(ctx, env.ClientEnv)
+	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "ProvideDockerClient")
 	}
@@ -211,15 +261,15 @@ func SupportsBuildkit(v types.Version) bool {
 // DOCKER_API_VERSION to set the version of the API to reach, leave empty for latest.
 // DOCKER_CERT_PATH to load the TLS certificates from.
 // DOCKER_TLS_VERIFY to enable or disable TLS verification, off by default.
-func CreateClientOpts(ctx context.Context, env func(string) string) ([]func(client *client.Client) error, error) {
+func CreateClientOpts(ctx context.Context, env Env) ([]func(client *client.Client) error, error) {
 	result := make([]func(client *client.Client) error, 0)
 
-	if dockerCertPath := env("DOCKER_CERT_PATH"); dockerCertPath != "" {
+	if env.CertPath != "" {
 		options := tlsconfig.Options{
-			CAFile:             filepath.Join(dockerCertPath, "ca.pem"),
-			CertFile:           filepath.Join(dockerCertPath, "cert.pem"),
-			KeyFile:            filepath.Join(dockerCertPath, "key.pem"),
-			InsecureSkipVerify: env("DOCKER_TLS_VERIFY") == "",
+			CAFile:             filepath.Join(env.CertPath, "ca.pem"),
+			CertFile:           filepath.Join(env.CertPath, "cert.pem"),
+			KeyFile:            filepath.Join(env.CertPath, "key.pem"),
+			InsecureSkipVerify: env.TLSVerify == "",
 		}
 		tlsc, err := tlsconfig.Client(options)
 		if err != nil {
@@ -232,12 +282,12 @@ func CreateClientOpts(ctx context.Context, env func(string) string) ([]func(clie
 		}))
 	}
 
-	if host := env("DOCKER_HOST"); host != "" {
-		result = append(result, client.WithHost(host))
+	if env.Host != "" {
+		result = append(result, client.WithHost(env.Host))
 	}
 
-	if version := env("DOCKER_API_VERSION"); version != "" {
-		result = append(result, client.WithVersion(version))
+	if env.APIVersion != "" {
+		result = append(result, client.WithVersion(env.APIVersion))
 	} else {
 		// NegotateAPIVersion makes the docker client negotiate down to a lower version
 		// if 'defaultVersion' is newer than the server version.

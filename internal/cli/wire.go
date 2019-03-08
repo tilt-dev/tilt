@@ -51,7 +51,7 @@ var BaseWireSet = wire.NewSet(
 
 	build.NewImageReaper,
 
-	tiltfile.NewTiltfileLoaderWithAnalytics,
+	tiltfile.ProvideTiltfileLoader,
 
 	engine.DeployerWireSet,
 	engine.NewPodLogManager,
@@ -148,6 +148,28 @@ func wireDockerVersion(ctx context.Context) (types.Version, error) {
 func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	wire.Build(BaseWireSet)
 	return docker.Env{}, nil
+}
+
+func wireDownDeps(ctx context.Context) (DownDeps, error) {
+	wire.Build(BaseWireSet, ProvideDownDeps)
+	return DownDeps{}, nil
+}
+
+type DownDeps struct {
+	tfl      tiltfile.TiltfileLoader
+	dcClient dockercompose.DockerComposeClient
+	kClient  k8s.Client
+}
+
+func ProvideDownDeps(
+	tfl tiltfile.TiltfileLoader,
+	dcClient dockercompose.DockerComposeClient,
+	kClient k8s.Client) DownDeps {
+	return DownDeps{
+		tfl:      tfl,
+		dcClient: dcClient,
+		kClient:  kClient,
+	}
 }
 
 func provideClock() func() time.Time {
