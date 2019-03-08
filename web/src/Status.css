@@ -1,0 +1,15 @@
+.preview-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.preview {
+    height: 95vh;
+    border: 0;
+}
+
+.status {
+    height: 5vh;
+    border-top: 5px solid white;
+    display: flex;
+}

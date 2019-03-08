@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import LogApp from './LogApp';
+import Preview from './Preview';
 import LoadingScreen from './LoadingScreen';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 
@@ -13,13 +14,14 @@ let NoMatch = ({location}) => {
 
 let Main = () => {
   return (<Router>
-    <div>
+    <main>
       <Switch>
         <Route exact path="/" component={App} />
         <Route exact path="/log" component={LogApp} />
+        <Route exact path="/preview" component={Preview} />
         <Route component={NoMatch} />
       </Switch>
-    </div>
+    </main>
   </Router>)
 }
 

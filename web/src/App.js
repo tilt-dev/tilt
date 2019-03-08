@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import ResourceList from './ResourceList';
+import Preview from './Preview';
+import Status from './Status';
 import AppController from './AppController';
 import LoadingScreen from './LoadingScreen';
 import './App.css';
@@ -34,13 +36,17 @@ class App extends Component {
     if (!view || !view.Resources || !view.Resources.length) {
       el = <LoadingScreen message={message} />
     } else {
-      el = <ResourceList resources={view.Resources} />
+      el = <React.Fragment>
+        <ResourceList key="ResourceList" resources={view.Resources} />
+        <Preview key="Preview" resources={view.Resources} />
+        <Status key="Status" resources={view.Resources} />
+      </React.Fragment>
     }
 
     return (
-      <div className="App">
+      <React.Fragment>
         {el}
-      </div>
+      </React.Fragment>
     );
   }
 }
