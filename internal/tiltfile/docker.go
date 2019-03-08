@@ -43,6 +43,31 @@ func (d *dockerImage) ID() model.TargetID {
 	return model.ImageID(d.ref)
 }
 
+type dockerImageBuildType int
+
+const (
+	UnknownBuild = iota
+	StaticBuild
+	FastBuild
+	CustomBuild
+)
+
+func (d *dockerImage) Type() dockerImageBuildType {
+	if !d.staticBuildPath.Empty() {
+		return StaticBuild
+	}
+
+	if !d.baseDockerfilePath.Empty() {
+		return FastBuild
+	}
+
+	if d.customCommand != "" {
+		return CustomBuild
+	}
+
+	return UnknownBuild
+}
+
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var contextVal, dockerfilePathVal, buildArgs, cacheVal, dockerfileContentsVal starlark.Value

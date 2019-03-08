@@ -494,14 +494,14 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			Ref: image.ref,
 		}.WithCachePaths(image.cachePaths)
 
-		switch {
-		case !image.staticBuildPath.Empty():
+		switch image.Type() {
+		case StaticBuild:
 			iTarget = iTarget.WithBuildDetails(model.StaticBuild{
 				Dockerfile: image.staticDockerfile.String(),
 				BuildPath:  string(image.staticBuildPath.path),
 				BuildArgs:  image.staticBuildArgs,
 			})
-		case !image.baseDockerfilePath.Empty():
+		case FastBuild:
 			iTarget = iTarget.WithBuildDetails(model.FastBuild{
 				BaseDockerfile: image.baseDockerfile.String(),
 				Mounts:         s.mountsToDomain(image),
@@ -509,7 +509,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Entrypoint:     model.ToShellCmd(image.entrypoint),
 				HotReload:      image.hotReload,
 			})
-		case image.customCommand != "":
+		case CustomBuild:
 			r := model.CustomBuild{
 				Command: image.customCommand,
 				Deps:    image.customDeps,
@@ -523,7 +523,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			}
 			iTarget = iTarget.WithBuildDetails(r)
 			// TODO(dbentley): validate that mounts is a subset of deps
-		default:
+		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.ref)
 		}
 
