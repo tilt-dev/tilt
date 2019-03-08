@@ -18,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
@@ -115,7 +115,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		}
 
 		q.SetResult(iTarget.ID(), store.BuildResult{Image: ref})
-		anyFastBuild = anyFastBuild || iTarget.IsFastBuild()
+		anyFastBuild = anyFastBuild || iTarget.MaybeFastBuildInfo() != nil
 		target, ok, err = q.Next()
 		if err != nil {
 			return store.BuildResultSet{}, err

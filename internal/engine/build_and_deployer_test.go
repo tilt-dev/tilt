@@ -466,7 +466,7 @@ func TestIgnoredFiles(t *testing.T) {
 	})
 }
 
-func TestCustomBuild(t *testing.T) {
+func TestCustomBuildWithFastBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -488,8 +488,8 @@ func TestCustomBuild(t *testing.T) {
 		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
 	}
 
-	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
-		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
+	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should deploy the synclet for a custom build: %s", f.k8s.Yaml)
 	}
 }
 
