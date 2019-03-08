@@ -95,8 +95,9 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		return store.BuildResultSet{}, err
 	}
 
+	iTargetMap := model.ImageTargetsByID(iTargets)
 	for ok {
-		iTarget, err := injectImageDependencies(target.(model.ImageTarget), q.DependencyResults(target))
+		iTarget, err := injectImageDependencies(target.(model.ImageTarget), iTargetMap, q.DependencyResults(target))
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -114,7 +115,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			ref = state.LastResult.Image
 		}
 
-		q.SetResult(iTarget.ID(), store.BuildResult{Image: ref})
+		q.SetResult(iTarget.ID(), store.NewImageBuildResult(iTarget.ID(), ref))
 		anyFastBuild = anyFastBuild || iTarget.MaybeFastBuildInfo() != nil
 		target, ok, err = q.Next()
 		if err != nil {
@@ -124,7 +125,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	err = ibd.deploy(ctx, st, ps, kTargets, q.results, anyFastBuild)
+	err = ibd.deploy(ctx, st, ps, iTargetMap, kTargets, q.results, anyFastBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -133,7 +134,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState, k8sTargets []model.K8sTarget, results store.BuildResultSet, needsSynclet bool) error {
+func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
+	iTargetMap map[model.TargetID]model.ImageTarget, k8sTargets []model.K8sTarget, results store.BuildResultSet, needsSynclet bool) error {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -183,8 +185,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 					return fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
 				}
 
+				selector := iTargetMap[depID].Ref
+
 				var replaced bool
-				e, replaced, err = k8s.InjectImageDigest(e, ref, policy)
+				e, replaced, err = k8s.InjectImageDigest(e, selector, ref, policy)
 				if err != nil {
 					return err
 				}
@@ -193,7 +197,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 					if ibd.injectSynclet && needsSynclet {
 						var sidecarInjected bool
-						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, ref)
+						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, selector)
 						if err != nil {
 							return err
 						}
@@ -242,7 +246,7 @@ func (ibd *ImageBuildAndDeployer) canAlwaysSkipPush() bool {
 
 // Create a new ImageTarget with the dockerfiles rewritten
 // with the injected images.
-func injectImageDependencies(iTarget model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
+func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
 	if len(deps) == 0 {
 		return iTarget, nil
 	}
@@ -263,7 +267,7 @@ func injectImageDependencies(iTarget model.ImageTarget, deps []store.BuildResult
 	}
 
 	for _, dep := range deps {
-		modified, err := ast.InjectImageDigest(dep.Image)
+		modified, err := ast.InjectImageDigest(iTargetMap[dep.TargetID].Ref, dep.Image)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {

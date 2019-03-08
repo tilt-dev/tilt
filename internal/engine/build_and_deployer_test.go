@@ -36,7 +36,7 @@ var imageTargetID = model.TargetID{
 	Name: "gcr.io/some-project-162817/sancho",
 }
 
-var alreadyBuilt = store.BuildResult{Image: testImageRef}
+var alreadyBuilt = store.NewImageBuildResult(imageTargetID, testImageRef)
 var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 
 type expectedFile = testutils.ExpectedFile
@@ -503,8 +503,9 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 
 	// There are two image targets, and only the second one is dirty
-	firstResult := store.BuildResult{Image: container.MustParseNamedTagged("sancho-base:tilt-prebuilt")}
-	bs[targets[0].ID()] = store.NewBuildState(firstResult, nil)
+	iTargetID := targets[0].ID()
+	firstResult := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
+	bs[iTargetID] = store.NewBuildState(firstResult, nil)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {

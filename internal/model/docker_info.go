@@ -194,6 +194,14 @@ func (i ImageTarget) Dependencies() []string {
 	return sliceutils.DedupedAndSorted(i.LocalPaths())
 }
 
+func ImageTargetsByID(iTargets []ImageTarget) map[TargetID]ImageTarget {
+	result := make(map[TargetID]ImageTarget, len(iTargets))
+	for _, target := range iTargets {
+		result[target.ID()] = target
+	}
+	return result
+}
+
 type StaticBuild struct {
 	Dockerfile string
 	BuildPath  string // the absolute path to the files

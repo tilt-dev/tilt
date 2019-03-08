@@ -128,31 +128,19 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildResult {
-	nt, _ := reference.WithTag(ref, fmt.Sprintf("tilt-%d", b.buildCount))
+func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, isDeployed bool) store.BuildResult {
+	nt, _ := reference.WithTag(iTarget.Ref.AsNamedOnly(), fmt.Sprintf("tilt-%d", b.buildCount))
 	containerID := b.nextBuildContainer
-	b.nextBuildContainer = ""
-	return store.BuildResult{
-		Image:       nt,
-		ContainerID: containerID,
-	}
+	result := store.NewImageBuildResult(iTarget.ID(), nt)
+	result.ContainerID = containerID
+	return result
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
 	b.buildCount++
 
 	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
-	buildID := model.TargetID{}
-	var buildImageRef reference.Named
-	if !call.dc().ID().Empty() {
-		buildID = call.dc().ID()
-
-		// TODO(dmiller): change nextBuildResult to work with docker compose instead
-		buildImageRef = testImageRef
-	} else if !call.image().ID().Empty() {
-		buildID = call.image().ID()
-		buildImageRef = call.image().Ref
-	} else if call.k8s().Empty() {
+	if call.dc().Empty() && call.k8s().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
 
@@ -192,9 +180,22 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	result := store.BuildResultSet{}
-	if !buildID.Empty() {
-		result[buildID] = b.nextBuildResult(buildImageRef)
+	for _, iTarget := range extractImageTargets(specs) {
+		isDeployed := false
+		if !call.dc().Empty() {
+			isDeployed = isImageDeployedToDC(iTarget, call.dc())
+		} else {
+			isDeployed = isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()})
+		}
+
+		result[iTarget.ID()] = b.nextBuildResult(iTarget, isDeployed)
 	}
+
+	if !call.dc().Empty() {
+		result[call.dc().ID()] = store.NewContainerBuildResult(call.dc().ID(), b.nextBuildContainer)
+	}
+
+	b.nextBuildContainer = ""
 
 	return result, nil
 }
@@ -2593,8 +2594,11 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
-	resultSet[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
-		ContainerID: id,
+	for _, iTarget := range manifest.ImageTargets {
+		ref, _ := reference.WithTag(iTarget.Ref.AsNamedOnly(), "deadbeef")
+		result := store.NewImageBuildResult(iTarget.ID(), ref)
+		result.ContainerID = id
+		resultSet[iTarget.ID()] = result
 	}
 	return resultSet
 }

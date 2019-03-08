@@ -37,7 +37,7 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 //   to ensure that k8s fails hard if the image is missing from docker.
 //
 // Returns: the new entity, whether the image was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	entity = entity.DeepCopy()
 
 	// NOTE(nick): For some reason, if you have a reference with a digest,
@@ -57,7 +57,7 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 
 	replaced := false
 
-	entity, r, err := injectImageDigestInContainers(entity, injectRef, policy)
+	entity, r, err := injectImageDigestInContainers(entity, selector, injectRef, policy)
 	if err != nil {
 		return K8sEntity{}, false, err
 	}
@@ -65,7 +65,7 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 		replaced = true
 	}
 
-	entity, r, err = injectImageDigestInEnvVars(entity, injectRef)
+	entity, r, err = injectImageDigestInEnvVars(entity, selector, injectRef)
 	if err != nil {
 		return K8sEntity{}, false, err
 	}
@@ -84,7 +84,7 @@ func InjectImageDigest(entity K8sEntity, injectRef reference.Named, policy v1.Pu
 	return entity, replaced, nil
 }
 
-func injectImageDigestInContainers(entity K8sEntity, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func injectImageDigestInContainers(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	containers, err := extractContainers(&entity)
 	if err != nil {
 		return K8sEntity{}, false, err
@@ -97,7 +97,7 @@ func injectImageDigestInContainers(entity K8sEntity, injectRef reference.Named, 
 			return K8sEntity{}, false, err
 		}
 
-		if existingRef.Name() == injectRef.Name() {
+		if selector.Matches(existingRef) {
 			c.Image = injectRef.String()
 			c.ImagePullPolicy = policy
 			replaced = true
@@ -107,7 +107,7 @@ func injectImageDigestInContainers(entity K8sEntity, injectRef reference.Named, 
 	return entity, replaced, nil
 }
 
-func injectImageDigestInEnvVars(entity K8sEntity, injectRef reference.Named) (K8sEntity, bool, error) {
+func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
 	envVars, err := extractEnvVars(&entity)
 	if err != nil {
 		return K8sEntity{}, false, err
@@ -120,7 +120,7 @@ func injectImageDigestInEnvVars(entity K8sEntity, injectRef reference.Named) (K8
 			continue
 		}
 
-		if existingRef.Name() == injectRef.Name() {
+		if selector.Matches(existingRef) {
 			envVar.Value = injectRef.String()
 			replaced = true
 		}

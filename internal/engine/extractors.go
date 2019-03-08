@@ -33,6 +33,18 @@ func extractK8sTargets(specs []model.TargetSpec) []model.K8sTarget {
 	return kTargets
 }
 
+func extractImageTargets(specs []model.TargetSpec) []model.ImageTarget {
+	iTargets := make([]model.ImageTarget, 0)
+	for _, spec := range specs {
+		t, ok := spec.(model.ImageTarget)
+		if !ok {
+			continue
+		}
+		iTargets = append(iTargets, t)
+	}
+	return iTargets
+}
+
 // Extract image targets iff they can be updated in-place in a container.
 func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.BuildStateSet) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0)
@@ -78,6 +90,18 @@ func isImageDeployedToK8s(iTarget model.ImageTarget, kTargets []model.K8sTarget)
 			if depID == id {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// Returns true if the given image is deployed to one of the given docker-compose targets.
+// Note that some images are injected into other images, so may never be deployed.
+func isImageDeployedToDC(iTarget model.ImageTarget, dcTarget model.DockerComposeTarget) bool {
+	id := iTarget.ID()
+	for _, depID := range dcTarget.DependencyIDs() {
+		if depID == id {
+			return true
 		}
 	}
 	return false
