@@ -57,17 +57,19 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v8
+            - homebrew_cache_v10
       # Bump cache version when changing this.
-      # We set HOMEBREW_NO_AUTO_UPDATE because it's both
+      - run: echo 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose"' >> $BASH_ENV
+      # Only update when brew doesn't know about some of the packages because:
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
-      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install go@1.11 kustomize docker-compose
+      - run: brew info ${HOMEBREW_PACKAGES} || brew update || true
+      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install ${HOMEBREW_PACKAGES}
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v8
-      - run: echo 'export PATH="/usr/local/opt/go@1.11/bin:$PATH"' >> $BASH_ENV
+          key: homebrew_cache_v10
+      - run: echo 'export PATH="/usr/local/opt/go@1.12/bin:$PATH"' >> $BASH_ENV
       # NOTE(dmiller): the helm package in Homebrew is too old, and the tests fail. Install from GitHub instead.
       - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
              tar -xz -C /tmp -f /tmp/helm.tar.gz &&
