@@ -747,6 +747,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action.Log)
+
 	podID := action.PodID
 	if !ms.PodSet.ContainsID(podID) {
 		// NOTE(nick): There are two cases where this could happen:
@@ -776,6 +778,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action.Log)
 	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action.Log)
 }
 
