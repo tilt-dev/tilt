@@ -380,6 +380,13 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		Tty:          true,
 	}
 
+	// ContainerExecCreate error-handling is awful, so before we Create
+	// we do a dummy inspect, to get more reasonable error messages. See:
+	// https://github.com/docker/cli/blob/ae1618713f83e7da07317d579d0675f578de22fa/cli/command/container/exec.go#L77
+	if _, err := c.ContainerInspect(ctx, cID.String()); err != nil {
+		return errors.Wrap(err, "ExecInContainer")
+	}
+
 	execId, err := c.ContainerExecCreate(ctx, cID.String(), cfg)
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#create")
