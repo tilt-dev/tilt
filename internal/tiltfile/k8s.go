@@ -361,6 +361,37 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 	return starlark.None, nil
 }
 
+func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// require image_json_path to be passed as a kw arg since `k8s_kind("Environment", "{.foo.bar}")` feels confusing
+	if len(args) > 1 {
+		return nil, fmt.Errorf("%s: got %d arguments, want at most %d", fn.Name(), len(args), 1)
+	}
+
+	var kind string
+	var imageJSONPath starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"kind", &kind,
+		"image_json_path", &imageJSONPath,
+	); err != nil {
+		return nil, err
+	}
+
+	values := starlarkValueOrSequenceToSlice(imageJSONPath)
+	var paths []string
+	for _, v := range values {
+		s, ok := v.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
+		}
+		paths = append(paths, s.String())
+	}
+
+	k := imageJSONPathSelector{kind: kind}
+	s.k8sImageJSONPaths[k] = paths
+
+	return starlark.None, nil
+}
+
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	if s.k8sByName[name] != nil {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)

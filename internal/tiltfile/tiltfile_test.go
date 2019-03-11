@@ -1721,6 +1721,38 @@ docker_build('test/mycrd-env', 'env')
 	)
 }
 
+func TestK8SKind(t *testing.T) {
+	f := newFixture(t)
+	f.setupCRD()
+	f.dockerfile("env/Dockerfile")
+	f.dockerfile("builder/Dockerfile")
+	f.file("Tiltfile", `k8s_yaml('crd.yaml')
+k8s_kind('Environment', image_json_path='{.spec.runtime.image}')
+docker_build('test/mycrd-env', 'env')
+`)
+
+	f.load("mycrd-env")
+	f.assertNextManifest("mycrd-env",
+		db(
+			image("docker.io/test/mycrd-env"),
+		),
+		k8sObject("mycrd", "Environment"),
+	)
+}
+
+func TestK8SKindImageJSONPathPositional(t *testing.T) {
+	f := newFixture(t)
+	f.setupCRD()
+	f.dockerfile("env/Dockerfile")
+	f.dockerfile("builder/Dockerfile")
+	f.file("Tiltfile", `k8s_yaml('crd.yaml')
+k8s_kind('Environment', '{.spec.runtime.image}')
+docker_build('test/mycrd-env', 'env')
+`)
+
+	f.loadErrString("got 2 arguments, want at most 1")
+}
+
 func TestExtraImageLocationTwoImages(t *testing.T) {
 	f := newFixture(t)
 	f.setupCRD()
