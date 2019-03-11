@@ -1,4 +1,6 @@
 .LogApp {
-  margin: 1em 1.5em;
-  font-size: 1.4em;
+  font-family: 'Courier New', Courier, monospace;
+  margin: 1em;
+  font-size: 1.1em;
+  line-height: 1.5;
 }

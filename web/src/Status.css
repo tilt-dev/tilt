@@ -1,15 +1,16 @@
-.preview-wrap {
-    display: flex;
-    flex-direction: column;
-}
-
-.preview {
-    height: 95vh;
-    border: 0;
-}
-
 .status {
+    font-family: 'Courier New', Courier, monospace;
     height: 5vh;
-    border-top: 5px solid white;
     display: flex;
+    align-items: center;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+.status section + section {
+    margin-left: 2em;
+}
+
+.status button {
+    margin-left: 2em;
 }

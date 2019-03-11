@@ -4,10 +4,12 @@
 
 .resources {
   height: 95vh;
-  margin: 1em;
   font-size: 1.2em;
   line-height: 1.5;
   font-family: 'Courier New', Courier, monospace;
+  margin: 0;
+  padding: 1em;
+  box-sizing: border-box;
 }
 
 .headings {
