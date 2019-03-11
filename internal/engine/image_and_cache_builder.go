@@ -46,7 +46,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		defer ps.EndPipelineStep(ctx)
 
 		df := icb.staticDockerfile(iTarget, cacheRef)
-		ref, err := icb.ib.BuildDockerfile(ctx, ps, ref, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
+		ref, err := icb.ib.BuildDockerfile(ctx, ps, ref.AsNamedOnly(), df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -62,7 +62,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 			df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
 			steps := bd.Steps
-			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, ref, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
+			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, ref.AsNamedOnly(), df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
 
 			if err != nil {
 				return nil, err
@@ -95,7 +95,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", ref)
 		defer ps.EndPipelineStep(ctx)
-		ref, err := icb.custb.Build(ctx, ref, bd.Command)
+		ref, err := icb.custb.Build(ctx, ref.AsNamedOnly(), bd.Command)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) bu
 	}
 
 	return build.CacheInputs{
-		Ref:            iTarget.Ref,
+		Ref:            iTarget.Ref.AsNamedOnly(),
 		CachePaths:     iTarget.CachePaths(),
 		BaseDockerfile: baseDockerfile,
 	}

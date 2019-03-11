@@ -1978,7 +1978,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			image := nextImageTarget()
 			caches := image.CachePaths()
 			ref := image.Ref
-			if ref == nil {
+			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
 			}
 			if ref.Name() != opt.image.ref {

@@ -80,6 +80,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		configFiles = s.configFiles
 	}()
 
+	s.logger.Printf("Beginning Tiltfile execution")
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, model.Manifest{}, nil, s.warnings, errors.New(err.Backtrace())
@@ -115,6 +116,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		if err != nil {
 			return nil, model.Manifest{}, nil, s.warnings, err
 		}
+	}
+
+	if err == nil {
+		s.logger.Printf("Successfully loaded Tiltfile")
 	}
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)

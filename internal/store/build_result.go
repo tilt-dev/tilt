@@ -12,6 +12,9 @@ import (
 
 // The results of a successful build.
 type BuildResult struct {
+	// The image target that this built.
+	TargetID model.TargetID
+
 	// The name+tag of the image that the pod is running.
 	//
 	// The tag is derived from a content-addressable digest.
@@ -26,8 +29,24 @@ type BuildResult struct {
 	FilesReplacedSet map[string]bool
 }
 
+// For docker-compose deploys that don't have any built images.
+func NewContainerBuildResult(id model.TargetID, containerID container.ID) BuildResult {
+	return BuildResult{
+		TargetID:    id,
+		ContainerID: containerID,
+	}
+}
+
+// For image targets. The container id will be added later.
+func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) BuildResult {
+	return BuildResult{
+		TargetID: id,
+		Image:    image,
+	}
+}
+
 func (b BuildResult) IsEmpty() bool {
-	return b.Image == nil
+	return b.TargetID.Empty()
 }
 
 func (b BuildResult) HasImage() bool {
@@ -38,6 +57,7 @@ func (b BuildResult) HasImage() bool {
 // Does not do a deep clone of the underlying entities.
 func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
 	result := BuildResult{}
+	result.TargetID = b.TargetID
 	result.Image = b.Image
 
 	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))
@@ -53,13 +73,22 @@ func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]
 
 type BuildResultSet map[model.TargetID]BuildResult
 
-func (set BuildResultSet) AsOneResult() BuildResult {
-	if len(set) == 1 {
-		for _, result := range set {
-			return result
+// Returns a container ID iff it's the only container ID in the result set.
+// If there are multiple container IDs, we have to give up.
+func (set BuildResultSet) OneAndOnlyContainerID() container.ID {
+	var id container.ID
+	for _, result := range set {
+		if result.ContainerID == "" {
+			continue
 		}
+
+		if id != "" && result.ContainerID != id {
+			return ""
+		}
+
+		id = result.ContainerID
 	}
-	return BuildResult{}
+	return id
 }
 
 // The state of the system since the last successful build.
@@ -192,13 +221,18 @@ func (d DeployInfo) Empty() bool {
 
 // Check to see if there's a single, unambiguous Ready container
 // in the given PodSet. If so, create a DeployInfo for that container.
-func NewDeployInfo(podSet PodSet) DeployInfo {
+func NewDeployInfo(iTarget model.ImageTarget, podSet PodSet) DeployInfo {
 	if podSet.Len() != 1 {
 		return DeployInfo{}
 	}
 
 	pod := podSet.MostRecentPod()
 	if pod.PodID == "" || pod.ContainerID == "" || pod.ContainerName == "" || !pod.ContainerReady {
+		return DeployInfo{}
+	}
+
+	// Only return the pod if it matches our image.
+	if pod.ContainerImageRef == nil || !iTarget.Ref.Matches(pod.ContainerImageRef) {
 		return DeployInfo{}
 	}
 

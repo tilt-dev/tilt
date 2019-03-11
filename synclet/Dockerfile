@@ -1,5 +1,4 @@
-# iron/go:dev is the alpine image with the go tools added
-ARG baseImage="iron/go:dev"
+ARG baseImage="golang/1.12-alpine"
 
 FROM ${baseImage} as builder
 
@@ -17,7 +16,7 @@ RUN go build -o server ./cmd/synclet/main.go
 RUN mv server /app/
 
 # Build an image with just the Go cache artifacts
-FROM iron/go:dev as go-cache
+FROM golang/1.12-alpine as go-cache
 
 COPY --from=builder /root/.cache /root/.cache
 

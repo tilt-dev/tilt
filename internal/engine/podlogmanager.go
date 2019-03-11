@@ -20,15 +20,19 @@ import (
 type PodLogManager struct {
 	kClient k8s.Client
 
-	watches      map[podLogKey]PodLogWatch
-	watchesByPod map[k8s.PodID]PodLogWatch
+	watches map[podLogKey]PodLogWatch
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	return &PodLogManager{
-		kClient:      kClient,
-		watches:      make(map[podLogKey]PodLogWatch),
-		watchesByPod: make(map[k8s.PodID]PodLogWatch),
+		kClient: kClient,
+		watches: make(map[podLogKey]PodLogWatch),
+	}
+}
+
+func cancelAll(watches []PodLogWatch) {
+	for _, w := range watches {
+		w.cancel()
 	}
 }
 
@@ -51,12 +55,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			watchByPod, ok := m.watchesByPod[pod.PodID]
-			if ok && watchByPod.cID != pod.ContainerID {
-				watchByPod.cancel()
-				delete(m.watchesByPod, pod.PodID)
-			}
-
 			if pod.ContainerName == "" || pod.ContainerID == "" {
 				continue
 			}
@@ -67,44 +65,56 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			// Key the log watcher by the container id, so we auto-restart the
-			// watching if the container crashes.
-			key := podLogKey{
-				podID: pod.PodID,
-				cID:   pod.ContainerID,
+			// NOTE(maia): setting up logWatchers using both containerInfos and pod.ContainerName etc.
+			// is a temporary hack. Put this in for backwards compatibility.
+			containerInfos := pod.ContainerInfos
+			if len(containerInfos) == 0 {
+				containerInfos = []store.ContainerInfo{
+					store.ContainerInfo{ID: pod.ContainerID, Name: pod.ContainerName},
+				}
 			}
-			stateWatches[key] = true
+			// if pod has more than one container, we should prefix logs with the container name
+			shouldPrefix := len(containerInfos) > 1
 
-			existing, isActive := m.watches[key]
-			startWatchTime := time.Unix(0, 0)
-			if isActive {
-				if existing.ctx.Err() == nil {
-					// The active pod watcher is still tailing the logs,
-					// so just skip it.
-					continue
+			for _, cInfo := range containerInfos {
+				// Key the log watcher by the container id, so we auto-restart the
+				// watching if the container crashes.
+				key := podLogKey{
+					podID: pod.PodID,
+					cID:   cInfo.ID,
+				}
+				stateWatches[key] = true
+
+				existing, isActive := m.watches[key]
+				startWatchTime := time.Unix(0, 0)
+				if isActive {
+					if existing.ctx.Err() == nil {
+						// The active pod watcher is still tailing the logs,
+						// nothing to do.
+						continue
+					}
+
+					// The active pod watcher got cancelled somehow,
+					// so we need to create a new one that picks up
+					// where it left off.
+					startWatchTime = <-existing.terminationTime
 				}
 
-				// The active pod watcher got cancelled somehow,
-				// so we need to create a new one that picks up
-				// where it left off.
-				startWatchTime = <-existing.terminationTime
+				ctx, cancel := context.WithCancel(ctx)
+				w := PodLogWatch{
+					ctx:             ctx,
+					cancel:          cancel,
+					name:            ms.Name,
+					podID:           pod.PodID,
+					cName:           cInfo.Name,
+					namespace:       pod.Namespace,
+					startWatchTime:  startWatchTime,
+					terminationTime: make(chan time.Time, 1),
+					shouldPrefix:    shouldPrefix,
+				}
+				m.watches[key] = w
+				setup = append(setup, w)
 			}
-
-			ctx, cancel := context.WithCancel(ctx)
-			w := PodLogWatch{
-				ctx:             ctx,
-				cancel:          cancel,
-				name:            ms.Name,
-				podID:           pod.PodID,
-				cID:             pod.ContainerID,
-				cName:           pod.ContainerName,
-				namespace:       pod.Namespace,
-				startWatchTime:  startWatchTime,
-				terminationTime: make(chan time.Time, 1),
-			}
-			m.watches[key] = w
-			m.watchesByPod[pod.PodID] = w
-			setup = append(setup, w)
 		}
 	}
 
@@ -112,12 +122,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 		_, inState := stateWatches[key]
 		if !inState {
 			delete(m.watches, key)
-
-			byPod, ok := m.watchesByPod[key.podID]
-			if ok && byPod.cID != key.cID {
-				delete(m.watchesByPod, key.podID)
-			}
-
 			teardown = append(teardown, value)
 		}
 	}
@@ -165,6 +169,10 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		podID:        pID,
 	}
 	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
+	if watch.shouldPrefix {
+		prefix = fmt.Sprintf("[%s] ", watch.cName)
+		multiWriter = logger.NewPrefixedWriter(prefix, multiWriter)
+	}
 
 	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
@@ -191,10 +199,11 @@ type PodLogWatch struct {
 	name            model.ManifestName
 	podID           k8s.PodID
 	namespace       k8s.Namespace
-	cID             container.ID
 	cName           container.Name
 	startWatchTime  time.Time
 	terminationTime chan time.Time
+
+	shouldPrefix bool // if true, we'll prefix logs with the container name
 }
 
 type podLogKey struct {

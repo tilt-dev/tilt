@@ -30,14 +30,19 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
 }
 
 func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
-	iTargets, kTargets := extractImageAndK8sTargets(specs)
-	if len(kTargets) != 1 || len(iTargets) != 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf(
-			"LocalContainerBuildAndDeployer requires exactly one image spec and one k8s deploy spec")
+	iTargets, err := extractImageTargetsForLiveUpdates(specs, stateSet)
+	if err != nil {
+		return store.BuildResultSet{}, err
 	}
 
+	if len(iTargets) != 1 {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs exactly one image target")
+	}
+
+	iTarget := iTargets[0]
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", kTargets[0].Name.String())
+	span.SetTag("target", iTarget.Ref.String())
 	defer span.Finish()
 
 	startTime := time.Now()
@@ -45,7 +50,6 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
 	}()
 
-	iTarget := iTargets[0]
 	state := stateSet[iTarget.ID()]
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
@@ -54,16 +58,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}
 
 	fbInfo := iTarget.MaybeFastBuildInfo()
-	if fbInfo == nil {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("container build only supports FastBuilds")
-	}
-
-	// Otherwise, manifest has already been deployed; try to update in the running container
 	deployInfo := state.DeployInfo
-	if deployInfo.Empty() {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("no deploy info")
-	}
-
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {
 		return store.BuildResultSet{}, err

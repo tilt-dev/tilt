@@ -9,7 +9,7 @@ import (
 )
 
 func TestOneUpCustom(t *testing.T) {
-	f := newFixture(t, "oneup_custom")
+	f := newK8sFixture(t, "oneup_custom")
 	defer f.TearDown()
 
 	f.TiltUp("oneup-custom")

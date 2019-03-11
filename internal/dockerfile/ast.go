@@ -81,10 +81,10 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 	})
 }
 
-func (a AST) InjectImageDigest(ref reference.NamedTagged) (bool, error) {
+func (a AST) InjectImageDigest(selector container.RefSelector, ref reference.NamedTagged) (bool, error) {
 	modified := false
 	err := a.traverseImageRefs(func(node *parser.Node, toReplace reference.Named) reference.Named {
-		if toReplace.Name() == ref.Name() {
+		if selector.Matches(toReplace) {
 			modified = true
 			return ref
 		}

@@ -6,11 +6,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
-
-	"github.com/docker/distribution/reference"
-	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -44,67 +39,6 @@ func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container
 
 func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
 	return k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
-}
-
-func (k K8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PollForPodsWithImage")
-	span.SetTag("img", image.String())
-	defer span.Finish()
-
-	start := time.Now()
-	for time.Since(start) < timeout {
-		pod, err := k.PodsWithImage(ctx, image, n, labels)
-		if err != nil {
-			return nil, err
-		}
-
-		if pod != nil {
-			return pod, nil
-		}
-	}
-
-	return nil, fmt.Errorf("timed out polling for pod running image %s (after %s)",
-		image.String(), timeout)
-}
-
-// PodsWithImage returns the ID of the pod running the given image. If too many matches, throw
-// an error. If no matches, return nil -- nothing is wrong, we just didn't find a result.
-func (k K8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "k8sClient-PodsWithImage")
-	defer span.Finish()
-
-	podList, err := k.core.Pods(n.String()).List(metav1.ListOptions{
-		LabelSelector: makeLabelSelector(labels),
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "PodsWithImage")
-	}
-
-	ip := podMap(podList)
-	pods, ok := ip[image.String()]
-	if !ok {
-		// Nothing's wrong, we just didn't find a match.
-		return nil, nil
-	}
-	return pods, nil
-}
-
-func podMap(podList *v1.PodList) map[string][]v1.Pod {
-	ip := make(map[string][]v1.Pod)
-	for _, p := range podList.Items {
-		for _, c := range p.Spec.Containers {
-			imgRef := c.Image
-
-			// normalize the image name
-			ref, err := reference.ParseNormalizedNamed(imgRef)
-			if err == nil {
-				imgRef = ref.String()
-			}
-
-			ip[imgRef] = append(ip[imgRef], p)
-		}
-	}
-	return ip
 }
 
 func PodIDFromPod(pod *v1.Pod) PodID {

@@ -3,7 +3,6 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
@@ -26,20 +24,22 @@ const MagicTestContainerID = "tilt-testcontainer"
 
 var _ Client = &FakeK8sClient{}
 
+// For keying PodLogsByPodAndContainer
+type PodAndCName struct {
+	PID   PodID
+	CName container.Name
+}
+
 type FakeK8sClient struct {
 	Yaml        string
 	DeletedYaml string
 	Lb          LoadBalancerSpec
 
-	PodsWithImageResp         PodID
-	PodsWithImageError        error
-	PollForPodsWithImageDelay time.Duration
-
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
 
-	PodLogs            BufferCloser
-	ContainerLogsError error
+	PodLogsByPodAndContainer map[PodAndCName]BufferCloser
+	ContainerLogsError       error
 
 	LastForwardPortPodID      PodID
 	LastForwardPortRemotePort int
@@ -104,7 +104,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-ch
 
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
-		PodLogs: BufferCloser{Buffer: bytes.NewBuffer(nil)},
+		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
 	}
 }
 
@@ -133,23 +133,25 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) SetPodsWithImageResp(pID PodID) {
-	c.PodsWithImageResp = pID
-}
-
 func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
 	return watch.NewEmptyWatch(), nil
 }
 
-func (c *FakeK8sClient) SetLogs(logs string) {
-	c.PodLogs = BufferCloser{Buffer: bytes.NewBufferString(logs)}
+func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
+	c.PodLogsByPodAndContainer[PodAndCName{pID, cName}] = BufferCloser{Buffer: bytes.NewBufferString(logs)}
 }
 
 func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}
-	return c.PodLogs, nil
+
+	// If we have specific logs for this pod/container combo, return those
+	if buf, ok := c.PodLogsByPodAndContainer[PodAndCName{pID, cName}]; ok {
+		return buf, nil
+	}
+
+	return BufferCloser{Buffer: bytes.NewBuffer(nil)}, nil
 }
 
 func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
@@ -195,59 +197,6 @@ func FakePodSpec(image reference.NamedTagged) v1.PodSpec {
 			},
 		},
 	}
-}
-
-func (c *FakeK8sClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error) {
-	c.LastPodQueryImage = image
-	c.LastPodQueryNamespace = n
-
-	if c.PodsWithImageError != nil {
-		return nil, c.PodsWithImageError
-	}
-
-	status := FakePodStatus(image, "Running")
-	spec := FakePodSpec(image)
-
-	if !c.PodsWithImageResp.Empty() {
-		res := c.PodsWithImageResp
-		c.PodsWithImageResp = ""
-		return []v1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   string(res),
-					Labels: makeLabelSet(labels),
-				},
-				Status: status,
-				Spec:   spec,
-			},
-		}, nil
-	}
-	return []v1.Pod{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "pod",
-				Labels: makeLabelSet(labels),
-			},
-			Status: status,
-			Spec:   spec,
-		},
-	}, nil
-}
-
-func (c *FakeK8sClient) SetPollForPodsWithImageDelay(dur time.Duration) {
-	c.PollForPodsWithImageDelay = dur
-}
-
-func (c *FakeK8sClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
-	defer c.SetPollForPodsWithImageDelay(0)
-
-	if c.PollForPodsWithImageDelay > timeout {
-		return nil, fmt.Errorf("timeout polling for pod (delay %s > timeout %s)",
-			c.PollForPodsWithImageDelay.String(), timeout.String())
-	}
-
-	time.Sleep(c.PollForPodsWithImageDelay)
-	return c.PodsWithImage(ctx, image, n, labels)
 }
 
 func (c *FakeK8sClient) applyWasCalled() bool {

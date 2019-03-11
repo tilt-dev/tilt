@@ -36,7 +36,7 @@ var imageTargetID = model.TargetID{
 	Name: "gcr.io/some-project-162817/sancho",
 }
 
-var alreadyBuilt = store.BuildResult{Image: testImageRef}
+var alreadyBuilt = store.NewImageBuildResult(imageTargetID, testImageRef)
 var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 
 type expectedFile = testutils.ExpectedFile
@@ -116,7 +116,8 @@ func TestNamespaceGKE(t *testing.T) {
 	deployInfo := f.deployInfo()
 	deployInfo.Namespace = "sancho-ns"
 
-	bs := resultToStateSet(result, nil, deployInfo)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(result, []string{changed}, deployInfo)
 	result, err = f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
@@ -129,9 +130,10 @@ func TestContainerBuildLocal(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
+	changed := f.WriteFile("a.txt", "a")
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -152,14 +154,17 @@ func TestContainerBuildLocal(t *testing.T) {
 	f.assertContainerRestarts(1)
 
 	id := manifest.ImageTargetAt(0).ID()
-	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
+	_, hasResult := result[id]
+	assert.True(t, hasResult)
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 }
 
 func TestContainerBuildSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -177,8 +182,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
 	}
 
-	id := manifest.ImageTargetAt(0).ID()
-	assert.Equal(t, k8s.MagicTestContainerID, result[id].ContainerID.String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 	assert.False(t, f.sCli.UpdateContainerHotReload)
 }
 
@@ -186,7 +190,8 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 	manifest := NewSanchoFastBuildManifest(f)
 	iTarget := manifest.ImageTargetAt(0)
 	fbInfo := iTarget.FastBuildInfo()
@@ -205,7 +210,8 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -282,7 +288,8 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
 
-	bs := resultToStateSet(alreadyBuiltSet, nil, f.deployInfo())
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -459,7 +466,34 @@ func TestIgnoredFiles(t *testing.T) {
 	})
 }
 
-func TestCustomBuild(t *testing.T) {
+func TestCustomBuildWithFastBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+
+	manifest := NewSanchoCustomBuildManifestWithFastBuild(f)
+	targets := buildTargets(manifest)
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected 0 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 1 {
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+
+	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should deploy the synclet for a custom build with a fast build: %s", f.k8s.Yaml)
+	}
+}
+
+func TestCustomBuildWithoutFastBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -484,6 +518,39 @@ func TestCustomBuild(t *testing.T) {
 	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
 		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
 	}
+}
+
+func TestContainerBuildMultiStage(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastMultiStageManifest(f)
+	targets := buildTargets(manifest)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+
+	// There are two image targets, and only the second one is dirty
+	iTargetID := targets[0].ID()
+	firstResult := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
+	bs[iTargetID] = store.NewBuildState(firstResult, nil)
+
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	assert.Equal(t, 1, f.docker.CopyCount)
+	assert.Equal(t, 1, len(f.docker.ExecCalls))
+	f.assertContainerRestarts(1)
+
+	// The BuildComplete action handler expects to get exactly one result
+	_, hasResult0 := result[manifest.ImageTargetAt(0).ID()]
+	assert.False(t, hasResult0)
+	_, hasResult1 := result[manifest.ImageTargetAt(1).ID()]
+	assert.True(t, hasResult1)
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and

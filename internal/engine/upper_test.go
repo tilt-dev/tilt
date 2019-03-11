@@ -128,31 +128,19 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult(ref reference.Named) store.BuildResult {
-	nt, _ := reference.WithTag(ref, fmt.Sprintf("tilt-%d", b.buildCount))
+func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, isDeployed bool) store.BuildResult {
+	nt, _ := reference.WithTag(iTarget.Ref.AsNamedOnly(), fmt.Sprintf("tilt-%d", b.buildCount))
 	containerID := b.nextBuildContainer
-	b.nextBuildContainer = ""
-	return store.BuildResult{
-		Image:       nt,
-		ContainerID: containerID,
-	}
+	result := store.NewImageBuildResult(iTarget.ID(), nt)
+	result.ContainerID = containerID
+	return result
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
 	b.buildCount++
 
 	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
-	buildID := model.TargetID{}
-	var buildImageRef reference.Named
-	if !call.dc().ID().Empty() {
-		buildID = call.dc().ID()
-
-		// TODO(dmiller): change nextBuildResult to work with docker compose instead
-		buildImageRef = testImageRef
-	} else if !call.image().ID().Empty() {
-		buildID = call.image().ID()
-		buildImageRef = call.image().Ref
-	} else if call.k8s().Empty() {
+	if call.dc().Empty() && call.k8s().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
 
@@ -166,13 +154,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		}
 	}
 
-	select {
-	case b.calls <- call:
-	default:
-		b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
-	}
+	defer func() {
+		// don't update b.calls until the end, to ensure appropriate actions have been dispatched first
+		select {
+		case b.calls <- call:
+		default:
+			b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
+		}
 
-	logger.Get(ctx).Infof("fake building %s", ids)
+		logger.Get(ctx).Infof("fake building %s", ids)
+	}()
 
 	err := b.nextBuildFailure
 	if err != nil {
@@ -192,9 +183,22 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	result := store.BuildResultSet{}
-	if !buildID.Empty() {
-		result[buildID] = b.nextBuildResult(buildImageRef)
+	for _, iTarget := range extractImageTargets(specs) {
+		isDeployed := false
+		if !call.dc().Empty() {
+			isDeployed = isImageDeployedToDC(iTarget, call.dc())
+		} else {
+			isDeployed = isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()})
+		}
+
+		result[iTarget.ID()] = b.nextBuildResult(iTarget, isDeployed)
 	}
+
+	if !call.dc().Empty() {
+		result[call.dc().ID()] = store.NewContainerBuildResult(call.dc().ID(), b.nextBuildContainer)
+	}
+
+	b.nextBuildContainer = ""
 
 	return result, nil
 }
@@ -202,7 +206,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:              t,
-		calls:          make(chan buildAndDeployCall, 5),
+		calls:          make(chan buildAndDeployCall, 20),
 		buildLogOutput: make(map[model.TargetID]string),
 	}
 }
@@ -1868,6 +1872,29 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	})
 }
 
+func TestDockerComposeStartsEventWatcher(t *testing.T) {
+	f := newTestFixture(t)
+	_, m := f.setupDCFixture()
+
+	// Actual behavior is that we init with zero manifests, and add in manifests
+	// after Tiltfile loads. Mimic that here.
+	f.Start([]model.Manifest{}, true)
+	time.Sleep(10 * time.Millisecond)
+
+	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{m}})
+	f.waitForCompletedBuildCount(1)
+
+	// Is DockerComposeEventWatcher watching for events??
+	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
+		return ms.DCResourceState().Status == dockercompose.StatusInProg
+	})
+}
+
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
@@ -2468,7 +2495,7 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
-	ref := f.imageNameForManifest(name)
+	ref := container.NewRefSelector(f.imageNameForManifest(name))
 	return assembleK8sManifest(
 		model.Manifest{Name: model.ManifestName(name)},
 		model.K8sTarget{YAML: "fake-yaml"},
@@ -2570,8 +2597,11 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
-	resultSet[manifest.ImageTargetAt(0).ID()] = store.BuildResult{
-		ContainerID: id,
+	for _, iTarget := range manifest.ImageTargets {
+		ref, _ := reference.WithTag(iTarget.Ref.AsNamedOnly(), "deadbeef")
+		result := store.NewImageBuildResult(iTarget.ID(), ref)
+		result.ContainerID = id
+		resultSet[iTarget.ID()] = result
 	}
 	return resultSet
 }

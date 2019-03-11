@@ -2,12 +2,7 @@ package k8s
 
 import (
 	"fmt"
-	"testing"
-	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
-
-	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -64,77 +59,4 @@ func (c clientTestFixture) AssertCallExistsWithArg(expectedArg string) {
 	}
 
 	assert.True(c.t, foundMatchingCall, "did not find arg '%s' in of the calls to kubectlRunner: %v", expectedArg, errorOutput)
-}
-
-func TestPodsWithImage(t *testing.T) {
-	f := newClientTestFixture(t)
-	f.addObject(&fakePodList)
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	pod := &(pods[0])
-	assert.Equal(t, expectedPod, PodIDFromPod(pod))
-}
-
-func TestPodsWithImageLabels(t *testing.T) {
-	f := newClientTestFixture(t)
-
-	pod1 := fakePod("cockroach-0", "cockroachdb/cockroach:v2.0.5")
-	pod1.ObjectMeta.Labels["type"] = "primary"
-	pod2 := fakePod("cockroach-1", "cockroachdb/cockroach:v2.0.5")
-	pod2.ObjectMeta.Labels["type"] = "replica"
-
-	f.addObject(&pod1)
-	f.addObject(&pod2)
-	nt := container.MustParseNamedTagged("cockroachdb/cockroach:v2.0.5")
-
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []model.LabelPair{{Key: "type", Value: "primary"}})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	if assert.Equal(t, 1, len(pods)) {
-		assert.Equal(t, "primary", pods[0].ObjectMeta.Labels["type"])
-	}
-
-	pods, err = f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, []model.LabelPair{{Key: "type", Value: "replica"}})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	if assert.Equal(t, 1, len(pods)) {
-		assert.Equal(t, "replica", pods[0].ObjectMeta.Labels["type"])
-	}
-}
-
-func TestPollForPodsWithImage(t *testing.T) {
-	f := newClientTestFixture(t)
-	go func() {
-		time.Sleep(time.Second)
-		f.addObject(&fakePodList)
-	}()
-
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
-	pods, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 2*time.Second)
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	pod := &(pods[0])
-	assert.Equal(t, expectedPod, PodIDFromPod(pod))
-}
-
-func TestPollForPodsWithImageTimesOut(t *testing.T) {
-	f := newClientTestFixture(t)
-	go func() {
-		time.Sleep(time.Second)
-		f.addObject(&fakePodList)
-	}()
-
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
-	_, err := f.client.PollForPodsWithImage(f.ctx, nt, DefaultNamespace, nil, 500*time.Millisecond)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "timed out polling for pod running image")
-	}
 }

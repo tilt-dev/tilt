@@ -32,7 +32,9 @@ func newBuildIndex() *buildIndex {
 }
 
 func (idx *buildIndex) addImage(img *dockerImage) error {
-	ref := img.ref
+	// TODO(nick): Rewrite this index to allow multiple selectors with the
+	// same name but different tags.
+	ref := img.ref.AsRef()
 	refTagged, hasTag := ref.(reference.NamedTagged)
 	if hasTag {
 		key := fmt.Sprintf("%s:%s", ref.Name(), refTagged.Tag())

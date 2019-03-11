@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -293,7 +293,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if mt.Manifest.IsDC() {
 		state, _ := ms.ResourceState.(dockercompose.State)
 
-		cid := cb.Result.AsOneResult().ContainerID
+		cid := cb.Result.OneAndOnlyContainerID()
 		if cid != "" {
 			state = state.WithContainerID(cid)
 		}
@@ -312,9 +312,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if engineState.WatchMounts {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-		result := cb.Result.AsOneResult()
-		if result.ContainerID != "" {
-			ms.ExpectedContainerID = result.ContainerID
+		cID := cb.Result.OneAndOnlyContainerID()
+		if cID != "" {
+			ms.ExpectedContainerID = cID
 
 			bestPod := ms.MostRecentPod()
 			if bestPod.StartedAt.After(bs.StartTime) ||
@@ -582,6 +582,13 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	}
 	podInfo.ContainerID = cID
 
+	cRef, err := container.ParseNamed(cStatus.Image)
+	if err != nil {
+		logger.Get(ctx).Debugf("Error parsing container image ID: %v", err)
+		return
+	}
+	podInfo.ContainerImageRef = cRef
+
 	ports := make([]int32, 0)
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
 	for _, cPort := range cSpec.Ports {
@@ -595,6 +602,30 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			manifest.Name, podInfo.PodID)
 	}
+
+	// HACK(maia): Go through ALL containers (except tilt-synclet), grab minimum info we need
+	// to stream logs from them.
+	var cInfos []store.ContainerInfo
+	for _, cStat := range pod.Status.ContainerStatuses {
+		if cStat.Name == sidecar.SyncletContainerName {
+			// We don't want logs for the Tilt synclet.
+			continue
+		}
+
+		cID, err := k8s.ContainerIDFromContainerStatus(cStat)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
+			return
+		}
+		if err != nil {
+			return
+		}
+		cInfos = append(cInfos, store.ContainerInfo{
+			ID:   cID,
+			Name: k8s.ContainerNameFromContainerStatus(cStat),
+		})
+	}
+	podInfo.ContainerInfos = cInfos
 }
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
@@ -716,6 +747,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action.Log)
+
 	podID := action.PodID
 	if !ms.PodSet.ContainsID(podID) {
 		// NOTE(nick): There are two cases where this could happen:
@@ -745,6 +778,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action.Log)
 	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action.Log)
 }
 

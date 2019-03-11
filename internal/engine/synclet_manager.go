@@ -7,6 +7,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/options"
 	"github.com/windmilleng/tilt/internal/store"
@@ -190,7 +191,7 @@ func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns 
 	}
 
 	// Make sure that the synclet container is ready and not crashlooping.
-	_, err = k8s.WaitForContainerReady(ctx, kCli, pod, sidecar.SyncletImageRef)
+	_, err = k8s.WaitForContainerReady(ctx, kCli, pod, container.NewRefSelector(sidecar.SyncletImageRef))
 	if err != nil {
 		return nil, errors.Wrap(err, "newSyncletClient")
 	}

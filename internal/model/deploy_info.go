@@ -45,6 +45,8 @@ func (t DockerComposeTarget) ManifestName() ManifestName {
 	return ManifestName(t.Name)
 }
 
+func (t DockerComposeTarget) Empty() bool { return t.ID().Empty() }
+
 func (t DockerComposeTarget) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeDockerCompose,

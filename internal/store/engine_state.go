@@ -10,6 +10,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -240,6 +241,9 @@ type ManifestState struct {
 	// If a pod had to be killed because it was crashing, we keep the old log
 	// around for a little while so we can show it in the UX.
 	CrashLog model.Log
+
+	// The log stream for this resource
+	CombinedLog model.Log `testdiff:"ignore"`
 }
 
 func NewState() *EngineState {
@@ -489,23 +493,36 @@ type Pod struct {
 	// until it actually gets removed.
 	Deleting bool
 
+	HasSynclet bool
+
 	// The log for the previously active pod, if any
 	PreRestartLog model.Log `testdiff:"ignore"`
 	// The log for the currently active pod, if any
 	CurrentLog model.Log `testdiff:"ignore"`
 
 	// Corresponds to the deployed container.
-	ContainerName  container.Name
-	ContainerID    container.ID
-	ContainerPorts []int32
-	ContainerReady bool
+	ContainerName     container.Name
+	ContainerID       container.ID
+	ContainerPorts    []int32
+	ContainerReady    bool
+	ContainerImageRef reference.Named
 
 	// We want to show the user # of restarts since pod has been running current code,
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
 
-	HasSynclet bool
+	// HACK(maia): eventually we'll want our model of the world to handle pods with
+	// multiple containers (for logs, restart counts, port forwards, etc.). For now,
+	// we need to ship log visibility into multiple containers. Here's the minimum
+	// of info we need for that.
+	ContainerInfos []ContainerInfo
+}
+
+// The minimum info we need to retrieve logs for a container.
+type ContainerInfo struct {
+	ID container.ID
+	container.Name
 }
 
 func (p Pod) Empty() bool {
@@ -654,6 +671,7 @@ func StateToView(s EngineState) view.View {
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
+			CombinedLog:        ms.CombinedLog,
 		}
 
 		ret.Resources = append(ret.Resources, r)

@@ -14,14 +14,15 @@ let NoMatch = ({location}) => {
 
 let Main = () => {
   return (<Router>
-    <main>
+    <div>
       <Switch>
         <Route exact path="/" component={App} />
         <Route exact path="/log" component={LogApp} />
+        <Route exact path="/r/:name/log" component={LogApp} />
         <Route exact path="/preview" component={Preview} />
         <Route component={NoMatch} />
       </Switch>
-    </main>
+    </div>
   </Router>)
 }
 

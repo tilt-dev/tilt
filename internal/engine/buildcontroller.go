@@ -34,9 +34,14 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 
 // Algorithm to choose a manifest to build next.
 func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
+	// put no-build manifests first since they're more likely to be
+	// 1. fast and 2. dependencies of other services (e.g., redis)
+	targets := append([]*store.ManifestTarget{}, state.Targets()...)
+	sort.Sort(newNoBuildsManifestsFirst(targets))
+
 	// First, go through all the manifests in order.
 	// If any of them haven't started yet, build them now.
-	for _, mt := range state.Targets() {
+	for _, mt := range targets {
 		if !mt.State.StartedFirstBuild() {
 			return mt
 		}
@@ -50,7 +55,7 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	earliest := time.Now()
 
 	// always use a stable iteration order
-	for _, mt := range state.Targets() {
+	for _, mt := range targets {
 		// Always prioritize builds that crashes and have an out-of-sync.
 		if mt.State.NeedsRebuildFromCrash {
 			return mt
@@ -66,7 +71,7 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	}
 
 	if state.TriggerMode == model.TriggerAuto {
-		for _, mt := range state.Targets() {
+		for _, mt := range targets {
 			ok, newTime := mt.State.HasPendingChangesBefore(earliest)
 			if ok {
 				choice = mt
@@ -76,6 +81,50 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	}
 
 	return choice
+}
+
+type noBuildManifestsFirst struct {
+	mts             []*store.ManifestTarget
+	origIndexByName map[string]int
+}
+
+var _ sort.Interface = noBuildManifestsFirst{}
+
+func newNoBuildsManifestsFirst(mts []*store.ManifestTarget) *noBuildManifestsFirst {
+	indexByName := make(map[string]int)
+	for i, mt := range mts {
+		indexByName[mt.Manifest.Name.String()] = i
+	}
+	return &noBuildManifestsFirst{
+		mts:             mts,
+		origIndexByName: indexByName,
+	}
+}
+
+func (nbmf noBuildManifestsFirst) Len() int {
+	return len(nbmf.mts)
+}
+
+func (nbmf noBuildManifestsFirst) Less(i, j int) bool {
+	isNoBuild := func(mt *store.ManifestTarget) bool {
+		return len(mt.Manifest.ImageTargets) == 0
+	}
+
+	a := nbmf.mts[i]
+	b := nbmf.mts[j]
+
+	nba := isNoBuild(a)
+	nbb := isNoBuild(b)
+
+	if nba == nbb {
+		return nbmf.origIndexByName[a.Manifest.Name.String()] < nbmf.origIndexByName[b.Manifest.Name.String()]
+	} else {
+		return nba
+	}
+}
+
+func (nbmf noBuildManifestsFirst) Swap(i, j int) {
+	nbmf.mts[i], nbmf.mts[j] = nbmf.mts[j], nbmf.mts[i]
 }
 
 func nextManifestNameToBuild(state store.EngineState) model.ManifestName {
@@ -248,8 +297,16 @@ func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.
 		// We don't want to pass along the kubernetes data if the pod is crashing,
 		// because we're not confident that this state is accurate (due to how k8s
 		// reschedules pods).
+		//
+		// This will probably need to change as the mapping between containers and
+		// manifests becomes many-to-one.
+		//
+		// TODO(nick): Attach deploy info for docker compose
 		if manifest.IsK8s() && !ms.NeedsRebuildFromCrash {
-			buildState = buildState.WithDeployTarget(store.NewDeployInfo(ms.PodSet))
+			iTarget, ok := spec.(model.ImageTarget)
+			if ok {
+				buildState = buildState.WithDeployTarget(store.NewDeployInfo(iTarget, ms.PodSet))
+			}
 		}
 		buildStateSet[id] = buildState
 	}

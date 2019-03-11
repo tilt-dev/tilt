@@ -13,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 
-	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
@@ -63,13 +62,6 @@ type Client interface {
 	// Currently ignores any "not found" errors, because that seems like the correct
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
-
-	// Find all the pods that match the given image, namespace, and labels.
-	PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair) ([]v1.Pod, error)
-
-	// Find all the pods matching the given parameters, stopping on timeout or
-	// when we have at least one pod.
-	PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, labels []model.LabelPair, timeout time.Duration) ([]v1.Pod, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 

@@ -9,12 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	f := newClientTestFixture(t)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
+	nt := container.MustParseSelector(blorgDevImgStr)
 	podData := fakePod(expectedPod, blorgDevImgStr)
 	podData.Status = v1.PodStatus{
 		ContainerStatuses: []v1.ContainerStatus{
@@ -27,15 +28,14 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	}
 	f.addObject(&podData)
 
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
-	defer cancel()
-
-	pod := &(pods[0])
 	cStatus, err := WaitForContainerReady(ctx, f.client, pod, nt)
 	if err != nil {
 		t.Fatal(err)
@@ -53,13 +53,11 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
+	nt := container.MustParseTaggedSelector(blorgDevImgStr)
+	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
-
-	pod := &(pods[0])
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -93,13 +91,11 @@ func TestWaitForContainerFailure(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
+	nt := container.MustParseTaggedSelector(blorgDevImgStr)
+	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
-
-	pod := &(pods[0])
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -136,13 +132,11 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 	f := newClientTestFixture(t)
 	f.addObject(&fakePodList)
 
-	nt := container.MustParseNamedTagged(blorgDevImgStr)
-	pods, err := f.client.PodsWithImage(f.ctx, nt, DefaultNamespace, nil)
+	nt := container.MustParseTaggedSelector(blorgDevImgStr)
+	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
-
-	pod := &(pods[0])
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()

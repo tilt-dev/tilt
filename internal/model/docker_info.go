@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {
-	Ref          reference.Named
+	Ref          container.RefSelector
 	BuildDetails BuildDetails
 
 	cachePaths []string
@@ -24,10 +24,10 @@ type ImageTarget struct {
 	dependencyIDs []TargetID
 }
 
-func ImageID(ref reference.Named) TargetID {
+func ImageID(ref container.RefSelector) TargetID {
 	name := TargetName("")
-	if ref != nil {
-		name = TargetName(ref.Name())
+	if !ref.Empty() {
+		name = TargetName(ref.String())
 	}
 	return TargetID{
 		Type: TargetTypeImage,
@@ -49,7 +49,7 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
-	if i.Ref == nil {
+	if i.Ref.Empty() {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
@@ -192,6 +192,14 @@ func (i ImageTarget) WithTiltFilename(f string) ImageTarget {
 // when we create it, rather than have a duplicate method that does the "right" thing.
 func (i ImageTarget) Dependencies() []string {
 	return sliceutils.DedupedAndSorted(i.LocalPaths())
+}
+
+func ImageTargetsByID(iTargets []ImageTarget) map[TargetID]ImageTarget {
+	result := make(map[TargetID]ImageTarget, len(iTargets))
+	for _, target := range iTargets {
+		result[target.ID()] = target
+	}
+	return result
 }
 
 type StaticBuild struct {

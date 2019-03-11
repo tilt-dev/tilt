@@ -52,6 +52,10 @@ func NewInteractiveTester(t ErrorReporter, screen tcell.Screen) InteractiveTeste
 	}
 }
 
+func (i *InteractiveTester) T() ErrorReporter {
+	return i.t
+}
+
 func (i *InteractiveTester) Run(name string, width int, height int, c Component) {
 	err := i.runCaptureError(name, width, height, c)
 	if err != nil {
