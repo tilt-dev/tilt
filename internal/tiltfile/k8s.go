@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/client-go/util/jsonpath"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -347,10 +349,17 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		if !ok {
 			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
 		}
+
+		// parse and throw away - just to eagerly find parse errors and give them a line number
+		err := jsonpath.New("json_path").Parse(s.String())
+		if err != nil {
+			return nil, errors.Wrapf(err, "error parsing json path '%s'", s.String())
+		}
+
 		paths = append(paths, s.String())
 	}
 
-	k := imageJSONPathSelector{
+	k := k8sObjectSelector{
 		kind:      kind,
 		name:      name,
 		namespace: namespace,
@@ -386,7 +395,7 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		paths = append(paths, s.String())
 	}
 
-	k := imageJSONPathSelector{kind: kind}
+	k := k8sObjectSelector{kind: kind}
 	s.k8sImageJSONPaths[k] = paths
 
 	return starlark.None, nil
@@ -582,16 +591,14 @@ func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward
 	return result
 }
 
+// returns any defined image JSON paths that apply to the given entity
 func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []string {
 	var ret []string
 
 	for k, v := range s.k8sImageJSONPaths {
-		if k.kind != "" && k.kind != e.Kind.Kind ||
-			k.name != "" && k.name != e.Name() ||
-			k.namespace != "" && k.namespace != e.Namespace().String() {
+		if !k.matches(e) {
 			continue
 		}
-
 		ret = append(ret, v...)
 	}
 

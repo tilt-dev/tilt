@@ -38,8 +38,8 @@ type tiltfileState struct {
 	k8sUnresourced []k8s.K8sEntity
 	dc             dcResourceSet // currently only support one d-c.yml
 
-	// JSON paths to locations that contain images other than Container specs
-	k8sImageJSONPaths map[imageJSONPathSelector][]string
+	// JSON paths to images in k8s YAML (other than Container specs)
+	k8sImageJSONPaths map[k8sObjectSelector][]string
 
 	// for assembly
 	usedImages map[string]bool
@@ -60,7 +60,7 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *lo
 		dcCli:             dockercompose.NewDockerComposeClient(),
 		buildIndex:        newBuildIndex(),
 		k8sByName:         make(map[string]*k8sResource),
-		k8sImageJSONPaths: make(map[imageJSONPathSelector][]string),
+		k8sImageJSONPaths: make(map[k8sObjectSelector][]string),
 		configFiles:       []string{filename},
 		usedImages:        make(map[string]bool),
 		logger:            l,
@@ -595,8 +595,24 @@ const (
 )
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
-type imageJSONPathSelector struct {
+type k8sObjectSelector struct {
 	kind      string
 	name      string
 	namespace string
+}
+
+func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
+	if k.kind != "" && k.kind != e.Kind.Kind {
+		return false
+	}
+
+	if k.name != "" && k.name != e.Name() {
+		return false
+	}
+
+	if k.namespace != "" && k.namespace != e.Namespace().String() {
+		return false
+	}
+
+	return true
 }

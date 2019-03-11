@@ -1759,7 +1759,7 @@ func TestExtraImageLocationTwoImages(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_image_json_path(kind='Environment', path=['{.spec.runtime.image}', '{.spec.builder.image}'])
+k8s_image_json_path(['{.spec.runtime.image}', '{.spec.builder.image}'], kind='Environment')
 docker_build('test/mycrd-builder', 'builder')
 docker_build('test/mycrd-env', 'env')
 `)
@@ -1791,7 +1791,7 @@ func TestExtraImageLocationDeploymentEnvVarByName(t *testing.T) {
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
 docker_build('gcr.io/bar', 'bar')
-k8s_image_json_path(name='foo', path="{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}")
+k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}", name='foo')
 	`)
 	f.load("foo", "bar")
 	f.assertNextManifest("foo",
@@ -1820,7 +1820,7 @@ func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
 	f.file("Tiltfile", `k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
-k8s_image_json_path(name='foo', namespace='default', path="{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}")
+k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}", name='foo', namespace='default')
 	`)
 	f.load("foo")
 	f.assertNextManifest("foo",
@@ -1839,7 +1839,7 @@ func TestExtraImageLocationNoMatch(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_image_json_path(kind='Environment', path='{.foobar}')
+k8s_image_json_path('{.foobar}', kind='Environment')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1852,7 +1852,7 @@ func TestExtraImageLocationInvalidJsonPath(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_image_json_path(kind='Environment', path='{foobar()}')
+k8s_image_json_path('{foobar()}', kind='Environment')
 docker_build('test/mycrd-env', 'env')
 `)
 
