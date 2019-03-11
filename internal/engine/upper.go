@@ -9,7 +9,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	"github.com/windmilleng/tilt/internal/tiltfile"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -21,7 +22,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -198,11 +198,15 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		return
 	}
 
+	edits := []string{}
+	edits = append(edits, action.FilesChanged...)
+
 	bs := model.BuildRecord{
-		Edits:     append([]string{}, action.FilesChanged...),
+		Edits:     append(edits, ms.ConfigFilesThatCausedChange...),
 		StartTime: action.StartTime,
 		Reason:    action.Reason,
 	}
+	ms.ConfigFilesThatCausedChange = []string{}
 	ms.CurrentBuild = bs
 	ms.ExpectedContainerID = ""
 
@@ -444,10 +448,14 @@ func handleConfigsReloadStarted(
 	event ConfigsReloadStartedAction,
 ) {
 	state.PendingConfigFileChanges = make(map[string]bool)
+	filesChanged := []string{}
+	for f, _ := range event.FilesChanged {
+		filesChanged = append(filesChanged, f)
+	}
 	status := model.BuildRecord{
 		StartTime: event.StartTime,
 		Reason:    model.BuildReasonFlagConfig,
-		Edits:     []string{state.TiltfilePath},
+		Edits:     filesChanged,
 	}
 
 	state.CurrentTiltfileBuild = status
@@ -460,15 +468,11 @@ func handleConfigsReloaded(
 ) {
 	manifests := event.Manifests
 
-	status := model.BuildRecord{
-		StartTime:  event.StartTime,
-		FinishTime: event.FinishTime,
-		Error:      event.Err,
-		Warnings:   event.Warnings,
-		Reason:     model.BuildReasonFlagConfig,
-		Edits:      []string{state.TiltfilePath},
-		Log:        state.CurrentTiltfileBuild.Log,
-	}
+	status := state.CurrentTiltfileBuild
+	status.FinishTime = event.FinishTime
+	status.Error = event.Err
+	status.Warnings = event.Warnings
+
 	setLastTiltfileBuild(state, status)
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
@@ -484,6 +488,8 @@ func handleConfigsReloaded(
 		}
 
 		newDefOrder[i] = m.ManifestName()
+
+		configFilesThatChanged := state.LastTiltfileBuild.Edits
 		if !m.Equal(mt.Manifest) {
 			mt.Manifest = m
 
@@ -491,6 +497,7 @@ func handleConfigsReloaded(
 			state := mt.State
 			state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
 			state.PendingManifestChange = time.Now()
+			state.ConfigFilesThatCausedChange = configFilesThatChanged
 		}
 		state.UpsertManifestTarget(mt)
 	}

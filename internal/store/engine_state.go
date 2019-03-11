@@ -246,6 +246,9 @@ type ManifestState struct {
 
 	// The log stream for this resource
 	CombinedLog model.Log `testdiff:"ignore"`
+
+	// If this manifest was changed, which config files led to the most recent change in manifest definition
+	ConfigFilesThatCausedChange []string
 }
 
 func NewState() *EngineState {
