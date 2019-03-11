@@ -18,11 +18,11 @@
   flex-flow: row wrap;
 }
 
-.headings p {
+.cell {
   flex: 1 0 10%;
 }
 
-.headings p.name {
+.cell.name {
   flex: 1 0 10%;
 }
 

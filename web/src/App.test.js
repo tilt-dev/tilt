@@ -44,6 +44,6 @@ it('renders resource', async () => {
     PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
   }
   app.setState({View: {Resources: [resource]}})
-  expect(app.find('.Resource-name')).toHaveLength(1);
-  expect(app.find('.Resource-name').html()).toEqual(expect.stringContaining('vigoda'))
+  expect(app.find('.name')).toHaveLength(1);
+  expect(app.find('.name').html()).toEqual(expect.stringContaining('vigoda'))
 });

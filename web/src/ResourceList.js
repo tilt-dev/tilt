@@ -10,7 +10,7 @@ function ResourceList(props) {
   return (
     <section className="resources" role="table">
       <header className="headings">
-        <p className="name" role="columnheader">Resource Name</p>
+        <p role="columnheader">Resource Name</p>
         <p role="columnheader">K8S</p>
         <p role="columnheader">Build Status</p>
         <p role="columnheader">Updated</p>
@@ -30,10 +30,10 @@ class ResourceSummary extends Component {
     let updateTime = getUpdateTime(resource)
     return (
       <li role="rowgroup" className="resource">
-        <p role="cell" className="name">{resource.Name}</p>
-        <p role="cell">{k8sStatus}</p>
-        <p role="cell">{buildStatus}</p>
-        <p role="cell">{updateTime}</p>
+        <p role="cell" className="cell name">{resource.Name}</p>
+        <p role="cell" className="cell">{k8sStatus}</p>
+        <p role="cell" className="cell">{buildStatus}</p>
+        <p role="cell" className="cell">{updateTime}</p>
       </li>
     )
   }

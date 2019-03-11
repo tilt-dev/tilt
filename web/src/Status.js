@@ -3,7 +3,7 @@ import './Status.css';
 
 function Preview(props) {
     let total = props.resources.filter(resource => {
-        return resource.IsTiltFile !== true
+        return resource.IsTiltfile !== true
     })
     let running = props.resources.filter(resource => {
         return resource.ResourceInfo && resource.ResourceInfo.PodStatus === "Running"
