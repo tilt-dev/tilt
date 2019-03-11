@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
@@ -1706,7 +1708,7 @@ func TestExtraImageLocationOneImage(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_kind('Environment', image_json_path='{.spec.runtime.image}')
+k8s_image_json_path(kind='Environment', path='{.spec.runtime.image}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1725,7 +1727,7 @@ func TestExtraImageLocationTwoImages(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_kind('Environment', image_json_path=['{.spec.runtime.image}', '{.spec.builder.image}'])
+k8s_image_json_path(kind='Environment', path=['{.spec.runtime.image}', '{.spec.builder.image}'])
 docker_build('test/mycrd-builder', 'builder')
 docker_build('test/mycrd-env', 'env')
 `)
@@ -1742,13 +1744,70 @@ docker_build('test/mycrd-env', 'env')
 	)
 }
 
+func TestExtraImageLocationDeploymentEnvVarByName(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("foo-fetcher/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+	f.dockerfile("bar/Dockerfile")
+	// just throwing bar in here to make sure it doesn't error out because it has no FETCHER_IMAGE
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/bar")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `k8s_yaml(['foo.yaml', 'bar.yaml'])
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
+docker_build('gcr.io/bar', 'bar')
+k8s_image_json_path(name='foo', path="{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}")
+	`)
+	f.load("foo", "bar")
+	f.assertNextManifest("foo",
+		db(
+			image("gcr.io/foo"),
+		),
+		db(
+			image("gcr.io/foo-fetcher"),
+		),
+	)
+	f.assertNextManifest("bar",
+		db(
+			image("gcr.io/bar"),
+		),
+	)
+}
+
+func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("foo-fetcher/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
+k8s_image_json_path(name='foo', namespace='default', path="{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}")
+	`)
+	f.load("foo")
+	f.assertNextManifest("foo",
+		db(
+			image("gcr.io/foo"),
+		),
+		db(
+			image("gcr.io/foo-fetcher"),
+		),
+	)
+}
+
 func TestExtraImageLocationNoMatch(t *testing.T) {
 	f := newFixture(t)
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_kind('Environment', image_json_path='{.foobar}')
+k8s_image_json_path(kind='Environment', path='{.foobar}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1761,7 +1820,7 @@ func TestExtraImageLocationInvalidJsonPath(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_kind('Environment', image_json_path='{foobar()}')
+k8s_image_json_path(kind='Environment', path='{foobar()}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -1770,20 +1829,26 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationNoPaths(t *testing.T) {
 	f := newFixture(t)
-	f.file("Tiltfile", `k8s_kind('MyType')`)
-	f.loadErrString("missing argument for image_json_path")
+	f.file("Tiltfile", `k8s_image_json_path(kind='MyType')`)
+	f.loadErrString("missing argument for path")
 }
 
 func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
-	f.file("Tiltfile", `k8s_kind('MyType', image_json_path=8)`)
-	f.loadErrString("json_path must be a string or list of strings", "Int")
+	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', path=8)`)
+	f.loadErrString("path must be a string or list of strings", "Int")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
-	f.file("Tiltfile", `k8s_kind('MyType', image_json_path=["foo", 8])`)
-	f.loadErrString("json_path must be a string or list of strings", "8", "Int")
+	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', path=["foo", 8])`)
+	f.loadErrString("path must be a string or list of strings", "8", "Int")
+}
+
+func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `k8s_image_json_path(path=["foo"])`)
+	f.loadErrString("at least one of kind, name, or namespace must be specified")
 }
 
 type fixture struct {
@@ -1852,6 +1917,21 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 					}
 					objs[i] = withLabels
 				}
+			}
+
+			for i, obj := range objs {
+				de := obj.Obj.(*appsv1.Deployment)
+				for i, c := range de.Spec.Template.Spec.Containers {
+					for _, ev := range e.envVars {
+						c.Env = append(c.Env, v1.EnvVar{
+							Name:  ev.name,
+							Value: ev.value,
+						})
+					}
+					de.Spec.Template.Spec.Containers[i] = c
+				}
+				obj.Obj = de
+				objs[i] = obj
 			}
 
 			entityObjs = append(entityObjs, objs...)
@@ -1979,7 +2059,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			caches := image.CachePaths()
 			ref := image.Ref
 			if ref.Empty() {
-				f.t.Fatalf("manifest %v has no image ref; expected %q", m.Name, opt.image.ref)
+				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
 			if ref.Name() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
@@ -2262,6 +2342,7 @@ type deploymentHelper struct {
 	name           string
 	image          string
 	templateLabels map[string]string
+	envVars        []envVar
 }
 
 func deployment(name string, opts ...interface{}) deploymentHelper {
@@ -2272,6 +2353,8 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 			r.image = opt.ref
 		case labelsHelper:
 			r.templateLabels = opt.labels
+		case envVarHelper:
+			r.envVars = opt.envVars
 		default:
 			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
 		}
@@ -2378,6 +2461,29 @@ type labelsHelper struct {
 
 func withLabels(labels map[string]string) labelsHelper {
 	return labelsHelper{labels: labels}
+}
+
+type envVar struct {
+	name  string
+	value string
+}
+
+type envVarHelper struct {
+	envVars []envVar
+}
+
+// usage: withEnvVars("key1", "value1", "key2", "value2")
+func withEnvVars(envVars ...string) envVarHelper {
+	var ret envVarHelper
+
+	for i := 0; i < len(envVars); i += 2 {
+		if i+1 >= len(envVars) {
+			panic("withEnvVars called with odd number of strings")
+		}
+		ret.envVars = append(ret.envVars, envVar{envVars[i], envVars[i+1]})
+	}
+
+	return ret
 }
 
 // match a docker_build

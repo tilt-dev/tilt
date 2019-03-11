@@ -55,11 +55,11 @@ func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
 	}
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity, k8sImageJsonPathsByKind map[string][]string) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages(k8sImageJsonPathsByKind)
+		images, err := entity.FindImages()
 		if err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	err = r.addEntities(entities, s.k8sImageJsonPathsByKind)
+	err = r.addEntities(entities)
 	if err != nil {
 		return nil, err
 	}
@@ -324,20 +324,20 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	}
 }
 
-func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var kind string
-	if err := starlark.UnpackArgs(fn.Name(), args, nil,
-		"kind", &kind,
+func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var kind, name, namespace string
+	var imageJSONPath starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"path", &imageJSONPath,
+		"kind?", &kind,
+		"name?", &name,
+		"namespace?", &namespace,
 	); err != nil {
 		return nil, err
 	}
 
-	// unpacked separately so that this is a keyword-only arg
-	var imageJSONPath starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), nil, kwargs,
-		"image_json_path", &imageJSONPath,
-	); err != nil {
-		return nil, err
+	if kind == "" && name == "" && namespace == "" {
+		return nil, errors.New("at least one of kind, name, or namespace must be specified")
 	}
 
 	values := starlarkValueOrSequenceToSlice(imageJSONPath)
@@ -345,11 +345,18 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	for _, v := range values {
 		s, ok := v.(starlark.String)
 		if !ok {
-			return nil, fmt.Errorf("image_json_path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
+			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
 		}
 		paths = append(paths, s.String())
 	}
-	s.k8sImageJsonPathsByKind[kind] = paths
+
+	k := imageJSONPathSelector{
+		kind:      kind,
+		name:      name,
+		namespace: namespace,
+	}
+
+	s.k8sImageJSONPaths[k] = paths
 
 	return starlark.None, nil
 }
@@ -542,4 +549,20 @@ func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward
 		result = append(result, model.PortForward{LocalPort: pf.local, ContainerPort: pf.container})
 	}
 	return result
+}
+
+func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []string {
+	var ret []string
+
+	for k, v := range s.k8sImageJSONPaths {
+		if k.kind != "" && k.kind != e.Kind.Kind ||
+			k.name != "" && k.name != e.Name() ||
+			k.namespace != "" && k.namespace != e.Namespace().String() {
+			continue
+		}
+
+		ret = append(ret, v...)
+	}
+
+	return ret
 }
