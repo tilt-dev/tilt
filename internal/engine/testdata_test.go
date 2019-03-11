@@ -47,16 +47,22 @@ func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	}
 }
 
-func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
+func NewSanchoFastBuildImage(fixture pather) model.ImageTarget {
 	fbInfo := NewSanchoFastBuild(fixture)
-	m := model.Manifest{
-		Name: "sancho",
-	}
+	return model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(fbInfo)
+}
 
+func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	return assembleK8sManifest(
-		m,
+		model.Manifest{Name: "sancho"},
 		model.K8sTarget{YAML: SanchoYAML},
-		model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(fbInfo))
+		NewSanchoFastBuildImage(fixture))
+}
+
+func NewSanchoFastBuildDCManifest(fixture pather) model.Manifest {
+	return assembleDCManifest(
+		model.Manifest{Name: "sancho"},
+		NewSanchoFastBuildImage(fixture))
 }
 
 func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.Manifest {
@@ -223,4 +229,18 @@ func assembleK8sManifest(m model.Manifest, k model.K8sTarget, iTargets ...model.
 	return m.
 		WithImageTargets(iTargets).
 		WithDeployTarget(k)
+}
+
+// Assemble these targets into a manifest, that deploys to docker compose,
+// wiring up all the dependency ids so that the DockerComposeTarget depends on all
+// the image targets
+func assembleDCManifest(m model.Manifest, iTargets ...model.ImageTarget) model.Manifest {
+	ids := make([]model.TargetID, 0, len(iTargets))
+	for _, iTarget := range iTargets {
+		ids = append(ids, iTarget.ID())
+	}
+	dc := dcTarg.WithDependencyIDs(ids)
+	return m.
+		WithImageTargets(iTargets).
+		WithDeployTarget(dc)
 }

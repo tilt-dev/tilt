@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -242,6 +243,10 @@ func NewDeployInfo(iTarget model.ImageTarget, podSet PodSet) DeployInfo {
 		ContainerName: pod.ContainerName,
 		Namespace:     pod.Namespace,
 	}
+}
+
+func NewDeployInfoFromDC(state dockercompose.State) DeployInfo {
+	return DeployInfo{ContainerID: state.ContainerID}
 }
 
 var BuildStateClean = BuildState{}
