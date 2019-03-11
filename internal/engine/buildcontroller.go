@@ -251,7 +251,7 @@ type BuildLogActionWriter struct {
 func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(BuildLogAction{
 		ManifestName: w.manifestName,
-		Log:          append([]byte{}, p...),
+		logEvent:     newLogEvent(append([]byte{}, p...)),
 	})
 	return len(p), nil
 }

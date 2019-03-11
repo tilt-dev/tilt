@@ -4,11 +4,12 @@ import (
 	"net/url"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	v1 "k8s.io/api/core/v1"
 )
 
 type ErrorAction struct {
@@ -43,23 +44,22 @@ func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeActi
 }
 
 type BuildLogAction struct {
+	logEvent
 	ManifestName model.ManifestName
-	Log          []byte
 }
 
 func (BuildLogAction) Action() {}
 
 type PodLogAction struct {
+	logEvent
 	ManifestName model.ManifestName
-
-	PodID k8s.PodID
-	Log   []byte
+	PodID        k8s.PodID
 }
 
 func (PodLogAction) Action() {}
 
 type LogAction struct {
-	Log []byte
+	logEvent
 }
 
 func (LogAction) Action() {}
@@ -186,14 +186,34 @@ type DockerComposeEventAction struct {
 func (DockerComposeEventAction) Action() {}
 
 type DockerComposeLogAction struct {
+	logEvent
 	ManifestName model.ManifestName
-	Log          []byte
 }
 
 func (DockerComposeLogAction) Action() {}
 
 type TiltfileLogAction struct {
-	Log []byte
+	logEvent
 }
 
 func (TiltfileLogAction) Action() {}
+
+type logEvent struct {
+	ts      time.Time
+	message []byte
+}
+
+func (le logEvent) Time() time.Time {
+	return le.ts
+}
+
+func (le logEvent) Message() []byte {
+	return le.message
+}
+
+func newLogEvent(b []byte) logEvent {
+	return logEvent{
+		ts:      time.Now(),
+		message: b,
+	}
+}

@@ -32,26 +32,26 @@ func (l Log) Empty() bool {
 	return len(l.content) == 0
 }
 
-var logAppendClock = time.Now
-
-func timestampPrefix() []byte {
-	t := logAppendClock().Format("2006/01/02 15:04:05")
+func timestampPrefix(ts time.Time) []byte {
+	t := ts.Format("2006/01/02 15:04:05")
 	return []byte(fmt.Sprintf("%s ", t))
 }
 
 // Returns a new instance of `Log` with content equal to `b` appended to the end of `l`
 // Performs truncation off the start of the log (at a newline) to ensure the resulting log is not
 // longer than `maxLogLengthInBytes`. (which maybe means a pedant would say this isn't strictly an `append`?)
-func AppendLog(l Log, b []byte, timestampsEnabled bool) Log {
+func AppendLog(l Log, le LogEvent, timestampsEnabled bool) Log {
 	content := l.content
 
 	// if we're starting a new line, we need a timestamp
 	if len(l.content) > 0 && l.content[len(l.content)-1] == '\n' && timestampsEnabled {
-		content = append(content, timestampPrefix()...)
+		content = append(content, timestampPrefix(le.Time())...)
 	}
 
+	b := le.Message()
+
 	if timestampsEnabled {
-		b = addTimestamps(b)
+		b = addTimestamps(b, le.Time())
 	}
 
 	content = append(content, b...)
@@ -61,7 +61,12 @@ func AppendLog(l Log, b []byte, timestampsEnabled bool) Log {
 	return Log{content}
 }
 
-func addTimestamps(bs []byte) []byte {
+type LogEvent interface {
+	Message() []byte
+	Time() time.Time
+}
+
+func addTimestamps(bs []byte, ts time.Time) []byte {
 	// if the last char is a newline, temporarily remove it so that ReplaceAll doesn't get it
 	// (we don't want "foo\n" to turn into "foo\nTIMESTAMP")
 	endsInNewline := false
@@ -71,7 +76,7 @@ func addTimestamps(bs []byte) []byte {
 	}
 
 	nl := []byte("\n")
-	p := append(nl, timestampPrefix()...)
+	p := append(nl, timestampPrefix(ts)...)
 	ret := bytes.ReplaceAll(bs, nl, p)
 
 	if endsInNewline {

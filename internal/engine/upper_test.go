@@ -1061,7 +1061,7 @@ func TestPodEventOrdering(t *testing.T) {
 			f.upper.store.Dispatch(PodLogAction{
 				ManifestName: "fe",
 				PodID:        k8s.PodIDFromPod(podBNow),
-				Log:          []byte("pod b log\n"),
+				logEvent:     newLogEvent([]byte("pod b log\n")),
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
@@ -2443,7 +2443,7 @@ func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 	f.upper.store.Dispatch(PodLogAction{
 		ManifestName: manifestName,
 		PodID:        k8s.PodID(f.pod.Name),
-		Log:          []byte(s + "\n"),
+		logEvent:     newLogEvent([]byte(s + "\n")),
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {

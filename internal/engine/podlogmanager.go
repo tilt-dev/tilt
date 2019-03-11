@@ -221,7 +221,7 @@ func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(PodLogAction{
 		PodID:        w.podID,
 		ManifestName: w.manifestName,
-		Log:          append([]byte{}, p...),
+		logEvent:     newLogEvent(append([]byte{}, p...)),
 	})
 	return len(p), nil
 }

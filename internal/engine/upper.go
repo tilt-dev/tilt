@@ -212,7 +212,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 
 	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		ms.ResourceState = dcState.WithCurrentLog([]byte{})
+		ms.ResourceState = dcState.WithCurrentLog(model.Log{})
 	}
 
 	// Keep the crash log around until we have a rebuild
@@ -709,11 +709,11 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 	ms.NeedsRebuildFromCrash = true
 	ms.ExpectedContainerID = ""
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	b := []byte(msg + "\n")
+	le := newLogEvent([]byte(msg + "\n"))
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, b, state.LogTimestamps)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps)
 	}
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, b, state.LogTimestamps)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps)
 	logger.Get(ctx).Infof("%s", msg)
 }
 
@@ -770,7 +770,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podInfo := ms.PodSet.Pods[podID]
-	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action.Log, state.LogTimestamps)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps)
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
@@ -782,11 +782,11 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action.Log, state.LogTimestamps)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps)
 }
 
 func handleLogAction(state *store.EngineState, action LogAction) {
-	state.Log = model.AppendLog(state.Log, action.Log, state.LogTimestamps)
+	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
@@ -845,8 +845,8 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
 	if status.Error != nil {
-		log := []byte(fmt.Sprintf("%v\n", status.Error))
-		status.Log = model.AppendLog(status.Log, log, state.LogTimestamps)
+		le := logEvent{time.Now(), []byte(fmt.Sprintf("%v\n", status.Error))}
+		status.Log = model.AppendLog(status.Log, le, state.LogTimestamps)
 	}
 	state.LastTiltfileBuild = status
 }
@@ -910,10 +910,10 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	}
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithCurrentLog(append(dcState.CurrentLog, action.Log...))
+	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action.Log, state.LogTimestamps)
-	logger.Get(ctx).Infof("[%s] %s", tiltfile.FileName, string(action.Log))
+	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
+	logger.Get(ctx).Infof("[%s] %s", tiltfile.FileName, string(action.Message()))
 }

@@ -1,6 +1,8 @@
 package engine
 
-import "github.com/windmilleng/tilt/internal/store"
+import (
+	"github.com/windmilleng/tilt/internal/store"
+)
 
 type tiltfileLogWriter struct {
 	store store.RStore
@@ -12,7 +14,7 @@ func NewTiltfileLogWriter(s store.RStore) *tiltfileLogWriter {
 
 func (w *tiltfileLogWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(TiltfileLogAction{
-		Log: append([]byte{}, p...),
+		logEvent: newLogEvent(append([]byte{}, p...)),
 	})
 	return len(p), nil
 }

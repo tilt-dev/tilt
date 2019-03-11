@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -15,7 +17,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"k8s.io/api/core/v1"
 )
 
 var podID = k8s.PodID("pod-id")
@@ -218,7 +219,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		if !ok {
 			t.Errorf("Expected action type PodLogAction. Actual: %T", action)
 		}
-		out.Write(podLog.Log)
+		out.Write(podLog.logEvent.message)
 	}
 
 	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
