@@ -860,7 +860,7 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 				IsTiltfile: true,
 				BuildHistory: []model.BuildRecord{
 					{
-						Edits:      []string{"foo"},
+						Edits:      []string{"Tiltfile"},
 						StartTime:  now.Add(-5 * time.Second),
 						FinishTime: now.Add(-4 * time.Second),
 						Reason:     model.BuildReasonFlagConfig,
@@ -872,7 +872,6 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 	}
 
 	vs := fakeViewState(1, view.CollapseNo)
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
 	rtf.run("Tiltfile resource with warning", 80, 20, v, vs)
 }
 
