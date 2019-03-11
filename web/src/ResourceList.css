@@ -1,39 +1,39 @@
-.ResourceList {
+.resources * {
+  box-sizing: border-box;
+}
+
+.resources {
+  height: 95vh;
   margin: 1em;
   font-size: 1.2em;
   line-height: 1.5;
   font-family: 'Courier New', Courier, monospace;
 }
 
-.ResourceList-header {
+.headings {
   text-transform: uppercase;
   display: flex;
-  flex-wrap: nowrap;
-  justify-content: space-between;
+  flex-flow: row wrap;
 }
 
-.ResourceList ul {
+.headings p {
+  flex: 1 0 10%;
+}
+
+.headings p.name {
+  flex: 1 0 10%;
+}
+
+.resources ul {
   margin: 0;
   padding: 0;
 }
 
-.Resource-lhsCell {
-  flex-basis: 10em;
-  text-align: left;
-}
-
-.Resource-rhsCell {
-  flex-basis: 10em;
-  padding-right: 0.5em;
-  text-align: right;
-}
-
-.Resource-spacerCell {
-  flex-grow: 1;
-}
-
-.ResourceSummary {
+li.resource {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: space-between;
+}
+
+li.resource p {
+  flex: 1 0 10%;
 }

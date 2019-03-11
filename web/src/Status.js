@@ -1,5 +1,4 @@
-import React, { Component } from 'react';
-import AppController from './AppController';
+import React from 'react';
 import './Status.css';
 
 function Preview(props) {
@@ -20,6 +19,9 @@ function Preview(props) {
         <footer className="status">
             <section>{running.length}/{total.length} {maybePluralize(running.length, 'Resource')} Running</section>
             <section>{errors.length} {maybePluralize(errors.length, 'Error')}</section>
+            <section>
+                <button onClick={props.togglePreview}>Toggle Preview</button>
+            </section>
         </footer>
     )
 }

@@ -14,7 +14,14 @@ class App extends Component {
     this.state = {
       Message: '',
       View: {Resources: []},
+      ShowPreview: false,
     }
+    this.togglePreview = this.togglePreview.bind(this);
+  }
+
+  togglePreview() {
+    this.setState({ShowPreview: !this.state.ShowPreview})
+    console.log("this.state.ShowPreview", this.state.ShowPreview)
   }
 
   componentDidMount() {
@@ -36,16 +43,17 @@ class App extends Component {
     if (!view || !view.Resources || !view.Resources.length) {
       el = <LoadingScreen message={message} />
     } else {
-      el = <React.Fragment>
-        <ResourceList key="ResourceList" resources={view.Resources} />
-        <Preview key="Preview" resources={view.Resources} />
-        <Status key="Status" resources={view.Resources} />
-      </React.Fragment>
+      if (this.state.ShowPreview === true) {
+          el = <Preview key="Preview" resources={view.Resources} />
+      } else {
+          el = <ResourceList key="ResourceList" resources={view.Resources} />
+      }
     }
 
     return (
       <React.Fragment>
         {el}
+        <Status key="Status" togglePreview={this.togglePreview} resources={view.Resources} />
       </React.Fragment>
     );
   }

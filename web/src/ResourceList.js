@@ -8,12 +8,12 @@ function ResourceList(props) {
   })
 
   return (
-    <section className="ResourceList">
-      <header className="ResourceList-header">
-        <p className="Resource-lhsCell u-muted">Resource Name</p>
-        <p className="Resource-rhsCell u-muted">K8S</p>
-        <p className="Resource-rhsCell u-muted">Build Status</p>
-        <p className="Resource-rhsCell u-muted">Updated</p>
+    <section className="resources" role="table">
+      <header className="headings">
+        <p className="name" role="columnheader">Resource Name</p>
+        <p role="columnheader">K8S</p>
+        <p role="columnheader">Build Status</p>
+        <p role="columnheader">Updated</p>
       </header>
       <ul>
         {children}
@@ -29,11 +29,11 @@ class ResourceSummary extends Component {
     let buildStatus = getBuildStatus(resource)
     let updateTime = getUpdateTime(resource)
     return (
-      <li className="ResourceSummary">
-        <p className="Resource-lhsCell Resource-name">{resource.Name}</p>
-        <p className="Resource-rhsCell">{k8sStatus}</p>
-        <p className="Resource-rhsCell">{buildStatus}</p>
-        <p className="Resource-rhsCell">{updateTime}</p>
+      <li role="rowgroup" className="resource">
+        <p role="cell" className="name">{resource.Name}</p>
+        <p role="cell">{k8sStatus}</p>
+        <p role="cell">{buildStatus}</p>
+        <p role="cell">{updateTime}</p>
       </li>
     )
   }
