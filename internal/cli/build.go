@@ -4,9 +4,22 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
-const devVersion = "0.7.6"
+// Version for Go-compiled builds that didn't go through goreleaser.
+//
+// This is mostly here to make sure that people that use `go get` don't
+// have a completely broken experience. It controls:
+//
+// 1) The version data you see when you run `tilt version`
+// 2) The web JS you download when you're in web-mode prod.
+//
+// For distributed binaries, version is automatically baked
+// into the binary with goreleaser. If this doesn't get updated
+// on every release, it's often not that big a deal.
+const devVersion = "0.7.7"
 
 type BuildInfo struct {
 	Version string
@@ -67,4 +80,8 @@ func defaultBuildInfo() BuildInfo {
 		Date:    defaultBuildDate(),
 		Version: fmt.Sprintf("%s-dev", devVersion),
 	}
+}
+
+func provideWebVersion() model.WebVersion {
+	return model.WebVersion(fmt.Sprintf("v%s", buildInfo().Version))
 }

@@ -81,6 +81,7 @@ var BaseWireSet = wire.NewSet(
 	engine.ProvideFsWatcherMaker,
 	engine.ProvideTimerMaker,
 
+	provideWebVersion,
 	provideWebMode,
 	server.ProvideHeadsUpServer,
 	server.ProvideAssetServer,
