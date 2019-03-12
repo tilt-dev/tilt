@@ -105,5 +105,5 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 	if runtime == container.RuntimeDocker {
 		ibad.SetInjectSynclet(true)
 	}
-	return BuildOrder{sbad, dcbad, ibad}
+	return BuildOrder{sbad, cbad, dcbad, ibad}
 }

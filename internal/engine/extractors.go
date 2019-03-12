@@ -45,6 +45,18 @@ func extractImageTargets(specs []model.TargetSpec) []model.ImageTarget {
 	return iTargets
 }
 
+func extractDockerComposeTargets(specs []model.TargetSpec) []model.DockerComposeTarget {
+	targets := make([]model.DockerComposeTarget, 0)
+	for _, spec := range specs {
+		t, ok := spec.(model.DockerComposeTarget)
+		if !ok {
+			continue
+		}
+		targets = append(targets, t)
+	}
+	return targets
+}
+
 // Extract image targets iff they can be updated in-place in a container.
 func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.BuildStateSet) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0)
