@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -137,6 +138,7 @@ type wmFixture struct {
 	wm               *WatchManager
 	fakeMultiWatcher *fakeMultiWatcher
 	fakeTimerMaker   fakeTimerMaker
+	*tempdir.TempDirFixture
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
@@ -153,6 +155,12 @@ func newWMFixture(t *testing.T) *wmFixture {
 		}
 	}()
 
+	f := tempdir.NewTempDirFixture(t)
+	err := os.Chdir(f.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return &wmFixture{
 		ctx:              ctx,
 		cancel:           cancel,
@@ -161,10 +169,12 @@ func newWMFixture(t *testing.T) *wmFixture {
 		wm:               wm,
 		fakeMultiWatcher: fakeMultiWatcher,
 		fakeTimerMaker:   timerMaker,
+		TempDirFixture:   f,
 	}
 }
 
 func (f *wmFixture) TearDown() {
+	f.TempDirFixture.TearDown()
 	f.cancel()
 }
 
