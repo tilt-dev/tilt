@@ -442,8 +442,7 @@ services:
 docker_build('gcr.typo.io/foo', 'foo')
 docker_compose('docker-compose.yml')
 `)
-	f.load()
-	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestDockerComposeOnlySomeWithDockerBuild(t *testing.T) {
