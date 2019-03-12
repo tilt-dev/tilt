@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
+
 	"github.com/windmilleng/tilt/internal/logger"
 )
 
@@ -22,61 +24,79 @@ type buildkitTestCase struct {
 	logs     []*vertexLog
 }
 
+var digests = []digest.Digest{
+	"sha8234234546454",
+	"sha1234234234234",
+	"sha82342xxxx454",
+}
+
+var shCmdVertexNames = []string{
+	"/bin/sh -c make",
+	`/bin/sh -c (>&2 echo "hi")`,
+	"docker-image://docker.io/blah",
+}
+
+var stepVertexNames = []string{
+	"[1/2] RUN make",
+	`[2/2] RUN echo "hi"`,
+	"docker-image://docker.io/blah",
+}
+
 func buildkitTestCase1() buildkitTestCase {
 	return buildkitTestCase{
 		name:  "echo-hi-error",
 		level: logger.InfoLvl,
 		vertices: []*vertex{
 			{
-				digest: "sha8234234546454",
-				name:   "/bin/sh -c make",
+				digest: digests[0],
+				name:   shCmdVertexNames[0],
 				error:  "",
 			},
 			{
-				digest:  "sha8234234546454",
-				name:    "/bin/sh -c make",
+				digest:  digests[0],
+				name:    shCmdVertexNames[0],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha8234234546454",
-				name:      "/bin/sh -c make",
+				digest:    digests[0],
+				name:      shCmdVertexNames[0],
 				error:     "",
 				started:   true,
 				completed: true,
 			},
 			{
-				digest: "sha1234234234234",
-				name:   `/bin/sh -c (>&2 echo "hi")`,
+				digest: digests[1],
+				name:   shCmdVertexNames[1],
 				error:  "",
 			},
 			{
-				digest:  "sha1234234234234",
-				name:    `/bin/sh -c (>&2 echo "hi")`,
+				digest:  digests[1],
+				name:    shCmdVertexNames[1],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha1234234234234",
-				name:      `/bin/sh -c (>&2 echo "hi")`,
+				digest:    digests[1],
+				name:      shCmdVertexNames[1],
 				error:     "context canceled",
 				started:   true,
 				completed: true,
 			},
 			{
-				digest: "sha82342xxxx454",
-				name:   "docker-image://docker.io/blah",
+				digest: digests[2],
+				name:   shCmdVertexNames[2],
 				error:  "",
 			},
 			{
-				digest:  "sha82342xxxx454",
-				name:    "docker-image://docker.io/blah",
+				digest:  digests[2],
+				name:    shCmdVertexNames[2],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha1234234234234",
-				name:      `/bin/sh -c (>&2 echo "hi")`,
+				digest:    digests[1],
+				name:      shCmdVertexNames[1],
 				error:     "",
 				started:   true,
 				completed: true,
@@ -84,11 +104,11 @@ func buildkitTestCase1() buildkitTestCase {
 		},
 		logs: []*vertexLog{
 			{
-				vertex: "sha1234234234234",
+				vertex: digests[1],
 				msg:    []byte("hi"),
 			},
 			{
-				vertex: "sha8234234546454",
+				vertex: digests[0],
 				msg:    []byte(""),
 			},
 		},
@@ -101,55 +121,55 @@ func buildkitTestCase2() buildkitTestCase {
 		level: logger.InfoLvl,
 		vertices: []*vertex{
 			{
-				digest: "sha8234234546454",
-				name:   "/bin/sh -c make",
+				digest: digests[0],
+				name:   shCmdVertexNames[0],
 				error:  "",
 			},
 			{
-				digest:  "sha8234234546454",
-				name:    "/bin/sh -c make",
+				digest:  digests[0],
+				name:    shCmdVertexNames[0],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha8234234546454",
-				name:      "/bin/sh -c make",
+				digest:    digests[0],
+				name:      shCmdVertexNames[0],
 				error:     "",
 				started:   true,
 				completed: true,
 			},
 			{
-				digest: "sha1234234234234",
-				name:   `/bin/sh -c (>&2 echo "hi")`,
+				digest: digests[1],
+				name:   shCmdVertexNames[1],
 				error:  "",
 			},
 			{
-				digest:  "sha1234234234234",
-				name:    `/bin/sh -c (>&2 echo "hi")`,
+				digest:  digests[1],
+				name:    shCmdVertexNames[1],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha1234234234234",
-				name:      `/bin/sh -c (>&2 echo "hi")`,
+				digest:    digests[1],
+				name:      shCmdVertexNames[1],
 				error:     "",
 				started:   true,
 				completed: true,
 			},
 			{
-				digest: "sha82342xxxx454",
-				name:   "docker-image://docker.io/blah",
+				digest: digests[2],
+				name:   shCmdVertexNames[2],
 				error:  "",
 			},
 			{
-				digest:  "sha82342xxxx454",
-				name:    "docker-image://docker.io/blah",
+				digest:  digests[2],
+				name:    shCmdVertexNames[2],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha1234234234234",
-				name:      `/bin/sh -c (>&2 echo "hi")`,
+				digest:    digests[1],
+				name:      shCmdVertexNames[1],
 				error:     "",
 				started:   true,
 				completed: true,
@@ -157,11 +177,11 @@ func buildkitTestCase2() buildkitTestCase {
 		},
 		logs: []*vertexLog{
 			{
-				vertex: "sha1234234234234",
+				vertex: digests[1],
 				msg:    []byte("hi"),
 			},
 			{
-				vertex: "sha8234234546454",
+				vertex: digests[0],
 				msg:    []byte(""),
 			},
 		},
@@ -181,55 +201,55 @@ func buildkitTestCase4() buildkitTestCase {
 		level: logger.InfoLvl,
 		vertices: []*vertex{
 			{
-				digest: "sha8234234546454",
-				name:   "[1/2] RUN make",
+				digest: digests[0],
+				name:   stepVertexNames[0],
 				error:  "",
 			},
 			{
-				digest:  "sha8234234546454",
-				name:    "[1/2] RUN make",
+				digest:  digests[0],
+				name:    stepVertexNames[0],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha8234234546454",
-				name:      "[1/2] RUN make",
+				digest:    digests[0],
+				name:      stepVertexNames[0],
 				error:     "",
 				started:   true,
 				completed: true,
 			},
 			{
-				digest: "sha1234234234234",
-				name:   `[2/2] RUN echo "hi"`,
+				digest: digests[1],
+				name:   stepVertexNames[1],
 				error:  "",
 			},
 			{
-				digest:  "sha1234234234234",
-				name:    `[2/2] RUN echo "hi"`,
+				digest:  digests[1],
+				name:    stepVertexNames[1],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha1234234234234",
-				name:      `[2/2] RUN echo "hi"`,
+				digest:    digests[1],
+				name:      stepVertexNames[1],
 				error:     "context canceled",
 				started:   true,
 				completed: true,
 			},
 			{
-				digest: "sha82342xxxx454",
-				name:   "docker-image://docker.io/blah",
+				digest: digests[2],
+				name:   stepVertexNames[2],
 				error:  "",
 			},
 			{
-				digest:  "sha82342xxxx454",
-				name:    "docker-image://docker.io/blah",
+				digest:  digests[2],
+				name:    stepVertexNames[2],
 				error:   "",
 				started: true,
 			},
 			{
-				digest:    "sha1234234234234",
-				name:      `[2/2] RUN echo "hi"`,
+				digest:    digests[1],
+				name:      stepVertexNames[1],
 				error:     "",
 				started:   true,
 				completed: true,
@@ -237,12 +257,12 @@ func buildkitTestCase4() buildkitTestCase {
 		},
 		logs: []*vertexLog{
 			{
-				vertex: "sha1234234234234",
+				vertex: digests[1],
 				msg:    []byte("hi"),
 			},
 			{
-				vertex: "sha8234234546454",
-				msg:    []byte(""),
+				vertex: digests[0],
+				msg:    []byte("hello"),
 			},
 		},
 	}
