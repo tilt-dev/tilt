@@ -1,11 +1,12 @@
 package sidecar
 
 import (
-	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
-func InjectSyncletSidecar(entity k8s.K8sEntity, matchRef reference.Named) (k8s.K8sEntity, bool, error) {
+// Inject the synclet into any Pod
+func InjectSyncletSidecar(entity k8s.K8sEntity, selector container.RefSelector) (k8s.K8sEntity, bool, error) {
 	entity = entity.DeepCopy()
 
 	pods, err := k8s.ExtractPods(&entity)
@@ -15,7 +16,7 @@ func InjectSyncletSidecar(entity k8s.K8sEntity, matchRef reference.Named) (k8s.K
 
 	replaced := false
 	for _, pod := range pods {
-		ok, err := k8s.PodContainsRef(*pod, matchRef)
+		ok, err := k8s.PodContainsRef(*pod, selector)
 		if err != nil {
 			return k8s.K8sEntity{}, false, err
 		}

@@ -1540,6 +1540,61 @@ k8s_yaml('auth.yaml')
 	}, f.imageTargetNames(m))
 }
 
+func TestImagesWithSameName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("app.dockerfile", "FROM golang:1.10")
+	f.file("app-jessie.dockerfile", "FROM golang:1.10-jessie")
+	f.yaml("app.yaml",
+		deployment("app", image("vandelay/app")),
+		deployment("app-jessie", image("vandelay/app:jessie")))
+	f.file("Tiltfile", `
+docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
+docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
+k8s_yaml('app.yaml')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("app", deployment("app"), deployment("app-jessie"))
+	assert.Equal(t, []string{
+		"docker.io/vandelay/app",
+		"docker.io/vandelay/app:jessie",
+	}, f.imageTargetNames(m))
+}
+
+func TestImagesWithSameNameDifferentManifests(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("app.dockerfile", "FROM golang:1.10")
+	f.file("app-jessie.dockerfile", "FROM golang:1.10-jessie")
+	f.yaml("app.yaml",
+		deployment("app", image("vandelay/app")),
+		deployment("app-jessie", image("vandelay/app:jessie")))
+	f.file("Tiltfile", `
+docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
+docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
+k8s_yaml('app.yaml')
+k8s_resource('jessie', image='vandelay/app:jessie')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("jessie", deployment("app-jessie"))
+	assert.Equal(t, []string{
+		"docker.io/vandelay/app:jessie",
+	}, f.imageTargetNames(m))
+
+	m = f.assertNextManifest("app", deployment("app"))
+	assert.Equal(t, []string{
+		"docker.io/vandelay/app",
+	}, f.imageTargetNames(m))
+}
+
 func TestImageRefSuggestion(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2110,8 +2165,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if ref.Name() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
+			if ref.RefName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
@@ -2128,8 +2183,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case fbHelper:
 			image := nextImageTarget()
 			ref := image.Ref
-			if ref.Name() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
+			if ref.RefName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 
 			if !image.IsFastBuild() {
@@ -2164,8 +2219,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.Ref
-			if ref.Name() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.Name(), opt.image.ref)
+			if ref.RefName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 
 			if !image.IsCustomBuild() {

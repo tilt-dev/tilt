@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
@@ -18,8 +18,8 @@ func TestInjectSyncletSidecar(t *testing.T) {
 
 	assert.Equal(t, 1, len(entities))
 	entity := entities[0]
-	name, _ := reference.ParseNamed("gcr.io/some-project-162817/sancho")
-	newEntity, replaced, err := InjectSyncletSidecar(entity, name)
+	selector := container.MustParseSelector("gcr.io/some-project-162817/sancho")
+	newEntity, replaced, err := InjectSyncletSidecar(entity, selector)
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {

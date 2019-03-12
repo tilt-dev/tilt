@@ -13,7 +13,7 @@ FROM gcr.io/windmill/foo
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NewRefSelector(ref), ref)
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		assert.Equal(t, `
@@ -29,7 +29,7 @@ FROM gcr.io/windmill/foo:v1
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NewRefSelector(ref), ref)
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		assert.Equal(t, `
@@ -45,7 +45,7 @@ FROM gcr.io/windmill/bar:v1
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NewRefSelector(ref), ref)
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.False(t, modified)
 		assert.Equal(t, df, newDf)
@@ -59,7 +59,7 @@ COPY --from=gcr.io/windmill/foo /src/package.json /src/package.json
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NewRefSelector(ref), ref)
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		assert.Equal(t, `
@@ -77,7 +77,7 @@ COPY --from=gcr.io/windmill/foo:bar /src/package.json /src/package.json
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NewRefSelector(ref), ref)
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		assert.Equal(t, `
@@ -95,7 +95,7 @@ COPY --from=vandelay/common /usr/src/common/package.json /usr/src/common/yarn.lo
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("vandelay/common:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NewRefSelector(ref), ref)
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		assert.Equal(t, `
@@ -118,7 +118,7 @@ ADD . .
 		t.Fatal(err)
 	}
 
-	modified, err := ast.InjectImageDigest(container.NewRefSelector(ref), ref)
+	modified, err := ast.InjectImageDigest(container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 
@@ -133,7 +133,7 @@ ADD . .
 `, string(newDf))
 	}
 
-	modified, err = ast.InjectImageDigest(container.NewRefSelector(ref), ref)
+	modified, err = ast.InjectImageDigest(container.NameSelector(ref), ref)
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 

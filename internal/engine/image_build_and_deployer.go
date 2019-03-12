@@ -196,8 +196,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 					injectedDepIDs[depID] = true
 
 					if ibd.injectSynclet && needsSynclet {
+						injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
+
 						var sidecarInjected bool
-						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, selector)
+						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector)
 						if err != nil {
 							return err
 						}

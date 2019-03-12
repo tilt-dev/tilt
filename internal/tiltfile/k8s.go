@@ -11,6 +11,7 @@ import (
 	"go.starlark.net/starlark"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -28,15 +29,13 @@ type k8sResource struct {
 	// All k8s resources to be deployed.
 	entities []k8s.K8sEntity
 
-	// Image refs that the user manually asked to be associated with this resource.
-	providedImageRefNames map[string]bool
-
-	// All image refs, including:
-	// 1) one that the user manually asked to be associated with this resources, and
-	// 2) images that were auto-inferred from the included k8s resources.
-	imageRefNames map[string]bool
+	// Image selectors that the user manually asked to be associated with this resource.
+	refSelectors []container.RefSelector
 
 	imageRefs referenceList
+
+	// Map of imageRefs, to avoid dupes
+	imageRefMap map[string]bool
 
 	portForwards []portForward
 
@@ -46,13 +45,8 @@ type k8sResource struct {
 	dependencyIDs []model.TargetID
 }
 
-func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
-	r.providedImageRefNames[ref.Name()] = true
-	if !r.imageRefNames[ref.Name()] {
-		r.imageRefNames[ref.Name()] = true
-		r.imageRefs = append(r.imageRefs, ref)
-		sort.Sort(r.imageRefs)
-	}
+func (r *k8sResource) addRefSelector(selector container.RefSelector) {
+	r.refSelectors = append(r.refSelectors, selector)
 }
 
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
@@ -64,8 +58,8 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(
 			return err
 		}
 		for _, image := range images {
-			if !r.imageRefNames[image.Name()] {
-				r.imageRefNames[image.Name()] = true
+			if !r.imageRefMap[image.String()] {
+				r.imageRefMap[image.String()] = true
 				r.imageRefs = append(r.imageRefs, image)
 			}
 		}
@@ -74,11 +68,11 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(
 	return nil
 }
 
-// Return the provided image refs in a deterministic order.
-func (r k8sResource) providedImageRefNameList() []string {
-	result := make([]string, 0, len(r.providedImageRefNames))
-	for ref := range r.providedImageRefNames {
-		result = append(result, ref)
+// Return the image selectors in a deterministic order.
+func (r k8sResource) refSelectorList() []string {
+	result := make([]string, 0, len(r.refSelectors))
+	for _, selector := range r.refSelectors {
+		result = append(result, selector.String())
 	}
 	sort.Strings(result)
 	return result
@@ -249,7 +243,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		if err != nil {
 			return nil, err
 		}
-		r.addProvidedImageRef(imageRef)
+		r.addRefSelector(container.NewRefSelector(imageRef))
 	}
 	r.portForwards = portForwards
 
@@ -409,9 +403,8 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
 	}
 	r := &k8sResource{
-		name:                  name,
-		providedImageRefNames: make(map[string]bool),
-		imageRefNames:         make(map[string]bool),
+		name:        name,
+		imageRefMap: make(map[string]bool),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r

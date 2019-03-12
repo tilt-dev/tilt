@@ -308,10 +308,10 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 
 func (s *tiltfileState) validateK8s(r *k8sResource) error {
 	if len(r.entities) == 0 {
-		if len(r.providedImageRefNames) > 0 {
+		if len(r.refSelectors) > 0 {
 			return fmt.Errorf("resource %q: could not find k8s entities matching "+
 				"image(s) %q; perhaps there's a typo?",
-				r.name, strings.Join(r.providedImageRefNameList(), "; "))
+				r.name, strings.Join(r.refSelectorList(), "; "))
 		}
 		return fmt.Errorf("resource %q: could not associate any k8s YAML with this resource", r.name)
 	}
@@ -331,15 +331,23 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 func (s *tiltfileState) k8sResourceForImage(image container.RefSelector) (*k8sResource, error) {
 	// first, look thru all the resources that have already been created,
 	// and see if any of them already have a reference to this image.
-	refName := image.Name()
 	for _, r := range s.k8s {
-		if _, ok := r.imageRefNames[refName]; ok {
-			return r, nil
+		for _, ref := range r.imageRefs {
+			if image.Matches(ref) {
+				return r, nil
+			}
+		}
+
+		for _, selector := range r.refSelectors {
+			if image.RefsEqual(selector) {
+				return r, nil
+			}
 		}
 	}
 
 	// next, look thru all the resources that have already been created,
 	// and see if any of them match the basename of the image.
+	refName := image.RefName()
 	name := filepath.Base(refName)
 	if r, ok := s.k8sByName[name]; ok {
 		return r, nil
@@ -370,9 +378,9 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 			return nil, err
 		}
 		for _, img := range images {
-			if !seen[img.Name()] {
+			if !seen[img.String()] {
 				result = append(result, img)
-				seen[img.Name()] = true
+				seen[img.String()] = true
 			}
 		}
 	}
