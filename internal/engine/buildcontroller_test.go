@@ -36,6 +36,28 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestBuildControllerDockerCompose(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastBuildDCManifest(f)
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	imageTarget := manifest.ImageTargetAt(0)
+	assert.Equal(t, imageTarget, call.image())
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+
+	call = f.nextCall()
+	imageState := call.state[imageTarget.ID()]
+	assert.Equal(t, "dc-sancho", imageState.DeployInfo.ContainerID.String())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

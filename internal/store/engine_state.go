@@ -243,6 +243,9 @@ type ManifestState struct {
 	// If a pod had to be killed because it was crashing, we keep the old log
 	// around for a little while so we can show it in the UX.
 	CrashLog model.Log
+
+	// The log stream for this resource
+	CombinedLog model.Log `testdiff:"ignore"`
 }
 
 func NewState() *EngineState {
@@ -671,6 +674,7 @@ func StateToView(s EngineState) view.View {
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
+			CombinedLog:        ms.CombinedLog,
 		}
 
 		ret.Resources = append(ret.Resources, r)

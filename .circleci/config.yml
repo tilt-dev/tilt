@@ -74,11 +74,11 @@ jobs:
       - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
              tar -xz -C /tmp -f /tmp/helm.tar.gz &&
              mv /tmp/darwin-amd64/helm /usr/local/bin/helm
-      - run: go get -u gotest.tools/gotestsum
+      - run: curl -sSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum 
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results
-      - run: ~/go/bin/gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -tags 'skipcontainertests' ./...
+      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -tags 'skipcontainertests' ./...
       - store_test_results:
           path: test-results
 

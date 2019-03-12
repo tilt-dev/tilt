@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime/pprof"
@@ -128,9 +129,15 @@ type fakeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, isDeployed bool) store.BuildResult {
-	nt, _ := reference.WithTag(iTarget.Ref.AsNamedOnly(), fmt.Sprintf("tilt-%d", b.buildCount))
+func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
+	named := iTarget.Ref.AsNamedOnly()
+	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
 	containerID := b.nextBuildContainer
+	_, isDC := deployTarget.(model.DockerComposeTarget)
+	if isDC && containerID == "" {
+		// DockerCompose creates a container ID synchronously.
+		containerID = container.ID(fmt.Sprintf("dc-%s", path.Base(named.Name())))
+	}
 	result := store.NewImageBuildResult(iTarget.ID(), nt)
 	result.ContainerID = containerID
 	return result
@@ -184,14 +191,18 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 	result := store.BuildResultSet{}
 	for _, iTarget := range extractImageTargets(specs) {
-		isDeployed := false
+		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
-			isDeployed = isImageDeployedToDC(iTarget, call.dc())
+			if isImageDeployedToDC(iTarget, call.dc()) {
+				deployTarget = call.dc()
+			}
 		} else {
-			isDeployed = isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()})
+			if isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()}) {
+				deployTarget = call.k8s()
+			}
 		}
 
-		result[iTarget.ID()] = b.nextBuildResult(iTarget, isDeployed)
+		result[iTarget.ID()] = b.nextBuildResult(iTarget, deployTarget)
 	}
 
 	if !call.dc().Empty() {

@@ -2,3 +2,12 @@
   margin: 1em 1.5em;
   font-size: 1.4em;
 }
+@keyframes blink {
+  0% { opacity: 1 }
+  50% { opacity: 0 }
+  100% { opacity: 1 }
+}
+.logEnd {
+  animation: blink 1s infinite;
+  animation-timing-function: ease;
+}

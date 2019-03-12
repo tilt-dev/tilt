@@ -394,6 +394,58 @@ dc_resource('bar', 'gcr.io/bar')
 	assert.Equal(t, bar.DockerComposeTarget().ConfigPath, configPath)
 }
 
+func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("bar/Dockerfile")
+	f.file("docker-compose.yml", `version: '3'
+services:
+  foo:
+    image: gcr.io/foo
+  bar:
+    image: gcr.io/bar
+`)
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', './foo')
+docker_build('gcr.io/bar', './bar')
+docker_compose('docker-compose.yml')
+`)
+
+	f.load()
+
+	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
+
+	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
+	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
+
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPath, configPath)
+}
+
+func TestDCImageRefSuggestion(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("docker-compose.yml", `version: '3'
+services:
+  foo:
+    image: gcr.io/foo
+`)
+	f.file("Tiltfile", `
+docker_build('gcr.typo.io/foo', 'foo')
+docker_compose('docker-compose.yml')
+`)
+	f.load()
+	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+}
+
 func TestDockerComposeOnlySomeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

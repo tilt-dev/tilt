@@ -292,20 +292,25 @@ func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.
 
 		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
 
-		// Kubernetes-based builds can update containers in-place.
+		// Pass along the container when we can update containers in-place.
 		//
-		// We don't want to pass along the kubernetes data if the pod is crashing,
-		// because we're not confident that this state is accurate (due to how k8s
-		// reschedules pods).
+		// We don't want to pass along the data if the pod is crashing, because
+		// we're not confident that this state is accurate, due to how orchestrators
+		// (like k8s) reschedule containers (i.e., they reset to the original image
+		// rather than persisting the container filesystem.)
 		//
 		// This will probably need to change as the mapping between containers and
 		// manifests becomes many-to-one.
-		//
-		// TODO(nick): Attach deploy info for docker compose
-		if manifest.IsK8s() && !ms.NeedsRebuildFromCrash {
+		if !ms.NeedsRebuildFromCrash {
 			iTarget, ok := spec.(model.ImageTarget)
 			if ok {
-				buildState = buildState.WithDeployTarget(store.NewDeployInfo(iTarget, ms.PodSet))
+				if manifest.IsK8s() {
+					buildState = buildState.WithDeployTarget(store.NewDeployInfo(iTarget, ms.PodSet))
+				}
+
+				if manifest.IsDC() {
+					buildState = buildState.WithDeployTarget(store.NewDeployInfoFromDC(ms.DCResourceState()))
+				}
 			}
 		}
 		buildStateSet[id] = buildState
