@@ -45,7 +45,10 @@ import (
 var originalWD string
 
 func init() {
-	wd, _ := os.Getwd()
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
 	originalWD = wd
 }
 
@@ -2182,7 +2185,6 @@ type testFixture struct {
 	bc                    *BuildController
 	fwm                   *WatchManager
 	cc                    *ConfigsController
-	originalWD            string
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
 
@@ -2215,8 +2217,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)
 
-	_ = os.Chdir(f.Path())
-	_ = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
+	err := os.Chdir(f.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
@@ -2258,7 +2266,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		onchangeCh:     fSub.ch,
 		fwm:            fwm,
 		cc:             cc,
-		originalWD:     originalWD,
 		dcc:            fakeDcc,
 		tfl:            tfl,
 	}
@@ -2597,14 +2604,14 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 }
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
-	dcp := filepath.Join(f.originalWD, "testdata", "fixture_docker-config.yml")
+	dcp := filepath.Join(originalWD, "testdata", "fixture_docker-config.yml")
 	dcpc, err := ioutil.ReadFile(dcp)
 	if err != nil {
 		f.T().Fatal(err)
 	}
 	f.WriteFile("docker-compose.yml", string(dcpc))
 
-	dfp := filepath.Join(f.originalWD, "testdata", "server.dockerfile")
+	dfp := filepath.Join(originalWD, "testdata", "server.dockerfile")
 	dfc, err := ioutil.ReadFile(dfp)
 	if err != nil {
 		f.T().Fatal(err)
