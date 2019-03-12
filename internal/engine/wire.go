@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -22,6 +23,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
+	minikube.ProvideMinikubeClient,
 	docker.ProvideEnv,
 	build.DefaultImageBuilder,
 	build.NewCacheBuilder,

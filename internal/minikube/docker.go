@@ -15,7 +15,17 @@ import (
 // it's good enough for 99% of cases.
 var envMatcher = regexp.MustCompile(`export (\w+)="([^"]+)"`)
 
-func DockerEnv(ctx context.Context) (map[string]string, error) {
+type Client interface {
+	DockerEnv(ctx context.Context) (map[string]string, error)
+}
+
+func ProvideMinikubeClient() Client {
+	return client{}
+}
+
+type client struct{}
+
+func (client) DockerEnv(ctx context.Context) (map[string]string, error) {
 	cmd := exec.CommandContext(ctx, "minikube", "docker-env", "--shell", "sh")
 	output, err := cmd.Output()
 	if err != nil {

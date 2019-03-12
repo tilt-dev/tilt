@@ -6,11 +6,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -25,12 +27,24 @@ type DockerComposeClient interface {
 	ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error)
 }
 
-type cmdDCClient struct{}
+type cmdDCClient struct {
+	// NOTE(nick): In an ideal world, we would detect if the user was using
+	// docker-compose or kubernetes as an orchestration engine, and use that to
+	// choose an appropriate docker-client. But the docker-client is wired up
+	// at start-time.
+	//
+	// So for now, we need docker-compose to use the same docker client as
+	// everybody else, even if it's a weird docker client (like the docker client
+	// that lives in minikube).
+	env docker.Env
+}
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
-func NewDockerComposeClient() DockerComposeClient {
-	return &cmdDCClient{}
+func NewDockerComposeClient(env docker.Env) DockerComposeClient {
+	return &cmdDCClient{
+		env: env,
+	}
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
@@ -51,7 +65,7 @@ func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName mod
 	}
 
 	args = append(args, serviceName.String())
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd := c.dcCommand(ctx, args)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -64,7 +78,7 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 		args = []string{"--verbose"}
 	}
 	args = append(args, "-f", configPath, "down")
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd := c.dcCommand(ctx, args)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -80,7 +94,7 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath string, service
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
 	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName.String()}
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd := c.dcCommand(ctx, args)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, errors.Wrap(err, "making stdout pipe for `docker-compose logs`")
@@ -109,7 +123,7 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath string) (<-ch
 	ch := make(chan string)
 
 	args := []string{"-f", configPath, "events", "--json"}
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd := c.dcCommand(ctx, args)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return ch, errors.Wrap(err, "making stdout pipe for `docker-compose events`")
@@ -140,15 +154,15 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath string) (<-ch
 }
 
 func (c *cmdDCClient) Config(ctx context.Context, configPath string) (string, error) {
-	return dcOutput(ctx, configPath, "config")
+	return c.dcOutput(ctx, configPath, "config")
 }
 
 func (c *cmdDCClient) Services(ctx context.Context, configPath string) (string, error) {
-	return dcOutput(ctx, configPath, "config", "--services")
+	return c.dcOutput(ctx, configPath, "config", "--services")
 }
 
 func (c *cmdDCClient) ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error) {
-	id, err := dcOutput(ctx, configPath, "ps", "-q", serviceName.String())
+	id, err := c.dcOutput(ctx, configPath, "ps", "-q", serviceName.String())
 	if err != nil {
 		return container.ID(""), err
 	}
@@ -156,9 +170,17 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPath string, servic
 	return container.ID(id), nil
 }
 
-func dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
+func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd.Env = append(os.Environ(), c.env.AsEnviron()...)
+	return cmd
+}
+
+func (c *cmdDCClient) dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
 	args = append([]string{"-f", configPath}, args...)
-	output, err := exec.CommandContext(ctx, "docker-compose", args...).Output()
+	cmd := c.dcCommand(ctx, args)
+
+	output, err := cmd.Output()
 	if err != nil {
 		errorMessage := fmt.Sprintf("command 'docker-compose %q' failed.\nerror: '%v'\nstdout: '%v'", args, err, string(output))
 		if err, ok := err.(*exec.ExitError); ok {

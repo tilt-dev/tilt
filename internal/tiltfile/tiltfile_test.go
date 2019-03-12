@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/yaml"
 
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -751,7 +753,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, _, err := NewTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
+	_, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -1901,7 +1903,8 @@ func newFixture(t *testing.T) *fixture {
 	ctx := output.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
 	an := analytics.NewMemoryAnalytics()
-	tfl := NewTiltfileLoaderWithAnalytics(an)
+	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
+	tfl := ProvideTiltfileLoader(an, dcc)
 
 	r := &fixture{
 		ctx:            ctx,

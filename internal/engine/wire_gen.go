@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -31,7 +32,8 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	client := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, client)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +60,8 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	client := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, client)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +97,8 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +121,7 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), docker.ProvideEnv, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, docker.ProvideEnv, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,

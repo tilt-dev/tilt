@@ -15,6 +15,7 @@ import (
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -49,16 +50,13 @@ func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matchi
 	return tfl.Manifests, tfl.Global, tfl.ConfigFiles, tfl.Warnings, tfl.Err
 }
 
-func NewTiltfileLoader() TiltfileLoader {
-	return tiltfileLoader{analytics: analytics.NewMemoryAnalytics()}
-}
-
-func NewTiltfileLoaderWithAnalytics(analytics analytics.Analytics) TiltfileLoader {
-	return tiltfileLoader{analytics: analytics}
+func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.DockerComposeClient) TiltfileLoader {
+	return tiltfileLoader{analytics: analytics, dcCli: dcCli}
 }
 
 type tiltfileLoader struct {
 	analytics analytics.Analytics
+	dcCli     dockercompose.DockerComposeClient
 }
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
@@ -75,7 +73,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	tfRoot, _ := filepath.Split(absFilename)
 
-	s := newTiltfileState(ctx, absFilename, tfRoot, l)
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfRoot, l)
 	defer func() {
 		configFiles = s.configFiles
 	}()

@@ -19,14 +19,14 @@ type CustomBuilder interface {
 
 type ExecCustomBuilder struct {
 	dCli  docker.Client
-	env   []string
+	env   docker.Env
 	clock Clock
 }
 
 func NewExecCustomBuilder(dCli docker.Client, env docker.Env, clock Clock) *ExecCustomBuilder {
 	return &ExecCustomBuilder{
 		dCli:  dCli,
-		env:   env.BuildInjections,
+		env:   env,
 		clock: clock,
 	}
 }
@@ -44,7 +44,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 	l.Infof("Custom Build: Injecting Environment Variables")
 	l.Infof("TAG=%s", result.String())
 	env := append(os.Environ(), fmt.Sprintf("TAG=%s", result.String()))
-	for _, e := range b.env {
+	for _, e := range b.env.AsEnviron() {
 		env = append(env, e)
 		l.Infof("%s", e)
 	}
