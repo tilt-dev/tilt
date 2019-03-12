@@ -267,7 +267,13 @@ func TestEntityHasImage(t *testing.T) {
 	}
 
 	img = container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
-	match, err = entities[0].HasImage(img, map[string][]string{"CustomResourceDefinition": {"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}"}})
+	e := entities[0]
+	jp, err := NewJSONPath("{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	imageJSONPaths := []JSONPath{jp}
+	match, err = e.HasImage(img, imageJSONPaths)
 	if err != nil {
 		t.Fatal(err)
 	}

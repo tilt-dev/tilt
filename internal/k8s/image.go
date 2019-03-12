@@ -1,15 +1,12 @@
 package k8s
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/jsonpath"
 
 	"github.com/windmilleng/tilt/internal/container"
 )
@@ -178,8 +175,8 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
-func (e K8sEntity) HasImage(image container.RefSelector, k8sImageJsonPathsByKind map[string][]string) (bool, error) {
-	images, err := e.FindImages(k8sImageJsonPathsByKind)
+func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPath) (bool, error) {
+	images, err := e.FindImages(imageJSONPaths)
 	if err != nil {
 		fmt.Printf("error in FindImages: %+v\n", err)
 		return false, err
@@ -194,7 +191,7 @@ func (e K8sEntity) HasImage(image container.RefSelector, k8sImageJsonPathsByKind
 	return false, nil
 }
 
-func (e K8sEntity) FindImages(k8sImageJsonPathsByKind map[string][]string) ([]reference.Named, error) {
+func (e K8sEntity) FindImages(imageJSONPaths []JSONPath) ([]reference.Named, error) {
 	var result []reference.Named
 
 	// Look for images in instances of Container
@@ -211,29 +208,24 @@ func (e K8sEntity) FindImages(k8sImageJsonPathsByKind map[string][]string) ([]re
 		result = append(result, ref)
 	}
 
-	// If it's a CRD, also look for images in any json paths that were specified for this Kind
+	var obj interface{}
 	if u, ok := e.Obj.(runtime.Unstructured); ok {
-		if imageJsonPaths, ok := k8sImageJsonPathsByKind[e.Kind.Kind]; ok {
-			for _, path := range imageJsonPaths {
-				p := jsonpath.New(fmt.Sprintf("%s_image_json_path", e.Kind.Kind))
-				err := p.Parse(path)
-				if err != nil {
-					return nil, errors.Wrapf(err, "error parsing json path '%s'", path)
-				}
-				out := &bytes.Buffer{}
-				err = p.Execute(out, u.UnstructuredContent())
-				if err != nil {
-					return nil, errors.Wrapf(err, "error finding image at json path '%s'", path)
-				}
-				image := out.String()
-				image = strings.Trim(image, `"`)
-				ref, err := container.ParseNamed(image)
-				if err != nil {
-					return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
-				}
-				result = append(result, ref)
-			}
+		obj = u.UnstructuredContent()
+	} else {
+		obj = e.Obj
+	}
+
+	// also look for images in any json paths that were specified for this entity
+	for _, path := range imageJSONPaths {
+		image, err := path.Execute(obj)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error applying json path '%s'", path)
 		}
+		ref, err := container.ParseNamed(image)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
+		}
+		result = append(result, ref)
 	}
 
 	return result, nil
