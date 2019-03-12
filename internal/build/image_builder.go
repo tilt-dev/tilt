@@ -284,6 +284,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 }
 
 func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs) (reference.NamedTagged, error) {
+	logger.Get(ctx).Infof("Building Dockerfile:\n%s", df)
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
