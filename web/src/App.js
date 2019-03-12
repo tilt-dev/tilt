@@ -21,7 +21,6 @@ class App extends Component {
 
   togglePreview() {
     this.setState({ShowPreview: !this.state.ShowPreview})
-    console.log("this.state.ShowPreview", this.state.ShowPreview)
   }
 
   componentDidMount() {
