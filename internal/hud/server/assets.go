@@ -144,7 +144,7 @@ func (s prodAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	_, _ = io.Copy(w, outres.Body)
 }
 
-func ProvideAssetServer(ctx context.Context, webMode model.WebMode) (AssetServer, error) {
+func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion) (AssetServer, error) {
 	if webMode == model.LocalWebMode {
 		loc, err := url.Parse("http://localhost:3000")
 		if err != nil {
@@ -157,9 +157,7 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode) (AssetServer
 	}
 
 	if webMode == model.ProdWebMode {
-		// TODO(nick): Make releasing the assets part of the goreleaser
-		// pipeline, so that we can always use the current release here.
-		loc, err := url.Parse("https://storage.googleapis.com/tilt-static-assets/v0.7.6")
+		loc, err := url.Parse(fmt.Sprintf("https://storage.googleapis.com/tilt-static-assets/%s", webVersion))
 		if err != nil {
 			return nil, errors.Wrap(err, "ProvideAssetServer")
 		}

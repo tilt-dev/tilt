@@ -14,18 +14,29 @@ Small PRs are better than large ones. If you have an idea for a major feature, p
 an issue first. The [Roadmap](ROADMAP.md) has details on some of the upcoming
 features that we have in mind and might already be in-progress.
 
-## Necessary Prereqs
+## Build Prereqs
+
+If you just want to build Tilt:
+
 - **[make](https://www.gnu.org/software/make/)**
-- **[go 1.11](https://golang.org/dl/)**
+- **[go 1.12](https://golang.org/dl/)**
 - **[errcheck](https://github.com/kisielk/errcheck)**: `go get -u github.com/kisielk/errcheck` (to run lint)
+
+## Test Prereqs
+
+If you want to run the tests:
+
 - **[docker](https://docs.docker.com/install/)** - Many of the `tilt` build steps do work inside of containers
   so that you don't need to install extra toolchains locally (e.g., the protobuf compiler).
-- **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)** (for tests)
-- **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize` (for tests)
-- **[helm](https://docs.helm.sh/using_helm/#installing-helm)**: (for tests)
-- **[docker compose](https://docs.docker.com/compose/install/)**: (for tests) NOTE: this doesn't need to be installed separately from Docker on macOS
+- **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)**
+- **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize`
+- **[helm](https://docs.helm.sh/using_helm/#installing-helm)**
+- **[docker compose](https://docs.docker.com/compose/install/)**: NOTE: this doesn't need to be installed separately from Docker on macOS
 
 ## Optional Prereqs
+
+Other development commands:
+
 - **[wire](https://github.com/google/wire)**: `go get -u github.com/google/wire/cmd/wire` (to update generated dependency injection code)
 - Our Python scripts are in Python 3.6.0. To run them:
   - **[pyenv](https://github.com/pyenv/pyenv#installation)**
@@ -98,8 +109,10 @@ when you merge to master.
 We use [goreleaser](https://goreleaser.com) for releases.
 
 Requirements:
-- goreleaser
+- goreleaser: `go get -u github.com/goreleaser/goreleaser`
 - MacOS
+- Python
+- [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
 - `GITHUB_TOKEN` env variable with repo scope
 
 Currently, releases have to be built on MacOS due to cross-compilation issues with Apple FSEvents.
