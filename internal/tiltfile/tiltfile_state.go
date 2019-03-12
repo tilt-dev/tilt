@@ -39,7 +39,7 @@ type tiltfileState struct {
 	dc             dcResourceSet // currently only support one d-c.yml
 
 	// JSON paths to images in k8s YAML (other than Container specs)
-	k8sImageJSONPaths map[k8sObjectSelector][]string
+	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
 	// for assembly
 	usedImages map[string]bool
@@ -60,7 +60,7 @@ func newTiltfileState(ctx context.Context, filename string, tfRoot string, l *lo
 		dcCli:             dockercompose.NewDockerComposeClient(),
 		buildIndex:        newBuildIndex(),
 		k8sByName:         make(map[string]*k8sResource),
-		k8sImageJSONPaths: make(map[k8sObjectSelector][]string),
+		k8sImageJSONPaths: make(map[k8sObjectSelector][]k8s.JSONPath),
 		configFiles:       []string{filename},
 		usedImages:        make(map[string]bool),
 		logger:            l,
@@ -229,12 +229,6 @@ func (s *tiltfileState) assembleDC() error {
 }
 
 func (s *tiltfileState) assembleK8s() error {
-	// populate k8s entities with their image json paths
-	for i, e := range s.k8sUnresourced {
-		e.ImageJSONPaths = s.imageJSONPaths(e)
-		s.k8sUnresourced[i] = e
-	}
-
 	err := s.assembleK8sWithImages()
 	if err != nil {
 		return err
@@ -371,7 +365,7 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	seen := make(map[string]bool)
 
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages()
+		images, err := e.FindImages(s.imageJSONPaths(e))
 		if err != nil {
 			return nil, err
 		}
@@ -387,12 +381,12 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef)
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted)
+	err = dest.addEntities(extracted, s.imageJSONPaths)
 	if err != nil {
 		return err
 	}
@@ -405,7 +399,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 			return err
 		}
 
-		err = dest.addEntities(match)
+		err = dest.addEntities(match, s.imageJSONPaths)
 		if err != nil {
 			return err
 		}

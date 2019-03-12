@@ -19,8 +19,6 @@ import (
 type K8sEntity struct {
 	Obj  runtime.Object
 	Kind *schema.GroupVersionKind
-	// JSON paths to places that contain images other than Container specs
-	ImageJSONPaths []string
 }
 
 type k8sMeta interface {
@@ -195,8 +193,8 @@ func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing
 	return passing, rest, nil
 }
 
-func FilterByImage(entities []K8sEntity, img container.RefSelector) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img) })
+func FilterByImage(entities []K8sEntity, img container.RefSelector, imageJSONPaths func(K8sEntity) []JSONPath) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img, imageJSONPaths(e)) })
 }
 
 func FilterBySelectorMatchesLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {

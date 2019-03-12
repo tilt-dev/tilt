@@ -243,19 +243,19 @@ func TestEntityHasImage(t *testing.T) {
 	img := container.MustParseSelector("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	wrongImg := container.MustParseSelector("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
 
-	match, err := entities[0].HasImage(img)
+	match, err := entities[0].HasImage(img, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "service yaml should not match (does not contain image)")
 
-	match, err = entities[1].HasImage(img)
+	match, err = entities[1].HasImage(img, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, match, "deployment yaml should match image %s", img.String())
 
-	match, err = entities[1].HasImage(wrongImg)
+	match, err = entities[1].HasImage(wrongImg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,8 +268,12 @@ func TestEntityHasImage(t *testing.T) {
 
 	img = container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
 	e := entities[0]
-	e.ImageJSONPaths = []string{"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}"}
-	match, err = e.HasImage(img)
+	jp, err := NewJSONPath("{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	imageJSONPaths := []JSONPath{jp}
+	match, err = e.HasImage(img, imageJSONPaths)
 	if err != nil {
 		t.Fatal(err)
 	}

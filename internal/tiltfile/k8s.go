@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/client-go/util/jsonpath"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -57,11 +55,11 @@ func (r *k8sResource) addProvidedImageRef(ref reference.Named) {
 	}
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages()
+		images, err := entity.FindImages(imageJSONPaths(entity))
 		if err != nil {
 			return err
 		}
@@ -241,7 +239,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	err = r.addEntities(entities)
+	err = r.addEntities(entities, s.imageJSONPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -326,6 +324,25 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	}
 }
 
+func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) {
+	var paths []k8s.JSONPath
+	for _, v := range values {
+		s, ok := v.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
+		}
+
+		jp, err := k8s.NewJSONPath(s.String())
+		if err != nil {
+			return nil, errors.Wrapf(err, "error parsing json path '%s'", s.String())
+		}
+
+		paths = append(paths, jp)
+	}
+
+	return paths, nil
+}
+
 func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var kind, name, namespace string
 	var imageJSONPath starlark.Value
@@ -343,20 +360,10 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 	}
 
 	values := starlarkValueOrSequenceToSlice(imageJSONPath)
-	var paths []string
-	for _, v := range values {
-		s, ok := v.(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
-		}
 
-		// parse and throw away - just to eagerly find parse errors and give them a line number
-		err := jsonpath.New("json_path").Parse(s.String())
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing json path '%s'", s.String())
-		}
-
-		paths = append(paths, s.String())
+	paths, err := starlarkValuesToJSONPaths(values)
+	if err != nil {
+		return nil, err
 	}
 
 	k := k8sObjectSelector{
@@ -386,13 +393,9 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	values := starlarkValueOrSequenceToSlice(imageJSONPath)
-	var paths []string
-	for _, v := range values {
-		s, ok := v.(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
-		}
-		paths = append(paths, s.String())
+	paths, err := starlarkValuesToJSONPaths(values)
+	if err != nil {
+		return nil, err
 	}
 
 	k := k8sObjectSelector{kind: kind}
@@ -592,8 +595,8 @@ func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward
 }
 
 // returns any defined image JSON paths that apply to the given entity
-func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []string {
-	var ret []string
+func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []k8s.JSONPath {
+	var ret []k8s.JSONPath
 
 	for k, v := range s.k8sImageJSONPaths {
 		if !k.matches(e) {
