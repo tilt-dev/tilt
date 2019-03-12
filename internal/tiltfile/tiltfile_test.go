@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -1333,8 +1333,7 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.load()
-	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
@@ -1349,8 +1348,7 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.load()
-	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestFail(t *testing.T) {
@@ -1549,8 +1547,7 @@ func TestImageRefSuggestion(t *testing.T) {
 docker_build('gcr.typo.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
-	f.load()
-	f.assertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
 }
 
 func TestDir(t *testing.T) {
@@ -1612,11 +1609,12 @@ func TestCallCounts(t *testing.T) {
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.yaml("bar.yaml", deployment("bar", image("gcr.io/bar")))
+	f.yaml("foo.yaml",
+		deployment("foo", image("gcr.io/foo")),
+		deployment("bar", image("gcr.io/bar")))
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo:stable', '.')
-docker_build('gcr.io/bar:stable', '.')
+docker_build('gcr.io/foo', '.')
+docker_build('gcr.io/bar', '.')
 k8s_yaml('foo.yaml')
 `)
 
@@ -2015,7 +2013,17 @@ func matchMap(names ...string) map[string]bool {
 	return m
 }
 
+// Default load. Fails if there are any warnings.
 func (f *fixture) load(names ...string) {
+	f.loadAllowWarnings(names...)
+	if len(f.warnings) != 0 {
+		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.warnings)
+	}
+}
+
+// Load the manifests, expecting warnings.
+// Warnigns should be asserted later with assertWarnings
+func (f *fixture) loadAllowWarnings(names ...string) {
 	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
 	if err != nil {
 		f.t.Fatal(err)
@@ -2024,6 +2032,12 @@ func (f *fixture) load(names ...string) {
 	f.yamlManifest = yamlManifest
 	f.configFiles = configFiles
 	f.warnings = warnings
+}
+
+// Load the manifests, expecting warnings.
+func (f *fixture) loadAssertWarnings(warnings ...string) {
+	f.loadAllowWarnings()
+	f.assertWarnings(warnings...)
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
