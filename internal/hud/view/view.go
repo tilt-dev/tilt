@@ -175,6 +175,7 @@ type View struct {
 	TiltfileErrorMessage string
 	TriggerMode          model.TriggerMode
 	IsProfiling          bool
+	LogTimestamps        bool
 }
 
 type ViewState struct {

@@ -3,6 +3,8 @@ package dockercompose
 import (
 	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
+
 	"github.com/windmilleng/tilt/internal/container"
 )
 
@@ -52,7 +54,7 @@ func (evt Event) IsStopEvent() bool {
 type State struct {
 	Status      Status
 	ContainerID container.ID
-	CurrentLog  []byte
+	CurrentLog  model.Log
 	StartTime   time.Time
 	IsStopping  bool
 }
@@ -60,11 +62,11 @@ type State struct {
 func (State) ResourceState() {}
 
 func (s State) Log() string {
-	return string(s.CurrentLog)
+	return s.CurrentLog.String()
 }
 
-func (s State) WithCurrentLog(b []byte) State {
-	s.CurrentLog = b
+func (s State) WithCurrentLog(l model.Log) State {
+	s.CurrentLog = l
 	return s
 }
 

@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -69,7 +70,8 @@ type EngineState struct {
 	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
 
-	IsProfiling bool
+	LogTimestamps bool
+	IsProfiling   bool
 
 	LastTiltfileBuild    model.BuildRecord
 	CurrentTiltfileBuild model.BuildRecord
@@ -603,8 +605,9 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 
 func StateToView(s EngineState) view.View {
 	ret := view.View{
-		TriggerMode: s.TriggerMode,
-		IsProfiling: s.IsProfiling,
+		TriggerMode:   s.TriggerMode,
+		IsProfiling:   s.IsProfiling,
+		LogTimestamps: s.LogTimestamps,
 	}
 
 	for _, name := range s.ManifestDefinitionOrder {

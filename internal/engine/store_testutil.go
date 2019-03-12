@@ -22,7 +22,7 @@ func waitForAction(t testing.TB, typ reflect.Type, getActions func() []store.Act
 			if reflect.TypeOf(a) == typ {
 				return a
 			} else if la, ok := a.(LogAction); ok {
-				fmt.Println(string(la.Log))
+				fmt.Println(string(la.logEvent.Message()))
 			}
 		}
 	}
