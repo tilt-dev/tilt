@@ -62,7 +62,7 @@ type EngineState struct {
 
 	TiltfilePath             string
 	ConfigFiles              []string
-	PendingConfigFileChanges map[string]bool
+	PendingConfigFileChanges map[string]time.Time
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
@@ -255,7 +255,7 @@ func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
-	ret.PendingConfigFileChanges = make(map[string]bool)
+	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	return ret
 }
 

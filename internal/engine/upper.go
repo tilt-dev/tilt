@@ -396,7 +396,7 @@ func handleFSEvent(
 
 	if event.targetID.Type == model.TargetTypeConfigs {
 		for _, f := range event.files {
-			state.PendingConfigFileChanges[f] = true
+			state.PendingConfigFileChanges[f] = event.time
 		}
 		return
 	}
@@ -447,7 +447,6 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
-	state.PendingConfigFileChanges = make(map[string]bool)
 	filesChanged := []string{}
 	for f, _ := range event.FilesChanged {
 		filesChanged = append(filesChanged, f)
@@ -506,6 +505,13 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+
+	// Remove pending file changes that were consumed by this build.
+	for file, modTime := range state.PendingConfigFileChanges {
+		if modTime.Before(status.StartTime) {
+			delete(state.PendingConfigFileChanges, file)
+		}
+	}
 }
 
 // Get a pointer to a mutable manifest state,
@@ -844,7 +850,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 		engineState.InitialBuildCount = len(manifests)
 	} else {
 		// NOTE(dmiller): this kicks off a Tiltfile build
-		engineState.PendingConfigFileChanges[action.TiltfilePath] = true
+		engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
 		engineState.InitialBuildCount = len(action.InitManifests)
 	}
 

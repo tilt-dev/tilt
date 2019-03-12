@@ -670,10 +670,11 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	f.WriteFile("Tiltfile", `
 r = local_git_repo('.')
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-  .add(r, '.')
+  .add(r.path('src'), '.')
 k8s_resource('foobar', 'snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 	f.WriteFile("snack.yaml", simpleYAML)
+	f.WriteFile("src/main.go", "hello")
 
 	f.loadAndStart()
 
@@ -687,7 +688,8 @@ k8s_resource('foobar', 'snack.yaml')`)
 	// The dockerfile hasn't changed, so there shouldn't be any builds.
 	f.assertNoCall()
 
-	f.store.Dispatch(newTargetFilesChangedAction(call.image().ID(), f.JoinPath("random_file.go")))
+	changed := f.WriteFile("src/main.go", "goodbye")
+	f.fsWatcher.events <- watch.FileEvent{Path: changed}
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
@@ -695,7 +697,7 @@ k8s_resource('foobar', 'snack.yaml')`)
 	call = f.nextCall("incremental build despite edited config file")
 	assert.Equal(t, "foobar", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{
-		f.JoinPath("random_file.go"),
+		f.JoinPath("src/main.go"),
 	}, call.oneState().FilesChanged())
 
 	// Unchanged manifest --> we do NOT clear the build state
@@ -2595,11 +2597,23 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 		f.T().Fatalf("WriteConfigFiles needs an even number of arguments; got %d", len(args))
 	}
 
-	var filenames []string
+	filenames := []string{}
 	for i := 0; i < len(args); i += 2 {
-		f.WriteFile(args[i], args[i+1])
-		filenames = append(filenames, args[i])
+		filename := f.JoinPath(args[i])
+		contents := args[i+1]
+		f.WriteFile(filename, contents)
+		filenames = append(filenames, filename)
+
+		// Fire an FS event thru the normal pipeline, so that manifests get marked dirty.
+		f.fsWatcher.events <- watch.FileEvent{Path: filename}
 	}
+
+	// The test harness was written for a time when most tests didn't
+	// have a Tiltfile. So
+	// 1) Tiltfile execution doesn't happen at test startup
+	// 2) Because the Tiltfile isn't executed, ConfigFiles isn't populated
+	// 3) Because ConfigFiles isn't populated, ConfigsTargetID watches aren't set up properly
+	// So just fire a change action manually.
 	f.store.Dispatch(newTargetFilesChangedAction(ConfigsTargetID, filenames...))
 }
 
