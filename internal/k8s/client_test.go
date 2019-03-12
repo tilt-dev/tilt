@@ -41,10 +41,11 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 
 	f.setStderr(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
 	err = f.client.Upsert(f.ctx, postgres)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(f.runner.calls))
-	assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
-	assert.Equal(t, []string{"replace", "--force", "-f", "-"}, f.runner.calls[1].argv)
+	if assert.Nil(t, err) && assert.Equal(t, 3, len(f.runner.calls)) {
+		assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
+		assert.Equal(t, []string{"delete", "-f", "-"}, f.runner.calls[1].argv)
+		assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[2].argv)
+	}
 }
 
 type call struct {

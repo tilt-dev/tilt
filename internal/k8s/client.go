@@ -220,12 +220,20 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 				return errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
 			}
 
-			// If the kubectl apply failed due to an immutable field, fall back to kubectl replace --force.
-			l.Infof("%sFalling back to 'kubectl replace' on immutable field error", prefix)
-			_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, mutable)
+			// If the kubectl apply failed due to an immutable field, fall back to kubectl delete && kubectl apply
+			// NOTE(maia): this is equivalent to `kubecutl replace --force`, but will ensure that all
+			// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
+			// and recreated so they have all the new labels, etc. of their controlling k8s entity.
+			l.Infof("%sFalling back to 'kubectl delete && apply' on immutable field error", prefix)
+			_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, mutable)
 			if err != nil {
-				return errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
+				return errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
 			}
+			_, stderr, err = k.actOnEntities(ctx, []string{"apply"}, mutable)
+			if err != nil {
+				return errors.Wrapf(err, "kubectl apply (as part of delete && apply):\nstderr: %s", stderr)
+			}
+
 		}
 	}
 	return nil
