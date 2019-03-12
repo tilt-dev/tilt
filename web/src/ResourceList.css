@@ -1,35 +1,33 @@
-.ResourceList {
-  margin: 1em 1.5em;
-  font-size: 1.4em;
+.resources {
+  height: 95vh;
+  font-size: 1.2em;
+  line-height: 1.5;
+  font-family: 'Courier New', Courier, monospace;
+  margin: 0;
+  padding: 1em;
+  box-sizing: border-box;
 }
 
-.ResourceList-header {
+.headings {
+  text-transform: uppercase;
   display: flex;
-  width: 100%;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  margin-bottom: 0.4em;
+  flex-flow: row wrap;
 }
 
-.Resource-lhsCell {
-  flex-basis: 10em;
-  text-align: left;
+.cell, .column-header {
+  flex: 1 0 10%;
 }
 
-.Resource-rhsCell {
-  flex-basis: 10em;
-  padding-right: 0.5em;
-  text-align: right;
+.resources ul {
+  margin: 0;
+  padding: 0;
 }
 
-.Resource-spacerCell {
-  flex-grow: 1;
-}
-
-.ResourceSummary {
+li.resource {
   display: flex;
-  width: 100%;
   flex-wrap: nowrap;
-  margin-bottom: 0.2em;
 }
 
+li.resource p {
+  flex: 1 0 10%;
+}
