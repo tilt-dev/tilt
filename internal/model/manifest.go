@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/docker/distribution/reference"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/google/go-cmp/cmp"
@@ -302,6 +303,7 @@ var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
 var dcTargetAllowUnexported = cmp.AllowUnexported(DockerComposeTarget{})
 var labelRequirementAllowUnexported = cmp.AllowUnexported(labels.Requirement{})
 var k8sTargetAllowUnexported = cmp.AllowUnexported(K8sTarget{})
+var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -324,5 +326,6 @@ func DeepEqual(x, y interface{}) bool {
 		dcTargetAllowUnexported,
 		labelRequirementAllowUnexported,
 		k8sTargetAllowUnexported,
+		selectorAllowUnexported,
 		dockerRefEqual)
 }

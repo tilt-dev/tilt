@@ -231,8 +231,8 @@ func (e K8sEntity) FindImages(imageJSONPaths []JSONPath) ([]reference.Named, err
 	return result, nil
 }
 
-func PodContainsRef(pod v1.PodSpec, ref reference.Named) (bool, error) {
-	cRef, err := FindImageRefMatching(pod, ref)
+func PodContainsRef(pod v1.PodSpec, selector container.RefSelector) (bool, error) {
+	cRef, err := FindImageRefMatching(pod, selector)
 	if err != nil {
 		return false, err
 	}
@@ -240,22 +240,22 @@ func PodContainsRef(pod v1.PodSpec, ref reference.Named) (bool, error) {
 	return cRef != nil, nil
 }
 
-func FindImageRefMatching(pod v1.PodSpec, ref reference.Named) (reference.Named, error) {
+func FindImageRefMatching(pod v1.PodSpec, selector container.RefSelector) (reference.Named, error) {
 	for _, c := range pod.Containers {
 		cRef, err := container.ParseNamed(c.Image)
 		if err != nil {
 			return nil, errors.Wrap(err, "FindImageRefMatching")
 		}
 
-		if cRef.Name() == ref.Name() {
+		if selector.Matches(cRef) {
 			return cRef, nil
 		}
 	}
 	return nil, nil
 }
 
-func FindImageNamedTaggedMatching(pod v1.PodSpec, ref reference.Named) (reference.NamedTagged, error) {
-	cRef, err := FindImageRefMatching(pod, ref)
+func FindImageNamedTaggedMatching(pod v1.PodSpec, selector container.RefSelector) (reference.NamedTagged, error) {
+	cRef, err := FindImageRefMatching(pod, selector)
 	if err != nil {
 		return nil, err
 	}

@@ -14,9 +14,9 @@ type buildIndex struct {
 	// keep a slice so that the order of iteration is deterministic
 	images []*dockerImage
 
-	taggedImages   map[string]*dockerImage
-	nameOnlyImages map[string]*dockerImage
-	byTargetID     map[model.TargetID]*dockerImage
+	imagesByName     map[string]*dockerImage
+	imagesBySelector map[string]*dockerImage
+	byTargetID       map[model.TargetID]*dockerImage
 
 	consumedImageNames   []string
 	consumedImageNameMap map[string]bool
@@ -24,38 +24,39 @@ type buildIndex struct {
 
 func newBuildIndex() *buildIndex {
 	return &buildIndex{
-		taggedImages:         make(map[string]*dockerImage),
-		nameOnlyImages:       make(map[string]*dockerImage),
+		imagesBySelector:     make(map[string]*dockerImage),
+		imagesByName:         make(map[string]*dockerImage),
 		byTargetID:           make(map[model.TargetID]*dockerImage),
 		consumedImageNameMap: make(map[string]bool),
 	}
 }
 
 func (idx *buildIndex) addImage(img *dockerImage) error {
-	// TODO(nick): Rewrite this index to allow multiple selectors with the
-	// same name but different tags.
-	ref := img.ref.AsRef()
-	refTagged, hasTag := ref.(reference.NamedTagged)
-	if hasTag {
-		key := fmt.Sprintf("%s:%s", ref.Name(), refTagged.Tag())
-		_, exists := idx.taggedImages[key]
-		if exists {
-			return fmt.Errorf("Image for ref %q has already been defined", key)
-		}
-
-		idx.taggedImages[key] = img
-	} else {
-		key := ref.Name()
-		_, exists := idx.nameOnlyImages[key]
-		if exists {
-			return fmt.Errorf("Image for ref %q has already been defined", key)
-		}
-
-		idx.nameOnlyImages[key] = img
+	selector := img.ref
+	name := selector.RefName()
+	_, hasExisting := idx.imagesBySelector[selector.String()]
+	if hasExisting {
+		return fmt.Errorf("Image for ref %q has already been defined", selector.String())
 	}
 
-	idx.byTargetID[img.ID()] = img
+	idx.imagesBySelector[selector.String()] = img
 
+	_, hasExistingName := idx.imagesByName[name]
+	if hasExistingName {
+		// If the two selectors have the same name but different refs, they must
+		// have different tags. Make all the selectors "exact", so that they
+		// only match the exact tag.
+		img.ref = img.ref.WithExactMatch()
+
+		for _, image := range idx.images {
+			if image.ref.RefName() == name {
+				image.ref = image.ref.WithExactMatch()
+			}
+		}
+	}
+
+	idx.imagesByName[name] = img
+	idx.byTargetID[img.ID()] = img
 	idx.images = append(idx.images, img)
 	return nil
 }
@@ -76,21 +77,11 @@ func (idx *buildIndex) findBuilderForConsumedImage(ref reference.Named) *dockerI
 		idx.consumedImageNames = append(idx.consumedImageNames, ref.Name())
 	}
 
-	refTagged, hasTag := ref.(reference.NamedTagged)
-	if hasTag {
-		key := fmt.Sprintf("%s:%s", ref.Name(), refTagged.Tag())
-		img, exists := idx.taggedImages[key]
-		if exists {
-			img.matched = true
-			return img
+	for _, image := range idx.images {
+		if image.ref.Matches(ref) {
+			image.matched = true
+			return image
 		}
-	}
-
-	key := ref.Name()
-	img, exists := idx.nameOnlyImages[key]
-	if exists {
-		img.matched = true
-		return img
 	}
 	return nil
 }
@@ -101,7 +92,7 @@ func (idx *buildIndex) assertAllMatched() error {
 			bagSizes := []int{2, 3, 4}
 			cm := closestmatch.New(idx.consumedImageNames, bagSizes)
 			matchLines := []string{}
-			for i, match := range cm.ClosestN(image.ref.Name(), 3) {
+			for i, match := range cm.ClosestN(image.ref.RefName(), 3) {
 				if i == 0 {
 					matchLines = append(matchLines, "Did you mean…")
 				}

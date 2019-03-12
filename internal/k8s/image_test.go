@@ -9,7 +9,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -164,7 +164,7 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 	entity := entities[1]
 	name := "gcr.io/blorg-dev/blorg-backend"
 	namedTagged, _ := reference.ParseNamed(fmt.Sprintf("%s:wm-tilt", name))
-	newEntity, replaced, err := InjectImageDigest(entity, container.NewRefSelector(namedTagged), namedTagged, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest s
 		return K8sEntity{}, false, err
 	}
 
-	return InjectImageDigest(entity, container.NewRefSelector(originalRef), canonicalRef, policy)
+	return InjectImageDigest(entity, container.NameSelector(originalRef), canonicalRef, policy)
 }
 
 func TestInjectSyncletImage(t *testing.T) {
@@ -217,7 +217,7 @@ func TestInjectSyncletImage(t *testing.T) {
 	entity := entities[0]
 	name := "gcr.io/windmill-public-containers/synclet"
 	namedTagged, _ := container.ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
-	newEntity, replaced, err := InjectImageDigest(entity, container.NewRefSelector(namedTagged), namedTagged, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {
