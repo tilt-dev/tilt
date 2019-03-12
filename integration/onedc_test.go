@@ -3,7 +3,6 @@
 package integration
 
 import (
-	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -13,26 +12,23 @@ func TestOneDockerCompose(t *testing.T) {
 	f := newDCFixture(t, "onedc")
 	defer f.TearDown()
 
-	f.dockerKillAll("onedc_web")
+	f.dockerKillAll("tilt")
 	f.TiltWatch("web")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 
-	f.WaitUntil(ctx, "onedc_web up", func() (string, error) {
-		out := &bytes.Buffer{}
-		cmd := f.dockerCmd([]string{
-			"ps", "-f", "name=onedc_web", "--format", "{{.Image}}",
-		}, out)
-		err := cmd.Run()
-		return out.String(), err
-	}, "onedc_web")
+	f.WaitUntil(ctx, "onedc up", func() (string, error) {
+		return f.dockerCmdOutput([]string{
+			"ps", "-f", "name=onedc", "--format", "{{.Image}}",
+		})
+	}, "onedc")
 
-	f.CurlUntil(ctx, "onedc_web", "localhost:8000", "🍄 One-Up! 🍄")
+	f.CurlUntil(ctx, "onedc", "localhost:8000", "🍄 One-Up! 🍄")
 
 	f.ReplaceContents("main.go", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, "onedc_web", "localhost:8000", "🍄 Two-Up! 🍄")
+	f.CurlUntil(ctx, "onedc", "localhost:8000", "🍄 Two-Up! 🍄")
 }

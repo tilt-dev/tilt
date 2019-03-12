@@ -1,0 +1,7 @@
+version: '3'
+services:
+  web:
+    image: gcr.io/windmill-test-containers/dcbuild
+    container_name: tilt_dcbuild_web
+    ports:
+    - "31236:8000"

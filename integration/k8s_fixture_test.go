@@ -156,7 +156,7 @@ func (f *k8sFixture) ClearNamespace() {
 }
 
 func (f *k8sFixture) TearDown() {
-	f.tearingDown = true
+	f.StartTearDown()
 	f.ClearNamespace()
 	f.fixture.TearDown()
 }

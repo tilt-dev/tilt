@@ -147,14 +147,26 @@ func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	}
 }
 
-func (f *fixture) TearDown() {
+func (f *fixture) StartTearDown() {
+	f.cancel()
+	f.ctx = context.Background()
 	f.tearingDown = true
+}
+
+func (f *fixture) TearDown() {
+	f.StartTearDown()
 
 	for _, cmd := range f.cmds {
 		process := cmd.Process
 		if process != nil {
 			process.Kill()
 		}
+	}
+
+	cmd := f.tiltCmd([]string{"down"}, os.Stdout)
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatal(err)
 	}
 
 	f.cancel()

@@ -1,0 +1,7 @@
+version: '3'
+services:
+  web:
+    image: gcr.io/windmill-test-containers/dcfastbuild
+    container_name: tilt_dcfastbuild_web
+    ports:
+    - "31237:8000"
