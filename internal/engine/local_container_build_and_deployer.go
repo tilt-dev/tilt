@@ -8,6 +8,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -19,13 +20,15 @@ var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
 	analytics analytics.Analytics
+	env       k8s.Env
 }
 
 func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
-	analytics analytics.Analytics) *LocalContainerBuildAndDeployer {
+	analytics analytics.Analytics, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,
 		analytics: analytics,
+		env:       env,
 	}
 }
 
@@ -37,6 +40,13 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 
 	if len(iTargets) != 1 {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs exactly one image target")
+	}
+
+	isDC := len(extractDockerComposeTargets(specs)) > 0
+	isK8s := len(extractK8sTargets(specs)) > 0
+	canLocalUpdate := isDC || (isK8s && cbd.env.IsLocalCluster())
+	if !canLocalUpdate {
+		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
 	}
 
 	iTarget := iTargets[0]

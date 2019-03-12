@@ -157,6 +157,12 @@ func (f *fixture) TearDown() {
 		}
 	}
 
+	cmd := f.tiltCmd([]string{"down"}, os.Stdout)
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
 	f.cancel()
 
 	for k, v := range f.originalFiles {

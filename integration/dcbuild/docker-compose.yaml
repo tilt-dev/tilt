@@ -1,0 +1,6 @@
+version: '3'
+services:
+  web:
+    image: gcr.io/windmill-test-containers/dcbuild
+    ports:
+    - "31235:8000"

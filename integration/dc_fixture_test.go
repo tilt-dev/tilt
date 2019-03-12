@@ -44,6 +44,22 @@ func (f *dcFixture) dockerContainerID(name string) (string, error) {
 	return cID, nil
 }
 
+func (f *dcFixture) dockerCreatedAt(name string) string {
+	out := &bytes.Buffer{}
+	cmd := f.dockerCmd([]string{
+		"ps", "-q", "-f", fmt.Sprintf("name=%s", name), "--format", "{{.CreatedAt}}",
+	}, out)
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatal(fmt.Errorf("dockerCreatedAt: %v", err))
+	}
+	cID := strings.TrimSpace(out.String())
+	if cID == "" {
+		f.t.Fatal(fmt.Errorf("No container found for %s", name))
+	}
+	return cID
+}
+
 func (f *dcFixture) dockerKillAll(name string) {
 	out := &bytes.Buffer{}
 	cmd := f.dockerCmd([]string{

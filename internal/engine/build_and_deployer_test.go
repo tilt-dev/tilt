@@ -553,6 +553,27 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 }
 
+func TestDockerComposeFastBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvNone)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastBuildDCManifest(f)
+	targets := buildTargets(manifest)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	assert.Equal(t, 1, f.docker.CopyCount)
+	assert.Equal(t, 1, len(f.docker.ExecCalls))
+	f.assertContainerRestarts(1)
+}
+
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake Client and K8sClient
