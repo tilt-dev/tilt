@@ -2095,6 +2095,38 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 
 }
 
+func TestConfigChangeThatChangesManifestIsIncludedInManifestsChangedFile(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
+k8s_yaml('snack.yaml')`
+	f.WriteFile("Tiltfile", tiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(1)
+
+	f.WriteFile("snack.yaml", testyaml.SnackYAMLPostConfig)
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("snack.yaml")}
+
+	f.waitForCompletedBuildCount(2)
+	f.withManifestState(model.ManifestName("snack"), func(ms store.ManifestState) {
+		assert.Equal(t, []string{f.JoinPath("snack.yaml")}, ms.LastBuild().Edits)
+	})
+
+	f.WriteFile("Dockerfile", `FROM iron/go:foobar`)
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("Dockerfile")}
+
+	f.waitForCompletedBuildCount(3)
+	f.withManifestState(model.ManifestName("snack"), func(ms store.ManifestState) {
+		assert.Equal(t, []string{f.JoinPath("Dockerfile")}, ms.LastBuild().Edits)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
