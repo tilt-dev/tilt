@@ -3,6 +3,7 @@ package hud
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -947,6 +948,51 @@ func TestRenderEscapedNbsp(t *testing.T) {
 		},
 	}
 	rtf.run("escaped nbsp", 70, 20, v, plainVs)
+}
+
+func TestRenderTabView(t *testing.T) {
+	os.Setenv("TILT_TAB_VIEW", "1")
+	defer os.Setenv("TILT_TAB_VIEW", "")
+
+	rtf := newRendererTestFixture(t)
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "vigoda",
+				BuildHistory: []model.BuildRecord{{
+					StartTime:  now.Add(-time.Minute),
+					FinishTime: now,
+					Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`),
+				}},
+				ResourceInfo: view.K8SResourceInfo{
+					PodName:         "vigoda-pod",
+					PodCreationTime: now,
+					PodLog:          "serving on 8080",
+					PodStatus:       "Running",
+				},
+				LastDeployTime: now,
+			},
+		},
+	}
+	v.Log = fmt.Sprintf("%s\n%s\n",
+		v.Resources[0].LastBuild().Log.String(),
+		v.Resources[0].ResourceInfo.RuntimeLog())
+
+	rtf.run("log tab default", 117, 20, v, vs)
+
+	vs.TabState = view.TabBuildLog
+	rtf.run("log tab build", 117, 20, v, vs)
+
+	vs.TabState = view.TabPodLog
+	rtf.run("log tab pod", 117, 20, v, vs)
 }
 
 type rendererTestFixture struct {

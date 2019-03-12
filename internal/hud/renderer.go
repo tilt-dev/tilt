@@ -72,7 +72,9 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 
 	l.Add(r.renderResourceHeader(v))
 	l.Add(r.renderResources(v, vs))
-	l.Add(r.renderPaneHeader(vs))
+	if !tabsEnabled() {
+		l.Add(renderPaneHeader(vs))
+	}
 	l.Add(r.renderLogPane(v, vs))
 	l.Add(r.renderFooter(v, keyLegend(v, vs)))
 
@@ -105,20 +107,20 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 }
 
 func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
-	l := rty.NewConcatLayout(rty.DirHor)
-	log := rty.NewTextScrollLayout("log")
-	log.Add(rty.TextString(v.Log))
-	l.Add(log)
+	tabView := NewTabView(v, vs)
 	height := 7
+	if tabsEnabled() {
+		height = 8
+	}
 	if vs.LogModal.TiltLog == view.TiltLogMinimized {
 		height = 1
 	} else if vs.LogModal.TiltLog == view.TiltLogHalfScreen {
 		height = rty.GROW
 	}
-	return rty.NewFixedSize(l, rty.GROW, height)
+	return rty.NewFixedSize(tabView.Build(), rty.GROW, height)
 }
 
-func (r *Renderer) renderPaneHeader(vs view.ViewState) rty.Component {
+func renderPaneHeader(vs view.ViewState) rty.Component {
 	var s string
 	switch vs.LogModal.TiltLog {
 	case view.TiltLogFullScreen:
@@ -254,7 +256,7 @@ func bestLogs(res view.Resource) string {
 func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {
 	l := rty.NewConcatLayout(rty.DirVert)
 	sl := rty.NewTextScrollLayout(logScrollerName)
-	l.Add(r.renderPaneHeader(vs))
+	l.Add(renderPaneHeader(vs))
 	sl.Add(rty.TextString(v.Log))
 	l.AddDynamic(sl)
 	l.Add(r.renderFooter(v, keys))
