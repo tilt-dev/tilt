@@ -1,7 +1,3 @@
-.resources * {
-  box-sizing: border-box;
-}
-
 .resources {
   height: 95vh;
   font-size: 1.2em;
@@ -18,11 +14,7 @@
   flex-flow: row wrap;
 }
 
-.cell {
-  flex: 1 0 10%;
-}
-
-.cell.name {
+.cell, .column-header {
   flex: 1 0 10%;
 }
 

@@ -10,10 +10,10 @@ function ResourceList(props) {
   return (
     <section className="resources" role="table">
       <header className="headings">
-        <p role="columnheader">Resource Name</p>
-        <p role="columnheader">K8S</p>
-        <p role="columnheader">Build Status</p>
-        <p role="columnheader">Updated</p>
+        <p role="columnheader" className="column-header">Resource Name</p>
+        <p role="columnheader" className="column-header">K8S</p>
+        <p role="columnheader" className="column-header">Build Status</p>
+        <p role="columnheader" className="column-header">Updated</p>
       </header>
       <ul>
         {children}
