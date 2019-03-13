@@ -599,12 +599,18 @@ const (
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
 type k8sObjectSelector struct {
-	kind      string
+	apiVersion string
+	kind       string
+
 	name      string
 	namespace string
 }
 
 func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
+	if k.apiVersion != "" && k.apiVersion != e.Kind.GroupVersion().String() {
+		return false
+	}
+
 	if k.kind != "" && k.kind != e.Kind.Kind {
 		return false
 	}

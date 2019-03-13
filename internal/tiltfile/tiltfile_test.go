@@ -1335,7 +1335,8 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo", "docker.io/library/golang"})
+	f.loadAssertWarnings(w)
 }
 
 func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
@@ -1350,7 +1351,8 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo", "docker.io/library/golang"})
+	f.loadAssertWarnings(w)
 }
 
 func TestFail(t *testing.T) {
@@ -1604,7 +1606,8 @@ func TestImageRefSuggestion(t *testing.T) {
 docker_build('gcr.typo.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
-	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo", "docker.io/library/golang"})
+	f.loadAssertWarnings(w)
 }
 
 func TestDir(t *testing.T) {
@@ -1782,23 +1785,43 @@ docker_build('test/mycrd-env', 'env')
 }
 
 func TestK8SKind(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupCRD()
-	f.dockerfile("env/Dockerfile")
-	f.dockerfile("builder/Dockerfile")
-	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_kind('Environment', image_json_path='{.spec.runtime.image}')
-docker_build('test/mycrd-env', 'env')
-`)
+	tests := []struct {
+		name        string
+		args        string
+		expectMatch bool
+	}{
+		{"match kind", "'Environment', image_json_path='{.spec.runtime.image}'", true},
+		{"don't match kind", "'fdas', image_json_path='{.spec.runtime.image}'", false},
+		{"match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", true},
+		{"don't match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'", false},
+	}
 
-	f.load("mycrd-env")
-	f.assertNextManifest("mycrd-env",
-		sb(
-			image("docker.io/test/mycrd-env"),
-		),
-		k8sObject("mycrd", "Environment"),
-	)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+			f.setupCRD()
+			f.dockerfile("env/Dockerfile")
+			f.dockerfile("builder/Dockerfile")
+			f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('crd.yaml')
+k8s_kind(%s)
+docker_build('test/mycrd-env', 'env')
+`, test.args))
+
+			if test.expectMatch {
+				f.load("mycrd-env")
+				f.assertNextManifest("mycrd-env",
+					sb(
+						image("docker.io/test/mycrd-env"),
+					),
+					k8sObject("mycrd", "Environment"),
+				)
+			} else {
+				w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
+				f.loadAssertWarnings(w)
+			}
+		})
+	}
 }
 
 func TestK8SKindImageJSONPathPositional(t *testing.T) {
@@ -1871,6 +1894,53 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 			image("gcr.io/bar"),
 		),
 	)
+}
+
+func TestK8SImageJSONPathArgs(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        string
+		expectMatch bool
+	}{
+		{"match name", "name='foo'", true},
+		{"don't match name", "name='bar'", false},
+		{"match kind", "name='foo', kind='Deployment'", true},
+		{"don't match kind", "name='bar', kind='asdf'", false},
+		{"match apiVersion", "name='foo', api_version='apps/v1'", true},
+		{"don't match apiVersion", "name='bar', api_version='apps/v2'", false},
+		{"match namespace", "name='foo', namespace='default'", true},
+		{"don't match namespace", "name='bar', namespace='asdf'", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+
+			f.dockerfile("foo/Dockerfile")
+			f.dockerfile("foo-fetcher/Dockerfile")
+			f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+			f.gitInit("")
+
+			f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
+k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}", %s)
+	`, test.args))
+			if test.expectMatch {
+				f.load("foo")
+				f.assertNextManifest("foo",
+					sb(
+						image("gcr.io/foo"),
+					),
+					sb(
+						image("gcr.io/foo-fetcher"),
+					),
+				)
+			} else {
+				w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
+				f.loadAssertWarnings(w)
+			}
+		})
+	}
 }
 
 func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
@@ -2108,6 +2178,17 @@ func (f *fixture) loadAllowWarnings(names ...string) {
 	f.warnings = warnings
 }
 
+func unusedImageWarning(unusedImage string, suggestedImages []string) string {
+	ret := fmt.Sprintf("Image not used in any resource:\n    ✕ %s", unusedImage)
+	if len(suggestedImages) > 0 {
+		ret = ret + fmt.Sprintf("\nDid you mean…")
+		for _, s := range suggestedImages {
+			ret = ret + fmt.Sprintf("\n    - %s", s)
+		}
+	}
+	return ret
+}
+
 // Load the manifests, expecting warnings.
 func (f *fixture) loadAssertWarnings(warnings ...string) {
 	f.loadAllowWarnings()
@@ -2115,12 +2196,13 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	manifests, _, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
 	f.manifests = manifests
 	f.configFiles = configFiles
+	f.warnings = warnings
 	errText := err.Error()
 	for _, msg := range msgs {
 		if !strings.Contains(errText, msg) {
