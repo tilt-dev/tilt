@@ -258,6 +258,30 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
 }
 
+func TestStaticBuildWithEmbeddedFastBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+k8s_yaml(['foo.yaml', 'bar.yaml'])
+
+docker_build('gcr.io/foo', 'foo')
+fastbar = docker_build('gcr.io/bar', 'bar')
+
+fastbar.add('local/path', 'remote/path')
+fastbar.run('echo hi')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertNextManifest("bar",
+		sb(image("gcr.io/bar"), nestedFB(add("local/path", "remote/path"), run("echo hi"))),
+		deployment("bar"))
+}
+
 func TestFastBuildTriggers(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

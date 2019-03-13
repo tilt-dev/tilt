@@ -197,10 +197,10 @@ func (s *tiltfileState) assembleImages() error {
 	for _, imageBuilder := range s.buildIndex.images {
 		var depImages []reference.Named
 		var err error
-		if imageBuilder.baseDockerfile != "" {
-			depImages, err = imageBuilder.baseDockerfile.FindImages()
-		} else {
+		if imageBuilder.staticDockerfile != "" {
 			depImages, err = imageBuilder.staticDockerfile.FindImages()
+		} else {
+			depImages, err = imageBuilder.baseDockerfile.FindImages()
 		}
 
 		if err != nil {
@@ -513,6 +513,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Dockerfile: image.staticDockerfile.String(),
 				BuildPath:  string(image.staticBuildPath.path),
 				BuildArgs:  image.staticBuildArgs,
+				FastBuild:  image.maybeFastBuild(),
 			})
 		case FastBuild:
 			iTarget = iTarget.WithBuildDetails(model.FastBuild{
