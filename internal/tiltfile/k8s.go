@@ -361,11 +361,9 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	k := k8sObjectSelector{
-		apiVersion: apiVersion,
-		kind:       kind,
-		name:       name,
-		namespace:  namespace,
+	k, err := newK8SObjectSelector(apiVersion, kind, name, namespace)
+	if err != nil {
+		return nil, err
 	}
 
 	s.k8sImageJSONPaths[k] = paths
@@ -395,10 +393,11 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	k := k8sObjectSelector{
-		apiVersion: apiVersion,
-		kind:       kind,
+	k, err := newK8SObjectSelector(apiVersion, kind, "", "")
+	if err != nil {
+		return nil, err
 	}
+
 	s.k8sImageJSONPaths[k] = paths
 
 	return starlark.None, nil

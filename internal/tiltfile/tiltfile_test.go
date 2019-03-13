@@ -1904,9 +1904,11 @@ func TestK8SImageJSONPathArgs(t *testing.T) {
 	}{
 		{"match name", "name='foo'", true},
 		{"don't match name", "name='bar'", false},
+		{"match name w/ regex", "name='.*o'", true},
 		{"match kind", "name='foo', kind='Deployment'", true},
 		{"don't match kind", "name='bar', kind='asdf'", false},
 		{"match apiVersion", "name='foo', api_version='apps/v1'", true},
+		{"match apiVersion+kind w/ regex", "name='foo', kind='Deployment', api_version='apps/.*'", true},
 		{"don't match apiVersion", "name='bar', api_version='apps/v2'", false},
 		{"match namespace", "name='foo', namespace='default'", true},
 		{"don't match namespace", "name='bar', namespace='asdf'", false},

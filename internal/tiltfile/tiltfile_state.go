@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -599,29 +600,45 @@ const (
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
 type k8sObjectSelector struct {
-	apiVersion string
-	kind       string
+	apiVersion *regexp.Regexp
+	kind       *regexp.Regexp
 
-	name      string
-	namespace string
+	name      *regexp.Regexp
+	namespace *regexp.Regexp
+}
+
+// Creates a new k8sObjectSelector
+// If an arg is an empty string, it will become an empty regex that matches all input
+func newK8SObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+	ret := k8sObjectSelector{}
+	var err error
+
+	ret.apiVersion, err = regexp.Compile(apiVersion)
+	if err != nil {
+		return k8sObjectSelector{}, err
+	}
+
+	ret.kind, err = regexp.Compile(kind)
+	if err != nil {
+		return k8sObjectSelector{}, err
+	}
+
+	ret.name, err = regexp.Compile(name)
+	if err != nil {
+		return k8sObjectSelector{}, err
+	}
+
+	ret.namespace, err = regexp.Compile(namespace)
+	if err != nil {
+		return k8sObjectSelector{}, err
+	}
+
+	return ret, nil
 }
 
 func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	if k.apiVersion != "" && k.apiVersion != e.Kind.GroupVersion().String() {
-		return false
-	}
-
-	if k.kind != "" && k.kind != e.Kind.Kind {
-		return false
-	}
-
-	if k.name != "" && k.name != e.Name() {
-		return false
-	}
-
-	if k.namespace != "" && k.namespace != e.Namespace().String() {
-		return false
-	}
-
-	return true
+	return k.apiVersion.MatchString(e.Kind.GroupVersion().String()) &&
+		k.kind.MatchString(e.Kind.Kind) &&
+		k.name.MatchString(e.Name()) &&
+		k.namespace.MatchString(e.Namespace().String())
 }
