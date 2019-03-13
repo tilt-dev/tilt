@@ -30,3 +30,20 @@ func StringSliceEquals(a, b []string) bool {
 
 	return true
 }
+
+// returns a slice that consists of `a`, in order, followed by elements of `b` that are not in `a`
+func AppendWithoutDupes(a, b []string) []string {
+	seen := make(map[string]bool)
+	for _, s := range a {
+		seen[s] = true
+	}
+
+	ret := append([]string{}, a...)
+	for _, s := range b {
+		if !seen[s] {
+			ret = append(ret, s)
+		}
+	}
+
+	return ret
+}

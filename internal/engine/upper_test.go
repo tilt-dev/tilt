@@ -1809,6 +1809,23 @@ func TestNewMountsAreWatched(t *testing.T) {
 	})
 }
 
+func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
+	f := newTestFixture(t)
+	mount := model.Mount{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foo")
+	m := f.newManifest(name.String(), []model.Mount{mount})
+	f.Start([]model.Manifest{m}, true)
+	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
+	f.WaitUntil("foo.txt is a config file", func(state store.EngineState) bool {
+		for _, s := range state.ConfigFiles {
+			if s == f.JoinPath("foo.txt") {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 func TestDockerComposeUp(t *testing.T) {
 	f := newTestFixture(t)
 	redis, server := f.setupDCFixture()

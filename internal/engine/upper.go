@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -476,6 +477,11 @@ func handleConfigsReloaded(
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
+
+		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
+		// append any new config files found in the reload action
+		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles)
+
 		return
 	}
 
