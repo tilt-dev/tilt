@@ -22,8 +22,9 @@ import (
 const devVersion = "0.7.7"
 
 type BuildInfo struct {
-	Version string
-	Date    string
+	Version   string
+	Date      string
+	DevSuffix string
 }
 
 func (e BuildInfo) empty() bool {
@@ -52,7 +53,7 @@ func buildStamp() string {
 	if timeIndex != -1 {
 		date = date[0:timeIndex]
 	}
-	return fmt.Sprintf("v%s, built %s", version, date)
+	return fmt.Sprintf("v%s%s, built %s", version, info.DevSuffix, date)
 }
 
 // Returns a build datestamp in the format 2018-08-30
@@ -77,8 +78,9 @@ func defaultBuildDate() string {
 // Returns a build datestamp in the format 2018-08-30
 func defaultBuildInfo() BuildInfo {
 	return BuildInfo{
-		Date:    defaultBuildDate(),
-		Version: fmt.Sprintf("%s-dev", devVersion),
+		Date:      defaultBuildDate(),
+		Version:   devVersion,
+		DevSuffix: "-dev",
 	}
 }
 
