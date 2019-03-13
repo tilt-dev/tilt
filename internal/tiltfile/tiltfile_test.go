@@ -1928,10 +1928,10 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 			if test.expectMatch {
 				f.load("foo")
 				f.assertNextManifest("foo",
-					db(
+					sb(
 						image("gcr.io/foo"),
 					),
-					db(
+					sb(
 						image("gcr.io/foo-fetcher"),
 					),
 				)
