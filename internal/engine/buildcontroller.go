@@ -34,6 +34,12 @@ func NewBuildController(b BuildAndDeployer) *BuildController {
 
 // Algorithm to choose a manifest to build next.
 func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
+	// Don't build anything if there are pending config file changes.
+	// We want the Tiltfile to re-run first.
+	if len(state.PendingConfigFileChanges) > 0 {
+		return nil
+	}
+
 	// put no-build manifests first since they're more likely to be
 	// 1. fast and 2. dependencies of other services (e.g., redis)
 	targets := append([]*store.ManifestTarget{}, state.Targets()...)
