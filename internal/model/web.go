@@ -3,6 +3,7 @@ package model
 import (
 	"flag"
 	"fmt"
+	"net/url"
 
 	"github.com/spf13/pflag"
 )
@@ -46,3 +47,14 @@ func (m *WebMode) Type() string {
 var emptyWebMode = WebMode("")
 var _ flag.Value = &emptyWebMode
 var _ pflag.Value = &emptyWebMode
+
+type WebURL url.URL
+
+func (u WebURL) String() string {
+	url := (*url.URL)(&u)
+	return url.String()
+}
+
+func (u WebURL) Empty() bool {
+	return WebURL{} == u
+}
