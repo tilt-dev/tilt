@@ -1335,7 +1335,8 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo", "docker.io/library/golang"})
+	f.loadAssertWarnings(w)
 }
 
 func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
@@ -1350,7 +1351,8 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.io/foo:stable\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo", "docker.io/library/golang"})
+	f.loadAssertWarnings(w)
 }
 
 func TestFail(t *testing.T) {
@@ -1604,7 +1606,8 @@ func TestImageRefSuggestion(t *testing.T) {
 docker_build('gcr.typo.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
-	f.loadAssertWarnings("Image not used in any resource:\n    ✕ gcr.typo.io/foo\nDid you mean…\n    - gcr.io/foo\n    - docker.io/library/golang")
+	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo", "docker.io/library/golang"})
+	f.loadAssertWarnings(w)
 }
 
 func TestDir(t *testing.T) {
@@ -1776,23 +1779,41 @@ docker_build('test/mycrd-env', 'env')
 	)
 }
 
-func TestK8SKind(t *testing.T) {
-	f := newFixture(t)
-	f.setupCRD()
-	f.dockerfile("env/Dockerfile")
-	f.dockerfile("builder/Dockerfile")
-	f.file("Tiltfile", `k8s_yaml('crd.yaml')
-k8s_kind('Environment', image_json_path='{.spec.runtime.image}')
+func testK8SKind(k8sKindArgs string, expectMatch bool) func(t *testing.T) {
+	return func(t *testing.T) {
+		f := newFixture(t)
+		f.setupCRD()
+		f.dockerfile("env/Dockerfile")
+		f.dockerfile("builder/Dockerfile")
+		f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('crd.yaml')
+k8s_kind(%s)
 docker_build('test/mycrd-env', 'env')
-`)
+`, k8sKindArgs))
 
-	f.load("mycrd-env")
-	f.assertNextManifest("mycrd-env",
-		db(
-			image("docker.io/test/mycrd-env"),
-		),
-		k8sObject("mycrd", "Environment"),
-	)
+		if expectMatch {
+			f.load("mycrd-env")
+			f.assertNextManifest("mycrd-env",
+				db(
+					image("docker.io/test/mycrd-env"),
+				),
+				k8sObject("mycrd", "Environment"),
+			)
+		} else {
+			w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
+			f.loadAssertWarnings(w)
+		}
+	}
+}
+
+func TestK8SKind(t *testing.T) {
+	t.Run("match kind", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}'", true))
+	t.Run("don't match kind", testK8SKind("'fdas', image_json_path='{.spec.runtime.image}'", false))
+	t.Run("match group", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='fission.io'", true))
+	t.Run("don't match group", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='foo'", false))
+	t.Run("match version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', version='v1'", true))
+	t.Run("don't match version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', version='v2'", false))
+	t.Run("match group+version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='fission.io', version='v1'", true))
+	t.Run("don't group+version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='foo', version='v1'", false))
 }
 
 func TestK8SKindImageJSONPathPositional(t *testing.T) {
@@ -1862,6 +1883,51 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 			image("gcr.io/bar"),
 		),
 	)
+}
+
+func testExtraImageLocationDeploymentEnvVarByName(imageJSONPathArgs string, expectMatch bool) func(t *testing.T) {
+	return func(t *testing.T) {
+		f := newFixture(t)
+
+		f.dockerfile("foo/Dockerfile")
+		f.dockerfile("foo-fetcher/Dockerfile")
+		f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+		f.gitInit("")
+
+		f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
+k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}", %s)
+	`, imageJSONPathArgs))
+		if expectMatch {
+			f.load("foo")
+			f.assertNextManifest("foo",
+				db(
+					image("gcr.io/foo"),
+				),
+				db(
+					image("gcr.io/foo-fetcher"),
+				),
+			)
+		} else {
+			w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
+			f.loadAssertWarnings(w)
+		}
+	}
+}
+
+func TestK8SImageJSONPathArgs(t *testing.T) {
+	f := testExtraImageLocationDeploymentEnvVarByName
+	t.Run("match name", f("name='foo'", true))
+	t.Run("don't match name", f("name='bar'", false))
+	t.Run("match kind", f("name='foo', kind='Deployment'", true))
+	t.Run("don't match kind", f("name='bar', kind='asdf'", false))
+	t.Run("match group", f("name='foo', group='apps'", true))
+	t.Run("don't match group", f("name='bar', group='asdf'", false))
+	t.Run("match version", f("name='foo', version='v1'", true))
+	t.Run("don't match version", f("name='bar', version='v2'", false))
+	t.Run("match namespace", f("name='foo', namespace='default'", true))
+	t.Run("don't match namespace", f("name='bar', namespace='asdf'", false))
 }
 
 func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
@@ -2092,6 +2158,17 @@ func (f *fixture) loadAllowWarnings(names ...string) {
 	f.warnings = warnings
 }
 
+func unusedImageWarning(unusedImage string, suggestedImages []string) string {
+	ret := fmt.Sprintf("Image not used in any resource:\n    ✕ %s", unusedImage)
+	if len(suggestedImages) > 0 {
+		ret = ret + fmt.Sprintf("\nDid you mean…")
+		for _, s := range suggestedImages {
+			ret = ret + fmt.Sprintf("\n    - %s", s)
+		}
+	}
+	return ret
+}
+
 // Load the manifests, expecting warnings.
 func (f *fixture) loadAssertWarnings(warnings ...string) {
 	f.loadAllowWarnings()
@@ -2099,12 +2176,13 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
 	f.manifests = manifests
 	f.configFiles = configFiles
+	f.warnings = warnings
 	errText := err.Error()
 	for _, msg := range msgs {
 		if !strings.Contains(errText, msg) {
