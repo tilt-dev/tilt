@@ -523,6 +523,9 @@ type dockerOutput struct {
 }
 
 func indent(text, indent string) string {
+	if text == "" {
+		return indent + text
+	}
 	if text[len(text)-1:] == "\n" {
 		result := ""
 		for _, j := range strings.Split(text[:len(text)-1], "\n") {
