@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -480,15 +481,7 @@ func handleConfigsReloaded(
 
 		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
 		// append any new config files found in the reload action
-		existingConfigs := make(map[string]bool)
-		for _, s := range state.ConfigFiles {
-			existingConfigs[s] = true
-		}
-		for _, s := range event.ConfigFiles {
-			if !existingConfigs[s] {
-				state.ConfigFiles = append(state.ConfigFiles, s)
-			}
-		}
+		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles)
 
 		return
 	}
