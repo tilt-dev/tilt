@@ -40,5 +40,6 @@ if status == 0:
   sys.exit(1)
 
 os.chdir("web")
+os.system('yarn install')
 os.system('yarn run build')
 os.system('gsutil cp -r build "gs://tilt-static-assets/%s"' % version)
