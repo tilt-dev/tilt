@@ -477,6 +477,19 @@ func handleConfigsReloaded(
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
+
+		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
+		// append any new config files found in the reload action
+		existingConfigs := make(map[string]bool)
+		for _, s := range state.ConfigFiles {
+			existingConfigs[s] = true
+		}
+		for _, s := range event.ConfigFiles {
+			if !existingConfigs[s] {
+				state.ConfigFiles = append(state.ConfigFiles, s)
+			}
+		}
+
 		return
 	}
 
