@@ -2178,9 +2178,6 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			image := nextImageTarget()
 			caches := image.CachePaths()
 
-			if !image.IsStaticBuild() {
-				f.t.Fatal("expected static build")
-			}
 			ref := image.Ref
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
@@ -2188,6 +2185,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if ref.RefName() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
+
+			if !image.IsStaticBuild() {
+				f.t.Fatalf("expected static build but manifest %v has no static build info", m.Name)
+			}
+
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case cacheHelper:
