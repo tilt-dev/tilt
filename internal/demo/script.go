@@ -186,7 +186,7 @@ func (s Script) Run(ctx context.Context) error {
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
 		// TODO(dmiller): not this?
-		manifests, _, _, warnings, err := s.tfl.Load(ctx, tfPath, nil, os.Stdout)
+		manifests, _, _, warnings, err := s.tfl.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err
 		}

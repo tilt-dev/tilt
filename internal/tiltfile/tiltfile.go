@@ -3,8 +3,6 @@ package tiltfile
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,7 +29,7 @@ func init() {
 }
 
 type TiltfileLoader interface {
-	Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error)
+	Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error)
 }
 
 type FakeTiltfileLoader struct {
@@ -42,11 +40,13 @@ type FakeTiltfileLoader struct {
 	Err         error
 }
 
+var _ TiltfileLoader = &FakeTiltfileLoader{}
+
 func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
 	return tfl.Manifests, tfl.Global, tfl.ConfigFiles, tfl.Warnings, tfl.Err
 }
 
@@ -59,9 +59,10 @@ type tiltfileLoader struct {
 	dcCli     dockercompose.DockerComposeClient
 }
 
+var _ TiltfileLoader = &tiltfileLoader{}
+
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, logs io.Writer) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
-	l := log.New(logs, "", log.LstdFlags)
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (manifests []model.Manifest, global model.Manifest, configFiles []string, warnings []string, err error) {
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -71,14 +72,12 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return nil, model.Manifest{}, []string{absFilename}, nil, err
 	}
 
-	tfRoot, _ := filepath.Split(absFilename)
-
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfRoot, l)
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename)
 	defer func() {
 		configFiles = s.configFiles
 	}()
 
-	s.logger.Printf("Beginning Tiltfile execution")
+	s.logger.Infof("Beginning Tiltfile execution")
 	if err := s.exec(); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, model.Manifest{}, nil, s.warnings, errors.New(err.Backtrace())
@@ -117,7 +116,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	if err == nil {
-		s.logger.Printf("Successfully loaded Tiltfile")
+		s.logger.Infof("Successfully loaded Tiltfile")
 	}
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)

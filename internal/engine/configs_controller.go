@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -58,9 +59,15 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			return
 		}
 
-		tlw := NewTiltfileLogWriter(st)
+		logWriter := logger.Get(ctx).Writer(logger.InfoLvl)
+		prefix := fmt.Sprintf("[%s] ", tiltfile.FileName)
+		prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
+		actionWriter := NewTiltfileLogWriter(st)
+		multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
 
-		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(ctx, tiltfilePath, matching, tlw)
+		loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
+
+		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
 		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
