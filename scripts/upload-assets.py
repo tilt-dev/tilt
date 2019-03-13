@@ -32,10 +32,10 @@ if not re.match('^v[0-9]+[.][0-9]+[.][0-9]+', version):
 dir_url = ("https://storage.googleapis.com/tilt-static-assets/%s/" % version)
 url = dir_url + "index.html"
 print("Uploading to %s" % dir_url)
-status = subprocess.check_output([
-  "curl", "--write-out", "%{http_code}", "--silent", "--output", "/dev/null", url
+status = subprocess.call([
+  "gsutil", "stat", "gs://tilt-static-assets/%s/index.html" % version
 ])
-if str(status) != "404":
+if status == 0:
   print("Error: Files already exist: %s" % url)
   sys.exit(1)
 
