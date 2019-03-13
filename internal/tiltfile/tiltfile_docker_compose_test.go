@@ -313,7 +313,7 @@ dc_resource('foo', 'gcr.io/foo')
 
 	f.load()
 
-	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	m := f.assertNextManifest("foo", sb(image("gcr.io/foo")))
 	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
@@ -335,7 +335,7 @@ dc_resource('foo', 'fooimage')
 
 	f.load()
 
-	m := f.assertNextManifest("foo", db(imageNormalized("fooimage")))
+	m := f.assertNextManifest("foo", sb(imageNormalized("fooimage")))
 	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
@@ -381,11 +381,11 @@ dc_resource('bar', 'gcr.io/bar')
 
 	f.load()
 
-	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	foo := f.assertNextManifest("foo", sb(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
-	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
+	bar := f.assertNextManifest("bar", sb(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
@@ -415,11 +415,11 @@ docker_compose('docker-compose.yml')
 
 	f.load()
 
-	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	foo := f.assertNextManifest("foo", sb(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
-	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
+	bar := f.assertNextManifest("bar", sb(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
@@ -459,7 +459,7 @@ dc_resource('foo', img_name)
 
 	f.load()
 
-	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	foo := f.assertNextManifest("foo", sb(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsStaticBuild())
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
