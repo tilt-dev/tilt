@@ -3,9 +3,10 @@ package tiltfile
 import (
 	"context"
 	"fmt"
-	"log"
 	"path/filepath"
 	"strings"
+
+	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -48,11 +49,11 @@ type tiltfileState struct {
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
 
-	logger   *log.Logger
+	logger   logger.Logger
 	warnings []string
 }
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, tfRoot string, l *log.Logger) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:               ctx,
@@ -63,7 +64,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		k8sImageJSONPaths: make(map[k8sObjectSelector][]k8s.JSONPath),
 		configFiles:       []string{filename},
 		usedImages:        make(map[string]bool),
-		logger:            l,
+		logger:            logger.Get(ctx),
 		builtinCallCounts: make(map[string]int),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
@@ -73,7 +74,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 func (s *tiltfileState) exec() error {
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) {
-			s.logger.Printf("%s", msg)
+			s.logger.Infof("%s", msg)
 		},
 	}
 
@@ -182,7 +183,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 	err = s.buildIndex.assertAllMatched()
 	if err != nil {
-		s.logger.Printf("WARNING: %s\n", err)
+		s.logger.Infof("WARNING: %s\n", err)
 		s.warnings = append(s.warnings, err.Error())
 	}
 

@@ -753,7 +753,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
+	_, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -2098,7 +2098,7 @@ func (f *fixture) load(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnigns should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
+	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -2115,7 +2115,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
