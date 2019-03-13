@@ -113,6 +113,7 @@ Requirements:
 - MacOS
 - Python
 - [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
+- [yarn](https://yarnpkg.com/lang/en/docs/install/)
 - `GITHUB_TOKEN` env variable with repo scope
 
 Currently, releases have to be built on MacOS due to cross-compilation issues with Apple FSEvents.
