@@ -206,6 +206,7 @@ type StaticBuild struct {
 	Dockerfile string
 	BuildPath  string // the absolute path to the files
 	BuildArgs  DockerBuildArgs
+	FastBuild  *FastBuild // Optionally, can use FastBuild to update this build in place.
 }
 
 func (StaticBuild) buildDetails() {}
