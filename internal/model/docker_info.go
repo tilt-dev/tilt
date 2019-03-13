@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"sort"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -222,7 +223,8 @@ type FastBuild struct {
 	HotReload bool
 }
 
-func (FastBuild) buildDetails() {}
+func (FastBuild) buildDetails()  {}
+func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
 
 type CustomBuild struct {
 	Command string

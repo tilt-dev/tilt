@@ -166,8 +166,21 @@ func (d *dockerImage) Type() dockerImageBuildType {
 	return UnknownBuild
 }
 
-func (d *dockerImage) maybeFastBuild() *model.FastBuild {
-	return nil
+func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
+	return model.FastBuild{
+		BaseDockerfile: image.baseDockerfile.String(),
+		Mounts:         s.mountsToDomain(image),
+		Steps:          image.steps,
+		Entrypoint:     model.ToShellCmd(image.entrypoint),
+		HotReload:      image.hotReload,
+	}
+}
+func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
+	fb := s.fastBuildForImage(image)
+	if fb.Empty() {
+		return nil
+	}
+	return &fb
 }
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

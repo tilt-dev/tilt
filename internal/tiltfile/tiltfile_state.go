@@ -513,16 +513,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Dockerfile: image.staticDockerfile.String(),
 				BuildPath:  string(image.staticBuildPath.path),
 				BuildArgs:  image.staticBuildArgs,
-				FastBuild:  image.maybeFastBuild(),
+				FastBuild:  s.maybeFastBuild(image),
 			})
 		case FastBuild:
-			iTarget = iTarget.WithBuildDetails(model.FastBuild{
-				BaseDockerfile: image.baseDockerfile.String(),
-				Mounts:         s.mountsToDomain(image),
-				Steps:          image.steps,
-				Entrypoint:     model.ToShellCmd(image.entrypoint),
-				HotReload:      image.hotReload,
-			})
+			iTarget = iTarget.WithBuildDetails(s.fastBuildForImage(image))
 		case CustomBuild:
 			r := model.CustomBuild{
 				Command: image.customCommand,
