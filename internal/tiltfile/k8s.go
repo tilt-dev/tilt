@@ -338,12 +338,11 @@ func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) 
 }
 
 func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var group, version, kind, name, namespace string
+	var apiVersion, kind, name, namespace string
 	var imageJSONPath starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"path", &imageJSONPath,
-		"group?", &group,
-		"version?", &version,
+		"api_version?", &apiVersion,
 		"kind?", &kind,
 		"name?", &name,
 		"namespace?", &namespace,
@@ -363,11 +362,10 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 	}
 
 	k := k8sObjectSelector{
-		group:     group,
-		version:   version,
-		kind:      kind,
-		name:      name,
-		namespace: namespace,
+		apiVersion: apiVersion,
+		kind:       kind,
+		name:       name,
+		namespace:  namespace,
 	}
 
 	s.k8sImageJSONPaths[k] = paths
@@ -381,13 +379,12 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, fmt.Errorf("%s: got %d arguments, want at most %d", fn.Name(), len(args), 1)
 	}
 
-	var group, version, kind string
+	var apiVersion, kind string
 	var imageJSONPath starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
 		"image_json_path", &imageJSONPath,
-		"group?", &group,
-		"version?", &version,
+		"api_version?", &apiVersion,
 	); err != nil {
 		return nil, err
 	}
@@ -399,9 +396,8 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	k := k8sObjectSelector{
-		group:   group,
-		version: version,
-		kind:    kind,
+		apiVersion: apiVersion,
+		kind:       kind,
 	}
 	s.k8sImageJSONPaths[k] = paths
 

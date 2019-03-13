@@ -1779,41 +1779,43 @@ docker_build('test/mycrd-env', 'env')
 	)
 }
 
-func testK8SKind(k8sKindArgs string, expectMatch bool) func(t *testing.T) {
-	return func(t *testing.T) {
-		f := newFixture(t)
-		f.setupCRD()
-		f.dockerfile("env/Dockerfile")
-		f.dockerfile("builder/Dockerfile")
-		f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('crd.yaml')
+func TestK8SKind(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        string
+		expectMatch bool
+	}{
+		{"match kind", "'Environment', image_json_path='{.spec.runtime.image}'", true},
+		{"don't match kind", "'fdas', image_json_path='{.spec.runtime.image}'", false},
+		{"match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", true},
+		{"don't match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			f.setupCRD()
+			f.dockerfile("env/Dockerfile")
+			f.dockerfile("builder/Dockerfile")
+			f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('crd.yaml')
 k8s_kind(%s)
 docker_build('test/mycrd-env', 'env')
-`, k8sKindArgs))
+`, test.args))
 
-		if expectMatch {
-			f.load("mycrd-env")
-			f.assertNextManifest("mycrd-env",
-				db(
-					image("docker.io/test/mycrd-env"),
-				),
-				k8sObject("mycrd", "Environment"),
-			)
-		} else {
-			w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
-			f.loadAssertWarnings(w)
-		}
+			if test.expectMatch {
+				f.load("mycrd-env")
+				f.assertNextManifest("mycrd-env",
+					db(
+						image("docker.io/test/mycrd-env"),
+					),
+					k8sObject("mycrd", "Environment"),
+				)
+			} else {
+				w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
+				f.loadAssertWarnings(w)
+			}
+		})
 	}
-}
-
-func TestK8SKind(t *testing.T) {
-	t.Run("match kind", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}'", true))
-	t.Run("don't match kind", testK8SKind("'fdas', image_json_path='{.spec.runtime.image}'", false))
-	t.Run("match group", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='fission.io'", true))
-	t.Run("don't match group", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='foo'", false))
-	t.Run("match version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', version='v1'", true))
-	t.Run("don't match version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', version='v2'", false))
-	t.Run("match group+version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='fission.io', version='v1'", true))
-	t.Run("don't group+version", testK8SKind("'Environment', image_json_path='{.spec.runtime.image}', group='foo', version='v1'", false))
 }
 
 func TestK8SKindImageJSONPathPositional(t *testing.T) {
@@ -1885,49 +1887,51 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 	)
 }
 
-func testExtraImageLocationDeploymentEnvVarByName(imageJSONPathArgs string, expectMatch bool) func(t *testing.T) {
-	return func(t *testing.T) {
-		f := newFixture(t)
+func TestK8SImageJSONPathArgs(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        string
+		expectMatch bool
+	}{
+		{"match name", "name='foo'", true},
+		{"don't match name", "name='bar'", false},
+		{"match kind", "name='foo', kind='Deployment'", true},
+		{"don't match kind", "name='bar', kind='asdf'", false},
+		{"match apiVersion", "name='foo', api_version='apps/v1'", true},
+		{"don't match apiVersion", "name='bar', api_version='apps/v2'", false},
+		{"match namespace", "name='foo', namespace='default'", true},
+		{"don't match namespace", "name='bar', namespace='asdf'", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
 
-		f.dockerfile("foo/Dockerfile")
-		f.dockerfile("foo-fetcher/Dockerfile")
-		f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
-		f.gitInit("")
+			f.dockerfile("foo/Dockerfile")
+			f.dockerfile("foo-fetcher/Dockerfile")
+			f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+			f.gitInit("")
 
-		f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('foo.yaml')
+			f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
 k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}", %s)
-	`, imageJSONPathArgs))
-		if expectMatch {
-			f.load("foo")
-			f.assertNextManifest("foo",
-				db(
-					image("gcr.io/foo"),
-				),
-				db(
-					image("gcr.io/foo-fetcher"),
-				),
-			)
-		} else {
-			w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
-			f.loadAssertWarnings(w)
-		}
+	`, test.args))
+			if test.expectMatch {
+				f.load("foo")
+				f.assertNextManifest("foo",
+					db(
+						image("gcr.io/foo"),
+					),
+					db(
+						image("gcr.io/foo-fetcher"),
+					),
+				)
+			} else {
+				w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
+				f.loadAssertWarnings(w)
+			}
+		})
 	}
-}
-
-func TestK8SImageJSONPathArgs(t *testing.T) {
-	f := testExtraImageLocationDeploymentEnvVarByName
-	t.Run("match name", f("name='foo'", true))
-	t.Run("don't match name", f("name='bar'", false))
-	t.Run("match kind", f("name='foo', kind='Deployment'", true))
-	t.Run("don't match kind", f("name='bar', kind='asdf'", false))
-	t.Run("match group", f("name='foo', group='apps'", true))
-	t.Run("don't match group", f("name='bar', group='asdf'", false))
-	t.Run("match version", f("name='foo', version='v1'", true))
-	t.Run("don't match version", f("name='bar', version='v2'", false))
-	t.Run("match namespace", f("name='foo', namespace='default'", true))
-	t.Run("don't match namespace", f("name='bar', namespace='asdf'", false))
 }
 
 func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
