@@ -753,7 +753,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), os.Stdout)
+	_, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -1692,6 +1692,7 @@ k8s_yaml('foo.yaml')
 
 func TestYamlErrorFromLocal(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("Tiltfile", `
 yaml = local('echo hi')
 k8s_yaml(yaml)
@@ -1701,6 +1702,7 @@ k8s_yaml(yaml)
 
 func TestYamlErrorFromReadFile(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("foo.yaml", "hi")
 	f.file("Tiltfile", `
 k8s_yaml(read_file('foo.yaml'))
@@ -1710,6 +1712,7 @@ k8s_yaml(read_file('foo.yaml'))
 
 func TestYamlErrorFromHelm(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.setupHelm()
 	f.file("helm/templates/foo.yaml", "hi")
 	f.file("Tiltfile", `
@@ -1720,6 +1723,7 @@ k8s_yaml(helm('helm'))
 
 func TestYamlErrorFromBlob(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("Tiltfile", `
 k8s_yaml(blob('hi'))
 `)
@@ -1728,7 +1732,7 @@ k8s_yaml(blob('hi'))
 
 func TestCustomBuild(t *testing.T) {
 	f := newFixture(t)
-	fmt.Println(f.TempDirFixture.Path())
+	defer f.TearDown()
 
 	tiltfile := `k8s_yaml('foo.yaml')
 hfb = custom_build(
@@ -1762,6 +1766,7 @@ hfb.hot_reload()`
 
 func TestExtraImageLocationOneImage(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -1794,6 +1799,7 @@ func TestK8SKind(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
+			defer f.TearDown()
 			f.setupCRD()
 			f.dockerfile("env/Dockerfile")
 			f.dockerfile("builder/Dockerfile")
@@ -1820,6 +1826,7 @@ docker_build('test/mycrd-env', 'env')
 
 func TestK8SKindImageJSONPathPositional(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -1833,6 +1840,7 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationTwoImages(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -1856,6 +1864,7 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationDeploymentEnvVarByName(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.dockerfile("foo-fetcher/Dockerfile")
@@ -1936,6 +1945,7 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 
 func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.dockerfile("foo-fetcher/Dockerfile")
@@ -1960,6 +1970,7 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 
 func TestExtraImageLocationNoMatch(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -1973,6 +1984,7 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationInvalidJsonPath(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -1986,24 +1998,28 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationNoPaths(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType')`)
 	f.loadErrString("missing argument for path")
 }
 
 func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', path=8)`)
 	f.loadErrString("path must be a string or list of strings", "Int")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', path=["foo", 8])`)
 	f.loadErrString("path must be a string or list of strings", "8", "Int")
 }
 
 func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
 	f := newFixture(t)
+	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(path=["foo"])`)
 	f.loadErrString("at least one of kind, name, or namespace must be specified")
 }
@@ -2152,7 +2168,7 @@ func (f *fixture) load(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnigns should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), os.Stdout)
+	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -2180,7 +2196,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, os.Stdout)
+	manifests, _, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -41,7 +40,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, globalYaml, _, _, err := downDeps.tfl.Load(ctx, c.fileName, nil, os.Stdout)
+	manifests, globalYaml, _, _, err := downDeps.tfl.Load(ctx, c.fileName, nil)
 	if err != nil {
 		return err
 	}

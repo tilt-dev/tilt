@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -31,7 +32,8 @@ type HeadsUpDisplay interface {
 }
 
 type Hud struct {
-	r *Renderer
+	r      *Renderer
+	webURL model.WebURL
 
 	currentView      view.View
 	currentViewState view.ViewState
@@ -41,9 +43,10 @@ type Hud struct {
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewDefaultHeadsUpDisplay(renderer *Renderer) (HeadsUpDisplay, error) {
+func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL) (HeadsUpDisplay, error) {
 	return &Hud{
-		r: renderer,
+		r:      renderer,
+		webURL: webURL,
 	}, nil
 }
 
@@ -148,6 +151,13 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					}
 				}
 				h.currentViewState.CycleViewLogState()
+			case r == 'L':
+				if h.webURL.Empty() {
+					break
+				}
+				url := h.webURL
+				url.Path = "/log"
+				_ = browser.OpenURL(url.String())
 			case r == 'k':
 				h.activeScroller().Up()
 				h.refreshSelectedIndex()
@@ -186,18 +196,28 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				h.activeScroller().Down()
 			}
 			h.refreshSelectedIndex()
-		case tcell.KeyEnter: // toggle log modal for selected resource
+		case tcell.KeyEnter, tcell.KeyTab: // toggle log modal for selected resource
+			if len(h.currentView.Resources) == 0 {
+				break
+			}
+			selectedIdx, r := h.selectedResource()
+			if r.IsYAML() {
+				h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
+				break
+			}
+
+			if ev.Key() == tcell.KeyTab {
+				if h.webURL.Empty() {
+					break
+				}
+				url := h.webURL
+				url.Path = fmt.Sprintf("/r/%s/log", r.Name)
+				_ = browser.OpenURL(url.String())
+				break
+			}
+
 			am := h.activeModal()
 			if am == nil {
-				if len(h.currentView.Resources) == 0 {
-					break
-				}
-				selectedIdx, r := h.selectedResource()
-				if r.IsYAML() {
-					h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
-					break
-				}
-
 				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
 				h.activeModal().Bottom()
 			} else {

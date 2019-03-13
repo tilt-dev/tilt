@@ -19,9 +19,9 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 )
 
@@ -396,7 +396,7 @@ func handleFSEvent(
 
 	if event.targetID.Type == model.TargetTypeConfigs {
 		for _, f := range event.files {
-			state.PendingConfigFileChanges[f] = true
+			state.PendingConfigFileChanges[f] = event.time
 		}
 		return
 	}
@@ -447,7 +447,6 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event ConfigsReloadStartedAction,
 ) {
-	state.PendingConfigFileChanges = make(map[string]bool)
 	filesChanged := []string{}
 	for f, _ := range event.FilesChanged {
 		filesChanged = append(filesChanged, f)
@@ -477,6 +476,11 @@ func handleConfigsReloaded(
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
+
+		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
+		// append any new config files found in the reload action
+		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles)
+
 		return
 	}
 
@@ -506,6 +510,13 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+
+	// Remove pending file changes that were consumed by this build.
+	for file, modTime := range state.PendingConfigFileChanges {
+		if modTime.Before(status.StartTime) {
+			delete(state.PendingConfigFileChanges, file)
+		}
+	}
 }
 
 // Get a pointer to a mutable manifest state,
@@ -844,7 +855,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 		engineState.InitialBuildCount = len(manifests)
 	} else {
 		// NOTE(dmiller): this kicks off a Tiltfile build
-		engineState.PendingConfigFileChanges[action.TiltfilePath] = true
+		engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
 		engineState.InitialBuildCount = len(action.InitManifests)
 	}
 
@@ -925,5 +936,4 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
-	logger.Get(ctx).Infof("[%s] %s", tiltfile.FileName, string(action.Message()))
 }

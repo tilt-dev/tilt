@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -14,6 +15,7 @@ type ConfigsController struct {
 	disabledForTesting bool
 	tfl                tiltfile.TiltfileLoader
 	clock              func() time.Time
+	activeBuild        bool
 }
 
 func NewConfigsController(tfl tiltfile.TiltfileLoader) *ConfigsController {
@@ -27,6 +29,26 @@ func (cc *ConfigsController) DisableForTesting(disabled bool) {
 	cc.disabledForTesting = disabled
 }
 
+// Modeled after BuildController.nextTargetToBuild. Check to see that:
+// 1) There's currently no Tiltfile build running,
+// 2) There are pending file changes, and
+// 3) Those files have changed since the last Tiltfile build
+//    (so that we don't keep re-running a failed build)
+func (cc *ConfigsController) shouldBuild(state store.EngineState) bool {
+	isRunning := !state.CurrentTiltfileBuild.StartTime.IsZero()
+	if isRunning {
+		return false
+	}
+
+	for _, changeTime := range state.PendingConfigFileChanges {
+		lastStartTime := state.LastTiltfileBuild.StartTime
+		if changeTime.After(lastStartTime) {
+			return true
+		}
+	}
+	return false
+}
+
 func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	if cc.disabledForTesting {
 		return
@@ -34,16 +56,17 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 	state := st.RLockState()
 	defer st.RUnlockState()
+
 	initManifests := state.InitManifests
-	if len(state.PendingConfigFileChanges) == 0 {
+	if !cc.shouldBuild(state) {
 		return
 	}
 
 	filesChanged := make(map[string]bool)
-	for k, v := range state.PendingConfigFileChanges {
-		filesChanged[k] = v
+	for k := range state.PendingConfigFileChanges {
+		filesChanged[k] = true
 	}
-	// TODO(dbentley): there's a race condition where we start it before we clear it, so we could start many tiltfile reloads...
+
 	go func() {
 		startTime := cc.clock()
 		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
@@ -58,9 +81,15 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			return
 		}
 
-		tlw := NewTiltfileLogWriter(st)
+		logWriter := logger.Get(ctx).Writer(logger.InfoLvl)
+		prefix := fmt.Sprintf("[%s] ", tiltfile.FileName)
+		prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
+		actionWriter := NewTiltfileLogWriter(st)
+		multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
 
-		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(ctx, tiltfilePath, matching, tlw)
+		loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
+
+		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
 		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}

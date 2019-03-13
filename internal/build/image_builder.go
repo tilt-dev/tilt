@@ -284,6 +284,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 }
 
 func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs) (reference.NamedTagged, error) {
+	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(df.String(), "  "))
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -519,4 +520,22 @@ var oldDigestRegexp = regexp.MustCompile(`^Successfully built ([0-9a-f]+)\s*$`)
 type dockerOutput struct {
 	aux         *json.RawMessage
 	shortDigest string
+}
+
+func indent(text, indent string) string {
+	if text == "" {
+		return indent + text
+	}
+	if text[len(text)-1:] == "\n" {
+		result := ""
+		for _, j := range strings.Split(text[:len(text)-1], "\n") {
+			result += indent + j + "\n"
+		}
+		return result
+	}
+	result := ""
+	for _, j := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		result += indent + j + "\n"
+	}
+	return result[:len(result)-1]
 }

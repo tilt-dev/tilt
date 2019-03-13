@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -24,7 +25,7 @@ func TestConfigsController(t *testing.T) {
 	m := model.Manifest{Name: "foo"}
 	mt := store.NewManifestTarget(m)
 	state.UpsertManifestTarget(mt)
-	state.PendingConfigFileChanges["Tiltfile"] = true
+	state.PendingConfigFileChanges["Tiltfile"] = time.Now()
 	state.TiltfilePath = f.JoinPath("Tiltfile")
 	f.st.UnlockMutableState()
 

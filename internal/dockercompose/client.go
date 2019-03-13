@@ -188,7 +188,7 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPath string, args ...s
 		}
 		err = fmt.Errorf(errorMessage)
 	}
-	return string(output), err
+	return strings.TrimSpace(string(output)), err
 }
 
 func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
