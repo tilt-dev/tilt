@@ -1,11 +1,9 @@
 import React, { Component } from 'react';
 import ResourceList from './ResourceList';
-import Preview from './Preview';
 import Status from './Status';
 import AppController from './AppController';
 import LoadingScreen from './LoadingScreen';
 import './App.css';
-import './Preview.css';
 
 class App extends Component {
   constructor(props) {
@@ -23,8 +21,6 @@ class App extends Component {
   }
 
   openPreview(endpoint) {
-    console.log("open preview")
-    debugger
     this.setState({
       ShowPreview: true,
       PreviewUrl: endpoint,

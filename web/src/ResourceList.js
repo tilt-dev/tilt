@@ -39,7 +39,7 @@ class ResourceSummary extends Component {
         <p role="cell" className="cell">{updateTime}</p>
         {endpoint
           ? <p role="cell" className="cell">
-            <a className="endpoint" href={endpoint} title={`Open in new window: ${endpoint}`} target="_blank">{endpoint}</a>
+            <a className="endpoint" href={endpoint} title={`Open in new window: ${endpoint}`} target="_blank" rel="noopener noreferrer">{endpoint}</a>
             <button onClick={() => this.props.openPreview(endpoint)}>Preview</button>
             </p>
           : <p role="cell" className="cell">—</p>
