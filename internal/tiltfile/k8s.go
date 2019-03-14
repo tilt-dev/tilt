@@ -97,13 +97,14 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue, labelsValue starlark.Value
-	var name, namespace, kind string
+	var name, namespace, kind, apiVersion string
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
 		"labels?", &labelsValue,
 		"name?", &name,
 		"namespace?", &namespace,
 		"kind?", &kind,
+		"api_version?", &apiVersion,
 	)
 	if err != nil {
 		return nil, err
@@ -127,48 +128,34 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	var allRest []k8s.K8sEntity
-	match := entities
+	k, err := newK8SObjectSelector(apiVersion, kind, name, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var match, rest []k8s.K8sEntity
+	for _, e := range entities {
+		if k.matches(e) {
+			match = append(match, e)
+		} else {
+			rest = append(rest, e)
+		}
+	}
+
 	if len(metaLabels) > 0 {
-		match, allRest, err = k8s.FilterByMetadataLabels(match, metaLabels)
+		var r []k8s.K8sEntity
+		match, r, err = k8s.FilterByMetadataLabels(match, metaLabels)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if name != "" {
-		var rest []k8s.K8sEntity
-		match, rest, err = k8s.FilterByName(match, name)
-		if err != nil {
-			return nil, err
-		}
-		allRest = append(allRest, rest...)
-
-	}
-
-	if namespace != "" {
-		var rest []k8s.K8sEntity
-		match, rest, err = k8s.FilterByNamespace(match, namespace)
-		if err != nil {
-			return nil, err
-		}
-		allRest = append(allRest, rest...)
-	}
-
-	if kind != "" {
-		var rest []k8s.K8sEntity
-		match, rest, err = k8s.FilterByKind(match, kind)
-		if err != nil {
-			return nil, err
-		}
-		allRest = append(allRest, rest...)
+		rest = append(rest, r...)
 	}
 
 	matchingStr, err := k8s.SerializeYAML(match)
 	if err != nil {
 		return nil, err
 	}
-	restStr, err := k8s.SerializeYAML(allRest)
+	restStr, err := k8s.SerializeYAML(rest)
 	if err != nil {
 		return nil, err
 	}
@@ -361,11 +348,9 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	k := k8sObjectSelector{
-		apiVersion: apiVersion,
-		kind:       kind,
-		name:       name,
-		namespace:  namespace,
+	k, err := newK8SObjectSelector(apiVersion, kind, name, namespace)
+	if err != nil {
+		return nil, err
 	}
 
 	s.k8sImageJSONPaths[k] = paths
@@ -395,10 +380,11 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	k := k8sObjectSelector{
-		apiVersion: apiVersion,
-		kind:       kind,
+	k, err := newK8SObjectSelector(apiVersion, kind, "", "")
+	if err != nil {
+		return nil, err
 	}
+
 	s.k8sImageJSONPaths[k] = paths
 
 	return starlark.None, nil
