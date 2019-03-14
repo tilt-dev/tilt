@@ -1076,7 +1076,7 @@ func TestFilterYamlByNameKind(t *testing.T) {
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
-	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', kind='Deployment')
+	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', kind='deployment')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)
 `)
@@ -1967,6 +1967,8 @@ func TestK8SImageJSONPathArgs(t *testing.T) {
 		{"invalid kind regex", "kind='*'", false, "error parsing kind regexp"},
 		{"invalid apiVersion regex", "name='foo', api_version='*'", false, "error parsing apiVersion regexp"},
 		{"invalid namespace regex", "namespace='*'", false, "error parsing namespace regexp"},
+		{"regexes are case-insensitive", "name='FOO'", true, ""},
+		{"regexes that specify case insensitivity still work", "name='(?i)FOO'", true, ""},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

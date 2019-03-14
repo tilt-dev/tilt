@@ -608,22 +608,30 @@ func newK8SObjectSelector(apiVersion string, kind string, name string, namespace
 	ret := k8sObjectSelector{}
 	var err error
 
-	ret.apiVersion, err = regexp.Compile(apiVersion)
+	makeCaseInsensitive := func(s string) string {
+		if s == "" {
+			return s
+		} else {
+			return "(?i)" + s
+		}
+	}
+
+	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
 	}
 
-	ret.kind, err = regexp.Compile(kind)
+	ret.kind, err = regexp.Compile(makeCaseInsensitive(kind))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
 	}
 
-	ret.name, err = regexp.Compile(name)
+	ret.name, err = regexp.Compile(makeCaseInsensitive(name))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
 	}
 
-	ret.namespace, err = regexp.Compile(namespace)
+	ret.namespace, err = regexp.Compile(makeCaseInsensitive(namespace))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
 	}
