@@ -159,7 +159,28 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	return starlark.None, nil
+	// NOTE(maia): docker_build returns a fast build that users can optionally
+	// populate; if populated, we use it for in-place updates of this image
+	// (but use the static build defined by docker_build for image builds)
+	fb := &fastBuild{s: s, img: r}
+	return fb, nil
+}
+
+func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
+	return model.FastBuild{
+		BaseDockerfile: image.baseDockerfile.String(),
+		Mounts:         s.mountsToDomain(image),
+		Steps:          image.steps,
+		Entrypoint:     model.ToShellCmd(image.entrypoint),
+		HotReload:      image.hotReload,
+	}
+}
+func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
+	fb := s.fastBuildForImage(image)
+	if fb.Empty() {
+		return nil
+	}
+	return &fb
 }
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

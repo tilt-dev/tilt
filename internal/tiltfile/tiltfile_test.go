@@ -258,6 +258,30 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
 }
 
+func TestStaticBuildWithEmbeddedFastBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+k8s_yaml(['foo.yaml', 'bar.yaml'])
+
+docker_build('gcr.io/foo', 'foo')
+fastbar = docker_build('gcr.io/bar', 'bar')
+
+fastbar.add('local/path', 'remote/path')
+fastbar.run('echo hi')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertNextManifest("bar",
+		sb(image("gcr.io/bar"), nestedFB(add("local/path", "remote/path"), run("echo hi"))),
+		deployment("bar"))
+}
+
 func TestFastBuildTriggers(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -356,7 +380,7 @@ k8s_yaml('foo.yaml')
 docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 `)
 	f.load()
-	f.assertNextManifest("foo", sb(image("gcr.io/foo"), cache("/path/to/cache")))
+	f.assertNextManifest("foo", sbWithCache(image("gcr.io/foo"), "/path/to/cache"))
 }
 
 func TestFastBuildCache(t *testing.T) {
@@ -369,7 +393,7 @@ k8s_yaml('foo.yaml')
 fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
 `)
 	f.load()
-	f.assertNextManifest("foo", fb(image("gcr.io/foo"), cache("/path/to/cache")))
+	f.assertNextManifest("foo", fbWithCache(image("gcr.io/foo"), "/path/to/cache"))
 }
 
 func TestDuplicateResourceNames(t *testing.T) {
@@ -2258,7 +2282,6 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		switch opt := opt.(type) {
 		case sbHelper:
 			image := nextImageTarget()
-			caches := image.CachePaths()
 
 			ref := image.Ref
 			if ref.Empty() {
@@ -2268,57 +2291,53 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 
+			if opt.cache != "" {
+				assert.Contains(f.t, image.CachePaths(), opt.cache,
+					"manifest %v cache paths don't include expected value", m.Name)
+			}
+
 			if !image.IsStaticBuild() {
 				f.t.Fatalf("expected static build but manifest %v has no static build info", m.Name)
 			}
 
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
-				case cacheHelper:
-					matcher.check(f.t, m, caches)
+				case nestedFBHelper:
+					sbInfo := image.StaticBuildInfo()
+					if matcher.fb == nil {
+						if sbInfo.FastBuild != nil {
+							f.t.Fatalf("expected static build for manifest %v to have "+
+								"no nested fastbuild, but found one: %v", m.Name, sbInfo.FastBuild)
+						}
+					} else {
+						if sbInfo.FastBuild == nil {
+							f.t.Fatalf("expected static build for manifest %v to have "+
+								"nested fastbuild, but found none", m.Name)
+						}
+						matcher.fb.checkMatchers(f, m, *sbInfo.FastBuild)
+					}
 				default:
 					f.t.Fatalf("unknown sbHelper matcher: %T %v", matcher, matcher)
 				}
 			}
 		case fbHelper:
 			image := nextImageTarget()
-			caches := image.CachePaths()
+
 			ref := image.Ref
 			if ref.RefName() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 
+			if opt.cache != "" {
+				assert.Contains(f.t, image.CachePaths(), opt.cache,
+					"manifest %v cache paths don't include expected value", m.Name)
+			}
+
 			if !image.IsFastBuild() {
 				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
 			}
-			fbInfo := image.FastBuildInfo()
 
-			mounts := fbInfo.Mounts
-			steps := fbInfo.Steps
-			for _, matcher := range opt.matchers {
-				switch matcher := matcher.(type) {
-				case cacheHelper:
-					matcher.check(f.t, m, caches)
-				case addHelper:
-					mount := mounts[0]
-					mounts = mounts[1:]
-					if mount.LocalPath != f.JoinPath(matcher.src) {
-						f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
-					}
-					if mount.ContainerPath != matcher.dest {
-						f.t.Fatalf("manifest %v mount %+v dest: %q; expected %q", m.Name, mount, mount.ContainerPath, matcher.dest)
-					}
-				case runHelper:
-					step := steps[0]
-					steps = steps[1:]
-					assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
-					assert.Equal(f.t, matcher.triggers, step.Triggers)
-				case hotReloadHelper:
-					assert.Equal(f.t, matcher.on, fbInfo.HotReload)
-				default:
-					f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
-				}
-			}
+			opt.checkMatchers(f, m, image.FastBuildInfo())
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.Ref
@@ -2342,28 +2361,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
 					}
 
-					mounts := cbInfo.Fast.Mounts
-					steps := cbInfo.Fast.Steps
-
-					for _, m2 := range matcher.matchers {
-						switch matcher := m2.(type) {
-						case addHelper:
-							mount := mounts[0]
-							mounts = mounts[1:]
-							if mount.LocalPath != f.JoinPath(matcher.src) {
-								f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
-							}
-						case runHelper:
-							step := steps[0]
-							steps = steps[1:]
-							assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
-							assert.Equal(f.t, matcher.triggers, step.Triggers)
-						case hotReloadHelper:
-							assert.Equal(f.t, matcher.on, cbInfo.Fast.HotReload)
-						default:
-							f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
-						}
-					}
+					matcher.checkMatchers(f, m, *cbInfo.Fast)
 				}
 			}
 
@@ -2693,40 +2691,61 @@ func withEnvVars(envVars ...string) envVarHelper {
 	return ret
 }
 
-type cacheHelper struct {
-	path string
-}
-
-func cache(path string) cacheHelper {
-	return cacheHelper{path}
-}
-
-func (c cacheHelper) check(t *testing.T, m model.Manifest, paths []string) {
-	cache := paths[0]
-	paths = paths[1:]
-	if cache != c.path {
-		t.Fatalf("manifest %v cache %q; expected %q", m.Name, cache, c.path)
-	}
-}
-
 // static build helper
 type sbHelper struct {
 	image    imageHelper
+	cache    string
 	matchers []interface{}
 }
 
 func sb(img imageHelper, opts ...interface{}) sbHelper {
-	return sbHelper{img, opts}
+	return sbHelper{image: img, matchers: opts}
+}
+
+func sbWithCache(img imageHelper, cache string, opts ...interface{}) sbHelper {
+	return sbHelper{image: img, cache: cache, matchers: opts}
 }
 
 // fast build helper
 type fbHelper struct {
 	image    imageHelper
+	cache    string
 	matchers []interface{}
 }
 
 func fb(img imageHelper, opts ...interface{}) fbHelper {
-	return fbHelper{img, opts}
+	return fbHelper{image: img, matchers: opts}
+}
+
+func fbWithCache(img imageHelper, cache string, opts ...interface{}) fbHelper {
+	return fbHelper{image: img, cache: cache, matchers: opts}
+}
+
+func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.FastBuild) {
+	mounts := fbInfo.Mounts
+	steps := fbInfo.Steps
+	for _, matcher := range fb.matchers {
+		switch matcher := matcher.(type) {
+		case addHelper:
+			mount := mounts[0]
+			mounts = mounts[1:]
+			if mount.LocalPath != f.JoinPath(matcher.src) {
+				f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
+			}
+			if mount.ContainerPath != matcher.dest {
+				f.t.Fatalf("manifest %v mount %+v dest: %q; expected %q", m.Name, mount, mount.ContainerPath, matcher.dest)
+			}
+		case runHelper:
+			step := steps[0]
+			steps = steps[1:]
+			assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
+			assert.Equal(f.t, matcher.triggers, step.Triggers)
+		case hotReloadHelper:
+			assert.Equal(f.t, matcher.on, fbInfo.HotReload)
+		default:
+			f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
+		}
+	}
 }
 
 // custom build helper
@@ -2737,6 +2756,17 @@ type cbHelper struct {
 
 func cb(img imageHelper, opts ...interface{}) cbHelper {
 	return cbHelper{img, opts}
+}
+
+type nestedFBHelper struct {
+	fb *fbHelper
+}
+
+func nestedFB(opts ...interface{}) nestedFBHelper {
+	if len(opts) == 0 {
+		return nestedFBHelper{nil}
+	}
+	return nestedFBHelper{&fbHelper{matchers: opts}}
 }
 
 type addHelper struct {
