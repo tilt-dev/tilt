@@ -615,22 +615,22 @@ func newK8SObjectSelector(apiVersion string, kind string, name string, namespace
 
 	ret.apiVersion, err = regexp.Compile(apiVersion)
 	if err != nil {
-		return k8sObjectSelector{}, err
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
 	}
 
 	ret.kind, err = regexp.Compile(kind)
 	if err != nil {
-		return k8sObjectSelector{}, err
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
 	}
 
 	ret.name, err = regexp.Compile(name)
 	if err != nil {
-		return k8sObjectSelector{}, err
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
 	}
 
 	ret.namespace, err = regexp.Compile(namespace)
 	if err != nil {
-		return k8sObjectSelector{}, err
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
 	}
 
 	return ret, nil

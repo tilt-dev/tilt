@@ -1786,14 +1786,17 @@ docker_build('test/mycrd-env', 'env')
 
 func TestK8SKind(t *testing.T) {
 	tests := []struct {
-		name        string
-		args        string
-		expectMatch bool
+		name          string
+		args          string
+		expectMatch   bool
+		expectedError string
 	}{
-		{"match kind", "'Environment', image_json_path='{.spec.runtime.image}'", true},
-		{"don't match kind", "'fdas', image_json_path='{.spec.runtime.image}'", false},
-		{"match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", true},
-		{"don't match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'", false},
+		{"match kind", "'Environment', image_json_path='{.spec.runtime.image}'", true, ""},
+		{"don't match kind", "'fdas', image_json_path='{.spec.runtime.image}'", false, ""},
+		{"match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", true, ""},
+		{"don't match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'", false, ""},
+		{"invalid kind regexp", "'*', image_json_path='{.spec.runtime.image}'", false, "error parsing kind regexp"},
+		{"invalid apiVersion regexp", "'Environment', api_version='*', image_json_path='{.spec.runtime.image}'", false, "error parsing apiVersion regexp"},
 	}
 
 	for _, test := range tests {
@@ -1809,6 +1812,9 @@ docker_build('test/mycrd-env', 'env')
 `, test.args))
 
 			if test.expectMatch {
+				if test.expectedError != "" {
+					t.Fatal("invalid test: cannot expect both match and error")
+				}
 				f.load("mycrd-env")
 				f.assertNextManifest("mycrd-env",
 					sb(
@@ -1817,8 +1823,12 @@ docker_build('test/mycrd-env', 'env')
 					k8sObject("mycrd", "Environment"),
 				)
 			} else {
-				w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
-				f.loadAssertWarnings(w)
+				if test.expectedError == "" {
+					w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
+					f.loadAssertWarnings(w)
+				} else {
+					f.loadErrString(test.expectedError)
+				}
 			}
 		})
 	}
@@ -1898,20 +1908,25 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 
 func TestK8SImageJSONPathArgs(t *testing.T) {
 	tests := []struct {
-		name        string
-		args        string
-		expectMatch bool
+		name          string
+		args          string
+		expectMatch   bool
+		expectedError string
 	}{
-		{"match name", "name='foo'", true},
-		{"don't match name", "name='bar'", false},
-		{"match name w/ regex", "name='.*o'", true},
-		{"match kind", "name='foo', kind='Deployment'", true},
-		{"don't match kind", "name='bar', kind='asdf'", false},
-		{"match apiVersion", "name='foo', api_version='apps/v1'", true},
-		{"match apiVersion+kind w/ regex", "name='foo', kind='Deployment', api_version='apps/.*'", true},
-		{"don't match apiVersion", "name='bar', api_version='apps/v2'", false},
-		{"match namespace", "name='foo', namespace='default'", true},
-		{"don't match namespace", "name='bar', namespace='asdf'", false},
+		{"match name", "name='foo'", true, ""},
+		{"don't match name", "name='bar'", false, ""},
+		{"match name w/ regex", "name='.*o'", true, ""},
+		{"match kind", "name='foo', kind='Deployment'", true, ""},
+		{"don't match kind", "name='bar', kind='asdf'", false, ""},
+		{"match apiVersion", "name='foo', api_version='apps/v1'", true, ""},
+		{"match apiVersion+kind w/ regex", "name='foo', kind='Deployment', api_version='apps/.*'", true, ""},
+		{"don't match apiVersion", "name='bar', api_version='apps/v2'", false, ""},
+		{"match namespace", "name='foo', namespace='default'", true, ""},
+		{"don't match namespace", "name='bar', namespace='asdf'", false, ""},
+		{"invalid name regex", "name='*'", false, "error parsing name regexp"},
+		{"invalid kind regex", "kind='*'", false, "error parsing kind regexp"},
+		{"invalid apiVersion regex", "name='foo', api_version='*'", false, "error parsing apiVersion regexp"},
+		{"invalid namespace regex", "namespace='*'", false, "error parsing namespace regexp"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1928,6 +1943,9 @@ docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
 k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_IMAGE')].value}", %s)
 	`, test.args))
 			if test.expectMatch {
+				if test.expectedError != "" {
+					t.Fatal("illegal test definition: cannot expect both match and error")
+				}
 				f.load("foo")
 				f.assertNextManifest("foo",
 					sb(
@@ -1938,8 +1956,12 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 					),
 				)
 			} else {
-				w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
-				f.loadAssertWarnings(w)
+				if test.expectedError == "" {
+					w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
+					f.loadAssertWarnings(w)
+				} else {
+					f.loadErrString(test.expectedError)
+				}
 			}
 		})
 	}
