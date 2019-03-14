@@ -40,16 +40,16 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	manifests, globalYaml, _, _, err := downDeps.tfl.Load(ctx, c.fileName, nil)
+	tlr, err := downDeps.tfl.Load(ctx, c.fileName, nil)
 	if err != nil {
 		return err
 	}
 
-	entities, err := engine.ParseYAMLFromManifests(manifests...)
+	entities, err := engine.ParseYAMLFromManifests(tlr.Manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-	gyamlEntities, err := k8s.ParseYAMLFromString(globalYaml.K8sTarget().YAML)
+	gyamlEntities, err := k8s.ParseYAMLFromString(tlr.Global.K8sTarget().YAML)
 	if err != nil {
 		return errors.Wrap(err, "Parsing global YAML")
 	}
@@ -61,7 +61,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	}
 
 	var dcConfigPath string
-	for _, m := range manifests {
+	for _, m := range tlr.Manifests {
 		if m.IsDC() {
 			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll
 			// need to support down-ing as well. For now, we `down` the first one we find.

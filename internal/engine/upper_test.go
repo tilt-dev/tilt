@@ -2602,11 +2602,11 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	manifests, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
-	f.Start(manifests, true)
+	f.Start(tlr.Manifests, true)
 }
 
 func (f *testFixture) WriteConfigFiles(args ...string) {
@@ -2651,16 +2651,16 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	manifests, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
 
-	if len(manifests) != 2 {
-		f.T().Fatalf("Expected two manifests. Actual: %v", manifests)
+	if len(tlr.Manifests) != 2 {
+		f.T().Fatalf("Expected two manifests. Actual: %v", tlr.Manifests)
 	}
 
-	return manifests[0], manifests[1]
+	return tlr.Manifests[0], tlr.Manifests[1]
 }
 
 func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {

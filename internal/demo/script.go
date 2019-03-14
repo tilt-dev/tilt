@@ -186,18 +186,18 @@ func (s Script) Run(ctx context.Context) error {
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
 		// TODO(dmiller): not this?
-		manifests, _, _, warnings, err := s.tfl.Load(ctx, tfPath, nil)
+		tlr, err := s.tfl.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err
 		}
 
-		defer s.cleanUp(newBackgroundContext(ctx), manifests)
+		defer s.cleanUp(newBackgroundContext(ctx), tlr.Manifests)
 
 		initAction := engine.InitAction{
 			WatchMounts:  true,
-			Manifests:    manifests,
+			Manifests:    tlr.Manifests,
 			TiltfilePath: tfPath,
-			Warnings:     warnings,
+			Warnings:     tlr.Warnings,
 		}
 		return s.upper.Init(ctx, initAction)
 	})
