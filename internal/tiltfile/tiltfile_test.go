@@ -2279,28 +2279,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
 					}
 
-					mounts := cbInfo.Fast.Mounts
-					steps := cbInfo.Fast.Steps
-
-					for _, m2 := range matcher.matchers {
-						switch matcher := m2.(type) {
-						case addHelper:
-							mount := mounts[0]
-							mounts = mounts[1:]
-							if mount.LocalPath != f.JoinPath(matcher.src) {
-								f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
-							}
-						case runHelper:
-							step := steps[0]
-							steps = steps[1:]
-							assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
-							assert.Equal(f.t, matcher.triggers, step.Triggers)
-						case hotReloadHelper:
-							assert.Equal(f.t, matcher.on, cbInfo.Fast.HotReload)
-						default:
-							f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
-						}
-					}
+					matcher.checkMatchers(f, m, *cbInfo.Fast)
 				}
 			}
 
