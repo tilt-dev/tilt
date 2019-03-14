@@ -1052,7 +1052,7 @@ func TestFilterYamlByNameKind(t *testing.T) {
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
-	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', kind='deployment')
+	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', kind='Deployment')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)
 `)
@@ -1069,6 +1069,22 @@ func TestFilterYamlByNamespace(t *testing.T) {
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', namespace='the-dog-zone')
+k8s_resource('doggos', yaml=doggos)
+k8s_resource('rest', yaml=rest)
+`)
+	f.load()
+
+	f.assertNextManifest("doggos", deployment("doggos"))
+	f.assertNextManifest("rest", service("doggos"), deployment("snack"), deployment("sancho"))
+}
+
+func TestFilterYamlByApiVersion(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("k8s.yaml", yaml.ConcatYAML(
+		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
+		testyaml.SnackYaml, testyaml.SanchoYAML))
+	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', api_version='apps/v1')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)
 `)

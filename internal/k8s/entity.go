@@ -205,18 +205,6 @@ func FilterByMetadataLabels(entities []K8sEntity, labels map[string]string) (pas
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesMetadataLabels(labels) })
 }
 
-func FilterByName(entities []K8sEntity, name string) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasName(name), nil })
-}
-
-func FilterByNamespace(entities []K8sEntity, ns string) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasNamespace(ns), nil })
-}
-
-func FilterByKind(entities []K8sEntity, kind string) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasKind(kind), nil })
-}
-
 func FilterByHasPodTemplateSpec(entities []K8sEntity) (passing, rest []K8sEntity, err error) {
 	return Filter(entities, func(e K8sEntity) (bool, error) {
 		templateSpecs, err := ExtractPodTemplateSpec(&e)
