@@ -284,6 +284,11 @@ func (h *Hud) Refresh(ctx context.Context) error {
 
 // Must hold the lock
 func (h *Hud) setView(ctx context.Context, view view.View) error {
+	// if we're going from 1 resource (i.e., the Tiltfile) to more than 1, reset
+	// the resource selection, so that we're not scrolled to the bottom with the Tiltfile selected
+	if len(h.currentView.Resources) == 1 && len(view.Resources) > 1 {
+		h.resetResourceSelection()
+	}
 	h.currentView = view
 	h.refreshSelectedIndex()
 
@@ -319,6 +324,16 @@ func (h *Hud) refresh(ctx context.Context) error {
 func (h *Hud) Update(v view.View, vs view.ViewState) error {
 	err := h.r.Render(v, vs)
 	return errors.Wrap(err, "error rendering hud")
+}
+
+func (h *Hud) resetResourceSelection() {
+	rty := h.r.rty
+	if rty == nil {
+		return
+	}
+	// wipe out any scroll/selection state for resources
+	// it will get re-set in the next call to render
+	rty.RegisterElementScroll("resources", []string{})
 }
 
 func (h *Hud) refreshSelectedIndex() {
