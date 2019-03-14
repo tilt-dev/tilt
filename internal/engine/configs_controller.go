@@ -89,21 +89,21 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 		loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
 
-		manifests, globalYAML, configFiles, warnings, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
-		if err == nil && len(manifests) == 0 && globalYAML.Empty() {
+		tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
+		if err == nil && len(tlr.Manifests) == 0 && tlr.Global.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
 		if err != nil {
 			logger.Get(ctx).Infof(err.Error())
 		}
 		st.Dispatch(ConfigsReloadedAction{
-			Manifests:   manifests,
-			GlobalYAML:  globalYAML,
-			ConfigFiles: configFiles,
+			Manifests:   tlr.Manifests,
+			GlobalYAML:  tlr.Global,
+			ConfigFiles: tlr.ConfigFiles,
 			StartTime:   startTime,
 			FinishTime:  cc.clock(),
 			Err:         err,
-			Warnings:    warnings,
+			Warnings:    tlr.Warnings,
 		})
 	}()
 }

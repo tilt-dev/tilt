@@ -777,7 +777,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource('bar', 'bar.yaml')
 `)
 
-	_, _, _, _, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -1264,7 +1264,7 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 `)
 	f.load()
 
-	assert.Equal(t, 1, len(f.manifests))
+	assert.Equal(t, 1, len(f.loadResult.Manifests))
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 2, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
@@ -1285,7 +1285,7 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 `)
 	f.load()
 
-	assert.Equal(t, 1, len(f.manifests))
+	assert.Equal(t, 1, len(f.loadResult.Manifests))
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 1, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
@@ -2129,11 +2129,7 @@ type fixture struct {
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
 
-	// created by load
-	manifests    []model.Manifest
-	yamlManifest model.Manifest
-	configFiles  []string
-	warnings     []string
+	loadResult TiltfileLoadResult
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -2257,22 +2253,19 @@ func matchMap(names ...string) map[string]bool {
 // Default load. Fails if there are any warnings.
 func (f *fixture) load(names ...string) {
 	f.loadAllowWarnings(names...)
-	if len(f.warnings) != 0 {
-		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.warnings)
+	if len(f.loadResult.Warnings) != 0 {
+		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.loadResult.Warnings)
 	}
 }
 
 // Load the manifests, expecting warnings.
 // Warnigns should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	manifests, yamlManifest, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	f.manifests = manifests
-	f.yamlManifest = yamlManifest
-	f.configFiles = configFiles
-	f.warnings = warnings
+	f.loadResult = tlr
 }
 
 func unusedImageWarning(unusedImage string, suggestedImages []string) string {
@@ -2293,13 +2286,11 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	manifests, _, configFiles, warnings, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
-	f.manifests = manifests
-	f.configFiles = configFiles
-	f.warnings = warnings
+	f.loadResult = tlr
 	errText := err.Error()
 	for _, msg := range msgs {
 		if !strings.Contains(errText, msg) {
@@ -2315,13 +2306,13 @@ func (f *fixture) gitInit(path string) {
 }
 
 func (f *fixture) assertNoYAMLManifest(name string) {
-	assert.Equal(f.t, model.Manifest{}, f.yamlManifest)
+	assert.Equal(f.t, model.Manifest{}, f.loadResult.Global)
 }
 
 func (f *fixture) assertYAMLManifest(resNames ...string) {
-	assert.Equal(f.t, unresourcedName, f.yamlManifest.ManifestName().String())
+	assert.Equal(f.t, unresourcedName, f.loadResult.Global.ManifestName().String())
 
-	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.yamlManifest.K8sTarget().YAML))
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.loadResult.Global.K8sTarget().YAML))
 	assert.NoError(f.t, err)
 
 	entityNames := make([]string, len(entities))
@@ -2333,16 +2324,16 @@ func (f *fixture) assertYAMLManifest(resNames ...string) {
 
 // assert functions and helpers
 func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Manifest {
-	if len(f.manifests) == 0 {
+	if len(f.loadResult.Manifests) == 0 {
 		f.t.Fatalf("no more manifests; trying to find %q (did you call `f.load`?)", name)
 	}
 
-	m := f.manifests[0]
+	m := f.loadResult.Manifests[0]
 	if m.Name != model.ManifestName(name) {
 		f.t.Fatalf("expected next manifest to be '%s' but found '%s'", name, m.Name)
 	}
 
-	f.manifests = f.manifests[1:]
+	f.loadResult.Manifests = f.loadResult.Manifests[1:]
 
 	imageIndex := 0
 	nextImageTarget := func() model.ImageTarget {
@@ -2577,7 +2568,7 @@ func (f *fixture) idNames(ids []model.TargetID) []string {
 }
 
 func (f *fixture) assertNumManifests(expected int) {
-	assert.Equal(f.t, expected, len(f.manifests))
+	assert.Equal(f.t, expected, len(f.loadResult.Manifests))
 }
 
 func (f *fixture) assertConfigFiles(filenames ...string) {
@@ -2586,8 +2577,8 @@ func (f *fixture) assertConfigFiles(filenames ...string) {
 		expected = append(expected, f.JoinPath(filename))
 	}
 	sort.Strings(expected)
-	sort.Strings(f.configFiles)
-	assert.Equal(f.t, expected, f.configFiles)
+	sort.Strings(f.loadResult.ConfigFiles)
+	assert.Equal(f.t, expected, f.loadResult.ConfigFiles)
 }
 
 func (f *fixture) assertWarnings(warnings ...string) {
@@ -2596,8 +2587,8 @@ func (f *fixture) assertWarnings(warnings ...string) {
 		expected = append(expected, warning)
 	}
 	sort.Strings(expected)
-	sort.Strings(f.warnings)
-	assert.Equal(f.t, expected, f.warnings)
+	sort.Strings(f.loadResult.Warnings)
+	assert.Equal(f.t, expected, f.loadResult.Warnings)
 }
 
 func (f *fixture) entities(y string) []k8s.K8sEntity {
