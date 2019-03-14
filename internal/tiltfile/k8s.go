@@ -453,7 +453,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8
 		}
 		bs, err := s.readFile(yamlPath)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error reading yaml file")
 		}
 		entities, err := k8s.ParseYAMLFromString(string(bs))
 		if err != nil {
