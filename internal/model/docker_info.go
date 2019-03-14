@@ -101,17 +101,23 @@ func (i ImageTarget) MaybeFastBuildInfo() *FastBuild {
 	switch details := i.BuildDetails.(type) {
 	case FastBuild:
 		return &details
+	case StaticBuild:
+		return details.FastBuild
 	case CustomBuild:
 		return details.Fast
 	}
 	return nil
 }
 
+// FastBuildInfo returns the TOP LEVEL BUILD DETAILS, if a FastBuild.
+// Does not return nested FastBuild details.
 func (i ImageTarget) FastBuildInfo() FastBuild {
 	ret, _ := i.BuildDetails.(FastBuild)
 	return ret
 }
 
+// IsFastBuild checks if the TOP LEVEL BUILD DETAILS are for a FastBuild.
+// (If this target is a StaticBuild || CustomBuild with a nested FastBuild, returns FALSE.)
 func (i ImageTarget) IsFastBuild() bool {
 	_, ok := i.BuildDetails.(FastBuild)
 	return ok

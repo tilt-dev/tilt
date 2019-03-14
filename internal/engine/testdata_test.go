@@ -133,6 +133,17 @@ func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
 	return manifest
 }
 
+func NewSanchoStaticManifestWithNestedFastBuild(fixture pather) model.Manifest {
+	manifest := NewSanchoStaticManifest()
+	iTarg := manifest.ImageTargetAt(0)
+	fb := NewSanchoFastBuild(fixture)
+	sb := iTarg.StaticBuildInfo()
+	sb.FastBuild = &fb
+	iTarg = iTarg.WithBuildDetails(sb)
+	manifest = manifest.WithImageTarget(iTarg)
+	return manifest
+}
+
 func NewSanchoStaticMultiStageManifest() model.Manifest {
 	baseImage := model.ImageTarget{
 		Ref: SanchoBaseRef,
