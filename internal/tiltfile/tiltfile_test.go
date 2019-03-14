@@ -58,7 +58,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
 
-	f.loadErrString("foo/Dockerfile", "no such file or directory", "error reading docker file")
+	f.loadErrString("foo/Dockerfile", "no such file or directory", "error reading dockerfile")
 }
 
 func TestSimple(t *testing.T) {
@@ -2034,7 +2034,7 @@ repo = local_git_repo('.')
 (fast_build('web/api', '')
     .add(repo.path('src'), '/app/src').run(''))
 `)
-	f.loadErrString("error reading docker file")
+	f.loadErrString("error reading dockerfile")
 }
 
 func TestDockerBuildEmptyDockerFileArg(t *testing.T) {
@@ -2043,7 +2043,7 @@ func TestDockerBuildEmptyDockerFileArg(t *testing.T) {
 	f.file("Tiltfile", `
 docker_build('web/api', '', dockerfile='')
 `)
-	f.loadErrString("error reading docker file")
+	f.loadErrString("error reading dockerfile")
 }
 
 func TestK8SYamlEmptyArg(t *testing.T) {
