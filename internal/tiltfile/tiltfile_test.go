@@ -58,7 +58,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
 
-	f.loadErrString("foo/Dockerfile", "no such file or directory")
+	f.loadErrString("foo/Dockerfile", "no such file or directory", "error reading dockerfile")
 }
 
 func TestSimple(t *testing.T) {
@@ -2086,6 +2086,37 @@ func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(path=["foo"])`)
 	f.loadErrString("at least one of kind, name, or namespace must be specified")
+}
+
+func TestFastBuildEmptyDockerfileArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.gitInit(f.Path())
+	f.file("Tiltfile", `
+repo = local_git_repo('.')
+
+(fast_build('web/api', '')
+    .add(repo.path('src'), '/app/src').run(''))
+`)
+	f.loadErrString("error reading dockerfile")
+}
+
+func TestDockerBuildEmptyDockerFileArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("Tiltfile", `
+docker_build('web/api', '', dockerfile='')
+`)
+	f.loadErrString("error reading dockerfile")
+}
+
+func TestK8SYamlEmptyArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("Tiltfile", `
+k8s_yaml('')
+`)
+	f.loadErrString("error reading yaml file")
 }
 
 type fixture struct {
