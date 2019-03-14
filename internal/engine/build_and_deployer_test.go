@@ -206,6 +206,68 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	assert.True(t, f.sCli.UpdateContainerHotReload)
 }
 
+func TestStaticBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticManifestWithNestedFastBuild(f)
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 1 {
+		t.Errorf("Expected 1 docker push, actual: %d", f.docker.PushCount)
+	}
+
+	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
+		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
+	}
+
+	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should deploy the synclet for a static build with a nested fast build: %s", f.k8s.Yaml)
+	}
+}
+
+func TestStaticBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	manifest := NewSanchoStaticManifestWithNestedFastBuild(f)
+	targets := buildTargets(manifest)
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 1 {
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
+	}
+	if len(f.docker.ExecCalls) != 1 {
+		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
+	}
+	f.assertContainerRestarts(1)
+
+	id := manifest.ImageTargetAt(0).ID()
+	_, hasResult := result[id]
+	assert.True(t, hasResult)
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+}
+
 func TestIncrementalBuildFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()

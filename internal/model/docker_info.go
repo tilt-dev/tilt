@@ -101,6 +101,8 @@ func (i ImageTarget) MaybeFastBuildInfo() *FastBuild {
 	switch details := i.BuildDetails.(type) {
 	case FastBuild:
 		return &details
+	case StaticBuild:
+		return details.FastBuild
 	case CustomBuild:
 		return details.Fast
 	}
