@@ -26,7 +26,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics)
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
