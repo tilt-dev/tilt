@@ -1,7 +1,7 @@
 .resources {
   height: 95vh;
   font-size: 1.2em;
-  line-height: 1.5;
+  line-height: 1.6;
   font-family: 'Courier New', Courier, monospace;
   margin: 0;
   padding: 1em;
@@ -10,6 +10,7 @@
 
 .headings {
   text-transform: uppercase;
+  font-weight: bold;
   display: flex;
   flex-flow: row wrap;
 }

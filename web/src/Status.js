@@ -17,9 +17,14 @@ function Preview(props) {
 
     return (
         <footer className="status">
-            <section>{running.length}/{total.length} {maybePluralize(running.length, 'Resource')} Running</section>
-            <section>{errors.length} {maybePluralize(errors.length, 'Error')}</section>
-            <button onClick={props.togglePreview}>Toggle Preview</button>
+            <section>
+                <span>{running.length}/{total.length} {maybePluralize(running.length, 'Resource')} Running</span>
+                <span> | </span>
+                <span>{errors.length} {maybePluralize(errors.length, 'Error')}</span>
+            </section>
+            {props.showPreview &&
+                <button onClick={props.closePreview}>Close Preview</button>
+            }
         </footer>
     )
 }

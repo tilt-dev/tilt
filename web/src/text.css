@@ -2,6 +2,10 @@ p {
   margin: 0;
 }
 
+a {
+  color: #fff;
+}
+
 .u-muted {
   color: #ccc;
 }
