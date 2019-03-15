@@ -3,7 +3,7 @@ import ResourceList from './ResourceList';
 import Status from './Status';
 import AppController from './AppController';
 import LoadingScreen from './LoadingScreen';
-import './App.css';
+import './App.scss';
 
 class App extends Component {
   constructor(props) {

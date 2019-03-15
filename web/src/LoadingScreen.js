@@ -1,5 +1,5 @@
 import React from 'react';
-import './LoadingScreen.css';
+import './LoadingScreen.scss';
 
 function LoadingScreen(props) {
   let message = props.message || 'Loading…'
