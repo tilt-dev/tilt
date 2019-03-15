@@ -12,14 +12,8 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-type ErrorAction struct {
-	Error error
-}
-
-func (ErrorAction) Action() {}
-
-func NewErrorAction(err error) ErrorAction {
-	return ErrorAction{Error: err}
+func NewErrorAction(err error) store.ErrorAction {
+	return store.NewErrorAction(err)
 }
 
 type PodChangeAction struct {

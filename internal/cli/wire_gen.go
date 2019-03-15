@@ -31,7 +31,8 @@ import (
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
-	webURL, err := provideWebURL()
+	modelWebPort := provideWebPort()
+	webURL, err := provideWebURL(modelWebPort)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -116,7 +117,15 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics, storeStore)
-	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter)
+	webMode := provideWebMode()
+	webVersion := provideWebVersion()
+	assetServer, err := server.ProvideAssetServer(ctx, webMode, webVersion)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
+	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController)
 	script := demo.NewScript(upper, headsUpDisplay, client, env, storeStore, branch, runtime, tiltfileLoader)
 	return script, nil
 }
@@ -129,7 +138,8 @@ var (
 func wireThreads(ctx context.Context) (Threads, error) {
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
-	webURL, err := provideWebURL()
+	modelWebPort := provideWebPort()
+	webURL, err := provideWebURL(modelWebPort)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -214,7 +224,6 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics, storeStore)
-	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter)
 	webMode := provideWebMode()
 	webVersion := provideWebVersion()
 	assetServer, err := server.ProvideAssetServer(ctx, webMode, webVersion)
@@ -222,7 +231,9 @@ func wireThreads(ctx context.Context) (Threads, error) {
 		return Threads{}, err
 	}
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer)
-	threads := provideThreads(headsUpDisplay, upper, headsUpServer, assetServer)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
+	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController)
+	threads := provideThreads(headsUpDisplay, upper)
 	return threads, nil
 }
 
@@ -379,18 +390,17 @@ var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeCo
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
-	provideWebURL, server.ProvideHeadsUpServer, server.ProvideAssetServer, provideThreads,
+	provideWebURL,
+	provideWebPort, server.ProvideHeadsUpServer, server.ProvideAssetServer, server.ProvideHeadsUpServerController, provideThreads,
 )
 
 type Threads struct {
-	hud         hud.HeadsUpDisplay
-	upper       engine.Upper
-	server      server.HeadsUpServer
-	assetServer server.AssetServer
+	hud   hud.HeadsUpDisplay
+	upper engine.Upper
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server2 server.HeadsUpServer, assetServer server.AssetServer) Threads {
-	return Threads{h, upper, server2, assetServer}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper) Threads {
+	return Threads{h, upper}
 }
 
 type DownDeps struct {

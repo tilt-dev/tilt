@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -69,7 +70,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
 	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
 	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager,
-	sm SyncletManager, ar *AnalyticsReporter) Upper {
+	sm SyncletManager, ar *AnalyticsReporter, hudsc *server.HeadsUpServerController) Upper {
 
 	st.AddSubscriber(bc)
 	st.AddSubscriber(hud)
@@ -86,6 +87,7 @@ func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *S
 	st.AddSubscriber(pm)
 	st.AddSubscriber(sm)
 	st.AddSubscriber(ar)
+	st.AddSubscriber(hudsc)
 
 	return Upper{
 		store: st,
@@ -138,7 +140,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	switch action := action.(type) {
 	case InitAction:
 		err = handleInitAction(ctx, state, action)
-	case ErrorAction:
+	case store.ErrorAction:
 		err = action.Error
 	case hud.ExitAction:
 		handleExitAction(state, action)
