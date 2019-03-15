@@ -110,7 +110,7 @@ const (
 	kustomizeN    = "kustomize"
 	helmN         = "helm"
 	listdirN      = "listdir"
-	jsonDecodeN   = "json_decode"
+	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
 
 	// other functions
@@ -157,7 +157,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, failN, s.fail)
 	addBuiltin(r, blobN, s.blob)
 	addBuiltin(r, listdirN, s.listdir)
-	addBuiltin(r, jsonDecodeN, s.jsonDecode)
+	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
 
 	s.builtinsMap = r

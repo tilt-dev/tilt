@@ -2127,7 +2127,7 @@ func TestParseJSON(t *testing.T) {
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
-result = json_decode('["foo", {"baz":["bar", "", 1, 2]}]')
+result = decode_json('["foo", {"baz":["bar", "", 1, 2]}]')
 
 docker_build('gcr.io/foo', 'foo')
 k8s_resource(result[0], 'foo.yaml')

@@ -374,7 +374,7 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	return starlark.NewList(ret), nil
 }
 
-func (s *tiltfileState) jsonDecode(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var jsonString starlark.String
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "json", &jsonString); err != nil {
 		return nil, err
