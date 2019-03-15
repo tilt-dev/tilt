@@ -77,7 +77,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertNextManifest("foo",
 		sb(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -98,7 +98,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertNextManifest("foo",
 		sb(imageNormalized("fooimage")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestExplicitDockerfileIsConfigFile(t *testing.T) {
@@ -111,7 +111,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile='other/Dockerfile')
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
 }
 
 func TestExplicitDockerfileAsLocalPath(t *testing.T) {
@@ -125,7 +125,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile=r.path('other/Dockerfile'))
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
 }
 
 func TestExplicitDockerfileContents(t *testing.T) {
@@ -137,7 +137,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine')
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
 	f.assertNextManifest("foo", sb(image("gcr.io/foo")))
 }
 
@@ -152,7 +152,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile_contents=df)
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
 	f.assertNextManifest("foo", sb(image("gcr.io/foo")))
 }
 
@@ -185,7 +185,7 @@ k8s_resource('foo', 'foo.yaml')
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestFastBuildHotReload(t *testing.T) {
@@ -205,7 +205,7 @@ k8s_resource('foo', 'foo.yaml')
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestFastBuildPassedToResource(t *testing.T) {
@@ -224,7 +224,7 @@ k8s_resource('foo', 'foo.yaml', image=fb)
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestFastBuildValidates(t *testing.T) {
@@ -303,7 +303,7 @@ k8s_resource('foo', 'foo.yaml')
 		),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestVerifiesGitRepo(t *testing.T) {
@@ -349,7 +349,7 @@ k8s_resource('foo', yaml)
 	f.assertNextManifest("foo",
 		sb(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestKustomize(t *testing.T) {
@@ -367,7 +367,7 @@ k8s_resource('foo', kustomize("."))
 `)
 	f.load()
 	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(3))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
 func TestDockerBuildCache(t *testing.T) {
@@ -554,7 +554,7 @@ docker_build('gcr.io/d', 'd')
 	f.assertNextManifest("c", sb(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", sb(image("gcr.io/d")), deployment("d"))
 	f.assertNoYAMLManifest("")
-	f.assertConfigFiles("Tiltfile", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
 }
 
 func TestExpandUnresourced(t *testing.T) {
@@ -761,7 +761,7 @@ k8s_resource('bar', 'bar.yaml')
 		sb(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
 }
 
 func TestLoadTypoManifest(t *testing.T) {
@@ -1148,7 +1148,7 @@ if True:
 	f.assertNextManifest("foo",
 		sb(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
 func TestTopLevelForLoop(t *testing.T) {
@@ -1195,6 +1195,7 @@ k8s_yaml(yml)
 	f.assertYAMLManifest("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
+		".tiltignore",
 		"helm",
 	)
 }
@@ -1217,6 +1218,7 @@ k8s_yaml(yml)
 	f.assertYAMLManifest("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
+		".tiltignore",
 		"helm",
 	)
 }
@@ -1672,7 +1674,7 @@ func TestDir(t *testing.T) {
 
 	f.load("foo", "bar")
 	f.assertNumManifests(2)
-	f.assertConfigFiles("Tiltfile", "config/foo.yaml", "config/bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "config/foo.yaml", "config/bar.yaml")
 }
 
 func TestDirRecursive(t *testing.T) {
@@ -1700,7 +1702,7 @@ for f in files:
 `)
 
 	f.load()
-	f.assertConfigFiles("Tiltfile", "foo/bar", "foo/baz/qux")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/bar", "foo/baz/qux")
 }
 
 func TestCallCounts(t *testing.T) {
@@ -1789,7 +1791,7 @@ hfb.hot_reload()`
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
