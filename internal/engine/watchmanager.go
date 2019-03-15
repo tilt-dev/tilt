@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -101,6 +102,7 @@ type WatchManager struct {
 	targetWatches      map[model.TargetID]targetNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         timerMaker
+	tiltIgnoreContents string
 	disabledForTesting bool
 }
 
@@ -133,6 +135,8 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		targetsToProcess[ConfigsTargetID] = &configsTarget{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
+	tiltIgnoreChanged := w.tiltIgnoreContents != state.TiltIgnoreContents
+
 	for name, mnc := range w.targetWatches {
 		m, ok := targetsToProcess[name]
 		if !ok {
@@ -140,10 +144,9 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 			continue
 		}
 
-		if !watchRulesMatch(m, mnc.target) {
+		if tiltIgnoreChanged || !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
-			break
 		}
 	}
 
@@ -167,6 +170,11 @@ func watchRulesMatch(w1, w2 WatchableTarget) bool {
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	setup, teardown := w.diff(ctx, st)
 
+	state := st.RLockState()
+	tiltRoot := filepath.Dir(state.TiltfilePath)
+	w.tiltIgnoreContents = state.TiltIgnoreContents
+	st.RUnlockState()
+
 	// setup the watch first, to avoid a gap in coverage between setup and
 	// teardown. it's ok if we get a file event twice.
 	newWatches := make(map[model.TargetID]targetNotifyCancel)
@@ -186,7 +194,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go w.dispatchFileChangesLoop(ctx, target, watcher, st)
+		go w.dispatchFileChangesLoop(ctx, target, watcher, st, tiltRoot)
 		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
 	}
 
@@ -208,12 +216,23 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, target WatchableTarget, watcher watch.Notify, st store.RStore) {
+func (w *WatchManager) dispatchFileChangesLoop(
+	ctx context.Context,
+	target WatchableTarget,
+	watcher watch.Notify,
+	st store.RStore,
+	tiltRoot string) {
+
 	filter, err := ignore.CreateFileChangeFilter(target)
 	if err != nil {
 		st.Dispatch(NewErrorAction(err))
 		return
 	}
+	tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
+	if err != nil {
+		st.Dispatch(NewErrorAction(err))
+	}
+	filter = model.NewCompositeMatcher([]model.PathMatcher{filter, tiltIgnoreFilter})
 
 	eventsCh := coalesceEvents(w.timerMaker, watcher.Events())
 

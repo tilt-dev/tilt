@@ -20,6 +20,7 @@ import (
 )
 
 const FileName = "Tiltfile"
+const TiltIgnoreFileName = ".tiltignore"
 const unresourcedName = "k8s_yaml"
 
 func init() {
@@ -29,10 +30,11 @@ func init() {
 }
 
 type TiltfileLoadResult struct {
-	Manifests   []model.Manifest
-	Global      model.Manifest
-	ConfigFiles []string
-	Warnings    []string
+	Manifests          []model.Manifest
+	Global             model.Manifest
+	ConfigFiles        []string
+	Warnings           []string
+	TiltIgnoreContents string
 }
 
 type TiltfileLoader interface {
@@ -54,7 +56,12 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 }
 
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (TiltfileLoadResult, error) {
-	return TiltfileLoadResult{tfl.Manifests, tfl.Global, tfl.ConfigFiles, tfl.Warnings}, tfl.Err
+	return TiltfileLoadResult{
+		Manifests:   tfl.Manifests,
+		Global:      tfl.Global,
+		ConfigFiles: tfl.ConfigFiles,
+		Warnings:    tfl.Warnings,
+	}, tfl.Err
 }
 
 func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.DockerComposeClient) TiltfileLoader {
@@ -73,10 +80,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return TiltfileLoadResult{nil, model.Manifest{}, []string{filename}, nil}, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
+			return TiltfileLoadResult{ConfigFiles: []string{filename}}, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
 		}
 		absFilename, _ = filepath.Abs(filename)
-		return TiltfileLoadResult{nil, model.Manifest{}, []string{absFilename}, nil}, err
+		return TiltfileLoadResult{ConfigFiles: []string{absFilename}}, err
 	}
 
 	s := newTiltfileState(ctx, tfl.dcCli, absFilename)
@@ -125,15 +132,26 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		}
 	}
 
-	if err == nil {
-		s.logger.Infof("Successfully loaded Tiltfile")
-	}
+	s.logger.Infof("Successfully loaded Tiltfile")
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)
 
+	tiltIgnoreContents, err := s.readFile(s.localPathFromString(tiltIgnorePath(filename)))
+	// missing tiltignore is fine
+	if os.IsNotExist(err) {
+		err = nil
+	} else if err != nil {
+		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
+	}
+
 	// TODO(maia): `yamlManifest` should be processed just like any
 	// other manifest (i.e. get rid of "global yaml" concept)
-	return TiltfileLoadResult{manifests, yamlManifest, s.configFiles, s.warnings}, err
+	return TiltfileLoadResult{manifests, yamlManifest, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
+}
+
+// .tiltignore sits next to Tiltfile
+func tiltIgnorePath(tiltfilePath string) string {
+	return filepath.Join(filepath.Dir(tiltfilePath), TiltIgnoreFileName)
 }
 
 func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {

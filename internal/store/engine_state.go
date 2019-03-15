@@ -62,6 +62,7 @@ type EngineState struct {
 
 	TiltfilePath             string
 	ConfigFiles              []string
+	TiltIgnoreContents       string
 	PendingConfigFileChanges map[string]time.Time
 
 	// InitManifests is the list of manifest names that we were told to init from the CLI.

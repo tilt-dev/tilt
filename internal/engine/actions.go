@@ -167,9 +167,10 @@ type ConfigsReloadStartedAction struct {
 func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
-	Manifests   []model.Manifest
-	GlobalYAML  model.Manifest
-	ConfigFiles []string
+	Manifests          []model.Manifest
+	GlobalYAML         model.Manifest
+	TiltIgnoreContents string
+	ConfigFiles        []string
 
 	StartTime  time.Time
 	FinishTime time.Time

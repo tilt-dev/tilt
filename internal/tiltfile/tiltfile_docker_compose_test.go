@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -77,7 +78,7 @@ func TestDockerComposeManifest(t *testing.T) {
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -100,7 +101,7 @@ services:
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -131,7 +132,7 @@ services:
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "baz/alternate-Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/alternate-Dockerfile"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -220,7 +221,7 @@ RUN echo hi`
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", "docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 

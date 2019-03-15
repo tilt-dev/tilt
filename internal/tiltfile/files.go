@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/sliceutils"
+
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -176,7 +178,7 @@ func (s *tiltfileState) absWorkingDir() string {
 }
 
 func (s *tiltfileState) recordConfigFile(f string) {
-	s.configFiles = append(s.configFiles, f)
+	s.configFiles = sliceutils.AppendWithoutDupes(s.configFiles, f)
 }
 
 func (s *tiltfileState) readFile(p localPath) ([]byte, error) {

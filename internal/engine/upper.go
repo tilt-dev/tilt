@@ -479,7 +479,7 @@ func handleConfigsReloaded(
 
 		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
 		// append any new config files found in the reload action
-		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles)
+		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles...)
 
 		return
 	}
@@ -510,6 +510,7 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
