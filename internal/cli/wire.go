@@ -84,8 +84,10 @@ var BaseWireSet = wire.NewSet(
 	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
+	provideWebPort,
 	server.ProvideHeadsUpServer,
 	server.ProvideAssetServer,
+	server.ProvideHeadsUpServerController,
 
 	provideThreads,
 )
@@ -101,14 +103,12 @@ func wireThreads(ctx context.Context) (Threads, error) {
 }
 
 type Threads struct {
-	hud         hud.HeadsUpDisplay
-	upper       engine.Upper
-	server      server.HeadsUpServer
-	assetServer server.AssetServer
+	hud   hud.HeadsUpDisplay
+	upper engine.Upper
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, server server.HeadsUpServer, assetServer server.AssetServer) Threads {
-	return Threads{h, upper, server, assetServer}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper) Threads {
+	return Threads{h, upper}
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {

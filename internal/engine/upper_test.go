@@ -28,6 +28,7 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -2263,7 +2264,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar)
+	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, nil)
+	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar, hudsc)
 
 	go func() {
 		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
