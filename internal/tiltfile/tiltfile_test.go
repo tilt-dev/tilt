@@ -2147,7 +2147,7 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.assertNextManifest("bar",
 		sb(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
 }
 
 func TestReadJSON(t *testing.T) {
@@ -2187,7 +2187,7 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.assertNextManifest("bar",
 		sb(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.json")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.json")
 }
 
 func TestJSONDoesntExist(t *testing.T) {
