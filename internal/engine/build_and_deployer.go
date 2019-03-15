@@ -74,8 +74,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		} else {
 			lastUnexpectedErr = err
 			if i+1 < len(composite.builders) {
-				logger.Get(ctx).Infof("falling back to next build and deploy method "+
-					"after unexpected error: %v", err)
+				logger.Get(ctx).Infof("got unexpected error during build/deploy: %v", err)
 			}
 		}
 		lastErr = err
