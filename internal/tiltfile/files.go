@@ -386,7 +386,7 @@ func (s *tiltfileState) jsonDecode(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, jsonString.GoString())
 	}
 
-	v, err := convertJsonToStarlark(decodedJSON)
+	v, err := convertJSONToStarlark(decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, jsonString.GoString())
 	}
@@ -415,14 +415,14 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
 	}
 
-	v, err := convertJsonToStarlark(decodedJSON)
+	v, err := convertJSONToStarlark(decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
 	}
 	return v, nil
 }
 
-func convertJsonToStarlark(j interface{}) (starlark.Value, error) {
+func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
 	switch j := j.(type) {
 	case string:
 		return starlark.String(j), nil
@@ -432,7 +432,7 @@ func convertJsonToStarlark(j interface{}) (starlark.Value, error) {
 		listOfValues := []starlark.Value{}
 
 		for _, v := range j {
-			convertedValue, err := convertJsonToStarlark(v)
+			convertedValue, err := convertJSONToStarlark(v)
 			if err != nil {
 				return nil, err
 			}
@@ -444,7 +444,7 @@ func convertJsonToStarlark(j interface{}) (starlark.Value, error) {
 		mapOfValues := &starlark.Dict{}
 
 		for k, v := range j {
-			convertedValue, err := convertJsonToStarlark(v)
+			convertedValue, err := convertJSONToStarlark(v)
 			if err != nil {
 				return nil, err
 			}
