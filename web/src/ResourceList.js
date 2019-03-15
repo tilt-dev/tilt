@@ -4,7 +4,7 @@ import './text.css';
 
 function ResourceList(props) {
   let children = props.resources.map((resource) => {
-    return <ResourceSummary key={resource.Name} resource={resource} />
+    return <ResourceSummary key={resource.Name} resource={resource} openPreview={endpoint => props.openPreview(endpoint)}/>
   })
 
   return (
@@ -14,6 +14,7 @@ function ResourceList(props) {
         <p role="columnheader" className="column-header">K8S</p>
         <p role="columnheader" className="column-header">Build Status</p>
         <p role="columnheader" className="column-header">Updated</p>
+        <p role="columnheader" className="column-header">Endpoint</p>
       </header>
       <ul>
         {children}
@@ -28,12 +29,26 @@ class ResourceSummary extends Component {
     let k8sStatus = getK8sStatus(resource)
     let buildStatus = getBuildStatus(resource)
     let updateTime = getUpdateTime(resource)
+    let endpoint = getEndpoint(resource)
+    let endpointEl
+    
+    if (endpoint) {
+      endpointEl = <React.Fragment>
+        <a className="endpoint" href={endpoint} title={`Open in new window: ${endpoint}`} target="_blank" rel="noopener noreferrer">{endpoint}</a>
+        <button onClick={() => this.props.openPreview(endpoint)}>Preview</button>
+      </React.Fragment>
+    } else {
+      endpointEl = "—"
+    }
+
+
     return (
       <li role="rowgroup" className="resource">
         <p role="cell" className="cell name">{resource.Name}</p>
         <p role="cell" className="cell">{k8sStatus}</p>
         <p role="cell" className="cell">{buildStatus}</p>
         <p role="cell" className="cell">{updateTime}</p>
+        <p role="cell" className="cell">{endpointEl}</p>
       </li>
     )
   }
@@ -58,7 +73,7 @@ function lastBuild(res) {
 
 function getK8sStatus(res) {
   if (res.IsYAMLManifest) {
-    return "-"
+    return "—"
   }
   return (res.ResourceInfo && res.ResourceInfo.PodStatus) || "Pending"
 }
@@ -83,10 +98,14 @@ function getBuildStatus(res) {
 function getUpdateTime(res) {
   let time = res.LastDeployTime
   if (isZeroTime(time)) {
-    return "-"
+    return "—"
   }
 
   return new Date(time).toLocaleTimeString('en-US')
+}
+
+function getEndpoint(res) {
+  return res.Endpoints && res.Endpoints[0]
 }
 
 export default ResourceList;
