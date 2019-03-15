@@ -30,6 +30,17 @@ class ResourceSummary extends Component {
     let buildStatus = getBuildStatus(resource)
     let updateTime = getUpdateTime(resource)
     let endpoint = getEndpoint(resource)
+    let endpointEl
+    
+    if (endpoint) {
+      endpointEl = <React.Fragment>
+        <a className="endpoint" href={endpoint} title={`Open in new window: ${endpoint}`} target="_blank" rel="noopener noreferrer">{endpoint}</a>
+        <button onClick={() => this.props.openPreview(endpoint)}>Preview</button>
+      </React.Fragment>
+    } else {
+      endpointEl = "—"
+    }
+
 
     return (
       <li role="rowgroup" className="resource">
@@ -37,13 +48,7 @@ class ResourceSummary extends Component {
         <p role="cell" className="cell">{k8sStatus}</p>
         <p role="cell" className="cell">{buildStatus}</p>
         <p role="cell" className="cell">{updateTime}</p>
-        {endpoint
-          ? <p role="cell" className="cell">
-            <a className="endpoint" href={endpoint} title={`Open in new window: ${endpoint}`} target="_blank" rel="noopener noreferrer">{endpoint}</a>
-            <button onClick={() => this.props.openPreview(endpoint)}>Preview</button>
-            </p>
-          : <p role="cell" className="cell">—</p>
-        }
+        <p role="cell" className="cell">{endpointEl}</p>
       </li>
     )
   }
