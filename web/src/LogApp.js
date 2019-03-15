@@ -2,11 +2,145 @@ import React, { Component } from 'react';
 import AppController from './AppController';
 import LoadingScreen from './LoadingScreen';
 import Ansi from "ansi-to-react";
+import Helmet from 'react-helmet';
+import Select from 'react-select';
+import {withRouter} from 'react-router-dom';
 import './LogApp.css';
 
 let AnsiLine = React.memo(function(props) {
   return <div><Ansi>{props.line}</Ansi></div>
 })
+
+function titleText(name) {
+  if (name) {
+    return `Logs (${name})`
+  }
+  return 'All Logs'
+}
+
+var LogHeader = withRouter((props) => {
+  let history = props.history
+  let name = props.name
+  let resourceNames = (props.resourceNames || []).filter((resName) => resName !== 'k8s_yaml')
+  let allOption = {value: 'all', label: 'All'}
+  let options = [allOption].concat(resourceNames.map((resName) => {
+    return {value: resName, label: resName}
+  }))
+
+  let defaultValue = name ? {value: name, label: name} : allOption
+  let styles = selectStyles()
+
+  function onChange(inputValue, event) {
+    let action = event.action
+    let value = inputValue.value
+    if (action !== 'select-option' || value === defaultValue.value || !value) {
+      return
+    }
+
+    if (value === 'all') {
+      history.push('/log')
+    } else {
+      history.push(`/r/${value}/log`)
+    }
+  }
+
+  return (<header className="LogApp-header">
+    <div className="LogApp-title">Logs: </div>
+    <div className="LogApp-select">
+      <Select isSearchable={true} defaultValue={defaultValue} options={options} styles={styles} onChange={onChange} />
+    </div>
+  </header>)
+})
+
+function selectStyles() {
+  let control = (styles) => {
+    return {...styles, backgroundColor: '#282c34', color: 'white'}
+  }
+  let option = (styles, {data, isFocused, isSelected}) => {
+    let obj = {...styles}
+    if (data.value !== 'all') {
+      obj.paddingLeft = '1em'
+    }
+    obj.backgroundColor = '#282c34'
+    if (isFocused) {
+      obj.backgroundColor = '#606060'
+    }
+    return obj
+  }
+  let singleValue = (styles) => {
+    return {...styles, color: 'white'}
+  }
+  let menu = (styles) => {
+    return {...styles, backgroundColor: '#282c34'}
+  }
+  return {control, option, singleValue, menu}
+}
+
+class LogAppContents extends Component {
+  constructor(props) {
+    super(props)
+
+    this.state = {
+      autoscroll: true,
+    }
+    this._lastEl = null
+    this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
+  }
+
+  componentDidMount() {
+    if (this._lastEl) {
+      this._lastEl.scrollIntoView()
+    }
+    window.addEventListener('scroll', this.refreshAutoScroll, {passive: true})
+  }
+
+  componentDidUpdate() {
+    if (!this.state.autoscroll) {
+      return
+    }
+    if (this._lastEl) {
+      this._lastEl.scrollIntoView()
+    }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this.refreshAutoScroll)
+  }
+
+  refreshAutoScroll() {
+    let lastElInView = this._lastEl && (this._lastEl.getBoundingClientRect().top < window.innerHeight)
+
+    // Always auto-scroll when we're recovering from a loading screen.
+    let autoscroll = false
+    if (!this.props.log || !this._lastEl) {
+      autoscroll = true
+    } else {
+      autoscroll = lastElInView
+    }
+
+    this.setState({autoscroll})
+  }
+
+  render() {
+    let message = this.props.message
+    let log = this.props.log
+    let els = []
+    if (!log) {
+      els.push(<LoadingScreen key={"loading"} message={message} />)
+    } else {
+      let lines = log.split('\n')
+      els = lines.map((line, i) => {
+        return <AnsiLine key={'logLine' + i} line={line} />
+      })
+      els.push(
+        <div key="logEnd" className="logEnd" ref={(el) => { this._lastEl = el }}>&#9608;</div>)
+    }
+
+    return (<React.Fragment>
+      {els}
+    </React.Fragment>)
+  }
+}
 
 class LogApp extends Component {
   constructor(props) {
@@ -14,87 +148,66 @@ class LogApp extends Component {
 
     this.controller = new AppController(`ws://${window.location.host}/ws/view`, this)
     this.state = {
-      log: '',
-      message: '',
-      autoscroll: true,
+      View: null,
+      Message: '',
     }
-    this._lastEl = null
   }
 
   componentDidMount() {
     this.controller.createNewSocket()
-    this._lastEl.scrollIntoView()
-  }
-
-  componentDidUpdate() {
-    if (!this.state.autoscroll) {
-      return
-    }
-    this._lastEl.scrollIntoView()
   }
 
   componentWillUnmount() {
     this.controller.dispose()
   }
 
-  inferNewLog(state) {
+  name() {
+    return this.props.match.params.name
+  }
+
+  inferNewLog() {
+    let state = this.state
     let view = state.View
     if (!view) {
-      return {message: state.Message}
+      return {log: '', message: state.Message}
     }
 
-    let name = this.props.match.params.name
+    let name = this.name()
     let isGlobalLog = !name
+    let resources = view.Resources || []
     if (isGlobalLog) {
       let log = (state.View && state.View.Log) || ''
       return {log: log, message: state.Message}
     }
 
-    let resources = view.Resources || []
     let resource = resources.find((res) => res.Name === name)
     if (!resource) {
-      return {message: `Resource not found: ${name}`}
+      return {log: '', message: `Resource not found: ${name}`}
     }
 
-    return {log: resource.CombinedLog, message: state.Message}
+    return {log: resource.CombinedLog || '', message: state.Message}
   }
 
   setAppState(state) {
-    let {log, message} = this.inferNewLog(state)
-    let lastElInView = this._lastEl && (this._lastEl.getBoundingClientRect().top < window.innerHeight)
-    this.setState((prevState) => {
-      // Always auto-scroll when we're recovering from a loading screen.
-      let shouldAutoScroll = false
-      if (!prevState.log || !this._lastEl) {
-        shouldAutoScroll = true
-      } else {
-        shouldAutoScroll = lastElInView
-      }
-      return {
-        autoscroll: shouldAutoScroll,
-        log: log || '',
-        message: message || '',
-      }
-    })
+    this.setState({View: state.View, Message: state.Message})
   }
 
   render() {
-    let els = []
-    let log = this.state.log
-    let message = this.state.message
-    if (!log) {
-      els.push(<LoadingScreen key={"loading"} message={message} />)
-    } else {
-      let lines = log.split('\n')
-      els = lines.map((line, i) => {
-        return <AnsiLine key={i} line={line} />
-      })
-    }
+    let state = this.state
+    let {log, message} = this.inferNewLog()
+    let name = this.name()
+    let title = titleText(name)
+    let resources = (state.View && state.View.Resources) || []
+    let resourceNames = resources.map((res) => res.Name)
+      .filter((name) => name != 'k8s_yaml')
 
     return (
       <div className="LogApp">
-        {els}
-        <div className="logEnd" ref={(el) => { this._lastEl = el }}>&#9608;</div>
+        <Helmet>
+          <title>Tilt — {title}</title>
+        </Helmet>
+        <LogHeader name={name} resourceNames={resourceNames} />
+        <LogAppContents log={log} message={message} />
       </div>
     );
   }

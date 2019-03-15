@@ -76,6 +76,7 @@ type EngineState struct {
 
 	LastTiltfileBuild    model.BuildRecord
 	CurrentTiltfileBuild model.BuildRecord
+	TiltfileCombinedLog  model.Log
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
@@ -715,6 +716,7 @@ func StateToView(s EngineState) view.View {
 		BuildHistory: []model.BuildRecord{
 			ltfb,
 		},
+		CombinedLog: s.TiltfileCombinedLog,
 	}
 	if !s.CurrentTiltfileBuild.Empty() {
 		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
