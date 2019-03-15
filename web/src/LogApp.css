@@ -1,6 +1,7 @@
 .LogApp {
   margin: 1em 1.5em;
-  font-size: 1.4em;
+  font-size: 16px;
+  margin-top: 4em;
 }
 @keyframes blink {
   0% { opacity: 1 }
@@ -10,4 +11,24 @@
 .logEnd {
   animation: blink 1s infinite;
   animation-timing-function: ease;
+}
+.LogApp-header {
+  font-size: 20px;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 0.5em 1em;
+  width: 100%;
+  background-color: #282c34;
+  border-bottom: 1px solid white;
+}
+.LogApp-title {
+  display: block;
+  margin-right: 1em;
+  padding-top: 7px;
+}
+.LogApp-select {
+  display: inline-block;
+  min-width: 10em;
 }
