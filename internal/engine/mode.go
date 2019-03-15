@@ -28,6 +28,9 @@ var (
 	// Update containers in-place. This mode only works with DockerForDesktop and Minikube.
 	// If you try to use this mode with a different K8s cluster type, we will return an error
 	UpdateModeContainer UpdateMode = "container"
+
+	// Use `kubectl exec`
+	UpdateModeKubectlExec UpdateMode = "exec"
 )
 
 var AllUpdateModes = []UpdateMode{
@@ -36,6 +39,7 @@ var AllUpdateModes = []UpdateMode{
 	UpdateModeNaive,
 	UpdateModeSynclet,
 	UpdateModeContainer,
+	UpdateModeKubectlExec,
 }
 
 func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runtime) (UpdateMode, error) {
