@@ -109,17 +109,23 @@ class LogAppContents extends Component {
   }
 
   refreshAutoScroll() {
-    let lastElInView = this._lastEl && (this._lastEl.getBoundingClientRect().top < window.innerHeight)
-
-    // Always auto-scroll when we're recovering from a loading screen.
-    let autoscroll = false
-    if (!this.props.log || !this._lastEl) {
-      autoscroll = true
-    } else {
-      autoscroll = lastElInView
+    if (this._scrollTimeout) {
+      clearTimeout(this._scrollTimeout)
     }
 
-    this.setState({autoscroll})
+    this._scrollTimeout = setTimeout(() => {
+      let lastElInView = this._lastEl && (this._lastEl.getBoundingClientRect().top < window.innerHeight)
+
+      // Always auto-scroll when we're recovering from a loading screen.
+      let autoscroll = false
+      if (!this.props.log || !this._lastEl) {
+        autoscroll = true
+      } else {
+        autoscroll = lastElInView
+      }
+
+      this.setState({autoscroll})
+    }, 250)
   }
 
   render() {
