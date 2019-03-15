@@ -383,10 +383,14 @@ func (s *tiltfileState) jsonDecode(thread *starlark.Thread, fn *starlark.Builtin
 	var decodedJSON interface{}
 
 	if err := json.Unmarshal([]byte(jsonString), &decodedJSON); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, jsonString.GoString())
 	}
 
-	return convertJsonToStarlark(decodedJSON)
+	v, err := convertJsonToStarlark(decodedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, jsonString.GoString())
+	}
+	return v, nil
 }
 
 func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -408,10 +412,14 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 	var decodedJSON interface{}
 
 	if err := json.Unmarshal(contents, &decodedJSON); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
 	}
 
-	return convertJsonToStarlark(decodedJSON)
+	v, err := convertJsonToStarlark(decodedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
+	}
+	return v, nil
 }
 
 func convertJsonToStarlark(j interface{}) (starlark.Value, error) {
