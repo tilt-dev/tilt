@@ -615,6 +615,26 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 }
 
+func TestDockerComposeImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastBuildDCManifest(f)
+	targets := buildTargets(manifest)
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should not deploy the synclet for a docker-compose build: %s", f.k8s.Yaml)
+	}
+	assert.Len(t, f.dcCli.UpCalls, 1)
+}
+
 func TestDockerComposeFastBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
@@ -640,6 +660,24 @@ func TestDockerComposeFastBuild(t *testing.T) {
 	f.assertContainerRestarts(1)
 }
 
+func TestReturnLastUnexpectedError(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	// next Docker build will throw an unexpected error -- this is one we want to return,
+	// even if subsequent builders throw expected errors.
+	f.docker.BuildErrorToThrow = fmt.Errorf("oh noes")
+
+	manifest := NewSanchoFastBuildDCManifest(f)
+	targets := buildTargets(manifest)
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake Client and K8sClient
@@ -651,6 +689,7 @@ type bdFixture struct {
 	sCli   *synclet.FakeSyncletClient
 	bd     BuildAndDeployer
 	st     *store.Store
+	dcCli  *dockercompose.FakeDCClient
 }
 
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
@@ -684,6 +723,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		sCli:           sCli,
 		bd:             bd,
 		st:             st,
+		dcCli:          dcc,
 	}
 }
 

@@ -55,7 +55,7 @@ func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeploye
 }
 
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
-	var lastErr error
+	var lastErr, lastUnexpectedErr error
 	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for i, builder := range composite.builders {
 		logger.Get(ctx).Debugf("Trying to build and deploy with %T", builder)
@@ -71,12 +71,19 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if _, ok := err.(RedirectToNextBuilder); ok {
 			logger.Get(ctx).Debugf("(expected error) falling back to next build and deploy method "+
 				"after error: %v", err)
-		} else if i+1 < len(composite.builders) {
-			logger.Get(ctx).Infof("falling back to next build and deploy method "+
-				"after unexpected error: %v", err)
+		} else {
+			lastUnexpectedErr = err
+			if i+1 < len(composite.builders) {
+				logger.Get(ctx).Infof("falling back to next build and deploy method "+
+					"after unexpected error: %v", err)
+			}
 		}
-
 		lastErr = err
+	}
+
+	if lastUnexpectedErr != nil {
+		// The most interesting error is the last UNEXPECTED error we got
+		return store.BuildResultSet{}, lastUnexpectedErr
 	}
 	return store.BuildResultSet{}, lastErr
 }
