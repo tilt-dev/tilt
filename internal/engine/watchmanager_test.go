@@ -78,7 +78,6 @@ func TestWatchManager_WatchesReappliedOnDockerComposeMountsChange(t *testing.T) 
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar")
-	f.ChangeFile(t, "stop")
 
 	actions := f.Stop(t)
 
@@ -97,7 +96,6 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar")
-	f.ChangeFile(t, "stop")
 
 	actions := f.Stop(t)
 
@@ -121,13 +119,47 @@ func TestWatchManager_WatchesReappliedOnGitIgnoreChange(t *testing.T) {
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar")
-	f.ChangeFile(t, "stop")
 
 	actions := f.Stop(t)
 
 	// not asserting exact contents because we can end up with duplicates since the old watch loop isn't stopped
 	// until after the new watch loop is started
 	assert.Contains(t, targetFilesChangedActionsToPaths(actions), "bar")
+}
+
+func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}
+	target.Mounts = []model.Mount{{LocalPath: "."}}
+	f.SetManifestTarget(target)
+	f.SetTiltIgnoreContents("**/foo")
+
+	f.ChangeFile(t, "bar/foo")
+
+	actions := f.Stop(t)
+
+	assert.NotContains(t, targetFilesChangedActionsToPaths(actions), "bar/foo")
+}
+
+func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}
+	target.Mounts = []model.Mount{{LocalPath: "."}}
+	f.SetManifestTarget(target)
+	f.SetTiltIgnoreContents("**/foo")
+	f.ChangeFile(t, "bar/foo")
+	f.SetTiltIgnoreContents("**foo\n!bar/baz/foo")
+	f.ChangeFile(t, "bar/baz/foo")
+
+	actions := f.Stop(t)
+
+	observedPaths := targetFilesChangedActionsToPaths(actions)
+	assert.NotContains(t, observedPaths, "bar/foo")
+	assert.Contains(t, observedPaths, "bar/baz/foo")
 }
 
 type wmFixture struct {
@@ -240,6 +272,13 @@ func (f *wmFixture) SetManifestTarget(target model.DockerComposeTarget) {
 	state := f.store.LockMutableStateForTesting()
 	state.UpsertManifestTarget(&mt)
 	state.WatchMounts = true
+	f.store.UnlockMutableState()
+	f.wm.OnChange(f.ctx, f.store)
+}
+
+func (f *wmFixture) SetTiltIgnoreContents(s string) {
+	state := f.store.LockMutableStateForTesting()
+	state.TiltIgnoreContents = s
 	f.store.UnlockMutableState()
 	f.wm.OnChange(f.ctx, f.store)
 }

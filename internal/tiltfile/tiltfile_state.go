@@ -63,7 +63,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		buildIndex:        newBuildIndex(),
 		k8sByName:         make(map[string]*k8sResource),
 		k8sImageJSONPaths: make(map[k8sObjectSelector][]k8s.JSONPath),
-		configFiles:       []string{filename},
+		configFiles:       []string{filename, TiltIgnoreFileName},
 		usedImages:        make(map[string]bool),
 		logger:            logger.Get(ctx),
 		builtinCallCounts: make(map[string]int),

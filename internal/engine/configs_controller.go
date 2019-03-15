@@ -97,13 +97,14 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			logger.Get(ctx).Infof(err.Error())
 		}
 		st.Dispatch(ConfigsReloadedAction{
-			Manifests:   tlr.Manifests,
-			GlobalYAML:  tlr.Global,
-			ConfigFiles: tlr.ConfigFiles,
-			StartTime:   startTime,
-			FinishTime:  cc.clock(),
-			Err:         err,
-			Warnings:    tlr.Warnings,
+			Manifests:          tlr.Manifests,
+			GlobalYAML:         tlr.Global,
+			ConfigFiles:        tlr.ConfigFiles,
+			TiltIgnoreContents: tlr.TiltIgnoreContents,
+			StartTime:          startTime,
+			FinishTime:         cc.clock(),
+			Err:                err,
+			Warnings:           tlr.Warnings,
 		})
 	}()
 }

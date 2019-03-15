@@ -510,6 +510,7 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newDefOrder
 	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
+	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
