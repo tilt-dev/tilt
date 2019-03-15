@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -371,4 +372,93 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	return starlark.NewList(ret), nil
+}
+
+func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var jsonString starlark.String
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "json", &jsonString); err != nil {
+		return nil, err
+	}
+
+	var decodedJSON interface{}
+
+	if err := json.Unmarshal([]byte(jsonString), &decodedJSON); err != nil {
+		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, jsonString.GoString())
+	}
+
+	v, err := convertJSONToStarlark(decodedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, jsonString.GoString())
+	}
+	return v, nil
+}
+
+func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.String
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path); err != nil {
+		return nil, err
+	}
+
+	localPath, err := s.localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	contents, err := s.readFile(localPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var decodedJSON interface{}
+
+	if err := json.Unmarshal(contents, &decodedJSON); err != nil {
+		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
+	}
+
+	v, err := convertJSONToStarlark(decodedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
+	}
+	return v, nil
+}
+
+func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
+	switch j := j.(type) {
+	case string:
+		return starlark.String(j), nil
+	case float64:
+		return starlark.Float(j), nil
+	case []interface{}:
+		listOfValues := []starlark.Value{}
+
+		for _, v := range j {
+			convertedValue, err := convertJSONToStarlark(v)
+			if err != nil {
+				return nil, err
+			}
+			listOfValues = append(listOfValues, convertedValue)
+		}
+
+		return starlark.NewList(listOfValues), nil
+	case map[string]interface{}:
+		mapOfValues := &starlark.Dict{}
+
+		for k, v := range j {
+			convertedValue, err := convertJSONToStarlark(v)
+			if err != nil {
+				return nil, err
+			}
+
+			err = mapOfValues.SetKey(starlark.String(k), convertedValue)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return mapOfValues, nil
+	case nil:
+		return starlark.None, nil
+	}
+
+	return nil, errors.New(fmt.Sprintf("Unable to convert json to starlark value, unexpected type %T", j))
 }

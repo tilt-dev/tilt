@@ -2121,6 +2121,132 @@ k8s_yaml('')
 	f.loadErrString("error reading yaml file")
 }
 
+func TestParseJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = decode_json('["foo", {"baz":["bar", "", 1, 2]}]')
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		sb(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+}
+
+func TestReadJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		os.Chdir(wd)
+	}()
+	err = os.Chdir(f.TempDirFixture.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.setupFooAndBar()
+	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}]`)
+	f.file("Tiltfile", `
+result = read_json("options.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		sb(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.json")
+}
+
+func TestJSONDoesntExist(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		os.Chdir(wd)
+	}()
+	err = os.Chdir(f.TempDirFixture.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = read_json("dne.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+	f.loadErrString("dne.json: no such file or directory")
+}
+
+func TestMalformedJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		os.Chdir(wd)
+	}()
+	err = os.Chdir(f.TempDirFixture.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.setupFooAndBar()
+	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}`)
+	f.file("Tiltfile", `
+result = read_json("options.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+	f.loadErrString("JSON parsing error: unexpected end of JSON input")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
