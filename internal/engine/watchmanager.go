@@ -147,7 +147,6 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		if tiltIgnoreChanged || !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
-			continue
 		}
 	}
 
