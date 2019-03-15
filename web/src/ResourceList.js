@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import './ResourceList.css';
-import './text.css';
+import './ResourceList.scss';
+import './text.scss';
 
 function ResourceList(props) {
   let children = props.resources.map((resource) => {
@@ -31,7 +31,7 @@ class ResourceSummary extends Component {
     let updateTime = getUpdateTime(resource)
     let endpoint = getEndpoint(resource)
     let endpointEl
-    
+
     if (endpoint) {
       endpointEl = <React.Fragment>
         <a className="endpoint" href={endpoint} title={`Open in new window: ${endpoint}`} target="_blank" rel="noopener noreferrer">{endpoint}</a>

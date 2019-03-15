@@ -1,5 +1,5 @@
 import React from 'react';
-import './Status.css';
+import './Status.scss';
 
 function Preview(props) {
     let total = props.resources.filter(resource => {

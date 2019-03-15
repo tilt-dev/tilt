@@ -1,0 +1,15 @@
+@import "constants.scss";
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: $font-family;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: $color-grey-darkest;
+  color: white;
+}
+
+code {
+  font-family: $font-family;
+}

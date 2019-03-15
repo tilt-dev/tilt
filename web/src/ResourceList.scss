@@ -1,8 +1,10 @@
+@import "constants.scss";
+
 .resources {
   height: 95vh;
-  font-size: 1.2em;
+  font-size: $font-size;
   line-height: 1.6;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: $font-family;
   margin: 0;
   padding: 1em;
   box-sizing: border-box;

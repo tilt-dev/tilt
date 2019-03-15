@@ -5,7 +5,8 @@ import Ansi from "ansi-to-react";
 import Helmet from 'react-helmet';
 import Select from 'react-select';
 import {withRouter} from 'react-router-dom';
-import './LogApp.css';
+import {colorGreyDarkest, colorGreyDark} from './constants';
+import './LogApp.scss';
 
 let AnsiLine = React.memo(function(props) {
   return <div><Ansi>{props.line}</Ansi></div>
@@ -54,16 +55,16 @@ var LogHeader = withRouter((props) => {
 
 function selectStyles() {
   let control = (styles) => {
-    return {...styles, backgroundColor: '#282c34', color: 'white'}
+    return {...styles, backgroundColor: colorGreyDarkest, color: 'white'}
   }
   let option = (styles, {data, isFocused, isSelected}) => {
     let obj = {...styles}
     if (data.value !== 'all') {
       obj.paddingLeft = '1em'
     }
-    obj.backgroundColor = '#282c34'
+    obj.backgroundColor = colorGreyDarkest
     if (isFocused) {
-      obj.backgroundColor = '#606060'
+      obj.backgroundColor = colorGreyDark
     }
     return obj
   }
@@ -71,7 +72,7 @@ function selectStyles() {
     return {...styles, color: 'white'}
   }
   let menu = (styles) => {
-    return {...styles, backgroundColor: '#282c34'}
+    return {...styles, backgroundColor: colorGreyDarkest}
   }
   return {control, option, singleValue, menu}
 }
