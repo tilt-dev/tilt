@@ -666,14 +666,14 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 
 	// next Docker build will throw an unexpected error -- this is one we want to return,
 	// even if subsequent builders throw expected errors.
-	f.docker.BuildErrorToThrow = fmt.Errorf("oh noes")
+	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
 
 	manifest := NewSanchoFastBuildDCManifest(f)
 	targets := buildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
 
 }
