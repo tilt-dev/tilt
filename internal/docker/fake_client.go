@@ -71,9 +71,10 @@ type FakeClient struct {
 	PushOptions types.ImagePushOptions
 	PushOutput  string
 
-	BuildCount   int
-	BuildOptions BuildOptions
-	BuildOutput  string
+	BuildCount        int
+	BuildOptions      BuildOptions
+	BuildOutput       string
+	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
 	TagCount  int
 	TagSource string
@@ -164,6 +165,14 @@ func (c *FakeClient) ImagePush(ctx context.Context, image string, options types.
 func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
 	c.BuildCount++
 	c.BuildOptions = options
+
+	// If we're supposed to throw an error on this call, throw it (and reset ErrorToThrow)
+	err := c.BuildErrorToThrow
+	if err != nil {
+		c.BuildErrorToThrow = nil
+		return types.ImageBuildResponse{}, err
+	}
+
 	return types.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
 }
 
