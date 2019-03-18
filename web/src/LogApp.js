@@ -4,7 +4,7 @@ import LoadingScreen from './LoadingScreen';
 import Ansi from "ansi-to-react";
 import Helmet from 'react-helmet';
 import Select from 'react-select';
-import {withRouter} from 'react-router-dom';
+import {withRouter, Link} from 'react-router-dom';
 import {colorGreyDarkest, colorGreyDark} from './constants';
 import './LogApp.scss';
 
@@ -46,7 +46,7 @@ var LogHeader = withRouter((props) => {
   }
 
   return (<header className="LogApp-header">
-    <div className="LogApp-title">Logs: </div>
+    <div className="LogApp-title"><Link to="/">Dashboard</Link>&nbsp;&gt;&nbsp;Logs: </div>
     <div className="LogApp-select">
       <Select isSearchable={true} defaultValue={defaultValue} options={options} styles={styles} onChange={onChange} />
     </div>

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.scss';
 import App from './App';
 import LogApp from './LogApp';
+import K8sApp from './K8sApp';
 import LoadingScreen from './LoadingScreen';
 import { BrowserRouter as Router, Route, Switch, withRouter } from 'react-router-dom';
 
@@ -18,6 +19,7 @@ let Main = () => {
         <Route exact path="/" component={App} />
         <Route exact path="/log" component={LogApp} />
         <Route exact path="/r/:name/log" component={LogApp} />
+        <Route exact path="/r/:name/k8s" component={K8sApp} />
         <Route component={NoMatch} />
       </Switch>
     </div>

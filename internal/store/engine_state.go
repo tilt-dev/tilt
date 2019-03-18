@@ -752,6 +752,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodStatus:          pod.Status,
 			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
 			PodLog:             pod.Log(),
+			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
 	}
 }

@@ -45,6 +45,7 @@ type K8SResourceInfo struct {
 	PodStatus          string
 	PodRestarts        int
 	PodLog             string
+	YAML               string
 }
 
 var _ ResourceInfoView = K8SResourceInfo{}
