@@ -1,0 +1,29 @@
+@import "constants.scss";
+
+.K8sApp {
+  margin-top: 4em;
+}
+.K8sApp-header {
+  font-size: $font-size;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 0.5em 1em;
+  width: 100%;
+  background-color: $color-grey-darkest;
+  border-bottom: 1px solid white;
+}
+.K8sContentPane {
+  font-size: $font-size-small;
+  margin-left: 1em;
+}
+.K8sApp-title {
+  display: block;
+  margin-right: 1em;
+  padding-top: 7px;
+}
+.K8sApp-select {
+  display: inline-block;
+  min-width: 10em;
+}

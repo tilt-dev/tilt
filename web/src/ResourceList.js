@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
 import './ResourceList.scss';
 import './text.scss';
 
@@ -41,11 +42,17 @@ class ResourceSummary extends Component {
       endpointEl = "—"
     }
 
+    let isK8s = resource.ResourceInfo && resource.ResourceInfo.YAML
+    let k8sLink = `/r/${resource.Name}/k8s`
+    let k8sSuffix = ''
+    if (isK8s) {
+      k8sSuffix = (<span> (<Link to={k8sLink}>view</Link>)</span>)
+    }
 
     return (
       <li role="rowgroup" className="resource">
         <p role="cell" className="cell name">{resource.Name}</p>
-        <p role="cell" className="cell">{k8sStatus}</p>
+        <p role="cell" className="cell">{k8sStatus}{k8sSuffix}</p>
         <p role="cell" className="cell">{buildStatus}</p>
         <p role="cell" className="cell">{updateTime}</p>
         <p role="cell" className="cell">{endpointEl}</p>
