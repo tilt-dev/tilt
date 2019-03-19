@@ -15,11 +15,12 @@ const (
 	EnvMinikube      Env = "minikube"
 	EnvDockerDesktop Env = "docker-for-desktop"
 	EnvMicroK8s      Env = "microk8s"
+	EnvKind          Env = "kubernetes-admin@kind"
 	EnvNone          Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
 func (e Env) IsLocalCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvKind
 }
 
 func ProvideEnv(kubeContext KubeContext) Env {
@@ -42,6 +43,9 @@ func EnvFromString(s string) Env {
 		return EnvDockerDesktop
 	} else if Env(s) == EnvMicroK8s {
 		return EnvMicroK8s
+	} else if Env(s) == EnvKind {
+		// only works for kind clusters without custom names
+		return EnvKind
 	} else if Env(s) == EnvNone {
 		return EnvNone
 	} else if strings.HasPrefix(s, string(EnvGKE)) {

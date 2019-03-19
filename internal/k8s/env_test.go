@@ -14,6 +14,7 @@ func TestEnvFromString(t *testing.T) {
 		{EnvDockerDesktop, "docker-desktop"},
 		{EnvGKE, "gke_blorg-dev_us-central1-b_blorg"},
 		{EnvMicroK8s, "microk8s"},
+		{EnvKind, "kubernetes-admin@kind"},
 		{EnvUnknown, "aws"},
 	}
 
