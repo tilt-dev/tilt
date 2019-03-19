@@ -91,7 +91,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			// NOTE(maia): we assume that this func takes one DC target and up to one image target
 			// corresponding to that service. If this func ever supports specs for more than one
 			// service at once, we'll have to match up image build results to DC target by ref.
-			ref, err = bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps, true)
+			ref, err = bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
 			if err != nil {
 				return store.BuildResultSet{}, err
 			}
