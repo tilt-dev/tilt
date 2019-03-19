@@ -106,8 +106,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	// TODO(dmiller): it would be great to make this treat each push as a different stage
-	numStages := len(iTargets) * 2
+	numStages := len(iTargets) * 2 // each image target has two stages: one for build, and one for push
 	if len(kTargets) > 0 {
 		numStages++
 	}
@@ -180,9 +179,8 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	if ibd.env == k8s.EnvKIND {
 		ps.Printf(ctx, "Pushing to KIND")
 		err := ibd.kp.PushToKIND(ctx, ref, ps.Writer(ctx))
-		// TODO(dmiller) wrap this error
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error pushing to KIND: %v", err)
 		}
 	} else {
 		ps.Printf(ctx, "Pushing to registry")
