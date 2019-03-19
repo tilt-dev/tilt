@@ -43,7 +43,7 @@ func EnvFromString(s string) Env {
 		return EnvDockerDesktop
 	} else if Env(s) == EnvMicroK8s {
 		return EnvMicroK8s
-	} else if Env(s) == "kubernetes-admin@kind" {
+	} else if strings.HasPrefix(s, "kubernetes-admin@kind") {
 		return EnvKIND
 	} else if Env(s) == EnvNone {
 		return EnvNone
