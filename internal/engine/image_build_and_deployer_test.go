@@ -185,6 +185,7 @@ func TestMultiStageStaticBuild(t *testing.T) {
 
 	assert.Equal(t, 2, f.docker.BuildCount)
 	assert.Equal(t, 1, f.docker.PushCount)
+	assert.Equal(t, 0, f.kp.pushCount)
 
 	expected := expectedFile{
 		Path: "Dockerfile",
@@ -259,6 +260,7 @@ func TestKINDPush(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, f.docker.BuildCount)
+	assert.Equal(t, 1, f.kp.pushCount)
 }
 
 type ibdFixture struct {
@@ -289,11 +291,15 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		k8s:            kClient,
 		ibd:            ibd,
 		st:             store.NewTestingStore(),
+		kp:             kp,
 	}
 }
 
-type fakeKINDPusher struct{}
+type fakeKINDPusher struct {
+	pushCount int
+}
 
-func (*fakeKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+func (kp *fakeKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+	kp.pushCount++
 	return nil
 }
