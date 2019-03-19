@@ -54,10 +54,10 @@ build:
 
 test-go:
 ifneq ($(CIRCLECI),true)
-		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./...
+		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 60s
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 80s
 endif
 
 test: test-go test-js
