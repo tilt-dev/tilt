@@ -15,6 +15,7 @@ const (
 	EnvMinikube      Env = "minikube"
 	EnvDockerDesktop Env = "docker-for-desktop"
 	EnvMicroK8s      Env = "microk8s"
+	EnvKIND          Env = "kind"
 	EnvNone          Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 

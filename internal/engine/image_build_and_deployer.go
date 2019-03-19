@@ -24,6 +24,7 @@ import (
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
+	ib            build.ImageBuilder
 	icb           *imageAndCacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
@@ -44,6 +45,7 @@ func NewImageBuildAndDeployer(
 	c build.Clock,
 	runtime container.Runtime) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
+		ib:        b,
 		icb:       NewImageAndCacheBuilder(b, cacheBuilder, customBuilder, updMode),
 		k8sClient: k8sClient,
 		env:       env,
@@ -110,6 +112,14 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			ref, err = ibd.icb.Build(ctx, iTarget, state, ps, canSkipPush)
 			if err != nil {
 				return store.BuildResultSet{}, err
+			}
+
+			if !canSkipPush {
+				var err error
+				ref, err = ibd.ib.PushImage(ctx, ref, ps.Writer(ctx))
+				if err != nil {
+					return nil, err
+				}
 			}
 		} else {
 			ref = state.LastResult.Image
