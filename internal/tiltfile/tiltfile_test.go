@@ -2249,6 +2249,26 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.loadErrString("JSON parsing error: unexpected end of JSON input")
 }
 
+func TestDefaultReadFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFooAndBar()
+	tiltfile := `
+result = read_file("this_file_does_not_exist", default="foo")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result, 'foo.yaml')
+`
+
+	f.file("Tiltfile", tiltfile)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
