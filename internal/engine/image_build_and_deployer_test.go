@@ -4,11 +4,14 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -22,7 +25,7 @@ import (
 )
 
 func TestStaticDockerfileWithCache(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	manifest := NewSanchoStaticManifestWithCache([]string{"/root/.cache"})
@@ -47,7 +50,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func TestBaseDockerfileWithCache(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildManifestWithCache(f, []string{"/root/.cache"})
@@ -72,7 +75,7 @@ LABEL "tilt.buildMode"="scratch"`,
 }
 
 func TestDeployTwinImages(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	sancho := NewSanchoFastBuildManifest(f)
@@ -90,7 +93,7 @@ func TestDeployTwinImages(t *testing.T) {
 }
 
 func TestDeployPodWithMultipleImages(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	iTarget1 := NewSanchoStaticImageTarget()
@@ -118,7 +121,7 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 }
 
 func TestDeployIDInjectedAndSent(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	manifest := NewSanchoStaticManifest()
@@ -145,7 +148,7 @@ func TestDeployIDInjectedAndSent(t *testing.T) {
 }
 
 func TestNoImageTargets(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	targName := "some-k8s-manifest"
@@ -171,7 +174,7 @@ func TestNoImageTargets(t *testing.T) {
 }
 
 func TestMultiStageStaticBuild(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	manifest := NewSanchoStaticMultiStageManifest()
@@ -196,7 +199,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func TestMultiStageStaticBuildWithOnlyOneDirtyImage(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	manifest := NewSanchoStaticMultiStageManifest()
@@ -224,7 +227,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func TestMultiStageFastBuild(t *testing.T) {
-	f := newIBDFixture(t)
+	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastMultiStageManifest(f)
@@ -245,6 +248,19 @@ LABEL "tilt.buildMode"="scratch"`,
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
+func TestKINDPush(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvKIND)
+	defer f.TearDown()
+
+	manifest := NewSanchoStaticManifest()
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.docker.BuildCount)
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
@@ -252,15 +268,17 @@ type ibdFixture struct {
 	k8s    *k8s.FakeK8sClient
 	ibd    *ImageBuildAndDeployer
 	st     *store.TestingStore
+	kp     *fakeKINDPusher
 }
 
-func newIBDFixture(t *testing.T) *ibdFixture {
+func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := docker.NewFakeClient()
 	ctx := output.CtxForTest()
 	kClient := k8s.NewFakeK8sClient()
-	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, k8s.EnvGKE, dir)
+	kp := &fakeKINDPusher{}
+	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, kp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,4 +290,10 @@ func newIBDFixture(t *testing.T) *ibdFixture {
 		ibd:            ibd,
 		st:             store.NewTestingStore(),
 	}
+}
+
+type fakeKINDPusher struct{}
+
+func (*fakeKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+	return nil
 }

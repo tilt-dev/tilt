@@ -25,6 +25,24 @@ import (
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
+type KINDPusher interface {
+	PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error
+}
+
+type cmdKINDPusher struct{}
+
+func (*cmdKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", ref.String())
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	return cmd.Run()
+}
+
+func NewKINDPusher() KINDPusher {
+	return &cmdKINDPusher{}
+}
+
 type ImageBuildAndDeployer struct {
 	ib            build.ImageBuilder
 	icb           *imageAndCacheBuilder
@@ -34,6 +52,7 @@ type ImageBuildAndDeployer struct {
 	analytics     analytics.Analytics
 	injectSynclet bool
 	clock         build.Clock
+	kp            KINDPusher
 }
 
 func NewImageBuildAndDeployer(
@@ -45,7 +64,9 @@ func NewImageBuildAndDeployer(
 	analytics analytics.Analytics,
 	updMode UpdateMode,
 	c build.Clock,
-	runtime container.Runtime) *ImageBuildAndDeployer {
+	runtime container.Runtime,
+	kp KINDPusher,
+) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		ib:        b,
 		icb:       NewImageAndCacheBuilder(b, cacheBuilder, customBuilder, updMode),
@@ -54,6 +75,7 @@ func NewImageBuildAndDeployer(
 		analytics: analytics,
 		clock:     c,
 		runtime:   runtime,
+		kp:        kp,
 	}
 }
 
@@ -143,14 +165,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return q.results, nil
 }
 
-func (ibd *ImageBuildAndDeployer) pushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
-	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", ref.String())
-	cmd.Stdout = w
-	cmd.Stderr = w
-
-	return cmd.Run()
-}
-
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTargets []model.K8sTarget) (reference.NamedTagged, error) {
 	ps.StartPipelineStep(ctx, "Pushing %s", ref.String())
 	defer ps.EndPipelineStep(ctx)
@@ -165,7 +179,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	var err error
 	if ibd.env == k8s.EnvKIND {
 		ps.Printf(ctx, "Pushing to KIND")
-		err := ibd.pushToKIND(ctx, ref, ps.Writer(ctx))
+		err := ibd.kp.PushToKIND(ctx, ref, ps.Writer(ctx))
 		// TODO(dmiller) wrap this error
 		if err != nil {
 			return nil, err
