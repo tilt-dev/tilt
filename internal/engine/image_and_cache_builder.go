@@ -33,7 +33,8 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb
 func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState, canSkipPush bool) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	ref := iTarget.Ref
+	userFacingRefName := iTarget.ConfigurationRef.String()
+	refToBuild := iTarget.DeploymentRef.AsNamedOnly()
 	cacheInputs := icb.createCacheInputs(iTarget)
 	cacheRef, err := icb.cb.FetchCache(ctx, cacheInputs)
 	if err != nil {
@@ -42,11 +43,11 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.StaticBuild:
-		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", ref)
+		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
 		df := icb.staticDockerfile(iTarget, cacheRef)
-		ref, err := icb.ib.BuildDockerfile(ctx, ps, ref.AsNamedOnly(), df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
+		ref, err := icb.ib.BuildDockerfile(ctx, ps, refToBuild, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
 
 		if err != nil {
 			return nil, err
@@ -57,12 +58,12 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	case model.FastBuild:
 		if !state.HasImage() || icb.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
-			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", ref)
+			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", userFacingRefName)
 			defer ps.EndPipelineStep(ctx)
 
 			df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
 			steps := bd.Steps
-			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, ref.AsNamedOnly(), df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
+			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, refToBuild, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
 
 			if err != nil {
 				return nil, err
@@ -82,7 +83,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 				return nil, err
 			}
 
-			ps.StartPipelineStep(ctx, "Building from existing: [%s]", ref)
+			ps.StartPipelineStep(ctx, "Building from existing: [%s]", userFacingRefName)
 			defer ps.EndPipelineStep(ctx)
 
 			steps := bd.Steps
@@ -93,9 +94,9 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			n = ref
 		}
 	case model.CustomBuild:
-		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", ref)
+		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		ref, err := icb.custb.Build(ctx, ref.AsNamedOnly(), bd.Command)
+		ref, err := icb.custb.Build(ctx, refToBuild, bd.Command)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +104,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
-		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", iTarget.Ref)
+		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", iTarget.ConfigurationRef)
 	}
 
 	if !canSkipPush {
@@ -166,7 +167,7 @@ func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) bu
 	}
 
 	return build.CacheInputs{
-		Ref:            iTarget.Ref.AsNamedOnly(),
+		Ref:            iTarget.ConfigurationRef.AsNamedOnly(),
 		CachePaths:     iTarget.CachePaths(),
 		BaseDockerfile: baseDockerfile,
 	}

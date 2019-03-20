@@ -22,7 +22,7 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 		ContainerStatuses: []v1.ContainerStatus{
 			{
 				ContainerID: "docker://container-id",
-				Image:       nt.InjectString(),
+				Image:       nt.String(),
 				Ready:       true,
 			},
 		},
@@ -74,7 +74,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 		ContainerStatuses: []v1.ContainerStatus{
 			{
 				ContainerID: "docker://container-id",
-				Image:       nt.InjectString(),
+				Image:       nt.String(),
 				Ready:       true,
 			},
 		},

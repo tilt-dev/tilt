@@ -47,7 +47,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 	}
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", iTarget.Ref.String())
+	span.SetTag("target", iTarget.ConfigurationRef.String())
 	defer span.Finish()
 
 	state := stateSet[iTarget.ID()]

@@ -11,13 +11,14 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"go.starlark.net/starlark"
+	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v2"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
-	"go.starlark.net/starlark"
-	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v2"
 )
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
@@ -78,7 +79,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
 	case *fastBuild:
-		imageRefAsStr = imageVal.img.ref.String()
+		imageRefAsStr = imageVal.img.configurationRef.String()
 	default:
 		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
 	}
@@ -200,7 +201,7 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
-	// Ref of an image described via docker_build || fast_build call.
+	// RefSelector of an image described via docker_build || fast_build call.
 	// Can be explicitly linked to this service via dc_service call,
 	// or implicitly via an image name in the docker-compose.yml
 	ImageRef reference.Named

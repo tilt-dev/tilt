@@ -11,8 +11,9 @@ import (
 )
 
 type ImageTarget struct {
-	Ref          container.RefSelector
-	BuildDetails BuildDetails
+	ConfigurationRef container.RefSelector
+	DeploymentRef    container.RefSelector
+	BuildDetails     BuildDetails
 
 	cachePaths []string
 
@@ -25,10 +26,14 @@ type ImageTarget struct {
 	dependencyIDs []TargetID
 }
 
+func NewImageTarget(ref container.RefSelector) ImageTarget {
+	return ImageTarget{ConfigurationRef: ref, DeploymentRef: ref}
+}
+
 func ImageID(ref container.RefSelector) TargetID {
 	name := TargetName("")
 	if !ref.Empty() {
-		name = TargetName(ref.MatchString())
+		name = TargetName(ref.String())
 	}
 	return TargetID{
 		Type: TargetTypeImage,
@@ -37,7 +42,7 @@ func ImageID(ref container.RefSelector) TargetID {
 }
 
 func (i ImageTarget) ID() TargetID {
-	return ImageID(i.Ref)
+	return ImageID(i.ConfigurationRef)
 }
 
 func (i ImageTarget) DependencyIDs() []TargetID {
@@ -50,24 +55,24 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
-	if i.Ref.Empty() {
+	if i.ConfigurationRef.Empty() {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
 	switch bd := i.BuildDetails.(type) {
 	case StaticBuild:
 		if bd.BuildPath == "" {
-			return fmt.Errorf("[Validate] Image %q missing build path", i.Ref)
+			return fmt.Errorf("[Validate] Image %q missing build path", i.ConfigurationRef)
 		}
 	case FastBuild:
 		if bd.BaseDockerfile == "" {
-			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.Ref)
+			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.ConfigurationRef)
 		}
 
 		for _, mnt := range bd.Mounts {
 			if !filepath.IsAbs(mnt.LocalPath) {
 				return fmt.Errorf(
-					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.Ref, mnt.LocalPath)
+					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.ConfigurationRef, mnt.LocalPath)
 			}
 		}
 	case CustomBuild:
@@ -77,7 +82,7 @@ func (i ImageTarget) Validate() error {
 			)
 		}
 	default:
-		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.Ref)
+		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.ConfigurationRef)
 	}
 
 	return nil

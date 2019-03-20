@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -84,7 +85,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return store.BuildResultSet{}, err
 		}
 
-		expectedRef := iTarget.Ref
+		expectedRef := iTarget.ConfigurationRef
 		var ref reference.NamedTagged
 		state := currentState[iTarget.ID()]
 		if state.NeedsImageBuild() {

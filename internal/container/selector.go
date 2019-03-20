@@ -12,57 +12,36 @@ const (
 )
 
 type RefSelector struct {
-	// the ref to use when trying to match against a ref (i.e., pre-default-registry)
-	matchRef reference.Named
-	// the ref to use when injecting this ref (i.e., post-default-registry)
-	injectRef reference.Named
+	ref       reference.Named
 	matchType MatchType
 }
 
 func NameSelector(ref reference.Named) RefSelector {
-	r := reference.TrimNamed(ref)
-	return newRefSelector(r, r)
+	return NewRefSelector(reference.TrimNamed(ref))
 }
 
 func NewRefSelector(ref reference.Named) RefSelector {
-	return newRefSelector(ref, ref)
-}
-
-func MustParseSelector(s string) RefSelector {
-	r := MustParseNamed(s)
-	return newRefSelector(r, r)
-}
-
-func MustParseTaggedSelector(s string) RefSelector {
-	r := MustParseNamedTagged(s)
-	return newRefSelector(r, r)
-}
-
-func (s RefSelector) WithDefaultRegistry(defaultRegistry string) (RefSelector, error) {
-	ref, err := replaceNamed(defaultRegistry, s.matchRef)
-	if err != nil {
-		return RefSelector{}, err
-	}
-	s.injectRef = ref
-	return s, nil
-}
-
-func newRefSelector(matchRef, injectRef reference.Named) RefSelector {
 	matchType := matchName
-	_, hasTag := matchRef.(reference.NamedTagged)
+	_, hasTag := ref.(reference.NamedTagged)
 	if hasTag {
 		matchType = matchExact
 	}
-
 	return RefSelector{
-		matchRef:  matchRef,
-		injectRef: injectRef,
+		ref:       ref,
 		matchType: matchType,
 	}
 }
 
+func MustParseSelector(s string) RefSelector {
+	return NewRefSelector(MustParseNamed(s))
+}
+
+func MustParseTaggedSelector(s string) RefSelector {
+	return NewRefSelector(MustParseNamedTagged(s))
+}
+
 func (s RefSelector) RefsEqual(other RefSelector) bool {
-	return s.matchRef.String() == other.matchRef.String()
+	return s.ref.String() == other.ref.String()
 }
 
 func (s RefSelector) WithExactMatch() RefSelector {
@@ -71,46 +50,31 @@ func (s RefSelector) WithExactMatch() RefSelector {
 }
 
 func (s RefSelector) Matches(toMatch reference.Named) bool {
-	if s.matchRef == nil {
+	if s.ref == nil {
 		return false
 	}
 
 	if s.matchType == matchName {
-		return toMatch.Name() == s.matchRef.Name()
+		return toMatch.Name() == s.ref.Name()
 	}
-	return toMatch.String() == s.matchRef.String()
+	return toMatch.String() == s.ref.String()
 }
 
 func (s RefSelector) Empty() bool {
-	return s.matchRef == nil
+	return s.ref == nil
 }
 
-func (s RefSelector) MatchName() string {
-	return s.matchRef.Name()
-}
-
-func (s RefSelector) InjectName() string {
-	return s.injectRef.Name()
+func (s RefSelector) RefName() string {
+	return s.ref.Name()
 }
 
 func (s RefSelector) AsNamedOnly() reference.Named {
-	return reference.TrimNamed(s.injectRef)
-}
-
-func (s RefSelector) MatchString() string {
-	if s.matchRef == nil {
-		return ""
-	}
-	return s.matchRef.String()
-}
-
-func (s RefSelector) InjectString() string {
-	if s.injectRef == nil {
-		return ""
-	}
-	return s.injectRef.String()
+	return reference.TrimNamed(s.ref)
 }
 
 func (s RefSelector) String() string {
-	return s.MatchString()
+	if s.ref == nil {
+		return ""
+	}
+	return s.ref.String()
 }

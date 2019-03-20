@@ -253,13 +253,13 @@ func TestEntityHasImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.True(t, match, "deployment yaml should match image %s", img.InjectString())
+	assert.True(t, match, "deployment yaml should match image %s", img.String())
 
 	match, err = entities[1].HasImage(wrongImg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.False(t, match, "deployment yaml should not match image %s", img.InjectString())
+	assert.False(t, match, "deployment yaml should not match image %s", img.String())
 
 	entities, err = ParseYAMLFromString(testyaml.CRDYAML)
 	if err != nil {
@@ -277,7 +277,7 @@ func TestEntityHasImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.True(t, match, "CRD yaml should match image %s", img.InjectString())
+	assert.True(t, match, "CRD yaml should match image %s", img.String())
 }
 
 func TestInjectDigestEnvVar(t *testing.T) {

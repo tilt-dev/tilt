@@ -206,7 +206,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 func (s *tiltfileState) assembleImages() error {
 	for _, imageBuilder := range s.buildIndex.images {
 		var err error
-		imageBuilder.ref, err = imageBuilder.ref.WithDefaultRegistry(s.defaultRegistryHost)
+		imageBuilder.deploymentRef, err = container.ReplaceRegistry(s.defaultRegistryHost, imageBuilder.configurationRef)
 		if err != nil {
 			return err
 		}
@@ -280,7 +280,7 @@ func (s *tiltfileState) assembleK8sWithImages() error {
 			continue
 		}
 
-		ref := image.ref
+		ref := image.configurationRef
 		target, err := s.k8sResourceForImage(ref)
 		if err != nil {
 			return err
@@ -363,7 +363,7 @@ func (s *tiltfileState) k8sResourceForImage(image container.RefSelector) (*k8sRe
 
 	// next, look thru all the resources that have already been created,
 	// and see if any of them match the basename of the image.
-	refName := image.MatchName()
+	refName := image.RefName()
 	name := filepath.Base(refName)
 	if r, ok := s.k8sByName[name]; ok {
 		return r, nil
@@ -514,12 +514,13 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			// Skip this target, an earlier call has already built it
 			continue
 		} else if claim == claimPending {
-			return nil, fmt.Errorf("Image dependency cycle: %s", image.ref)
+			return nil, fmt.Errorf("Image dependency cycle: %s", image.configurationRef)
 		}
 		claimStatus[id] = claimPending
 
 		iTarget := model.ImageTarget{
-			Ref: image.ref,
+			ConfigurationRef: image.configurationRef,
+			DeploymentRef:    image.deploymentRef,
 		}.WithCachePaths(image.cachePaths)
 
 		switch image.Type() {
@@ -547,7 +548,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			iTarget = iTarget.WithBuildDetails(r)
 			// TODO(dbentley): validate that mounts is a subset of deps
 		case UnknownBuild:
-			return nil, fmt.Errorf("no build info for image %s", image.ref)
+			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)
 		}
 
 		iTarget = iTarget.

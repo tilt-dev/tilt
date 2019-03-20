@@ -18,7 +18,8 @@ import (
 type dockerImage struct {
 	baseDockerfilePath localPath
 	baseDockerfile     dockerfile.Dockerfile
-	ref                container.RefSelector
+	configurationRef   container.RefSelector
+	deploymentRef      container.RefSelector
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
@@ -40,7 +41,7 @@ type dockerImage struct {
 }
 
 func (d *dockerImage) ID() model.TargetID {
-	return model.ImageID(d.ref)
+	return model.ImageID(d.configurationRef)
 }
 
 type dockerImageBuildType int
@@ -150,7 +151,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		staticDockerfilePath: dockerfilePath,
 		staticDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		staticBuildPath:      context,
-		ref:                  container.NewRefSelector(ref),
+		configurationRef:     container.NewRefSelector(ref),
 		staticBuildArgs:      sba,
 		cachePaths:           cachePaths,
 	}
@@ -223,9 +224,9 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	img := &dockerImage{
-		ref:           container.NewRefSelector(ref),
-		customCommand: command,
-		customDeps:    localDeps,
+		configurationRef: container.NewRefSelector(ref),
+		customCommand:    command,
+		customDeps:       localDeps,
 	}
 
 	err = s.buildIndex.addImage(img)
@@ -244,7 +245,7 @@ type customBuild struct {
 var _ starlark.Value = &customBuild{}
 
 func (b *customBuild) String() string {
-	return fmt.Sprintf("custom_build(%q)", b.img.ref.String())
+	return fmt.Sprintf("custom_build(%q)", b.img.configurationRef.String())
 }
 
 func (b *customBuild) Type() string {
@@ -325,7 +326,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 	r := &dockerImage{
 		baseDockerfilePath: baseDockerfilePath,
 		baseDockerfile:     df,
-		ref:                container.NewRefSelector(ref),
+		configurationRef:   container.NewRefSelector(ref),
 		entrypoint:         entrypoint,
 		cachePaths:         cachePaths,
 	}
@@ -363,7 +364,7 @@ type fastBuild struct {
 var _ starlark.Value = &fastBuild{}
 
 func (b *fastBuild) String() string {
-	return fmt.Sprintf("fast_build(%q)", b.img.ref.String())
+	return fmt.Sprintf("fast_build(%q)", b.img.configurationRef.String())
 }
 
 func (b *fastBuild) Type() string {
@@ -415,7 +416,7 @@ func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, arg
 
 func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(b.img.steps) > 0 {
-		return nil, fmt.Errorf("fast_build(%q).add() called after .run(); must add all code before runs", b.img.ref.String())
+		return nil, fmt.Errorf("fast_build(%q).add() called after .run(); must add all code before runs", b.img.configurationRef.String())
 	}
 
 	var src starlark.Value

@@ -1270,9 +1270,9 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 2, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).Ref.String())
+		m.ImageTargetAt(0).ConfigurationRef.String())
 	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
-		m.ImageTargetAt(1).Ref.String())
+		m.ImageTargetAt(1).ConfigurationRef.String())
 }
 
 func TestSanchoRedisSidecar(t *testing.T) {
@@ -1291,7 +1291,7 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 1, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).Ref.String())
+		m.ImageTargetAt(0).ConfigurationRef.String())
 }
 
 func TestExtraPodSelectors(t *testing.T) {
@@ -2288,7 +2288,7 @@ default_registry('bar.com')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("bar.com/gcr.io_foo")),
+		sb(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
@@ -2519,12 +2519,16 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case sbHelper:
 			image := nextImageTarget()
 
-			ref := image.Ref
+			ref := image.ConfigurationRef
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if ref.InjectName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.InjectName(), opt.image.ref)
+			if ref.RefName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			}
+
+			if image.DeploymentRef.String() != opt.image.deploymentRef {
+				f.t.Fatalf("manifest %v image injected ref: %q; expected %q", m.Name, image.DeploymentRef, opt.image.deploymentRef)
 			}
 
 			if opt.cache != "" {
@@ -2559,9 +2563,9 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case fbHelper:
 			image := nextImageTarget()
 
-			ref := image.Ref
-			if ref.InjectName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.InjectName(), opt.image.ref)
+			ref := image.ConfigurationRef
+			if ref.RefName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 
 			if opt.cache != "" {
@@ -2576,9 +2580,9 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			opt.checkMatchers(f, m, image.FastBuildInfo())
 		case cbHelper:
 			image := nextImageTarget()
-			ref := image.Ref
-			if ref.InjectName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.InjectName(), opt.image.ref)
+			ref := image.ConfigurationRef
+			if ref.RefName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
 
 			if !image.IsCustomBuild() {
@@ -2885,15 +2889,21 @@ func fileChangeFilters(path string) matchPathHelper {
 }
 
 type imageHelper struct {
-	ref string
+	ref           string
+	deploymentRef string
 }
 
 func image(ref string) imageHelper {
-	return imageHelper{ref: ref}
+	return imageHelper{ref: ref, deploymentRef: ref}
 }
 
 func imageNormalized(ref string) imageHelper {
-	return imageHelper{ref: container.MustNormalizeRef(ref)}
+	return image(container.MustNormalizeRef(ref))
+}
+
+func (ih imageHelper) withInjectedRef(injectedRef string) imageHelper {
+	ih.deploymentRef = injectedRef
+	return ih
 }
 
 type labelsHelper struct {

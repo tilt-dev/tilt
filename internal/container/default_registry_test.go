@@ -12,8 +12,8 @@ var namedTaggedTestCases = []struct {
 	name            string
 	expected        string
 }{
-	{"myreg.com", "gcr.io/foo/bar:deadbeef", "myreg.com/gcr.io_foo_bar:deadbeef"},
-	{"aws_account_id.dkr.ecr.region.amazonaws.com/bar", "gcr.io/baz/foo/bar:deadbeef", "aws_account_id.dkr.ecr.region.amazonaws.com/bar/gcr.io_baz_foo_bar:deadbeef"},
+	{"myreg.com", "gcr.io/foo/bar:deadbeef", "myreg.com/gcr.io_foo_bar"},
+	{"aws_account_id.dkr.ecr.region.amazonaws.com/bar", "gcr.io/baz/foo/bar:deadbeef", "aws_account_id.dkr.ecr.region.amazonaws.com/bar/gcr.io_baz_foo_bar"},
 }
 
 var namedTestCases = []struct {
@@ -30,8 +30,8 @@ var namedTestCases = []struct {
 func TestReplaceTaggedRefDomain(t *testing.T) {
 	for i, tc := range namedTaggedTestCases {
 		t.Run(fmt.Sprintf("Test Case #%d", i), func(t *testing.T) {
-			name := MustParseNamedTagged(tc.name)
-			actual, err := replaceNamedTagged(tc.defaultRegistry, name)
+			rs := NewRefSelector(MustParseNamedTagged(tc.name))
+			actual, err := ReplaceRegistry(tc.defaultRegistry, rs)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, actual.String())
 		})
@@ -41,8 +41,8 @@ func TestReplaceTaggedRefDomain(t *testing.T) {
 func TestReplaceNamed(t *testing.T) {
 	for i, tc := range namedTestCases {
 		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
-			name := MustParseNamed(tc.name)
-			actual, err := replaceNamed(tc.defaultRegistry, name)
+			rs := NewRefSelector(MustParseNamed(tc.name))
+			actual, err := ReplaceRegistry(tc.defaultRegistry, rs)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, actual.String())
 		})

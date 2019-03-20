@@ -682,7 +682,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	if len(manifest.ImageTargets) > 0 {
 		// Get status of (first) container matching (an) image we built for this manifest.
 		for _, iTarget := range manifest.ImageTargets {
-			cStatus, err = k8s.ContainerMatching(pod, iTarget.Ref)
+			cStatus, err = k8s.ContainerMatching(pod, iTarget.DeploymentRef)
 			if err != nil {
 				logger.Get(ctx).Debugf("Error matching container: %v", err)
 				return

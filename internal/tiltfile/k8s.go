@@ -210,7 +210,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
 	case *fastBuild:
-		imageRefAsStr = imageVal.img.ref.String()
+		imageRefAsStr = imageVal.img.configurationRef.String()
 	default:
 		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
 	}

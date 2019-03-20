@@ -25,13 +25,11 @@ var dcName = model.TargetName("MobyDick")
 var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPath: confPath}
 
 var imgRef = "gcr.io/some/image"
-var imgTarg = model.ImageTarget{
-	Ref: container.MustParseSelector(imgRef),
-	BuildDetails: model.StaticBuild{
+var imgTarg = model.NewImageTarget(container.MustParseSelector(imgRef)).
+	WithBuildDetails(model.StaticBuild{
 		Dockerfile: "Dockerfile.whales",
 		BuildPath:  "/whales/are/big",
-	},
-}
+	})
 
 func TestDockerComposeTargetBuilt(t *testing.T) {
 	f := newDCBDFixture(t)
@@ -79,10 +77,8 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 	defer f.TearDown()
 
 	refWithTag := "gcr.io/foo:bar"
-	iTarget := model.ImageTarget{
-		Ref:          container.MustParseSelector(refWithTag),
-		BuildDetails: model.StaticBuild{},
-	}
+	iTarget := model.NewImageTarget(container.MustParseSelector(refWithTag)).
+		WithBuildDetails(model.StaticBuild{})
 
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{iTarget, dcTarg}, store.BuildStateSet{})
 	if err != nil {
