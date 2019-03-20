@@ -233,6 +233,10 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
+	if len(s.dc.services) > 0 && s.defaultRegistryHost != "" {
+		return errors.New("default_registry is not supported with docker compose")
+	}
+
 	for _, svc := range s.dc.services {
 		if svc.ImageRef != nil {
 			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef)

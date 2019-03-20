@@ -2323,6 +2323,20 @@ default_registry('example.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar.yaml", "baz/Dockerfile", "baz.yaml")
 }
 
+func TestDefaultRegistryWithDockerCompose(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+default_registry('bar.com')
+`)
+
+	f.loadErrString("default_registry is not supported with docker compose")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
