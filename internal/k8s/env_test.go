@@ -15,6 +15,8 @@ func TestEnvFromString(t *testing.T) {
 		{EnvGKE, "gke_blorg-dev_us-central1-b_blorg"},
 		{EnvMicroK8s, "microk8s"},
 		{EnvUnknown, "aws"},
+		{EnvKIND, "kubernetes-admin@kind"},
+		{EnvKIND, "kubernetes-admin@kind-1"},
 	}
 
 	for _, tt := range table {
