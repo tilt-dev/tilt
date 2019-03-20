@@ -28,7 +28,7 @@ type ImageTarget struct {
 func ImageID(ref container.RefSelector) TargetID {
 	name := TargetName("")
 	if !ref.Empty() {
-		name = TargetName(ref.String())
+		name = TargetName(ref.MatchString())
 	}
 	return TargetID{
 		Type: TargetTypeImage,

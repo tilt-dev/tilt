@@ -40,6 +40,9 @@ type tiltfileState struct {
 	k8sUnresourced []k8s.K8sEntity
 	dc             dcResourceSet // currently only support one d-c.yml
 
+	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
+	defaultRegistryHost string
+
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
@@ -87,9 +90,10 @@ func (s *tiltfileState) exec() error {
 
 const (
 	// build functions
-	dockerBuildN = "docker_build"
-	fastBuildN   = "fast_build"
-	customBuildN = "custom_build"
+	dockerBuildN     = "docker_build"
+	fastBuildN       = "fast_build"
+	customBuildN     = "custom_build"
+	defaultRegistryN = "default_registry"
 
 	// docker compose functions
 	dockerComposeN = "docker_compose"
@@ -143,6 +147,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
 	addBuiltin(r, fastBuildN, s.fastBuild)
 	addBuiltin(r, customBuildN, s.customBuild)
+	addBuiltin(r, defaultRegistryN, s.defaultRegistry)
 	addBuiltin(r, dockerComposeN, s.dockerCompose)
 	addBuiltin(r, dcResourceN, s.dcResource)
 	addBuiltin(r, k8sYamlN, s.k8sYaml)
@@ -200,8 +205,13 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 func (s *tiltfileState) assembleImages() error {
 	for _, imageBuilder := range s.buildIndex.images {
-		var depImages []reference.Named
 		var err error
+		imageBuilder.ref, err = imageBuilder.ref.WithDefaultRegistry(s.defaultRegistryHost)
+		if err != nil {
+			return err
+		}
+
+		var depImages []reference.Named
 		if imageBuilder.staticDockerfile != "" {
 			depImages, err = imageBuilder.staticDockerfile.FindImages()
 		} else {
@@ -353,7 +363,7 @@ func (s *tiltfileState) k8sResourceForImage(image container.RefSelector) (*k8sRe
 
 	// next, look thru all the resources that have already been created,
 	// and see if any of them match the basename of the image.
-	refName := image.RefName()
+	refName := image.MatchName()
 	name := filepath.Base(refName)
 	if r, ok := s.k8sByName[name]; ok {
 		return r, nil

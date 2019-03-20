@@ -518,6 +518,21 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	return reposForPaths(paths)
 }
 
+func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if s.defaultRegistryHost != "" {
+		return starlark.None, errors.New("default registry already defined")
+	}
+
+	var dr string
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "name", &dr); err != nil {
+		return nil, err
+	}
+
+	s.defaultRegistryHost = dr
+
+	return starlark.None, nil
+}
+
 func dockerignoresForPaths(paths []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}

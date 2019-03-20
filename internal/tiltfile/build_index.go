@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/schollz/closestmatch"
+
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -33,7 +34,7 @@ func newBuildIndex() *buildIndex {
 
 func (idx *buildIndex) addImage(img *dockerImage) error {
 	selector := img.ref
-	name := selector.RefName()
+	name := selector.InjectName()
 	_, hasExisting := idx.imagesBySelector[selector.String()]
 	if hasExisting {
 		return fmt.Errorf("Image for ref %q has already been defined", selector.String())
@@ -49,7 +50,7 @@ func (idx *buildIndex) addImage(img *dockerImage) error {
 		img.ref = img.ref.WithExactMatch()
 
 		for _, image := range idx.images {
-			if image.ref.RefName() == name {
+			if image.ref.InjectName() == name {
 				image.ref = image.ref.WithExactMatch()
 			}
 		}
@@ -92,7 +93,7 @@ func (idx *buildIndex) assertAllMatched() error {
 			bagSizes := []int{2, 3, 4}
 			cm := closestmatch.New(idx.consumedImageNames, bagSizes)
 			matchLines := []string{}
-			for i, match := range cm.ClosestN(image.ref.RefName(), 3) {
+			for i, match := range cm.ClosestN(image.ref.InjectName(), 3) {
 				if i == 0 {
 					matchLines = append(matchLines, "Did you mean…")
 				}

@@ -2249,6 +2249,50 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.loadErrString("JSON parsing error: unexpected end of JSON input")
 }
 
+func TestTwoDefaultRegistries(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+default_registry("foo")
+default_registry("bar")`)
+
+	f.loadErrString("default registry already defined")
+}
+
+func TestDefaultRegistryInvalid(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+default_registry("foo")
+docker_build('gcr.io/foo', 'foo')
+`)
+
+	f.loadErrString("repository name must be canonical")
+}
+
+func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	// default_registry is the last entry to test that it doesn't only affect subsequently defined images
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+default_registry('bar.com')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("bar.com/gcr.io_foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -2479,8 +2523,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			if ref.InjectName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.InjectName(), opt.image.ref)
 			}
 
 			if opt.cache != "" {
@@ -2516,8 +2560,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			image := nextImageTarget()
 
 			ref := image.Ref
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			if ref.InjectName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.InjectName(), opt.image.ref)
 			}
 
 			if opt.cache != "" {
@@ -2533,8 +2577,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.Ref
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			if ref.InjectName() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.InjectName(), opt.image.ref)
 			}
 
 			if !image.IsCustomBuild() {
