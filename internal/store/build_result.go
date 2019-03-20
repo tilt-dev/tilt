@@ -234,7 +234,7 @@ func NewDeployInfo(iTarget model.ImageTarget, podSet PodSet) DeployInfo {
 	}
 
 	// Only return the pod if it matches our image.
-	if pod.ContainerImageRef == nil || !iTarget.DeploymentRef.Matches(pod.ContainerImageRef) {
+	if pod.ContainerImageRef == nil || iTarget.DeploymentRef.Name() != pod.ContainerImageRef.Name() {
 		return DeployInfo{}
 	}
 

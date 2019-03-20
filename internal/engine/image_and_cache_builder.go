@@ -34,7 +34,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	var n reference.NamedTagged
 
 	userFacingRefName := iTarget.ConfigurationRef.String()
-	refToBuild := iTarget.DeploymentRef.AsNamedOnly()
+	refToBuild := iTarget.DeploymentRef
 	cacheInputs := icb.createCacheInputs(iTarget)
 	cacheRef, err := icb.cb.FetchCache(ctx, cacheInputs)
 	if err != nil {

@@ -40,7 +40,7 @@ func (c *ImageController) refsToReap(st store.RStore) []reference.Named {
 	refs := []reference.Named{}
 	for _, manifest := range state.Manifests() {
 		for _, iTarget := range manifest.ImageTargets {
-			refs = append(refs, iTarget.DeploymentRef.AsNamedOnly())
+			refs = append(refs, iTarget.DeploymentRef)
 		}
 	}
 	return refs

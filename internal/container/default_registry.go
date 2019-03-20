@@ -16,16 +16,16 @@ func escapeName(s string) string {
 // Produces a new image name that is in the specified registry.
 // The name might be ugly, favoring uniqueness and simplicity and assuming that the prettiness of ephemeral dev image
 // names is not that important.
-func ReplaceRegistry(defaultRegistry string, rs RefSelector) (RefSelector, error) {
+func ReplaceRegistry(defaultRegistry string, rs RefSelector) (reference.Named, error) {
 	if defaultRegistry == "" {
-		return rs, nil
+		return rs.AsNamedOnly(), nil
 	}
 
 	newNs := fmt.Sprintf("%s/%s", defaultRegistry, escapeName(rs.RefName()))
 	newN, err := reference.ParseNamed(newNs)
 	if err != nil {
-		return RefSelector{}, err
+		return nil, err
 	}
 
-	return NameSelector(newN), nil
+	return newN, nil
 }

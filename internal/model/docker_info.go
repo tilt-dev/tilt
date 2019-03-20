@@ -6,13 +6,15 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {
 	ConfigurationRef container.RefSelector
-	DeploymentRef    container.RefSelector
+	DeploymentRef    reference.Named
 	BuildDetails     BuildDetails
 
 	cachePaths []string
@@ -27,7 +29,7 @@ type ImageTarget struct {
 }
 
 func NewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{ConfigurationRef: ref, DeploymentRef: ref}
+	return ImageTarget{ConfigurationRef: ref, DeploymentRef: ref.AsNamedOnly()}
 }
 
 func ImageID(ref container.RefSelector) TargetID {

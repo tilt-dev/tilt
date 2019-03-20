@@ -276,13 +276,13 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1}),
-		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img2}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img2.AsNamedOnly()}),
 		false,
 	},
 	{
-		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1}),
-		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
 		true,
 	},
 	{

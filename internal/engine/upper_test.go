@@ -134,7 +134,7 @@ type fakeBuildAndDeployer struct {
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
-	named := iTarget.DeploymentRef.AsNamedOnly()
+	named := iTarget.DeploymentRef
 	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
 	containerID := b.nextBuildContainer
 	_, isDC := deployTarget.(model.DockerComposeTarget)
@@ -2692,7 +2692,7 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
-		ref, _ := reference.WithTag(iTarget.DeploymentRef.AsNamedOnly(), "deadbeef")
+		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
 		result := store.NewImageBuildResult(iTarget.ID(), ref)
 		result.ContainerID = id
 		resultSet[iTarget.ID()] = result

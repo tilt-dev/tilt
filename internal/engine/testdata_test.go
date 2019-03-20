@@ -111,7 +111,7 @@ func NewSanchoStaticImageTarget() model.ImageTarget {
 func NewSanchoSidecarStaticImageTarget() model.ImageTarget {
 	iTarget := NewSanchoStaticImageTarget()
 	iTarget.ConfigurationRef = SanchoSidecarRef
-	iTarget.DeploymentRef = SanchoSidecarRef
+	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
 	return iTarget
 }
 

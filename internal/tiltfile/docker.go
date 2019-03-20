@@ -19,7 +19,7 @@ type dockerImage struct {
 	baseDockerfilePath localPath
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
-	deploymentRef      container.RefSelector
+	deploymentRef      reference.Named
 	mounts             []mount
 	steps              []model.Step
 	entrypoint         string
