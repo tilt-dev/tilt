@@ -2293,6 +2293,36 @@ default_registry('bar.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
 
+func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("bar/Dockerfile")
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo:bar")))
+
+	f.dockerfile("baz/Dockerfile")
+	f.yaml("baz.yaml", deployment("baz", image("gcr.io/foo:baz")))
+
+	f.gitInit("")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:bar', 'bar')
+docker_build('gcr.io/foo:baz', 'baz')
+k8s_resource('bar', 'bar.yaml')
+k8s_resource('baz', 'baz.yaml')
+default_registry('example.com')
+`)
+
+	f.load()
+
+	f.assertNextManifest("bar",
+		sb(image("gcr.io/foo:bar").withInjectedRef("example.com/gcr.io_foo")),
+		deployment("bar"))
+	f.assertNextManifest("baz",
+		sb(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
+		deployment("baz"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar.yaml", "baz/Dockerfile", "baz.yaml")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -2523,8 +2553,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			if ref.String() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.String(), opt.image.ref)
 			}
 
 			if image.DeploymentRef.String() != opt.image.deploymentRef {
