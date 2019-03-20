@@ -262,6 +262,23 @@ func TestKINDPush(t *testing.T) {
 
 	assert.Equal(t, 1, f.docker.BuildCount)
 	assert.Equal(t, 1, f.kp.pushCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+}
+
+func TestCustomBuildDisablePush(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvKIND)
+	defer f.TearDown()
+
+	manifest := NewSanchoCustomBuildManifestWithPushDisabled(f)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	// the image doesn't exist, so the custom build fails
+	// TODO(dmiller): change this test to use the static tag parameter when that's added
+	assert.Error(t, err)
+
+	// but we also didn't try to build or push an image
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.kp.pushCount)
+	assert.Equal(t, 0, f.docker.PushCount)
 }
 
 func TestDeployUsesInjectRef(t *testing.T) {
