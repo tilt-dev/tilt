@@ -13,7 +13,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	defer f.TearDown()
 
 	f.dockerKillAll("tilt")
-	f.TiltWatch("web")
+	f.TiltWatch()
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

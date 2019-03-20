@@ -15,7 +15,7 @@ func TestDockerComposeFastBuild(t *testing.T) {
 	defer f.TearDown()
 
 	f.dockerKillAll("tilt")
-	f.TiltWatch("web")
+	f.TiltWatch()
 
 	ctx, cancel := context.WithTimeout(f.ctx, 30*time.Second)
 	defer cancel()

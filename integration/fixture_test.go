@@ -57,7 +57,16 @@ func newFixture(t *testing.T, dir string) *fixture {
 		logs:          bytes.NewBuffer(nil),
 		originalFiles: make(map[string]string),
 	}
+	f.installTilt()
 	return f
+}
+
+func (f *fixture) installTilt() {
+	cmd := exec.CommandContext(f.ctx, "go", "install", "github.com/windmilleng/tilt/cmd/tilt")
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Building tilt: %v", err)
+	}
 }
 
 func (f *fixture) DumpLogs() {
@@ -85,17 +94,7 @@ func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string,
 
 func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	outWriter = io.MultiWriter(f.logs, outWriter)
-
-	gopath, ok := os.LookupEnv("GOPATH")
-	if !ok {
-		gopath = build.Default.GOPATH
-	}
-	args := []string{
-		"run",
-		filepath.Join(gopath, "src/github.com/windmilleng/tilt/cmd/tilt/main.go"),
-	}
-	args = append(args, tiltArgs...)
-	cmd := exec.CommandContext(f.ctx, "go", args...)
+	cmd := exec.CommandContext(f.ctx, "tilt", tiltArgs...)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	cmd.Env = append(os.Environ(), "TILT_DISABLE_ANALYTICS=true")
@@ -111,8 +110,8 @@ func (f *fixture) TiltUp(name string) {
 	}
 }
 
-func (f *fixture) TiltWatch(name string) {
-	cmd := f.tiltCmd([]string{"up", name, "--debug", "--hud=false", "--port=0"}, os.Stdout)
+func (f *fixture) TiltWatch() {
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0"}, os.Stdout)
 	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)
@@ -168,8 +167,6 @@ func (f *fixture) TearDown() {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-
-	f.cancel()
 
 	for k, v := range f.originalFiles {
 		_ = ioutil.WriteFile(k, []byte(v), os.FileMode(0777))

@@ -67,7 +67,7 @@ shorttest:
 	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
 
 integration:
-	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 400s ./integration
+	./hide_tbd_warning go test -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 400s ./integration
 
 dev-js:
 	cd web && yarn install && yarn run start

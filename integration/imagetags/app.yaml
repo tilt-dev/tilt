@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imagetags
+  namespace: tilt-integration
+  labels:
+    app: imagetags
+spec:
+  selector:
+    matchLabels:
+      app: imagetags
+  template:
+    metadata:
+      labels:
+        app: imagetags
+    spec:
+      containers:
+      - name: imagetags
+        image: gcr.io/windmill-test-containers/imagetags-app
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "10m"

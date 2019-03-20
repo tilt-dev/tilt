@@ -22,8 +22,11 @@ func newDCFixture(t *testing.T, dir string) *dcFixture {
 
 func (f *dcFixture) TearDown() {
 	f.StartTearDown()
-	f.dockerKillAll("tilt")
 	f.fixture.TearDown()
+
+	// Double check it's all dead
+	f.dockerKillAll("tilt")
+	_ = exec.CommandContext(f.ctx, "pkill", "docker-compose").Run()
 }
 
 func (f *dcFixture) dockerCmd(args []string, outWriter io.Writer) *exec.Cmd {
