@@ -30,7 +30,7 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb
 	}
 }
 
-func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState, canSkipPush bool) (reference.NamedTagged, error) {
+func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
 	userFacingRefName := iTarget.ConfigurationRef.String()
@@ -105,14 +105,6 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
 		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", iTarget.ConfigurationRef)
-	}
-
-	if !canSkipPush {
-		var err error
-		n, err = icb.ib.PushImage(ctx, n, ps.Writer(ctx))
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return n, nil

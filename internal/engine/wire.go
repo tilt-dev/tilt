@@ -65,7 +65,8 @@ func provideBuildAndDeployer(
 	updateMode UpdateModeFlag,
 	sCli synclet.SyncletClient,
 	dcc dockercompose.DockerComposeClient,
-	clock build.Clock) (BuildAndDeployer, error) {
+	clock build.Clock,
+	kp KINDPusher) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
@@ -81,7 +82,8 @@ func provideImageBuildAndDeployer(
 	docker docker.Client,
 	kClient k8s.Client,
 	env k8s.Env,
-	dir *dirs.WindmillDir) (*ImageBuildAndDeployer, error) {
+	dir *dirs.WindmillDir,
+	kp KINDPusher) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,

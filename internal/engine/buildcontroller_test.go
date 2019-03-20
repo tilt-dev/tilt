@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
@@ -26,6 +27,32 @@ func TestBuildControllerOnePod(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+
+	call = f.nextCall()
+	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestBuildControllerIgnoresImageTags(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mount := model.Mount{LocalPath: f.Path(), ContainerPath: "/go"}
+	ref := container.MustParseNamed("image-foo:tagged")
+	manifest := f.newManifestWithRef("fe", ref, []model.Mount{mount})
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+
+	pod := f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
+	setImage(pod, "image-foo:othertag")
+	f.podEvent(pod)
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
 
 	call = f.nextCall()

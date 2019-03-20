@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
+	"os/exec"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -25,7 +27,26 @@ import (
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
+type KINDPusher interface {
+	PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error
+}
+
+type cmdKINDPusher struct{}
+
+func (*cmdKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", ref.String())
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	return cmd.Run()
+}
+
+func NewKINDPusher() KINDPusher {
+	return &cmdKINDPusher{}
+}
+
 type ImageBuildAndDeployer struct {
+	ib            build.ImageBuilder
 	icb           *imageAndCacheBuilder
 	k8sClient     k8s.Client
 	env           k8s.Env
@@ -33,6 +54,7 @@ type ImageBuildAndDeployer struct {
 	analytics     analytics.Analytics
 	injectSynclet bool
 	clock         build.Clock
+	kp            KINDPusher
 }
 
 func NewImageBuildAndDeployer(
@@ -44,14 +66,18 @@ func NewImageBuildAndDeployer(
 	analytics analytics.Analytics,
 	updMode UpdateMode,
 	c build.Clock,
-	runtime container.Runtime) *ImageBuildAndDeployer {
+	runtime container.Runtime,
+	kp KINDPusher,
+) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
+		ib:        b,
 		icb:       NewImageAndCacheBuilder(b, cacheBuilder, customBuilder, updMode),
 		k8sClient: k8sClient,
 		env:       env,
 		analytics: analytics,
 		clock:     c,
 		runtime:   runtime,
+		kp:        kp,
 	}
 }
 
@@ -82,7 +108,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	numStages := len(iTargets)
+	numStages := len(iTargets) * 2 // each image target has two stages: one for build, and one for push
 	if len(kTargets) > 0 {
 		numStages++
 	}
@@ -108,11 +134,16 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		state := stateSet[iTarget.ID()]
 
 		if state.NeedsImageBuild() {
-			canSkipPush := ibd.canSkipPushOfTarget(iTarget, kTargets)
-			ref, err = ibd.icb.Build(ctx, iTarget, state, ps, canSkipPush)
+			ref, err = ibd.icb.Build(ctx, iTarget, state, ps)
 			if err != nil {
 				return store.BuildResultSet{}, err
 			}
+
+			ref, err = ibd.push(ctx, ref, ps, iTarget, kTargets)
+			if err != nil {
+				return store.BuildResultSet{}, err
+			}
+
 		} else {
 			ref = state.LastResult.Image
 		}
@@ -133,6 +164,35 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	}
 
 	return q.results, nil
+}
+
+func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTargets []model.K8sTarget) (reference.NamedTagged, error) {
+	ps.StartPipelineStep(ctx, "Pushing %s", ref.String())
+	defer ps.EndPipelineStep(ctx)
+
+	// We can also skip the push of the image if it isn't used
+	// in any k8s resources! (e.g., it's consumed by another image).
+	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTargets) {
+		ps.Printf(ctx, "Skipping push")
+		return ref, nil
+	}
+
+	var err error
+	if ibd.env == k8s.EnvKIND {
+		ps.Printf(ctx, "Pushing to KIND")
+		err := ibd.kp.PushToKIND(ctx, ref, ps.Writer(ctx))
+		if err != nil {
+			return nil, fmt.Errorf("Error pushing to KIND: %v", err)
+		}
+	} else {
+		ps.Printf(ctx, "Pushing to registry")
+		ref, err = ibd.ib.PushImage(ctx, ref, ps.Writer(ctx))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ref, nil
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
@@ -228,16 +288,6 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	}
 
 	return ibd.k8sClient.Upsert(ctx, newK8sEntities)
-}
-
-func (ibd *ImageBuildAndDeployer) canSkipPushOfTarget(iTarget model.ImageTarget, kTargets []model.K8sTarget) bool {
-	if ibd.canAlwaysSkipPush() {
-		return true
-	}
-
-	// We can also skip the push of the image if it isn't used
-	// in any k8s resources! (e.g., it's consumed by another image).
-	return !isImageDeployedToK8s(iTarget, kTargets)
 }
 
 // If we're using docker-for-desktop as our k8s backend,

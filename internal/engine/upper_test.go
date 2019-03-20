@@ -1002,6 +1002,11 @@ func (f *testFixture) testPodWithDeployID(podID string, manifestName string, pha
 	}
 }
 
+func setImage(pod *v1.Pod, image string) {
+	pod.Spec.Containers[0].Image = image
+	pod.Status.ContainerStatuses[0].Image = image
+}
+
 func setRestartCount(pod *v1.Pod, restartCount int) {
 	pod.Status.ContainerStatuses[0].RestartCount = int32(restartCount)
 }
@@ -2573,11 +2578,16 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 }
 
 func (f *testFixture) newManifest(name string, mounts []model.Mount) model.Manifest {
-	ref := container.NewRefSelector(f.imageNameForManifest(name))
+	ref := f.imageNameForManifest(name)
+	return f.newManifestWithRef(name, ref, mounts)
+}
+
+func (f *testFixture) newManifestWithRef(name string, ref reference.Named, mounts []model.Mount) model.Manifest {
+	refSel := container.NewRefSelector(ref)
 	return assembleK8sManifest(
 		model.Manifest{Name: model.ManifestName(name)},
 		model.K8sTarget{YAML: "fake-yaml"},
-		model.NewImageTarget(ref).
+		model.NewImageTarget(refSel).
 			WithBuildDetails(model.FastBuild{
 				BaseDockerfile: `from golang:1.10`,
 				Mounts:         mounts,

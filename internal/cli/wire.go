@@ -90,6 +90,7 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServerController,
 
 	provideThreads,
+	engine.NewKINDPusher,
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {

@@ -44,6 +44,11 @@ func (s RefSelector) RefsEqual(other RefSelector) bool {
 	return s.ref.String() == other.ref.String()
 }
 
+func (s RefSelector) WithNameMatch() RefSelector {
+	s.matchType = matchName
+	return s
+}
+
 func (s RefSelector) WithExactMatch() RefSelector {
 	s.matchType = matchExact
 	return s
