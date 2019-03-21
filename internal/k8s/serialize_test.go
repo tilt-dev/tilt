@@ -39,7 +39,7 @@ func TestTracerYAML(t *testing.T) {
 }
 
 func TestSanchoYAML(t *testing.T) {
-	entities := MustParseYAMLFromString(t, testyaml.SanchoYAML())
+	entities := MustParseYAMLFromString(t, testyaml.SanchoYAML)
 	if len(entities) != 1 || entities[0].Kind.Kind != "Deployment" {
 		t.Errorf("Unexpected entities: %+v", entities)
 	}

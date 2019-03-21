@@ -1042,7 +1042,7 @@ func TestFilterYamlByLabel(t *testing.T) {
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
-		testyaml.SnackYaml, testyaml.SanchoYAML()))
+		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `labels = {'app': 'doggos'}
 doggos, rest = filter_yaml('k8s.yaml', labels=labels)
 k8s_resource('doggos', yaml=doggos)
@@ -1059,7 +1059,7 @@ func TestFilterYamlByName(t *testing.T) {
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
-		testyaml.SnackYaml, testyaml.SanchoYAML()))
+		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)
@@ -1075,7 +1075,7 @@ func TestFilterYamlByNameKind(t *testing.T) {
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
-		testyaml.SnackYaml, testyaml.SanchoYAML()))
+		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', kind='deployment')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)
@@ -1091,7 +1091,7 @@ func TestFilterYamlByNamespace(t *testing.T) {
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
-		testyaml.SnackYaml, testyaml.SanchoYAML()))
+		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', namespace='the-dog-zone')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)
@@ -1107,7 +1107,7 @@ func TestFilterYamlByApiVersion(t *testing.T) {
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
-		testyaml.SnackYaml, testyaml.SanchoYAML()))
+		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `doggos, rest = filter_yaml('k8s.yaml', name='doggos', api_version='apps/v1')
 k8s_resource('doggos', yaml=doggos)
 k8s_resource('rest', yaml=rest)

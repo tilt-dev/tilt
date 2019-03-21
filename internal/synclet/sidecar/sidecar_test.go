@@ -11,7 +11,7 @@ import (
 )
 
 func TestInjectSyncletSidecar(t *testing.T) {
-	entities, err := k8s.ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := k8s.ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestInjectSyncletSidecar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {
-		t.Errorf("Expected replacement in:\n%s", testyaml.SanchoYAML())
+		t.Errorf("Expected replacement in:\n%s", testyaml.SanchoYAML)
 	}
 
 	result, err := k8s.SerializeYAML([]k8s.K8sEntity{newEntity})

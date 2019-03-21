@@ -8,7 +8,7 @@ import (
 )
 
 func TestExtractSanchoContainers(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestExtractSanchoContainers(t *testing.T) {
 }
 
 func TestExtractSanchoPods(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestExtractSanchoPods(t *testing.T) {
 }
 
 func TestExtractSanchoPodTemplateSpecs(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}

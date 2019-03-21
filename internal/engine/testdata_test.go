@@ -6,6 +6,8 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+const SanchoYAML = testyaml.SanchoYAML
+
 const SanchoTwinYAML = testyaml.SanchoTwinYAML
 
 const SanchoBaseDockerfile = `
@@ -53,7 +55,7 @@ func NewSanchoFastBuildImage(fixture pather) model.ImageTarget {
 func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 	return assembleK8sManifest(
 		model.Manifest{Name: "sancho"},
-		model.K8sTarget{YAML: testyaml.SanchoYAML()},
+		model.K8sTarget{YAML: SanchoYAML},
 		NewSanchoFastBuildImage(fixture))
 }
 
@@ -70,10 +72,6 @@ func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.M
 }
 
 func NewSanchoCustomBuildManifest(fixture pather) model.Manifest {
-	return NewSanchoCustomBuildManifestWithRef(fixture, SanchoRef)
-
-}
-func NewSanchoCustomBuildManifestWithRef(fixture pather, ref container.RefSelector) model.Manifest {
 	cb := model.CustomBuild{
 		Command: "true",
 		Deps:    []string{fixture.JoinPath("app")},
@@ -83,8 +81,8 @@ func NewSanchoCustomBuildManifestWithRef(fixture pather, ref container.RefSelect
 
 	return assembleK8sManifest(
 		m,
-		model.K8sTarget{YAML: testyaml.SanchoYAMLWithRef(ref.String())},
-		model.NewImageTarget(ref).WithBuildDetails(cb))
+		model.K8sTarget{YAML: SanchoYAML},
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
 func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
@@ -99,7 +97,7 @@ func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
 
 	return assembleK8sManifest(
 		m,
-		model.K8sTarget{YAML: testyaml.SanchoYAML()},
+		model.K8sTarget{YAML: SanchoYAML},
 		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
@@ -120,7 +118,7 @@ func NewSanchoSidecarStaticImageTarget() model.ImageTarget {
 func NewSanchoStaticManifest() model.Manifest {
 	return assembleK8sManifest(
 		model.Manifest{Name: "sancho"},
-		model.K8sTarget{YAML: testyaml.SanchoYAML()},
+		model.K8sTarget{YAML: SanchoYAML},
 		NewSanchoStaticImageTarget().
 			WithBuildDetails(model.StaticBuild{
 				Dockerfile: SanchoStaticDockerfile,
@@ -161,7 +159,7 @@ ENTRYPOINT /go/bin/sancho
 		BuildPath: "/path/to/build",
 	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
-	kTarget := model.K8sTarget{YAML: testyaml.SanchoYAML()}.
+	kTarget := model.K8sTarget{YAML: SanchoYAML}.
 		WithDependencyIDs([]model.TargetID{srcImage.ID()})
 
 	return model.Manifest{Name: "sancho"}.
@@ -182,7 +180,7 @@ func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
 		WithBuildDetails(fbInfo).
 		WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
-	kTarget := model.K8sTarget{YAML: testyaml.SanchoYAML()}.
+	kTarget := model.K8sTarget{YAML: SanchoYAML}.
 		WithDependencyIDs([]model.TargetID{srcImage.ID()})
 
 	return model.Manifest{Name: "sancho"}.

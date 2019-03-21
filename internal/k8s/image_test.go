@@ -16,7 +16,7 @@ import (
 )
 
 func TestInjectDigestSanchoYAML(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestInjectDigestSanchoYAML(t *testing.T) {
 }
 
 func TestInjectDigestDoesNotMutateOriginal(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +281,7 @@ func TestEntityHasImage(t *testing.T) {
 }
 
 func TestInjectDigestEnvVar(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML())
+	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
