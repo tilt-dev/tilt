@@ -4,5 +4,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: tilt_onedc_web
     ports:
     - "31235:8000"
