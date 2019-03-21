@@ -28,12 +28,7 @@ func ProvideEnv(kubeConfig *api.Config) Env {
 	return EnvFromConfig(kubeConfig)
 }
 
-func ProvideKubeContext(clientLoader clientcmd.ClientConfig) (KubeContext, error) {
-	access := clientLoader.ConfigAccess()
-	config, err := access.GetStartingConfig()
-	if err != nil {
-		return "", errors.Wrap(err, "Loading Kubernetes current-context")
-	}
+func ProvideKubeContext(config *api.Config) (KubeContext, error) {
 	return KubeContext(config.CurrentContext), nil
 }
 

@@ -90,7 +90,11 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	portForwarder := k8s.ProvidePortForwarder()
 	clientConfig := k8s.ProvideClientConfig()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return nil, err
 	}

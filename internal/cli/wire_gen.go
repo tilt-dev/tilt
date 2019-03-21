@@ -48,7 +48,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -160,7 +160,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -256,7 +256,7 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,11 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 	clientConfig := k8s.ProvideClientConfig()
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return "", err
+	}
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return "", err
 	}
@@ -299,7 +303,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return "", err
 	}
@@ -335,7 +339,7 @@ func wireDockerVersion(ctx context.Context) (types.Version, error) {
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return types.Version{}, err
 	}
@@ -367,7 +371,7 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return docker.Env{}, err
 	}
@@ -395,7 +399,7 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 	env := k8s.ProvideEnv(config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
 		return DownDeps{}, err
 	}
