@@ -35,7 +35,7 @@ func (s HeadsUpServer) Router() http.Handler {
 
 func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view := store.StateToView(state)
+	view := StateToWebView(state)
 	s.store.RUnlockState()
 
 	w.Header().Set("Content-Type", "application/json")

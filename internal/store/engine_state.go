@@ -20,7 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-const emptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.dev/tutorial.html to get started."
+const EmptyTiltfileMsg = "Looks like you don't have any docker builds or services defined in your Tiltfile! Check out https://docs.tilt.dev/tutorial.html to get started."
 
 type EngineState struct {
 	TiltStartTime time.Time
@@ -704,8 +704,8 @@ func StateToView(s EngineState) view.View {
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error
 		if err == nil && s.IsEmpty() {
-			tr.CrashLog = emptyTiltfileMsg
-			ret.TiltfileErrorMessage = emptyTiltfileMsg
+			tr.CrashLog = EmptyTiltfileMsg
+			ret.TiltfileErrorMessage = EmptyTiltfileMsg
 		} else if err != nil {
 			tr.CrashLog = err.Error()
 			ret.TiltfileErrorMessage = err.Error()
