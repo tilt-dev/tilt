@@ -59,6 +59,13 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 
 	kContext, err := wireKubeContext(ctx)
 	printField("Context", kContext, err)
+	kConfig, err := wireKubeConfig(ctx)
+	kc, ok := kConfig.Contexts[kConfig.CurrentContext]
+	clusterName := "Unknown"
+	if ok {
+		clusterName = kc.Cluster
+	}
+	printField("Cluster Name", clusterName, err)
 
 	ns, err := wireNamespace(ctx)
 	printField("Namespace", ns, err)

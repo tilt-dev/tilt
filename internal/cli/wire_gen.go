@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"time"
 )
 
@@ -276,6 +277,15 @@ func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 		return "", err
 	}
 	return kubeContext, nil
+}
+
+func wireKubeConfig(ctx context.Context) (*api.Config, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 func wireEnv(ctx context.Context) (k8s.Env, error) {
