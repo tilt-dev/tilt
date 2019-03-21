@@ -65,8 +65,13 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	syncletManager := engine.NewSyncletManager(client)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client)
+	engineUpdateModeFlag := provideUpdateModeFlag()
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client, updateMode)
 	minikubeClient := minikube.ProvideMinikubeClient()
 	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
@@ -96,11 +101,6 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	cacheBuilder := build.NewCacheBuilder(cli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(cli, dockerEnv, clock)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
-	if err != nil {
-		return demo.Script{}, err
-	}
 	kindPusher := engine.NewKINDPusher()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
@@ -173,8 +173,13 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
 	syncletManager := engine.NewSyncletManager(client)
-	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client)
+	engineUpdateModeFlag := provideUpdateModeFlag()
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
+	if err != nil {
+		return Threads{}, err
+	}
+	syncletBuildAndDeployer := engine.NewSyncletBuildAndDeployer(syncletManager, client, updateMode)
 	minikubeClient := minikube.ProvideMinikubeClient()
 	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
@@ -204,11 +209,6 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	cacheBuilder := build.NewCacheBuilder(cli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(cli, dockerEnv, clock)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
-	if err != nil {
-		return Threads{}, err
-	}
 	kindPusher := engine.NewKINDPusher()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
