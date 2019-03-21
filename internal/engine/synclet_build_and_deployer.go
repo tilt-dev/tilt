@@ -20,14 +20,16 @@ import (
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	sm   SyncletManager
-	kCli k8s.Client
+	sm         SyncletManager
+	kCli       k8s.Client
+	updateMode UpdateMode
 }
 
-func NewSyncletBuildAndDeployer(sm SyncletManager, kCli k8s.Client) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(sm SyncletManager, kCli k8s.Client, updateMode UpdateMode) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
-		sm:   sm,
-		kCli: kCli,
+		sm:         sm,
+		kCli:       kCli,
+		updateMode: updateMode,
 	}
 }
 
@@ -89,17 +91,17 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 		return store.BuildResultSet{}, err
 	}
 
-	if sbd.kCli.ContainerRuntime(ctx) == container.RuntimeDocker {
-		// TODO(dbentley): it would be even better to check if the pod has the sidecar
-		if err := sbd.updateViaSynclet(ctx,
-			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
-			archive, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
-			return store.BuildResultSet{}, err
-		}
-	} else {
+	// TODO(dbentley): it would be even better to check if the pod has the sidecar
+	if sbd.updateMode == UpdateModeKubectlExec || sbd.kCli.ContainerRuntime(ctx) != container.RuntimeDocker {
 		if err := sbd.updateViaExec(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
 			archive, archivePaths, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
+			return store.BuildResultSet{}, err
+		}
+	} else {
+		if err := sbd.updateViaSynclet(ctx,
+			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
+			archive, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
 			return store.BuildResultSet{}, err
 		}
 	}

@@ -23,7 +23,12 @@ import (
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher) (BuildAndDeployer, error) {
 	syncletManager := NewSyncletManagerForTests(kClient, sCli)
-	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient)
+	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
+	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient, engineUpdateMode)
 	containerUpdater := build.NewContainerUpdater(docker2)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics, env)
@@ -31,17 +36,12 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
-	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
 	client := minikube.ProvideMinikubeClient()
 	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, client)
 	if err != nil {
 		return nil, err
 	}
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
-	if err != nil {
-		return nil, err
-	}
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, memoryAnalytics, engineUpdateMode, clock, runtime, kp)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, engineUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
