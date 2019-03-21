@@ -244,9 +244,19 @@ type CustomBuild struct {
 	// Deps is a list of file paths that are dependencies of this command.
 	Deps []string
 
+	// Optional: tag we expect the image to be built with (we use this to check that
+	// the expected image+tag has been created).
+	// If empty, we create an expected tag at the beginning of CustomBuild (as $TAG)
+	Tag string
+
 	Fast *FastBuild
 }
 
 func (CustomBuild) buildDetails() {}
+
+func (cb CustomBuild) WithTag(t string) CustomBuild {
+	cb.Tag = t
+	return cb
+}
 
 var _ TargetSpec = ImageTarget{}

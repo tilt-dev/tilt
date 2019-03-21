@@ -589,7 +589,11 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images[refStr] = types.ImageInspect{ID: string(sha)}
 
-	manifest := NewSanchoCustomBuildManifestWithRef(f, container.NewRefSelector(container.MustParseNamed(refStr)))
+	manifest := NewSanchoCustomBuildManifest(f)
+	iTarg := manifest.ImageTargetAt(0)
+	cb := iTarg.CustomBuildInfo().WithTag("deterministic-tag")
+	iTarg = iTarg.WithBuildDetails(cb)
+	manifest = manifest.WithImageTarget(iTarg)
 	targets := buildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
