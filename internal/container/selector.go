@@ -12,7 +12,7 @@ const (
 )
 
 type RefSelector struct {
-	ref       reference.Named
+	Ref       reference.Named
 	matchType MatchType
 }
 
@@ -27,7 +27,7 @@ func NewRefSelector(ref reference.Named) RefSelector {
 		matchType = matchExact
 	}
 	return RefSelector{
-		ref:       ref,
+		Ref:       ref,
 		matchType: matchType,
 	}
 }
@@ -41,7 +41,7 @@ func MustParseTaggedSelector(s string) RefSelector {
 }
 
 func (s RefSelector) RefsEqual(other RefSelector) bool {
-	return s.ref.String() == other.ref.String()
+	return s.Ref.String() == other.Ref.String()
 }
 
 func (s RefSelector) WithNameMatch() RefSelector {
@@ -55,31 +55,32 @@ func (s RefSelector) WithExactMatch() RefSelector {
 }
 
 func (s RefSelector) Matches(toMatch reference.Named) bool {
-	if s.ref == nil {
+	if s.Ref == nil {
 		return false
 	}
 
 	if s.matchType == matchName {
-		return toMatch.Name() == s.ref.Name()
+		return toMatch.Name() == s.Ref.Name()
 	}
-	return toMatch.String() == s.ref.String()
+	return toMatch.String() == s.Ref.String()
 }
 
 func (s RefSelector) Empty() bool {
-	return s.ref == nil
+	return s.Ref == nil
 }
 
 func (s RefSelector) RefName() string {
-	return s.ref.Name()
+	return s.Ref.Name()
 }
 
+// AsNamedOnly returns the Ref as a Named, REMOVING THE TAG if one exists
 func (s RefSelector) AsNamedOnly() reference.Named {
-	return reference.TrimNamed(s.ref)
+	return reference.TrimNamed(s.Ref)
 }
 
 func (s RefSelector) String() string {
-	if s.ref == nil {
+	if s.Ref == nil {
 		return ""
 	}
-	return s.ref.String()
+	return s.Ref.String()
 }

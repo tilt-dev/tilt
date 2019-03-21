@@ -1,6 +1,7 @@
 package testyaml
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -72,7 +73,7 @@ spec:
   backoffLimit: 4
 `
 
-const SanchoYAML = `
+const sanchoYAML = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -92,7 +93,7 @@ spec:
     spec:
       containers:
       - name: sancho
-        image: gcr.io/some-project-162817/sancho
+        image: %s
         env:
           - name: token
             valueFrom:
@@ -100,6 +101,10 @@ spec:
                 name: slacktoken
                 key: token
 `
+const SanchoImageRef = "gcr.io/some-project-162817/sancho"
+
+func SanchoYAML() string                  { return SanchoYAMLWithRef(SanchoImageRef) }
+func SanchoYAMLWithRef(ref string) string { return fmt.Sprintf(sanchoYAML, ref) }
 
 const SanchoBeta1YAML = `
 apiVersion: apps/v1beta1

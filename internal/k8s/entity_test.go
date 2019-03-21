@@ -30,7 +30,7 @@ func TestNamespace(t *testing.T) {
 }
 
 func TestImmutableFilter(t *testing.T) {
-	yaml := fmt.Sprintf("%s\n---\n%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML, testyaml.PodYAML)
+	yaml := fmt.Sprintf("%s\n---\n%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML(), testyaml.PodYAML)
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestImmutableFilter(t *testing.T) {
 }
 
 func TestMutableFilter(t *testing.T) {
-	yaml := fmt.Sprintf("%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML)
+	yaml := fmt.Sprintf("%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML())
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatal(err)

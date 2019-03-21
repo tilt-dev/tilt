@@ -34,7 +34,7 @@ func TestInjectLabelPod(t *testing.T) {
 }
 
 func TestInjectLabelDeployment(t *testing.T) {
-	entity := parseOneEntity(t, testyaml.SanchoYAML)
+	entity := parseOneEntity(t, testyaml.SanchoYAML())
 	newEntity, err := InjectLabels(entity, []model.LabelPair{
 		{
 			Key:   "tier",

@@ -39,8 +39,7 @@ func TestCustomBuildImgNotFound(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	_, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true")
-	// TODO(dmiller) better error message
-	assert.EqualError(t, err, "fake docker client error: object not found")
+	assert.Contains(t, err.Error(), "fake docker client error: object not found")
 }
 
 type fakeCustomBuildFixture struct {

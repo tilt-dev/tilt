@@ -582,6 +582,34 @@ func TestCustomBuildWithoutFastBuild(t *testing.T) {
 	}
 }
 
+func TestCustomBuildDeterministicTag(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	refStr := "gcr.io/some-project-162817/sancho:deterministic-tag"
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.docker.Images[refStr] = types.ImageInspect{ID: string(sha)}
+
+	manifest := NewSanchoCustomBuildManifestWithRef(f, container.NewRefSelector(container.MustParseNamed(refStr)))
+	targets := buildTargets(manifest)
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected 0 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 1 {
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+
+	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
+	}
+}
+
 func TestContainerBuildMultiStage(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
