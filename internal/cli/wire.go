@@ -29,6 +29,7 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideEnv,
 	k8s.DetectNodeIP,
 	k8s.ProvideKubeContext,
+	k8s.ProvideKubeConfig,
 	k8s.ProvideClientConfig,
 	k8s.ProvideClientSet,
 	k8s.ProvideRESTConfig,

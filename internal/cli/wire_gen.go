@@ -41,13 +41,17 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 		return demo.Script{}, err
 	}
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	podWatcher := engine.NewPodWatcher(client)
@@ -149,13 +153,17 @@ func wireThreads(ctx context.Context) (Threads, error) {
 		return Threads{}, err
 	}
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return Threads{}, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return Threads{}, err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	podWatcher := engine.NewPodWatcher(client)
@@ -241,13 +249,17 @@ func wireThreads(ctx context.Context) (Threads, error) {
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	return client, nil
@@ -264,11 +276,11 @@ func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 
 func wireEnv(ctx context.Context) (k8s.Env, error) {
 	clientConfig := k8s.ProvideClientConfig()
-	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
+	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(kubeContext)
+	env := k8s.ProvideEnv(config)
 	return env, nil
 }
 
@@ -280,13 +292,17 @@ func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
 
 func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return "", err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -312,13 +328,17 @@ func wireK8sVersion(ctx context.Context) (*version.Info, error) {
 
 func wireDockerVersion(ctx context.Context) (types.Version, error) {
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return types.Version{}, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return types.Version{}, err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -340,13 +360,17 @@ func wireDockerVersion(ctx context.Context) (types.Version, error) {
 
 func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return docker.Env{}, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return docker.Env{}, err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -364,13 +388,17 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 		return DownDeps{}, err
 	}
 	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return DownDeps{}, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(clientConfig)
 	if err != nil {
 		return DownDeps{}, err
 	}
-	env := k8s.ProvideEnv(kubeContext)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -387,7 +415,7 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
