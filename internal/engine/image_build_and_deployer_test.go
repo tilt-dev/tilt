@@ -12,6 +12,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/wmclient/pkg/dirs"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -21,7 +23,6 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 func TestStaticDockerfileWithCache(t *testing.T) {
@@ -261,6 +262,55 @@ func TestKINDPush(t *testing.T) {
 
 	assert.Equal(t, 1, f.docker.BuildCount)
 	assert.Equal(t, 1, f.kp.pushCount)
+}
+
+func TestDeployUsesInjectRef(t *testing.T) {
+	expectedImages := []string{"foo.com/gcr.io_some-project-162817_sancho"}
+	tests := []struct {
+		name           string
+		manifest       func(f pather) model.Manifest
+		expectedImages []string
+	}{
+		{"static build", func(f pather) model.Manifest { return NewSanchoStaticManifest() }, expectedImages},
+		{"fast build", NewSanchoFastBuildManifest, expectedImages},
+		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
+		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/docker.io_library_sancho-base")},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.name == "custom build" {
+				// this test fails because dockerCLI.Images is never populated, and custom build tries to call ImageInspectRaw
+				t.Skip("custom build IBD tests not yet supported")
+			}
+
+			f := newIBDFixture(t, k8s.EnvGKE)
+			defer f.TearDown()
+
+			manifest := test.manifest(f)
+			var err error
+			for i := range manifest.ImageTargets {
+				manifest.ImageTargets[i].DeploymentRef, err = container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].ConfigurationRef)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var observedImages []string
+			for i := range manifest.ImageTargets {
+				id := manifest.ImageTargets[i].ID()
+				observedImages = append(observedImages, result[id].Image.Name())
+			}
+
+			assert.ElementsMatch(t, test.expectedImages, observedImages)
+		})
+	}
+
 }
 
 type ibdFixture struct {

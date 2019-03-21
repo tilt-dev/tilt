@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/container"
 )
 
@@ -265,13 +266,23 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
-		Manifest{}.WithImageTarget(ImageTarget{Ref: img2}),
+		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img2}),
 		false,
 	},
 	{
-		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
-		Manifest{}.WithImageTarget(ImageTarget{Ref: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
+		true,
+	},
+	{
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img2.AsNamedOnly()}),
+		false,
+	},
+	{
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
 		true,
 	},
 	{
@@ -367,7 +378,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 
 	manifest := Manifest{
 		Name: "test",
-	}.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
+	}.WithImageTarget(ImageTarget{ConfigurationRef: img1}.WithBuildDetails(fbInfo))
 	err := manifest.Validate()
 
 	if assert.NotNil(t, err) {
@@ -375,7 +386,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 	}
 
 	fbInfo.Mounts[0].LocalPath = "/abs/path/hello"
-	manifest = manifest.WithImageTarget(ImageTarget{Ref: img1}.WithBuildDetails(fbInfo))
+	manifest = manifest.WithImageTarget(ImageTarget{ConfigurationRef: img1}.WithBuildDetails(fbInfo))
 	err = manifest.Validate()
 	assert.Nil(t, err)
 }

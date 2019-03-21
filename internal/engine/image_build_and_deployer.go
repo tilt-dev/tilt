@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/store"
@@ -15,12 +16,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
@@ -245,7 +247,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 					return fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
 				}
 
-				selector := iTargetMap[depID].Ref
+				selector := iTargetMap[depID].ConfigurationRef
 
 				var replaced bool
 				e, replaced, err = k8s.InjectImageDigest(e, selector, ref, policy)
@@ -310,7 +312,7 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	case model.FastBuild:
 		df = dockerfile.Dockerfile(bd.BaseDockerfile)
 	default:
-		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.Ref)
+		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.ConfigurationRef)
 	}
 
 	ast, err := dockerfile.ParseAST(df)
@@ -319,11 +321,11 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	for _, dep := range deps {
-		modified, err := ast.InjectImageDigest(iTargetMap[dep.TargetID].Ref, dep.Image)
+		modified, err := ast.InjectImageDigest(iTargetMap[dep.TargetID].ConfigurationRef, dep.Image)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {
-			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", dep.Image, iTarget.Ref)
+			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", dep.Image, iTarget.ConfigurationRef)
 		}
 	}
 

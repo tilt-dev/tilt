@@ -1270,9 +1270,9 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 2, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).Ref.String())
+		m.ImageTargetAt(0).ConfigurationRef.String())
 	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
-		m.ImageTargetAt(1).Ref.String())
+		m.ImageTargetAt(1).ConfigurationRef.String())
 }
 
 func TestSanchoRedisSidecar(t *testing.T) {
@@ -1291,7 +1291,7 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 1, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).Ref.String())
+		m.ImageTargetAt(0).ConfigurationRef.String())
 }
 
 func TestExtraPodSelectors(t *testing.T) {
@@ -2249,6 +2249,94 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.loadErrString("JSON parsing error: unexpected end of JSON input")
 }
 
+func TestTwoDefaultRegistries(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+default_registry("foo")
+default_registry("bar")`)
+
+	f.loadErrString("default registry already defined")
+}
+
+func TestDefaultRegistryInvalid(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+default_registry("foo")
+docker_build('gcr.io/foo', 'foo')
+`)
+
+	f.loadErrString("repository name must be canonical")
+}
+
+func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	// default_registry is the last entry to test that it doesn't only affect subsequently defined images
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+default_registry('bar.com')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+}
+
+func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("bar/Dockerfile")
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo:bar")))
+
+	f.dockerfile("baz/Dockerfile")
+	f.yaml("baz.yaml", deployment("baz", image("gcr.io/foo:baz")))
+
+	f.gitInit("")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:bar', 'bar')
+docker_build('gcr.io/foo:baz', 'baz')
+k8s_resource('bar', 'bar.yaml')
+k8s_resource('baz', 'baz.yaml')
+default_registry('example.com')
+`)
+
+	f.load()
+
+	f.assertNextManifest("bar",
+		sb(image("gcr.io/foo:bar").withInjectedRef("example.com/gcr.io_foo")),
+		deployment("bar"))
+	f.assertNextManifest("baz",
+		sb(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
+		deployment("baz"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar.yaml", "baz/Dockerfile", "baz.yaml")
+}
+
+func TestDefaultRegistryWithDockerCompose(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+default_registry('bar.com')
+`)
+
+	f.loadErrString("default_registry is not supported with docker compose")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -2475,12 +2563,16 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case sbHelper:
 			image := nextImageTarget()
 
-			ref := image.Ref
+			ref := image.ConfigurationRef
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			if ref.String() != opt.image.ref {
+				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.String(), opt.image.ref)
+			}
+
+			if image.DeploymentRef.String() != opt.image.deploymentRef {
+				f.t.Fatalf("manifest %v image injected ref: %q; expected %q", m.Name, image.DeploymentRef, opt.image.deploymentRef)
 			}
 
 			if opt.cache != "" {
@@ -2515,7 +2607,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case fbHelper:
 			image := nextImageTarget()
 
-			ref := image.Ref
+			ref := image.ConfigurationRef
 			if ref.RefName() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
@@ -2532,7 +2624,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			opt.checkMatchers(f, m, image.FastBuildInfo())
 		case cbHelper:
 			image := nextImageTarget()
-			ref := image.Ref
+			ref := image.ConfigurationRef
 			if ref.RefName() != opt.image.ref {
 				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
 			}
@@ -2841,15 +2933,21 @@ func fileChangeFilters(path string) matchPathHelper {
 }
 
 type imageHelper struct {
-	ref string
+	ref           string
+	deploymentRef string
 }
 
 func image(ref string) imageHelper {
-	return imageHelper{ref: ref}
+	return imageHelper{ref: ref, deploymentRef: ref}
 }
 
 func imageNormalized(ref string) imageHelper {
-	return imageHelper{ref: container.MustNormalizeRef(ref)}
+	return image(container.MustNormalizeRef(ref))
+}
+
+func (ih imageHelper) withInjectedRef(injectedRef string) imageHelper {
+	ih.deploymentRef = injectedRef
+	return ih
 }
 
 type labelsHelper struct {

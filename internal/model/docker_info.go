@@ -6,13 +6,16 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {
-	Ref          container.RefSelector
-	BuildDetails BuildDetails
+	ConfigurationRef container.RefSelector
+	DeploymentRef    reference.Named
+	BuildDetails     BuildDetails
 
 	cachePaths []string
 
@@ -23,6 +26,10 @@ type ImageTarget struct {
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
 	dependencyIDs []TargetID
+}
+
+func NewImageTarget(ref container.RefSelector) ImageTarget {
+	return ImageTarget{ConfigurationRef: ref, DeploymentRef: ref.AsNamedOnly()}
 }
 
 func ImageID(ref container.RefSelector) TargetID {
@@ -37,7 +44,7 @@ func ImageID(ref container.RefSelector) TargetID {
 }
 
 func (i ImageTarget) ID() TargetID {
-	return ImageID(i.Ref)
+	return ImageID(i.ConfigurationRef)
 }
 
 func (i ImageTarget) DependencyIDs() []TargetID {
@@ -50,24 +57,24 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
-	if i.Ref.Empty() {
+	if i.ConfigurationRef.Empty() {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
 	switch bd := i.BuildDetails.(type) {
 	case StaticBuild:
 		if bd.BuildPath == "" {
-			return fmt.Errorf("[Validate] Image %q missing build path", i.Ref)
+			return fmt.Errorf("[Validate] Image %q missing build path", i.ConfigurationRef)
 		}
 	case FastBuild:
 		if bd.BaseDockerfile == "" {
-			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.Ref)
+			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.ConfigurationRef)
 		}
 
 		for _, mnt := range bd.Mounts {
 			if !filepath.IsAbs(mnt.LocalPath) {
 				return fmt.Errorf(
-					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.Ref, mnt.LocalPath)
+					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.ConfigurationRef, mnt.LocalPath)
 			}
 		}
 	case CustomBuild:
@@ -77,7 +84,7 @@ func (i ImageTarget) Validate() error {
 			)
 		}
 	default:
-		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.Ref)
+		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.ConfigurationRef)
 	}
 
 	return nil

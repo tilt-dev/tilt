@@ -49,7 +49,7 @@ func NewSanchoFastBuild(fixture pather) model.FastBuild {
 
 func NewSanchoFastBuildImage(fixture pather) model.ImageTarget {
 	fbInfo := NewSanchoFastBuild(fixture)
-	return model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(fbInfo)
+	return model.NewImageTarget(SanchoRef).WithBuildDetails(fbInfo)
 }
 
 func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
@@ -82,7 +82,7 @@ func NewSanchoCustomBuildManifest(fixture pather) model.Manifest {
 	return assembleK8sManifest(
 		m,
 		model.K8sTarget{YAML: SanchoYAML},
-		model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(cb))
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
 func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
@@ -98,13 +98,11 @@ func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
 	return assembleK8sManifest(
 		m,
 		model.K8sTarget{YAML: SanchoYAML},
-		model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(cb))
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
 func NewSanchoStaticImageTarget() model.ImageTarget {
-	return model.ImageTarget{
-		Ref: SanchoRef,
-	}.WithBuildDetails(model.StaticBuild{
+	return model.NewImageTarget(SanchoRef).WithBuildDetails(model.StaticBuild{
 		Dockerfile: SanchoStaticDockerfile,
 		BuildPath:  "/path/to/build",
 	})
@@ -112,7 +110,8 @@ func NewSanchoStaticImageTarget() model.ImageTarget {
 
 func NewSanchoSidecarStaticImageTarget() model.ImageTarget {
 	iTarget := NewSanchoStaticImageTarget()
-	iTarget.Ref = SanchoSidecarRef
+	iTarget.ConfigurationRef = SanchoSidecarRef
+	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
 	return iTarget
 }
 
@@ -145,16 +144,12 @@ func NewSanchoStaticManifestWithNestedFastBuild(fixture pather) model.Manifest {
 }
 
 func NewSanchoStaticMultiStageManifest() model.Manifest {
-	baseImage := model.ImageTarget{
-		Ref: SanchoBaseRef,
-	}.WithBuildDetails(model.StaticBuild{
+	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.StaticBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  "/path/to/build",
 	})
 
-	srcImage := model.ImageTarget{
-		Ref: SanchoRef,
-	}.WithBuildDetails(model.StaticBuild{
+	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.StaticBuild{
 		Dockerfile: `
 FROM sancho-base
 ADD . .
@@ -173,9 +168,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
-	baseImage := model.ImageTarget{
-		Ref: SanchoBaseRef,
-	}.WithBuildDetails(model.StaticBuild{
+	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.StaticBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  "/path/to/build",
 	})
@@ -183,7 +176,7 @@ func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
 	fbInfo := NewSanchoFastBuild(fixture)
 	fbInfo.BaseDockerfile = `FROM sancho-base`
 
-	srcImage := model.ImageTarget{Ref: SanchoRef}.
+	srcImage := model.NewImageTarget(SanchoRef).
 		WithBuildDetails(fbInfo).
 		WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
@@ -204,15 +197,15 @@ func NewManifestsWithCommonAncestor(fixture pather) (model.Manifest, model.Manif
 	fixture.MkdirAll("image-1")
 	fixture.MkdirAll("image-2")
 
-	targetCommon := model.ImageTarget{Ref: refCommon}.WithBuildDetails(model.StaticBuild{
+	targetCommon := model.NewImageTarget(refCommon).WithBuildDetails(model.StaticBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  fixture.JoinPath("common"),
 	})
-	target1 := model.ImageTarget{Ref: ref1}.WithBuildDetails(model.StaticBuild{
+	target1 := model.NewImageTarget(ref1).WithBuildDetails(model.StaticBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-1"),
 	})
-	target2 := model.ImageTarget{Ref: ref2}.WithBuildDetails(model.StaticBuild{
+	target2 := model.NewImageTarget(ref2).WithBuildDetails(model.StaticBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-2"),
 	})

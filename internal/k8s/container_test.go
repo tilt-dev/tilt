@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/container"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 func TestWaitForContainerAlreadyAlive(t *testing.T) {

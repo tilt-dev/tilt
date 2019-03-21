@@ -40,6 +40,9 @@ type tiltfileState struct {
 	k8sUnresourced []k8s.K8sEntity
 	dc             dcResourceSet // currently only support one d-c.yml
 
+	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
+	defaultRegistryHost string
+
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
@@ -87,9 +90,10 @@ func (s *tiltfileState) exec() error {
 
 const (
 	// build functions
-	dockerBuildN = "docker_build"
-	fastBuildN   = "fast_build"
-	customBuildN = "custom_build"
+	dockerBuildN     = "docker_build"
+	fastBuildN       = "fast_build"
+	customBuildN     = "custom_build"
+	defaultRegistryN = "default_registry"
 
 	// docker compose functions
 	dockerComposeN = "docker_compose"
@@ -143,6 +147,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
 	addBuiltin(r, fastBuildN, s.fastBuild)
 	addBuiltin(r, customBuildN, s.customBuild)
+	addBuiltin(r, defaultRegistryN, s.defaultRegistry)
 	addBuiltin(r, dockerComposeN, s.dockerCompose)
 	addBuiltin(r, dcResourceN, s.dcResource)
 	addBuiltin(r, k8sYamlN, s.k8sYaml)
@@ -200,8 +205,13 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 func (s *tiltfileState) assembleImages() error {
 	for _, imageBuilder := range s.buildIndex.images {
-		var depImages []reference.Named
 		var err error
+		imageBuilder.deploymentRef, err = container.ReplaceRegistry(s.defaultRegistryHost, imageBuilder.configurationRef)
+		if err != nil {
+			return err
+		}
+
+		var depImages []reference.Named
 		if imageBuilder.staticDockerfile != "" {
 			depImages, err = imageBuilder.staticDockerfile.FindImages()
 		} else {
@@ -223,6 +233,10 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
+	if len(s.dc.services) > 0 && s.defaultRegistryHost != "" {
+		return errors.New("default_registry is not supported with docker compose")
+	}
+
 	for _, svc := range s.dc.services {
 		if svc.ImageRef != nil {
 			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef)
@@ -270,7 +284,7 @@ func (s *tiltfileState) assembleK8sWithImages() error {
 			continue
 		}
 
-		ref := image.ref
+		ref := image.configurationRef
 		target, err := s.k8sResourceForImage(ref)
 		if err != nil {
 			return err
@@ -504,12 +518,13 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			// Skip this target, an earlier call has already built it
 			continue
 		} else if claim == claimPending {
-			return nil, fmt.Errorf("Image dependency cycle: %s", image.ref)
+			return nil, fmt.Errorf("Image dependency cycle: %s", image.configurationRef)
 		}
 		claimStatus[id] = claimPending
 
 		iTarget := model.ImageTarget{
-			Ref: image.ref,
+			ConfigurationRef: image.configurationRef,
+			DeploymentRef:    image.deploymentRef,
 		}.WithCachePaths(image.cachePaths)
 
 		switch image.Type() {
@@ -537,7 +552,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			iTarget = iTarget.WithBuildDetails(r)
 			// TODO(dbentley): validate that mounts is a subset of deps
 		case UnknownBuild:
-			return nil, fmt.Errorf("no build info for image %s", image.ref)
+			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)
 		}
 
 		iTarget = iTarget.

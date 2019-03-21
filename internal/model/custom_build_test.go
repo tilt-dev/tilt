@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/container"
 )
 
@@ -41,10 +42,8 @@ func TestValidate(t *testing.T) {
 		Command: "true",
 		Deps:    []string{"foo", "bar"},
 	}
-	it := ImageTarget{
-		Ref:          container.MustParseSelector("gcr.io/foo/bar"),
-		BuildDetails: cb,
-	}
+	it := NewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
+		WithBuildDetails(cb)
 
 	assert.Nil(t, it.Validate())
 }
@@ -54,10 +53,8 @@ func TestDoesNotValidate(t *testing.T) {
 		Command: "",
 		Deps:    []string{"foo", "bar"},
 	}
-	it := ImageTarget{
-		Ref:          container.MustParseSelector("gcr.io/foo/bar"),
-		BuildDetails: cb,
-	}
+	it := NewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
+		WithBuildDetails(cb)
 
 	assert.Error(t, it.Validate())
 }

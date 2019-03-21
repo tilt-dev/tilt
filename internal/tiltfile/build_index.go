@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/schollz/closestmatch"
+
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -32,7 +33,7 @@ func newBuildIndex() *buildIndex {
 }
 
 func (idx *buildIndex) addImage(img *dockerImage) error {
-	selector := img.ref
+	selector := img.configurationRef
 	name := selector.RefName()
 	_, hasExisting := idx.imagesBySelector[selector.String()]
 	if hasExisting {
@@ -46,11 +47,11 @@ func (idx *buildIndex) addImage(img *dockerImage) error {
 		// If the two selectors have the same name but different refs, they must
 		// have different tags. Make all the selectors "exact", so that they
 		// only match the exact tag.
-		img.ref = img.ref.WithExactMatch()
+		img.configurationRef = img.configurationRef.WithExactMatch()
 
 		for _, image := range idx.images {
-			if image.ref.RefName() == name {
-				image.ref = image.ref.WithExactMatch()
+			if image.configurationRef.RefName() == name {
+				image.configurationRef = image.configurationRef.WithExactMatch()
 			}
 		}
 	}
@@ -78,7 +79,7 @@ func (idx *buildIndex) findBuilderForConsumedImage(ref reference.Named) *dockerI
 	}
 
 	for _, image := range idx.images {
-		if image.ref.Matches(ref) {
+		if image.configurationRef.Matches(ref) {
 			image.matched = true
 			return image
 		}
@@ -92,7 +93,7 @@ func (idx *buildIndex) assertAllMatched() error {
 			bagSizes := []int{2, 3, 4}
 			cm := closestmatch.New(idx.consumedImageNames, bagSizes)
 			matchLines := []string{}
-			for i, match := range cm.ClosestN(image.ref.RefName(), 3) {
+			for i, match := range cm.ClosestN(image.configurationRef.RefName(), 3) {
 				if i == 0 {
 					matchLines = append(matchLines, "Did you mean…")
 				}
@@ -100,7 +101,7 @@ func (idx *buildIndex) assertAllMatched() error {
 			}
 
 			return fmt.Errorf("Image not used in any resource:\n    ✕ %v\n%s",
-				image.ref.String(), strings.Join(matchLines, "\n"))
+				image.configurationRef.String(), strings.Join(matchLines, "\n"))
 		}
 	}
 	return nil

@@ -6,13 +6,14 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
@@ -52,7 +53,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	iTarget := iTargets[0]
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", iTarget.Ref.String())
+	span.SetTag("target", iTarget.ConfigurationRef.String())
 	defer span.Finish()
 
 	startTime := time.Now()
