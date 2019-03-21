@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 type Env string
@@ -52,5 +53,9 @@ func EnvFromString(s string) Env {
 		// gke_blorg-dev_us-central1-b_blorg
 		return EnvGKE
 	}
+	return EnvUnknown
+}
+
+func EnvFromConfig(config *api.Config) Env {
 	return EnvUnknown
 }
