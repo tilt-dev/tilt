@@ -14,7 +14,7 @@ import (
 )
 
 type CustomBuilder interface {
-	Build(ctx context.Context, ref reference.Named, command string) (reference.NamedTagged, error)
+	Build(ctx context.Context, ref reference.Named, command string, expectedTag string) (reference.NamedTagged, error)
 }
 
 type ExecCustomBuilder struct {
@@ -31,9 +31,12 @@ func NewExecCustomBuilder(dCli docker.Client, env docker.Env, clock Clock) *Exec
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string) (reference.NamedTagged, error) {
-	tmpTag := fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
-	result, err := reference.WithTag(ref, tmpTag)
+func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string, expectedTag string) (reference.NamedTagged, error) {
+	if expectedTag == "" {
+		expectedTag = fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
+	}
+
+	expectedRef, err := reference.WithTag(ref, expectedTag)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +45,8 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 
 	l := logger.Get(ctx)
 	l.Infof("Custom Build: Injecting Environment Variables")
-	l.Infof("TAG=%s", result.String())
-	env := append(os.Environ(), fmt.Sprintf("TAG=%s", result.String()))
+	l.Infof("TAG=%s", expectedRef.String())
+	env := append(os.Environ(), fmt.Sprintf("TAG=%s", expectedRef.String()))
 	for _, e := range b.env.AsEnviron() {
 		env = append(env, e)
 		l.Infof("%s", e)
@@ -60,7 +63,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 		return nil, err
 	}
 
-	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, result.String())
+	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, expectedRef.String())
 	if err != nil {
 		return nil, err
 	}
