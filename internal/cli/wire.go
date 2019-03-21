@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -29,6 +30,7 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideEnv,
 	k8s.DetectNodeIP,
 	k8s.ProvideKubeContext,
+	k8s.ProvideKubeConfig,
 	k8s.ProvideClientConfig,
 	k8s.ProvideClientSet,
 	k8s.ProvideRESTConfig,
@@ -120,6 +122,11 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 	wire.Build(K8sWireSet)
 	return "", nil
+}
+
+func wireKubeConfig(ctx context.Context) (*api.Config, error) {
+	wire.Build(K8sWireSet)
+	return nil, nil
 }
 
 func wireEnv(ctx context.Context) (k8s.Env, error) {

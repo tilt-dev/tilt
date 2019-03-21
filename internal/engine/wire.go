@@ -115,6 +115,7 @@ func provideDockerComposeBuildAndDeployer(
 		k8s.ProvideK8sClient,
 		k8s.ProvidePortForwarder,
 		k8s.ProvideContainerRuntime,
+		k8s.ProvideKubeConfig,
 	)
 
 	return nil, nil
