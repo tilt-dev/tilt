@@ -14,7 +14,7 @@ func TestOneWatch(t *testing.T) {
 	f := newK8sFixture(t, "onewatch")
 	defer f.TearDown()
 
-	f.TiltWatch("onewatch")
+	f.TiltWatch()
 
 	// ForwardPort will fail if all the pods are not ready.
 	//

@@ -1,0 +1,8 @@
+repo = 'gcr.io/windmill-test-containers'
+docker_build(repo + '/imagetags-common', 'common')
+docker_build(repo + '/imagetags-common:stretch', 'common-stretch')
+docker_build(repo + '/imagetags-app', 'app')
+docker_build(repo + '/imagetags-app:stretch', 'app-stretch')
+
+k8s_resource("regular", yaml='app.yaml', image=repo + '/imagetags-app', port_forwards='31000:8000')
+k8s_resource("stretch", yaml='app-stretch.yaml', image=repo + '/imagetags-app:stretch', port_forwards='31001:8000')

@@ -77,7 +77,7 @@ func (f *k8sFixture) AllPodsReady(ctx context.Context, selector string) (bool, s
 		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		f.t.Fatal(err)
+		f.t.Fatal(errors.Wrap(err, "get pods"))
 	}
 
 	outStr := string(out)

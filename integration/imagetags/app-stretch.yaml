@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imagetags-stretch
+  namespace: tilt-integration
+  labels:
+    app: imagetags-stretch
+spec:
+  selector:
+    matchLabels:
+      app: imagetags-stretch
+  template:
+    metadata:
+      labels:
+        app: imagetags-stretch
+    spec:
+      containers:
+      - name: imagetags-stretch
+        image: gcr.io/windmill-test-containers/imagetags-app:stretch
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "10m"
