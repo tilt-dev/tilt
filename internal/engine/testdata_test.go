@@ -106,6 +106,22 @@ func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
 		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
+func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest {
+	cb := model.CustomBuild{
+		Command:     "true",
+		Deps:        []string{fixture.JoinPath("app")},
+		DisablePush: true,
+		Tag:         "tilt-build",
+	}
+
+	m := model.Manifest{Name: "sancho"}
+
+	return assembleK8sManifest(
+		m,
+		model.K8sTarget{YAML: SanchoYAML},
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
+}
+
 func NewSanchoStaticImageTarget() model.ImageTarget {
 	return model.NewImageTarget(SanchoRef).WithBuildDetails(model.StaticBuild{
 		Dockerfile: SanchoStaticDockerfile,

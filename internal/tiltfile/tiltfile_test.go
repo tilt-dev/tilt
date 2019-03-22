@@ -1797,6 +1797,7 @@ hfb.hot_reload()`
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
 			cmd("docker build -t $TAG foo"),
+			disablePush(false),
 			fb(
 				image("gcr.io/foo"),
 				add("foo", "/app"),
@@ -1830,6 +1831,34 @@ custom_build(
 			deps(f.JoinPath("foo")),
 			cmd("docker build -t gcr.io/foo:my-great-tag foo"),
 			tag("my-great-tag"),
+		),
+		deployment("foo"))
+}
+
+func TestCustomBuildDisablePush(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `k8s_yaml('foo.yaml')
+hfb = custom_build(
+  'gcr.io/foo',
+  'docker build -t $TAG foo',
+	['foo'],
+	disable_push=True,
+).add_fast_build()`
+
+	f.setupFoo()
+	f.file("Tiltfile", tiltfile)
+
+	f.load("foo")
+	f.assertNumManifests(1)
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+			deps(f.JoinPath("foo")),
+			cmd("docker build -t $TAG foo"),
+			disablePush(true),
 		),
 		deployment("foo"))
 }
@@ -2715,6 +2744,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
 				case tagHelper:
 					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
+				case disablePushHelper:
+					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
 				case fbHelper:
 					if cbInfo.Fast == nil {
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
@@ -3182,6 +3213,14 @@ type depsHelper struct {
 
 func deps(deps ...string) depsHelper {
 	return depsHelper{deps}
+}
+
+type disablePushHelper struct {
+	disabled bool
+}
+
+func disablePush(disable bool) disablePushHelper {
+	return disablePushHelper{disable}
 }
 
 // useful scenarios to setup

@@ -249,7 +249,8 @@ type CustomBuild struct {
 	// If empty, we create an expected tag at the beginning of CustomBuild (as $TAG)
 	Tag string
 
-	Fast *FastBuild
+	Fast        *FastBuild
+	DisablePush bool
 }
 
 func (CustomBuild) buildDetails() {}

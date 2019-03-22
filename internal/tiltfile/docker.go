@@ -39,6 +39,7 @@ type dockerImage struct {
 	matched bool
 
 	dependencyIDs []model.TargetID
+	disablePush   bool
 }
 
 func (d *dockerImage) ID() model.TargetID {
@@ -190,12 +191,14 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var command string
 	var deps *starlark.List
 	var tag string
+	var disablePush bool
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"command", &command,
 		"deps", &deps,
 		"tag?", &tag,
+		"disable_push?", &disablePush,
 	)
 	if err != nil {
 		return nil, err
@@ -231,6 +234,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		customCommand:    command,
 		customDeps:       localDeps,
 		customTag:        tag,
+		disablePush:      disablePush,
 	}
 
 	err = s.buildIndex.addImage(img)

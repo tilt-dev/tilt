@@ -170,9 +170,14 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	ps.StartPipelineStep(ctx, "Pushing %s", ref.String())
 	defer ps.EndPipelineStep(ctx)
 
+	cbSkip := false
+	if iTarget.IsCustomBuild() {
+		cbSkip = iTarget.CustomBuildInfo().DisablePush
+	}
+
 	// We can also skip the push of the image if it isn't used
 	// in any k8s resources! (e.g., it's consumed by another image).
-	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTargets) {
+	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTargets) || cbSkip {
 		ps.Printf(ctx, "Skipping push")
 		return ref, nil
 	}
