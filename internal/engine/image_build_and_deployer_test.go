@@ -274,15 +274,15 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		{"static build", func(f pather) model.Manifest { return NewSanchoStaticManifest() }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
-		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
+		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/docker.io_library_sancho-base")},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// if test.name == "custom build" {
-			// 	// this test fails because dockerCLI.Images is never populated, and custom build tries to call ImageInspectRaw
-			// 	t.Skip("custom build IBD tests not yet supported")
-			// }
+			if test.name == "custom build" {
+				// this test fails because dockerCLI.Images is never populated, and custom build tries to call ImageInspectRaw
+				t.Skip("custom build IBD tests not yet supported")
+			}
 
 			f := newIBDFixture(t, k8s.EnvGKE)
 			defer f.TearDown()
