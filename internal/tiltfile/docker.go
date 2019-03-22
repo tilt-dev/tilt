@@ -279,7 +279,7 @@ func (b *customBuild) Attr(name string) (starlark.Value, error) {
 	case addFastBuildN:
 		return starlark.NewBuiltin(name, b.addFastBuild), nil
 	default:
-		return starlark.None, nil
+		return nil, nil
 	}
 }
 
@@ -404,7 +404,7 @@ func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 	case hotReloadN:
 		return starlark.NewBuiltin(name, b.hotReload), nil
 	default:
-		return starlark.None, nil
+		return nil, nil
 	}
 }
 
