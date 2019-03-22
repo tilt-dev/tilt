@@ -285,9 +285,10 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			f := newIBDFixture(t, k8s.EnvGKE)
 			defer f.TearDown()
 
-			// for custom build
-			sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-			f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = types.ImageInspect{ID: string(sha)}
+			if test.name == "custom build" {
+				sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+				f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = types.ImageInspect{ID: string(sha)}
+			}
 
 			manifest := test.manifest(f)
 			var err error
