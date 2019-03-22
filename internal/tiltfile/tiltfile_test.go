@@ -2356,6 +2356,26 @@ k8s_resource(str(result), 'foo.yaml')
 		deployment("foo"))
 }
 
+func TestDefaultReadJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	tiltfile := `
+result = read_json("this_file_does_not_exist", default={"name": "foo"})
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result["name"], 'foo.yaml')
+`
+
+	f.file("Tiltfile", tiltfile)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

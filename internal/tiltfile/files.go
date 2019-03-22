@@ -400,7 +400,8 @@ func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin
 
 func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path); err != nil {
+	var defaultValue starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 
@@ -410,7 +411,9 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 	}
 
 	contents, err := s.readFile(localPath)
-	if err != nil {
+	if os.IsNotExist(err) && defaultValue != nil {
+		return defaultValue, nil
+	} else if err != nil {
 		return nil, err
 	}
 
