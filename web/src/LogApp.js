@@ -206,7 +206,7 @@ class LogApp extends Component {
     let title = titleText(name)
     let resources = (state.View && state.View.Resources) || []
     let resourceNames = resources.map((res) => res.Name)
-      .filter((name) => name != 'k8s_yaml')
+      .filter((name) => name !== 'k8s_yaml')
 
     return (
       <div className="LogApp">

@@ -1,0 +1,11 @@
+@import 'constants';
+
+.Sidebar {
+  width: $sidebar-width;
+  max-width: 20vw;
+  min-height: 100vh;
+  margin-right: $spacing-unit;
+  padding: $spacing-unit;
+  border-right: 1px solid white;
+  box-sizing: border-box;
+}
