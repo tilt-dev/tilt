@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -268,12 +269,12 @@ func TestKINDPush(t *testing.T) {
 func TestCustomBuildDisablePush(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND)
 	defer f.TearDown()
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifestWithPushDisabled(f)
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
-	// the image doesn't exist, so the custom build fails
-	// TODO(dmiller): change this test to use the static tag parameter when that's added
-	assert.Error(t, err)
+	assert.NoError(t, err)
 
 	// but we also didn't try to build or push an image
 	assert.Equal(t, 0, f.docker.BuildCount)

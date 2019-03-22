@@ -111,6 +111,7 @@ func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest
 		Command:     "true",
 		Deps:        []string{fixture.JoinPath("app")},
 		DisablePush: true,
+		Tag:         "tilt-build",
 	}
 
 	m := model.Manifest{Name: "sancho"}
