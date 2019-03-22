@@ -274,7 +274,7 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		{"static build", func(f pather) model.Manifest { return NewSanchoStaticManifest() }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
-		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/docker.io_library_sancho-base")},
+		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/docker.sancho-base")},
 	}
 
 	for _, test := range tests {
