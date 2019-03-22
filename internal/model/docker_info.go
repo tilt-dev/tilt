@@ -250,7 +250,8 @@ type CustomBuild struct {
 	// export $EXPECTED_REF=name:expected_tag )
 	Tag string
 
-	Fast *FastBuild
+	Fast        *FastBuild
+	DisablePush bool
 }
 
 func (CustomBuild) buildDetails() {}
