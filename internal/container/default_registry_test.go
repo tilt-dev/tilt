@@ -24,7 +24,8 @@ var namedTestCases = []struct {
 	{"myreg.com", "gcr.io/foo/bar", "myreg.com/gcr.io_foo_bar"},
 	{"myreg.com", "gcr.io/foo/bar", "myreg.com/gcr.io_foo_bar"},
 	{"aws_account_id.dkr.ecr.region.amazonaws.com/bar", "gcr.io/baz/foo/bar", "aws_account_id.dkr.ecr.region.amazonaws.com/bar/gcr.io_baz_foo_bar"},
-	{"gcr.io/foo", "docker.io/library/busybox", "gcr.io/foo/docker.io_library_busybox"},
+	{"gcr.io/foo", "docker.io/library/busybox", "gcr.io/foo/busybox"},
+	{"gcr.io/foo", "bar", "gcr.io/foo/bar"},
 }
 
 func TestReplaceTaggedRefDomain(t *testing.T) {

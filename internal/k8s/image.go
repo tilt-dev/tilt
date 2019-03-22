@@ -95,7 +95,7 @@ func injectImageDigestInContainers(entity K8sEntity, selector container.RefSelec
 		}
 
 		if selector.Matches(existingRef) {
-			c.Image = injectRef.String()
+			c.Image = reference.FamiliarString(injectRef)
 			c.ImagePullPolicy = policy
 			replaced = true
 		}
@@ -118,7 +118,7 @@ func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector
 		}
 
 		if selector.Matches(existingRef) {
-			envVar.Value = injectRef.String()
+			envVar.Value = reference.FamiliarString(injectRef)
 			replaced = true
 		}
 	}
@@ -151,7 +151,7 @@ func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Name
 	case string:
 		ref, err := container.ParseNamed(x)
 		if err == nil && ref.Name() == injectRef.Name() {
-			return injectRef.String(), true
+			return reference.FamiliarString(injectRef), true
 		} else {
 			return x, false
 		}

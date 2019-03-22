@@ -1,3 +1,6 @@
+# custom Tiltfile setting
+tilt_personal.json
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

@@ -1,4 +1,12 @@
 # -*- mode: Python -*-
 
-docker_build('gcr.io/windmill-test-containers/integration/oneup', '.')
+fs = listdir('.')
+if 'tilt_personal.json' in fs:
+  # TODO(dbentley): use the default flag to read_json
+  settings = read_json('tilt_personal.json')
+else:
+  settings = {'default_registry': 'gcr.io/windmill-test-containers/integration'}
+default_registry(settings.get('default_registry', 'gcr.io/windmill-test-containers/integration'))
+
+docker_build('oneup', '.')
 k8s_resource('oneup', 'oneup.yaml', port_forwards=8100)

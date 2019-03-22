@@ -21,7 +21,7 @@ func ReplaceRegistry(defaultRegistry string, rs RefSelector) (reference.Named, e
 		return rs.AsNamedOnly(), nil
 	}
 
-	newNs := fmt.Sprintf("%s/%s", defaultRegistry, escapeName(rs.RefName()))
+	newNs := fmt.Sprintf("%s/%s", defaultRegistry, escapeName(rs.RefFamiliarName()))
 	newN, err := reference.ParseNamed(newNs)
 	if err != nil {
 		return nil, err
