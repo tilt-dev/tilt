@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: oneup
-        image: gcr.io/windmill-test-containers/integration/oneup
+        image: oneup
         command: ["/go/bin/oneup"]
         ports:
         - containerPort: 8000

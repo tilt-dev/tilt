@@ -1,3 +1,6 @@
+# Tiltfile options
+tilt_option.json
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
