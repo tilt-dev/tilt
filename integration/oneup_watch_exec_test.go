@@ -11,7 +11,7 @@ import (
 )
 
 func TestWatchExec(t *testing.T) {
-	f := newK8sFixture(t, "onewatch")
+	f := newK8sFixture(t, "onewatch_exec")
 	defer f.TearDown()
 
 	f.TiltWatchExec()
@@ -24,21 +24,21 @@ func TestWatchExec(t *testing.T) {
 	// new pod.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	oneUpPods := f.WaitForAllPodsReady(ctx, "app=onewatch")
+	oneUpPods := f.WaitForAllPodsReady(ctx, "app=onewatchexec")
 
-	f.ForwardPort("deployment/onewatch", "31234:8000")
+	f.ForwardPort("deployment/onewatchexec", "31234:5000")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 One-Up! 🍄")
 
-	f.ReplaceContents("main.go", "One-Up", "Two-Up")
+	f.ReplaceContents("app.py", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 Two-Up! 🍄")
 
-	twoUpPods := f.WaitForAllPodsReady(ctx, "app=onewatch")
+	twoUpPods := f.WaitForAllPodsReady(ctx, "app=onewatchexec")
 
 	// Assert that the pods were changed in-place, and not that we
 	// created new pods.
