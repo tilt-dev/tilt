@@ -94,11 +94,11 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 	}
 
 	if updMode == UpdateModeKubectlExec {
-		return BuildOrder{cbad, dcbad, ibad}
+		return BuildOrder{sbad, dcbad, ibad}
 	}
 
 	if updMode == UpdateModeContainer {
-		return BuildOrder{sbad, dcbad, ibad}
+		return BuildOrder{cbad, dcbad, ibad}
 	}
 
 	if updMode == UpdateModeSynclet {
