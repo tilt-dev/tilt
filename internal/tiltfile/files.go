@@ -188,7 +188,8 @@ func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
 
 func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	defaultReturn := ""
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultReturn)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,9 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	bs, err := s.readFile(p)
-	if err != nil {
+	if os.IsNotExist(err) {
+		bs = []byte(defaultReturn)
+	} else if err != nil {
 		return nil, err
 	}
 
