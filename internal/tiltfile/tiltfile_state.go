@@ -539,8 +539,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			iTarget = iTarget.WithBuildDetails(s.fastBuildForImage(image))
 		case CustomBuild:
 			r := model.CustomBuild{
-				Command: image.customCommand,
-				Deps:    image.customDeps,
+				Command:     image.customCommand,
+				Deps:        image.customDeps,
+				Tag:         image.customTag,
+				DisablePush: image.disablePush,
 			}
 			if len(image.mounts) > 0 || len(image.steps) > 0 {
 				r.Fast = &model.FastBuild{

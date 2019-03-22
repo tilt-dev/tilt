@@ -1797,11 +1797,68 @@ hfb.hot_reload()`
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
 			cmd("docker build -t $TAG foo"),
+			disablePush(false),
 			fb(
 				image("gcr.io/foo"),
 				add("foo", "/app"),
 				run("cd /app && pip install -r requirements.txt"),
 			),
+		),
+		deployment("foo"))
+}
+
+func TestCustomBuildWithTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `k8s_yaml('foo.yaml')
+custom_build(
+  'gcr.io/foo',
+  'docker build -t gcr.io/foo:my-great-tag foo',
+  ['foo'],
+  tag='my-great-tag'
+)`
+
+	f.setupFoo()
+	f.file("Tiltfile", tiltfile)
+
+	f.load("foo")
+	f.assertNumManifests(1)
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+			deps(f.JoinPath("foo")),
+			cmd("docker build -t gcr.io/foo:my-great-tag foo"),
+			tag("my-great-tag"),
+		),
+		deployment("foo"))
+}
+
+func TestCustomBuildDisablePush(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `k8s_yaml('foo.yaml')
+hfb = custom_build(
+  'gcr.io/foo',
+  'docker build -t $TAG foo',
+	['foo'],
+	disable_push=True,
+).add_fast_build()`
+
+	f.setupFoo()
+	f.file("Tiltfile", tiltfile)
+
+	f.load("foo")
+	f.assertNumManifests(1)
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+			deps(f.JoinPath("foo")),
+			cmd("docker build -t $TAG foo"),
+			disablePush(true),
 		),
 		deployment("foo"))
 }
@@ -2217,6 +2274,8 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource(result[1]["baz"][0], 'bar.yaml')
 `)
 	f.loadErrString("dne.json: no such file or directory")
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.json")
 }
 
 func TestMalformedJSON(t *testing.T) {
@@ -2335,6 +2394,49 @@ default_registry('bar.com')
 `)
 
 	f.loadErrString("default_registry is not supported with docker compose")
+}
+
+func TestDefaultReadFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFooAndBar()
+	tiltfile := `
+result = read_file("this_file_does_not_exist", default="foo")
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(str(result), 'foo.yaml')
+`
+
+	f.file("Tiltfile", tiltfile)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
+}
+
+func TestDefaultReadJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	tiltfile := `
+result = read_json("this_file_does_not_exist", default={"name": "foo"})
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result["name"], 'foo.yaml')
+`
+
+	f.file("Tiltfile", tiltfile)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
 }
 
 type fixture struct {
@@ -2640,6 +2742,10 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
 				case cmdHelper:
 					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
+				case tagHelper:
+					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
+				case disablePushHelper:
+					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
 				case fbHelper:
 					if cbInfo.Fast == nil {
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
@@ -3093,12 +3199,28 @@ func cmd(cmd string) cmdHelper {
 	return cmdHelper{cmd}
 }
 
+type tagHelper struct {
+	tag string
+}
+
+func tag(tag string) tagHelper {
+	return tagHelper{tag}
+}
+
 type depsHelper struct {
 	deps []string
 }
 
 func deps(deps ...string) depsHelper {
 	return depsHelper{deps}
+}
+
+type disablePushHelper struct {
+	disabled bool
+}
+
+func disablePush(disable bool) disablePushHelper {
+	return disablePushHelper{disable}
 }
 
 // useful scenarios to setup

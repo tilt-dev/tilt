@@ -188,7 +188,8 @@ func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
 
 func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	defaultReturn := ""
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultReturn)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,9 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	bs, err := s.readFile(p)
-	if err != nil {
+	if os.IsNotExist(err) {
+		bs = []byte(defaultReturn)
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -397,7 +400,8 @@ func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin
 
 func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path); err != nil {
+	var defaultValue starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 
@@ -408,6 +412,10 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 
 	contents, err := s.readFile(localPath)
 	if err != nil {
+		// Return the default value if the file doesn't exist AND a default value was given
+		if os.IsNotExist(err) && defaultValue != nil {
+			return defaultValue, nil
+		}
 		return nil, err
 	}
 

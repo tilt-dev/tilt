@@ -72,9 +72,14 @@ func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.M
 }
 
 func NewSanchoCustomBuildManifest(fixture pather) model.Manifest {
+	return NewSanchoCustomBuildManifestWithTag(fixture, "")
+}
+
+func NewSanchoCustomBuildManifestWithTag(fixture pather, tag string) model.Manifest {
 	cb := model.CustomBuild{
 		Command: "true",
 		Deps:    []string{fixture.JoinPath("app")},
+		Tag:     tag,
 	}
 
 	m := model.Manifest{Name: "sancho"}
@@ -91,6 +96,22 @@ func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
 		Command: "true",
 		Deps:    []string{fixture.JoinPath("app")},
 		Fast:    &fb,
+	}
+
+	m := model.Manifest{Name: "sancho"}
+
+	return assembleK8sManifest(
+		m,
+		model.K8sTarget{YAML: SanchoYAML},
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
+}
+
+func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest {
+	cb := model.CustomBuild{
+		Command:     "true",
+		Deps:        []string{fixture.JoinPath("app")},
+		DisablePush: true,
+		Tag:         "tilt-build",
 	}
 
 	m := model.Manifest{Name: "sancho"}

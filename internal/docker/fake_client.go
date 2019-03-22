@@ -188,7 +188,7 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 	if ok {
 		return result, nil, nil
 	}
-	return types.ImageInspect{}, nil, notFoundError{}
+	return types.ImageInspect{}, nil, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 
 func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
@@ -223,6 +223,11 @@ func (r fakeDockerResponse) Close() error { return nil }
 var _ io.ReadCloser = fakeDockerResponse{}
 
 type notFoundError struct {
+	details string
+}
+
+func newNotFoundErrorf(s string, a ...interface{}) notFoundError {
+	return notFoundError{details: fmt.Sprintf(s, a...)}
 }
 
 func (e notFoundError) NotFound() bool {
@@ -230,5 +235,5 @@ func (e notFoundError) NotFound() bool {
 }
 
 func (e notFoundError) Error() string {
-	return "fake docker client error: object not found"
+	return fmt.Sprintf("fake docker client error: object not found (%s)", e.details)
 }

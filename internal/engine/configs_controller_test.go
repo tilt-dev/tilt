@@ -51,7 +51,10 @@ func (f *ccFixture) run() ConfigsReloadedAction {
 	}
 	defer func() {
 		if origDir != "" {
-			_ = os.Chdir(origDir)
+			err = os.Chdir(origDir)
+			if err != nil {
+				f.T().Fatalf("unable to restore original wd: '%v'", err)
+			}
 		}
 	}()
 
