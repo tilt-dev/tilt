@@ -45,8 +45,9 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 
 	l := logger.Get(ctx)
 	l.Infof("Custom Build: Injecting Environment Variables")
-	l.Infof("TAG=%s", expectedRef.String())
-	env := append(os.Environ(), fmt.Sprintf("TAG=%s", expectedRef.String()))
+	l.Infof("EXPECTED_REF=%s", expectedRef.String())
+	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", expectedRef.String()))
+
 	for _, e := range b.env.AsEnviron() {
 		env = append(env, e)
 		l.Infof("%s", e)
