@@ -61,6 +61,47 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("foo/Dockerfile", "no such file or directory", "error reading dockerfile")
 }
 
+func TestGitRepoBadMethodCall(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+local_git_repo('.').asdf()
+`)
+
+	f.loadErrString("Tiltfile:2: in <toplevel>", "Error: gitRepo has no .asdf field or method")
+}
+
+func TestFastBuildBadMethodCall(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+hfb = fast_build(
+  'gcr.io/foo',
+  'foo/Dockerfile',
+  './entrypoint',
+).asdf()
+`)
+
+	f.loadErrString("Error: fast_build has no .asdf field or method")
+}
+
+func TestCustomBuildBadMethodCall(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+hfb = custom_build(
+  'gcr.io/foo',
+  'docker build -t $TAG foo',
+  ['foo']
+).asdf()
+`)
+
+	f.loadErrString("Error: custom_build has no .asdf field or method")
+}
+
 func TestSimple(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
