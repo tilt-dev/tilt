@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
@@ -132,6 +133,9 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, container container.Name,
 	archive *bytes.Buffer, archivePaths []string, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	if !hotReload {
+		return fmt.Errorf("kubectl exec syncing is only supported with hotReload set to true")
+	}
 	l := logger.Get(ctx)
 	w := l.Writer(logger.InfoLvl)
 

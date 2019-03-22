@@ -98,7 +98,7 @@ func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildA
 	}
 
 	if updMode == UpdateModeContainer {
-		return BuildOrder{cbad, dcbad, ibad}
+		return BuildOrder{sbad, dcbad, ibad}
 	}
 
 	if updMode == UpdateModeSynclet {
