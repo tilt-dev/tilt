@@ -286,17 +286,14 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	call = f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
-	fileAbsPath, err := filepath.Abs(fileRelPath)
-	if err != nil {
-		t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-	}
+	fileAbsPath := f.JoinPath(fileRelPath)
 	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
 
 	f.withManifestState("foobar", func(ms store.ManifestState) {
 		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagMountFiles))
 	})
 
-	err = f.Stop()
+	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -326,11 +323,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
-		fileAbsPath, err := filepath.Abs(fileRelPath)
-		if err != nil {
-			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-		}
-		fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+		fileAbsPaths = append(fileAbsPaths, f.JoinPath(fileRelPath))
 	}
 	assert.Equal(t, fileAbsPaths, call.oneState().FilesChanged())
 
@@ -365,11 +358,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
-		fileAbsPath, err := filepath.Abs(fileRelPath)
-		if err != nil {
-			t.Errorf("error making abs path of %v: %v", fileRelPath, err)
-		}
-		fileAbsPaths = append(fileAbsPaths, fileAbsPath)
+		fileAbsPaths = append(fileAbsPaths, f.JoinPath(fileRelPath))
 	}
 	assert.Equal(t, fileAbsPaths, call.oneState().FilesChanged())
 
@@ -924,12 +913,6 @@ func TestReapOldBuilds(t *testing.T) {
 func TestHudUpdated(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	oldPWD, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(oldPWD)
-	os.Chdir(f.TempDirFixture.Path())
 
 	mount := model.Mount{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Mount{mount})
@@ -942,13 +925,13 @@ func TestHudUpdated(t *testing.T) {
 		return len(v.Resources) > 0
 	})
 
-	err = f.Stop()
+	err := f.Stop()
 	assert.Equal(t, nil, err)
 
 	assert.Equal(t, 2, len(f.hud.LastView.Resources))
 	rv := f.hud.LastView.Resources[0]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
-	assert.Equal(t, ".", rv.DirectoriesWatched[0])
+	assert.Equal(t, f.Path(), rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
 }
 
@@ -2086,7 +2069,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, "Tiltfile", true)
+	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
@@ -2242,11 +2225,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)
 
-	err := os.Chdir(f.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
+	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 	if err != nil {
 		t.Fatal(err)
 	}
