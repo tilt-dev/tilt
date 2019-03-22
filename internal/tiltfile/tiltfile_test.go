@@ -2217,6 +2217,8 @@ docker_build('gcr.io/bar', 'bar')
 k8s_resource(result[1]["baz"][0], 'bar.yaml')
 `)
 	f.loadErrString("dne.json: no such file or directory")
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.json")
 }
 
 func TestMalformedJSON(t *testing.T) {
@@ -2354,6 +2356,8 @@ k8s_resource(str(result), 'foo.yaml')
 	f.assertNextManifest("foo",
 		sb(image("gcr.io/foo")),
 		deployment("foo"))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
 }
 
 func TestDefaultReadJSON(t *testing.T) {
@@ -2374,6 +2378,8 @@ k8s_resource(result["name"], 'foo.yaml')
 	f.assertNextManifest("foo",
 		sb(image("gcr.io/foo")),
 		deployment("foo"))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
 }
 
 type fixture struct {

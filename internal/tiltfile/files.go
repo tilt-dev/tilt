@@ -411,9 +411,11 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 	}
 
 	contents, err := s.readFile(localPath)
-	if os.IsNotExist(err) && defaultValue != nil {
-		return defaultValue, nil
-	} else if err != nil {
+	if err != nil {
+		// Return the default value if the file doesn't exist AND a default value was given
+		if os.IsNotExist(err) && defaultValue != nil {
+			return defaultValue, nil
+		}
 		return nil, err
 	}
 
