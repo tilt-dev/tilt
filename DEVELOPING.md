@@ -71,28 +71,51 @@ To install `tilt` on PATH, run
 make install
 ```
 
+## Performance
+
+We use the built-in Go profiler to debug performance issues.
+
+When `tilt` is running, press `ctrl-p` to start the profile, and `ctrl-p` to stop it.
+You should see output like:
+
+```
+starting pprof profile to tilt.profile
+stopped pprof profile to tilt.profile
+```
+
+This means that Tilt has successfully written profiling data to the file `tilt.profile`.
+In the directory where you ran Tilt, run:
+
+```
+go tool pprof tilt.profile
+```
+
+to open a special REPL that lets you explore the data.
+Type `web` in the REPL to see a CPU graph.
+
+For more information on pprof, see https://github.com/google/pprof/blob/master/doc/README.md.
+
 ## Web UI
 
 `tilt` has an experimental web interface! We currently use it to run experiments.
 
-By default, the web interface is off. To run it on port 8001:
-
-```
-tilt up --port=8001
-```
-
-This will server HTML, CSS, and JS from our
+By default, the web interface runs on port 10350. All the HTML, CSS, and JS assets are served from our
 [production bucket](https://console.cloud.google.com/storage/browser/tilt-static-assets).
 
 To develop on the interface locally, run:
 
-
 ```
-tilt up --port=8001 --web-mode=local
+tilt up --web-mode=local
 ```
 
 This will run a webpack dev server as a separate process,
 and reverse proxy all asset requests to the dev server.
+
+To run it on an alternate port (e.g. 8001):
+
+```
+tilt up --port=8001
+```
 
 ## Documentation
 
