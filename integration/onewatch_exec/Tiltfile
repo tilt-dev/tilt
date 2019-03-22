@@ -8,3 +8,5 @@ img = fast_build('gcr.io/windmill-test-containers/integration/onewatchexec',
 img.add('.', '/app')
 img.run('cd /app && pip install -r requirements.txt')
 img.hot_reload()
+
+k8s_resource('onewatchexec', port_forwards=31234)
