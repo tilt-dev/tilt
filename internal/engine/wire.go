@@ -7,6 +7,9 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -14,8 +17,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 var DeployerBaseWireSet = wire.NewSet(
@@ -83,13 +84,13 @@ func provideImageBuildAndDeployer(
 	kClient k8s.Client,
 	env k8s.Env,
 	dir *dirs.WindmillDir,
+	clock build.Clock,
 	kp KINDPusher) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		analytics.NewMemoryAnalytics,
 		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
-		build.ProvideClock,
 		k8s.ProvideContainerRuntime,
 	)
 
