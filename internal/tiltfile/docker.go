@@ -33,6 +33,7 @@ type dockerImage struct {
 
 	customCommand string
 	customDeps    []string
+	customTag     string
 
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
@@ -188,11 +189,13 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var dockerRef string
 	var command string
 	var deps *starlark.List
+	var tag string
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"command", &command,
 		"deps", &deps,
+		"tag?", &tag,
 	)
 	if err != nil {
 		return nil, err
@@ -227,6 +230,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
 		customDeps:       localDeps,
+		customTag:        tag,
 	}
 
 	err = s.buildIndex.addImage(img)

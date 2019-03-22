@@ -73,6 +73,7 @@ func (s RefSelector) RefName() string {
 	return s.ref.Name()
 }
 
+// AsNamedOnly returns the Ref as a Named, REMOVING THE TAG if one exists
 func (s RefSelector) AsNamedOnly() reference.Named {
 	return reference.TrimNamed(s.ref)
 }
