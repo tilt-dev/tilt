@@ -118,7 +118,7 @@ func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest
 	return assembleK8sManifest(
 		m,
 		model.K8sTarget{YAML: SanchoYAML},
-		model.ImageTarget{Ref: SanchoRef}.WithBuildDetails(cb))
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
 func NewSanchoStaticImageTarget() model.ImageTarget {
