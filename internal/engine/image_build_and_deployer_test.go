@@ -7,6 +7,9 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/opencontainers/go-digest"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -279,13 +282,12 @@ func TestDeployUsesInjectRef(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if test.name == "custom build" {
-				// this test fails because dockerCLI.Images is never populated, and custom build tries to call ImageInspectRaw
-				t.Skip("custom build IBD tests not yet supported")
-			}
-
 			f := newIBDFixture(t, k8s.EnvGKE)
 			defer f.TearDown()
+
+			// for custom build
+			sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+			f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = types.ImageInspect{ID: string(sha)}
 
 			manifest := test.manifest(f)
 			var err error
@@ -330,7 +332,8 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	ctx := output.CtxForTest()
 	kClient := k8s.NewFakeK8sClient()
 	kp := &fakeKINDPusher{}
-	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, kp)
+	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
+	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp)
 	if err != nil {
 		t.Fatal(err)
 	}

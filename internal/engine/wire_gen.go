@@ -54,7 +54,7 @@ var (
 	_wireLabelsValue = dockerfile.Labels{}
 )
 
-func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.WindmillDir, kp KINDPusher) (*ImageBuildAndDeployer, error) {
+func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.WindmillDir, clock build.Clock, kp KINDPusher) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -65,7 +65,6 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	if err != nil {
 		return nil, err
 	}
-	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
 	memoryAnalytics := analytics.NewMemoryAnalytics()
 	updateModeFlag := _wireUpdateModeFlagValue
