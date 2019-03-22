@@ -2337,6 +2337,25 @@ default_registry('bar.com')
 	f.loadErrString("default_registry is not supported with docker compose")
 }
 
+func TestDefaultReadFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFooAndBar()
+	tiltfile := `
+result = read_file("this_file_does_not_exist", default="foo")
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(str(result), 'foo.yaml')
+`
+
+	f.file("Tiltfile", tiltfile)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
