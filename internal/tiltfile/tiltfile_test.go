@@ -1820,7 +1820,7 @@ func TestCustomBuild(t *testing.T) {
 	tiltfile := `k8s_yaml('foo.yaml')
 hfb = custom_build(
   'gcr.io/foo',
-  'docker build -t $TAG foo',
+  'docker build -t $EXPECTED_REF foo',
   ['foo']
 ).add_fast_build()
 hfb.add('foo', '/app')
@@ -1837,7 +1837,7 @@ hfb.hot_reload()`
 		cb(
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
-			cmd("docker build -t $TAG foo"),
+			cmd("docker build -t $EXPECTED_REF foo"),
 			disablePush(false),
 			fb(
 				image("gcr.io/foo"),

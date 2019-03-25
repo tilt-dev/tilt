@@ -246,7 +246,8 @@ type CustomBuild struct {
 
 	// Optional: tag we expect the image to be built with (we use this to check that
 	// the expected image+tag has been created).
-	// If empty, we create an expected tag at the beginning of CustomBuild (as $TAG)
+	// If empty, we create an expected tag at the beginning of CustomBuild (and
+	// export $EXPECTED_REF=name:expected_tag )
 	Tag string
 
 	Fast        *FastBuild
