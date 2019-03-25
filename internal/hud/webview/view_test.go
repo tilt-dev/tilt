@@ -1,4 +1,4 @@
-package view
+package webview
 
 import (
 	"encoding/json"
@@ -38,7 +38,7 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 		case "error":
 			// ok
 			return
-		case "view.ResourceInfoView":
+		case "webview.ResourceInfoView":
 			assertCanMarshal(t, reflect.TypeOf(K8SResourceInfo{}), v)
 			assertCanMarshal(t, reflect.TypeOf(DCResourceInfo{}), v)
 			assertCanMarshal(t, reflect.TypeOf(YAMLResourceInfo{}), v)
@@ -52,7 +52,7 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
 			if !isExported(field.Name) {
-				t.Errorf("All fields in the View need to be serializable to web. Unexported fields are forbidden: %s in %s",
+				t.Errorf("All fields in the WebView need to be serializable to web. Unexported fields are forbidden: %s in %s",
 					field.Name, v)
 			}
 			assertCanMarshal(t, field.Type, v)

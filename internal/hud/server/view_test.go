@@ -1,4 +1,4 @@
-package store
+package server
 
 import (
 	"os"
@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/store"
 )
 
-func TestStateToViewMultipleMounts(t *testing.T) {
+func TestStateToWebViewMultipleMounts(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.
@@ -32,7 +32,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
 		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
-	v := StateToView(*state)
+	v := StateToWebView(*state)
 
 	if !assert.Equal(t, 2, len(v.Resources)) {
 		return
@@ -46,7 +46,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
 }
 
-func TestStateToViewPortForwards(t *testing.T) {
+func TestStateToWebViewPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{
@@ -56,7 +56,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 		},
 	})
 	state := newState([]model.Manifest{m}, model.Manifest{})
-	v := StateToView(*state)
+	v := StateToWebView(*state)
 	assert.Equal(t,
 		[]string{"http://localhost:7000/", "http://localhost:8000/"},
 		v.Resources[0].Endpoints)
@@ -65,7 +65,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 func TestStateViewYAMLManifestNoYAML(t *testing.T) {
 	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "")
 	state := newState([]model.Manifest{}, m)
-	v := StateToView(*state)
+	v := StateToWebView(*state)
 
 	assert.Equal(t, 1, len(v.Resources))
 }
@@ -74,7 +74,7 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "yamlyaml")
 	state := newState([]model.Manifest{}, m)
 	state.ConfigFiles = []string{"global.yaml"}
-	v := StateToView(*state)
+	v := StateToWebView(*state)
 
 	assert.Equal(t, 2, len(v.Resources))
 
@@ -83,32 +83,24 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
 }
 
-func TestMostRecentPod(t *testing.T) {
-	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
-	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
-	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
-	podSet := NewPodSet(podA, podB, podC)
-	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
-}
-
 func TestEmptyState(t *testing.T) {
 	es := newState([]model.Manifest{}, model.Manifest{})
 
-	v := StateToView(*es)
+	v := StateToWebView(*es)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
 
 	es.LastTiltfileBuild = model.BuildRecord{
 		StartTime:  time.Now(),
 		FinishTime: time.Now(),
 	}
-	v = StateToView(*es)
-	assert.Equal(t, EmptyTiltfileMsg, v.TiltfileErrorMessage)
+	v = StateToWebView(*es)
+	assert.Equal(t, store.EmptyTiltfileMsg, v.TiltfileErrorMessage)
 
 	yaml := "yamlyaml"
 	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", yaml)
 	nes := newState([]model.Manifest{}, m)
 	nes.ConfigFiles = []string{"global.yaml"}
-	v = StateToView(*nes)
+	v = StateToWebView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
 
 	m2 := model.Manifest{
@@ -123,7 +115,7 @@ func TestEmptyState(t *testing.T) {
 	)
 
 	nes = newState([]model.Manifest{m2}, model.Manifest{})
-	v = StateToView(*nes)
+	v = StateToWebView(*nes)
 	assert.Equal(t, "", v.TiltfileErrorMessage)
 }
 
@@ -142,14 +134,14 @@ func TestRelativeTiltfilePath(t *testing.T) {
 	assert.Equal(t, "Tiltfile", actual)
 }
 
-func newState(manifests []model.Manifest, YAMLManifest model.Manifest) *EngineState {
-	ret := NewState()
+func newState(manifests []model.Manifest, YAMLManifest model.Manifest) *store.EngineState {
+	ret := store.NewState()
 	for _, m := range manifests {
-		ret.ManifestTargets[m.Name] = NewManifestTarget(m)
+		ret.ManifestTargets[m.Name] = store.NewManifestTarget(m)
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
 	}
 	ret.GlobalYAML = YAMLManifest
-	ret.GlobalYAMLState = NewYAMLManifestState()
+	ret.GlobalYAMLState = store.NewYAMLManifestState()
 
 	return ret
 }
