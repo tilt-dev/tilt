@@ -19,6 +19,30 @@ it('renders loading screen', async () => {
 
 it('renders resource', async () => {
   const hud = mount(<HUD />);
+  hud.setState({View: oneResourceView()})
+  expect(hud.html())
+  expect(hud.find('.Statusbar')).toHaveLength(1)
+  expect(hud.find('.Sidebar')).toHaveLength(1)
+});
+
+it('opens sidebar on click', async () => {
+  const hud = mount(<HUD />);
+  hud.setState({View: oneResourceView()})
+
+  let sidebar = hud.find('.Sidebar')
+  expect(sidebar).toHaveLength(1)
+  expect(sidebar.hasClass('is-open')).toBe(false)
+
+  let button = hud.find('.LogoButton')
+  expect(button).toHaveLength(1)
+  button.simulate('click')
+
+  sidebar = hud.find('.Sidebar')
+  expect(sidebar).toHaveLength(1)
+  expect(sidebar.hasClass('is-open')).toBe(true)
+});
+
+function oneResourceView() {
   const ts = Date.now().toLocaleString()
   const resource = {
     Name: "vigoda",
@@ -43,8 +67,5 @@ it('renders resource', async () => {
     Endpoints: ["1.2.3.4:8080"],
     PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
   }
-  hud.setState({View: {Resources: [resource]}})
-  expect(hud.html())
-  expect(hud.find('.Statusbar')).toHaveLength(1)
-  expect(hud.find('.Sidebar')).toHaveLength(1)
-});
+  return {Resources: [resource]}
+}

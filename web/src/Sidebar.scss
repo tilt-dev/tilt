@@ -8,4 +8,12 @@
   padding: $spacing-unit;
   border-right: 1px solid white;
   box-sizing: border-box;
+  position: fixed;
+  z-index: 900;
+  background-color: $color-grey-darkest;
+  transform: translateX(-120%);
+  transition: transform ease-out 200ms;
+}
+.Sidebar.is-open {
+  transform: translateX(0%);
 }
