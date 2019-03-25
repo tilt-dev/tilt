@@ -372,6 +372,11 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
+	localPath, err := s.localPathFromSkylarkValue(dir)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+	s.recordConfigFile(localPath.path)
 	var files []string
 	err = filepath.Walk(dir.GoString(), func(path string, info os.FileInfo, err error) error {
 		if path == dir.GoString() {
