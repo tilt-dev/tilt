@@ -123,6 +123,19 @@ func (f *fixture) TiltWatch() {
 	}()
 }
 
+func (f *fixture) TiltWatchExec() {
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--update-mode", "exec"}, os.Stdout)
+	err := cmd.Start()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	f.cmds = append(f.cmds, cmd)
+	go func() {
+		_ = cmd.Wait()
+	}()
+}
+
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	file := filepath.Join(f.dir, fileBaseName)
 	contents, ok := f.originalFiles[file]

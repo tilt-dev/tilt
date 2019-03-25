@@ -1,0 +1,9 @@
+click==6.7
+Flask==1.0.2
+gitdb2==2.0.4
+GitPython==2.1.11
+itsdangerous==0.24
+Jinja2==2.10
+MarkupSafe==1.0
+smmap2==2.0.4
+Werkzeug==0.14.1
