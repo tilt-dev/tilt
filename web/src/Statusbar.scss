@@ -1,0 +1,13 @@
+@import 'constants';
+
+.Statusbar {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 1000;
+  height: $spacing-unit;
+  padding: $spacing-unit / 2;
+  border-top: 1px solid white;
+  background-color: $color-grey-dark;
+}
