@@ -2480,6 +2480,27 @@ k8s_resource(result["name"], 'foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
 }
 
+func TestWatchFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("hello", "world")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+watch_file('hello')
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		sb(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "hello")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

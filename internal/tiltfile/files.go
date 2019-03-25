@@ -186,6 +186,23 @@ func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
 	return ioutil.ReadFile(p.path)
 }
 
+func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.Value
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := s.localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid type for path: %v", err)
+	}
+
+	s.recordConfigFile(p.path)
+
+	return starlark.None, nil
+}
+
 func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
 	defaultReturn := ""

@@ -111,6 +111,7 @@ const (
 	localGitRepoN = "local_git_repo"
 	localN        = "local"
 	readFileN     = "read_file"
+	watchFileN    = "watch_file"
 	kustomizeN    = "kustomize"
 	helmN         = "helm"
 	listdirN      = "listdir"
@@ -143,6 +144,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 
 	addBuiltin(r, localN, s.local)
 	addBuiltin(r, readFileN, s.skylarkReadFile)
+	addBuiltin(r, watchFileN, s.watchFile)
 
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
 	addBuiltin(r, fastBuildN, s.fastBuild)
