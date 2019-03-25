@@ -563,28 +563,6 @@ func (p Pod) Log() string {
 	return podLog
 }
 
-func shortenFile(baseDirs []string, f string) string {
-	ret := f
-	for _, baseDir := range baseDirs {
-		short, isChild := ospath.Child(baseDir, f)
-		if isChild && len(short) < len(ret) {
-			ret = short
-		}
-	}
-	return ret
-}
-
-// for each filename in `files`, trims the longest appropriate basedir prefix off the front
-func shortenFileList(baseDirs []string, files []string) []string {
-	baseDirs = append([]string{}, baseDirs...)
-
-	var ret []string
-	for _, f := range files {
-		ret = append(ret, shortenFile(baseDirs, f))
-	}
-	return ret
-}
-
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
 		sort.Strings(endpoints)
@@ -644,16 +622,16 @@ func StateToView(s EngineState) view.View {
 			}
 		}
 
-		pendingBuildEdits = shortenFileList(absWatchDirs, pendingBuildEdits)
+		pendingBuildEdits = ospath.FileListDisplayNames(absWatchDirs, pendingBuildEdits)
 
 		buildHistory := append([]model.BuildRecord{}, ms.BuildHistory...)
 		for i, build := range buildHistory {
-			build.Edits = shortenFileList(absWatchDirs, build.Edits)
+			build.Edits = ospath.FileListDisplayNames(absWatchDirs, build.Edits)
 			buildHistory[i] = build
 		}
 
 		currentBuild := ms.CurrentBuild
-		currentBuild.Edits = shortenFileList(absWatchDirs, ms.CurrentBuild.Edits)
+		currentBuild.Edits = ospath.FileListDisplayNames(absWatchDirs, ms.CurrentBuild.Edits)
 
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
