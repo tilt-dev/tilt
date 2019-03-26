@@ -1715,7 +1715,7 @@ func TestDir(t *testing.T) {
 
 	f.load("foo", "bar")
 	f.assertNumManifests(2)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "config/foo.yaml", "config/bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "config/foo.yaml", "config/bar.yaml", "config")
 }
 
 func TestDirRecursive(t *testing.T) {
@@ -1743,7 +1743,7 @@ for f in files:
 `)
 
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/bar", "foo/baz/qux")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo", "foo/bar", "foo/baz/qux")
 }
 
 func TestCallCounts(t *testing.T) {
