@@ -58,10 +58,10 @@ class App extends Component {
     }
 
     return (
-      <React.Fragment>
+      <div>
         {el}
         <Status key="Status" closePreview={this.closePreview} showPreview={this.state.ShowPreview} resources={view.Resources} />
-      </React.Fragment>
+      </div>
     );
   }
 }
