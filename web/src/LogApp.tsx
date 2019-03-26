@@ -8,30 +8,30 @@ import {withRouter, Link} from 'react-router-dom';
 import {colorGreyDarkest, colorGreyDark} from './constants';
 import './LogApp.scss';
 
-let AnsiLine = React.memo(function(props) {
-  return <div><Ansi>{props.line}</Ansi></div>
+let AnsiLine = React.memo(function(props: any) {
+  return <div><Ansi linkify={false}>{props.line}</Ansi></div>
 })
 
-function titleText(name) {
+function titleText(name: string) {
   if (name) {
     return `Logs (${name})`
   }
   return 'All Logs'
 }
 
-var LogHeader = withRouter((props) => {
+var LogHeader = withRouter((props: any) => {
   let history = props.history
   let name = props.name
-  let resourceNames = (props.resourceNames || []).filter((resName) => resName !== 'k8s_yaml')
+  let resourceNames = (props.resourceNames || []).filter((resName: string) => resName !== 'k8s_yaml')
   let allOption = {value: 'all', label: 'All'}
-  let options = [allOption].concat(resourceNames.map((resName) => {
+  let options = [allOption].concat(resourceNames.map((resName: string) => {
     return {value: resName, label: resName}
   }))
 
   let defaultValue = name ? {value: name, label: name} : allOption
   let styles = selectStyles()
 
-  function onChange(inputValue, event) {
+  function onChange(inputValue: any, event: any) {
     let action = event.action
     let value = inputValue.value
     if (action !== 'select-option' || value === defaultValue.value || !value) {
@@ -53,11 +53,11 @@ var LogHeader = withRouter((props) => {
   </header>)
 })
 
-function selectStyles() {
-  let control = (styles) => {
+function selectStyles(): any {
+  let control = (styles: Array<string>) => {
     return {...styles, backgroundColor: colorGreyDarkest, color: 'white'}
   }
-  let option = (styles, {data, isFocused, isSelected}) => {
+  let option = (styles: any, {data, isFocused, isSelected}: {data: any, isFocused: boolean, isSelected: boolean}) => {
     let obj = {...styles}
     if (data.value !== 'all') {
       obj.paddingLeft = '1em'
@@ -68,17 +68,22 @@ function selectStyles() {
     }
     return obj
   }
-  let singleValue = (styles) => {
+  let singleValue = (styles: any) => {
     return {...styles, color: 'white'}
   }
-  let menu = (styles) => {
+  let menu = (styles: any) => {
     return {...styles, backgroundColor: colorGreyDarkest}
   }
   return {control, option, singleValue, menu}
 }
 
 class LogAppContents extends Component {
-  constructor(props) {
+  _lastEl: any
+  state: any
+  _scrollTimeout: NodeJS.Timeout|null = null
+  props: any
+
+  constructor(props: any) {
     super(props)
 
     this.state = {
@@ -136,7 +141,7 @@ class LogAppContents extends Component {
       els.push(<LoadingScreen key={"loading"} message={message} />)
     } else {
       let lines = log.split('\n')
-      els = lines.map((line, i) => {
+      els = lines.map((line: string, i: number) => {
         return <AnsiLine key={'logLine' + i} line={line} />
       })
       els.push(
@@ -150,7 +155,11 @@ class LogAppContents extends Component {
 }
 
 class LogApp extends Component {
-  constructor(props) {
+  controller: AppController
+  props: any
+  state: any
+
+  constructor(props: any) {
     super(props)
 
     this.controller = new AppController(`ws://${window.location.host}/ws/view`, this)
@@ -187,7 +196,7 @@ class LogApp extends Component {
       return {log: log, message: state.Message}
     }
 
-    let resource = resources.find((res) => res.Name === name)
+    let resource = resources.find((res: any) => res.Name === name)
     if (!resource) {
       return {log: '', message: `Resource not found: ${name}`}
     }
@@ -195,7 +204,7 @@ class LogApp extends Component {
     return {log: resource.CombinedLog || '', message: state.Message}
   }
 
-  setAppState(state) {
+  setAppState(state: any) {
     this.setState({View: state.View, Message: state.Message})
   }
 
@@ -204,9 +213,9 @@ class LogApp extends Component {
     let {log, message} = this.inferNewLog()
     let name = this.name()
     let title = titleText(name)
-    let resources = (state.View && state.View.Resources) || []
+    let resources: Array<any> = (state.View && state.View.Resources) || []
     let resourceNames = resources.map((res) => res.Name)
-      .filter((name) => name !== 'k8s_yaml')
+      .filter((name: string) => name !== 'k8s_yaml')
 
     return (
       <div className="LogApp">
