@@ -1,0 +1,51 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders logs 1`] = `
+Array [
+  <div>
+    <code>
+      <span
+        className={null}
+        style={Object {}}
+      >
+        hello
+      </span>
+    </code>
+  </div>,
+  <div>
+    <code>
+      <span
+        className={null}
+        style={Object {}}
+      >
+        world
+      </span>
+    </code>
+  </div>,
+  <div>
+    <code>
+      <span
+        className={null}
+        style={Object {}}
+      >
+        foo
+      </span>
+    </code>
+  </div>,
+  <div>
+    <code>
+      <span
+        className={null}
+        style={Object {}}
+      >
+        bar
+      </span>
+    </code>
+  </div>,
+  <div
+    className="logEnd"
+  >
+    █
+  </div>,
+]
+`;

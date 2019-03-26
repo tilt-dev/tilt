@@ -4,7 +4,8 @@ import NoMatch from './NoMatch';
 import LoadingScreen from './LoadingScreen';
 import Sidebar, { SidebarItem } from './Sidebar';
 import Statusbar, { StatusItem } from './Statusbar';
-import LogViewPane from './LogViewPane';
+import ResourceViewPane from './ResourceViewPane';
+import LogPane from './LogPane';
 import K8sViewPane from './K8sViewPane';
 import PreviewPane from './PreviewPane';
 import { Map } from 'immutable';
@@ -63,8 +64,9 @@ class HUD extends Component {
         <Sidebar items={sidebarItems} isOpen={this.state.isSidebarOpen} />
         <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
         <Switch>
-          <Route exact path="/hud" render={() => <LogViewPane />} />
-          <Route exact path="/hud/r/:name" render={() => <LogViewPane />} />
+          <Route exact path="/hud" render={() => <ResourceViewPane />} />
+          <Route exact path="/hud/log" render={() => <LogPane log={""} />} />
+          <Route exact path="/hud/r/:name/log" render={() => <LogPane log={""} />} />
           <Route exact path="/hud/r/:name/k8s"  render={() => <K8sViewPane />}  />
           <Route exact path="/hud/r/:name/preview" render={() => <PreviewPane />} />
           <Route component={NoMatch} />
