@@ -44,7 +44,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	}
 }
 
-func TestUpdateInContainerExecsSteps(t *testing.T) {
+func TestUpdateInContainerExecsRuns(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 

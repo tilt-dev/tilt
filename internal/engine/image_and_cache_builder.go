@@ -62,8 +62,8 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			defer ps.EndPipelineStep(ctx)
 
 			df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
-			steps := bd.Steps
-			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, refToBuild, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), steps, bd.Entrypoint)
+			runs := bd.Runs
+			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, refToBuild, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), runs, bd.Entrypoint)
 
 			if err != nil {
 				return nil, err
@@ -86,8 +86,8 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			ps.StartPipelineStep(ctx, "Building from existing: [%s]", userFacingRefName)
 			defer ps.EndPipelineStep(ctx)
 
-			steps := bd.Steps
-			ref, err := icb.ib.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), steps)
+			runs := bd.Runs
+			ref, err := icb.ib.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), runs)
 			if err != nil {
 				return nil, err
 			}

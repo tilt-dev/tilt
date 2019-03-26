@@ -10,7 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func BenchmarkBuildTenSteps(b *testing.B) {
+func BenchmarkBuildTenRuns(b *testing.B) {
 	run := func() {
 		f := newDockerBuildFixture(b)
 		defer f.teardown()
@@ -19,9 +19,9 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 		for i := 0; i < 10; i++ {
 			cmds = append(cmds, model.ToShellCmd(fmt.Sprintf("echo -n %d > hi", i)))
 		}
-		steps := model.ToSteps(f.Path(), cmds)
+		runs := model.ToRuns(f.Path(), cmds)
 
-		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, steps, model.Cmd{})
+		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -36,7 +36,7 @@ func BenchmarkBuildTenSteps(b *testing.B) {
 	}
 }
 
-func BenchmarkBuildTenStepsInOne(b *testing.B) {
+func BenchmarkBuildTenRunsInOne(b *testing.B) {
 	run := func() {
 		f := newDockerBuildFixture(b)
 		defer f.teardown()
@@ -48,8 +48,8 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 
 		oneCmd := strings.Join(allCmds, " && ")
 
-		steps := model.ToSteps(f.Path(), []model.Cmd{model.ToShellCmd(oneCmd)})
-		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, steps, model.Cmd{})
+		runs := model.ToRuns(f.Path(), []model.Cmd{model.ToShellCmd(oneCmd)})
+		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -67,8 +67,8 @@ func BenchmarkBuildTenStepsInOne(b *testing.B) {
 func BenchmarkIterativeBuildTenTimes(b *testing.B) {
 	f := newDockerBuildFixture(b)
 	defer f.teardown()
-	steps := model.ToSteps(f.Path(), []model.Cmd{model.ToShellCmd("echo 1 >> hi")})
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, steps, model.Cmd{})
+	runs := model.ToRuns(f.Path(), []model.Cmd{model.ToShellCmd("echo 1 >> hi")})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func BenchmarkIterativeBuildTenTimes(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
-			ref, err = f.b.BuildImageFromExisting(f.ctx, f.ps, ref, nil, model.EmptyMatcher, steps)
+			ref, err = f.b.BuildImageFromExisting(f.ctx, f.ps, ref, nil, model.EmptyMatcher, runs)
 			if err != nil {
 				b.Fatal(err)
 			}

@@ -7,9 +7,9 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func TestBoilStepsNoTrigger(t *testing.T) {
-	steps := []model.Step{
-		model.Step{
+func TestBoilRunsNoTrigger(t *testing.T) {
+	runs := []model.Run{
+		model.Run{
 			Cmd: model.ToShellCmd("echo hello"),
 		},
 	}
@@ -23,7 +23,7 @@ func TestBoilStepsNoTrigger(t *testing.T) {
 
 	expected := []model.Cmd{model.ToShellCmd("echo hello")}
 
-	actual, err := BoilSteps(steps, pathMappings)
+	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,9 +31,9 @@ func TestBoilStepsNoTrigger(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestBoilStepsNoFilesChanged(t *testing.T) {
-	steps := []model.Step{
-		model.Step{
+func TestBoilRunsNoFilesChanged(t *testing.T) {
+	runs := []model.Run{
+		model.Run{
 			Cmd: model.ToShellCmd("echo hello"),
 		},
 	}
@@ -42,7 +42,7 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 
 	expected := []model.Cmd{model.ToShellCmd("echo hello")}
 
-	actual, err := BoilSteps(steps, pathMappings)
+	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,10 +50,10 @@ func TestBoilStepsNoFilesChanged(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
+func TestBoilRunsOneTriggerFilesDontMatch(t *testing.T) {
 	triggers := []string{"bar"}
-	steps := []model.Step{
-		model.Step{
+	runs := []model.Run{
+		model.Run{
 			Cmd:           model.ToShellCmd("echo hello"),
 			Triggers:      triggers,
 			BaseDirectory: "/home/tilt/code/test",
@@ -69,7 +69,7 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 
 	expected := []model.Cmd{}
 
-	actual, err := BoilSteps(steps, pathMappings)
+	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,10 +77,10 @@ func TestBoilStepsOneTriggerFilesDontMatch(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
+func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	triggers := []string{"bar"}
-	steps := []model.Step{
-		model.Step{
+	runs := []model.Run{
+		model.Run{
 			Cmd:           model.ToShellCmd("echo world"),
 			Triggers:      triggers,
 			BaseDirectory: "/home/tilt/code/test",
@@ -96,7 +96,7 @@ func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 
 	expected := []model.Cmd{model.ToShellCmd("echo world")}
 
-	actual, err := BoilSteps(steps, pathMappings)
+	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,17 +104,17 @@ func TestBoilStepsOneTriggerMatchingFile(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
+func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	wd := "/home/tilt/code/test"
 	triggers1 := []string{"foo"}
 	triggers2 := []string{"bar"}
-	steps := []model.Step{
-		model.Step{
+	runs := []model.Run{
+		model.Run{
 			Cmd:           model.ToShellCmd("echo hello"),
 			Triggers:      triggers1,
 			BaseDirectory: wd,
 		},
-		model.Step{
+		model.Run{
 			Cmd:           model.ToShellCmd("echo world"),
 			Triggers:      triggers2,
 			BaseDirectory: wd,
@@ -134,7 +134,7 @@ func TestBoilStepsManyTriggersManyFiles(t *testing.T) {
 
 	expected := []model.Cmd{model.ToShellCmd("echo world")}
 
-	actual, err := BoilSteps(steps, pathMappings)
+	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -546,10 +546,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Tag:         image.customTag,
 				DisablePush: image.disablePush,
 			}
-			if len(image.mounts) > 0 || len(image.steps) > 0 {
+			if len(image.mounts) > 0 || len(image.runs) > 0 {
 				r.Fast = &model.FastBuild{
 					Mounts:    s.mountsToDomain(image),
-					Steps:     image.steps,
+					Runs:      image.runs,
 					HotReload: image.hotReload,
 				}
 			}

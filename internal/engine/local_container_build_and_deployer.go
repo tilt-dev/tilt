@@ -75,7 +75,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	boiledSteps, err := build.BoilSteps(fbInfo.Steps, cf)
+	boiledSteps, err := build.BoilRuns(fbInfo.Runs, cf)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
