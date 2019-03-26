@@ -123,11 +123,12 @@ require (
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/inf.v0 v0.9.1
 	gopkg.in/yaml.v2 v2.2.2
-	k8s.io/api v0.0.0-20190111032252-67edc246be36
-	k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
-	k8s.io/client-go v0.0.0-20190111032708-6bf63545bd02
+	k8s.io/api v0.0.0-20190313115550-3c12c96769cc
+	k8s.io/apimachinery v0.0.0-20190313205120-d7deff9243b1
+	k8s.io/client-go v2.0.0-alpha.0.0.20190313235726-6ee68ca5fd83+incompatible
 	k8s.io/klog v0.1.0
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c
-	k8s.io/kubernetes v1.13.3
+	k8s.io/kubernetes v1.14.0
+	k8s.io/utils v0.0.0-20190308190857-21c4ce38f2a7 // indirect
 	sigs.k8s.io/yaml v1.1.0
 )
