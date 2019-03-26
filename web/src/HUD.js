@@ -3,7 +3,7 @@ import AppController from './AppController';
 import NoMatch from './NoMatch';
 import LoadingScreen from './LoadingScreen';
 import Sidebar from './Sidebar';
-import Statusbar from './Statusbar';
+import Statusbar, { StatusItem } from './Statusbar';
 import ResourceViewPane from './ResourceViewPane';
 import LogViewPane from './LogViewPane';
 import K8sViewPane from './K8sViewPane';
@@ -51,14 +51,17 @@ class HUD extends Component {
   render() {
     let view = this.state.View
     let message = this.state.Message
-    if (!view || !view.Resources || !view.Resources.length) {
+    let resources = (view && view.Resources) || []
+    if (!resources.length) {
       return (<LoadingScreen message={message} />)
     }
+
+    let statusItems = resources.map((res) => new StatusItem(res))
     return (
       <Router>
         <div className="HUD">
         <Sidebar isOpen={this.state.isSidebarOpen} />
-        <Statusbar toggleSidebar={this.toggleSidebar}  />
+        <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
         <Switch>
           <Route exact path="/hud" render={() => <ResourceViewPane />} />
           <Route exact path="/hud/log" render={() => <LogViewPane />} />
