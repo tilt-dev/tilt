@@ -1,9 +1,13 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import './Sidebar.scss';
 
-class Sidebar extends Component {
+class Sidebar extends PureComponent {
   render() {
-    return (<div className="Sidebar">I'm a sidebar!</div>)
+    let classes = ['Sidebar']
+    if (this.props.isOpen) {
+      classes.push('is-open')
+    }
+    return (<div className={classes.join(' ')}>I'm a sidebar!</div>)
   }
 }
 

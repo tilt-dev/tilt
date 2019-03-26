@@ -6,8 +6,10 @@
   bottom: 0;
   width: 100%;
   z-index: 1000;
-  height: $spacing-unit;
-  padding: $spacing-unit / 2;
+  height: $spacing-unit * 1.5;
+  padding: $spacing-unit / 4;
   border-top: 1px solid white;
   background-color: $color-grey-dark;
+  display: flex;
+  align-items: center;
 }

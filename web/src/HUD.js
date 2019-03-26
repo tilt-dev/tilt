@@ -8,6 +8,7 @@ import ResourceViewPane from './ResourceViewPane';
 import LogViewPane from './LogViewPane';
 import K8sViewPane from './K8sViewPane';
 import PreviewPane from './PreviewPane';
+import { Map } from 'immutable';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import './HUD.scss';
 
@@ -20,8 +21,11 @@ class HUD extends Component {
     this.controller = new AppController(`ws://${window.location.host}/ws/view`, this)
     this.state = {
       Message: '',
-      View: {Resources: []}
+      View: {Resources: []},
+      isSidebarOpen: false,
     }
+
+    this.toggleSidebar = this.toggleSidebar.bind(this)
   }
 
   componentDidMount() {
@@ -36,6 +40,14 @@ class HUD extends Component {
     this.setState(state)
   }
 
+  toggleSidebar() {
+    this.setState((prevState) => {
+      return Map(prevState)
+        .set('isSidebarOpen', !prevState.isSidebarOpen)
+        .toObject()
+    })
+  }
+
   render() {
     let view = this.state.View
     let message = this.state.Message
@@ -45,8 +57,8 @@ class HUD extends Component {
     return (
       <Router>
         <div className="HUD">
-        <Sidebar />
-        <Statusbar />
+        <Sidebar isOpen={this.state.isSidebarOpen} />
+        <Statusbar toggleSidebar={this.toggleSidebar}  />
         <Switch>
           <Route exact path="/hud" render={() => <ResourceViewPane />} />
           <Route exact path="/hud/log" render={() => <LogViewPane />} />
