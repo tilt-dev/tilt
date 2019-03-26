@@ -49,6 +49,11 @@ func TestEnvFromConfig(t *testing.T) {
 			Cluster: "docker-for-desktop-cluster",
 		},
 	}
+	dockerDesktopEdgeContexts := map[string]*api.Context{
+		"docker-for-desktop": &api.Context{
+			Cluster: "docker-desktop",
+		},
+	}
 	gkeContexts := map[string]*api.Context{
 		"gke_blorg-dev_us-central1-b_blorg": &api.Context{
 			Cluster: "gke_blorg-dev_us-central1-b_blorg",
@@ -68,6 +73,7 @@ func TestEnvFromConfig(t *testing.T) {
 		{EnvUnknown, &api.Config{CurrentContext: "aws"}},
 		{EnvMinikube, &api.Config{CurrentContext: "minikube", Contexts: minikubeContexts}},
 		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopContexts}},
+		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopEdgeContexts}},
 		{EnvGKE, &api.Config{CurrentContext: "gke_blorg-dev_us-central1-b_blorg", Contexts: gkeContexts}},
 		{EnvKIND, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kindContexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s", Contexts: microK8sContexts}},
