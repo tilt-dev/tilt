@@ -46,7 +46,7 @@ var LogHeader = withRouter((props: any) => {
   }
 
   return (<header className="LogApp-header">
-    <div className="LogApp-title"><Link to="/">Dashboard!!!!!!!</Link>&nbsp;&gt;&nbsp;Logs: </div>
+    <div className="LogApp-title"><Link to="/">Dashboard</Link>&nbsp;&gt;&nbsp;Logs: </div>
     <div className="LogApp-select">
       <Select isSearchable={true} defaultValue={defaultValue} options={options} styles={styles} onChange={onChange} />
     </div>
