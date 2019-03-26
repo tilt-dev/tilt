@@ -116,7 +116,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
@@ -137,7 +137,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(imageNormalized("fooimage")),
+		db(imageNormalized("fooimage")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
@@ -179,7 +179,7 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
-	f.assertNextManifest("foo", sb(image("gcr.io/foo")))
+	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }
 
 func TestExplicitDockerfileContentsAsBlob(t *testing.T) {
@@ -194,7 +194,7 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
-	f.assertNextManifest("foo", sb(image("gcr.io/foo")))
+	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }
 
 func TestCantSpecifyDFPathAndContents(t *testing.T) {
@@ -299,7 +299,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
 }
 
-func TestStaticBuildWithEmbeddedFastBuild(t *testing.T) {
+func TestDockerBuildWithEmbeddedFastBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -316,10 +316,10 @@ fastbar.run('echo hi')
 
 	f.load()
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertNextManifest("bar",
-		sb(image("gcr.io/bar"), nestedFB(add("local/path", "remote/path"), run("echo hi"))),
+		db(image("gcr.io/bar"), nestedFB(add("local/path", "remote/path"), run("echo hi"))),
 		deployment("bar"))
 }
 
@@ -369,7 +369,7 @@ k8s_resource('foo', yaml)
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 }
 
@@ -388,7 +388,7 @@ k8s_resource('foo', yaml)
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
@@ -421,7 +421,7 @@ k8s_yaml('foo.yaml')
 docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
 `)
 	f.load()
-	f.assertNextManifest("foo", sbWithCache(image("gcr.io/foo"), "/path/to/cache"))
+	f.assertNextManifest("foo", dbWithCache(image("gcr.io/foo"), "/path/to/cache"))
 }
 
 func TestFastBuildCache(t *testing.T) {
@@ -572,7 +572,7 @@ k8s_resource('foo', 'foo.yaml', port_forwards=EXPR)
 			f.load()
 			f.assertNextManifest("foo",
 				c.expected,
-				sb(image("gcr.io/foo")),
+				db(image("gcr.io/foo")),
 				deployment("foo"))
 		})
 	}
@@ -590,10 +590,10 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 `)
 	f.load()
-	f.assertNextManifest("a", sb(image("gcr.io/a")), deployment("a"))
-	f.assertNextManifest("b", sb(image("gcr.io/b")), deployment("b"))
-	f.assertNextManifest("c", sb(image("gcr.io/c")), deployment("c"))
-	f.assertNextManifest("d", sb(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 	f.assertNoYAMLManifest("")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
 }
@@ -615,7 +615,7 @@ docker_build('gcr.io/a', 'a')
 `)
 
 	f.load()
-	f.assertNextManifest("a", sb(image("gcr.io/a")), deployment("a"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
 	f.assertYAMLManifest("a-secret")
 }
 
@@ -632,10 +632,10 @@ docker_build('gcr.io/d', 'd')
 k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 `)
 	f.load()
-	f.assertNextManifest("explicit_a", sb(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
-	f.assertNextManifest("b", sb(image("gcr.io/b")), deployment("b"))
-	f.assertNextManifest("c", sb(image("gcr.io/c")), deployment("c"))
-	f.assertNextManifest("d", sb(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
@@ -754,10 +754,10 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 `)
 	f.load()
-	f.assertNextManifest("a", sb(image("gcr.io/a")), deployment("a"), deployment("a2"))
-	f.assertNextManifest("b", sb(image("gcr.io/b")), deployment("b"))
-	f.assertNextManifest("c", sb(image("gcr.io/c")), deployment("c"))
-	f.assertNextManifest("d", sb(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"), deployment("a2"))
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 func TestMultipleYamlFiles(t *testing.T) {
@@ -777,10 +777,10 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 `)
 	f.load()
-	f.assertNextManifest("a", sb(image("gcr.io/a")), deployment("a"))
-	f.assertNextManifest("b", sb(image("gcr.io/b")), deployment("b"))
-	f.assertNextManifest("c", sb(image("gcr.io/c")), deployment("c"))
-	f.assertNextManifest("d", sb(image("gcr.io/d")), deployment("d"))
+	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
+	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
+	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
+	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 }
 
 func TestLoadOneManifest(t *testing.T) {
@@ -799,7 +799,7 @@ k8s_resource('bar', 'bar.yaml')
 	f.load("foo")
 	f.assertNumManifests(1)
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
@@ -1187,7 +1187,7 @@ if True:
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
@@ -1264,7 +1264,7 @@ k8s_yaml(yml)
 	)
 }
 
-func TestEmptyDockerfileStaticBuild(t *testing.T) {
+func TestEmptyDockerfileDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupFoo()
@@ -1274,8 +1274,8 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
-	m := f.assertNextManifest("foo", sb(image("gcr.io/foo")))
-	assert.True(t, m.ImageTargetAt(0).IsStaticBuild())
+	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
+	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
@@ -1290,7 +1290,7 @@ k8s_resource('foo', 'foo.yaml')
 `)
 	f.load()
 	m := f.assertNextManifest("foo", fb(image("gcr.io/foo")))
-	assert.False(t, m.ImageTargetAt(0).IsStaticBuild())
+	assert.False(t, m.ImageTargetAt(0).IsDockerBuild())
 	assert.True(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
@@ -1917,7 +1917,7 @@ docker_build('test/mycrd-env', 'env')
 
 	f.load("mycrd-env")
 	f.assertNextManifest("mycrd-env",
-		sb(
+		db(
 			image("docker.io/test/mycrd-env"),
 		),
 		k8sObject("mycrd", "Environment"),
@@ -1957,7 +1957,7 @@ docker_build('test/mycrd-env', 'env')
 				}
 				f.load("mycrd-env")
 				f.assertNextManifest("mycrd-env",
-					sb(
+					db(
 						image("docker.io/test/mycrd-env"),
 					),
 					k8sObject("mycrd", "Environment"),
@@ -2002,10 +2002,10 @@ docker_build('test/mycrd-env', 'env')
 
 	f.load("mycrd-env")
 	f.assertNextManifest("mycrd-env",
-		sb(
+		db(
 			image("docker.io/test/mycrd-env"),
 		),
-		sb(
+		db(
 			image("docker.io/test/mycrd-builder"),
 		),
 		k8sObject("mycrd", "Environment"),
@@ -2032,15 +2032,15 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 	`)
 	f.load("foo", "bar")
 	f.assertNextManifest("foo",
-		sb(
+		db(
 			image("gcr.io/foo"),
 		),
-		sb(
+		db(
 			image("gcr.io/foo-fetcher"),
 		),
 	)
 	f.assertNextManifest("bar",
-		sb(
+		db(
 			image("gcr.io/bar"),
 		),
 	)
@@ -2090,10 +2090,10 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 				}
 				f.load("foo")
 				f.assertNextManifest("foo",
-					sb(
+					db(
 						image("gcr.io/foo"),
 					),
-					sb(
+					db(
 						image("gcr.io/foo-fetcher"),
 					),
 				)
@@ -2125,10 +2125,10 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 	`)
 	f.load("foo")
 	f.assertNextManifest("foo",
-		sb(
+		db(
 			image("gcr.io/foo"),
 		),
-		sb(
+		db(
 			image("gcr.io/foo-fetcher"),
 		),
 	)
@@ -2239,11 +2239,11 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 
 	f.assertNextManifest("bar",
-		sb(image("gcr.io/bar")),
+		db(image("gcr.io/bar")),
 		deployment("bar"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
 }
@@ -2279,11 +2279,11 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 
 	f.assertNextManifest("bar",
-		sb(image("gcr.io/bar")),
+		db(image("gcr.io/bar")),
 		deployment("bar"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.json")
 }
@@ -2388,7 +2388,7 @@ default_registry('bar.com')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
+		db(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
 }
@@ -2415,10 +2415,10 @@ default_registry('example.com')
 	f.load()
 
 	f.assertNextManifest("bar",
-		sb(image("gcr.io/foo:bar").withInjectedRef("example.com/gcr.io_foo")),
+		db(image("gcr.io/foo:bar").withInjectedRef("example.com/gcr.io_foo")),
 		deployment("bar"))
 	f.assertNextManifest("baz",
-		sb(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
+		db(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
 		deployment("baz"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar.yaml", "baz/Dockerfile", "baz.yaml")
 }
@@ -2452,7 +2452,7 @@ k8s_resource(str(result), 'foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
@@ -2474,7 +2474,7 @@ k8s_resource(result["name"], 'foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
@@ -2496,7 +2496,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		sb(image("gcr.io/foo")),
+		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "hello")
 }
@@ -2724,7 +2724,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {
-		case sbHelper:
+		case dbHelper:
 			image := nextImageTarget()
 
 			ref := image.ConfigurationRef
@@ -2744,28 +2744,28 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					"manifest %v cache paths don't include expected value", m.Name)
 			}
 
-			if !image.IsStaticBuild() {
-				f.t.Fatalf("expected static build but manifest %v has no static build info", m.Name)
+			if !image.IsDockerBuild() {
+				f.t.Fatalf("expected docker build but manifest %v has no docker build info", m.Name)
 			}
 
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case nestedFBHelper:
-					sbInfo := image.StaticBuildInfo()
+					dbInfo := image.DockerBuildInfo()
 					if matcher.fb == nil {
-						if sbInfo.FastBuild != nil {
-							f.t.Fatalf("expected static build for manifest %v to have "+
-								"no nested fastbuild, but found one: %v", m.Name, sbInfo.FastBuild)
+						if dbInfo.FastBuild != nil {
+							f.t.Fatalf("expected docker build for manifest %v to have "+
+								"no nested fastbuild, but found one: %v", m.Name, dbInfo.FastBuild)
 						}
 					} else {
-						if sbInfo.FastBuild == nil {
-							f.t.Fatalf("expected static build for manifest %v to have "+
+						if dbInfo.FastBuild == nil {
+							f.t.Fatalf("expected docker build for manifest %v to have "+
 								"nested fastbuild, but found none", m.Name)
 						}
-						matcher.fb.checkMatchers(f, m, *sbInfo.FastBuild)
+						matcher.fb.checkMatchers(f, m, *dbInfo.FastBuild)
 					}
 				default:
-					f.t.Fatalf("unknown sbHelper matcher: %T %v", matcher, matcher)
+					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}
 			}
 		case fbHelper:
@@ -3149,19 +3149,19 @@ func withEnvVars(envVars ...string) envVarHelper {
 	return ret
 }
 
-// static build helper
-type sbHelper struct {
+// docker build helper
+type dbHelper struct {
 	image    imageHelper
 	cache    string
 	matchers []interface{}
 }
 
-func sb(img imageHelper, opts ...interface{}) sbHelper {
-	return sbHelper{image: img, matchers: opts}
+func db(img imageHelper, opts ...interface{}) dbHelper {
+	return dbHelper{image: img, matchers: opts}
 }
 
-func sbWithCache(img imageHelper, cache string, opts ...interface{}) sbHelper {
-	return sbHelper{image: img, cache: cache, matchers: opts}
+func dbWithCache(img imageHelper, cache string, opts ...interface{}) dbHelper {
+	return dbHelper{image: img, cache: cache, matchers: opts}
 }
 
 // fast build helper

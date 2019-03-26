@@ -17,7 +17,7 @@ import (
 
 // * * * IMAGE BUILDER * * *
 
-func TestStaticDockerfile(t *testing.T) {
+func TestDockerBuildDockerfile(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
@@ -48,7 +48,7 @@ ADD dir/c.txt .
 	f.assertFilesInImage(ref, pcs)
 }
 
-func TestStaticDockerfileWithBuildArgs(t *testing.T) {
+func TestDockerBuildWithBuildArgs(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 

@@ -312,7 +312,7 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 
 	df := dockerfile.Dockerfile("")
 	switch bd := iTarget.BuildDetails.(type) {
-	case model.StaticBuild:
+	case model.DockerBuild:
 		df = dockerfile.Dockerfile(bd.Dockerfile)
 	case model.FastBuild:
 		df = dockerfile.Dockerfile(bd.BaseDockerfile)
@@ -340,7 +340,7 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	switch bd := iTarget.BuildDetails.(type) {
-	case model.StaticBuild:
+	case model.DockerBuild:
 		bd.Dockerfile = newDf.String()
 		iTarget = iTarget.WithBuildDetails(bd)
 	case model.FastBuild:

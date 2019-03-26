@@ -206,11 +206,11 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	assert.True(t, f.sCli.UpdateContainerHotReload)
 }
 
-func TestStaticBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
+func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticManifestWithNestedFastBuild(f)
+	manifest := NewSanchoDockerBuildManifestWithNestedFastBuild(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -231,17 +231,17 @@ func TestStaticBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
 	}
 
 	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
-		t.Errorf("Should deploy the synclet for a static build with a nested fast build: %s", f.k8s.Yaml)
+		t.Errorf("Should deploy the synclet for a docker build with a nested fast build: %s", f.k8s.Yaml)
 	}
 }
 
-func TestStaticBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
+func TestDockerBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
-	manifest := NewSanchoStaticManifestWithNestedFastBuild(f)
+	manifest := NewSanchoDockerBuildManifestWithNestedFastBuild(f)
 	targets := buildTargets(manifest)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {

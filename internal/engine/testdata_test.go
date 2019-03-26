@@ -14,7 +14,7 @@ const SanchoBaseDockerfile = `
 FROM go:1.10
 `
 
-const SanchoStaticDockerfile = `
+const SanchoDockerfile = `
 FROM go:1.10
 ADD . .
 RUN go install github.com/windmilleng/sancho
@@ -122,55 +122,55 @@ func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest
 		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
-func NewSanchoStaticImageTarget() model.ImageTarget {
-	return model.NewImageTarget(SanchoRef).WithBuildDetails(model.StaticBuild{
-		Dockerfile: SanchoStaticDockerfile,
+func NewSanchoDockerBuildImageTarget() model.ImageTarget {
+	return model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+		Dockerfile: SanchoDockerfile,
 		BuildPath:  "/path/to/build",
 	})
 }
 
-func NewSanchoSidecarStaticImageTarget() model.ImageTarget {
-	iTarget := NewSanchoStaticImageTarget()
+func NewSanchoSidecarDockerBuildImageTarget() model.ImageTarget {
+	iTarget := NewSanchoDockerBuildImageTarget()
 	iTarget.ConfigurationRef = SanchoSidecarRef
 	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
 	return iTarget
 }
 
-func NewSanchoStaticManifest() model.Manifest {
+func NewSanchoDockerBuildManifest() model.Manifest {
 	return assembleK8sManifest(
 		model.Manifest{Name: "sancho"},
 		model.K8sTarget{YAML: SanchoYAML},
-		NewSanchoStaticImageTarget().
-			WithBuildDetails(model.StaticBuild{
-				Dockerfile: SanchoStaticDockerfile,
+		NewSanchoDockerBuildImageTarget().
+			WithBuildDetails(model.DockerBuild{
+				Dockerfile: SanchoDockerfile,
 				BuildPath:  "/path/to/build",
 			}))
 }
 
-func NewSanchoStaticManifestWithCache(paths []string) model.Manifest {
-	manifest := NewSanchoStaticManifest()
+func NewSanchoDockerBuildManifestWithCache(paths []string) model.Manifest {
+	manifest := NewSanchoDockerBuildManifest()
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
 	return manifest
 }
 
-func NewSanchoStaticManifestWithNestedFastBuild(fixture pather) model.Manifest {
-	manifest := NewSanchoStaticManifest()
+func NewSanchoDockerBuildManifestWithNestedFastBuild(fixture pather) model.Manifest {
+	manifest := NewSanchoDockerBuildManifest()
 	iTarg := manifest.ImageTargetAt(0)
 	fb := NewSanchoFastBuild(fixture)
-	sb := iTarg.StaticBuildInfo()
+	sb := iTarg.DockerBuildInfo()
 	sb.FastBuild = &fb
 	iTarg = iTarg.WithBuildDetails(sb)
 	manifest = manifest.WithImageTarget(iTarg)
 	return manifest
 }
 
-func NewSanchoStaticMultiStageManifest() model.Manifest {
-	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.StaticBuild{
+func NewSanchoDockerBuildMultiStageManifest() model.Manifest {
+	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  "/path/to/build",
 	})
 
-	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.StaticBuild{
+	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `
 FROM sancho-base
 ADD . .
@@ -189,7 +189,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
-	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.StaticBuild{
+	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  "/path/to/build",
 	})
@@ -218,15 +218,15 @@ func NewManifestsWithCommonAncestor(fixture pather) (model.Manifest, model.Manif
 	fixture.MkdirAll("image-1")
 	fixture.MkdirAll("image-2")
 
-	targetCommon := model.NewImageTarget(refCommon).WithBuildDetails(model.StaticBuild{
+	targetCommon := model.NewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  fixture.JoinPath("common"),
 	})
-	target1 := model.NewImageTarget(ref1).WithBuildDetails(model.StaticBuild{
+	target1 := model.NewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-1"),
 	})
-	target2 := model.NewImageTarget(ref2).WithBuildDetails(model.StaticBuild{
+	target2 := model.NewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-2"),
 	})

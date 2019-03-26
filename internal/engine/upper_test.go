@@ -858,7 +858,7 @@ k8s_resource('foobar', 'snack.yaml')
 	})
 }
 
-func TestStaticRebuildWithChangedFiles(t *testing.T) {
+func TestDockerRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	df := `FROM golang
@@ -867,7 +867,7 @@ go build ./...
 `
 	manifest := f.newManifest("foobar", nil)
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithBuildDetails(
-		model.StaticBuild{
+		model.DockerBuild{
 			Dockerfile: df,
 			BuildPath:  f.Path(),
 		}))

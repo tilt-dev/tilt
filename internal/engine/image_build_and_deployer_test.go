@@ -27,11 +27,11 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
-func TestStaticDockerfileWithCache(t *testing.T) {
+func TestDockerBuildWithCache(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticManifestWithCache([]string{"/root/.cache"})
+	manifest := NewSanchoDockerBuildManifestWithCache([]string{"/root/.cache"})
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
@@ -99,8 +99,8 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	iTarget1 := NewSanchoStaticImageTarget()
-	iTarget2 := NewSanchoSidecarStaticImageTarget()
+	iTarget1 := NewSanchoDockerBuildImageTarget()
+	iTarget2 := NewSanchoSidecarDockerBuildImageTarget()
 	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
@@ -127,7 +127,7 @@ func TestDeployIDInjectedAndSent(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticManifest()
+	manifest := NewSanchoDockerBuildManifest()
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -176,11 +176,11 @@ func TestNoImageTargets(t *testing.T) {
 		"Expected \"%s\"image to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
 }
 
-func TestMultiStageStaticBuild(t *testing.T) {
+func TestMultiStageDockerBuild(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticMultiStageManifest()
+	manifest := NewSanchoDockerBuildMultiStageManifest()
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -202,11 +202,11 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestMultiStageStaticBuildWithOnlyOneDirtyImage(t *testing.T) {
+func TestMultiStageDockerBuildWithOnlyOneDirtyImage(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticMultiStageManifest()
+	manifest := NewSanchoDockerBuildMultiStageManifest()
 	iTargetID := manifest.ImageTargets[0].ID()
 	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil)
@@ -256,7 +256,7 @@ func TestKINDPush(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticManifest()
+	manifest := NewSanchoDockerBuildManifest()
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -290,7 +290,7 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		manifest       func(f pather) model.Manifest
 		expectedImages []string
 	}{
-		{"static build", func(f pather) model.Manifest { return NewSanchoStaticManifest() }, expectedImages},
+		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest() }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
 		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},

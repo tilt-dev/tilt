@@ -42,11 +42,11 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	}
 
 	switch bd := iTarget.BuildDetails.(type) {
-	case model.StaticBuild:
+	case model.DockerBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		df := icb.staticDockerfile(iTarget, cacheRef)
+		df := icb.dockerfile(iTarget, cacheRef)
 		ref, err := icb.ib.BuildDockerfile(ctx, ps, refToBuild, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
 
 		if err != nil {
@@ -104,14 +104,14 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
-		return nil, fmt.Errorf("image %q has no valid buildDetails (neither StaticBuildInfo nor FastBuildInfo)", iTarget.ConfigurationRef)
+		return nil, fmt.Errorf("image %q has no valid buildDetails (neither DockerBuildInfo nor FastBuildInfo)", iTarget.ConfigurationRef)
 	}
 
 	return n, nil
 }
 
-func (icb *imageAndCacheBuilder) staticDockerfile(image model.ImageTarget, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(image.StaticBuildInfo().Dockerfile)
+func (icb *imageAndCacheBuilder) dockerfile(image model.ImageTarget, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
+	df := dockerfile.Dockerfile(image.DockerBuildInfo().Dockerfile)
 	if cacheRef == nil {
 		return df
 	}
@@ -149,10 +149,10 @@ func (icb *imageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
 
 func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) build.CacheInputs {
 	baseDockerfile := dockerfile.Dockerfile(iTarget.FastBuildInfo().BaseDockerfile)
-	if sbInfo, ok := iTarget.BuildDetails.(model.StaticBuild); ok {
-		staticDockerfile := dockerfile.Dockerfile(sbInfo.Dockerfile)
+	if dbInfo, ok := iTarget.BuildDetails.(model.DockerBuild); ok {
+		df := dockerfile.Dockerfile(dbInfo.Dockerfile)
 		var ok bool
-		baseDockerfile, _, ok = staticDockerfile.SplitIntoBaseDockerfile()
+		baseDockerfile, _, ok = df.SplitIntoBaseDockerfile()
 		if !ok {
 			return build.CacheInputs{}
 		}
@@ -177,8 +177,8 @@ func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, cache
 	}
 
 	var buildArgs model.DockerBuildArgs
-	if sbInfo, ok := image.BuildDetails.(model.StaticBuild); ok {
-		buildArgs = sbInfo.BuildArgs
+	if dbInfo, ok := image.BuildDetails.(model.DockerBuild); ok {
+		buildArgs = dbInfo.BuildArgs
 	}
 
 	err := icb.cb.CreateCacheFrom(ctx, cacheInputs, sourceRef, buildArgs)
