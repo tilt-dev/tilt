@@ -72,7 +72,7 @@ func EnvFromConfig(config *api.Config) Env {
 	cn := c.Cluster
 	if Env(cn) == EnvMinikube {
 		return EnvMinikube
-	} else if cn == "docker-for-desktop-cluster" {
+	} else if cn == "docker-for-desktop-cluster" || cn == "docker-desktop" {
 		return EnvDockerDesktop
 	} else if strings.HasPrefix(cn, string(EnvGKE)) {
 		// GKE cluster strings look like:
