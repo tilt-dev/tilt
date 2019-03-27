@@ -186,7 +186,7 @@ services:
 	f.assertDcManifest("foo", dcConfigPath(configPath))
 }
 
-func TestDockerComposeManifestComputesMountsFromDockerfile(t *testing.T) {
+func TestDockerComposeManifestComputesLocalPaths(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -200,28 +200,51 @@ RUN echo hi`
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	expectedMounts := []model.Mount{
-		model.Mount{
-			LocalPath:     f.JoinPath("foo/src"),
-			ContainerPath: "/app",
-		},
-		model.Mount{
-			LocalPath:     f.JoinPath("foo/thing.go"),
-			ContainerPath: "/stuff",
-		},
-	}
-
 	f.load("foo")
-	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	configPath := f.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath(configPath),
 		dcYAMLRaw(f.simpleConfigFooYAML()),
 		dcDfRaw(df),
-		dcMounts(expectedMounts),
+		dcLocalPaths([]string{f.JoinPath("foo")}),
 		// TODO(maia): assert m.tiltFilename
 	)
 
 	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
+func TestDockerComposeMultiStageBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	df := `FROM alpine as builder
+ADD ./src /app
+RUN echo hi
+
+FROM alpine
+COPY --from=builder /app /app
+RUN echo bye`
+	f.file("foo/Dockerfile", df)
+	f.file("foo/docker-compose.yml", `version: '3'
+services:
+  foo:
+    build:
+      context: ./
+    command: sleep 100
+    ports:
+      - "12312:12312"`)
+	f.file("Tiltfile", "docker_compose('foo/docker-compose.yml')")
+	f.load("foo")
+	configPath := f.JoinPath("foo/docker-compose.yml")
+	f.assertDcManifest("foo",
+		dcConfigPath(configPath),
+		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcDfRaw(df),
+		dcLocalPaths([]string{f.JoinPath("foo")}),
+	)
+
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -497,8 +520,8 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 		switch opt := opt.(type) {
 		case dcConfigPathHelper:
 			assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
-		case dcMountsHelper:
-			assert.ElementsMatch(f.t, opt.mounts, dcInfo.Mounts)
+		case dcLocalPathsHelper:
+			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths())
 		case dcYAMLRawHelper:
 			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
 		case dcDfRawHelper:
@@ -534,10 +557,10 @@ func dcDfRaw(df string) dcDfRawHelper {
 	return dcDfRawHelper{df}
 }
 
-type dcMountsHelper struct {
-	mounts []model.Mount
+type dcLocalPathsHelper struct {
+	paths []string
 }
 
-func dcMounts(mounts []model.Mount) dcMountsHelper {
-	return dcMountsHelper{mounts}
+func dcLocalPaths(paths []string) dcLocalPathsHelper {
+	return dcLocalPathsHelper{paths: paths}
 }

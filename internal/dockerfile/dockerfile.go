@@ -147,7 +147,18 @@ func (d Dockerfile) FindImages() ([]reference.Named, error) {
 // DeriveMounts finds ADD statements in a Dockerfile and turns them into Tilt model.Mounts.
 // Relative paths in an ADD statement are relative to the build context (passed as an arg)
 // and will appear in the Mount as an abs path.
-func (d Dockerfile) DeriveMounts(context string) ([]model.Mount, error) {
+//
+// TODO(nick): This code has several bugs and needs to be revisited.
+// In particular, it doesn't properly handle
+// 1) multi-stage builds
+// 2) ADD/COPY flags
+// 3) workdirs
+// 4) relative dirs vs absolute dirs
+//
+// Should probably be reworked to only return local paths,
+// as part of a rethink of slimming down the docker build
+// context in a way that's not docker-compose specific.
+func (d Dockerfile) BUGGY_DeriveMounts(context string) ([]model.Mount, error) {
 	var nodes []*parser.Node
 	err := d.traverse(func(node *parser.Node) error {
 		switch node.Value {

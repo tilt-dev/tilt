@@ -22,8 +22,9 @@ func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.WithIgnoredLocalDirectories([]string{"bar"})
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithIgnoredLocalDirectories([]string{"bar"}).
+		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar/baz")
@@ -37,8 +38,9 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Contents: "bar"}})
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithDockerignores([]model.Dockerignore{{LocalPath: ".", Contents: "bar"}}).
+		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar/baz")
@@ -57,8 +59,9 @@ func TestWatchManager_Gitignore(t *testing.T) {
 		return
 	}
 
-	target := model.DockerComposeTarget{Name: "foo"}.WithRepos([]model.LocalGitRepo{{LocalPath: wd, GitignoreContents: "bar"}})
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithRepos([]model.LocalGitRepo{{LocalPath: wd, GitignoreContents: "bar"}}).
+		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar")
@@ -72,8 +75,8 @@ func TestWatchManager_WatchesReappliedOnDockerComposeMountsChange(t *testing.T) 
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
 	f.SetManifestTarget(target.WithIgnoredLocalDirectories([]string{"bar"}))
 	f.SetManifestTarget(target)
 
@@ -90,8 +93,8 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
 	f.SetManifestTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Contents: "bar"}}))
 	f.SetManifestTarget(target)
 
@@ -113,8 +116,8 @@ func TestWatchManager_WatchesReappliedOnGitIgnoreChange(t *testing.T) {
 		return
 	}
 
-	target := model.DockerComposeTarget{Name: "foo"}
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
 	f.SetManifestTarget(target.WithRepos([]model.LocalGitRepo{{LocalPath: wd, GitignoreContents: "bar"}}))
 	f.SetManifestTarget(target)
 
@@ -131,8 +134,8 @@ func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 
@@ -147,8 +150,8 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}
-	target.Mounts = []model.Mount{{LocalPath: "."}}
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 	f.ChangeFile(t, "bar/foo")

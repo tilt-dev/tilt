@@ -23,9 +23,12 @@ func (dID DeployID) String() string { return strconv.Itoa(int(dID)) }
 type DockerComposeTarget struct {
 	Name       TargetName
 	ConfigPath string
-	Mounts     []Mount
-	YAMLRaw    []byte // for diff'ing when config files change
-	DfRaw      []byte // for diff'ing when config files change
+
+	// The docker context, like in DockerBuild
+	buildPath string
+
+	YAMLRaw []byte // for diff'ing when config files change
+	DfRaw   []byte // for diff'ing when config files change
 
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
@@ -59,11 +62,15 @@ func (t DockerComposeTarget) DependencyIDs() []TargetID {
 }
 
 func (t DockerComposeTarget) LocalPaths() []string {
-	result := make([]string, len(t.Mounts))
-	for i, mount := range t.Mounts {
-		result[i] = mount.LocalPath
+	if t.buildPath == "" {
+		return []string{}
 	}
-	return result
+	return []string{t.buildPath}
+}
+
+func (t DockerComposeTarget) WithBuildPath(buildPath string) DockerComposeTarget {
+	t.buildPath = buildPath
+	return t
 }
 
 func (t DockerComposeTarget) WithDependencyIDs(ids []TargetID) DockerComposeTarget {

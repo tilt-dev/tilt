@@ -17,7 +17,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -194,9 +193,9 @@ type dcBuildConfig struct {
 
 // A docker-compose service, according to Tilt.
 type dcService struct {
-	Name    string
-	Context string
-	DfPath  string
+	Name         string
+	BuildContext string
+	DfPath       string
 	// these are the host machine paths that DC will mount from the local volume into the container
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
@@ -219,10 +218,14 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 		return dcService{}, fmt.Errorf("no service %s found in config", name)
 	}
 
-	df := svcConfig.Build.Dockerfile
-	if df == "" && svcConfig.Build.Context != "" {
-		// We only expect a Dockerfile if there's a build context specified.
-		df = "Dockerfile"
+	buildContext := svcConfig.Build.Context
+	dfPath := svcConfig.Build.Dockerfile
+	if buildContext != "" {
+		if dfPath == "" {
+			// We only expect a Dockerfile if there's a build context specified.
+			dfPath = "Dockerfile"
+		}
+		dfPath = filepath.Join(buildContext, dfPath)
 	}
 
 	var mountedLocalDirs []string
@@ -230,10 +233,9 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
 	}
 
-	dfPath := filepath.Join(svcConfig.Build.Context, df)
 	svc := dcService{
 		Name:             name,
-		Context:          svcConfig.Build.Context,
+		BuildContext:     buildContext,
 		DfPath:           dfPath,
 		MountedLocalDirs: mountedLocalDirs,
 
@@ -345,22 +347,13 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 
 	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
-		// So, don't parse a non-existent Dockerfile for mount info.
 		return m, nil, nil
 	}
 
-	df := dockerfile.Dockerfile(service.DfContents)
-	mounts, err := df.DeriveMounts(service.Context)
-	if err != nil {
-		return model.Manifest{}, nil, err
-	}
-
-	dcInfo.Mounts = mounts
+	dcInfo = dcInfo.WithBuildPath(service.BuildContext)
 
 	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
-	for _, mount := range mounts {
-		paths = append(paths, mount.LocalPath)
-	}
+	paths = append(paths, dcInfo.LocalPaths()...)
 
 	dcInfo = dcInfo.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
 
