@@ -160,7 +160,7 @@ func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs [
 			df = df.Join(fmt.Sprintf("COPY %s %s", p.ContainerPath, p.ContainerPath))
 		}
 
-		// After adding the inputs, exec. the RUN.
+		// After adding the inputs, run the command.
 		//
 		// TODO(nick): This assumes that the RUN run doesn't overwrite any input files
 		// that might be added later. In that case, we might need to do something
