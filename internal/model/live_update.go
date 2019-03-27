@@ -34,7 +34,7 @@ type LiveUpdateRunStep struct {
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
 
-// Specifies that any files matched by `Sync` steps should also cause the container to be restarted.
+// Specifies that the container should be restarted when any files in `Sync` steps have changed.
 type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) LiveUpdateStep() {}
