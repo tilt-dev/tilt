@@ -1,6 +1,7 @@
 $font-family: 'Courier New', Courier, monospace;
 $font-size: 20px;
 $font-size-small: 16px;
+$font-size-icon: 24px;
 
 $color-green: #20BA31;
 $color-green-lightest: #70D37B;
@@ -18,7 +19,11 @@ $color-red-light: #F99E97;
 $color-blue-light: #5EDBE3;
 $color-blue-lightest: #98E8ED;
 $color-green-light: #70D37B;
+$color-navy: #002F39;
+$color-navy-dark: #002125;
+$color-navy-light: #30545c;
 $opacity-light: 0.64;
 
 $spacing-unit:     32px;
-$sidebar-width: $spacing-unit * 8;
+$sidebar-width: $spacing-unit * 12;
+$sidebar-maxWidth: 25vw;

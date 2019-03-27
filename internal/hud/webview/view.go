@@ -79,7 +79,11 @@ type Resource struct {
 
 	Endpoints []string
 
-	ResourceInfo ResourceInfoView
+	// TODO(nick): Remove ResourceInfoView. This is fundamentally a bad
+	// data structure for the webview because the webview loses the Go type
+	// on serialization to JS.
+	ResourceInfo  ResourceInfoView
+	RuntimeStatus RuntimeStatus
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
@@ -96,6 +100,14 @@ func (r Resource) LastBuild() model.BuildRecord {
 	}
 	return r.BuildHistory[0]
 }
+
+type RuntimeStatus string
+
+const (
+	RuntimeStatusOK      RuntimeStatus = "ok"
+	RuntimeStatusPending               = "pending"
+	RuntimeStatusError                 = "error"
+)
 
 type View struct {
 	Log                  string

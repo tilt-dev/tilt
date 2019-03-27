@@ -2,14 +2,55 @@
 
 .Statusbar {
   position: fixed;
+  font-size: $font-size-small;
   left: 0;
   bottom: 0;
   width: 100%;
   z-index: 1000;
-  height: $spacing-unit * 1.5;
-  padding: $spacing-unit / 4;
-  border-top: 1px solid white;
-  background-color: $color-grey-dark;
+  height: $spacing-unit * 1.75;
+  color: $color-navy;
+  background-color: $color-grey-lightest;
   display: flex;
   align-items: center;
+}
+.Statusbar-panel {
+  padding: $spacing-unit / 4 $spacing-unit / 2;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  height: 100%;
+  min-width: $spacing-unit * 3;
+}
+.Statusbar-panel .icon {
+  font-size: $font-size-icon;
+}
+.Statusbar-panel--error .icon {
+  color: $color-red;
+}
+.Statusbar-panel--warning .icon {
+  color: $color-yellow;
+}
+.Statusbar-panel--spacer {
+  flex-grow: 1;
+}
+.Statusbar-panel--up {
+  font-size: $font-size-small;
+  color: $color-navy;
+  font-family: $font-family;
+  width: $sidebar-width;
+  max-width: $sidebar-maxWidth;
+  justify-content: flex-end;
+  border-left: 2px solid $color-navy-light;
+  cursor: pointer;
+  background-color: $color-grey-lightest;
+  transition: background-color 300ms ease;
+}
+.Statusbar-panel--up:hover {
+  background-color: $color-grey-light;
+}
+.Statusbar-panel--up .icon {
+  margin-left: $spacing-unit / 2;
+  width: $spacing-unit;
+  height: $spacing-unit;
 }

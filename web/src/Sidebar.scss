@@ -2,7 +2,7 @@
 
 .Sidebar {
   width: $sidebar-width;
-  max-width: 20vw;
+  max-width: $sidebar-maxWidth;
   min-height: 100vh;
   margin-right: $spacing-unit;
   padding: $spacing-unit;

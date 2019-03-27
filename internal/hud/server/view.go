@@ -81,6 +81,8 @@ func StateToWebView(s store.EngineState) webview.View {
 			CombinedLog:        ms.CombinedLog,
 		}
 
+		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)
+
 		ret.Resources = append(ret.Resources, r)
 	}
 
@@ -101,6 +103,8 @@ func StateToWebView(s store.EngineState) webview.View {
 			},
 		}
 
+		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)
+
 		ret.Resources = append(ret.Resources, r)
 	}
 
@@ -115,7 +119,8 @@ func StateToWebView(s store.EngineState) webview.View {
 		BuildHistory: []model.BuildRecord{
 			ltfb,
 		},
-		CombinedLog: s.TiltfileCombinedLog,
+		CombinedLog:   s.TiltfileCombinedLog,
+		RuntimeStatus: webview.RuntimeStatusOK,
 	}
 	if !s.CurrentTiltfileBuild.Empty() {
 		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
@@ -154,4 +159,33 @@ func resourceInfoView(mt *store.ManifestTarget) webview.ResourceInfoView {
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
 	}
+}
+
+func runtimeStatus(res webview.ResourceInfoView) webview.RuntimeStatus {
+	// if we have no images to build, we have no runtime status monitoring.
+	_, isYAML := res.(webview.YAMLResourceInfo)
+	if isYAML {
+		return webview.RuntimeStatusOK
+	}
+
+	result, ok := runtimeStatusMap[res.Status()]
+	if !ok {
+		return webview.RuntimeStatusError
+	}
+	return result
+}
+
+var runtimeStatusMap = map[string]webview.RuntimeStatus{
+	"Running":                          webview.RuntimeStatusOK,
+	"ContainerCreating":                webview.RuntimeStatusPending,
+	"Pending":                          webview.RuntimeStatusPending,
+	"PodInitializing":                  webview.RuntimeStatusPending,
+	"Error":                            webview.RuntimeStatusError,
+	"CrashLoopBackOff":                 webview.RuntimeStatusError,
+	"ErrImagePull":                     webview.RuntimeStatusError,
+	"ImagePullBackOff":                 webview.RuntimeStatusError,
+	string(dockercompose.StatusInProg): webview.RuntimeStatusPending,
+	string(dockercompose.StatusUp):     webview.RuntimeStatusOK,
+	string(dockercompose.StatusDown):   webview.RuntimeStatusError,
+	"Completed":                        webview.RuntimeStatusOK,
 }

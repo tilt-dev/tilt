@@ -33,7 +33,7 @@ it('opens sidebar on click', async () => {
   expect(sidebar).toHaveLength(1)
   expect(sidebar.hasClass('is-open')).toBe(false)
 
-  let button = hud.find('.LogoButton')
+  let button = hud.find('button.Statusbar-panel--up')
   expect(button).toHaveLength(1)
   button.simulate('click')
 
