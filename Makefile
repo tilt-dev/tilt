@@ -1,7 +1,7 @@
-.PHONY: all proto install lint test test-go test-js integration wire-check wire ensure check-go
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go
 
 check-go: lint errcheck verify_gofmt wire-check test-go
-all: check-go test-js
+all: check-go check-js test-js
 
 # There are 2 Go bugs that cause problems on CI:
 # 1) Linker memory usage blew up in Go 1.11
@@ -72,9 +72,12 @@ integration:
 dev-js:
 	cd web && yarn install && yarn run start
 
+check-js:
+	cd web && yarn install
+	cd web && yarn run check
+
 test-js:
 	cd web && yarn install
-	cd web && yarn run lint
 	cd web && CI=true yarn test
 
 ensure:

@@ -18,7 +18,7 @@ jobs:
       - image: circleci/node:8
     steps:
       - checkout
-      - run: make test-js
+      - run: make check-js test-js
 
   build-integration:
     docker:

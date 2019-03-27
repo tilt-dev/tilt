@@ -30,7 +30,7 @@
     "test": "react-scripts test",
     "test-debug": "react-scripts --inspect-brk test --runInBand --no-cache",
     "eject": "react-scripts eject",
-    "lint": "eslint src/*.js"
+    "check": "eslint src/*.js && tsc -p ."
   },
   "eslintConfig": {
     "extends": "react-app"

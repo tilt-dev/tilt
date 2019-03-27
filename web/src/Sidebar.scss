@@ -4,16 +4,18 @@
   width: $sidebar-width;
   max-width: $sidebar-maxWidth;
   min-height: 100vh;
-  margin-right: $spacing-unit;
+  margin-left: $spacing-unit;
   padding: $spacing-unit;
-  border-right: 1px solid white;
+  border-left: 1px solid $color-navy-light;
   box-sizing: border-box;
   position: fixed;
+  right: 0;
   z-index: 900;
-  background-color: $color-grey-darkest;
-  transform: translateX(-120%);
+  background-color: $color-navy;
+  transform: translateX(120%);
   transition: transform ease-out 200ms;
 }
 .Sidebar.is-open {
   transform: translateX(0%);
+  transition: transform ease-in 200ms;
 }

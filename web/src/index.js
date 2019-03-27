@@ -17,7 +17,7 @@ let Main = () => {
           * New HUD work. HUD will eventually be promoted to the top-level component
           * and we'll delete App & friends
           */}
-        <Route exact path="/hud" component={HUD} />
+        <Route path="/hud" component={HUD} />
         <Route exact path="/log" component={LogApp} />
         <Route exact path="/r/:name/log" component={LogApp} />
         <Route exact path="/r/:name/k8s" component={K8sApp} />
