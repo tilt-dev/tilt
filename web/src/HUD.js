@@ -49,6 +49,7 @@ class HUD extends Component {
 
   render() {
     let view = this.state.View
+    console.log(view.Log)
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -63,8 +64,7 @@ class HUD extends Component {
         <Sidebar items={sidebarItems} isOpen={this.state.isSidebarOpen} />
         <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
         <Switch>
-          <Route exact path="/hud" render={() => <ResourceViewPane />} />
-          <Route exact path="/hud/log" render={() => <LogPane log={""} />} />
+          <Route exact path="/hud" render={() => <LogPane log={view.Log} />}/>
           <Route exact path="/hud/r/:name/log" render={() => <LogPane log={""} />} />
           <Route exact path="/hud/r/:name/k8s"  render={() => <K8sViewPane />}  />
           <Route exact path="/hud/r/:name/preview" render={() => <PreviewPane />} />
