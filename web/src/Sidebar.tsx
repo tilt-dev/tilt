@@ -28,6 +28,7 @@ class SidebarItem {
 type SidebarProps = {
   isOpen: boolean,
   items: SidebarItem[],
+  selected: string,
 }
 
 class Sidebar extends PureComponent<SidebarProps> {
@@ -37,19 +38,29 @@ class Sidebar extends PureComponent<SidebarProps> {
       classes.push('is-open')
     }
 
+    let allItemClasses = 'resLink resLink--all'
+    if (!this.props.selected) {
+      allItemClasses += ' is-selected'
+    }
+    let allItem = (<li>
+      <Link className={allItemClasses} to="/hud">&nbsp;ALL</Link>
+    </li>)
+
     let listItems = this.props.items.map((item) => {
       let link = `/hud/r/${item.name}`
-      return (<li key={item.name} className="resLink">
-        <Link to={link}>{item.name}</Link>
-      </li>)        
+      let classes = `resLink resLink--${item.status}`
+      if (this.props.selected === item.name) {
+        classes += ' is-selected'
+      }
+      return (<li key={item.name}>
+        <Link className={classes} to={link}>{item.name}</Link>
+      </li>)
     })
     
     return (<nav className={classes.join(' ')}>
-      <h2 className="Sidebar-header">Resources:</h2>
-      <ul>
-        <li className="resLink resLink--all">
-          <Link to="/hud">All</Link>
-        </li>
+      <h2 className="Sidebar-header">RESOURCES:</h2>
+      <ul className="Sidebar-list">
+        {allItem}
         {listItems}
       </ul>    
     </nav>)

@@ -55,12 +55,22 @@ class HUD extends Component {
       return (<LoadingScreen message={message} />)
     }
 
+    let isSidebarOpen = this.state.isSidebarOpen
     let statusItems = resources.map((res) => new StatusItem(res))
     let sidebarItems = resources.map((res) => new SidebarItem(res))
+    let SidebarRoute = function(props) {
+      let name = props.match.params.name
+      return <Sidebar selected={name} items={sidebarItems} isOpen={isSidebarOpen} />
+    }
+
     return (
       <Router>
         <div className="HUD">
-        <Sidebar items={sidebarItems} isOpen={this.state.isSidebarOpen} />
+        <Switch>
+          <Route path="/hud/r/:name" component={SidebarRoute} />
+          <Route component={SidebarRoute} />
+        </Switch>
+
         <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
         <Switch>
           <Route exact path="/hud" render={() => <LogViewPane />} />

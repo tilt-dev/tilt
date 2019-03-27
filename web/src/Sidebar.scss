@@ -5,8 +5,7 @@
   max-width: $sidebar-maxWidth;
   min-height: 100vh;
   margin-left: $spacing-unit;
-  padding: $spacing-unit;
-  border-left: 1px solid $color-navy-light;
+  border-left: 2px solid $color-navy-light;
   box-sizing: border-box;
   position: fixed;
   right: 0;
@@ -14,8 +13,54 @@
   background-color: $color-navy;
   transform: translateX(120%);
   transition: transform ease-out 200ms;
+  font-size: $font-size;
 }
 .Sidebar.is-open {
   transform: translateX(0%);
   transition: transform ease-in 200ms;
+}
+.Sidebar-header {
+  color: $color-navy-light;
+  font-size: $font-size;
+  font-weight: normal;
+  margin: $spacing-unit / 2;
+}
+.Sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.resLink {
+  background-color: $color-navy;
+  color: white;
+  transition: background-color 200ms ease, color 200ms ease;
+  text-decoration: none;
+  display: block;
+  padding: $spacing-unit / 2;
+  padding-left: $spacing-unit;
+}
+.resLink.is-selected,
+.resLink:hover, {
+  background-color: $color-navy-dark;
+  color: $color-blue-light;
+}
+.resLink::before {
+  content: "●";
+  padding-right: $spacing-unit / 4;
+}
+.resLink--all::before {
+  content: "";
+  padding-right: $spacing-unit / 4;
+}
+.resLink--ok::before {
+  color: $color-green;
+}
+.resLink--ok::before {
+  color: $color-green;
+}
+.resLink--pending::before {
+  color: $color-yellow;
+}
+.resLink--red::before {
+  color: $color-red;
 }
