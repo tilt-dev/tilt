@@ -4,7 +4,6 @@ import NoMatch from './NoMatch';
 import LoadingScreen from './LoadingScreen';
 import Sidebar, { SidebarItem } from './Sidebar';
 import Statusbar, { StatusItem } from './Statusbar';
-import ResourceViewPane from './ResourceViewPane';
 import LogPane from './LogPane';
 import K8sViewPane from './K8sViewPane';
 import PreviewPane from './PreviewPane';

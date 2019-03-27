@@ -3,7 +3,6 @@ import Ansi from "ansi-to-react";
 
 type AnsiLineProps = {
   line: string
-  key: string
 }
 let AnsiLine = React.memo(function(props: AnsiLineProps) {
   return <div><Ansi linkify={false}>{props.line}</Ansi></div>
@@ -30,7 +29,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       autoscroll: true,
     }
 
-    // TODO(dmiller): do I need to bind refreshAutoScroll?
+    this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
   }
 
   componentDidMount() {
