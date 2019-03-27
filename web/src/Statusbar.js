@@ -1,13 +1,9 @@
 import React, { PureComponent } from 'react';
 import { ReactComponent as LogoSvg } from './assets/svg/logo-imagemark.svg';
+import { isZeroTime } from './time';
 import './Statusbar.scss';
 
-const zeroTime = '0001-01-01T00:00:00Z'
 const nbsp = '\u00a0'
-
-function isZeroTime(time) {
-  return !time || time === zeroTime
-}
 
 class StatusItem {
   /**
