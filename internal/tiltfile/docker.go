@@ -26,10 +26,10 @@ type dockerImage struct {
 	cachePaths         []string
 	hotReload          bool
 
-	staticDockerfilePath localPath
-	staticDockerfile     dockerfile.Dockerfile
-	staticBuildPath      localPath
-	staticBuildArgs      model.DockerBuildArgs
+	dbDockerfilePath localPath
+	dbDockerfile     dockerfile.Dockerfile
+	dbBuildPath      localPath
+	dbBuildArgs      model.DockerBuildArgs
 
 	customCommand string
 	customDeps    []string
@@ -50,14 +50,14 @@ type dockerImageBuildType int
 
 const (
 	UnknownBuild = iota
-	StaticBuild
+	DockerBuild
 	FastBuild
 	CustomBuild
 )
 
 func (d *dockerImage) Type() dockerImageBuildType {
-	if !d.staticBuildPath.Empty() {
-		return StaticBuild
+	if !d.dbBuildPath.Empty() {
+		return DockerBuild
 	}
 
 	if !d.baseDockerfilePath.Empty() {
@@ -150,12 +150,12 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	r := &dockerImage{
-		staticDockerfilePath: dockerfilePath,
-		staticDockerfile:     dockerfile.Dockerfile(dockerfileContents),
-		staticBuildPath:      context,
-		configurationRef:     container.NewRefSelector(ref),
-		staticBuildArgs:      sba,
-		cachePaths:           cachePaths,
+		dbDockerfilePath: dockerfilePath,
+		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
+		dbBuildPath:      context,
+		configurationRef: container.NewRefSelector(ref),
+		dbBuildArgs:      sba,
+		cachePaths:       cachePaths,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -164,7 +164,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	// NOTE(maia): docker_build returns a fast build that users can optionally
 	// populate; if populated, we use it for in-place updates of this image
-	// (but use the static build defined by docker_build for image builds)
+	// (but use DockerBuild info for image builds)
 	fb := &fastBuild{s: s, img: r}
 	return fb, nil
 }
@@ -520,8 +520,8 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	}
 	paths = append(paths,
 		image.baseDockerfilePath,
-		image.staticDockerfilePath,
-		image.staticBuildPath,
+		image.dbDockerfilePath,
+		image.dbBuildPath,
 		s.filename)
 
 	return reposForPaths(paths)
@@ -586,7 +586,7 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 			paths = append(paths, repo.basePath)
 		}
 	}
-	paths = append(paths, image.staticBuildPath.path)
+	paths = append(paths, image.dbBuildPath.path)
 
 	return dockerignoresForPaths(paths)
 }

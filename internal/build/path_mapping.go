@@ -28,7 +28,7 @@ import (
 // In incremental builds, TarballPath and ContainerPath are always the
 // same, so it was correct to use TarballPath and ContainerPath interchangeably.
 //
-// In static builds, this is no longer the case.
+// In DockerBuilds, this is no longer the case.
 //
 // TODO(nick): Do a pass on renaming all the path types
 type PathMapping struct {

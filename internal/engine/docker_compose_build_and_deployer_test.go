@@ -26,7 +26,7 @@ var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPath: confPath}
 
 var imgRef = "gcr.io/some/image"
 var imgTarg = model.NewImageTarget(container.MustParseSelector(imgRef)).
-	WithBuildDetails(model.StaticBuild{
+	WithBuildDetails(model.DockerBuild{
 		Dockerfile: "Dockerfile.whales",
 		BuildPath:  "/whales/are/big",
 	})
@@ -78,7 +78,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 
 	refWithTag := "gcr.io/foo:bar"
 	iTarget := model.NewImageTarget(container.MustParseSelector(refWithTag)).
-		WithBuildDetails(model.StaticBuild{})
+		WithBuildDetails(model.DockerBuild{})
 
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{iTarget, dcTarg}, store.BuildStateSet{})
 	if err != nil {
@@ -103,7 +103,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticMultiStageManifest().
+	manifest := NewSanchoDockerBuildMultiStageManifest().
 		WithDeployTarget(dcTarg)
 	stateSet := store.BuildStateSet{}
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
@@ -130,7 +130,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoStaticMultiStageManifest().
+	manifest := NewSanchoDockerBuildMultiStageManifest().
 		WithDeployTarget(dcTarg)
 	iTargetID := manifest.ImageTargets[0].ID()
 	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))

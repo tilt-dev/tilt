@@ -62,7 +62,7 @@ func (i ImageTarget) Validate() error {
 	}
 
 	switch bd := i.BuildDetails.(type) {
-	case StaticBuild:
+	case DockerBuild:
 		if bd.BuildPath == "" {
 			return fmt.Errorf("[Validate] Image %q missing build path", i.ConfigurationRef)
 		}
@@ -84,7 +84,7 @@ func (i ImageTarget) Validate() error {
 			)
 		}
 	default:
-		return fmt.Errorf("[Validate] Image %q has neither StaticBuildInfo nor FastBuildInfo", i.ConfigurationRef)
+		return fmt.Errorf("[Validate] Image %q has neither DockerBuildInfo nor FastBuildInfo", i.ConfigurationRef)
 	}
 
 	return nil
@@ -94,13 +94,13 @@ type BuildDetails interface {
 	buildDetails()
 }
 
-func (i ImageTarget) StaticBuildInfo() StaticBuild {
-	ret, _ := i.BuildDetails.(StaticBuild)
+func (i ImageTarget) DockerBuildInfo() DockerBuild {
+	ret, _ := i.BuildDetails.(DockerBuild)
 	return ret
 }
 
-func (i ImageTarget) IsStaticBuild() bool {
-	_, ok := i.BuildDetails.(StaticBuild)
+func (i ImageTarget) IsDockerBuild() bool {
+	_, ok := i.BuildDetails.(DockerBuild)
 	return ok
 }
 
@@ -108,7 +108,7 @@ func (i ImageTarget) MaybeFastBuildInfo() *FastBuild {
 	switch details := i.BuildDetails.(type) {
 	case FastBuild:
 		return &details
-	case StaticBuild:
+	case DockerBuild:
 		return details.FastBuild
 	case CustomBuild:
 		return details.Fast
@@ -124,7 +124,7 @@ func (i ImageTarget) FastBuildInfo() FastBuild {
 }
 
 // IsFastBuild checks if the TOP LEVEL BUILD DETAILS are for a FastBuild.
-// (If this target is a StaticBuild || CustomBuild with a nested FastBuild, returns FALSE.)
+// (If this target is a DockerBuild || CustomBuild with a nested FastBuild, returns FALSE.)
 func (i ImageTarget) IsFastBuild() bool {
 	_, ok := i.BuildDetails.(FastBuild)
 	return ok
@@ -171,7 +171,7 @@ func (i ImageTarget) Dockerignores() []Dockerignore {
 
 func (i ImageTarget) LocalPaths() []string {
 	switch bd := i.BuildDetails.(type) {
-	case StaticBuild:
+	case DockerBuild:
 		return []string{bd.BuildPath}
 	case FastBuild:
 		result := make([]string, len(bd.Mounts))
@@ -216,14 +216,14 @@ func ImageTargetsByID(iTargets []ImageTarget) map[TargetID]ImageTarget {
 	return result
 }
 
-type StaticBuild struct {
+type DockerBuild struct {
 	Dockerfile string
 	BuildPath  string // the absolute path to the files
 	BuildArgs  DockerBuildArgs
 	FastBuild  *FastBuild // Optionally, can use FastBuild to update this build in place.
 }
 
-func (StaticBuild) buildDetails() {}
+func (DockerBuild) buildDetails() {}
 
 type FastBuild struct {
 	BaseDockerfile string

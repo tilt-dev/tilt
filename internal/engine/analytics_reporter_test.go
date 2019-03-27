@@ -17,7 +17,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture()
 
 	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))   // k8s, fastbuild
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}})) // k8s
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.DockerBuild{}})) // k8s
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
@@ -53,7 +53,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture()
 
 	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.StaticBuild{}}))
+	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.DockerBuild{}}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))

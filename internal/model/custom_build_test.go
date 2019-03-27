@@ -31,7 +31,7 @@ func TestMaybeFastBuildInfo(t *testing.T) {
 	assert.Equal(t, fb, *bi)
 
 	it = ImageTarget{
-		BuildDetails: StaticBuild{},
+		BuildDetails: DockerBuild{},
 	}
 	bi = it.MaybeFastBuildInfo()
 	assert.Nil(t, bi)
