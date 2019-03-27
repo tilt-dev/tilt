@@ -4,35 +4,35 @@ import (
 	"strings"
 )
 
-func TrySquash(steps []Cmd) []Cmd {
-	newSteps := make([]Cmd, 0)
-	for i := 0; i < len(steps); i++ {
+func TrySquash(runs []Cmd) []Cmd {
+	newRuns := make([]Cmd, 0)
+	for i := 0; i < len(runs); i++ {
 		toSquash := []Cmd{}
-		for j := i; j < len(steps); j++ {
-			stepJ := steps[j]
-			if !stepJ.IsShellStandardForm() {
+		for j := i; j < len(runs); j++ {
+			runJ := runs[j]
+			if !runJ.IsShellStandardForm() {
 				break
 			}
 
-			toSquash = append(toSquash, stepJ)
+			toSquash = append(toSquash, runJ)
 		}
 
 		if len(toSquash) < 2 {
-			newSteps = append(newSteps, steps[i])
+			newRuns = append(newRuns, runs[i])
 			continue
 		}
 
-		newSteps = append(newSteps, squashHelper(toSquash))
+		newRuns = append(newRuns, squashHelper(toSquash))
 		i += len(toSquash) - 1
 	}
-	return newSteps
+	return newRuns
 }
 
-// Create a new shell script that combines the individual steps.
+// Create a new shell script that combines the individual runs.
 // We know all the scripts are in shell standard form.
-func squashHelper(steps []Cmd) Cmd {
-	scripts := make([]string, len(steps))
-	for i, c := range steps {
+func squashHelper(runs []Cmd) Cmd {
+	scripts := make([]string, len(runs))
+	for i, c := range runs {
 		scripts[i] = c.ShellStandardScript()
 	}
 

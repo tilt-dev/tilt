@@ -40,8 +40,8 @@ type dockerImageBuilder struct {
 
 type ImageBuilder interface {
 	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, runs []model.Run) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 }
@@ -74,7 +74,7 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
 	mounts []model.Mount, filter model.PathMatcher,
-	steps []model.Step, entrypoint model.Cmd) (reference.NamedTagged, error) {
+	runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
 	defer span.Finish()
@@ -83,13 +83,13 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 
 	paths := MountsToPathMappings(mounts)
 	df := baseDockerfile
-	df, steps, err := d.addConditionalSteps(df, steps, paths)
+	df, runs, err := d.addConditionalRuns(df, runs, paths)
 	if err != nil {
 		return nil, errors.Wrapf(err, "BuildImageFromScratch")
 	}
 
 	df = df.AddAll()
-	df = d.addRemainingSteps(df, steps)
+	df = d.addRemainingRuns(df, runs)
 	if hasEntrypoint {
 		df = df.Entrypoint(entrypoint)
 	}
@@ -99,21 +99,21 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 }
 
 func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged,
-	paths []PathMapping, filter model.PathMatcher, steps []model.Step) (reference.NamedTagged, error) {
+	paths []PathMapping, filter model.PathMatcher, runs []model.Run) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
 	defer span.Finish()
 
 	df := d.applyLabels(dockerfile.FromExisting(existing), BuildModeExisting)
 
-	// Don't worry about conditional steps on incremental builds, they've
+	// Don't worry about conditional runs on incremental builds, they've
 	// already handled by the watch loop.
 	df, err := d.addMountsAndRemovedFiles(ctx, df, paths)
 	if err != nil {
 		return nil, errors.Wrap(err, "BuildImageFromExisting")
 	}
 
-	df = d.addRemainingSteps(df, steps)
+	df = d.addRemainingRuns(df, runs)
 	return d.buildFromDf(ctx, ps, df, paths, filter, existing, model.DockerBuildArgs{})
 }
 
@@ -125,16 +125,16 @@ func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode doc
 	return df
 }
 
-// If the build starts with conditional steps, add the dependent files first,
+// If the build starts with conditional run's, add the dependent files first,
 // then add the runs, before we add the majority of the source.
-func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps []model.Step, paths []PathMapping) (dockerfile.Dockerfile, []model.Step, error) {
+func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs []model.Run, paths []PathMapping) (dockerfile.Dockerfile, []model.Run, error) {
 	consumed := 0
-	for _, step := range steps {
-		if step.Triggers == nil {
+	for _, run := range runs {
+		if run.Triggers == nil {
 			break
 		}
 
-		matcher, err := ignore.CreateStepMatcher(step)
+		matcher, err := ignore.CreateRunMatcher(run)
 		if err != nil {
 			return "", nil, err
 		}
@@ -151,7 +151,7 @@ func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps
 			// tiltfile.
 			//
 			// For now, we're going to return an error to catch this case.
-			return "", nil, fmt.Errorf("No inputs for run: %s", step.Cmd)
+			return "", nil, fmt.Errorf("No inputs for run: %s", run.Cmd)
 		}
 
 		for _, p := range pathsToAdd {
@@ -160,18 +160,18 @@ func (d *dockerImageBuilder) addConditionalSteps(df dockerfile.Dockerfile, steps
 			df = df.Join(fmt.Sprintf("COPY %s %s", p.ContainerPath, p.ContainerPath))
 		}
 
-		// After adding the inputs, run the step.
+		// After adding the inputs, run the command.
 		//
-		// TODO(nick): This assumes that the RUN step doesn't overwrite any input files
+		// TODO(nick): This assumes that the RUN run doesn't overwrite any input files
 		// that might be added later. In that case, we might need to do something
 		// clever where we stash the outputs and restore them after the final "ADD . /".
 		// But let's see how this works for now.
-		df = df.Run(step.Cmd)
+		df = df.Run(run.Cmd)
 		consumed++
 	}
 
-	remainingSteps := append([]model.Step{}, steps[consumed:]...)
-	return df, remainingSteps, nil
+	remainingRuns := append([]model.Run{}, runs[consumed:]...)
+	return df, remainingRuns, nil
 }
 
 func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
@@ -190,9 +190,9 @@ func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df do
 	return df, nil
 }
 
-func (d *dockerImageBuilder) addRemainingSteps(df dockerfile.Dockerfile, remaining []model.Step) dockerfile.Dockerfile {
-	for _, step := range remaining {
-		df = df.Run(step.Cmd)
+func (d *dockerImageBuilder) addRemainingRuns(df dockerfile.Dockerfile, remaining []model.Run) dockerfile.Dockerfile {
+	for _, run := range remaining {
+		df = df.Run(run.Cmd)
 	}
 	return df
 }
@@ -395,7 +395,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 			if err != nil {
 				return dockerOutput{}, errors.Wrap(err, "failed to write docker output")
 			}
-			if strings.HasPrefix(msg, "Step") || strings.HasPrefix(msg, "Running") {
+			if strings.HasPrefix(msg, "Run") || strings.HasPrefix(msg, "Running") {
 				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
 			}
 		}

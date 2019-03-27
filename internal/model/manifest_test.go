@@ -36,24 +36,24 @@ var mount2 = Mount{
 
 var cmdSayHi = Cmd{Argv: []string{"bash", "-c", "echo hi"}}
 var cmdSayBye = Cmd{Argv: []string{"bash", "-c", "echo bye"}}
-var stepSayHi = Step{Cmd: cmdSayHi}
-var stepSayBye = Step{Cmd: cmdSayBye}
-var stepSayHiTriggerFoo = Step{
+var stepSayHi = Run{Cmd: cmdSayHi}
+var stepSayBye = Run{Cmd: cmdSayBye}
+var stepSayHiTriggerFoo = Run{
 	Cmd:           cmdSayHi,
 	Triggers:      []string{"foo"},
 	BaseDirectory: "/src",
 }
-var stepSayHiTriggerBar = Step{
+var stepSayHiTriggerBar = Run{
 	Cmd:           cmdSayHi,
 	Triggers:      []string{"bar"},
 	BaseDirectory: "/src",
 }
-var stepSayHiTriggerDirA = Step{
+var stepSayHiTriggerDirA = Run{
 	Cmd:           cmdSayHi,
 	Triggers:      []string{"foo"},
 	BaseDirectory: "/dirA",
 }
-var stepSayHiTriggerDirB = Step{
+var stepSayHiTriggerDirB = Run{
 	Cmd:           cmdSayHi,
 	Triggers:      []string{"foo"},
 	BaseDirectory: "/dirB",
@@ -183,45 +183,45 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHi}},
+			FastBuild{Runs: []Run{stepSayHi}},
 		)),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHi}},
-		)),
-		true,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHi}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayBye}},
-		)),
-		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+			FastBuild{Runs: []Run{stepSayHi}},
 		)),
 		true,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHiTriggerFoo}},
+			FastBuild{Runs: []Run{stepSayHi}},
 		)),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHiTriggerBar}})),
+			FastBuild{Runs: []Run{stepSayBye}},
+		)),
 		false,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHiTriggerDirA}},
+			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
 		)),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Steps: []Step{stepSayHiTriggerDirB}},
+			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
+		)),
+		true,
+	},
+	{
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Runs: []Run{stepSayHiTriggerBar}})),
+		false,
+	},
+	{
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Runs: []Run{stepSayHiTriggerDirA}},
+		)),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
+			FastBuild{Runs: []Run{stepSayHiTriggerDirB}},
 		)),
 		false,
 	},

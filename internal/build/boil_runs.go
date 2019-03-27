@@ -5,14 +5,14 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func BoilSteps(steps []model.Step, pathMappings []PathMapping) ([]model.Cmd, error) {
+func BoilRuns(runs []model.Run, pathMappings []PathMapping) ([]model.Cmd, error) {
 	res := []model.Cmd{}
-	for _, step := range steps {
-		if step.Triggers == nil {
-			res = append(res, step.Cmd)
+	for _, run := range runs {
+		if run.Triggers == nil {
+			res = append(res, run.Cmd)
 			continue
 		}
-		matcher, err := ignore.CreateStepMatcher(step)
+		matcher, err := ignore.CreateRunMatcher(run)
 		if err != nil {
 			return []model.Cmd{}, err
 		}
@@ -22,7 +22,7 @@ func BoilSteps(steps []model.Step, pathMappings []PathMapping) ([]model.Cmd, err
 				return []model.Cmd{}, err
 			}
 			if matches {
-				res = append(res, step.Cmd)
+				res = append(res, run.Cmd)
 				break
 			}
 		}

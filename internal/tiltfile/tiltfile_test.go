@@ -3181,7 +3181,7 @@ func fbWithCache(img imageHelper, cache string, opts ...interface{}) fbHelper {
 
 func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.FastBuild) {
 	mounts := fbInfo.Mounts
-	steps := fbInfo.Steps
+	runs := fbInfo.Runs
 	for _, matcher := range fb.matchers {
 		switch matcher := matcher.(type) {
 		case addHelper:
@@ -3194,10 +3194,10 @@ func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.Fast
 				f.t.Fatalf("manifest %v mount %+v dest: %q; expected %q", m.Name, mount, mount.ContainerPath, matcher.dest)
 			}
 		case runHelper:
-			step := steps[0]
-			steps = steps[1:]
-			assert.Equal(f.t, model.ToShellCmd(matcher.cmd), step.Cmd)
-			assert.Equal(f.t, matcher.triggers, step.Triggers)
+			run := runs[0]
+			runs = runs[1:]
+			assert.Equal(f.t, model.ToShellCmd(matcher.cmd), run.Cmd)
+			assert.Equal(f.t, matcher.triggers, run.Triggers)
 		case hotReloadHelper:
 			assert.Equal(f.t, matcher.on, fbInfo.HotReload)
 		default:

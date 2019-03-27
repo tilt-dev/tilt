@@ -228,7 +228,7 @@ func (DockerBuild) buildDetails() {}
 type FastBuild struct {
 	BaseDockerfile string
 	Mounts         []Mount
-	Steps          []Step
+	Runs           []Run
 	Entrypoint     Cmd
 
 	// A HotReload container image knows how to automatically

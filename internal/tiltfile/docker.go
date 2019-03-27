@@ -21,7 +21,7 @@ type dockerImage struct {
 	configurationRef   container.RefSelector
 	deploymentRef      reference.Named
 	mounts             []mount
-	steps              []model.Step
+	runs               []model.Run
 	entrypoint         string
 	cachePaths         []string
 	hotReload          bool
@@ -173,7 +173,7 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 	return model.FastBuild{
 		BaseDockerfile: image.baseDockerfile.String(),
 		Mounts:         s.mountsToDomain(image),
-		Steps:          image.steps,
+		Runs:           image.runs,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		HotReload:      image.hotReload,
 	}
@@ -423,7 +423,7 @@ func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, arg
 }
 
 func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if len(b.img.steps) > 0 {
+	if len(b.img.runs) > 0 {
 		return nil, fmt.Errorf("fast_build(%q).add() called after .run(); must add all code before runs", b.img.configurationRef.String())
 	}
 
@@ -471,10 +471,10 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 		triggers = []string{string(trigger)}
 	}
 
-	step := model.ToStep(b.s.absWorkingDir(), model.ToShellCmd(cmd))
-	step.Triggers = triggers
+	run := model.ToRun(b.s.absWorkingDir(), model.ToShellCmd(cmd))
+	run.Triggers = triggers
 
-	b.img.steps = append(b.img.steps, step)
+	b.img.runs = append(b.img.runs, run)
 	return b, nil
 }
 

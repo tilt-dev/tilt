@@ -15,14 +15,14 @@ import (
 
 const ExampleBuildSHA1 = "sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab"
 
-const ExampleBuildOutput1 = `{"stream":"Step 1/1 : FROM alpine"}
+const ExampleBuildOutput1 = `{"stream":"Run 1/1 : FROM alpine"}
 	{"stream":"\n"}
 	{"stream":" ---\u003e 11cd0b38bc3c\n"}
 	{"aux":{"ID":"sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab"}}
 	{"stream":"Successfully built 11cd0b38bc3c\n"}
 	{"stream":"Successfully tagged hi:latest\n"}
 `
-const ExampleBuildOutputV1_23 = `{"stream":"Step 1/1 : FROM alpine"}
+const ExampleBuildOutputV1_23 = `{"stream":"Run 1/1 : FROM alpine"}
 	{"stream":"\n"}
 	{"stream":" ---\u003e 11cd0b38bc3c\n"}
 	{"stream":"Successfully built 11cd0b38bc3c\n"}

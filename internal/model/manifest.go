@@ -188,10 +188,10 @@ type LocalGitRepo struct {
 
 func (LocalGitRepo) IsRepo() {}
 
-type Step struct {
-	// Required. The command to run in this step.
+type Run struct {
+	// Required. The command to run.
 	Cmd Cmd
-	// Optional. If not specified, this step runs on every change.
+	// Optional. If not specified, this command runs on every change.
 	// If specified, we only run the Cmd if the trigger matches the changed file.
 	Triggers []string
 	// Directory the Triggers are relative to
@@ -273,20 +273,16 @@ func ToShellCmds(cmds []string) []Cmd {
 	return res
 }
 
-func ToStep(cwd string, cmd Cmd) Step {
-	return Step{BaseDirectory: cwd, Cmd: cmd}
+func ToRun(cwd string, cmd Cmd) Run {
+	return Run{BaseDirectory: cwd, Cmd: cmd}
 }
 
-func ToSteps(cwd string, cmds []Cmd) []Step {
-	res := make([]Step, len(cmds))
+func ToRuns(cwd string, cmds []Cmd) []Run {
+	res := make([]Run, len(cmds))
 	for i, cmd := range cmds {
-		res[i] = ToStep(cwd, cmd)
+		res[i] = ToRun(cwd, cmd)
 	}
 	return res
-}
-
-func ToShellSteps(cwd string, cmds []string) []Step {
-	return ToSteps(cwd, ToShellCmds(cmds))
 }
 
 type PortForward struct {

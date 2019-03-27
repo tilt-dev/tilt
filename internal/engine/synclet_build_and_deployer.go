@@ -87,7 +87,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	deployInfo := state.DeployInfo
-	cmds, err := build.BoilSteps(fbInfo.Steps, paths)
+	cmds, err := build.BoilRuns(fbInfo.Runs, paths)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
