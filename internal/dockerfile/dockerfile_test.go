@@ -102,7 +102,7 @@ COPY foo /bar
 ADD /abs/bar /baz
 ADD ./beep/boop /blorp`)
 	context := "/context/dir"
-	mounts, err := df.DeriveMounts(context)
+	mounts, err := df.BUGGY_DeriveMounts(context)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ ADD ./beep/boop /blorp`)
 
 func TestNoAddsToNoMounts(t *testing.T) {
 	df := Dockerfile(`RUN echo 'hi'`)
-	mounts, err := df.DeriveMounts("/context/dir")
+	mounts, err := df.BUGGY_DeriveMounts("/context/dir")
 	if err != nil {
 		t.Fatal(err)
 	}
