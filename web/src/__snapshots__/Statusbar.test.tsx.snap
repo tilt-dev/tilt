@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`renders without crashing if theres no last build 1`] = `
+exports[`StatusBar renders without crashing 1`] = `
 <div
   className="Statusbar"
 >

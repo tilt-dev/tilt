@@ -1,12 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import renderer from 'react-test-renderer';
-import Statusbar from './Statusbar'
+import Statusbar, {StatusItem} from './Statusbar'
 
-it('renders without crashing if theres no last build', () => {
-  const tree = renderer
-    .create(<Statusbar items={[]} toggleSidebar={null} />)
-    .toJSON()
+describe('StatusBar', () => {
+  it('renders without crashing', () => {
+    const tree = renderer
+      .create(<Statusbar items={[]} toggleSidebar={null} />)
+      .toJSON()
 
-  expect(tree).toMatchSnapshot()
+    expect(tree).toMatchSnapshot()
+  })
+})
+
+describe('StatusItem', () => {
+  it('can be constructed with no build history', () => {
+    let si = new StatusItem({})
+  })
 })

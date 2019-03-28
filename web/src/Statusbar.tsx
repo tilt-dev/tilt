@@ -6,10 +6,10 @@ import './Statusbar.scss';
 const nbsp = '\u00a0'
 
 class StatusItem {
-  private warnings: Array<string> = []
-  private up: boolean = false
-  private error: string = ""
-  private name: string
+  public warnings: Array<string> = []
+  public up: boolean = false
+  public error: string = ""
+  public name: string
 
   /**
    * Create a pared down StatusItem from a ResourceView
