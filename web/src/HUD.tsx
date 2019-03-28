@@ -83,7 +83,7 @@ class HUD extends Component<HudProps, HudState> {
         let r = view.Resources.find(r => r.Name === name)
         logs = r ? r.CombinedLog : ""
       }
-       return <LogPane log={logs} />
+      return <LogPane log={logs} />
     }
 
     return (
@@ -96,12 +96,8 @@ class HUD extends Component<HudProps, HudState> {
 
         <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
         <Switch>
-          <Route path="/hud/r/:name/log" component={LogsRoute} />
-          <Route component={LogsRoute} />
-        </Switch>
-        <Switch>
           <Route exact path="/hud" render={() => <LogPane log={view.Log} />}/>
-          <Route exact path="/hud/r/:name/log" render={() => <LogPane log={""} />} />
+          <Route exact path="/hud/r/:name/log" component={LogsRoute} />
           <Route exact path="/hud/r/:name/k8s"  render={() => <K8sViewPane />}  />
           <Route exact path="/hud/r/:name/preview" render={() => <PreviewPane />} />
           <Route component={NoMatch} />
