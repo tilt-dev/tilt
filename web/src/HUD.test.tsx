@@ -3,14 +3,16 @@ import ReactDOM from 'react-dom'
 import HUD from './HUD'
 import { mount } from 'enzyme'
 
+const emptyHUD = <HUD history={null} location={null} match={null} />
+
 it('renders without crashing', () => {
   const div = document.createElement('div')
-  ReactDOM.render(<HUD />, div)
+  ReactDOM.render(emptyHUD, div)
   ReactDOM.unmountComponentAtNode(div)
 });
 
 it('renders loading screen', async () => {
-  const hud = mount(<HUD />)
+  const hud = mount(emptyHUD)
   expect(hud.html()).toEqual(expect.stringContaining('Loading'))
 
   hud.setState({Message: 'Disconnected'})
@@ -18,7 +20,7 @@ it('renders loading screen', async () => {
 });
 
 it('renders resource', async () => {
-  const hud = mount(<HUD />);
+  const hud = mount(emptyHUD);
   hud.setState({View: oneResourceView()})
   expect(hud.html())
   expect(hud.find('.Statusbar')).toHaveLength(1)
@@ -26,7 +28,7 @@ it('renders resource', async () => {
 });
 
 it('opens sidebar on click', async () => {
-  const hud = mount(<HUD />);
+  const hud = mount(emptyHUD);
   hud.setState({View: oneResourceView()})
 
   let sidebar = hud.find('.Sidebar')

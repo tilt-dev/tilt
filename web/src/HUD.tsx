@@ -8,16 +8,43 @@ import LogPane from './LogPane';
 import K8sViewPane from './K8sViewPane';
 import PreviewPane from './PreviewPane';
 import { Map } from 'immutable';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Switch, RouteComponentProps } from 'react-router-dom';
 import './HUD.scss';
 
-type HudProps = any
+interface HudProps extends RouteComponentProps<any> {}
+
+type Resource = {
+  Name: string
+  CombinedLog: string
+  BuildHistory: Array<any>,
+  CrashLog: string,
+  CurrentBuild: any,
+  DirectoriesWatched: Array<any>,
+  Endpoints: Array<string>,
+  IsTiltfile: boolean,
+  LastDeployTime: string,
+  PathsWatched: Array<string>,
+  PendingBuildEdits: any,
+  PendingBuildReason: number,
+  ResourceInfo: {
+    PodCreationTime: string,
+    PodLog: string,
+    PodName: string,
+    PodRestarts: number,
+    PodUpdateStartTime: string,
+    YAML: string,
+  },
+  RuntimeStatus: string,
+  ShowBuildStatus: boolean,
+}
 
 type HudState = {
   Message: string
   View: {
-    Resources: Array<any>,
+    Resources: Array<Resource>,
     Log: string,
+    LogTimestamps: boolean,
+    TiltfileErrorMessage: string,
   }
   isSidebarOpen: boolean
 }
@@ -27,13 +54,13 @@ type HudState = {
 class HUD extends Component<HudProps, HudState> {
   private controller: AppController;
 
-  constructor(props: any) {
+  constructor(props: HudProps) {
     super(props)
 
     this.controller = new AppController(`ws://${window.location.host}/ws/view`, this)
     this.state = {
       Message: '',
-      View: {Resources: [], Log: ""},
+      View: {Resources: [], Log: "", LogTimestamps: false, TiltfileErrorMessage: ""},
       isSidebarOpen: false,
     }
 
