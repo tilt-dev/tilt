@@ -180,7 +180,7 @@ func TestMultiStageDockerBuild(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildMultiStageManifest()
+	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -202,15 +202,58 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestMultiStageDockerBuildWithOnlyOneDirtyImage(t *testing.T) {
+func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildMultiStageManifest()
-	iTargetID := manifest.ImageTargets[0].ID()
-	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
-	state := store.NewBuildState(result, nil)
-	stateSet := store.BuildStateSet{iTargetID: state}
+	manifest := NewSanchoDockerBuildMultiStageManifest(f)
+	iTargetID1 := manifest.ImageTargets[0].ID()
+	iTargetID2 := manifest.ImageTargets[1].ID()
+	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+
+	newFile := f.WriteFile("sancho-base/message.txt", "message")
+
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.NewBuildState(result1, []string{newFile}),
+		iTargetID2: store.NewBuildState(result2, nil),
+	}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 1, f.docker.PushCount)
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
+func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildMultiStageManifest(f)
+	iTargetID1 := manifest.ImageTargets[0].ID()
+	iTargetID2 := manifest.ImageTargets[1].ID()
+	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+
+	newFile := f.WriteFile("sancho/message.txt", "message")
+
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.NewBuildState(result1, nil),
+		iTargetID2: store.NewBuildState(result2, []string{newFile}),
+	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +264,7 @@ func TestMultiStageDockerBuildWithOnlyOneDirtyImage(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
-FROM docker.io/library/sancho-base:tilt-prebuilt
+FROM docker.io/library/sancho-base:tilt-prebuilt1
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho

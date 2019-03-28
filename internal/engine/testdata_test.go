@@ -164,10 +164,10 @@ func NewSanchoDockerBuildManifestWithNestedFastBuild(fixture pather) model.Manif
 	return manifest
 }
 
-func NewSanchoDockerBuildMultiStageManifest() model.Manifest {
+func NewSanchoDockerBuildMultiStageManifest(fixture pather) model.Manifest {
 	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  "/path/to/build",
+		BuildPath:  fixture.JoinPath("sancho-base"),
 	})
 
 	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
@@ -177,7 +177,7 @@ ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho
 `,
-		BuildPath: "/path/to/build",
+		BuildPath: fixture.JoinPath("sancho"),
 	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
 	kTarget := model.K8sTarget{YAML: SanchoYAML}.
