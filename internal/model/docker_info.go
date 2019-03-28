@@ -104,6 +104,17 @@ func (i ImageTarget) IsDockerBuild() bool {
 	return ok
 }
 
+func (i ImageTarget) MaybeLiveUpdateInfo() *LiveUpdate {
+	switch details := i.BuildDetails.(type) {
+	case DockerBuild:
+		return details.LiveUpdate
+	case CustomBuild:
+		return details.LiveUpdate
+	default:
+		return nil
+	}
+}
+
 func (i ImageTarget) MaybeFastBuildInfo() *FastBuild {
 	switch details := i.BuildDetails.(type) {
 	case FastBuild:
@@ -220,7 +231,8 @@ type DockerBuild struct {
 	Dockerfile string
 	BuildPath  string // the absolute path to the files
 	BuildArgs  DockerBuildArgs
-	FastBuild  *FastBuild // Optionally, can use FastBuild to update this build in place.
+	FastBuild  *FastBuild  // Optionally, can use FastBuild to update this build in place.
+	LiveUpdate *LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 }
 
 func (DockerBuild) buildDetails() {}
@@ -251,6 +263,7 @@ type CustomBuild struct {
 	Tag string
 
 	Fast        *FastBuild
+	LiveUpdate  *LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	DisablePush bool
 }
 
