@@ -11,16 +11,29 @@ import { Map } from 'immutable';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import './HUD.scss';
 
+type HudProps = any
+
+type HudState = {
+  Message: string
+  View: {
+    Resources: Array<any>,
+    Log: string,
+  }
+  isSidebarOpen: boolean
+}
+
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
-class HUD extends Component {
-  constructor(props) {
+class HUD extends Component<HudProps, HudState> {
+  private controller: AppController;
+
+  constructor(props: any) {
     super(props)
 
     this.controller = new AppController(`ws://${window.location.host}/ws/view`, this)
     this.state = {
       Message: '',
-      View: {Resources: []},
+      View: {Resources: [], Log: ""},
       isSidebarOpen: false,
     }
 
@@ -35,7 +48,7 @@ class HUD extends Component {
     this.controller.dispose()
   }
 
-  setAppState(state) {
+  setAppState(state: HudState) {
     this.setState(state)
   }
 
@@ -43,13 +56,12 @@ class HUD extends Component {
     this.setState((prevState) => {
       return Map(prevState)
         .set('isSidebarOpen', !prevState.isSidebarOpen)
-        .toObject()
+        .toObject() as HudState // NOTE(dmiller): TypeScript doesn't seem to understand what's going on here so I added a type assertion.
     })
   }
 
   render() {
     let view = this.state.View
-    console.log(view.Log)
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -59,9 +71,19 @@ class HUD extends Component {
     let isSidebarOpen = this.state.isSidebarOpen
     let statusItems = resources.map((res) => new StatusItem(res))
     let sidebarItems = resources.map((res) => new SidebarItem(res))
-    let SidebarRoute = function(props) {
+    let SidebarRoute = function(props: HudProps) {
       let name = props.match.params.name
       return <Sidebar selected={name} items={sidebarItems} isOpen={isSidebarOpen} />
+    }
+
+    let LogsRoute = (props: HudProps) => {
+      let name = props.match.params ? props.match.params.name : ""
+      let logs = ""
+      if (name !== "") {
+        let r = view.Resources.find(r => r.Name === name)
+        logs = r ? r.CombinedLog : ""
+      }
+       return <LogPane log={logs} />
     }
 
     return (
@@ -73,6 +95,10 @@ class HUD extends Component {
         </Switch>
 
         <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
+        <Switch>
+          <Route path="/hud/r/:name/log" component={LogsRoute} />
+          <Route component={LogsRoute} />
+        </Switch>
         <Switch>
           <Route exact path="/hud" render={() => <LogPane log={view.Log} />}/>
           <Route exact path="/hud/r/:name/log" render={() => <LogPane log={""} />} />
