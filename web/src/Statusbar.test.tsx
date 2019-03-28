@@ -16,5 +16,6 @@ describe('StatusBar', () => {
 describe('StatusItem', () => {
   it('can be constructed with no build history', () => {
     let si = new StatusItem({})
+    expect(si.error).toBe("")
   })
 })
