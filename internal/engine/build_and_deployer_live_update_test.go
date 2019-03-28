@@ -60,11 +60,6 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	f.assertContainerRestarts(tCase.expectDockerRestartCount)
 	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload, "synclet hot reload")
 
-	id := manifest.ImageTargetAt(0).ID()
-	_, hasResult := result[id]
-	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
-
 	if tCase.expectK8sDeploy {
 		expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 		if !strings.Contains(f.k8s.Yaml, expectedYaml) {
@@ -73,6 +68,12 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
 	} else {
 		assert.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
+
+		// We did a container build, so we expect result to have the container ID we operated on
+		id := manifest.ImageTargetAt(0).ID()
+		_, hasResult := result[id]
+		assert.True(t, hasResult)
+		assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
 	}
 
 }
@@ -207,6 +208,21 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
 		expectSyncletHotReload:            true,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	tCase := testCase{
+		env:                    k8s.EnvGKE,
+		baseManifest:           NewSanchoDockerBuildManifest(),
+		changedFile:            "", // will use an empty BuildResultSet, i.e. treat this as first build
+		expectDockerBuildCount: 1,
+		expectDockerPushCount:  1,
+		expectK8sDeploy:        true,
+		expectSyncletDeploy:    true,
 	}
 	runTestCase(t, f, tCase)
 }
