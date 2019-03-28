@@ -141,7 +141,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
 	})
 
-	// Restart the pod with a new container id, to simulate a container restart.
+	// Restart the pod with a new container id, to simulate a container liveUpdRestart.
 	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
 	assert.True(t, call.oneState().DeployInfo.Empty())

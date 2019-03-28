@@ -17,19 +17,23 @@ type testCase struct {
 	baseManifest        model.Manifest
 	liveUpdSyncs        []model.LiveUpdateSyncStep
 	liveUpdRuns         []model.LiveUpdateRunStep
-	restart             bool
+	liveUpdRestart      bool
 	fullRebuildTriggers []string
 
 	changedFile string // leave empty for no changed files
 
-	expectBuildCount   int
-	expectPushCount    int
-	expectCopyCount    int
-	expectExecCount    int
-	expectRestartCount int
+	// Docker actions
+	expectBuildCount         int
+	expectPushCount          int
+	expectCopyCount          int
+	expectExecCount          int
+	expectDockerRestartCount int
 
-	expectK8sDeploy bool
-	expectSynclet   bool
+	// Synclet actions
+	expectSyncletUpdateContainerCount int
+	expectSyncletHotReload            bool
+	expectK8sDeploy                   bool
+	expectSyncletDeploy               bool
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
@@ -46,7 +50,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	for _, run := range tCase.liveUpdRuns {
 		steps = append(steps, run)
 	}
-	if tCase.restart {
+	if tCase.liveUpdRestart {
 		steps = append(steps, model.LiveUpdateRestartContainerStep{})
 	}
 	lu := model.MustNewLiveUpdate(steps, tCase.fullRebuildTriggers)
@@ -67,7 +71,9 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectPushCount, f.docker.PushCount, "docker push")
 	assert.Equal(t, tCase.expectCopyCount, f.docker.CopyCount, "docker copy")
 	assert.Equal(t, tCase.expectExecCount, len(f.docker.ExecCalls), "docker exec")
-	f.assertContainerRestarts(tCase.expectRestartCount)
+	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
+	f.assertContainerRestarts(tCase.expectDockerRestartCount)
+	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload)
 
 	id := manifest.ImageTargetAt(0).ID()
 	_, hasResult := result[id]
@@ -79,7 +85,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 			t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 		}
-		assert.Equal(t, tCase.expectSynclet, strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSynclet, f.k8s.Yaml)
+		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
 	}
 
 }
@@ -88,17 +94,17 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 	tCase := testCase{
-		env:                k8s.EnvDockerDesktop,
-		baseManifest:       NewSanchoDockerBuildManifest(),
-		liveUpdSyncs:       SanchoSyncSteps(f),
-		liveUpdRuns:        SanchoRunSteps,
-		restart:            true,
-		changedFile:        "a.txt",
-		expectBuildCount:   0,
-		expectPushCount:    0,
-		expectCopyCount:    1,
-		expectExecCount:    1,
-		expectRestartCount: 1,
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoDockerBuildManifest(),
+		liveUpdSyncs:             SanchoSyncSteps(f),
+		liveUpdRuns:              SanchoRunSteps,
+		liveUpdRestart:           true,
+		changedFile:              "a.txt",
+		expectBuildCount:         0,
+		expectPushCount:          0,
+		expectCopyCount:          1,
+		expectExecCount:          1,
+		expectDockerRestartCount: 1,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -107,17 +113,17 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 	tCase := testCase{
-		env:                k8s.EnvDockerDesktop,
-		baseManifest:       NewSanchoCustomBuildManifest(f),
-		liveUpdSyncs:       SanchoSyncSteps(f),
-		liveUpdRuns:        SanchoRunSteps,
-		restart:            true,
-		changedFile:        "a.txt",
-		expectBuildCount:   0,
-		expectPushCount:    0,
-		expectCopyCount:    1,
-		expectExecCount:    1,
-		expectRestartCount: 1,
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoCustomBuildManifest(f),
+		liveUpdSyncs:             SanchoSyncSteps(f),
+		liveUpdRuns:              SanchoRunSteps,
+		liveUpdRestart:           true,
+		changedFile:              "a.txt",
+		expectBuildCount:         0,
+		expectPushCount:          0,
+		expectCopyCount:          1,
+		expectExecCount:          1,
+		expectDockerRestartCount: 1,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -126,17 +132,17 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 	tCase := testCase{
-		env:                k8s.EnvDockerDesktop,
-		baseManifest:       NewSanchoDockerBuildManifest(),
-		liveUpdSyncs:       SanchoSyncSteps(f),
-		liveUpdRuns:        SanchoRunSteps,
-		restart:            false,
-		changedFile:        "a.txt",
-		expectBuildCount:   0,
-		expectPushCount:    0,
-		expectCopyCount:    1,
-		expectExecCount:    1,
-		expectRestartCount: 0,
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoDockerBuildManifest(),
+		liveUpdSyncs:             SanchoSyncSteps(f),
+		liveUpdRuns:              SanchoRunSteps,
+		liveUpdRestart:           false,
+		changedFile:              "a.txt",
+		expectBuildCount:         0,
+		expectPushCount:          0,
+		expectCopyCount:          1,
+		expectExecCount:          1,
+		expectDockerRestartCount: 0,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -154,13 +160,70 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 				Trigger: "b.txt", // does NOT match changed file
 			},
 		},
-		restart:            true,
-		changedFile:        "a.txt",
-		expectBuildCount:   0,
-		expectPushCount:    0,
-		expectCopyCount:    1,
-		expectExecCount:    0, // Run doesn't match changed file, so shouldn't exec
-		expectRestartCount: 1,
+		liveUpdRestart:           true,
+		changedFile:              "a.txt",
+		expectBuildCount:         0,
+		expectPushCount:          0,
+		expectCopyCount:          1,
+		expectExecCount:          0, // Run doesn't match changed file, so shouldn't exec
+		expectDockerRestartCount: 1,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	tCase := testCase{
+		env:                               k8s.EnvGKE,
+		baseManifest:                      NewSanchoDockerBuildManifest(),
+		liveUpdSyncs:                      SanchoSyncSteps(f),
+		liveUpdRuns:                       SanchoRunSteps,
+		liveUpdRestart:                    false,
+		changedFile:                       "a.txt",
+		expectBuildCount:                  0,
+		expectPushCount:                   0,
+		expectCopyCount:                   1,
+		expectSyncletUpdateContainerCount: 1,
+		expectSyncletHotReload:            false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	tCase := testCase{
+		env:                               k8s.EnvGKE,
+		baseManifest:                      NewSanchoCustomBuildManifest(f),
+		liveUpdSyncs:                      SanchoSyncSteps(f),
+		liveUpdRuns:                       SanchoRunSteps,
+		liveUpdRestart:                    false,
+		changedFile:                       "a.txt",
+		expectBuildCount:                  0,
+		expectPushCount:                   0,
+		expectCopyCount:                   1,
+		expectSyncletUpdateContainerCount: 1,
+		expectSyncletHotReload:            false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateHotReloadSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	tCase := testCase{
+		env:                               k8s.EnvGKE,
+		baseManifest:                      NewSanchoDockerBuildManifest(),
+		liveUpdSyncs:                      SanchoSyncSteps(f),
+		liveUpdRuns:                       SanchoRunSteps,
+		liveUpdRestart:                    true,
+		changedFile:                       "a.txt",
+		expectBuildCount:                  0,
+		expectPushCount:                   0,
+		expectCopyCount:                   1,
+		expectSyncletUpdateContainerCount: 1,
+		expectSyncletHotReload:            true,
 	}
 	runTestCase(t, f, tCase)
 }
