@@ -86,7 +86,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       <div key="logEnd" className="logEnd" ref={(el) => { this.lastElement = el }}>&#9608;</div>
     )
 
-    return (<React.Fragment>{els}</React.Fragment>)
+    return (<div>{els}</div>)
   }
 }
 
