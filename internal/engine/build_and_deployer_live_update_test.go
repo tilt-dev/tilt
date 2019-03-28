@@ -23,10 +23,10 @@ type testCase struct {
 	changedFile string // leave empty for no changed files
 
 	// Docker actions
-	expectBuildCount         int
-	expectPushCount          int
-	expectCopyCount          int
-	expectExecCount          int
+	expectDockerBuildCount   int
+	expectDockerPushCount    int
+	expectDockerCopyCount    int
+	expectDockerExecCount    int
 	expectDockerRestartCount int
 
 	// Synclet actions
@@ -67,13 +67,13 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, tCase.expectBuildCount, f.docker.BuildCount, "docker build")
-	assert.Equal(t, tCase.expectPushCount, f.docker.PushCount, "docker push")
-	assert.Equal(t, tCase.expectCopyCount, f.docker.CopyCount, "docker copy")
-	assert.Equal(t, tCase.expectExecCount, len(f.docker.ExecCalls), "docker exec")
+	assert.Equal(t, tCase.expectDockerBuildCount, f.docker.BuildCount, "docker build")
+	assert.Equal(t, tCase.expectDockerPushCount, f.docker.PushCount, "docker push")
+	assert.Equal(t, tCase.expectDockerCopyCount, f.docker.CopyCount, "docker copy")
+	assert.Equal(t, tCase.expectDockerExecCount, len(f.docker.ExecCalls), "docker exec")
 	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
 	f.assertContainerRestarts(tCase.expectDockerRestartCount)
-	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload)
+	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload, "synclet hot reload")
 
 	id := manifest.ImageTargetAt(0).ID()
 	_, hasResult := result[id]
@@ -100,10 +100,10 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 		liveUpdRuns:              SanchoRunSteps,
 		liveUpdRestart:           true,
 		changedFile:              "a.txt",
-		expectBuildCount:         0,
-		expectPushCount:          0,
-		expectCopyCount:          1,
-		expectExecCount:          1,
+		expectDockerBuildCount:   0,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
 		expectDockerRestartCount: 1,
 	}
 	runTestCase(t, f, tCase)
@@ -119,10 +119,10 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 		liveUpdRuns:              SanchoRunSteps,
 		liveUpdRestart:           true,
 		changedFile:              "a.txt",
-		expectBuildCount:         0,
-		expectPushCount:          0,
-		expectCopyCount:          1,
-		expectExecCount:          1,
+		expectDockerBuildCount:   0,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
 		expectDockerRestartCount: 1,
 	}
 	runTestCase(t, f, tCase)
@@ -138,10 +138,10 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 		liveUpdRuns:              SanchoRunSteps,
 		liveUpdRestart:           false,
 		changedFile:              "a.txt",
-		expectBuildCount:         0,
-		expectPushCount:          0,
-		expectCopyCount:          1,
-		expectExecCount:          1,
+		expectDockerBuildCount:   0,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
 		expectDockerRestartCount: 0,
 	}
 	runTestCase(t, f, tCase)
@@ -162,10 +162,10 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 		},
 		liveUpdRestart:           true,
 		changedFile:              "a.txt",
-		expectBuildCount:         0,
-		expectPushCount:          0,
-		expectCopyCount:          1,
-		expectExecCount:          0, // Run doesn't match changed file, so shouldn't exec
+		expectDockerBuildCount:   0,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    0, // Run doesn't match changed file, so shouldn't exec
 		expectDockerRestartCount: 1,
 	}
 	runTestCase(t, f, tCase)
@@ -179,11 +179,10 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 		baseManifest:                      NewSanchoDockerBuildManifest(),
 		liveUpdSyncs:                      SanchoSyncSteps(f),
 		liveUpdRuns:                       SanchoRunSteps,
-		liveUpdRestart:                    false,
+		liveUpdRestart:                    true,
 		changedFile:                       "a.txt",
-		expectBuildCount:                  0,
-		expectPushCount:                   0,
-		expectCopyCount:                   1,
+		expectDockerBuildCount:            0,
+		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
 		expectSyncletHotReload:            false,
 	}
@@ -198,11 +197,10 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 		baseManifest:                      NewSanchoCustomBuildManifest(f),
 		liveUpdSyncs:                      SanchoSyncSteps(f),
 		liveUpdRuns:                       SanchoRunSteps,
-		liveUpdRestart:                    false,
+		liveUpdRestart:                    true,
 		changedFile:                       "a.txt",
-		expectBuildCount:                  0,
-		expectPushCount:                   0,
-		expectCopyCount:                   1,
+		expectDockerBuildCount:            0,
+		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
 		expectSyncletHotReload:            false,
 	}
@@ -217,11 +215,10 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 		baseManifest:                      NewSanchoDockerBuildManifest(),
 		liveUpdSyncs:                      SanchoSyncSteps(f),
 		liveUpdRuns:                       SanchoRunSteps,
-		liveUpdRestart:                    true,
+		liveUpdRestart:                    false,
 		changedFile:                       "a.txt",
-		expectBuildCount:                  0,
-		expectPushCount:                   0,
-		expectCopyCount:                   1,
+		expectDockerBuildCount:            0,
+		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
 		expectSyncletHotReload:            true,
 	}
