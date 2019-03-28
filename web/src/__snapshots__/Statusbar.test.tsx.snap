@@ -1,0 +1,61 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`StatusBar renders without crashing 1`] = `
+<div
+  className="Statusbar"
+>
+  <div
+    className="Statusbar-panel Statusbar-panel--error"
+  >
+    <span
+      aria-label="Error"
+      className="icon"
+      role="img"
+    >
+       
+    </span>
+     
+    <span>
+      0
+       
+      Errors
+    </span>
+  </div>
+  <div
+    className="Statusbar-panel Statusbar-panel--warning"
+  >
+    <span
+      aria-label="Warning"
+      className="icon"
+      role="img"
+    >
+       
+    </span>
+     
+    <span>
+      0
+       
+      Warnings
+    </span>
+  </div>
+  <div
+    className="Statusbar-panel Statusbar-panel--spacer"
+  >
+     
+  </div>
+  <button
+    className="Statusbar-panel Statusbar-panel--up"
+    onClick={null}
+  >
+    0
+     / 
+    0
+     resources up 
+    <svg
+      className="icon"
+    >
+      logo-imagemark.svg
+    </svg>
+  </button>
+</div>
+`;

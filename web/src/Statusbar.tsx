@@ -6,10 +6,15 @@ import './Statusbar.scss';
 const nbsp = '\u00a0'
 
 class StatusItem {
+  public warnings: Array<string> = []
+  public up: boolean = false
+  public error: string = ""
+  public name: string
+
   /**
    * Create a pared down StatusItem from a ResourceView
    */
-  constructor(res) {
+  constructor(res: any) {
     this.name = res.Name
 
     let buildHistory = res.BuildHistory || []
@@ -20,29 +25,35 @@ class StatusItem {
     let currentBuild = res.CurrentBuild
     let hasCurrentBuild = Boolean(currentBuild && !isZeroTime(currentBuild.StartTime))
     let hasPendingBuild = !isZeroTime(res.PendingBuildSince)
+    let lastBuildError: string = lastBuild ? lastBuild.Error : ''
 
-    this.up = Boolean(runtimeStatus === "ok" && !hasCurrentBuild && !lastBuild.Error && !hasPendingBuild)
+    this.up = Boolean(runtimeStatus === "ok" && !hasCurrentBuild && !lastBuildError && !hasPendingBuild)
 
-    this.error = runtimeStatus === "error" || lastBuild.Error || ''
+    this.error = runtimeStatus === "error" ? lastBuildError : ''
   }
 }
 
-class Statusbar extends PureComponent {
-  errorPanel(errorCount) {
+type StatusBarProps = {
+  items: Array<any>
+  toggleSidebar: any
+}
+
+class Statusbar extends PureComponent<StatusBarProps> {
+  errorPanel(errorCount: number) {
     let errorPanelClasses = 'Statusbar-panel Statusbar-panel--error'
     let icon = <span role="img" className="icon" aria-label="Error">{errorCount > 0 ? '❌' : nbsp}</span>
     let message = <span>{errorCount} {errorCount === 1 ? 'Error' : 'Errors'}</span>
     return (<div className={errorPanelClasses}>{icon}&nbsp;{message}</div>)
   }
 
-  warningPanel(warningCount) {
+  warningPanel(warningCount: number) {
     let warningPanelClasses = 'Statusbar-panel Statusbar-panel--warning'
     let icon = <span role="img" className="icon" aria-label="Warning">{warningCount > 0 ? '▲' : nbsp}</span>
     let message = <span>{warningCount} {warningCount === 1 ? 'Warning' : 'Warnings'}</span>
     return (<div className={warningPanelClasses}>{icon}&nbsp;{message}</div>)
   }
 
-  upPanel(upCount, itemCount) {
+  upPanel(upCount: number, itemCount: number) {
     let upPanelClasses = 'Statusbar-panel Statusbar-panel--up'
     let upPanel = (<button className={upPanelClasses} onClick={this.props.toggleSidebar}>
        {upCount} / {itemCount} resources up <LogoSvg className="icon"/>
