@@ -115,6 +115,22 @@ func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
 		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
+func NewSanchoCustomBuildManifestWithLiveUpdate(fixture pather) model.Manifest {
+	lu := NewSanchoLiveUpdate(fixture)
+	cb := model.CustomBuild{
+		Command:    "true",
+		Deps:       []string{fixture.JoinPath("app")},
+		LiveUpdate: &lu,
+	}
+
+	m := model.Manifest{Name: "sancho"}
+
+	return assembleK8sManifest(
+		m,
+		model.K8sTarget{YAML: SanchoYAML},
+		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
+}
+
 func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest {
 	cb := model.CustomBuild{
 		Command:     "true",

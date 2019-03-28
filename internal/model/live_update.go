@@ -1,6 +1,8 @@
 package model
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 // Specifies how to update a running container.
 // 1. If there are Sync steps in `Steps`, files will be synced as specified.
@@ -59,6 +61,14 @@ type LiveUpdateSyncStep struct {
 
 func (l LiveUpdateSyncStep) liveUpdateStep() {}
 
+// TODO(maia): s/Mount/Sync
+func (l LiveUpdateSyncStep) toMount() Mount {
+	return Mount{
+		LocalPath:     l.Source,
+		ContainerPath: l.Dest,
+	}
+}
+
 // Specifies that `Command` should be executed when any files in `Sync` steps have changed
 // If `Trigger` is non-empty, `Command` will only be executed when the local paths of changed files covered by
 // at least one `Sync` match the glob in `Trigger`.
@@ -69,7 +79,50 @@ type LiveUpdateRunStep struct {
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
 
+func (l LiveUpdateRunStep) toRun() Run {
+	r := Run{Cmd: l.Command}
+	if l.Trigger != "" {
+		r = r.WithTriggers([]string{l.Trigger}) // TODO(maia): should be []string to match Run.Triggers
+	}
+	return r
+}
+
 // Specifies that the container should be restarted when any files in `Sync` steps have changed.
 type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) liveUpdateStep() {}
+
+// TODO(maia): s/Mount/Sync
+func (lu LiveUpdate) SyncSteps() []Mount {
+	var syncs []Mount
+	for _, step := range lu.Steps {
+		switch step := step.(type) {
+		case LiveUpdateSyncStep:
+			syncs = append(syncs, step.toMount())
+		}
+	}
+	return syncs
+}
+
+func (lu LiveUpdate) RunSteps() []Run {
+	// TODO(maia): populate run.BaseDirectory with Workdir (if given)
+	var runs []Run
+	for _, step := range lu.Steps {
+		switch step := step.(type) {
+		case LiveUpdateRunStep:
+			runs = append(runs, step.toRun())
+		}
+	}
+	return runs
+}
+
+func (lu LiveUpdate) ShouldRestart() bool {
+	if len(lu.Steps) > 0 {
+		// Currently we require that the Restart step, if present, must be the last step.
+		last := lu.Steps[len(lu.Steps)-1]
+		if _, ok := last.(LiveUpdateRestartContainerStep); ok {
+			return true
+		}
+	}
+	return false
+}
