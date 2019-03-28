@@ -46,6 +46,11 @@ func NewSanchoFastBuild(fixture pather) model.FastBuild {
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
 	}
 }
+func SanchoSyncSteps(fixture pather) []model.LiveUpdateSyncStep {
+	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{fixture.Path(), "/go/src/github.com/windmilleng/sancho"}}
+}
+
+var SanchoRunSteps = []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}}}}
 
 func NewSanchoLiveUpdate(fixture pather) model.LiveUpdate {
 	steps := []model.LiveUpdateStep{
