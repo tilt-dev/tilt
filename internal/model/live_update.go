@@ -35,6 +35,14 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) (LiveUp
 	return LiveUpdate{steps, fullRebuildTriggers}, nil
 }
 
+func MustNewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) LiveUpdate {
+	lu, err := NewLiveUpdate(steps, fullRebuildTriggers)
+	if err != nil {
+		panic(err)
+	}
+	return lu
+}
+
 type LiveUpdateStep interface {
 	liveUpdateStep()
 }

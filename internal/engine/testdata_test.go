@@ -47,6 +47,15 @@ func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	}
 }
 
+func NewSanchoLiveUpdate(fixture pather) model.LiveUpdate {
+	steps := []model.LiveUpdateStep{
+		model.LiveUpdateSyncStep{fixture.Path(), "/go/src/github.com/windmilleng/sancho"},
+		model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}}},
+		model.LiveUpdateRestartContainerStep{},
+	}
+	return model.MustNewLiveUpdate(steps, nil)
+}
+
 func NewSanchoFastBuildImage(fixture pather) model.ImageTarget {
 	fbInfo := NewSanchoFastBuild(fixture)
 	return model.NewImageTarget(SanchoRef).WithBuildDetails(fbInfo)
@@ -160,6 +169,17 @@ func NewSanchoDockerBuildManifestWithNestedFastBuild(fixture pather) model.Manif
 	sb := iTarg.DockerBuildInfo()
 	sb.FastBuild = &fb
 	iTarg = iTarg.WithBuildDetails(sb)
+	manifest = manifest.WithImageTarget(iTarg)
+	return manifest
+}
+
+func NewSanchoDockerBuildManifestWithLiveUpdate(fixture pather) model.Manifest {
+	manifest := NewSanchoDockerBuildManifest()
+	iTarg := manifest.ImageTargetAt(0)
+	lu := NewSanchoLiveUpdate(fixture)
+	db := iTarg.DockerBuildInfo()
+	db.LiveUpdate = &lu
+	iTarg = iTarg.WithBuildDetails(db)
 	manifest = manifest.WithImageTarget(iTarg)
 	return manifest
 }

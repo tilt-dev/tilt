@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -69,6 +71,12 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}
 
 	fbInfo := iTarget.MaybeFastBuildInfo()
+	// TEMPORARY: just while implementing LiveUpdate support
+	luInfo := iTarget.MaybeLiveUpdateInfo()
+	if fbInfo == nil && luInfo != nil {
+		return store.BuildResultSet{}, fmt.Errorf("currently implementing LiveUpdate support. Got LU: %s", spew.Sdump(luInfo))
+	}
+
 	deployInfo := state.DeployInfo
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), fbInfo.Mounts)
 	if err != nil {
