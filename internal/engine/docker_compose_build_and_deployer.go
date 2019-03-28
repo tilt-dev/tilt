@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
@@ -65,51 +66,49 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
 
-	numStages := len(iTargets)
-	haveImage := len(iTargets) > 0
-
-	var err error
-	ps := build.NewPipelineState(ctx, numStages, bd.clock)
-	defer func() { ps.End(ctx, err) }()
-
-	q := NewImageTargetQueue(iTargets)
-	target, ok, err := q.Next()
+	q, err := NewImageTargetQueue(iTargets, currentState)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
+	numStages := q.CountDirty()
+	haveImage := len(iTargets) > 0
+
+	ps := build.NewPipelineState(ctx, numStages, bd.clock)
+	defer func() { ps.End(ctx, err) }()
+
 	iTargetMap := model.ImageTargetsByID(iTargets)
-	for ok {
-		iTarget, err := injectImageDependencies(target.(model.ImageTarget), iTargetMap, q.DependencyResults(target))
+	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+		iTarget, ok := target.(model.ImageTarget)
+		if !ok {
+			return store.BuildResult{}, fmt.Errorf("Not an image target: %T", target)
+		}
+
+		iTarget, err := injectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
-			return store.BuildResultSet{}, err
+			return store.BuildResult{}, err
 		}
 
 		expectedRef := iTarget.ConfigurationRef
-		var ref reference.NamedTagged
-		state := currentState[iTarget.ID()]
-		if state.NeedsImageBuild() {
-			// NOTE(maia): we assume that this func takes one DC target and up to one image target
-			// corresponding to that service. If this func ever supports specs for more than one
-			// service at once, we'll have to match up image build results to DC target by ref.
-			ref, err = bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
-			if err != nil {
-				return store.BuildResultSet{}, err
-			}
 
-			ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
-			if err != nil {
-				return store.BuildResultSet{}, err
-			}
-		} else {
-			ref = state.LastResult.Image
-		}
-
-		q.SetResult(iTarget.ID(), store.NewImageBuildResult(iTarget.ID(), ref))
-		target, ok, err = q.Next()
+		// NOTE(maia): we assume that this func takes one DC target and up to one image target
+		// corresponding to that service. If this func ever supports specs for more than one
+		// service at once, we'll have to match up image build results to DC target by ref.
+		ref, err := bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
 		if err != nil {
-			return store.BuildResultSet{}, err
+			return store.BuildResult{}, err
 		}
+
+		ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
+		if err != nil {
+			return store.BuildResult{}, err
+		}
+
+		return store.NewImageBuildResult(iTarget.ID(), ref), nil
+	})
+
+	if err != nil {
+		return store.BuildResultSet{}, err
 	}
 
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)

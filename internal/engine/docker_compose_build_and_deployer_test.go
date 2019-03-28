@@ -103,7 +103,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildMultiStageManifest().
+	manifest := NewSanchoDockerBuildMultiStageManifest(f).
 		WithDeployTarget(dcTarg)
 	stateSet := store.BuildStateSet{}
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
@@ -130,7 +130,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildMultiStageManifest().
+	manifest := NewSanchoDockerBuildMultiStageManifest(f).
 		WithDeployTarget(dcTarg)
 	iTargetID := manifest.ImageTargets[0].ID()
 	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
