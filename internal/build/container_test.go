@@ -421,7 +421,7 @@ func TestExecRunsOnExisting(t *testing.T) {
 	run := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
 	runs := model.ToRuns(f.Path(), []model.Cmd{run})
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +453,7 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Sync{s}), model.EmptyMatcher, nil)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +490,7 @@ func TestBuildDockerWithRunsFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -148,7 +148,7 @@ func isFile(path string) (bool, error) {
 	return !mode.IsDir(), nil
 }
 
-func MountsToPathMappings(syncs []model.Sync) []PathMapping {
+func SyncsToPathMappings(syncs []model.Sync) []PathMapping {
 	pms := make([]PathMapping, len(syncs))
 	for i, s := range syncs {
 		pms[i] = PathMapping{

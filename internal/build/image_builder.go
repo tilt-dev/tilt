@@ -81,7 +81,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 
 	hasEntrypoint := !entrypoint.Empty()
 
-	paths := MountsToPathMappings(syncs)
+	paths := SyncsToPathMappings(syncs)
 	df := baseDockerfile
 	df, runs, err := d.addConditionalRuns(df, runs, paths)
 	if err != nil {
