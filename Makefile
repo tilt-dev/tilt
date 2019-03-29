@@ -28,11 +28,11 @@ proto: scripts/protocc/protocc.py
 # TODO(nick): We should have a release build that bakes in a particular
 # SYNCLET_IMAGE tag.
 install:
-	./hide_tbd_warning go install ./...
+	go install ./...
 
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
-	./hide_tbd_warning go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
+	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
 define synclet-build-dev
 	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
@@ -50,11 +50,11 @@ lint:
 	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
 
 build:
-	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
+	go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
 test-go:
 ifneq ($(CIRCLECI),true)
-		./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
+		go test -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
 else
 		mkdir -p test-results
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 80s
@@ -64,10 +64,10 @@ test: test-go test-js
 
 # skip some tests that are slow and not always relevant
 shorttest:
-	./hide_tbd_warning go test -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
+	go test -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
 
 integration:
-	./hide_tbd_warning go test -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 400s ./integration
+	go test -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 400s ./integration
 
 dev-js:
 	cd web && yarn install && yarn run start
