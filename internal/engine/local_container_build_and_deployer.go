@@ -68,12 +68,12 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	var syncs []model.Mount
+	var syncs []model.Sync
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		syncs = fbInfo.Mounts
+		syncs = fbInfo.Syncs
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
@@ -85,7 +85,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	return cbd.buildAndDeploy(ctx, iTarget, state, syncs, runs, hotReload)
 }
 
-func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Mount, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
+func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Sync, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
 	deployInfo := state.DeployInfo
 	cf, err := build.FilesToPathMappings(state.FilesChanged(), syncs)
 	if err != nil {

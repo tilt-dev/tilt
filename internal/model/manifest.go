@@ -107,7 +107,7 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 }
 
 func (m Manifest) LocalPaths() []string {
-	// TODO(matt?) DC mounts should probably stored somewhere more consistent with Docker/Fast Build
+	// TODO(matt?) DC syncs should probably stored somewhere more consistent with Docker/Fast Build
 	switch di := m.deployTarget.(type) {
 	case DockerComposeTarget:
 		return di.LocalPaths()
@@ -170,7 +170,7 @@ func (m Manifest) Empty() bool {
 
 var _ TargetSpec = Manifest{}
 
-type Mount struct {
+type Sync struct {
 	LocalPath     string
 	ContainerPath string
 }

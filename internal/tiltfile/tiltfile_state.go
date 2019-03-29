@@ -574,15 +574,15 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				DisablePush: image.disablePush,
 				LiveUpdate:  lu,
 			}
-			if len(image.mounts) > 0 || len(image.runs) > 0 {
+			if len(image.syncs) > 0 || len(image.runs) > 0 {
 				r.Fast = &model.FastBuild{
-					Mounts:    s.mountsToDomain(image),
+					Syncs:     s.syncsToDomain(image),
 					Runs:      image.runs,
 					HotReload: image.hotReload,
 				}
 			}
 			iTarget = iTarget.WithBuildDetails(r)
-			// TODO(dbentley): validate that mounts is a subset of deps
+			// TODO(dbentley): validate that syncs is a subset of deps
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)
 		}

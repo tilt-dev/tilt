@@ -71,7 +71,7 @@ func (i ImageTarget) Validate() error {
 			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.ConfigurationRef)
 		}
 
-		for _, mnt := range bd.Mounts {
+		for _, mnt := range bd.Syncs {
 			if !filepath.IsAbs(mnt.LocalPath) {
 				return fmt.Errorf(
 					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.ConfigurationRef, mnt.LocalPath)
@@ -185,8 +185,8 @@ func (i ImageTarget) LocalPaths() []string {
 	case DockerBuild:
 		return []string{bd.BuildPath}
 	case FastBuild:
-		result := make([]string, len(bd.Mounts))
-		for i, mount := range bd.Mounts {
+		result := make([]string, len(bd.Syncs))
+		for i, mount := range bd.Syncs {
 			result[i] = mount.LocalPath
 		}
 		return result
@@ -239,7 +239,7 @@ func (DockerBuild) buildDetails() {}
 
 type FastBuild struct {
 	BaseDockerfile string
-	Mounts         []Mount
+	Syncs          []Sync
 	Runs           []Run
 	Entrypoint     Cmd
 

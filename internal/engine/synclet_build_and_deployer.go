@@ -59,12 +59,12 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 
 func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 	iTarget model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
-	var syncs []model.Mount
+	var syncs []model.Sync
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		syncs = fbInfo.Mounts
+		syncs = fbInfo.Syncs
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
@@ -76,7 +76,7 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 	return sbd.updateInCluster(ctx, iTarget, state, syncs, runs, hotReload)
 }
 
-func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Mount, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
+func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Sync, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
 	paths, err := build.FilesToPathMappings(
 		state.FilesChanged(), syncs)
 	if err != nil {

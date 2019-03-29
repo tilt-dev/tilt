@@ -98,7 +98,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool) error {
+func (u Upper) Start(ctx context.Context, args []string, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -119,7 +119,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:     watchMounts,
+		WatchFiles:      watch,
 		TiltfilePath:    absTfPath,
 		ConfigFiles:     configFiles,
 		InitManifests:   manifestNames,
@@ -264,7 +264,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if err != nil {
 		if isPermanentError(err) {
 			return err
-		} else if engineState.WatchMounts {
+		} else if engineState.WatchFiles {
 			l := logger.Get(ctx)
 			p := logger.Red(l).Sprintf("Build Failed:")
 			l.Infof("%s %v", p, err)
@@ -317,7 +317,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		ms.ResourceState = state
 	}
 
-	if engineState.WatchMounts {
+	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
 		cID := cb.Result.OneAndOnlyContainerID()
@@ -830,7 +830,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
-	watchMounts := action.WatchMounts
+	watchFiles := action.WatchFiles
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.TriggerMode = action.TriggerMode
@@ -863,7 +863,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	}
 
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
-	engineState.WatchMounts = watchMounts
+	engineState.WatchFiles = watchFiles
 	return nil
 }
 

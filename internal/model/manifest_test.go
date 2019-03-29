@@ -25,11 +25,11 @@ var buildArgs2 = DockerBuildArgs{
 	"beep": "boop",
 }
 
-var mount1 = Mount{
+var sync1 = Sync{
 	LocalPath:     "/foo",
 	ContainerPath: "/bar",
 }
-var mount2 = Mount{
+var sync2 = Sync{
 	LocalPath:     "/baz",
 	ContainerPath: "/beep",
 }
@@ -107,30 +107,30 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		true,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{mount2}})),
+			FastBuild{Syncs: []Sync{sync2}})),
 		false,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{mount1, mount2}})),
+			FastBuild{Syncs: []Sync{sync1, sync2}})),
 		false,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: nil})),
+			FastBuild{Syncs: nil})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Mount{}})),
+			FastBuild{Syncs: []Sync{}})),
 		true,
 	},
 	{
@@ -365,11 +365,11 @@ func TestManifestEquality(t *testing.T) {
 	}
 }
 
-func TestManifestValidateMountRelativePath(t *testing.T) {
+func TestManifestValidateSyncRelativePath(t *testing.T) {
 	fbInfo := FastBuild{
 		BaseDockerfile: `FROM golang`,
-		Mounts: []Mount{
-			Mount{
+		Syncs: []Sync{
+			Sync{
 				LocalPath:     "./hello",
 				ContainerPath: "/src",
 			},
@@ -385,7 +385,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		assert.Contains(t, err.Error(), "must be an absolute path")
 	}
 
-	fbInfo.Mounts[0].LocalPath = "/abs/path/hello"
+	fbInfo.Syncs[0].LocalPath = "/abs/path/hello"
 	manifest = manifest.WithImageTarget(ImageTarget{ConfigurationRef: img1}.WithBuildDetails(fbInfo))
 	err = manifest.Validate()
 	assert.Nil(t, err)

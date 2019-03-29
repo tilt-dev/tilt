@@ -71,7 +71,7 @@ func TestWatchManager_Gitignore(t *testing.T) {
 	assert.NotContains(t, targetFilesChangedActionsToPaths(actions), "bar")
 }
 
-func TestWatchManager_WatchesReappliedOnDockerComposeMountsChange(t *testing.T) {
+func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
@@ -274,7 +274,7 @@ func (f *wmFixture) SetManifestTarget(target model.DockerComposeTarget) {
 	mt := store.ManifestTarget{Manifest: m}
 	state := f.store.LockMutableStateForTesting()
 	state.UpsertManifestTarget(&mt)
-	state.WatchMounts = true
+	state.WatchFiles = true
 	f.store.UnlockMutableState()
 	f.wm.OnChange(f.ctx, f.store)
 }
