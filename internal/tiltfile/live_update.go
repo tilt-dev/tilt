@@ -18,10 +18,12 @@ type liveUpdateDef struct {
 	steps               []model.LiveUpdateStep
 	fullRebuildTriggers []string
 
-	// whether this has been matched to a deployed image
+	// whether this has been matched to a deployed image that we know how to build
 	matched bool
 }
 
+// when adding a new type of `liveUpdateStep`, make sure that any tiltfile functions that create them also call
+// `s.recordLiveUpdateStep`
 type liveUpdateStep interface {
 	starlark.Value
 	liveUpdateStep()
@@ -36,7 +38,7 @@ type liveUpdateWorkDirStep struct {
 	position syntax.Position
 }
 
-func (l liveUpdateWorkDirStep) String() string                       { return strconv.Quote(string(l.value)) }
+func (l liveUpdateWorkDirStep) String() string                       { return fmt.Sprintf("work_dir step: '%s'", l.value) }
 func (l liveUpdateWorkDirStep) Type() string                         { return "live_update_workdir_step" }
 func (l liveUpdateWorkDirStep) Freeze()                              {}
 func (l liveUpdateWorkDirStep) Truth() starlark.Bool                 { return len(l.value) > 0 }
@@ -54,7 +56,7 @@ var _ starlark.Value = liveUpdateSyncStep{}
 var _ liveUpdateStep = liveUpdateSyncStep{}
 
 func (l liveUpdateSyncStep) String() string {
-	return fmt.Sprintf("'%s'->'%s'", l.localPath, l.remotePath)
+	return fmt.Sprintf("sync step: '%s'->'%s'", l.localPath, l.remotePath)
 }
 func (l liveUpdateSyncStep) Type() string { return "live_update_sync_step" }
 func (l liveUpdateSyncStep) Freeze()      {}
@@ -77,7 +79,7 @@ var _ starlark.Value = liveUpdateRunStep{}
 var _ liveUpdateStep = liveUpdateRunStep{}
 
 func (l liveUpdateRunStep) String() string {
-	return fmt.Sprintf("command: %s ; triggers: %v", strconv.Quote(l.command), l.triggers)
+	return fmt.Sprintf("run step: %s", strconv.Quote(l.command))
 }
 func (l liveUpdateRunStep) Type() string { return "live_update_run_step" }
 func (l liveUpdateRunStep) Freeze()      {}
@@ -102,7 +104,7 @@ type liveUpdateRestartContainerStep struct {
 var _ starlark.Value = liveUpdateRestartContainerStep{}
 var _ liveUpdateStep = liveUpdateRestartContainerStep{}
 
-func (l liveUpdateRestartContainerStep) String() string                       { return "restart_container" }
+func (l liveUpdateRestartContainerStep) String() string                       { return "restart_container step" }
 func (l liveUpdateRestartContainerStep) Type() string                         { return "live_update_restart_container_step" }
 func (l liveUpdateRestartContainerStep) Freeze()                              {}
 func (l liveUpdateRestartContainerStep) Truth() starlark.Bool                 { return true }
@@ -110,21 +112,21 @@ func (l liveUpdateRestartContainerStep) Hash() (uint32, error)                { 
 func (l liveUpdateRestartContainerStep) declarationPosition() syntax.Position { return l.position }
 func (l liveUpdateRestartContainerStep) liveUpdateStep()                      {}
 
+func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
+	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, step)
+}
+
 func (s *tiltfileState) liveUpdateWorkDir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var workDir string
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "dir", &workDir); err != nil {
 		return nil, err
 	}
 
-	if !filepath.IsAbs(workDir) {
-		return starlark.None, fmt.Errorf("work_dir path '%s' is not absolute", workDir)
-	}
-
 	ret := liveUpdateWorkDirStep{
 		value:    workDir,
 		position: thread.TopFrame().Position(),
 	}
-	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, ret)
+	s.recordLiveUpdateStep(ret)
 	return ret, nil
 }
 
@@ -139,7 +141,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 		remotePath: remotePath,
 		position:   thread.TopFrame().Position(),
 	}
-	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, ret)
+	s.recordLiveUpdateStep(ret)
 	return ret, nil
 }
 
@@ -166,7 +168,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 		triggers: triggerStrings,
 		position: thread.TopFrame().Position(),
 	}
-	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, ret)
+	s.recordLiveUpdateStep(ret)
 	return ret, nil
 }
 
@@ -178,7 +180,7 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	ret := liveUpdateRestartContainerStep{
 		position: thread.TopFrame().Position(),
 	}
-	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, ret)
+	s.recordLiveUpdateStep(ret)
 	return ret, nil
 }
 
@@ -189,12 +191,7 @@ func liveUpdateStepToModel(l liveUpdateStep, workDir string) (model.LiveUpdateSt
 	case liveUpdateSyncStep:
 		remotePath := x.remotePath
 		if !filepath.IsAbs(remotePath) {
-			if workDir == "" {
-				if !filepath.IsAbs(x.remotePath) {
-					return model.LiveUpdateSyncStep{}, fmt.Errorf("step '%s' must either follow a work_dir or have an absolute remote_path", x.String())
-				}
-			}
-			remotePath = filepath.Join(workDir, remotePath)
+			remotePath = filepath.Join(workDir, x.remotePath)
 		}
 		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: remotePath}, nil
 	case liveUpdateRunStep:
@@ -215,18 +212,13 @@ func liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
-	n := []liveUpdateStep{}
 	for i, step := range s.unconsumedLiveUpdateSteps {
-		if step.declarationPosition() != stepToConsume.declarationPosition() {
-			n = append(n, step)
-		} else {
-			if i < len(s.unconsumedLiveUpdateSteps)-1 {
-				n = append(n, s.unconsumedLiveUpdateSteps[i+1:]...)
-			}
+		if step.declarationPosition() == stepToConsume.declarationPosition() {
+			copy(s.unconsumedLiveUpdateSteps[i:], s.unconsumedLiveUpdateSteps[i+1:])
+			s.unconsumedLiveUpdateSteps = s.unconsumedLiveUpdateSteps[:len(s.unconsumedLiveUpdateSteps)-1]
 			break
 		}
 	}
-	s.unconsumedLiveUpdateSteps = n
 }
 
 func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -242,7 +234,7 @@ func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin
 
 	var modelSteps []model.LiveUpdateStep
 	stepSlice := starlarkValueOrSequenceToSlice(steps)
-	workDir := ""
+	workDir := "/"
 	for _, v := range stepSlice {
 		step, ok := v.(liveUpdateStep)
 		if !ok {

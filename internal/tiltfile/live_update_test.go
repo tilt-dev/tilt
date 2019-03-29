@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -133,51 +134,10 @@ live_update('gcr.io/bar',
 	f.loadErrString("run", "triggers", "'bar'", "contained value '4' of type 'int'. it may only contain strings")
 }
 
-func TestLiveUpdateNonAbsWorkDir(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", "work_dir('foo')")
-	f.loadErrString("'foo'", "is not absolute", "work_dir")
-}
-
-func TestLiveUpdateNonAbsSyncDestFollowingWorkDir(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-k8s_resource('foo', 'foo.yaml')
-live_update('gcr.io/foo',
-  [
-    work_dir('/baz'),
-    sync('foo', 'bar'),
-  ])`)
-	f.load("foo")
-}
-
-func TestLiveUpdateNonAbsSyncDestNotFollowingWorkDir(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-live_update('gcr.io/foo',
-  [
-    sync('foo', 'bar'),
-  ])`)
-	f.loadErrString("follow a work_dir or have an absolute remote_path", fmt.Sprintf("'%s'", f.JoinPath("foo")), "'bar'")
-}
-
 func TestLiveUpdateBuild(t *testing.T) {
 	type testCase struct {
-		name, buildCmd string
-		assert         func(f *fixture, expectedLu model.LiveUpdate)
+		name, buildCmd, workDir string
+		assert                  func(f *fixture, expectedLu model.LiveUpdate)
 	}
 
 	dbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
@@ -188,8 +148,9 @@ func TestLiveUpdateBuild(t *testing.T) {
 	}
 
 	tests := []testCase{
-		{"docker_build", "docker_build('gcr.io/foo', 'foo')", dbManifestOpt},
-		{"custom_build", "custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['foo'])", cbManifestOpt},
+		{"docker_build", "docker_build('gcr.io/foo', 'foo')", "", dbManifestOpt},
+		{"docker_build w/ workdir", "docker_build('gcr.io/foo', 'foo')", "/a", dbManifestOpt},
+		{"custom_build", "custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['foo'])", "", cbManifestOpt},
 	}
 
 	for _, test := range tests {
@@ -199,36 +160,52 @@ func TestLiveUpdateBuild(t *testing.T) {
 
 			f.setupFoo()
 
-			f.file("Tiltfile", fmt.Sprintf(`
+			workDirStep := ""
+			if test.workDir != "" {
+				workDirStep = fmt.Sprintf("    work_dir('%s'),", test.workDir)
+			}
+
+			tiltfile := fmt.Sprintf(`
 %s
 k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
-    work_dir('/a'),
+	%s
 	sync('b', '/c'), # absolute dest
 	sync('d', 'e'), # dest relative to work dir
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
   ['i', 'j']
-)`, test.buildCmd))
+)`, test.buildCmd, workDirStep)
+
+			f.file("Tiltfile", tiltfile)
 
 			f.load("foo")
 
 			f.assertNumManifests(1)
 
-			lu := model.LiveUpdate{
-				Steps: []model.LiveUpdateStep{
-					model.LiveUpdateWorkDirStep("/a"),
-					model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
-					model.LiveUpdateSyncStep{Source: f.JoinPath("d"), Dest: "/a/e"},
-					model.LiveUpdateRunStep{
-						Command:  model.ToShellCmd("f"),
-						Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},
-						WorkDir:  "/a",
-					},
-					model.LiveUpdateRestartContainerStep{},
+			var steps []model.LiveUpdateStep
+
+			expectedWorkDir := "/"
+			if test.workDir != "" {
+				expectedWorkDir = test.workDir
+				steps = append(steps, model.LiveUpdateWorkDirStep(test.workDir))
+			}
+
+			steps = append(steps,
+				model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
+				model.LiveUpdateSyncStep{Source: f.JoinPath("d"), Dest: filepath.Join(expectedWorkDir, "e")},
+				model.LiveUpdateRunStep{
+					Command:  model.ToShellCmd("f"),
+					Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},
+					WorkDir:  expectedWorkDir,
 				},
+				model.LiveUpdateRestartContainerStep{},
+			)
+
+			lu := model.LiveUpdate{
+				Steps:               steps,
 				FullRebuildTriggers: []string{f.JoinPath("i"), f.JoinPath("j")},
 			}
 			test.assert(f, lu)
