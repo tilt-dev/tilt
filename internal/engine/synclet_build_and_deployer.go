@@ -64,7 +64,7 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		syncs = fbInfo.Mounts
+		syncs = fbInfo.Syncs
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}

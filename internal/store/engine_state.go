@@ -32,7 +32,7 @@ type EngineState struct {
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
 	CurrentlyBuilding model.ManifestName
-	WatchMounts       bool
+	WatchFiles        bool
 
 	// How many builds were queued on startup (i.e., how many manifests there were)
 	InitialBuildCount int

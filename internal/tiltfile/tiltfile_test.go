@@ -3180,7 +3180,7 @@ func fbWithCache(img imageHelper, cache string, opts ...interface{}) fbHelper {
 }
 
 func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.FastBuild) {
-	mounts := fbInfo.Mounts
+	mounts := fbInfo.Syncs
 	runs := fbInfo.Runs
 	for _, matcher := range fb.matchers {
 		switch matcher := matcher.(type) {

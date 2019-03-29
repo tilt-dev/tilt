@@ -43,8 +43,8 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	// If we're not watching the mounts, then don't bother watching logs.
-	if !state.WatchMounts {
+	// If we're not watching the services for changes, then don't bother watching logs.
+	if !state.WatchFiles {
 		return nil, nil
 	}
 

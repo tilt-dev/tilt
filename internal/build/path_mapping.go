@@ -110,7 +110,7 @@ func filesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, *Pa
 
 func fileToPathMapping(file string, sync []model.Sync) (PathMapping, *PathMappingErr) {
 	for _, s := range sync {
-		// Open Q: can you mount inside of mounts?! o_0
+		// Open Q: can you sync files inside of syncs?! o_0
 		// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
 		// need ospath.RealChild -- but then can't deal with deleted local files.
 		relPath, isChild := ospath.Child(s.LocalPath, file)

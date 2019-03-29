@@ -107,30 +107,30 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{mount1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{mount1}})),
 		true,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{mount1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{mount2}})),
+			FastBuild{Syncs: []Sync{mount2}})),
 		false,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{mount1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{mount1, mount2}})),
+			FastBuild{Syncs: []Sync{mount1, mount2}})),
 		false,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: nil})),
+			FastBuild{Syncs: nil})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Mounts: []Sync{}})),
+			FastBuild{Syncs: []Sync{}})),
 		true,
 	},
 	{
@@ -368,7 +368,7 @@ func TestManifestEquality(t *testing.T) {
 func TestManifestValidateMountRelativePath(t *testing.T) {
 	fbInfo := FastBuild{
 		BaseDockerfile: `FROM golang`,
-		Mounts: []Sync{
+		Syncs: []Sync{
 			Sync{
 				LocalPath:     "./hello",
 				ContainerPath: "/src",
@@ -385,7 +385,7 @@ func TestManifestValidateMountRelativePath(t *testing.T) {
 		assert.Contains(t, err.Error(), "must be an absolute path")
 	}
 
-	fbInfo.Mounts[0].LocalPath = "/abs/path/hello"
+	fbInfo.Syncs[0].LocalPath = "/abs/path/hello"
 	manifest = manifest.WithImageTarget(ImageTarget{ConfigurationRef: img1}.WithBuildDetails(fbInfo))
 	err = manifest.Validate()
 	assert.Nil(t, err)

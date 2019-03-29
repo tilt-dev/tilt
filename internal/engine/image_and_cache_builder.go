@@ -63,7 +63,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 			df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
 			runs := bd.Runs
-			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, refToBuild, df, bd.Mounts, ignore.CreateBuildContextFilter(iTarget), runs, bd.Entrypoint)
+			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, refToBuild, df, bd.Syncs, ignore.CreateBuildContextFilter(iTarget), runs, bd.Entrypoint)
 
 			if err != nil {
 				return nil, err
@@ -78,7 +78,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 				return nil, err
 			}
 
-			cf, err := build.FilesToPathMappings(changed, bd.Mounts)
+			cf, err := build.FilesToPathMappings(changed, bd.Syncs)
 			if err != nil {
 				return nil, err
 			}

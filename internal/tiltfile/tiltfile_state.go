@@ -548,7 +548,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			}
 			if len(image.mounts) > 0 || len(image.runs) > 0 {
 				r.Fast = &model.FastBuild{
-					Mounts:    s.mountsToDomain(image),
+					Syncs:     s.mountsToDomain(image),
 					Runs:      image.runs,
 					HotReload: image.hotReload,
 				}

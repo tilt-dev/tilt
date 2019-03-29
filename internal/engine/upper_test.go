@@ -741,10 +741,10 @@ func TestBreakManifest(t *testing.T) {
 
 	origTiltfile := `
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
 k8s_resource('foobar', yaml='snack.yaml')`
 
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -773,9 +773,9 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 
 	origTiltfile := `
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.')  # Tiltfile is not mounted
+	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
 k8s_resource('foobar', yaml='snack.yaml')`
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -791,7 +791,7 @@ k8s_resource('foobar', yaml='snack.yaml')`
 		return st.LastTiltfileError() != nil
 	})
 
-	// Third call: put Tiltfile back. No change to manifest or to mounted files, so expect no build.
+	// Third call: put Tiltfile back. No change to manifest or to synced files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
 	f.WaitUntil("state is restored", func(st store.EngineState) bool {
 		return st.LastTiltfileError() == nil
@@ -815,7 +815,7 @@ k8s_resource('foobar', 'snack.yaml')
 `, cmd)
 	}
 
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll mount.
+	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", tiltfileString("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -1769,24 +1769,24 @@ func TestHudExitWithError(t *testing.T) {
 	assert.Equal(t, e, err)
 }
 
-func TestNewMountsAreWatched(t *testing.T) {
+func TestNewSyncsAreWatched(t *testing.T) {
 	f := newTestFixture(t)
-	mount1 := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	m1 := f.newManifest("mani1", []model.Sync{mount1})
+	sync1 := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	m1 := f.newManifest("mani1", []model.Sync{sync1})
 	f.Start([]model.Manifest{
 		m1,
 	}, true)
 
 	f.waitForCompletedBuildCount(1)
 
-	mount2 := model.Sync{LocalPath: "/js", ContainerPath: "/go"}
-	m2 := f.newManifest("mani1", []model.Sync{mount1, mount2})
+	sync2 := model.Sync{LocalPath: "/js", ContainerPath: "/go"}
+	m2 := f.newManifest("mani1", []model.Sync{sync1, sync2})
 	f.store.Dispatch(ConfigsReloadedAction{
 		Manifests: []model.Manifest{m2},
 	})
 
-	f.WaitUntilManifest("has new mounts", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Mounts) == 2
+	f.WaitUntilManifest("has new syncs", "mani1", func(mt store.ManifestTarget) bool {
+		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Syncs) == 2
 	})
 
 	f.PollUntil("watches set up", func() bool {
@@ -2276,25 +2276,25 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 }
 
-func (f *testFixture) Start(manifests []model.Manifest, watchMounts bool) {
-	f.startWithInitManifests(nil, manifests, watchMounts)
+func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool) {
+	f.startWithInitManifests(nil, manifests, watchFiles)
 }
 
 // Start ONLY the specified manifests and no others (e.g. if additional manifests
 // specified later, don't run them. Like running `tilt up <foo, bar>`.
-func (f *testFixture) StartOnly(manifests []model.Manifest, watchMounts bool) {
+func (f *testFixture) StartOnly(manifests []model.Manifest, watchFiles bool) {
 	mNames := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
 		mNames[i] = m.Name
 	}
-	f.startWithInitManifests(mNames, manifests, watchMounts)
+	f.startWithInitManifests(mNames, manifests, watchFiles)
 }
 
 // Empty `initManifests` will run start ALL manifests
-func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchMounts bool) {
+func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool) {
 	f.Init(InitAction{
 		Manifests:       manifests,
-		Watch:           watchMounts,
+		WatchFiles:      watchFiles,
 		TiltfilePath:    f.JoinPath("Tiltfile"),
 		ExecuteTiltfile: true,
 	})
@@ -2306,7 +2306,7 @@ func (f *testFixture) Init(action InitAction) {
 	}
 
 	manifests := action.Manifests
-	watchMounts := action.Watch
+	watchFiles := action.WatchFiles
 	f.createManifestsResult = make(chan error)
 
 	go func() {
@@ -2320,11 +2320,11 @@ func (f *testFixture) Init(action InitAction) {
 	}()
 
 	f.WaitUntil("manifests appear", func(st store.EngineState) bool {
-		return len(st.ManifestTargets) == len(manifests) && st.WatchMounts == watchMounts
+		return len(st.ManifestTargets) == len(manifests) && st.WatchFiles == watchFiles
 	})
 
 	f.PollUntil("watches set up", func() bool {
-		return !watchMounts || len(f.fwm.targetWatches) == len(watchableTargetsForManifests(manifests))
+		return !watchFiles || len(f.fwm.targetWatches) == len(watchableTargetsForManifests(manifests))
 	})
 }
 
@@ -2556,12 +2556,12 @@ func (f *testFixture) imageNameForManifest(manifestName string) reference.Named 
 	return container.MustParseNamed(manifestName)
 }
 
-func (f *testFixture) newManifest(name string, mounts []model.Sync) model.Manifest {
+func (f *testFixture) newManifest(name string, syncs []model.Sync) model.Manifest {
 	ref := f.imageNameForManifest(name)
-	return f.newManifestWithRef(name, ref, mounts)
+	return f.newManifestWithRef(name, ref, syncs)
 }
 
-func (f *testFixture) newManifestWithRef(name string, ref reference.Named, mounts []model.Sync) model.Manifest {
+func (f *testFixture) newManifestWithRef(name string, ref reference.Named, syncs []model.Sync) model.Manifest {
 	refSel := container.NewRefSelector(ref)
 	return assembleK8sManifest(
 		model.Manifest{Name: model.ManifestName(name)},
@@ -2569,7 +2569,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named, mount
 		model.NewImageTarget(refSel).
 			WithBuildDetails(model.FastBuild{
 				BaseDockerfile: `from golang:1.10`,
-				Mounts:         mounts,
+				Syncs:          syncs,
 			}))
 }
 

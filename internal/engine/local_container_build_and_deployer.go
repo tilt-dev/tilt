@@ -73,7 +73,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		syncs = fbInfo.Mounts
+		syncs = fbInfo.Syncs
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}

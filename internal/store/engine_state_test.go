@@ -18,7 +18,7 @@ func TestStateToViewMultipleMounts(t *testing.T) {
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.
 		WithBuildDetails(model.FastBuild{
-			Mounts: []model.Sync{
+			Syncs: []model.Sync{
 				{LocalPath: "/a/b"},
 				{LocalPath: "/a/b/c"},
 			},
@@ -115,7 +115,7 @@ func TestEmptyState(t *testing.T) {
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.
 		WithBuildDetails(model.FastBuild{
-			Mounts: []model.Sync{
+			Syncs: []model.Sync{
 				{LocalPath: "/a/b"},
 				{LocalPath: "/a/b/c"},
 			},

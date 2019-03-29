@@ -172,7 +172,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 	return model.FastBuild{
 		BaseDockerfile: image.baseDockerfile.String(),
-		Mounts:         s.mountsToDomain(image),
+		Syncs:          s.mountsToDomain(image),
 		Runs:           image.runs,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		HotReload:      image.hotReload,

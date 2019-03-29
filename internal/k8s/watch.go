@@ -58,7 +58,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 		return kCli.core.Pods(ns)
 	}, ls)
 	if err != nil {
-		return nil, errors.Wrap(err, "pods.Watch")
+		return nil, errors.Wrap(err, "pods.WatchFiles")
 	}
 	watcher.Stop()
 
@@ -122,7 +122,7 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 		return kCli.core.Services(ns)
 	}, ls.AsSelector())
 	if err != nil {
-		return nil, errors.Wrap(err, "Services.Watch")
+		return nil, errors.Wrap(err, "Services.WatchFiles")
 	}
 
 	go func() {

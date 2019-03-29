@@ -274,7 +274,7 @@ func (f *wmFixture) SetManifestTarget(target model.DockerComposeTarget) {
 	mt := store.ManifestTarget{Manifest: m}
 	state := f.store.LockMutableStateForTesting()
 	state.UpsertManifestTarget(&mt)
-	state.WatchMounts = true
+	state.WatchFiles = true
 	f.store.UnlockMutableState()
 	f.wm.OnChange(f.ctx, f.store)
 }

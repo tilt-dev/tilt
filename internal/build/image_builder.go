@@ -108,7 +108,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 
 	// Don't worry about conditional runs on incremental builds, they've
 	// already handled by the watch loop.
-	df, err := d.addMountsAndRemovedFiles(ctx, df, paths)
+	df, err := d.addSyncedAndRemovedFiles(ctx, df, paths)
 	if err != nil {
 		return nil, errors.Wrap(err, "BuildImageFromExisting")
 	}
@@ -174,11 +174,11 @@ func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs [
 	return df, remainingRuns, nil
 }
 
-func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
+func (d *dockerImageBuilder) addSyncedAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
 	df = df.AddAll()
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return "", errors.Wrap(err, "addMounts")
+		return "", errors.Wrap(err, "addSyncedAndRemovedFiles")
 	}
 
 	toRemovePaths := make([]string, len(toRemove))

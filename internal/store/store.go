@@ -170,7 +170,7 @@ func (s *Store) maybeFinished() (bool, error) {
 		return false, nil
 	}
 
-	finished := !state.WatchMounts &&
+	finished := !state.WatchFiles &&
 		state.CompletedBuildCount == state.InitialBuildCount
 	return finished, nil
 }

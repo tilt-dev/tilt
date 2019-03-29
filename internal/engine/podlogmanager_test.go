@@ -30,7 +30,7 @@ func TestLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
@@ -52,7 +52,7 @@ func TestLogActions(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
@@ -74,7 +74,7 @@ func TestLogsFailed(t *testing.T) {
 	f.kClient.ContainerLogsError = fmt.Errorf("my-error")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
@@ -97,7 +97,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\n")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
@@ -126,7 +126,7 @@ func TestMultiContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, "cont2", "goodbye world!")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
@@ -161,7 +161,7 @@ func TestContainerPrefixes(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(pID2, cNameNoPrefix, "hello jupiter!")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	state.UpsertManifestTarget(newManifestTargetWithPod(
 		model.Manifest{Name: "multiContainer"},
 		// Pod with multiple containers -- logs should be prefixed with container name

@@ -27,7 +27,7 @@ func NewImageController(reaper build.ImageReaper) *ImageController {
 func (c *ImageController) refsToReap(st store.RStore) []reference.Named {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	if !state.WatchMounts || len(state.ManifestTargets) == 0 {
+	if !state.WatchFiles || len(state.ManifestTargets) == 0 {
 		return nil
 	}
 
