@@ -50,7 +50,7 @@ type HudState = {
     Log: string
     LogTimestamps: boolean
     TiltfileErrorMessage: string
-  }|null
+  } | null
   isSidebarOpen: boolean
 }
 
