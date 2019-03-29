@@ -187,6 +187,14 @@ func PathMappingsToContainerPaths(mappings []PathMapping) []string {
 	return res
 }
 
+func PathMappingsToLocalPaths(mappings []PathMapping) []string {
+	res := make([]string, len(mappings))
+	for i, m := range mappings {
+		res[i] = m.LocalPath
+	}
+	return res
+}
+
 type PathMappingErr struct {
 	s string
 }
