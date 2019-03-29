@@ -207,9 +207,6 @@ type Cmd struct {
 	Argv []string
 }
 
-func ToCmd(argv ...string) Cmd {
-	return Cmd{argv}
-}
 func (c Cmd) IsShellStandardForm() bool {
 	return len(c.Argv) == 3 && c.Argv[0] == "sh" && c.Argv[1] == "-c" && !strings.Contains(c.Argv[2], "\n")
 }
