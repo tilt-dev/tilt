@@ -30,8 +30,10 @@ type testCase struct {
 	// Synclet actions
 	expectSyncletUpdateContainerCount int
 	expectSyncletHotReload            bool
-	expectK8sDeploy                   bool
-	expectSyncletDeploy               bool
+
+	// k8s/deploy actions
+	expectK8sDeploy     bool
+	expectSyncletDeploy bool
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
@@ -84,7 +86,7 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, nil)
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"})
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -103,7 +105,7 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, nil)
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"})
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoCustomBuildManifest(f),
@@ -228,6 +230,28 @@ func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
 	}
 	runTestCase(t, f, tCase)
 }
+
+func _TestLiveUpdateLocalContainerFullBuildTrigger(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"})
+	tCase := testCase{
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoDockerBuildManifest(),
+		liveUpdate:               lu,
+		changedFile:              "a.txt",
+		expectDockerBuildCount:   1,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func _TestLiveUpdateSyncletFullBuildTrigger(t *testing.T) {}
 
 func assembleLiveUpdate(t *testing.T, syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fullRebuildTriggers []string) model.LiveUpdate {
 	var steps []model.LiveUpdateStep
