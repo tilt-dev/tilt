@@ -98,7 +98,7 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 }
 
 type InitAction struct {
-	WatchMounts        bool
+	Watch              bool
 	Manifests          []model.Manifest
 	GlobalYAMLManifest model.Manifest
 	TiltfilePath       string

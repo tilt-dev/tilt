@@ -18,8 +18,8 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -41,9 +41,9 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
 	ref := container.MustParseNamed("image-foo:tagged")
-	manifest := f.newManifestWithRef("fe", ref, []model.Sync{mount})
+	manifest := f.newManifestWithRef("fe", ref, []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -89,8 +89,8 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -120,8 +120,8 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -137,7 +137,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
-		assert.Equal(t, model.BuildReasonFlagMountFiles, ms.LastBuild().Reason)
+		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
 		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
 	})
 
@@ -160,11 +160,11 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
 	f.Init(InitAction{
 		Manifests:       []model.Manifest{manifest},
-		WatchMounts:     true,
+		Watch:           true,
 		TriggerMode:     model.TriggerManual,
 		ExecuteTiltfile: true,
 	})
@@ -196,8 +196,8 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 
 	manifests := make([]model.Manifest, 10)
 	for i := 0; i < 10; i++ {
-		mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-		manifests[i] = f.newManifest(fmt.Sprintf("built%d", i+1), []model.Sync{mount})
+		sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+		manifests[i] = f.newManifest(fmt.Sprintf("built%d", i+1), []model.Sync{sync})
 	}
 
 	for _, i := range []int{3, 7, 8} {

@@ -341,7 +341,7 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 func (ms *ManifestState) NextBuildReason() model.BuildReason {
 	reason := model.BuildReasonNone
 	if ms.HasPendingFileChanges() {
-		reason = reason.With(model.BuildReasonFlagMountFiles)
+		reason = reason.With(model.BuildReasonFlagChangedFiles)
 	}
 	if !ms.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)

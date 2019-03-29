@@ -119,7 +119,7 @@ func (u Upper) Start(ctx context.Context, args []string, watchMounts bool, trigg
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchMounts:     watchMounts,
+		Watch:           watchMounts,
 		TiltfilePath:    absTfPath,
 		ConfigFiles:     configFiles,
 		InitManifests:   manifestNames,
@@ -830,7 +830,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
-	watchMounts := action.WatchMounts
+	watchMounts := action.Watch
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.TriggerMode = action.TriggerMode

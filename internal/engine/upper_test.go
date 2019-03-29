@@ -256,8 +256,8 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.fsWatcher.errors <- errors.New("bazquu")
@@ -271,8 +271,8 @@ func TestUpper_UpWatchError(t *testing.T) {
 func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -290,7 +290,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
 
 	f.withManifestState("foobar", func(ms store.ManifestState) {
-		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagMountFiles))
+		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagChangedFiles))
 	})
 
 	err := f.Stop()
@@ -301,8 +301,8 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -336,8 +336,8 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -371,8 +371,8 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.SetNextBuildFailure(errors.New("Build failed"))
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -394,8 +394,8 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.SetNextBuildFailure(context.Canceled)
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -411,8 +411,8 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
@@ -424,8 +424,8 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete("first build")
@@ -457,8 +457,8 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 func TestThreeBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete("first build")
@@ -488,8 +488,8 @@ func TestThreeBuilds(t *testing.T) {
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -894,8 +894,8 @@ go build ./...
 func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 
 	f.docker.BuildCount++
 
@@ -914,8 +914,8 @@ func TestHudUpdated(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	call := f.nextCall()
@@ -997,8 +997,8 @@ func setRestartCount(pod *v1.Pod, restartCount int) {
 func TestPodEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1048,8 +1048,8 @@ func TestPodEventOrdering(t *testing.T) {
 		t.Run(fmt.Sprintf("TestPodOrder%d", i), func(t *testing.T) {
 			f := newTestFixture(t)
 			defer f.TearDown()
-			mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-			manifest := f.newManifest("fe", []model.Sync{mount})
+			sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+			manifest := f.newManifest("fe", []model.Sync{sync})
 			f.b.nextDeployID = deployIDNow
 			f.Start([]model.Manifest{manifest}, true)
 
@@ -1089,8 +1089,8 @@ func TestPodEventOrdering(t *testing.T) {
 func TestPodEventContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	var ref reference.NamedTagged
@@ -1183,9 +1183,9 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
@@ -1224,9 +1224,9 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1263,9 +1263,9 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1318,8 +1318,8 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1347,8 +1347,8 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete()
@@ -1384,8 +1384,8 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1411,8 +1411,8 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 func TestPodContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
 	f.Start([]model.Manifest{manifest}, true)
 
 	_ = f.nextCall()
@@ -1448,8 +1448,8 @@ func TestPodContainerStatus(t *testing.T) {
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithDockerignores([]model.Dockerignore{
 			{
@@ -1474,8 +1474,8 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	mount := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithRepos([]model.LocalGitRepo{
 			{
@@ -1501,9 +1501,9 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1528,9 +1528,9 @@ func TestBuildResetsPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1556,9 +1556,9 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1583,9 +1583,9 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{mount})
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1635,8 +1635,8 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1665,8 +1665,8 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{mount})
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1699,9 +1699,9 @@ func TestUpper_PodLogs(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Sync{mount})
+	manifest := f.newManifest(string(name), []model.Sync{sync})
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1800,9 +1800,9 @@ func TestNewMountsAreWatched(t *testing.T) {
 
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
-	mount := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foo")
-	m := f.newManifest(name.String(), []model.Sync{mount})
+	m := f.newManifest(name.String(), []model.Sync{sync})
 	f.Start([]model.Manifest{m}, true)
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
 	f.WaitUntil("foo.txt is a config file", func(state store.EngineState) bool {
@@ -2294,7 +2294,7 @@ func (f *testFixture) StartOnly(manifests []model.Manifest, watchMounts bool) {
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchMounts bool) {
 	f.Init(InitAction{
 		Manifests:       manifests,
-		WatchMounts:     watchMounts,
+		Watch:           watchMounts,
 		TiltfilePath:    f.JoinPath("Tiltfile"),
 		ExecuteTiltfile: true,
 	})
@@ -2306,7 +2306,7 @@ func (f *testFixture) Init(action InitAction) {
 	}
 
 	manifests := action.Manifests
-	watchMounts := action.WatchMounts
+	watchMounts := action.Watch
 	f.createManifestsResult = make(chan error)
 
 	go func() {
