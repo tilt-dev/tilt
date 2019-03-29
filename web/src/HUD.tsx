@@ -50,7 +50,7 @@ type HudState = {
     Log: string
     LogTimestamps: boolean
     TiltfileErrorMessage: string
-  }
+  }|null
   isSidebarOpen: boolean
 }
 
@@ -121,11 +121,16 @@ class HUD extends Component<HudProps, HudState> {
     let LogsRoute = (props: HudProps) => {
       let name = props.match.params ? props.match.params.name : ""
       let logs = ""
-      if (name !== "") {
+      if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
         logs = r ? r.CombinedLog : ""
       }
       return <LogPane log={logs} />
+    }
+
+    let combinedLog = ""
+    if (view) {
+      combinedLog = view.Log
     }
 
     return (
@@ -141,7 +146,7 @@ class HUD extends Component<HudProps, HudState> {
             <Route
               exact
               path="/hud"
-              render={() => <LogPane log={view.Log} />}
+              render={() => <LogPane log={combinedLog} />}
             />
             <Route exact path="/hud/r/:name" component={LogsRoute} />
             <Route

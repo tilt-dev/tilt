@@ -10,6 +10,7 @@ class AppController {
   // TOOD(dmiller): optional type?
   socket: WebSocket | null = null
   component: HUD
+  disposed: boolean = false
 
   /**
    * @param url The url of the websocket to pull data from
@@ -43,13 +44,16 @@ class AppController {
       this.tryConnectCount = 0
 
       let data = JSON.parse(event.data)
+      // @ts-ignore
       this.component.setAppState({ View: data })
     })
   }
 
   dispose() {
     this.disposed = true
-    this.socket.close()
+    if (this.socket) {
+      this.socket.close()
+    }
   }
 
   onSocketClose() {
@@ -60,7 +64,11 @@ class AppController {
     }
 
     if (wasAlive) {
-      this.component.setAppState({ View: null, Message: "Disconnected…" })
+      this.component.setAppState({
+        View: null,
+        Message: "Disconnected…",
+        isSidebarOpen: false,
+      })
       this.createNewSocket()
       return
     }
@@ -69,7 +77,11 @@ class AppController {
     let maxTimeout = 5 * 1000 // 5sec
     setTimeout(() => {
       let message = this.loadCount ? "Reconnecting…" : "Loading…"
-      this.component.setAppState({ View: null, Message: message })
+      this.component.setAppState({
+        View: null,
+        Message: message,
+        isSidebarOpen: false,
+      })
       this.createNewSocket()
     }, Math.min(maxTimeout, timeout))
   }
