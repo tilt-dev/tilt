@@ -205,8 +205,8 @@ k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
     work_dir('/a'),
-	sync('b', '/c'),
-	sync('d', '/e'),
+	sync('b', '/c'), # absolute dest
+	sync('d', 'e'), # dest relative to work dir
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
@@ -221,8 +221,12 @@ live_update('gcr.io/foo',
 				Steps: []model.LiveUpdateStep{
 					model.LiveUpdateWorkDirStep("/a"),
 					model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
-					model.LiveUpdateSyncStep{Source: f.JoinPath("d"), Dest: "/e"},
-					model.LiveUpdateRunStep{Command: model.ToShellCmd("f"), Triggers: []string{f.JoinPath("g"), f.JoinPath("h")}},
+					model.LiveUpdateSyncStep{Source: f.JoinPath("d"), Dest: "/a/e"},
+					model.LiveUpdateRunStep{
+						Command:  model.ToShellCmd("f"),
+						Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},
+						WorkDir:  "/a",
+					},
 					model.LiveUpdateRestartContainerStep{},
 				},
 				FullRebuildTriggers: []string{f.JoinPath("i"), f.JoinPath("j")},

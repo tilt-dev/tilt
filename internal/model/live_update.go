@@ -57,6 +57,8 @@ func (l LiveUpdateSyncStep) liveUpdateStep() {}
 type LiveUpdateRunStep struct {
 	Command  Cmd
 	Triggers []string
+	// if non-empty, the remote directory from which to run `Command`
+	WorkDir string
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}

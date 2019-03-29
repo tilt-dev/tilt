@@ -10,7 +10,7 @@ func TestNewLiveUpdate(t *testing.T) {
 	steps := []LiveUpdateStep{
 		LiveUpdateWorkDirStep("baz"),
 		LiveUpdateSyncStep{"foo", "bar"},
-		LiveUpdateRunStep{Cmd{[]string{"hello"}}, []string{"goodbye"}},
+		LiveUpdateRunStep{Cmd{[]string{"hello"}}, []string{"goodbye"}, "baz"},
 		LiveUpdateRestartContainerStep{},
 	}
 	fullRebuildTriggers := []string{"quu", "qux"}

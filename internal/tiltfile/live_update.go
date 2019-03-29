@@ -182,16 +182,26 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	return ret, nil
 }
 
-func liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
+func liveUpdateStepToModel(l liveUpdateStep, workDir string) (model.LiveUpdateStep, error) {
 	switch x := l.(type) {
 	case liveUpdateWorkDirStep:
 		return model.LiveUpdateWorkDirStep(x.value), nil
 	case liveUpdateSyncStep:
-		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: x.remotePath}, nil
+		remotePath := x.remotePath
+		if !filepath.IsAbs(remotePath) {
+			if workDir == "" {
+				if !filepath.IsAbs(x.remotePath) {
+					return model.LiveUpdateSyncStep{}, fmt.Errorf("step '%s' must either follow a work_dir or have an absolute remote_path", x.String())
+				}
+			}
+			remotePath = filepath.Join(workDir, remotePath)
+		}
+		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: remotePath}, nil
 	case liveUpdateRunStep:
 		return model.LiveUpdateRunStep{
 			Command:  model.ToShellCmd(x.command),
 			Triggers: x.triggers,
+			WorkDir:  workDir,
 		}, nil
 	case liveUpdateRestartContainerStep:
 		return model.LiveUpdateRestartContainerStep{}, nil
@@ -232,23 +242,17 @@ func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin
 
 	var modelSteps []model.LiveUpdateStep
 	stepSlice := starlarkValueOrSequenceToSlice(steps)
-	hasWorkdir := false
+	workDir := ""
 	for _, v := range stepSlice {
 		step, ok := v.(liveUpdateStep)
 		if !ok {
 			return starlark.None, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
 		}
 		switch x := v.(type) {
-		case liveUpdateSyncStep:
-			if !hasWorkdir {
-				if !filepath.IsAbs(x.remotePath) {
-					return starlark.None, fmt.Errorf("step '%s' must either follow a work_dir or have an absolute remote_path", x.String())
-				}
-			}
 		case liveUpdateWorkDirStep:
-			hasWorkdir = true
+			workDir = x.value
 		}
-		ms, err := liveUpdateStepToModel(step)
+		ms, err := liveUpdateStepToModel(step, workDir)
 		if err != nil {
 			return starlark.None, err
 		}
