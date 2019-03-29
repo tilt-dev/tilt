@@ -108,7 +108,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	var anyFastBuild bool
 	q, err := NewImageTargetQueue(iTargets, stateSet)
 	if err != nil {
 		return store.BuildResultSet{}, err
@@ -121,6 +120,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
+
+	var anyInPlaceBuild bool
 
 	iTargetMap := model.ImageTargetsByID(iTargets)
 	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
@@ -144,7 +145,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.BuildResult{}, err
 		}
 
-		anyFastBuild = anyFastBuild || iTarget.MaybeFastBuildInfo() != nil
+		anyInPlaceBuild = anyInPlaceBuild ||
+			iTarget.MaybeFastBuildInfo() != nil || iTarget.MaybeLiveUpdateInfo() != nil
 		return store.NewImageBuildResult(iTarget.ID(), ref), nil
 	})
 	if err != nil {
@@ -153,7 +155,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	err = ibd.deploy(ctx, st, ps, iTargetMap, kTargets, q.results, anyFastBuild)
+	err = ibd.deploy(ctx, st, ps, iTargetMap, kTargets, q.results, anyInPlaceBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
