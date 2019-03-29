@@ -142,21 +142,11 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					h.currentViewState.AlertMessage = fmt.Sprintf("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
 			case r == 'l': // Tilt [L]og
-				am := h.activeModal()
-				_, isLogModal := am.(logModal)
-				if !isLogModal {
-					// Close any existing non-log modal
-					if am != nil {
-						am.Close(&h.currentViewState)
-					}
-				}
-				h.currentViewState.CycleViewLogState()
-			case r == 'L':
 				if h.webURL.Empty() {
 					break
 				}
 				url := h.webURL
-				url.Path = "/log"
+				url.Path = "/hud"
 				_ = browser.OpenURL(url.String())
 			case r == 'k':
 				h.activeScroller().Up()
