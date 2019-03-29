@@ -1,5 +1,6 @@
 import React, { Component, createRef } from 'react';
 import Ansi from "ansi-to-react";
+import "./LogPane.scss";
 
 type AnsiLineProps = {
   line: string
@@ -86,7 +87,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       <div key="logEnd" className="logEnd" ref={(el) => { this.lastElement = el }}>&#9608;</div>
     )
 
-    return (<div>{els}</div>)
+    return (<div className="LogPane">{els}</div>)
   }
 }
 
