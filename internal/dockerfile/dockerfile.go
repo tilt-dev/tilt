@@ -171,21 +171,21 @@ func (d Dockerfile) BUGGY_DeriveSyncs(context string) ([]model.Sync, error) {
 		return nil, err
 	}
 
-	mounts := make([]model.Sync, len(nodes))
+	syncs := make([]model.Sync, len(nodes))
 	for i, n := range nodes {
-		m, err := nodeToMount(n, context)
+		m, err := nodeToSync(n, context)
 		if err != nil {
 			return nil, err
 		}
-		mounts[i] = m
+		syncs[i] = m
 	}
-	return mounts, nil
+	return syncs, nil
 }
 
-func nodeToMount(node *parser.Node, context string) (model.Sync, error) {
+func nodeToSync(node *parser.Node, context string) (model.Sync, error) {
 	cmd := node.Value
 	if !(cmd == command.Add || cmd == command.Copy) {
-		return model.Sync{}, fmt.Errorf("nodeToMounts works on ADD/COPY nodes; got '%s'", cmd)
+		return model.Sync{}, fmt.Errorf("nodeToSyncs works on ADD/COPY nodes; got '%s'", cmd)
 	}
 
 	srcNode := node.Next
@@ -196,7 +196,7 @@ func nodeToMount(node *parser.Node, context string) (model.Sync, error) {
 		src = filepath.Join(context, src)
 	}
 
-	// TODO(maia): do we support relative ContainerPaths in mounts?
+	// TODO(maia): do we support relative ContainerPaths in syncs?
 	// If not, need to either a. make absolute or b. error out here.
 
 	return model.Sync{
