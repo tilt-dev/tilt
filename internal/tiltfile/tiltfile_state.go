@@ -53,6 +53,13 @@ type tiltfileState struct {
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
 
+	liveUpdates map[string]*liveUpdateDef
+	// any LiveUpdate steps that have been created but not used by a LiveUpdate will cause an error, to ensure
+	// that users aren't accidentally using step-creating functions incorrectly
+	// it'd be appealing to store this as a map[liveUpdateStep]bool, but then things get weird if we have two steps
+	// with the same hashcode (like, all restartcontainer steps)
+	unconsumedLiveUpdateSteps []liveUpdateStep
+
 	logger   logger.Logger
 	warnings []string
 }
@@ -70,6 +77,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		usedImages:        make(map[string]bool),
 		logger:            logger.Get(ctx),
 		builtinCallCounts: make(map[string]int),
+		liveUpdates:       make(map[string]*liveUpdateDef),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -117,6 +125,13 @@ const (
 	listdirN      = "listdir"
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
+
+	// live update functions
+	liveUpdateN       = "live_update"
+	workDirN          = "work_dir"
+	syncN             = "sync"
+	runN              = "run"
+	restartContainerN = "restart_container"
 
 	// other functions
 	failN = "fail"
@@ -166,6 +181,12 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, listdirN, s.listdir)
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
+
+	addBuiltin(r, liveUpdateN, s.liveUpdate)
+	addBuiltin(r, workDirN, s.liveUpdateWorkDir)
+	addBuiltin(r, syncN, s.liveUpdateSync)
+	addBuiltin(r, runN, s.liveUpdateRun)
+	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
 
 	s.builtinsMap = r
 
@@ -529,6 +550,11 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			DeploymentRef:    image.deploymentRef,
 		}.WithCachePaths(image.cachePaths)
 
+		lu, err := s.maybeLiveUpdate(image)
+		if err != nil {
+			return nil, errors.Wrap(err, "error in live_update definition")
+		}
+
 		switch image.Type() {
 		case DockerBuild:
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{
@@ -536,6 +562,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				BuildPath:  string(image.dbBuildPath.path),
 				BuildArgs:  image.dbBuildArgs,
 				FastBuild:  s.maybeFastBuild(image),
+				LiveUpdate: lu,
 			})
 		case FastBuild:
 			iTarget = iTarget.WithBuildDetails(s.fastBuildForImage(image))
@@ -545,6 +572,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Deps:        image.customDeps,
 				Tag:         image.customTag,
 				DisablePush: image.disablePush,
+				LiveUpdate:  lu,
 			}
 			if len(image.mounts) > 0 || len(image.runs) > 0 {
 				r.Fast = &model.FastBuild{

@@ -119,6 +119,11 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		}
 	}
 
+	err = s.validateLiveUpdates()
+	if err != nil {
+		return TiltfileLoadResult{}, err
+	}
+
 	manifests, err = match(manifests, matching)
 	if err != nil {
 		return TiltfileLoadResult{}, err
@@ -182,17 +187,22 @@ func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
 // Otherwise, return it as a single-element slice
 // For functions that take `Union[List[T], T]`
 func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
-	if v, ok := v.(starlark.Sequence); ok {
+	if seq, ok := v.(starlark.Sequence); ok {
 		var ret []starlark.Value
-		it := v.Iterate()
+		it := seq.Iterate()
 		defer it.Done()
 		var i starlark.Value
 		for it.Next(&i) {
 			ret = append(ret, i)
 		}
 		return ret
+	} else if v == nil || v == starlark.None {
+		return nil
+	} else {
+		return []starlark.Value{v}
 	}
-	return []starlark.Value{v}
+	//}
+	//return []starlark.Value{v}
 }
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(counts map[string]int) {

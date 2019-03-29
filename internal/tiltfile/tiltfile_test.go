@@ -2764,6 +2764,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 						}
 						matcher.fb.checkMatchers(f, m, *dbInfo.FastBuild)
 					}
+				case model.LiveUpdate:
+					lu := image.MaybeLiveUpdateInfo()
+					if assert.NotNil(f.t, lu) {
+						assert.Equal(f.t, matcher, *lu)
+					}
 				default:
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -2814,6 +2819,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					}
 
 					matcher.checkMatchers(f, m, *cbInfo.Fast)
+				case model.LiveUpdate:
+					lu := image.MaybeLiveUpdateInfo()
+					if assert.NotNil(f.t, lu) {
+						assert.Equal(f.t, matcher, *lu)
+					}
 				}
 			}
 

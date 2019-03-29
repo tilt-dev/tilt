@@ -55,8 +55,8 @@ func (l LiveUpdateSyncStep) liveUpdateStep() {}
 // If `Trigger` is non-empty, `Command` will only be executed when the local paths of changed files covered by
 // at least one `Sync` match the glob in `Trigger`.
 type LiveUpdateRunStep struct {
-	Command Cmd
-	Trigger string
+	Command  Cmd
+	Triggers []string
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
