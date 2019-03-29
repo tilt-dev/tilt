@@ -53,9 +53,9 @@ type LiveUpdateSyncStep struct {
 
 func (l LiveUpdateSyncStep) liveUpdateStep() {}
 
-// TODO(maia): s/Mount/Sync
-func (l LiveUpdateSyncStep) toMount() Mount {
-	return Mount{
+// TODO(maia): s/Sync/Sync
+func (l LiveUpdateSyncStep) toMount() Sync {
+	return Sync{
 		LocalPath:     l.Source,
 		ContainerPath: l.Dest,
 	}
@@ -84,9 +84,9 @@ type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) liveUpdateStep() {}
 
-// TODO(maia): s/Mount/Sync
-func (lu LiveUpdate) SyncSteps() []Mount {
-	var syncs []Mount
+// TODO(maia): s/Sync/Sync
+func (lu LiveUpdate) SyncSteps() []Sync {
+	var syncs []Sync
 	for _, step := range lu.Steps {
 		switch step := step.(type) {
 		case LiveUpdateSyncStep:

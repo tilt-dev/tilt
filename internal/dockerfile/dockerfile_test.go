@@ -102,21 +102,21 @@ COPY foo /bar
 ADD /abs/bar /baz
 ADD ./beep/boop /blorp`)
 	context := "/context/dir"
-	mounts, err := df.BUGGY_DeriveMounts(context)
+	mounts, err := df.BUGGY_DeriveSyncs(context)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expectedMounts := []model.Mount{
-		model.Mount{
+	expectedMounts := []model.Sync{
+		model.Sync{
 			LocalPath:     path.Join(context, "foo"),
 			ContainerPath: "/bar",
 		},
-		model.Mount{
+		model.Sync{
 			LocalPath:     "/abs/bar",
 			ContainerPath: "/baz",
 		},
-		model.Mount{
+		model.Sync{
 			LocalPath:     path.Join(context, "beep/boop"),
 			ContainerPath: "/blorp",
 		},
@@ -129,7 +129,7 @@ ADD ./beep/boop /blorp`)
 
 func TestNoAddsToNoMounts(t *testing.T) {
 	df := Dockerfile(`RUN echo 'hi'`)
-	mounts, err := df.BUGGY_DeriveMounts("/context/dir")
+	mounts, err := df.BUGGY_DeriveSyncs("/context/dir")
 	if err != nil {
 		t.Fatal(err)
 	}

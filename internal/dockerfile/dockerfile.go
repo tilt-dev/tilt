@@ -144,9 +144,9 @@ func (d Dockerfile) FindImages() ([]reference.Named, error) {
 	return result, nil
 }
 
-// DeriveMounts finds ADD statements in a Dockerfile and turns them into Tilt model.Mounts.
+// DeriveSyncs finds ADD statements in a Dockerfile and turns them into Tilt model.Sync's.
 // Relative paths in an ADD statement are relative to the build context (passed as an arg)
-// and will appear in the Mount as an abs path.
+// and will appear in the Sync as an abs path.
 //
 // TODO(nick): This code has several bugs and needs to be revisited.
 // In particular, it doesn't properly handle
@@ -158,7 +158,7 @@ func (d Dockerfile) FindImages() ([]reference.Named, error) {
 // Should probably be reworked to only return local paths,
 // as part of a rethink of slimming down the docker build
 // context in a way that's not docker-compose specific.
-func (d Dockerfile) BUGGY_DeriveMounts(context string) ([]model.Mount, error) {
+func (d Dockerfile) BUGGY_DeriveSyncs(context string) ([]model.Sync, error) {
 	var nodes []*parser.Node
 	err := d.traverse(func(node *parser.Node) error {
 		switch node.Value {
@@ -171,7 +171,7 @@ func (d Dockerfile) BUGGY_DeriveMounts(context string) ([]model.Mount, error) {
 		return nil, err
 	}
 
-	mounts := make([]model.Mount, len(nodes))
+	mounts := make([]model.Sync, len(nodes))
 	for i, n := range nodes {
 		m, err := nodeToMount(n, context)
 		if err != nil {
@@ -182,10 +182,10 @@ func (d Dockerfile) BUGGY_DeriveMounts(context string) ([]model.Mount, error) {
 	return mounts, nil
 }
 
-func nodeToMount(node *parser.Node, context string) (model.Mount, error) {
+func nodeToMount(node *parser.Node, context string) (model.Sync, error) {
 	cmd := node.Value
 	if !(cmd == command.Add || cmd == command.Copy) {
-		return model.Mount{}, fmt.Errorf("nodeToMounts works on ADD/COPY nodes; got '%s'", cmd)
+		return model.Sync{}, fmt.Errorf("nodeToMounts works on ADD/COPY nodes; got '%s'", cmd)
 	}
 
 	srcNode := node.Next
@@ -199,7 +199,7 @@ func nodeToMount(node *parser.Node, context string) (model.Mount, error) {
 	// TODO(maia): do we support relative ContainerPaths in mounts?
 	// If not, need to either a. make absolute or b. error out here.
 
-	return model.Mount{
+	return model.Sync{
 		LocalPath:     src,
 		ContainerPath: dstNode.Value,
 	}, nil

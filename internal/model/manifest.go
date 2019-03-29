@@ -170,7 +170,7 @@ func (m Manifest) Empty() bool {
 
 var _ TargetSpec = Manifest{}
 
-type Mount struct {
+type Sync struct {
 	LocalPath     string
 	ContainerPath string
 }

@@ -21,7 +21,7 @@ func BenchmarkBuildTenRuns(b *testing.B) {
 		}
 		runs := model.ToRuns(f.Path(), cmds)
 
-		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, runs, model.Cmd{})
+		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}

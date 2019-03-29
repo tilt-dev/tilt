@@ -239,7 +239,7 @@ func (DockerBuild) buildDetails() {}
 
 type FastBuild struct {
 	BaseDockerfile string
-	Mounts         []Mount
+	Mounts         []Sync
 	Runs           []Run
 	Entrypoint     Cmd
 

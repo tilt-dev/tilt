@@ -483,11 +483,11 @@ type mount struct {
 	mountPoint string
 }
 
-func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Mount {
-	var result []model.Mount
+func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Sync {
+	var result []model.Sync
 
 	for _, m := range image.mounts {
-		result = append(result, model.Mount{LocalPath: m.src.path, ContainerPath: m.mountPoint})
+		result = append(result, model.Sync{LocalPath: m.src.path, ContainerPath: m.mountPoint})
 	}
 
 	return result

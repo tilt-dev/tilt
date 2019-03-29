@@ -40,7 +40,7 @@ type dockerImageBuilder struct {
 
 type ImageBuilder interface {
 	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
 	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, runs []model.Run) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
@@ -73,7 +73,7 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 }
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
-	mounts []model.Mount, filter model.PathMatcher,
+	syncs []model.Sync, filter model.PathMatcher,
 	runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
@@ -81,7 +81,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 
 	hasEntrypoint := !entrypoint.Empty()
 
-	paths := MountsToPathMappings(mounts)
+	paths := MountsToPathMappings(syncs)
 	df := baseDockerfile
 	df, runs, err := d.addConditionalRuns(df, runs, paths)
 	if err != nil {

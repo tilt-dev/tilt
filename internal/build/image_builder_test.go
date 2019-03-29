@@ -99,7 +99,7 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
@@ -112,7 +112,7 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
 	}
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Run{run1, run2}, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, []model.Run{run1, run2}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
@@ -147,7 +147,7 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 		BaseDirectory: f.Path(),
 	}
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Run{run1}, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, []model.Run{run1}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
