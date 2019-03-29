@@ -47,6 +47,15 @@ func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	}
 }
 
+func SanchoSyncSteps(fixture pather) []model.LiveUpdateSyncStep {
+	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: fixture.Path(),
+		Dest:   "/go/src/github.com/windmilleng/sancho",
+	}}
+}
+
+var SanchoRunSteps = []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}}}}
+
 func NewSanchoFastBuildImage(fixture pather) model.ImageTarget {
 	fbInfo := NewSanchoFastBuild(fixture)
 	return model.NewImageTarget(SanchoRef).WithBuildDetails(fbInfo)

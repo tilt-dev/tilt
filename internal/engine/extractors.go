@@ -77,8 +77,9 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		}
 
 		fbInfo := iTarget.MaybeFastBuildInfo()
-		if fbInfo == nil {
-			return nil, RedirectToNextBuilderf("In-place build only supports FastBuilds")
+		luInfo := iTarget.MaybeLiveUpdateInfo()
+		if fbInfo == nil && luInfo == nil {
+			return nil, RedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
 		}
 
 		// Now that we have fast build information, we know this CAN be updated in

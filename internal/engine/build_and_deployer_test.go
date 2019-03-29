@@ -771,7 +771,8 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 	if count != 0 {
 		expected[string(k8s.MagicTestContainerID)] = count
 	}
-	assert.Equal(f.T(), expected, f.docker.RestartsByContainer)
+	assert.Equal(f.T(), expected, f.docker.RestartsByContainer,
+		"checking for expected # of container restarts")
 }
 
 func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy store.DeployInfo) store.BuildStateSet {
