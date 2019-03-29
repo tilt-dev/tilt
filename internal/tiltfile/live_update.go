@@ -112,7 +112,7 @@ func (l liveUpdateRestartContainerStep) liveUpdateStep()                      {}
 
 func (s *tiltfileState) liveUpdateWorkDir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var workDir string
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "workdir", &workDir); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "dir", &workDir); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +130,7 @@ func (s *tiltfileState) liveUpdateWorkDir(thread *starlark.Thread, fn *starlark.
 
 func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var localPath, remotePath string
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "localPath", &localPath, "remotePath", &remotePath); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "local_path", &localPath, "remote_path", &remotePath); err != nil {
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command string
 	var triggers starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "command", &command, "triggers?", &triggers); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &command, "trigger?", &triggers); err != nil {
 		return nil, err
 	}
 
