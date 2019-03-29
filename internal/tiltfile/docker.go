@@ -20,7 +20,7 @@ type dockerImage struct {
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
 	deploymentRef      reference.Named
-	mounts             []mount
+	syncs              []sync
 	runs               []model.Run
 	entrypoint         string
 	cachePaths         []string
@@ -172,7 +172,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 	return model.FastBuild{
 		BaseDockerfile: image.baseDockerfile.String(),
-		Syncs:          s.mountsToDomain(image),
+		Syncs:          s.syncsToDomain(image),
 		Runs:           image.runs,
 		Entrypoint:     model.ToShellCmd(image.entrypoint),
 		HotReload:      image.hotReload,
@@ -434,15 +434,15 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 		return nil, err
 	}
 
-	m := mount{}
+	s := sync{}
 	lp, err := b.s.localPathFromSkylarkValue(src)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s.%s(): invalid type for src (arg 1)", b.String(), fn.Name())
 	}
-	m.src = lp
+	s.src = lp
 
-	m.mountPoint = mountPoint
-	b.img.mounts = append(b.img.mounts, m)
+	s.mountPoint = mountPoint
+	b.img.syncs = append(b.img.syncs, s)
 
 	return b, nil
 }
@@ -478,16 +478,16 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 	return b, nil
 }
 
-type mount struct {
+type sync struct {
 	src        localPath
 	mountPoint string
 }
 
-func (s *tiltfileState) mountsToDomain(image *dockerImage) []model.Sync {
+func (s *tiltfileState) syncsToDomain(image *dockerImage) []model.Sync {
 	var result []model.Sync
 
-	for _, m := range image.mounts {
-		result = append(result, model.Sync{LocalPath: m.src.path, ContainerPath: m.mountPoint})
+	for _, sync := range image.syncs {
+		result = append(result, model.Sync{LocalPath: sync.src.path, ContainerPath: sync.mountPoint})
 	}
 
 	return result
@@ -515,8 +515,8 @@ func reposForPaths(paths []localPath) []model.LocalGitRepo {
 
 func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	var paths []localPath
-	for _, m := range image.mounts {
-		paths = append(paths, m.src)
+	for _, sync := range image.syncs {
+		paths = append(paths, sync.src)
 	}
 	paths = append(paths,
 		image.baseDockerfilePath,
@@ -573,15 +573,15 @@ func dockerignoresForPaths(paths []string) []model.Dockerignore {
 func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
 	var paths []string
 
-	for _, m := range image.mounts {
-		paths = append(paths, m.src.path)
+	for _, sync := range image.syncs {
+		paths = append(paths, sync.src.path)
 
 		// NOTE(maia): this doesn't reflect the behavior of Docker, which only
 		// looks in the build context for the .dockerignore file. Leaving it
 		// for now, though, for fastbuild cases where .dockerignore doesn't
 		// live in the user's synced dir(s) (e.g. user only syncs several specific
 		// files, not a directory containing the .dockerignore).
-		repo := m.src.repo
+		repo := sync.src.repo
 		if repo != nil {
 			paths = append(paths, repo.basePath)
 		}

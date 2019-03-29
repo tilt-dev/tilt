@@ -3180,18 +3180,18 @@ func fbWithCache(img imageHelper, cache string, opts ...interface{}) fbHelper {
 }
 
 func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.FastBuild) {
-	mounts := fbInfo.Syncs
+	syncs := fbInfo.Syncs
 	runs := fbInfo.Runs
 	for _, matcher := range fb.matchers {
 		switch matcher := matcher.(type) {
 		case addHelper:
-			mount := mounts[0]
-			mounts = mounts[1:]
-			if mount.LocalPath != f.JoinPath(matcher.src) {
-				f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
+			sync := syncs[0]
+			syncs = syncs[1:]
+			if sync.LocalPath != f.JoinPath(matcher.src) {
+				f.t.Fatalf("manifest %v sync %+v src: %q; expected %q", m.Name, sync, sync.LocalPath, f.JoinPath(matcher.src))
 			}
-			if mount.ContainerPath != matcher.dest {
-				f.t.Fatalf("manifest %v mount %+v dest: %q; expected %q", m.Name, mount, mount.ContainerPath, matcher.dest)
+			if sync.ContainerPath != matcher.dest {
+				f.t.Fatalf("manifest %v sync %+v dest: %q; expected %q", m.Name, sync, sync.ContainerPath, matcher.dest)
 			}
 		case runHelper:
 			run := runs[0]
