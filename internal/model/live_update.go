@@ -65,18 +65,16 @@ func (l LiveUpdateSyncStep) toMount() Mount {
 // If `Trigger` is non-empty, `Command` will only be executed when the local paths of changed files covered by
 // at least one `Sync` match the glob in `Trigger`.
 type LiveUpdateRunStep struct {
-	Command Cmd
-	Trigger string
+	Command  Cmd
+	Triggers []string
+	// if non-empty, the remote directory from which to run `Command`
+	WorkDir string
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
 
 func (l LiveUpdateRunStep) toRun() Run {
-	r := Run{Cmd: l.Command}
-	if l.Trigger != "" {
-		r = r.WithTriggers([]string{l.Trigger}) // TODO(maia): should be []string to match Run.Triggers
-	}
-	return r
+	return Run{Cmd: l.Command, Triggers: l.Triggers}
 }
 
 // Specifies that the container should be restarted when any files in `Sync` steps have changed.

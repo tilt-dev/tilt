@@ -186,6 +186,16 @@ func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
 	return &fb
 }
 
+func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
+	if lu, ok := s.liveUpdates[image.configurationRef.String()]; ok {
+		lu.matched = true
+		ret, err := liveUpdateToModel(*lu)
+		return &ret, err
+	} else {
+		return nil, nil
+	}
+}
+
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var command string
@@ -390,18 +400,18 @@ func (b *fastBuild) Hash() (uint32, error) {
 }
 
 const (
-	addN       = "add"
-	runN       = "run"
-	hotReloadN = "hot_reload"
+	fbAddN       = "add"
+	fbRunN       = "run"
+	fbHotReloadN = "hot_reload"
 )
 
 func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case addN:
+	case fbAddN:
 		return starlark.NewBuiltin(name, b.add), nil
-	case runN:
+	case fbRunN:
 		return starlark.NewBuiltin(name, b.run), nil
-	case hotReloadN:
+	case fbHotReloadN:
 		return starlark.NewBuiltin(name, b.hotReload), nil
 	default:
 		return nil, nil
@@ -409,7 +419,7 @@ func (b *fastBuild) Attr(name string) (starlark.Value, error) {
 }
 
 func (b *fastBuild) AttrNames() []string {
-	return []string{addN, runN}
+	return []string{fbAddN, fbRunN, fbHotReloadN}
 }
 
 func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -141,8 +142,8 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	defer f.TearDown()
 
 	runs := []model.LiveUpdateRunStep{{
-		Command: model.ToShellCmd("echo hi"),
-		Trigger: "b.txt", // does NOT match changed file
+		Command:  model.ToShellCmd("echo hi"),
+		Triggers: []string{"b.txt"}, // does NOT match changed file
 	}}
 	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), runs, true, nil)
 	tCase := testCase{
