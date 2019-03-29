@@ -62,17 +62,19 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     this.scrollTimeout = setTimeout(() => {
-      let lastElInView =
-        this.lastElement &&
-        this.lastElement.getBoundingClientRect().top < window.innerHeight
+      let lastElInView = this.lastElement
+        ? this.lastElement.getBoundingClientRect().top < window.innerHeight
+        : false
 
       // Always auto-scroll when we're recovering from a loading screen.
-      let autoscroll: boolean | null = false
+      let autoscroll = false
       if (!this.props.log || !this.lastElement) {
         autoscroll = true
       } else {
         autoscroll = lastElInView
       }
+
+      this.setState({ autoscroll })
     }, 250)
   }
 
