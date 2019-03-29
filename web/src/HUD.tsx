@@ -124,7 +124,7 @@ class HUD extends Component<HudProps, HudState> {
         <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar}  />
         <Switch>
           <Route exact path="/hud" render={() => <LogPane log={view.Log} />}/>
-          <Route exact path="/hud/r/:name/log" component={LogsRoute} />
+          <Route exact path="/hud/r/:name" component={LogsRoute} />
           <Route exact path="/hud/r/:name/k8s"  render={() => <K8sViewPane />}  />
           <Route exact path="/hud/r/:name/preview" render={() => <PreviewPane />} />
           <Route component={NoMatch} />
