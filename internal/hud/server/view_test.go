@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-func TestStateToWebViewMultipleMounts(t *testing.T) {
+func TestStateToWebViewMultipleSyncs(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.

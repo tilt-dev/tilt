@@ -554,7 +554,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				}
 			}
 			iTarget = iTarget.WithBuildDetails(r)
-			// TODO(dbentley): validate that mounts is a subset of deps
+			// TODO(dbentley): validate that syncs is a subset of deps
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)
 		}

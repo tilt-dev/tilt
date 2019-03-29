@@ -579,7 +579,7 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 		// NOTE(maia): this doesn't reflect the behavior of Docker, which only
 		// looks in the build context for the .dockerignore file. Leaving it
 		// for now, though, for fastbuild cases where .dockerignore doesn't
-		// live in the user's mount(s) (e.g. user only mounts several specific
+		// live in the user's synced dir(s) (e.g. user only syncs several specific
 		// files, not a directory containing the .dockerignore).
 		repo := m.src.repo
 		if repo != nil {

@@ -25,11 +25,11 @@ var buildArgs2 = DockerBuildArgs{
 	"beep": "boop",
 }
 
-var mount1 = Sync{
+var sync1 = Sync{
 	LocalPath:     "/foo",
 	ContainerPath: "/bar",
 }
-var mount2 = Sync{
+var sync2 = Sync{
 	LocalPath:     "/baz",
 	ContainerPath: "/beep",
 }
@@ -107,23 +107,23 @@ var equalitytests = []struct {
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		true,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{mount2}})),
+			FastBuild{Syncs: []Sync{sync2}})),
 		false,
 	},
 	{
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{mount1}})),
+			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{mount1, mount2}})),
+			FastBuild{Syncs: []Sync{sync1, sync2}})),
 		false,
 	},
 	{
@@ -365,7 +365,7 @@ func TestManifestEquality(t *testing.T) {
 	}
 }
 
-func TestManifestValidateMountRelativePath(t *testing.T) {
+func TestManifestValidateSyncRelativePath(t *testing.T) {
 	fbInfo := FastBuild{
 		BaseDockerfile: `FROM golang`,
 		Syncs: []Sync{

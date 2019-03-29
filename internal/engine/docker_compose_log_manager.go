@@ -31,7 +31,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	// If we're not watching the mounts, then don't bother watching logs.
+	// If we're not watching the FS for changes, then don't bother watching logs.
 	if !state.WatchFiles {
 		return nil, nil
 	}

@@ -76,14 +76,14 @@ func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMa
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ArchivePathsIfExist")
 	defer span.Finish()
 
-	// In order to handle overlapping mounts, we
+	// In order to handle overlapping syncs, we
 	// 1) collect all the entries,
 	// 2) de-dupe them, with last-one-wins semantics
 	// 3) write all the entries
 	//
 	// It's not obvious that this is the correct behavor. A better approach
-	// (that's more in-line with how mounts work) might ignore files in earlier
-	// path mappings when we know they're going to be "mounted" over.
+	// (that's more in-line with how syncs work) might ignore files in earlier
+	// path mappings when we know they're going to be "synced" over.
 	// There's a bunch of subtle product decisions about how overlapping path
 	// mappings work that we're not sure about.
 	entries := []archiveEntry{}

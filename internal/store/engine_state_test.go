@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func TestStateToViewMultipleMounts(t *testing.T) {
+func TestStateToViewMultipleSyncs(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.

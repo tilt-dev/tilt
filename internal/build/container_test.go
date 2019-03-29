@@ -357,9 +357,6 @@ ENTRYPOINT ["sleep", "100000"]`)
 	}
 }
 
-// TODO(maia): test mount err cases
-// TODO(maia): tests for tar code
-
 func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()

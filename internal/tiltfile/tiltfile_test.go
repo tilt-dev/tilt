@@ -2863,7 +2863,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			}
 
 		case matchPathHelper:
-			// Make sure the path matches one of the mounts.
+			// Make sure the path matches one of the syncs.
 			isDep := false
 			path := f.JoinPath(opt.path)
 			for _, d := range m.LocalPaths() {

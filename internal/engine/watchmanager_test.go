@@ -71,7 +71,7 @@ func TestWatchManager_Gitignore(t *testing.T) {
 	assert.NotContains(t, targetFilesChangedActionsToPaths(actions), "bar")
 }
 
-func TestWatchManager_WatchesReappliedOnDockerComposeMountsChange(t *testing.T) {
+func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
