@@ -285,7 +285,7 @@ func (s *tiltfileState) validateLiveUpdates() error {
 
 	for k, v := range s.liveUpdates {
 		if !v.matched {
-			return fmt.Errorf("live_update was specified for '%s', but no build was defined for that image", k)
+			return fmt.Errorf("live_update was specified for '%s', but no built resource uses that image", k)
 		}
 	}
 

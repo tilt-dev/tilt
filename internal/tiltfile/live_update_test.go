@@ -80,7 +80,7 @@ live_update('gcr.io/bar',
     restart_container(),
     sync('bar', '/baz'),
   ])`)
-	f.loadErrString("live_update was specified for 'gcr.io/bar', but no build was defined for that image")
+	f.loadErrString("live_update was specified for 'gcr.io/bar', but no built resource uses that image")
 }
 
 func TestLiveUpdateNonStepInSteps(t *testing.T) {
