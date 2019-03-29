@@ -68,31 +68,34 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	var syncs []model.Sync
+	var changedFiles []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		syncs = fbInfo.Syncs
+		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
-		syncs = luInfo.SyncSteps()
+		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return cbd.buildAndDeploy(ctx, iTarget, state, syncs, runs, hotReload)
+	return cbd.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
 }
 
-func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Sync, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
+func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
 	deployInfo := state.DeployInfo
-	cf, err := build.FilesToPathMappings(state.FilesChanged(), syncs)
-	if err != nil {
-		return store.BuildResultSet{}, err
-	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	boiledSteps, err := build.BoilRuns(runs, cf)
+	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -100,7 +103,7 @@ func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, i
 	// TODO - use PipelineState here when we actually do pipeline output for container builds
 	writer := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload, writer)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload, writer)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return store.BuildResultSet{}, WrapDontFallBackError(err)
