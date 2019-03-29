@@ -1,0 +1,16 @@
+@import "constants.scss";
+
+.LogPane {
+  margin: $spacing-unit / 2;
+  font-size: $font-size-small;
+  margin-bottom: $statusbar-height + $spacing-unit / 2;
+}
+@keyframes blink {
+  0% { opacity: 1 }
+  50% { opacity: 0 }
+  100% { opacity: 1 }
+}
+.logEnd {
+  animation: blink 1s infinite;
+  animation-timing-function: ease;
+}

@@ -54,20 +54,37 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 	defer span.Finish()
 
 	state := stateSet[iTarget.ID()]
-	return sbd.updateInCluster(ctx, iTarget, state)
+	return sbd.UpdateInCluster(ctx, iTarget, state)
 }
 
-func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
-	image model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
-	fbInfo := image.MaybeFastBuildInfo()
+func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
+	iTarget model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
+	var syncs []model.Mount
+	var runs []model.Run
+	var hotReload bool
+
+	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
+		syncs = fbInfo.Mounts
+		runs = fbInfo.Runs
+		hotReload = fbInfo.HotReload
+	}
+	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
+		syncs = luInfo.SyncSteps()
+		runs = luInfo.RunSteps()
+		hotReload = !luInfo.ShouldRestart()
+	}
+	return sbd.updateInCluster(ctx, iTarget, state, syncs, runs, hotReload)
+}
+
+func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Mount, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
 	paths, err := build.FilesToPathMappings(
-		state.FilesChanged(), fbInfo.Mounts)
+		state.FilesChanged(), syncs)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(image))
+	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(iTarget))
 	err = ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {
 		return store.BuildResultSet{}, errors.Wrap(err, "archivePathsIfExists")
@@ -87,7 +104,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	deployInfo := state.DeployInfo
-	cmds, err := build.BoilRuns(fbInfo.Runs, paths)
+	cmds, err := build.BoilRuns(runs, paths)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -96,13 +113,13 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	if sbd.updateMode == UpdateModeKubectlExec || sbd.kCli.ContainerRuntime(ctx) != container.RuntimeDocker {
 		if err := sbd.updateViaExec(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
-			archive, archivePaths, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
+			archive, archivePaths, containerPathsToRm, cmds, hotReload); err != nil {
 			return store.BuildResultSet{}, err
 		}
 	} else {
 		if err := sbd.updateViaSynclet(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
-			archive, containerPathsToRm, cmds, fbInfo.HotReload); err != nil {
+			archive, containerPathsToRm, cmds, hotReload); err != nil {
 			return store.BuildResultSet{}, err
 		}
 	}
@@ -111,7 +128,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context,
 	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
 
 	resultSet := store.BuildResultSet{}
-	resultSet[image.ID()] = res
+	resultSet[iTarget.ID()] = res
 	return resultSet, nil
 }
 

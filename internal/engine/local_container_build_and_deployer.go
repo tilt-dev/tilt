@@ -68,14 +68,31 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
-	fbInfo := iTarget.MaybeFastBuildInfo()
+	var syncs []model.Mount
+	var runs []model.Run
+	var hotReload bool
+
+	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
+		syncs = fbInfo.Mounts
+		runs = fbInfo.Runs
+		hotReload = fbInfo.HotReload
+	}
+	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
+		syncs = luInfo.SyncSteps()
+		runs = luInfo.RunSteps()
+		hotReload = !luInfo.ShouldRestart()
+	}
+	return cbd.buildAndDeploy(ctx, iTarget, state, syncs, runs, hotReload)
+}
+
+func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Mount, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
 	deployInfo := state.DeployInfo
-	cf, err := build.FilesToPathMappings(state.FilesChanged(), fbInfo.Mounts)
+	cf, err := build.FilesToPathMappings(state.FilesChanged(), syncs)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 	logger.Get(ctx).Infof("  → Updating container…")
-	boiledSteps, err := build.BoilRuns(fbInfo.Runs, cf)
+	boiledSteps, err := build.BoilRuns(runs, cf)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -83,7 +100,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	// TODO - use PipelineState here when we actually do pipeline output for container builds
 	writer := logger.Get(ctx).Writer(logger.InfoLvl)
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(iTarget), boiledSteps, fbInfo.HotReload, writer)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, cf, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload, writer)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return store.BuildResultSet{}, WrapDontFallBackError(err)

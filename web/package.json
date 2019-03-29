@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@types/enzyme": "^3.9.1",
     "@types/jest": "^24.0.11",
     "@types/node": "^11.12.0",
     "@types/react": "^16.8.8",
@@ -31,7 +32,7 @@
     "test": "react-scripts test",
     "test-debug": "react-scripts --inspect-brk test --runInBand --no-cache",
     "eject": "react-scripts eject",
-    "check": "eslint src/*.js && tsc -p ."
+    "check": "eslint src/*.js && prettier --check \"src/**/*.ts*\" && tsc -p ."
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -41,5 +42,8 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "devDependencies": {
+    "prettier": "1.16.4"
+  }
 }

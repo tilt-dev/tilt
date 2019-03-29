@@ -198,6 +198,11 @@ type Run struct {
 	BaseDirectory string
 }
 
+func (r Run) WithTriggers(triggers []string) Run {
+	r.Triggers = triggers
+	return r
+}
+
 type Cmd struct {
 	Argv []string
 }

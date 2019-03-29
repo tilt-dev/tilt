@@ -1,7 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`renders logs 1`] = `
-<div>
+<div
+  className="LogPane"
+>
   <div>
     <code>
       <span

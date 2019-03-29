@@ -131,3 +131,7 @@ synclet-release:
 release:
 	goreleaser --rm-dist
 
+prettier:
+	cd web && yarn install
+	cd web && yarn run prettier --write "src/**/*.ts*"
+

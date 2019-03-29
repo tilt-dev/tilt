@@ -1,6 +1,10 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 // An abstract build graph of targets and their dependencies.
 // Each target should have a unique ID.
@@ -81,4 +85,56 @@ func DedupeTargetIDs(ids []TargetID) []TargetID {
 		}
 	}
 	return result
+}
+
+// Map all the targets by their target ID.
+func MakeTargetMap(targets []TargetSpec) map[TargetID]TargetSpec {
+	result := make(map[TargetID]TargetSpec, len(targets))
+	for _, target := range targets {
+		result[target.ID()] = target
+	}
+	return result
+}
+
+// Create a topologically sorted list of targets. Returns an error
+// if the targets can't be topologically sorted. (e.g., there's a cycle).
+func TopologicalSort(targets []TargetSpec) ([]TargetSpec, error) {
+	targetMap := MakeTargetMap(targets)
+	result := make([]TargetSpec, 0, len(targets))
+	inResult := make(map[TargetID]bool, len(targets))
+	searching := make(map[TargetID]bool, len(targets))
+
+	var ensureInResult func(id TargetID) error
+	ensureInResult = func(id TargetID) error {
+		if inResult[id] {
+			return nil
+		}
+		if searching[id] {
+			return fmt.Errorf("Found a cycle at target: %s", id.Name)
+		}
+		searching[id] = true
+
+		current, ok := targetMap[id]
+		if !ok {
+			return fmt.Errorf("Missing target dependency: %s", id.Name)
+		}
+
+		for _, depID := range current.DependencyIDs() {
+			err := ensureInResult(depID)
+			if err != nil {
+				return err
+			}
+		}
+		result = append(result, current)
+		inResult[id] = true
+		return nil
+	}
+
+	for _, target := range targets {
+		err := ensureInResult(target.ID())
+		if err != nil {
+			return nil, errors.Wrap(err, "Internal error")
+		}
+	}
+	return result, nil
 }

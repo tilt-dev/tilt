@@ -108,7 +108,12 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	numStages := len(iTargets) * 2 // each image target has two stages: one for build, and one for push
+	q, err := NewImageTargetQueue(iTargets, stateSet)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+
+	numStages := q.CountDirty() * 2 // each image target has two stages: one for build, and one for push
 	if len(kTargets) > 0 {
 		numStages++
 	}
@@ -116,49 +121,41 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	var anyFastBuild bool
-	q := NewImageTargetQueue(iTargets)
-	target, ok, err := q.Next()
+	var anyInPlaceBuild bool
+
+	iTargetMap := model.ImageTargetsByID(iTargets)
+	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+		iTarget, ok := target.(model.ImageTarget)
+		if !ok {
+			return store.BuildResult{}, fmt.Errorf("Not an image target: %T", target)
+		}
+
+		iTarget, err := injectImageDependencies(iTarget, iTargetMap, depResults)
+		if err != nil {
+			return store.BuildResult{}, err
+		}
+
+		ref, err := ibd.icb.Build(ctx, iTarget, state, ps)
+		if err != nil {
+			return store.BuildResult{}, err
+		}
+
+		ref, err = ibd.push(ctx, ref, ps, iTarget, kTargets)
+		if err != nil {
+			return store.BuildResult{}, err
+		}
+
+		anyInPlaceBuild = anyInPlaceBuild ||
+			iTarget.MaybeFastBuildInfo() != nil || iTarget.MaybeLiveUpdateInfo() != nil
+		return store.NewImageBuildResult(iTarget.ID(), ref), nil
+	})
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	iTargetMap := model.ImageTargetsByID(iTargets)
-	for ok {
-		iTarget, err := injectImageDependencies(target.(model.ImageTarget), iTargetMap, q.DependencyResults(target))
-		if err != nil {
-			return store.BuildResultSet{}, err
-		}
-
-		var ref reference.NamedTagged
-		state := stateSet[iTarget.ID()]
-
-		if state.NeedsImageBuild() {
-			ref, err = ibd.icb.Build(ctx, iTarget, state, ps)
-			if err != nil {
-				return store.BuildResultSet{}, err
-			}
-
-			ref, err = ibd.push(ctx, ref, ps, iTarget, kTargets)
-			if err != nil {
-				return store.BuildResultSet{}, err
-			}
-
-		} else {
-			ref = state.LastResult.Image
-		}
-
-		q.SetResult(iTarget.ID(), store.NewImageBuildResult(iTarget.ID(), ref))
-		anyFastBuild = anyFastBuild || iTarget.MaybeFastBuildInfo() != nil
-		target, ok, err = q.Next()
-		if err != nil {
-			return store.BuildResultSet{}, err
-		}
-	}
-
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	err = ibd.deploy(ctx, st, ps, iTargetMap, kTargets, q.results, anyFastBuild)
+	err = ibd.deploy(ctx, st, ps, iTargetMap, kTargets, q.results, anyInPlaceBuild)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
