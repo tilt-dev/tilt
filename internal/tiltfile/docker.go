@@ -190,6 +190,18 @@ func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, 
 	if lu, ok := s.liveUpdates[image.configurationRef.String()]; ok {
 		lu.matched = true
 		ret, err := liveUpdateToModel(*lu)
+
+		// if it's a docker build, verify that all sync steps are from within the docker build context
+		if image.Type() == DockerBuild {
+			for _, step := range lu.steps {
+				if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
+					if !ospath.IsChild(image.dbBuildPath.path, syncStep.Source) {
+						return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'", syncStep.Source, image.dbBuildPath.path)
+					}
+				}
+			}
+		}
+
 		return &ret, err
 	} else {
 		return nil, nil
