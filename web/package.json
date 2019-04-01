@@ -12,6 +12,7 @@
     "@types/react-router-dom": "^4.3.1",
     "@types/react-select": "^2.0.15",
     "@types/react-test-renderer": "^16.8.1",
+    "@types/enzyme-adapter-react-16": "^1.0.5",
     "ansi-to-react": "^5.0.0",
     "enzyme": "^3.9.0",
     "enzyme-adapter-react-16": "^1.11.2",
