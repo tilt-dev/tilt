@@ -18,10 +18,6 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) (LiveUp
 	seenRunStep := false
 	for i, step := range steps {
 		switch step.(type) {
-		case LiveUpdateWorkDirStep:
-			if i != 0 {
-				return LiveUpdate{}, errors.New("workdir is only valid as the first step")
-			}
 		case LiveUpdateSyncStep:
 			if seenRunStep {
 				return LiveUpdate{}, errors.New("all sync steps must precede all run steps")
@@ -40,11 +36,6 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) (LiveUp
 type LiveUpdateStep interface {
 	liveUpdateStep()
 }
-
-// Specifies the in-container directory from which `Run` steps are executed
-type LiveUpdateWorkDirStep string
-
-func (l LiveUpdateWorkDirStep) liveUpdateStep() {}
 
 // Specifies that changes to local path `Source` should be synced to container path `Dest`
 type LiveUpdateSyncStep struct {
@@ -67,8 +58,6 @@ func (l LiveUpdateSyncStep) toSync() Sync {
 type LiveUpdateRunStep struct {
 	Command  Cmd
 	Triggers []string
-	// if non-empty, the remote directory from which to run `Command`
-	WorkDir string
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
@@ -94,7 +83,6 @@ func (lu LiveUpdate) SyncSteps() []Sync {
 }
 
 func (lu LiveUpdate) RunSteps() []Run {
-	// TODO(maia): populate run.BaseDirectory with Workdir (if given)
 	var runs []Run
 	for _, step := range lu.Steps {
 		switch step := step.(type) {
