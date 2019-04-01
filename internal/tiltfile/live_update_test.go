@@ -27,7 +27,7 @@ k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
     restart_container(),
-    sync('bar', '/baz'),
+    sync('foo', '/baz'),
   ])`)
 	f.loadErrString("image build info for foo", "live_update", "restart container is only valid as the last step")
 }
@@ -43,7 +43,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
-    sync('bar', 'baz'),
+    sync('foo', 'baz'),
   ])`)
 	f.loadErrString("sync destination", "'baz'", "is not absolute")
 }
@@ -60,7 +60,7 @@ k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
 	run('quu'),
-    sync('bar', '/baz'),
+    sync('foo', '/baz'),
   ])`)
 	f.loadErrString("image build info for foo", "live_update", "all sync steps must precede all run steps")
 }
@@ -132,6 +132,22 @@ live_update('gcr.io/bar',
 	f.loadErrString("run", "triggers", "'bar'", "contained value '4' of type 'int'. it may only contain strings")
 }
 
+func TestLiveUpdateSyncFilesOutsideOfDockerContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+live_update('gcr.io/foo',
+  [
+    sync('bar', '/baz'),
+  ])`)
+	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
+}
+
 func TestLiveUpdateBuild(t *testing.T) {
 	type testCase struct {
 		name, buildCmd string
@@ -162,7 +178,7 @@ func TestLiveUpdateBuild(t *testing.T) {
 k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
-	sync('b', '/c'), # absolute dest
+	sync('foo/b', '/c'),
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
@@ -178,7 +194,7 @@ live_update('gcr.io/foo',
 			var steps []model.LiveUpdateStep
 
 			steps = append(steps,
-				model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
+				model.LiveUpdateSyncStep{Source: f.JoinPath("foo/b"), Dest: "/c"},
 				model.LiveUpdateRunStep{
 					Command:  model.ToShellCmd("f"),
 					Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},

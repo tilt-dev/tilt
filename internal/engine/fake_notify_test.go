@@ -99,8 +99,7 @@ func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error) *fakeWat
 
 func (w *fakeWatcher) matches(path string) bool {
 	for _, watched := range w.paths {
-		_, isChild := ospath.Child(watched, path)
-		if isChild {
+		if ospath.IsChild(watched, path) {
 			return true
 		}
 	}
