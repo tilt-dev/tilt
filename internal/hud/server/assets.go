@@ -24,16 +24,28 @@ import (
 type AssetServer interface {
 	http.Handler
 	Serve(ctx context.Context) error
+	Teardown(ctx context.Context)
 }
 
 type devAssetServer struct {
 	http.Handler
+	started chan struct{}
+	cmd     *exec.Cmd
 }
 
-func (s devAssetServer) Serve(ctx context.Context) error {
+func (s *devAssetServer) Teardown(ctx context.Context) {
+	<-s.started
+	cmd := s.cmd
+	if cmd != nil && cmd.Process != nil {
+		// Kill the entire process group.
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
+}
+
+func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.Cmd, error) {
 	myPkg, err := build.Default.Import("github.com/windmilleng/tilt/internal/hud/server", ".", build.FindOnly)
 	if err != nil {
-		return errors.Wrap(err, "Could not locate Tilt source code")
+		return nil, errors.Wrap(err, "Could not locate Tilt source code")
 	}
 
 	myDir := myPkg.Dir
@@ -46,7 +58,7 @@ func (s devAssetServer) Serve(ctx context.Context) error {
 	cmd.Stderr = logger.Get(ctx).Writer(logger.DebugLvl)
 	err = cmd.Run()
 	if err != nil {
-		return errors.Wrap(err, "Installing Tilt webpack deps")
+		return nil, errors.Wrap(err, "Installing Tilt webpack deps")
 	}
 
 	logger.Get(ctx).Infof("Starting Tilt webpack server…")
@@ -58,27 +70,26 @@ func (s devAssetServer) Serve(ctx context.Context) error {
 	// a process group id so we can murder them all.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	stdout := bytes.NewBuffer(nil)
-	stderr := bytes.NewBuffer(nil)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
 	err = cmd.Start()
 	if err != nil {
-		return errors.Wrap(err, "Starting dev web server")
+		return nil, errors.Wrap(err, "Starting dev web server")
+	}
+	return cmd, nil
+}
+
+func (s *devAssetServer) Serve(ctx context.Context) error {
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	cmd, err := s.start(ctx, stdout, stderr)
+	if err != nil {
+		return err
 	}
 
-	go func() {
-		<-ctx.Done()
-
-		process := cmd.Process
-		if process == nil {
-			return
-		}
-
-		// Kill the entire process group.
-		_ = syscall.Kill(-process.Pid, syscall.SIGKILL)
-	}()
+	s.cmd = cmd
+	close(s.started)
 
 	err = cmd.Wait()
 	if ctx.Err() != nil {
@@ -99,6 +110,9 @@ func (s devAssetServer) Serve(ctx context.Context) error {
 
 type prodAssetServer struct {
 	url *url.URL
+}
+
+func (s prodAssetServer) Teardown(ctx context.Context) {
 }
 
 // This doesn't actually do any setup right now.
@@ -144,6 +158,14 @@ func (s prodAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	_, _ = io.Copy(w, outres.Body)
 }
 
+func NewFakeAssetServer() AssetServer {
+	loc, err := url.Parse("https://fake.tilt.dev")
+	if err != nil {
+		panic(err)
+	}
+	return prodAssetServer{url: loc}
+}
+
 func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion) (AssetServer, error) {
 	if webMode == model.LocalWebMode {
 		loc, err := url.Parse("http://localhost:3000")
@@ -151,8 +173,9 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 			return nil, errors.Wrap(err, "ProvideAssetServer")
 		}
 
-		return devAssetServer{
+		return &devAssetServer{
 			Handler: httputil.NewSingleHostReverseProxy(loc),
+			started: make(chan struct{}),
 		}, nil
 	}
 

@@ -24,6 +24,10 @@ func ProvideHeadsUpServerController(port model.WebPort, hudServer HeadsUpServer,
 	}
 }
 
+func (s *HeadsUpServerController) Teardown(ctx context.Context) {
+	s.assetServer.Teardown(ctx)
+}
+
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
 	defer func() {
 		s.initDone = true
@@ -58,3 +62,5 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 		}
 	}()
 }
+
+var _ store.SubscriberLifecycle = &HeadsUpServerController{}

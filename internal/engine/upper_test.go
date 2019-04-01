@@ -2248,7 +2248,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, nil)
+	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, server.NewFakeAssetServer())
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar, hudsc)
 
 	go func() {
