@@ -9,12 +9,12 @@ func BoilRuns(runs []model.Run, pathMappings []PathMapping) ([]model.Cmd, error)
 	res := []model.Cmd{}
 	localPaths := PathMappingsToLocalPaths(pathMappings)
 	for _, run := range runs {
-		if run.Triggers == nil {
+		if run.Triggers.Empty() {
 			res = append(res, run.Cmd)
 			continue
 		}
 
-		anyMatch, err := ignore.MatchesAnyPaths(run.Triggers, localPaths, run.BaseDirectory)
+		anyMatch, err := ignore.AnyMatchGlobs(localPaths, run.Triggers)
 		if err != nil {
 			return nil, err
 		}

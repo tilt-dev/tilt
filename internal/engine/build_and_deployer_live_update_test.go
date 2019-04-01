@@ -145,7 +145,7 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 
 	runs := []model.LiveUpdateRunStep{{
 		Command:  model.ToShellCmd("echo hi"),
-		Triggers: []string{"b.txt"}, // does NOT match changed file
+		Triggers: f.NewGlobset("b.txt"), // does NOT match changed file
 	}}
 	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), runs, true, nil)
 	tCase := testCase{

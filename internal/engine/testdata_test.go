@@ -40,7 +40,7 @@ func NewSanchoFastBuild(fixture pather) model.FastBuild {
 				ContainerPath: "/go/src/github.com/windmilleng/sancho",
 			},
 		},
-		Runs: model.ToRuns("/", []model.Cmd{
+		Runs: model.ToRuns([]model.Cmd{
 			model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
 		}),
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},

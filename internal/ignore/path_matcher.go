@@ -108,7 +108,7 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 }
 
 func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
-	return CreateTriggerMatcher(r.Triggers, r.BaseDirectory)
+	return CreateTriggerMatcher(r.Triggers.Globs, r.Triggers.BaseDirectory)
 }
 
 func CreateTriggerMatcher(triggers []string, baseDir string) (model.PathMatcher, error) {
@@ -120,9 +120,9 @@ func CreateTriggerMatcher(triggers []string, baseDir string) (model.PathMatcher,
 	return dim, nil
 }
 
-// MatchesAnyPaths returns true if any of the given patterns match any of the given filepaths.
-func MatchesAnyPaths(patterns, paths []string, baseDir string) (bool, error) {
-	matcher, err := CreateTriggerMatcher(patterns, baseDir)
+// AnyMatchGlobs returns true if any of the given filepaths match any of the given globs.
+func AnyMatchGlobs(paths []string, globs model.Globset) (bool, error) {
+	matcher, err := CreateTriggerMatcher(globs.Globs, globs.BaseDirectory)
 	if err != nil {
 		return false, err
 	}

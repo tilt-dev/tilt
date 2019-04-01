@@ -851,8 +851,7 @@ k8s_resource('foobar', 'snack.yaml')
 
 	f.withManifestTarget(name, func(mt store.ManifestTarget) {
 		expectedRuns := []model.Run{{
-			Cmd:           model.ToShellCmd("changed"),
-			BaseDirectory: f.Path(),
+			Cmd: model.ToShellCmd("changed"),
 		}}
 		assert.Equal(t, expectedRuns, mt.Manifest.ImageTargetAt(0).FastBuildInfo().Runs)
 	})

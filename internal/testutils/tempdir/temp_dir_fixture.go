@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/os/temp"
 )
 
@@ -119,6 +120,10 @@ func (f *TempDirFixture) TempDir(prefix string) string {
 		f.t.Fatal(err)
 	}
 	return name
+}
+
+func (f *TempDirFixture) NewGlobset(globs ...string) model.Globset {
+	return model.NewGlobset(globs, f.Path())
 }
 
 func (f *TempDirFixture) TearDown() {

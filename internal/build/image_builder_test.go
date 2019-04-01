@@ -104,9 +104,8 @@ func TestConditionalRunInFakeDocker(t *testing.T) {
 		ContainerPath: "/src",
 	}
 	run1 := model.Run{
-		Cmd:           model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
-		Triggers:      []string{"a.txt"},
-		BaseDirectory: f.Path(),
+		Cmd:      model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
+		Triggers: model.NewGlobset([]string{"a.txt"}, f.Path()),
 	}
 	run2 := model.Run{
 		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
@@ -142,9 +141,8 @@ func TestAllConditionalRunsInFakeDocker(t *testing.T) {
 		ContainerPath: "/src",
 	}
 	run1 := model.Run{
-		Cmd:           model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
-		Triggers:      []string{"a.txt"},
-		BaseDirectory: f.Path(),
+		Cmd:      model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
+		Triggers: model.NewGlobset([]string{"a.txt"}, f.Path()),
 	}
 
 	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, []model.Run{run1}, model.Cmd{})

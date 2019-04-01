@@ -39,24 +39,20 @@ var cmdSayBye = Cmd{Argv: []string{"bash", "-c", "echo bye"}}
 var stepSayHi = Run{Cmd: cmdSayHi}
 var stepSayBye = Run{Cmd: cmdSayBye}
 var stepSayHiTriggerFoo = Run{
-	Cmd:           cmdSayHi,
-	Triggers:      []string{"foo"},
-	BaseDirectory: "/src",
+	Cmd:      cmdSayHi,
+	Triggers: NewGlobset([]string{"foo"}, "/src"),
 }
 var stepSayHiTriggerBar = Run{
-	Cmd:           cmdSayHi,
-	Triggers:      []string{"bar"},
-	BaseDirectory: "/src",
+	Cmd:      cmdSayHi,
+	Triggers: NewGlobset([]string{"bar"}, "/src"),
 }
 var stepSayHiTriggerDirA = Run{
-	Cmd:           cmdSayHi,
-	Triggers:      []string{"foo"},
-	BaseDirectory: "/dirA",
+	Cmd:      cmdSayHi,
+	Triggers: NewGlobset([]string{"foo"}, "/dirA"),
 }
 var stepSayHiTriggerDirB = Run{
-	Cmd:           cmdSayHi,
-	Triggers:      []string{"foo"},
-	BaseDirectory: "/dirB",
+	Cmd:      cmdSayHi,
+	Triggers: NewGlobset([]string{"foo"}, "/dirB"),
 }
 
 var equalitytests = []struct {
