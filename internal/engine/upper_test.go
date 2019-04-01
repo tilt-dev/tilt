@@ -1955,6 +1955,9 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
 	})
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), expected)
+	})
 }
 
 func TestDockerComposeFiltersRunLogs(t *testing.T) {
