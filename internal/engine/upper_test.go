@@ -1939,6 +1939,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
+	expectedRegex := regexp.MustCompile(expected)
 	output := make(chan string, 1)
 	output <- expected
 	defer close(output)
@@ -1954,9 +1955,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
-	})
-	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.Log.String(), expected)
+		assert.Equal(t, 1, len(expectedRegex.FindAllStringIndex(st.CombinedLog.String(), -1)))
 	})
 }
 
