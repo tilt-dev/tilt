@@ -128,7 +128,6 @@ const (
 
 	// live update functions
 	liveUpdateN       = "live_update"
-	workDirN          = "work_dir"
 	syncN             = "sync"
 	runN              = "run"
 	restartContainerN = "restart_container"
@@ -183,7 +182,6 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, readJSONN, s.readJson)
 
 	addBuiltin(r, liveUpdateN, s.liveUpdate)
-	addBuiltin(r, workDirN, s.liveUpdateWorkDir)
 	addBuiltin(r, syncN, s.liveUpdateSync)
 	addBuiltin(r, runN, s.liveUpdateRun)
 	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
