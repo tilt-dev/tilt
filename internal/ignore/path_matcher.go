@@ -2,6 +2,7 @@ package ignore
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -128,11 +129,13 @@ func AnyMatchGlobs(paths []string, globs model.Globset) (bool, error) {
 	}
 
 	for _, path := range paths {
+		fmt.Printf("checking path %s\n", path)
 		match, err := matcher.Matches(path, false)
 		if err != nil {
 			return false, err
 		}
 		if match {
+			fmt.Println("~~ yes, a match!")
 			return true, nil
 		}
 	}

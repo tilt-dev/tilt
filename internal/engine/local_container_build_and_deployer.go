@@ -81,9 +81,21 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
+		tiltRoot := "gettheroot" // PICK UP HERE MONDAY
+
 		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
 		if err != nil {
 			return store.BuildResultSet{}, err
+		}
+
+		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
+		anyMatch, err := ignore.MatchesAnyPaths(luInfo.FullRebuildTriggers, build.PathMappingsToLocalPaths(changedFiles), tiltRoot)
+		if err != nil {
+			return nil, err
+		}
+		if anyMatch {
+			return store.BuildResultSet{}, RedirectToNextBuilderf(
+				"one or more changed files match a FullRebuildTrigger, so will not perform a LiveUpdate")
 		}
 
 		runs = luInfo.RunSteps()
