@@ -191,7 +191,7 @@ func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, 
 		lu.matched = true
 		ret, err := liveUpdateToModel(*lu)
 
-		// if it's a docker build, verify that all sync steps are from within the docker build context
+		// if it's a docker build + live update, verify that all sync steps are from within the docker build context
 		if image.Type() == DockerBuild {
 			for _, step := range lu.steps {
 				if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
