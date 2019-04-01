@@ -16,7 +16,7 @@ import {
 } from "react-router-dom"
 import "./HUD.scss"
 
-interface HudProps extends RouteComponentProps<any> {}
+type HudProps = {}
 
 type Resource = {
   Name: string
@@ -111,14 +111,14 @@ class HUD extends Component<HudProps, HudState> {
     let isSidebarOpen = this.state.isSidebarOpen
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    let SidebarRoute = function(props: HudProps) {
+    let SidebarRoute = function(props: RouteComponentProps<any>) {
       let name = props.match.params.name
       return (
         <Sidebar selected={name} items={sidebarItems} isOpen={isSidebarOpen} />
       )
     }
 
-    let LogsRoute = (props: HudProps) => {
+    let LogsRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
       let logs = ""
       if (view && name !== "") {
