@@ -53,7 +53,7 @@ class Sidebar extends PureComponent<SidebarProps> {
     )
 
     let listItems = this.props.items.map(item => {
-      let link = `/hud/r/${item.name}`
+      let link = `/r/${item.name}`
       let classes = `resLink resLink--${item.status}`
       if (this.props.selected === item.name) {
         classes += " is-selected"

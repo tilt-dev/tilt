@@ -137,7 +137,7 @@ class HUD extends Component<HudProps, HudState> {
       <Router>
         <div className="HUD">
           <Switch>
-            <Route path="/hud/r/:name" component={SidebarRoute} />
+            <Route path="/r/:name" component={SidebarRoute} />
             <Route component={SidebarRoute} />
           </Switch>
 
@@ -145,18 +145,14 @@ class HUD extends Component<HudProps, HudState> {
           <Switch>
             <Route
               exact
-              path="/hud"
+              path="/"
               render={() => <LogPane log={combinedLog} />}
             />
-            <Route exact path="/hud/r/:name" component={LogsRoute} />
+            <Route exact path="/r/:name" component={LogsRoute} />
+            <Route exact path="/r/:name/k8s" render={() => <K8sViewPane />} />
             <Route
               exact
-              path="/hud/r/:name/k8s"
-              render={() => <K8sViewPane />}
-            />
-            <Route
-              exact
-              path="/hud/r/:name/preview"
+              path="/r/:name/preview"
               render={() => <PreviewPane />}
             />
             <Route component={NoMatch} />
