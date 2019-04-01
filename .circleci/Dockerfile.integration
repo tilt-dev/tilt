@@ -60,3 +60,5 @@ RUN apt install -y curl ca-certificates git liblz4-tool rsync socat \
   && chmod a+x /go/dind-cluster.sh \
   && chmod a+x /go/portforward.sh
 
+# install gotestsum
+RUN go get gotest.tools/gotestsum
