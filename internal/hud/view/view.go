@@ -216,17 +216,6 @@ func (c CollapseState) IsCollapsed(defaultCollapse bool) bool {
 	}
 }
 
-func (vs *ViewState) CycleViewLogState() {
-	states := []TiltLogState{TiltLogPane, TiltLogHalfScreen, TiltLogFullScreen, TiltLogMinimized}
-	for i := range states {
-		if states[i] == vs.LogModal.TiltLog {
-			vs.LogModal.TiltLog = states[(i+1)%len(states)]
-			return
-		}
-	}
-	vs.LogModal.TiltLog = TiltLogFullScreen
-}
-
 type ResourceViewState struct {
 	CollapseState CollapseState
 }

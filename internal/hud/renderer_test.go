@@ -84,24 +84,6 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name: "a-a-a-aaaaabe vigoda",
-				BuildHistory: []model.BuildRecord{{
-					Error: fmt.Errorf("oh no the build failed"),
-					Log:   model.NewLog("1\n2\n3\nthe compiler wasn't smart enough to figure out what you meant!\n5\n6\n7\n8\n"),
-				}},
-				ResourceInfo: view.K8SResourceInfo{},
-			},
-		},
-	}
-
-	logModalVs := plainVs
-	logModalVs.LogModal = view.LogModal{ResourceLogNumber: 1}
-
-	rtf.run("modal build log displayed", 70, 20, v, logModalVs)
-
-	v = view.View{
-		Resources: []view.Resource{
-			{
 				Name:      "a-a-a-aaaaabe vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
 				ResourceInfo: view.K8SResourceInfo{
@@ -314,83 +296,6 @@ func TestRenderTiltLogHalfScreen(t *testing.T) {
 	rtf.run("tilt log half screen height 10", 70, 10, v, vs)
 }
 
-func TestRenderLogModal(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-
-	vs := fakeViewState(1, view.CollapseNo)
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
-
-	now := time.Now()
-	v := view.View{
-		Resources: []view.Resource{
-			{
-				Name: "vigoda",
-				BuildHistory: []model.BuildRecord{{
-					StartTime:  now.Add(-time.Minute),
-					FinishTime: now,
-					Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
-  │ Tarring context…
-  │ Applying via kubectl
-    ╎ Created tarball (size: 11 kB)
-  │ Building image
-`),
-				}},
-				ResourceInfo: view.K8SResourceInfo{
-					PodName:         "vigoda-pod",
-					PodCreationTime: now,
-					PodLog:          "serving on 8080",
-					PodStatus:       "Running",
-				},
-				LastDeployTime: now,
-			},
-		},
-	}
-	rtf.run("build log pane", 117, 20, v, vs)
-
-	v = view.View{
-		Resources: []view.Resource{
-			{
-				Name: "vigoda",
-				BuildHistory: []model.BuildRecord{{
-					FinishTime: now.Add(-time.Minute),
-				}},
-				CurrentBuild: model.BuildRecord{
-					StartTime: now,
-					Log:       model.NewLog("building!"),
-					Reason:    model.BuildReasonFlagCrash,
-				},
-				ResourceInfo: view.K8SResourceInfo{
-					PodName:         "vigoda-pod",
-					PodCreationTime: now,
-				},
-				CrashLog: "panic!",
-			},
-		},
-	}
-	rtf.run("resource log during crash rebuild", 60, 20, v, vs)
-
-	v = view.View{
-		Resources: []view.Resource{
-			{
-				Name: "spoonerisms",
-				ResourceInfo: view.NewDCResourceInfo(
-					"docker-compose.yml",
-					"building",
-					testCID,
-					"Hi hello I'm a docker compose log",
-					time.Now().Add(time.Second*-12),
-				),
-				BuildHistory: []model.BuildRecord{
-					{
-						Log: model.NewLog("Hi hello I'm a docker compose build log"),
-					},
-				},
-			},
-		},
-	}
-	rtf.run("docker compose log pane", 117, 20, v, vs)
-}
-
 func TestRenderNarrationMessage(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
@@ -477,36 +382,6 @@ func TestPodPending(t *testing.T) {
 	}
 	rtf.run("pending pod pending status", 80, 20, v, vs)
 	assert.Equal(t, cPending, statusColor(v.Resources[0], model.TriggerAuto))
-}
-
-func TestPodLogContainerUpdate(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-	ts := time.Now().Add(-30 * time.Second)
-
-	v := view.View{
-		Resources: []view.Resource{
-			{
-				Name:      "vigoda",
-				Endpoints: []string{"1.2.3.4:8080"},
-				BuildHistory: []model.BuildRecord{{
-					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
-					StartTime:  ts,
-					FinishTime: ts,
-				}},
-				ResourceInfo: view.K8SResourceInfo{
-					PodName:            "vigoda-pod",
-					PodStatus:          "Running",
-					PodLog:             "Serving on 8080",
-					PodUpdateStartTime: ts,
-					PodCreationTime:    ts.Add(-time.Minute),
-				},
-				LastDeployTime: ts,
-			},
-		},
-	}
-	vs := fakeViewState(1, view.CollapseAuto)
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
-	rtf.run("pod log for container update", 70, 20, v, vs)
 }
 
 func TestCrashingPodInlineCrashLog(t *testing.T) {
@@ -798,33 +673,6 @@ func TestTiltfileResource(t *testing.T) {
 	rtf.run("Tiltfile resource", 80, 20, v, vs)
 }
 
-func TestTiltfileResourceWithLog(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-
-	now := time.Now()
-	v := view.View{
-		Resources: []view.Resource{
-			{
-				Name:       "(Tiltfile)",
-				IsTiltfile: true,
-				BuildHistory: []model.BuildRecord{
-					{
-						Edits:      []string{"foo"},
-						StartTime:  now.Add(-5 * time.Second),
-						FinishTime: now.Add(-4 * time.Second),
-						Reason:     model.BuildReasonFlagConfig,
-						Log:        model.NewLog("hi hello"),
-					},
-				},
-			},
-		},
-	}
-
-	vs := fakeViewState(1, view.CollapseNo)
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
-	rtf.run("Tiltfile resource with log", 80, 20, v, vs)
-}
-
 func TestTiltfileResourceWithWarning(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 	now := time.Now()
@@ -848,37 +696,6 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("Tiltfile resource with warning", 80, 20, v, vs)
-}
-
-func BenchmarkBigLogAndBigScreen(b *testing.B) {
-	rtf := newRendererTestFixture(b)
-
-	now := time.Now()
-	log := model.NewLog(strings.Repeat("hi hello", 10000))
-	v := view.View{
-		Resources: []view.Resource{
-			{
-				Name:       "(Tiltfile)",
-				IsTiltfile: true,
-				BuildHistory: []model.BuildRecord{
-					{
-						Edits:      []string{"foo"},
-						StartTime:  now.Add(-5 * time.Second),
-						FinishTime: now.Add(-5 * time.Second),
-						Reason:     model.BuildReasonFlagConfig,
-						Log:        log,
-					},
-				},
-			},
-		},
-	}
-
-	vs := fakeViewState(1, view.CollapseNo)
-	vs.LogModal = view.LogModal{ResourceLogNumber: 1}
-
-	for n := 0; n < b.N; n++ {
-		rtf.run("Tiltfile resource with log benchmark", 204, 159, v, vs)
-	}
 }
 
 func TestTiltfileResourcePending(t *testing.T) {

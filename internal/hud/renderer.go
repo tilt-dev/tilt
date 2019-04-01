@@ -79,11 +79,6 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	l.Add(r.renderFooter(v, keyLegend(v, vs)))
 
 	var ret rty.Component = l
-	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
-		ret = r.renderTiltLog(v, vs, keyLegend(v, vs), ret)
-	} else if vs.LogModal.ResourceLogNumber != 0 {
-		ret = r.renderResourceLogModal(v.Resources[vs.LogModal.ResourceLogNumber-1], ret)
-	}
 
 	ret = r.maybeAddAlertModal(vs, ret)
 
@@ -186,8 +181,6 @@ func keyLegend(v view.View, vs view.ViewState) string {
 	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
 	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
 		return "Scroll (↓ ↑) ┊ cycle (l)og view "
-	} else if vs.LogModal.ResourceLogNumber != 0 {
-		return "Scroll (↓ ↑) ┊ (esc) close logs "
 	} else if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
 	} else if v.TriggerMode == model.TriggerManual {
@@ -251,31 +244,6 @@ func bestLogs(res view.Resource) string {
 	}
 
 	return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog()
-}
-
-func (r *Renderer) renderTiltLog(v view.View, vs view.ViewState, keys string, background rty.Component) rty.Component {
-	l := rty.NewConcatLayout(rty.DirVert)
-	sl := rty.NewTextScrollLayout(logScrollerName)
-	l.Add(renderPaneHeader(vs))
-	sl.Add(rty.TextString(v.Log))
-	l.AddDynamic(sl)
-	l.Add(r.renderFooter(v, keys))
-	return rty.NewModalLayout(background, l, 1, true)
-}
-
-func (r *Renderer) renderResourceLogModal(res view.Resource, background rty.Component) rty.Component {
-	s := bestLogs(res)
-	if len(strings.TrimSpace(s)) == 0 {
-		s = fmt.Sprintf("No log output for %s", res.Name)
-	}
-
-	l := rty.NewTextScrollLayout(logScrollerName)
-	l.Add(rty.TextString(s))
-	w := rty.NewGrowingWindow()
-	w.SetInner(l)
-	w.SetTitle(fmt.Sprintf("LOG: %s", res.Name))
-
-	return rty.NewModalLayout(background, w, 0.9, true)
 }
 
 func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {
