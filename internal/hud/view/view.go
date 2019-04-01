@@ -182,7 +182,6 @@ type ViewState struct {
 	ShowNarration         bool
 	NarrationMessage      string
 	Resources             []ResourceViewState
-	LogModal              LogModal
 	ProcessedLogByteCount int
 	AlertMessage          string
 	TabState              TabState
@@ -219,20 +218,3 @@ func (c CollapseState) IsCollapsed(defaultCollapse bool) bool {
 type ResourceViewState struct {
 	CollapseState CollapseState
 }
-
-type LogModal struct {
-	// if non-0, which resource's log is currently shown in a modal (1-based index)
-	ResourceLogNumber int
-
-	// if we're showing the full tilt log output in a modal
-	TiltLog TiltLogState
-}
-
-type TiltLogState int
-
-const (
-	TiltLogPane TiltLogState = iota
-	TiltLogHalfScreen
-	TiltLogFullScreen
-	TiltLogMinimized
-)

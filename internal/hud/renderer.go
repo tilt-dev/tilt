@@ -107,26 +107,11 @@ func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	if tabsEnabled() {
 		height = 8
 	}
-	if vs.LogModal.TiltLog == view.TiltLogMinimized {
-		height = 1
-	} else if vs.LogModal.TiltLog == view.TiltLogHalfScreen {
-		height = rty.GROW
-	}
 	return rty.NewFixedSize(tabView.Build(), rty.GROW, height)
 }
 
 func renderPaneHeader(vs view.ViewState) rty.Component {
-	var s string
-	switch vs.LogModal.TiltLog {
-	case view.TiltLogFullScreen:
-		s = "(l) minimize log ↓"
-	case view.TiltLogHalfScreen:
-		s = "(l) maximize log ↑"
-	case view.TiltLogPane:
-		s = "(l) expand log ↑"
-	case view.TiltLogMinimized:
-		s = "(l) expand log ↑"
-	}
+	s := "(l) open logs in browser"
 	l := rty.NewLine()
 	l.Add(rty.NewFillerString('─'))
 	l.Add(rty.TextString(fmt.Sprintf(" %s ", s)))
@@ -179,9 +164,7 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 
 func keyLegend(v view.View, vs view.ViewState) string {
 	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
-	if vs.LogModal.TiltLog == view.TiltLogFullScreen {
-		return "Scroll (↓ ↑) ┊ cycle (l)og view "
-	} else if vs.AlertMessage != "" {
+	if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
 	} else if v.TriggerMode == model.TriggerManual {
 		return "Build (space) ┊ " + defaultKeys
