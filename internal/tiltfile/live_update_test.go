@@ -43,12 +43,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
-<<<<<<< HEAD
-    sync('foo', '/baz'),
-    work_dir('/quu'),
-=======
-    sync('bar', 'baz'),
->>>>>>> master
+    sync('foo', 'baz'),
   ])`)
 	f.loadErrString("sync destination", "'baz'", "is not absolute")
 }
@@ -148,7 +143,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 live_update('gcr.io/foo',
   [
-    sync('bar', 'baz'),
+    sync('bar', '/baz'),
   ])`)
 	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
 }
