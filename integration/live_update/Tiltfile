@@ -16,4 +16,4 @@ live_update(
     ]
 )
 
-k8s_resource('live-update', 'deploy.yaml', port_forwards=8100)
+k8s_resource('live-update', 'deploy.yaml')
