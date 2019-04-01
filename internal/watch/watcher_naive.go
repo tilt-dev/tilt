@@ -153,7 +153,7 @@ func (d *naiveNotify) shouldNotify(e fsnotify.Event) bool {
 	} else {
 		// TODO(dmiller): maybe use a prefix tree here?
 		for path := range d.notifyList {
-			if ospath.IsChild(e.Name, path) {
+			if ospath.IsChild(path, e.Name) {
 				return true
 			}
 		}
