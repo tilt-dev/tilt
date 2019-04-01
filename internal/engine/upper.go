@@ -935,6 +935,7 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
 	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps))
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
