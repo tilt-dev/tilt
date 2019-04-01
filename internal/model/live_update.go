@@ -11,10 +11,10 @@ type LiveUpdate struct {
 	Steps []LiveUpdateStep
 
 	// When files matching any of these globs change, we should fall back to a full rebuild.
-	FullRebuildTriggers []string
+	FullRebuildTriggers Globset
 }
 
-func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) (LiveUpdate, error) {
+func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers Globset) (LiveUpdate, error) {
 	seenRunStep := false
 	for i, step := range steps {
 		switch step.(type) {

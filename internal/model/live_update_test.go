@@ -6,16 +6,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const BaseDir = "/base/directory"
+
 func TestNewLiveUpdate(t *testing.T) {
 	steps := []LiveUpdateStep{
 		LiveUpdateSyncStep{"foo", "bar"},
-		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewGlobset([]string{"goodbye"}, "/home")},
+		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewGlobset([]string{"goodbye"}, BaseDir)},
 		LiveUpdateRestartContainerStep{},
 	}
-	fullRebuildTriggers := []string{"quu", "qux"}
-	lu, err := NewLiveUpdate(
-		steps,
-		fullRebuildTriggers)
+	fullRebuildTriggers := NewGlobset([]string{"quu", "qux"}, BaseDir)
+	lu, err := NewLiveUpdate(steps, fullRebuildTriggers)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -25,7 +25,7 @@ func TestNewLiveUpdate(t *testing.T) {
 
 func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 	steps := []LiveUpdateStep{LiveUpdateRestartContainerStep{}, LiveUpdateSyncStep{"foo", "bar"}}
-	_, err := NewLiveUpdate(steps, []string{})
+	_, err := NewLiveUpdate(steps, Globset{})
 	if !assert.Error(t, err) {
 		return
 	}
@@ -34,7 +34,7 @@ func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 
 func TestNewLiveUpdateSyncAfterRun(t *testing.T) {
 	steps := append([]LiveUpdateStep{LiveUpdateRunStep{}, LiveUpdateSyncStep{"foo", "bar"}})
-	_, err := NewLiveUpdate(steps, []string{})
+	_, err := NewLiveUpdate(steps, Globset{})
 	if !assert.Error(t, err) {
 		return
 	}

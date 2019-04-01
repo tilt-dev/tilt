@@ -59,33 +59,45 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 
 func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 	iTarget model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
-	var syncs []model.Sync
+	var err error
+	var changedFiles []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		syncs = fbInfo.Syncs
+		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
-		syncs = luInfo.SyncSteps()
+		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
+
+		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
+		anyMatch, err := ignore.AnyMatchGlobs(build.PathMappingsToLocalPaths(changedFiles), luInfo.FullRebuildTriggers)
+		if err != nil {
+			return nil, err
+		}
+		if anyMatch {
+			return store.BuildResultSet{}, RedirectToNextBuilderf(
+				"one or more changed files match a FullRebuildTrigger, so will not perform a LiveUpdate")
+		}
+
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return sbd.updateInCluster(ctx, iTarget, state, syncs, runs, hotReload)
+	return sbd.updateInCluster(ctx, iTarget, state, changedFiles, runs, hotReload)
 }
 
-func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, syncs []model.Sync, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
-	paths, err := build.FilesToPathMappings(
-		state.FilesChanged(), syncs)
-	if err != nil {
-		return store.BuildResultSet{}, err
-	}
-
+func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
 	// archive files to copy to container
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(iTarget))
-	err = ab.ArchivePathsIfExist(ctx, paths)
+	err := ab.ArchivePathsIfExist(ctx, changedFiles)
 	if err != nil {
 		return store.BuildResultSet{}, errors.Wrap(err, "archivePathsIfExists")
 	}
@@ -96,7 +108,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	archivePaths := ab.Paths()
 
 	// get files to rm
-	toRemove, err := build.MissingLocalPaths(ctx, paths)
+	toRemove, err := build.MissingLocalPaths(ctx, changedFiles)
 	if err != nil {
 		return store.BuildResultSet{}, errors.Wrap(err, "missingLocalPaths")
 	}
@@ -104,7 +116,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	deployInfo := state.DeployInfo
-	cmds, err := build.BoilRuns(runs, paths)
+	cmds, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}

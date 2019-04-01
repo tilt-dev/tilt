@@ -189,7 +189,7 @@ func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
 func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
 	if lu, ok := s.liveUpdates[image.configurationRef.String()]; ok {
 		lu.matched = true
-		ret, err := liveUpdateToModel(*lu)
+		ret, err := s.liveUpdateToModel(*lu)
 		return &ret, err
 	} else {
 		return nil, nil

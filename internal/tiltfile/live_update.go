@@ -181,8 +181,8 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 	}
 }
 
-func liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
-	return model.NewLiveUpdate(l.steps, l.fullRebuildTriggers)
+func (s *tiltfileState) liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
+	return model.NewLiveUpdate(l.steps, model.NewGlobset(l.fullRebuildTriggers, s.absWorkingDir()))
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
@@ -229,7 +229,7 @@ func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin
 		if !ok {
 			return starlark.None, fmt.Errorf("'full_rebuild_triggers' must only contain strings - got value '%v' of type '%s'", v.String(), v.Type())
 		}
-		frtStrings = append(frtStrings, s.absPath(string(str)))
+		frtStrings = append(frtStrings, string(str))
 	}
 
 	s.liveUpdates[dockerRef] = &liveUpdateDef{
