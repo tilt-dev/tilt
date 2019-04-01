@@ -8,5 +8,5 @@ import (
 )
 
 func TestProvideWebVersion(t *testing.T) {
-	assert.Equal(t, fmt.Sprintf("v%s", devVersion), string(provideWebVersion()))
+	assert.Equal(t, fmt.Sprintf("v%s", devVersion), string(provideWebVersion(provideBuildInfo())))
 }

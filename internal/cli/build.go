@@ -19,12 +19,12 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.7.7"
+const devVersion = "0.7.10"
 
 type BuildInfo struct {
-	Version   string
-	Date      string
-	DevSuffix string
+	Version string
+	Date    string
+	Dev     bool
 }
 
 func (e BuildInfo) empty() bool {
@@ -53,7 +53,11 @@ func buildStamp() string {
 	if timeIndex != -1 {
 		date = date[0:timeIndex]
 	}
-	return fmt.Sprintf("v%s%s, built %s", version, info.DevSuffix, date)
+	devSuffix := ""
+	if info.Dev {
+		devSuffix = "-dev"
+	}
+	return fmt.Sprintf("v%s%s, built %s", version, devSuffix, date)
 }
 
 // Returns a build datestamp in the format 2018-08-30
@@ -78,12 +82,16 @@ func defaultBuildDate() string {
 // Returns a build datestamp in the format 2018-08-30
 func defaultBuildInfo() BuildInfo {
 	return BuildInfo{
-		Date:      defaultBuildDate(),
-		Version:   devVersion,
-		DevSuffix: "-dev",
+		Date:    defaultBuildDate(),
+		Version: devVersion,
+		Dev:     true,
 	}
 }
 
-func provideWebVersion() model.WebVersion {
-	return model.WebVersion(fmt.Sprintf("v%s", buildInfo().Version))
+func provideBuildInfo() BuildInfo {
+	return buildInfo()
+}
+
+func provideWebVersion(b BuildInfo) model.WebVersion {
+	return model.WebVersion(fmt.Sprintf("v%s", b.Version))
 }

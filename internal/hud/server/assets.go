@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/pkg/errors"
@@ -29,17 +30,21 @@ type AssetServer interface {
 
 type devAssetServer struct {
 	http.Handler
-	started chan struct{}
-	cmd     *exec.Cmd
+	mu       sync.Mutex
+	cmd      *exec.Cmd
+	disposed bool
 }
 
 func (s *devAssetServer) Teardown(ctx context.Context) {
-	<-s.started
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	cmd := s.cmd
 	if cmd != nil && cmd.Process != nil {
 		// Kill the entire process group.
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
+	s.disposed = true
 }
 
 func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.Cmd, error) {
@@ -73,10 +78,18 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.disposed {
+		return nil, nil
+	}
+
 	err = cmd.Start()
 	if err != nil {
 		return nil, errors.Wrap(err, "Starting dev web server")
 	}
+
+	s.cmd = cmd
 	return cmd, nil
 }
 
@@ -84,12 +97,9 @@ func (s *devAssetServer) Serve(ctx context.Context) error {
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
 	cmd, err := s.start(ctx, stdout, stderr)
-	if err != nil {
+	if cmd == nil || err != nil {
 		return err
 	}
-
-	s.cmd = cmd
-	close(s.started)
 
 	err = cmd.Wait()
 	if ctx.Err() != nil {
@@ -175,7 +185,6 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 
 		return &devAssetServer{
 			Handler: httputil.NewSingleHostReverseProxy(loc),
-			started: make(chan struct{}),
 		}, nil
 	}
 

@@ -20,8 +20,11 @@ type WebVersion string
 type WebMode string
 
 const (
-	LocalWebMode WebMode = "local"
-	ProdWebMode  WebMode = "prod"
+	// By default, we serve the js locally in dev builds and from prod in released
+	// builds.
+	DefaultWebMode WebMode = "default"
+	LocalWebMode   WebMode = "local"
+	ProdWebMode    WebMode = "prod"
 )
 
 func (m *WebMode) String() string {
@@ -30,6 +33,8 @@ func (m *WebMode) String() string {
 
 func (m *WebMode) Set(v string) error {
 	switch v {
+	case string(DefaultWebMode):
+		*m = DefaultWebMode
 	case string(LocalWebMode):
 		*m = LocalWebMode
 	case string(ProdWebMode):

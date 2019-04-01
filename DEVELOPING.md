@@ -21,6 +21,7 @@ If you just want to build Tilt:
 - **[make](https://www.gnu.org/software/make/)**
 - **[go 1.12](https://golang.org/dl/)**
 - **[errcheck](https://github.com/kisielk/errcheck)**: `go get -u github.com/kisielk/errcheck` (to run lint)
+- [yarn](https://yarnpkg.com/lang/en/docs/install/) (for JS resources)
 
 ## Test Prereqs
 
@@ -97,21 +98,33 @@ For more information on pprof, see https://github.com/google/pprof/blob/master/d
 
 ## Web UI
 
-`tilt` has an experimental web interface! We currently use it to run experiments.
+`tilt` uses a web interface for logs investigation.
 
-By default, the web interface runs on port 10350. All the HTML, CSS, and JS assets are served from our
+By default, the web interface runs on port 10350.
+
+When you use a released version of Tilt, all the HTML, CSS, and JS assets are served from our
 [production bucket](https://console.cloud.google.com/storage/browser/tilt-static-assets).
 
-To develop on the interface locally, run:
+When you build Tilt from head, the Tilt binary will default to development mode.
+When you run Tilt, it will run a webpack dev server as a separate process on port 3000,
+and reverse proxy all asset requests to the dev server.
+
+To manually control the assets served, you can use:
 
 ```
 tilt up --web-mode=local
 ```
 
-This will run a webpack dev server as a separate process,
-and reverse proxy all asset requests to the dev server.
+to force Tilt to use the webpack dev server, or you can use
 
-To run it on an alternate port (e.g. 8001):
+```
+tilt up --web-mode=prod
+```
+
+to force Tilt to use production assets.
+
+
+To run the server on an alternate port (e.g. 8001):
 
 ```
 tilt up --port=8001
@@ -136,7 +149,6 @@ Requirements:
 - MacOS
 - Python
 - [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
-- [yarn](https://yarnpkg.com/lang/en/docs/install/)
 - `GITHUB_TOKEN` env variable with repo scope
 
 Currently, releases have to be built on MacOS due to cross-compilation issues with Apple FSEvents.
