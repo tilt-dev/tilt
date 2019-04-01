@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -2768,8 +2767,6 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				case model.LiveUpdate:
 					lu := image.MaybeLiveUpdateInfo()
 					if assert.NotNil(f.t, lu) {
-						spew.Dump("expected LU:", matcher)
-						spew.Dump("~~~~~\nactual LU:", *lu)
 						assert.Equal(f.t, matcher, *lu)
 					}
 				default:
