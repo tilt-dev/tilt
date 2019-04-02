@@ -137,17 +137,8 @@ class HUD extends Component<HudProps, HudState> {
       <Router>
         <div className="HUD">
           <Switch>
-            <Route
-              path="/r/:name"
-              render={props => {
-                return sidebarRoute(props)
-              }}
-            />
-            <Route
-              render={props => {
-                return sidebarRoute(props)
-              }}
-            />
+            <Route path="/r/:name" render={sidebarRoute} />
+            <Route render={sidebarRoute} />
           </Switch>
 
           <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar} />
@@ -157,7 +148,7 @@ class HUD extends Component<HudProps, HudState> {
               path="/"
               render={() => <LogPane log={combinedLog} />}
             />
-            <Route exact path="/r/:name" render={props => logsRoute(props)} />
+            <Route exact path="/r/:name" render={logsRoute} />
             <Route exact path="/r/:name/k8s" render={() => <K8sViewPane />} />
             <Route
               exact
