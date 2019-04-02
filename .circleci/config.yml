@@ -47,6 +47,8 @@ jobs:
       - run: /go/portforward.sh -wait $(/go/dind-cluster.sh apiserver-port) &&
              kubectl get nodes &&
              make integration
+      - store_test_results:
+          path: test-results
 
   build-macos:
     macos:
