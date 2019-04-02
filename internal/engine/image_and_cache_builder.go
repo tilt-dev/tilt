@@ -82,6 +82,9 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			if err != nil {
 				return nil, err
 			}
+			if len(cf) != len(changed) {
+				return nil, fmt.Errorf("failed to match one of more of changed files %v with a sync: %+v", changed, bd.Syncs)
+			}
 
 			ps.StartPipelineStep(ctx, "Building from existing: [%s]", userFacingRefName)
 			defer ps.EndPipelineStep(ctx)

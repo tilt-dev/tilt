@@ -37,6 +37,7 @@ type PathMapping struct {
 }
 
 func (m PathMapping) prettyStr() string { return fmt.Sprintf("%s --> %s", m.LocalPath, m.ContainerPath) }
+func (m PathMapping) empty() bool       { return m.LocalPath == "" && m.ContainerPath == "" }
 
 func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 	result := make([]PathMapping, 0)
@@ -102,7 +103,9 @@ func filesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, *Pa
 		if err != nil {
 			return nil, err
 		}
-		pms = append(pms, pm)
+		if !pm.empty() {
+			pms = append(pms, pm)
+		}
 	}
 
 	return pms, nil
@@ -132,7 +135,11 @@ func fileToPathMapping(file string, sync []model.Sync) (PathMapping, *PathMappin
 			}, nil
 		}
 	}
-	return PathMapping{}, pathMappingErrf("file %s matches no syncs", file)
+	// (Potentially) expected case: the file doesn't match any sync src's. It's up
+	// to the caller to decide whether this is expected or not.
+	// E.g. for LiveUpdate, this is an expected case; for FastBuild, it means
+	// something is wrong (as we only WATCH files/dirs specified by the sync's).
+	return PathMapping{}, nil
 }
 
 func endsWithSlash(path string) bool {

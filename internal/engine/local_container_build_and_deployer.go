@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -67,27 +68,36 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	if state.IsEmpty() {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
+	cf := state.FilesChanged()
 
-	var changedFiles []build.PathMapping
+	var cfMappings []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
+		cfMappings, err = build.FilesToPathMappings(cf, fbInfo.Syncs)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+		if len(cfMappings) != len(cf) {
+			return nil, fmt.Errorf("failed to match one of more of changed files %v with a sync: %+v", cf, fbInfo.Syncs)
+		}
+
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
+		cfMappings, err = build.FilesToPathMappings(cf, luInfo.SyncSteps())
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+		if len(cfMappings) != len(cf) {
+			return nil, RedirectToNextBuilderf("one or more changed files do NOT match a LiveUpdate sync, " +
+				"so should perform a base build")
+		}
 
 		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
-		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(cfMappings))
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +109,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return cbd.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
+	return cbd.buildAndDeploy(ctx, iTarget, state, cfMappings, runs, hotReload)
 }
 
 func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
