@@ -28,7 +28,7 @@ class SidebarItem {
 }
 
 type SidebarProps = {
-  isOpen: boolean
+  isClosed: boolean
   items: SidebarItem[]
   selected: string
 }
@@ -36,8 +36,8 @@ type SidebarProps = {
 class Sidebar extends PureComponent<SidebarProps> {
   render() {
     let classes = ["Sidebar"]
-    if (this.props.isOpen) {
-      classes.push("is-open")
+    if (this.props.isClosed) {
+      classes.push("is-closed")
     }
 
     let allItemClasses = "resLink resLink--all"

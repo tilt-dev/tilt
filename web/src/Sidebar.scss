@@ -11,12 +11,12 @@
   right: 0;
   z-index: 900;
   background-color: $color-navy;
-  transform: translateX(120%);
+  transform: translateX(0%);
   transition: transform ease-out 200ms;
   font-size: $font-size;
 }
-.Sidebar.is-open {
-  transform: translateX(0%);
+.Sidebar.is-closed {
+  transform: translateX(120%);
   transition: transform ease-in 200ms;
 }
 .Sidebar-header {
